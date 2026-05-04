@@ -43,20 +43,20 @@ function sanitizeMemoryKey(key: string): string | null {
 
 export interface StateToolOptions {
   readonly memoryDir: string;
-  readonly hookDispatcher?: HookDispatcher;
-  readonly modeManager?: ModeManager;
-  readonly telemetryDB?: TelemetryDB;
+  readonly hookDispatcher?: HookDispatcher | undefined;
+  readonly modeManager?: ModeManager | undefined;
+  readonly telemetryDB?: TelemetryDB | undefined;
   /**
    * Current working directory at session start. Exposed as the well-known
    * read-only key `runtime.workingDir` via `mode=get`.
    * Updated dynamically via WorkspaceSwapManager on workspace swap.
    */
-  readonly workingDir?: string;
+  readonly workingDir?: string | undefined;
   /**
    * Daemon home directory (immutable after startup). Exposed as the well-known
    * read-only key `daemon.homeDir` via `mode=get`.
    */
-  readonly daemonHomeDir?: string;
+  readonly daemonHomeDir?: string | undefined;
   /**
    * Workspace swap manager. When provided, `set({values: {'runtime.workingDir': '/new/path'}})`
    * will trigger a real workspace swap via `requestSwap()` instead of returning an error.

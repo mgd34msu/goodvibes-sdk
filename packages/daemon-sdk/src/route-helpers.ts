@@ -48,8 +48,8 @@ export function serializableJsonResponse(body: unknown, init?: ResponseInit): Re
 
 export interface BoundedIntegerOptions {
   readonly fallback: number;
-  readonly min?: number;
-  readonly max?: number;
+  readonly min?: number | undefined;
+  readonly max?: number | undefined;
 }
 
 export function readBoundedInteger(raw: string | null, options: BoundedIntegerOptions): number {
@@ -85,18 +85,18 @@ function clampInteger(value: number, min: number, max: number): number {
 }
 
 export function readOptionalStringField(body: JsonRecord, key: string): string | undefined {
-  const value = body[key];
+  const value = body[key]!;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 // m4: `max` defaults to 128 but callers override it (e.g. MAX_SESSION_TOOL_NAMES=64);
 // the inconsistency is intentional — each call site uses a domain-specific limit.
 export function readStringArrayField(body: JsonRecord, key: string, max = 128): string[] | undefined {
-  const value = body[key];
+  const value = body[key]!;
   if (!Array.isArray(value)) return undefined;
   const output: string[] = [];
   for (let index = 0; index < value.length && index < max; index++) {
-    const entry = value[index];
+    const entry = value[index]!;
     if (typeof entry !== 'string') continue;
     const trimmed = entry.trim();
     if (trimmed) output.push(trimmed);

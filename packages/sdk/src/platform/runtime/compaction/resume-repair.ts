@@ -42,7 +42,7 @@ export interface ResumeRepairOptions {
   /** The boundary commit being resumed. */
   commit: BoundaryCommit;
   /** Maximum tokens allowed in the resumed session (default: RESUME_MAX_TOKENS). */
-  maxTokens?: number;
+  maxTokens?: number | undefined;
 }
 
 /**
@@ -88,12 +88,12 @@ export function runResumeRepair(options: ResumeRepairOptions): ResumeRepairResul
   }
 
   // ── Check 2: First message must be from 'user' ────────────────────────────
-  if (messages[0].role !== 'user') {
+  if (messages[0]!.role !== 'user') {
     actions.push({
       kind: 'prepend_user_message',
-      description: `First message had role '${messages[0].role}'; prepended synthetic user message.`,
+      description: `First message had role '${messages[0]!.role}'; prepended synthetic user message.`,
       severity: 'warn',
-      meta: { originalFirstRole: messages[0].role },
+      meta: { originalFirstRole: messages[0]!.role },
     });
     const synthetic: ProviderMessage = {
       role: 'user',
@@ -113,7 +113,7 @@ export function runResumeRepair(options: ResumeRepairOptions): ResumeRepairResul
     const originalCount = messages.length;
     while (messages.length > 1 && estimate > maxTokens) {
       // Drop from position 1 (preserve the handoff at [0])
-      messages = [messages[0], ...messages.slice(2)];
+      messages = [messages[0]!, ...messages.slice(2)];
       estimate = estimateTokens(JSON.stringify(messages));
     }
     const dropped = originalCount - messages.length;

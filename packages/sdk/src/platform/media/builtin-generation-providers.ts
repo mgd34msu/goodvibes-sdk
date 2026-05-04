@@ -11,7 +11,7 @@ import { summarizeError } from '../utils/error-display.js';
 
 function readFirstEnv(envVars: readonly string[]): string | null {
   for (const envVar of envVars) {
-    const value = process.env[envVar];
+    const value = process.env[envVar]!;
     if (typeof value === 'string' && value.trim().length > 0) return value.trim();
   }
   return null;
@@ -530,8 +530,8 @@ function createComfyProvider(): MediaProvider {
         const historyPath = baseUrl.includes('cloud.comfy.org') ? `/api/history_v2/${taskId}` : `/history/${taskId}`;
         const payload = await fetchJson(`${baseUrl.replace(/\/+$/, '')}${historyPath}`, {
           method: 'GET',
-          headers: apiKey ? { 'x-api-key': apiKey } : undefined,
-        }, 60_000) as Record<string, unknown>;
+          ...(apiKey ? { headers: { 'x-api-key': apiKey } } : {}),
+        } as RequestInit, 60_000) as Record<string, unknown>;
         if (baseUrl.includes('cloud.comfy.org')) {
           const records = Array.isArray(payload['outputs']) ? payload['outputs'] as Array<Record<string, unknown>> : [];
           if (records.length > 0) {

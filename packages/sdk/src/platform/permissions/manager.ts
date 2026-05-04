@@ -168,7 +168,7 @@ export class PermissionManager {
     // 3. custom mode: check per-tool setting
     if (mode === 'custom') {
       if (TOOL_CONFIG_KEYS[toolName] !== undefined) {
-        const toolKey = TOOL_CONFIG_KEYS[toolName];
+        const toolKey = TOOL_CONFIG_KEYS[toolName]!;
         const action: PermissionAction = permsConfig?.tools?.[toolKey] ?? 'prompt';
         if (action === 'allow') return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'config_policy', 'config_allow', analysis));
         if (action === 'deny') return this.emitAndReturn(callId, toolName, category, this.result(false, false, 'config_policy', 'config_deny', analysis));

@@ -61,13 +61,13 @@ export interface ProviderHealthContext {
   /** Current health status of the provider. */
   readonly status: ProviderStatus;
   /** Latency stats. Present only when the provider has call history. */
-  readonly latency?: ProviderLatencyStats;
+  readonly latency?: ProviderLatencyStats | undefined;
   /** Cache hit rate (0–1). Present only when cache metrics are available. */
-  readonly cacheHitRate?: number;
+  readonly cacheHitRate?: number | undefined;
   /** True when the provider is configured with a valid API key. */
   readonly isConfigured: boolean;
   /** Rate limit reset time (epoch ms), if the provider is currently rate-limited. */
-  readonly rateLimitResetAt?: number;
+  readonly rateLimitResetAt?: number | undefined;
 }
 
 /**
@@ -88,9 +88,9 @@ export interface ModelPickerEntry {
 
   // ── Quality ───────────────────────────────────────────────────────────────
   /** Quality tier badge (S/A/B/C), derived from benchmark composite score. */
-  readonly qualityTier?: string;
+  readonly qualityTier?: string | undefined;
   /** Benchmark composite score (0–1). */
-  readonly benchmarkScore?: number;
+  readonly benchmarkScore?: number | undefined;
 
   // ── Capabilities ──────────────────────────────────────────────────────────
   /** Capability flags for this model. */
@@ -133,7 +133,7 @@ export interface ModelPickerEntry {
   /** True if this model is part of the current fallback chain. */
   readonly isInFallbackChain: boolean;
   /** Position in the fallback chain (0 = primary, 1+ = fallback index). */
-  readonly fallbackPosition?: number;
+  readonly fallbackPosition?: number | undefined;
 }
 
 /**

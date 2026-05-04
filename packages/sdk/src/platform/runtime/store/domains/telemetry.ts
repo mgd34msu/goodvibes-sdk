@@ -18,7 +18,7 @@ export interface TelemetryEventRecord {
   /** Epoch ms when the event was recorded. */
   timestamp: number;
   /** Optional structured metadata. */
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> | undefined;
 }
 
 /** Session-level metric aggregates. */
@@ -56,7 +56,7 @@ export interface TraceContext {
   /** Whether OTel export is active. */
   exportActive: boolean;
   /** OTel collector endpoint. */
-  endpoint?: string;
+  endpoint?: string | undefined;
 }
 
 /**
@@ -75,9 +75,9 @@ export interface TelemetryDomainState {
   /** Session-level correlation ID (set at session start, never changes). */
   sessionCorrelationId: string;
   /** Current turn correlation ID (changes each turn). */
-  currentTurnCorrelationId?: string;
+  currentTurnCorrelationId?: string | undefined;
   /** OTel trace context (undefined until OTel is enabled). */
-  traceContext?: TraceContext;
+  traceContext?: TraceContext | undefined;
 
   // ── Metrics ──────────────────────────────────────────────────────────────
   /** Accumulated session metrics. */
@@ -96,7 +96,7 @@ export interface TelemetryDomainState {
   /** Whether the telemetry SQLite DB is available. */
   dbAvailable: boolean;
   /** Path to the telemetry DB file. */
-  dbPath?: string;
+  dbPath?: string | undefined;
 }
 
 /**

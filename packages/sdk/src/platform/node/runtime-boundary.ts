@@ -3,23 +3,23 @@ import { ConfigurationError } from '@pellux/goodvibes-errors';
 export interface NodeRuntimeBoundaryStatus {
   readonly nodeLike: boolean;
   readonly runtimeName: string;
-  readonly nodeVersion?: string;
+  readonly nodeVersion?: string | undefined;
   readonly hasProcess: boolean;
   readonly hasFilesystemAssumption: boolean;
 }
 
 export interface NodeRuntimeBoundaryOptions {
-  readonly feature?: string;
-  readonly entrypoint?: string;
+  readonly feature?: string | undefined;
+  readonly entrypoint?: string | undefined;
 }
 
 type RuntimeGlobal = typeof globalThis & {
   readonly process?: {
     readonly versions?: {
-      readonly node?: string;
+      readonly node?: string | undefined;
     };
     readonly release?: {
-      readonly name?: string;
+      readonly name?: string | undefined;
     };
   };
 };

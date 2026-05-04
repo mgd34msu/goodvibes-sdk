@@ -33,7 +33,7 @@ export interface PanelState {
   /** Whether the panel currently has input focus. */
   focused: boolean;
   /** Epoch ms when the panel was last activated. */
-  lastActivatedAt?: number;
+  lastActivatedAt?: number | undefined;
   /**
    * Scroll offset in lines (for scrollable panels).
    */
@@ -60,7 +60,7 @@ export interface PanelDomainState {
   /** The panel currently holding keyboard focus. */
   focusedPanelId: PanelId;
   /** Previously focused panel (for focus restoration). */
-  previousFocusedPanelId?: PanelId;
+  previousFocusedPanelId?: PanelId | undefined;
 
   // ── Layout ─────────────────────────────────────────────────────────────────
   /** Whether the sidebar is visible. */

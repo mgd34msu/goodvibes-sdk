@@ -56,16 +56,16 @@ export interface RegistryInput {
   mode: RegistryMode;
 
   // mode: search
-  query?: string;
-  type?: 'skills' | 'agents' | 'tools' | 'all';
+  query?: string | undefined;
+  type?: 'skills' | 'agents' | 'tools' | 'all' | undefined;
 
   // mode: recommend
-  task?: string;
-  scope?: 'skills' | 'tools';
+  task?: string | undefined;
+  scope?: 'skills' | 'tools' | undefined;
 
   // mode: dependencies
-  skillName?: string;
+  skillName?: string | undefined;
 
   // mode: preview/content
-  path?: string;
+  path?: string | undefined;
 }

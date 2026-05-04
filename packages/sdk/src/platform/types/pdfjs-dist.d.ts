@@ -1,7 +1,7 @@
 declare module 'pdfjs-dist/legacy/build/pdf.mjs' {
   export interface PdfTextItem {
-    readonly str?: string;
-    readonly hasEOL?: boolean;
+    readonly str?: string | undefined;
+    readonly hasEOL?: boolean | undefined;
   }
 
   export interface PdfPageProxy {
@@ -21,6 +21,6 @@ declare module 'pdfjs-dist/legacy/build/pdf.mjs' {
 
   export function getDocument(input: {
     readonly data: Uint8Array;
-    readonly useSystemFonts?: boolean;
+    readonly useSystemFonts?: boolean | undefined;
   }): PdfLoadingTask;
 }

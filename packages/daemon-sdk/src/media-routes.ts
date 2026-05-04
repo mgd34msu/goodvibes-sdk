@@ -89,13 +89,13 @@ function readVoiceSynthesisRequest(
   body: JsonRecord,
   context?: DaemonMediaRouteContext,
 ): {
-  readonly providerId?: string;
+  readonly providerId?: string | undefined;
   readonly input: {
     readonly text: string;
-    readonly voiceId?: string;
-    readonly modelId?: string;
-    readonly format?: string;
-    readonly speed?: number;
+    readonly voiceId?: string | undefined;
+    readonly modelId?: string | undefined;
+    readonly format?: string | undefined;
+    readonly speed?: number | undefined;
     readonly metadata: Record<string, unknown>;
   };
 } {
@@ -114,10 +114,10 @@ function readVoiceSynthesisRequest(
   const speed = readOptionalBoundedNumber(body.speed, 0.25, 4);
   const input: {
     text: string;
-    voiceId?: string;
-    modelId?: string;
-    format?: string;
-    speed?: number;
+    voiceId?: string | undefined;
+    modelId?: string | undefined;
+    format?: string | undefined;
+    speed?: number | undefined;
     metadata: Record<string, unknown>;
   } = {
     text: typeof body.text === 'string' ? body.text : '',
@@ -135,22 +135,22 @@ function readVoiceSynthesisRequest(
 
 type WebSearchBody = {
   readonly query: string;
-  readonly providerId?: string;
-  readonly maxResults?: number;
-  readonly verbosity?: WebSearchVerbosity;
-  readonly region?: string;
-  readonly safeSearch?: WebSearchSafeSearch;
-  readonly timeRange?: WebSearchTimeRange;
-  readonly includeInstantAnswer?: boolean;
-  readonly includeEvidence?: boolean;
-  readonly evidenceTopN?: number;
-  readonly evidenceExtract?: FetchExtractMode;
+  readonly providerId?: string | undefined;
+  readonly maxResults?: number | undefined;
+  readonly verbosity?: WebSearchVerbosity | undefined;
+  readonly region?: string | undefined;
+  readonly safeSearch?: WebSearchSafeSearch | undefined;
+  readonly timeRange?: WebSearchTimeRange | undefined;
+  readonly includeInstantAnswer?: boolean | undefined;
+  readonly includeEvidence?: boolean | undefined;
+  readonly evidenceTopN?: number | undefined;
+  readonly evidenceExtract?: FetchExtractMode | undefined;
 };
 
 type MultimodalPacketBody = {
   readonly analysis: MultimodalAnalysisResult;
   readonly detail: MultimodalDetail;
-  readonly budgetLimit?: number;
+  readonly budgetLimit?: number | undefined;
 };
 
 const mediaBodySchemas = createRouteBodySchemaRegistry({

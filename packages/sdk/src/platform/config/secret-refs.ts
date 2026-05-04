@@ -37,55 +37,55 @@ export interface GoodVibesSecretRef {
 export interface FileSecretRef {
   readonly source: 'file';
   readonly path: string;
-  readonly selector?: string;
+  readonly selector?: string | undefined;
 }
 
 export interface ExecSecretRef {
   readonly source: 'exec';
   readonly command: string;
-  readonly args?: readonly string[];
-  readonly env?: Record<string, string>;
-  readonly stdin?: string;
-  readonly timeoutMs?: number;
+  readonly args?: readonly string[] | undefined;
+  readonly env?: Record<string, string> | undefined;
+  readonly stdin?: string | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 export interface OnePasswordSecretRef {
   readonly source: '1password' | 'onepassword';
-  readonly ref?: string;
-  readonly vault?: string;
-  readonly item?: string;
-  readonly field?: string;
-  readonly account?: string;
-  readonly cli?: string;
-  readonly timeoutMs?: number;
+  readonly ref?: string | undefined;
+  readonly vault?: string | undefined;
+  readonly item?: string | undefined;
+  readonly field?: string | undefined;
+  readonly account?: string | undefined;
+  readonly cli?: string | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 export interface BitwardenSecretRef {
   readonly source: 'bitwarden' | 'vaultwarden';
   readonly item: string;
-  readonly field?: BitwardenSecretField;
-  readonly customField?: string;
-  readonly cli?: string;
-  readonly appDataDir?: string;
-  readonly sessionEnv?: string;
-  readonly server?: string;
-  readonly serverEnv?: string;
-  readonly validateServer?: boolean;
-  readonly syncBeforeRead?: boolean;
-  readonly timeoutMs?: number;
+  readonly field?: BitwardenSecretField | undefined;
+  readonly customField?: string | undefined;
+  readonly cli?: string | undefined;
+  readonly appDataDir?: string | undefined;
+  readonly sessionEnv?: string | undefined;
+  readonly server?: string | undefined;
+  readonly serverEnv?: string | undefined;
+  readonly validateServer?: boolean | undefined;
+  readonly syncBeforeRead?: boolean | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 export interface BitwardenSecretsManagerRef {
   readonly source: 'bitwarden-secrets-manager' | 'bws';
   readonly id: string;
-  readonly field?: string;
-  readonly cli?: string;
-  readonly accessTokenEnv?: string;
-  readonly accessToken?: string;
-  readonly profile?: string;
-  readonly configFile?: string;
-  readonly serverUrl?: string;
-  readonly timeoutMs?: number;
+  readonly field?: string | undefined;
+  readonly cli?: string | undefined;
+  readonly accessTokenEnv?: string | undefined;
+  readonly accessToken?: string | undefined;
+  readonly profile?: string | undefined;
+  readonly configFile?: string | undefined;
+  readonly serverUrl?: string | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 export type SecretRef =
@@ -100,9 +100,9 @@ export type SecretRef =
 export type SecretRefInput = string | SecretRef;
 
 export interface SecretCommandRunOptions {
-  readonly env?: Record<string, string>;
-  readonly stdin?: string;
-  readonly timeoutMs?: number;
+  readonly env?: Record<string, string> | undefined;
+  readonly stdin?: string | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 export interface SecretCommandRunResult {
@@ -118,9 +118,9 @@ export type SecretCommandRunner = (
 ) => Promise<SecretCommandRunResult>;
 
 export interface SecretRefResolutionOptions {
-  readonly resolveLocalSecret?: (key: string) => Promise<string | null>;
-  readonly runCommand?: SecretCommandRunner;
-  readonly homeDirectory?: string;
+  readonly resolveLocalSecret?: ((key: string) => Promise<string | null>) | undefined | undefined;
+  readonly runCommand?: SecretCommandRunner | undefined;
+  readonly homeDirectory?: string | undefined;
 }
 
 export interface SecretRefResolution {
@@ -250,19 +250,19 @@ function parseGoodVibesSecretsUri(url: URL): SecretRef | null {
     return null;
   }
 
-  const source = normalizeSource(segments[0] ?? '');
+  const source = normalizeSource(segments[0]! ?? '');
   if (!source) return null;
 
   const rest = segments.slice(1);
   const params = url.searchParams;
 
   if (source === 'env') {
-    const id = rest[0] ?? readSearchString(params, 'id', 'key', 'name');
+    const id = rest[0]! ?? readSearchString(params, 'id', 'key', 'name');
     return id ? { source: 'env', id } : null;
   }
 
   if (source === 'goodvibes') {
-    const id = rest[0] ?? readSearchString(params, 'id', 'key', 'name');
+    const id = rest[0]! ?? readSearchString(params, 'id', 'key', 'name');
     return id ? { source: 'goodvibes', id } : null;
   }
 
@@ -279,7 +279,7 @@ function parseGoodVibesSecretsUri(url: URL): SecretRef | null {
   }
 
   if (source === 'exec') {
-    const command = rest[0] ?? readSearchString(params, 'command', 'cmd');
+    const command = rest[0]! ?? readSearchString(params, 'command', 'cmd');
     if (!command) return null;
     const args = [...rest.slice(1), ...params.getAll('arg').filter((entry) => entry.length > 0)];
     return {
@@ -310,7 +310,7 @@ function parseGoodVibesSecretsUri(url: URL): SecretRef | null {
   }
 
   if (source === 'bitwarden' || source === 'vaultwarden') {
-    const item = rest[0] ?? readSearchString(params, 'item', 'id', 'name');
+    const item = rest[0]! ?? readSearchString(params, 'item', 'id', 'name');
     if (!item) return null;
     return {
       source,
@@ -329,7 +329,7 @@ function parseGoodVibesSecretsUri(url: URL): SecretRef | null {
   }
 
   if (source === 'bitwarden-secrets-manager' || source === 'bws') {
-    const id = rest[0] ?? readSearchString(params, 'id', 'secretId', 'secret');
+    const id = rest[0]! ?? readSearchString(params, 'id', 'secretId', 'secret');
     if (!id) return null;
     return {
       source,
@@ -375,7 +375,7 @@ function parseProviderUri(value: string): SecretRef | null {
     return {
       source: 'bitwarden',
       item: host,
-      field: segments[0] ?? url.searchParams.get('field') ?? 'password',
+      field: segments[0]! ?? url.searchParams.get('field') ?? 'password',
       customField: url.searchParams.get('customField') ?? undefined,
       server: url.searchParams.get('server') ?? undefined,
       serverEnv: url.searchParams.get('serverEnv') ?? undefined,
@@ -389,7 +389,7 @@ function parseProviderUri(value: string): SecretRef | null {
     return {
       source: 'vaultwarden',
       item: host,
-      field: segments[0] ?? url.searchParams.get('field') ?? 'password',
+      field: segments[0]! ?? url.searchParams.get('field') ?? 'password',
       customField: url.searchParams.get('customField') ?? undefined,
       server: url.searchParams.get('server') ?? undefined,
       serverEnv: url.searchParams.get('serverEnv') ?? undefined,
@@ -403,7 +403,7 @@ function parseProviderUri(value: string): SecretRef | null {
     return {
       source: 'bws',
       id: host,
-      field: segments[0] ?? url.searchParams.get('field') ?? 'value',
+      field: segments[0]! ?? url.searchParams.get('field') ?? 'value',
       profile: url.searchParams.get('profile') ?? undefined,
       configFile: url.searchParams.get('configFile') ?? undefined,
       serverUrl: url.searchParams.get('serverUrl') ?? undefined,
@@ -413,7 +413,7 @@ function parseProviderUri(value: string): SecretRef | null {
 
   const source = normalizeSource(host);
   if (!source) return null;
-  const first = segments[0];
+  const first = segments[0]!;
 
   if (source === 'env') {
     return first ? { source: 'env', id: first } : null;
@@ -430,7 +430,7 @@ function parseProviderUri(value: string): SecretRef | null {
     return {
       source,
       item: first,
-      field: segments[1] ?? url.searchParams.get('field') ?? 'password',
+      field: segments[1]! ?? url.searchParams.get('field') ?? 'password',
       customField: url.searchParams.get('customField') ?? undefined,
       server: url.searchParams.get('server') ?? undefined,
       serverEnv: url.searchParams.get('serverEnv') ?? undefined,
@@ -443,7 +443,7 @@ function parseProviderUri(value: string): SecretRef | null {
     return {
       source,
       id: first,
-      field: segments[1] ?? url.searchParams.get('field') ?? 'value',
+      field: segments[1]! ?? url.searchParams.get('field') ?? 'value',
       profile: url.searchParams.get('profile') ?? undefined,
       configFile: url.searchParams.get('configFile') ?? undefined,
       serverUrl: url.searchParams.get('serverUrl') ?? undefined,
@@ -746,7 +746,7 @@ function extractBitwardenItemField(rawItem: string, ref: BitwardenSecretRef): st
     return value === undefined || value === null ? null : String(value);
   }
 
-  const topLevel = item[field];
+  const topLevel = item[field]!;
   if (topLevel !== undefined && topLevel !== null) return String(topLevel);
 
   const fields = Array.isArray(item.fields) ? item.fields as Array<Record<string, unknown>> : [];

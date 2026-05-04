@@ -183,7 +183,7 @@ export async function postBridgePayload(
   payload: Record<string, unknown>,
   options: {
     readonly label: string;
-    readonly token?: string;
+    readonly token?: string | undefined;
   },
 ): Promise<string | undefined> {
   const response = await instrumentedFetch(bridgeUrl, {

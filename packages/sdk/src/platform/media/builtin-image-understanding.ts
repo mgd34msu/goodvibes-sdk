@@ -10,17 +10,17 @@ import type {
 import { toRecord } from '../utils/record-coerce.js';
 
 interface StructuredImageAnalysis {
-  description?: string;
-  text?: string;
-  labels?: string[];
+  description?: string | undefined;
+  text?: string | undefined;
+  labels?: string[] | undefined;
   [key: string]: unknown;
 }
 
 interface ImageUnderstandingScope {
   readonly providerId: string;
   readonly label: string;
-  readonly allowProviderIds?: readonly string[];
-  readonly requireLocal?: boolean;
+  readonly allowProviderIds?: readonly string[] | undefined;
+  readonly requireLocal?: boolean | undefined;
 }
 
 type ImageModelRegistry = Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'describeRuntime'>;

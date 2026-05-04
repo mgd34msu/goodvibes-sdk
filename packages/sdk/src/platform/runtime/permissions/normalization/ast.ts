@@ -35,7 +35,7 @@ export interface CommandNode {
    * Set when the parser encountered an error and fell back to a flat CommandNode.
    * Useful for debug-level diagnostics; not set on successful parses.
    */
-  parseError?: string;
+  parseError?: string | undefined;
 }
 
 /**
@@ -78,7 +78,7 @@ export interface SubshellNode {
    * Parsed inner tree, if the subshell content could be parsed.
    * May be undefined for complex or unparseable subshell content.
    */
-  inner?: ShellNode;
+  inner?: ShellNode | undefined;
 }
 
 /** Discriminated union of all shell AST node types. */

@@ -82,7 +82,7 @@ export interface UiOperationsReadModels {
 }
 
 export interface UiOperationsReadModelOptions {
-  readonly getControlPlaneRecentEvents?: (limit: number) => readonly ControlPlaneRecentEvent[];
+  readonly getControlPlaneRecentEvents?: ((limit: number) => readonly ControlPlaneRecentEvent[]) | undefined | undefined;
 }
 
 export function createOperationsReadModels(

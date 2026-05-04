@@ -12,11 +12,11 @@ export interface ToolCallRecord {
 }
 
 export interface TelemetryFilter {
-  tool?: string;
-  status?: 'ok' | 'error';
-  since?: number;
-  until?: number;
-  limit?: number;
+  tool?: string | undefined;
+  status?: 'ok' | 'error' | undefined;
+  since?: number | undefined;
+  until?: number | undefined;
+  limit?: number | undefined;
 }
 
 export interface TelemetrySummary {
@@ -128,7 +128,7 @@ export class TelemetryDB {
 
     let total_calls = 0, total_tokens = 0, total_errors = 0, total_duration_ms = 0;
     if (totalResult.length > 0) {
-      const row = totalResult[0].values[0] as number[];
+      const row = totalResult[0]!.values[0]! as number[];
       total_calls = row[0] ?? 0;
       total_tokens = row[1] ?? 0;
       total_errors = row[2] ?? 0;
@@ -148,7 +148,7 @@ export class TelemetryDB {
 
     const by_tool: TelemetrySummary['by_tool'] = {};
     if (byToolResult.length > 0) {
-      for (const row of byToolResult[0].values as unknown[][]) {
+      for (const row of byToolResult[0]!.values as unknown[][]) {
         const [tool, calls, tokens, errors, avg_duration_ms] = row as [string, number, number, number, number];
         by_tool[tool] = { calls, tokens, errors, avg_duration_ms: Math.round(avg_duration_ms) };
       }

@@ -15,8 +15,8 @@ export interface SessionMeta {
   model: string;
   provider: string;
   timestamp: number;
-  titleSource?: ConversationTitleSource;
-  returnContext?: SessionReturnContextSummary;
+  titleSource?: ConversationTitleSource | undefined;
+  returnContext?: SessionReturnContextSummary | undefined;
 }
 
 /**
@@ -30,8 +30,8 @@ export interface SessionInfo {
   timestamp: number;
   messageCount: number;
   filePath: string;
-  titleSource?: ConversationTitleSource;
-  returnContext?: SessionReturnContextSummary;
+  titleSource?: ConversationTitleSource | undefined;
+  returnContext?: SessionReturnContextSummary | undefined;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface SessionInfo {
 export class SessionManager {
   private sessionsDir: string;
 
-  constructor(baseDir: string, options?: { readonly surfaceRoot?: string; readonly sessionsDir?: string }) {
+  constructor(baseDir: string, options?: { readonly surfaceRoot?: string | undefined; readonly sessionsDir?: string | undefined }) {
     this.sessionsDir = options?.sessionsDir ?? resolveScopedDirectory(baseDir, options?.surfaceRoot, 'sessions');
     // Clean up orphaned tmp files from a previous crash (C4 fix)
     this._cleanupOrphanTempFiles();
@@ -235,7 +235,7 @@ export class SessionManager {
         // Parse only the first line for meta; count remaining non-removed message lines
         if (lines.length > 0) {
           try {
-            const first = JSON.parse(lines[0]) as Record<string, unknown>;
+            const first = JSON.parse(lines[0]!) as Record<string, unknown>;
             if (first.type === 'meta') {
               meta = {
                 title: String(first.title ?? ''),
@@ -340,9 +340,9 @@ export class SessionManager {
     if (lines.length === 0) throw new Error('Session file is empty');
 
     try {
-      const record = JSON.parse(lines[0]) as Record<string, unknown>;
+      const record = JSON.parse(lines[0]!) as Record<string, unknown>;
       record.title = newTitle;
-      lines[0] = JSON.stringify(record);
+      lines[0]! = JSON.stringify(record);
       this._atomicWrite(filePath, lines.join('\n'));
     } catch {
       throw new Error(`Failed to update session title: ${name}`);

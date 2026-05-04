@@ -96,11 +96,11 @@ import {
 
 export interface KnowledgeServiceConfig {
   readonly configManager?: {
-    getControlPlaneConfigDir?: () => string;
+    getControlPlaneConfigDir?: (() => string) | undefined | undefined;
   };
   readonly memoryRegistry: Pick<MemoryRegistry, 'add' | 'getAll' | 'getStore'>;
-  readonly runtimeBus?: RuntimeEventBus | null;
-  readonly semanticService?: KnowledgeSemanticService;
+  readonly runtimeBus?: RuntimeEventBus | null | undefined;
+  readonly semanticService?: KnowledgeSemanticService | undefined;
 }
 
 export interface KnowledgeServiceStatus extends KnowledgeStatus {
@@ -186,9 +186,9 @@ export class KnowledgeService {
   listUsageRecords(
     limit = 100,
     input: {
-      readonly targetKind?: KnowledgeUsageRecord['targetKind'];
-      readonly targetId?: string;
-      readonly usageKind?: KnowledgeUsageRecord['usageKind'];
+      readonly targetKind?: KnowledgeUsageRecord['targetKind'] | undefined;
+      readonly targetId?: string | undefined;
+      readonly usageKind?: KnowledgeUsageRecord['usageKind'] | undefined;
     } = {},
   ): readonly KnowledgeUsageRecord[] {
     return this.store.listUsageRecords(limit, input);
@@ -197,9 +197,9 @@ export class KnowledgeService {
   listConsolidationCandidates(
     limit = 100,
     input: {
-      readonly status?: KnowledgeConsolidationCandidateRecord['status'];
-      readonly subjectKind?: KnowledgeConsolidationCandidateRecord['subjectKind'];
-      readonly subjectId?: string;
+      readonly status?: KnowledgeConsolidationCandidateRecord['status'] | undefined;
+      readonly subjectKind?: KnowledgeConsolidationCandidateRecord['subjectKind'] | undefined;
+      readonly subjectId?: string | undefined;
     } = {},
   ): readonly KnowledgeConsolidationCandidateRecord[] {
     return this.store.listConsolidationCandidates(limit, input);
@@ -230,13 +230,13 @@ export class KnowledgeService {
   }
 
   querySources(input: {
-    readonly limit?: number;
-    readonly offset?: number;
-    readonly status?: string;
-    readonly connectorId?: string;
-    readonly sourceType?: string;
-    readonly tag?: string;
-    readonly query?: string;
+    readonly limit?: number | undefined;
+    readonly offset?: number | undefined;
+    readonly status?: string | undefined;
+    readonly connectorId?: string | undefined;
+    readonly sourceType?: string | undefined;
+    readonly tag?: string | undefined;
+    readonly query?: string | undefined;
   } = {}): { total: number; items: KnowledgeSourceRecord[] } {
     const limit = Math.max(1, input.limit ?? 100);
     const offset = Math.max(0, input.offset ?? 0);
@@ -273,11 +273,11 @@ export class KnowledgeService {
   }
 
   queryNodes(input: {
-    readonly limit?: number;
-    readonly offset?: number;
-    readonly kind?: string;
-    readonly status?: string;
-    readonly query?: string;
+    readonly limit?: number | undefined;
+    readonly offset?: number | undefined;
+    readonly kind?: string | undefined;
+    readonly status?: string | undefined;
+    readonly query?: string | undefined;
   } = {}): { total: number; items: KnowledgeNodeRecord[] } {
     const limit = Math.max(1, input.limit ?? 100);
     const offset = Math.max(0, input.offset ?? 0);
@@ -305,12 +305,12 @@ export class KnowledgeService {
   }
 
   queryIssues(input: {
-    readonly limit?: number;
-    readonly offset?: number;
-    readonly severity?: string;
-    readonly status?: string;
-    readonly code?: string;
-    readonly query?: string;
+    readonly limit?: number | undefined;
+    readonly offset?: number | undefined;
+    readonly severity?: string | undefined;
+    readonly status?: string | undefined;
+    readonly code?: string | undefined;
+    readonly query?: string | undefined;
   } = {}): { total: number; items: KnowledgeIssueRecord[] } {
     const limit = Math.max(1, input.limit ?? 100);
     const offset = Math.max(0, input.offset ?? 0);
@@ -378,10 +378,10 @@ export class KnowledgeService {
     readonly targetKind: KnowledgeUsageRecord['targetKind'];
     readonly targetId: string;
     readonly usageKind: KnowledgeUsageRecord['usageKind'];
-    readonly task?: string;
-    readonly sessionId?: string;
-    readonly score?: number;
-    readonly metadata?: Record<string, unknown>;
+    readonly task?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly score?: number | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<KnowledgeUsageRecord> {
     await this.store.init();
     return this.store.upsertUsageRecord(input);
@@ -390,7 +390,7 @@ export class KnowledgeService {
   getNeighbors(
     kind: 'source' | 'node',
     id: string,
-    input: { readonly relation?: string; readonly limit?: number } = {},
+    input: { readonly relation?: string | undefined; readonly limit?: number | undefined } = {},
   ): {
     readonly edges: readonly KnowledgeEdgeRecord[];
     readonly sources: readonly KnowledgeSourceRecord[];
@@ -424,46 +424,46 @@ export class KnowledgeService {
 
   async ingestUrl(input: {
     readonly url: string;
-    readonly title?: string;
-    readonly tags?: readonly string[];
-    readonly folderPath?: string;
-    readonly sessionId?: string;
-    readonly sourceType?: KnowledgeSourceType;
-    readonly connectorId?: string;
-    readonly allowPrivateHosts?: boolean;
-    readonly metadata?: Record<string, unknown>;
+    readonly title?: string | undefined;
+    readonly tags?: readonly string[] | undefined;
+    readonly folderPath?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly sourceType?: KnowledgeSourceType | undefined;
+    readonly connectorId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<{ source: KnowledgeSourceRecord; artifactId?: string; extraction?: KnowledgeExtractionRecord; issues: readonly KnowledgeIssueRecord[] }> {
     return ingestKnowledgeUrl(this.getIngestContext(), input);
   }
 
   async ingestArtifact(input: {
-    readonly artifactId?: string;
-    readonly path?: string;
-    readonly uri?: string;
-    readonly title?: string;
-    readonly tags?: readonly string[];
-    readonly folderPath?: string;
-    readonly sessionId?: string;
-    readonly sourceType?: KnowledgeSourceType;
-    readonly connectorId?: string;
-    readonly allowPrivateHosts?: boolean;
-    readonly metadata?: Record<string, unknown>;
+    readonly artifactId?: string | undefined;
+    readonly path?: string | undefined;
+    readonly uri?: string | undefined;
+    readonly title?: string | undefined;
+    readonly tags?: readonly string[] | undefined;
+    readonly folderPath?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly sourceType?: KnowledgeSourceType | undefined;
+    readonly connectorId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<{ source: KnowledgeSourceRecord; artifactId?: string; extraction?: KnowledgeExtractionRecord; issues: readonly KnowledgeIssueRecord[] }> {
     return ingestKnowledgeArtifact(this.getIngestContext(), input);
   }
 
   async importBookmarksFromFile(input: {
     readonly path: string;
-    readonly sessionId?: string;
-    readonly allowPrivateHosts?: boolean;
+    readonly sessionId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
   }): Promise<KnowledgeBatchIngestResult> {
     return importKnowledgeBookmarksFromFile(this.getIngestContext(), input);
   }
 
   async importUrlsFromFile(input: {
     readonly path: string;
-    readonly sessionId?: string;
-    readonly allowPrivateHosts?: boolean;
+    readonly sessionId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
   }): Promise<KnowledgeBatchIngestResult> {
     return importKnowledgeUrlsFromFile(this.getIngestContext(), input);
   }
@@ -489,11 +489,11 @@ export class KnowledgeService {
 
   async ingestConnectorInput(input: {
     readonly connectorId: string;
-    readonly input?: unknown;
-    readonly content?: string;
-    readonly path?: string;
-    readonly sessionId?: string;
-    readonly allowPrivateHosts?: boolean;
+    readonly input?: unknown | undefined;
+    readonly content?: string | undefined;
+    readonly path?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
   }): Promise<KnowledgeBatchIngestResult> {
     return ingestKnowledgeConnectorInput(this.getIngestContext(), input);
   }
@@ -510,8 +510,8 @@ export class KnowledgeService {
 
   async renderProjection(input: {
     readonly kind: KnowledgeProjectionTargetKind;
-    readonly id?: string;
-    readonly limit?: number;
+    readonly id?: string | undefined;
+    readonly limit?: number | undefined;
   }): Promise<KnowledgeProjectionBundle> {
     const bundle = await this.projectionService.render(input);
     this.emitIfReady((bus, ctx) => emitKnowledgeProjectionRendered(bus, ctx, {
@@ -523,9 +523,9 @@ export class KnowledgeService {
 
   async materializeProjection(input: {
     readonly kind: KnowledgeProjectionTargetKind;
-    readonly id?: string;
-    readonly limit?: number;
-    readonly filename?: string;
+    readonly id?: string | undefined;
+    readonly limit?: number | undefined;
+    readonly filename?: string | undefined;
   }): Promise<KnowledgeMaterializedProjection> {
     const materialized = await this.projectionService.materialize(input);
     this.emitIfReady((bus, ctx) => emitKnowledgeProjectionMaterialized(bus, ctx, {
@@ -564,12 +564,12 @@ export class KnowledgeService {
 
   async ask(input: {
     readonly query: string;
-    readonly limit?: number;
-    readonly mode?: 'concise' | 'standard' | 'detailed';
-    readonly knowledgeSpaceId?: string;
-    readonly includeSources?: boolean;
-    readonly includeConfidence?: boolean;
-    readonly includeLinkedObjects?: boolean;
+    readonly limit?: number | undefined;
+    readonly mode?: 'concise' | 'standard' | 'detailed' | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly includeSources?: boolean | undefined;
+    readonly includeConfidence?: boolean | undefined;
+    readonly includeLinkedObjects?: boolean | undefined;
   }) {
     return this.semanticService.answer(input);
   }
@@ -619,12 +619,12 @@ export class KnowledgeService {
   }
 
   async saveSchedule(input: {
-    readonly id?: string;
+    readonly id?: string | undefined;
     readonly jobId: string;
-    readonly label?: string;
-    readonly enabled?: boolean;
+    readonly label?: string | undefined;
+    readonly enabled?: boolean | undefined;
     readonly schedule: AutomationScheduleDefinition;
-    readonly metadata?: Record<string, unknown>;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<KnowledgeScheduleRecord> {
     return this.scheduleService.saveSchedule(input);
   }
@@ -641,10 +641,10 @@ export class KnowledgeService {
     id: string,
     decision: 'accept' | 'reject' | 'supersede',
     input: {
-      readonly decidedBy?: string;
-      readonly memoryClass?: string;
-      readonly scope?: string;
-      readonly detail?: string;
+      readonly decidedBy?: string | undefined;
+      readonly memoryClass?: string | undefined;
+      readonly scope?: string | undefined;
+      readonly detail?: string | undefined;
     } = {},
   ): Promise<KnowledgeConsolidationCandidateRecord> {
     return decideKnowledgeConsolidationCandidate(this.getConsolidationContext(), id, decision, input);
@@ -655,11 +655,11 @@ export class KnowledgeService {
   }
 
   listRefinementTasks(limit = 100, input: {
-    readonly spaceId?: string;
-    readonly state?: KnowledgeRefinementTaskState | string;
-    readonly subjectKind?: string;
-    readonly subjectId?: string;
-    readonly gapId?: string;
+    readonly spaceId?: string | undefined;
+    readonly state?: KnowledgeRefinementTaskState | string | undefined;
+    readonly subjectKind?: string | undefined;
+    readonly subjectId?: string | undefined;
+    readonly gapId?: string | undefined;
   } = {}): readonly KnowledgeRefinementTaskRecord[] {
     return this.store.listRefinementTasks(limit, input);
   }
@@ -695,12 +695,12 @@ export class KnowledgeService {
   }
 
   async runRefinement(input: {
-    readonly knowledgeSpaceId?: string;
-    readonly gapIds?: readonly string[];
-    readonly sourceIds?: readonly string[];
-    readonly limit?: number;
-    readonly maxRunMs?: number;
-    readonly force?: boolean;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly gapIds?: readonly string[] | undefined;
+    readonly sourceIds?: readonly string[] | undefined;
+    readonly limit?: number | undefined;
+    readonly maxRunMs?: number | undefined;
+    readonly force?: boolean | undefined;
   } = {}) {
     return this.semanticService.selfImprove({
       knowledgeSpaceId: input.knowledgeSpaceId,
@@ -716,9 +716,9 @@ export class KnowledgeService {
   async runJob(
     id: string,
     input: {
-      readonly mode?: KnowledgeJobMode;
-      readonly sourceIds?: readonly string[];
-      readonly limit?: number;
+      readonly mode?: KnowledgeJobMode | undefined;
+      readonly sourceIds?: readonly string[] | undefined;
+      readonly limit?: number | undefined;
     } = {},
   ): Promise<KnowledgeJobRunRecord> {
     return this.scheduleService.runJob(id, input);
@@ -726,7 +726,7 @@ export class KnowledgeService {
 
   private async runJobByKind(
     kind: KnowledgeJobRecord['kind'],
-    input: { readonly sourceIds?: readonly string[]; readonly limit?: number },
+    input: { readonly sourceIds?: readonly string[] | undefined; readonly limit?: number | undefined },
   ): Promise<Record<string, unknown>> {
     return runKnowledgeServiceJobByKind(kind, input, {
       lint: () => lintKnowledgeStore({ store: this.store, emitIfReady: this.emitIfReady.bind(this) }),
@@ -748,10 +748,10 @@ export class KnowledgeService {
     readonly targetKind: KnowledgeUsageRecord['targetKind'];
     readonly targetId: string;
     readonly usageKind: KnowledgeUsageRecord['usageKind'];
-    readonly task?: string;
-    readonly sessionId?: string;
-    readonly score?: number;
-    readonly metadata?: Record<string, unknown>;
+    readonly task?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly score?: number | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): void {
     queueMicrotask(() => {
       void this.recordUsage(input).catch((error: unknown) => {

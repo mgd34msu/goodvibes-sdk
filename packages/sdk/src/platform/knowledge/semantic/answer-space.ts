@@ -2,8 +2,8 @@ import { getKnowledgeSpaceId, isHomeAssistantKnowledgeSpace, normalizeKnowledgeS
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 
 interface AnswerEvidenceRecord {
-  readonly node?: KnowledgeNodeRecord;
-  readonly source?: KnowledgeSourceRecord;
+  readonly node?: KnowledgeNodeRecord | undefined;
+  readonly source?: KnowledgeSourceRecord | undefined;
 }
 
 export function concreteAnswerGapSpaceId(

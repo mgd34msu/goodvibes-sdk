@@ -18,52 +18,52 @@ export type ProjectPlanningGapKind =
   | 'unapproved-execution';
 
 export interface ProjectPlanningSpaceInput {
-  readonly projectId?: string;
-  readonly knowledgeSpaceId?: string;
+  readonly projectId?: string | undefined;
+  readonly knowledgeSpaceId?: string | undefined;
 }
 
 export interface ProjectPlanningQuestion {
   readonly id: string;
   readonly prompt: string;
-  readonly whyItMatters?: string;
-  readonly recommendedAnswer?: string;
-  readonly consequence?: string;
-  readonly status?: ProjectPlanningQuestionStatus;
-  readonly answer?: string;
-  readonly answeredAt?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly whyItMatters?: string | undefined;
+  readonly recommendedAnswer?: string | undefined;
+  readonly consequence?: string | undefined;
+  readonly status?: ProjectPlanningQuestionStatus | undefined;
+  readonly answer?: string | undefined;
+  readonly answeredAt?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningDecision {
   readonly id: string;
   readonly title: string;
-  readonly context?: string;
+  readonly context?: string | undefined;
   readonly decision: string;
-  readonly alternatives?: readonly string[];
-  readonly reasoning?: string;
-  readonly consequences?: readonly string[];
-  readonly status?: ProjectPlanningDecisionStatus;
-  readonly createdAt?: number;
-  readonly updatedAt?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly alternatives?: readonly string[] | undefined;
+  readonly reasoning?: string | undefined;
+  readonly consequences?: readonly string[] | undefined;
+  readonly status?: ProjectPlanningDecisionStatus | undefined;
+  readonly createdAt?: number | undefined;
+  readonly updatedAt?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningTerm {
   readonly term: string;
   readonly definition: string;
-  readonly avoid?: readonly string[];
-  readonly aliases?: readonly string[];
-  readonly relationships?: readonly string[];
-  readonly examples?: readonly string[];
-  readonly metadata?: Record<string, unknown>;
+  readonly avoid?: readonly string[] | undefined;
+  readonly aliases?: readonly string[] | undefined;
+  readonly relationships?: readonly string[] | undefined;
+  readonly examples?: readonly string[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningAmbiguity {
   readonly phrase: string;
   readonly resolution: string;
-  readonly examples?: readonly string[];
-  readonly resolvedAt?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly examples?: readonly string[] | undefined;
+  readonly resolvedAt?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningLanguageArtifact {
@@ -71,51 +71,51 @@ export interface ProjectPlanningLanguageArtifact {
   readonly knowledgeSpaceId: string;
   readonly terms: readonly ProjectPlanningTerm[];
   readonly ambiguities: readonly ProjectPlanningAmbiguity[];
-  readonly examples?: readonly string[];
+  readonly examples?: readonly string[] | undefined;
   readonly updatedAt: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningTask {
   readonly id: string;
   readonly title: string;
-  readonly why?: string;
-  readonly status?: ProjectPlanningTaskStatus;
-  readonly dependencies?: readonly string[];
-  readonly likelyFiles?: readonly string[];
-  readonly verification?: readonly string[];
-  readonly canRunConcurrently?: boolean;
-  readonly needsReview?: boolean;
-  readonly blockedOnUserInput?: boolean;
-  readonly recommendedAgent?: 'explorer' | 'worker' | 'none' | string;
-  readonly metadata?: Record<string, unknown>;
+  readonly why?: string | undefined;
+  readonly status?: ProjectPlanningTaskStatus | undefined;
+  readonly dependencies?: readonly string[] | undefined;
+  readonly likelyFiles?: readonly string[] | undefined;
+  readonly verification?: readonly string[] | undefined;
+  readonly canRunConcurrently?: boolean | undefined;
+  readonly needsReview?: boolean | undefined;
+  readonly blockedOnUserInput?: boolean | undefined;
+  readonly recommendedAgent?: 'explorer' | 'worker' | 'none' | string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningDependency {
   readonly fromTaskId: string;
   readonly toTaskId: string;
-  readonly reason?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly reason?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningVerificationGate {
   readonly id: string;
   readonly description: string;
-  readonly status?: ProjectPlanningGateStatus;
-  readonly command?: string;
-  readonly evidence?: string;
-  readonly required?: boolean;
-  readonly metadata?: Record<string, unknown>;
+  readonly status?: ProjectPlanningGateStatus | undefined;
+  readonly command?: string | undefined;
+  readonly evidence?: string | undefined;
+  readonly required?: boolean | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningAgentAssignment {
   readonly taskId: string;
-  readonly agentType?: 'explorer' | 'worker' | 'none' | string;
-  readonly scope?: readonly string[];
-  readonly expectedOutput?: string;
-  readonly verification?: string;
-  readonly canRunConcurrently?: boolean;
-  readonly metadata?: Record<string, unknown>;
+  readonly agentType?: 'explorer' | 'worker' | 'none' | string | undefined;
+  readonly scope?: readonly string[] | undefined;
+  readonly expectedOutput?: string | undefined;
+  readonly verification?: string | undefined;
+  readonly canRunConcurrently?: boolean | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningState {
@@ -123,7 +123,7 @@ export interface ProjectPlanningState {
   readonly projectId: string;
   readonly knowledgeSpaceId: string;
   readonly goal: string;
-  readonly scope?: string;
+  readonly scope?: string | undefined;
   readonly knownContext: readonly string[];
   readonly openQuestions: readonly ProjectPlanningQuestion[];
   readonly answeredQuestions: readonly ProjectPlanningQuestion[];
@@ -139,7 +139,7 @@ export interface ProjectPlanningState {
   readonly executionApproved: boolean;
   readonly createdAt: number;
   readonly updatedAt: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningGap {
@@ -147,9 +147,9 @@ export interface ProjectPlanningGap {
   readonly kind: ProjectPlanningGapKind;
   readonly severity: ProjectPlanningGapSeverity;
   readonly message: string;
-  readonly question?: ProjectPlanningQuestion;
-  readonly relatedTaskIds?: readonly string[];
-  readonly metadata?: Record<string, unknown>;
+  readonly question?: ProjectPlanningQuestion | undefined;
+  readonly relatedTaskIds?: readonly string[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProjectPlanningEvaluation {
@@ -158,7 +158,7 @@ export interface ProjectPlanningEvaluation {
   readonly knowledgeSpaceId: string;
   readonly readiness: ProjectPlanningReadiness;
   readonly gaps: readonly ProjectPlanningGap[];
-  readonly nextQuestion?: ProjectPlanningQuestion;
+  readonly nextQuestion?: ProjectPlanningQuestion | undefined;
   readonly state: ProjectPlanningState;
 }
 
@@ -180,8 +180,8 @@ export interface ProjectPlanningStateUpsertInput extends ProjectPlanningSpaceInp
 }
 
 export interface ProjectPlanningEvaluateInput extends ProjectPlanningSpaceInput {
-  readonly state?: Partial<ProjectPlanningState> & { readonly goal?: string };
-  readonly planningId?: string;
+  readonly state?: Partial<ProjectPlanningState> & { readonly goal?: string } | undefined;
+  readonly planningId?: string | undefined;
 }
 
 export interface ProjectPlanningStateResult {
@@ -189,7 +189,7 @@ export interface ProjectPlanningStateResult {
   readonly projectId: string;
   readonly knowledgeSpaceId: string;
   readonly state: ProjectPlanningState | null;
-  readonly source?: KnowledgeSourceRecord;
+  readonly source?: KnowledgeSourceRecord | undefined;
 }
 
 export interface ProjectPlanningDecisionRecordInput extends ProjectPlanningSpaceInput {
@@ -216,8 +216,8 @@ export interface ProjectPlanningDecisionsResult {
 
 export interface ProjectPlanningLanguageUpsertInput extends ProjectPlanningSpaceInput {
   readonly language: Partial<ProjectPlanningLanguageArtifact> & {
-    readonly terms?: readonly ProjectPlanningTerm[];
-    readonly ambiguities?: readonly ProjectPlanningAmbiguity[];
+    readonly terms?: readonly ProjectPlanningTerm[] | undefined;
+    readonly ambiguities?: readonly ProjectPlanningAmbiguity[] | undefined;
   };
 }
 
@@ -226,6 +226,6 @@ export interface ProjectPlanningLanguageResult {
   readonly projectId: string;
   readonly knowledgeSpaceId: string;
   readonly language: ProjectPlanningLanguageArtifact | null;
-  readonly source?: KnowledgeSourceRecord;
+  readonly source?: KnowledgeSourceRecord | undefined;
 }
 

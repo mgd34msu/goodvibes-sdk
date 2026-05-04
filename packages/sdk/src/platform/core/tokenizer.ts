@@ -72,9 +72,9 @@ export class InputTokenizer {
         const mouseMatch = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])/.exec(this.buffer);
         if (mouseMatch) {
           tokens.push({
-            type: 'mouse', button: parseInt(mouseMatch[1], 10),
-            col: parseInt(mouseMatch[2], 10) - 1, row: parseInt(mouseMatch[3], 10) - 1,
-            action: mouseMatch[4] === 'M' ? 'press' : 'release'
+            type: 'mouse', button: parseInt(mouseMatch[1]!, 10),
+            col: parseInt(mouseMatch[2]!, 10) - 1, row: parseInt(mouseMatch[3]!, 10) - 1,
+            action: mouseMatch[4]! === 'M' ? 'press' : 'release'
           });
           this.buffer = this.buffer.slice(mouseMatch[0].length);
           continue;
@@ -82,15 +82,15 @@ export class InputTokenizer {
 
         const seqMatch = /^\x1b\[([0-9;?<>:]*)([a-zA-Z~])/.exec(this.buffer);
         if (seqMatch) {
-          const full = seqMatch[0];
-          const params = seqMatch[1];
-          const suffix = seqMatch[2];
+          const full = seqMatch[0]!;
+          const params = seqMatch[1]!;
+          const suffix = seqMatch[2]!;
           const parts = params.split(/[;:]/);
-          let charCode = parseInt(parts[0] || '0', 10);
-          let modValue = parseInt(parts[1] || '1', 10);
+          let charCode = parseInt(parts[0]! || '0', 10);
+          let modValue = parseInt(parts[1]! || '1', 10);
           if (params.startsWith('27;') && suffix === '~') {
-            modValue = parseInt(parts[1] || '1', 10);
-            charCode = parseInt(parts[2] || '0', 10);
+            modValue = parseInt(parts[1]! || '1', 10);
+            charCode = parseInt(parts[2]! || '0', 10);
           }
           const shift = (modValue - 1 & 1) !== 0;
           const meta  = (modValue - 1 & 2) !== 0;
@@ -172,7 +172,7 @@ export class InputTokenizer {
         }
         break;
       } else {
-        const char = this.buffer[0];
+        const char = this.buffer[0]!;
         const code = char.charCodeAt(0);
         let logicalName = char;
         let isCtrl = false;

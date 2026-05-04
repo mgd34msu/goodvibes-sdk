@@ -57,7 +57,7 @@ export interface SandboxReview {
   readonly config: SandboxConfigSnapshot;
   readonly host: SandboxHostStatus;
   readonly profiles: readonly SandboxProfile[];
-  readonly backendProbe?: SandboxBackendProbe;
+  readonly backendProbe?: SandboxBackendProbe | undefined;
 }
 
 export interface SandboxProbe {
@@ -104,7 +104,7 @@ export interface SandboxLaunchPlan {
   readonly args: readonly string[];
   readonly workspaceRoot: string;
   readonly summary: string;
-  readonly imagePath?: string;
+  readonly imagePath?: string | undefined;
 }
 
 export interface SandboxSession {
@@ -116,19 +116,19 @@ export interface SandboxSession {
   readonly startedAt: number;
   readonly state: SandboxSessionState;
   readonly backend: SandboxVmBackend;
-  readonly resolvedBackend?: SandboxResolvedBackend;
-  readonly launchPlan?: SandboxLaunchPlan;
-  readonly startupStatus?: 'verified' | 'planned' | 'failed';
-  readonly startupDetail?: string;
-  readonly managedGuestPid?: number;
-  readonly managedGuestHost?: string;
-  readonly managedGuestPort?: number;
-  readonly lastRunAt?: number;
-  readonly lastCommandSummary?: string;
-  readonly lastExitStatus?: number | null;
-  readonly lastStdoutPreview?: string;
-  readonly lastStderrPreview?: string;
-  readonly executionCount?: number;
+  readonly resolvedBackend?: SandboxResolvedBackend | undefined;
+  readonly launchPlan?: SandboxLaunchPlan | undefined;
+  readonly startupStatus?: 'verified' | 'planned' | 'failed' | undefined;
+  readonly startupDetail?: string | undefined;
+  readonly managedGuestPid?: number | undefined;
+  readonly managedGuestHost?: string | undefined;
+  readonly managedGuestPort?: number | undefined;
+  readonly lastRunAt?: number | undefined;
+  readonly lastCommandSummary?: string | undefined;
+  readonly lastExitStatus?: number | null | undefined;
+  readonly lastStdoutPreview?: string | undefined;
+  readonly lastStderrPreview?: string | undefined;
+  readonly executionCount?: number | undefined;
   readonly notes: readonly string[];
 }
 
@@ -148,7 +148,7 @@ export interface ProfileBundleEntry {
 export interface ProfileSyncBundle {
   readonly version: 1;
   readonly exportedAt: number;
-  readonly activeProfile?: string;
+  readonly activeProfile?: string | undefined;
   readonly profiles: readonly ProfileBundleEntry[];
 }
 

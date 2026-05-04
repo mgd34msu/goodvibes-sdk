@@ -12,9 +12,9 @@ import { logger } from '../utils/logger.js';
 export interface KnowledgeExtractionResult {
   readonly extractorId: string;
   readonly format: KnowledgeExtractionFormat;
-  readonly title?: string;
-  readonly summary?: string;
-  readonly excerpt?: string;
+  readonly title?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly excerpt?: string | undefined;
   readonly sections: readonly string[];
   readonly links: readonly string[];
   readonly estimatedTokens: number;
@@ -117,7 +117,7 @@ function extractLinksFromHtml(html: string): string[] {
   const regex = /\bhref=["']([^"'#]+)["']/gi;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(html)) !== null) {
-    const candidate = match[1]?.trim();
+    const candidate = match[1]!?.trim();
     if (candidate) urls.push(candidate);
   }
   return uniqueStrings(urls, 50);
@@ -199,7 +199,7 @@ function extractTextLike(
   const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
   const headings = lines.filter((line) => /^#{1,6}\s+/.test(line)).map((line) => line.replace(/^#{1,6}\s+/, ''));
   const sections = headings.length > 0 ? headings : uniqueStrings(lines.slice(0, 8), 8);
-  const title = headings[0] ?? firstNonEmptyLine(text);
+  const title = headings[0]! ?? firstNonEmptyLine(text);
   const summary = summarizeText(text);
   const links = uniqueStrings(
     Array.from(text.matchAll(/\bhttps?:\/\/[^\s)>"']+/g), (match) => match[0]),
@@ -345,7 +345,7 @@ function extractYaml(buffer: Buffer): KnowledgeExtractionResult {
   return {
     extractorId: 'yaml',
     format: 'yaml',
-    title: keys[0] ? `YAML: ${keys.slice(0, 3).join(', ')}` : 'YAML document',
+    title: keys[0]! ? `YAML: ${keys.slice(0, 3).join(', ')}` : 'YAML document',
     summary: summarizeText(text) ?? 'YAML document.',
     excerpt: excerptText(text),
     sections: keys.length > 0 ? keys : uniqueStrings(text.split(/\n+/), 8),
@@ -416,9 +416,9 @@ async function extractXlsx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
     const xml = await zip.file(sheetPath)?.async('string');
     if (!xml) continue;
     const rows = Array.from(xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g), (rowMatch) => {
-      return Array.from(rowMatch[1].matchAll(/<c[^>]*?(?:\st="([^"]+)")?[^>]*>([\s\S]*?)<\/c>/g), (cellMatch) => {
-        const type = cellMatch[1] ?? '';
-        const body = cellMatch[2] ?? '';
+      return Array.from(rowMatch[1]!.matchAll(/<c[^>]*?(?:\st="([^"]+)")?[^>]*>([\s\S]*?)<\/c>/g), (cellMatch) => {
+        const type = cellMatch[1]! ?? '';
+        const body = cellMatch[2]! ?? '';
         const raw = body.match(/<v[^>]*>([\s\S]*?)<\/v>/)?.[1]
           ?? body.match(/<t[^>]*>([\s\S]*?)<\/t>/)?.[1]
           ?? '';

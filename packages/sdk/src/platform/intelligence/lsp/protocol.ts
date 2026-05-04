@@ -5,20 +5,20 @@ export interface JsonRpcRequest {
   jsonrpc: '2.0';
   id: number;
   method: string;
-  params?: unknown;
+  params?: unknown | undefined;
 }
 
 export interface JsonRpcResponse {
   jsonrpc: '2.0';
   id: number;
-  result?: unknown;
+  result?: unknown | undefined;
   error?: { code: number; message: string; data?: unknown };
 }
 
 export interface JsonRpcNotification {
   jsonrpc: '2.0';
   method: string;
-  params?: unknown;
+  params?: unknown | undefined;
 }
 
 /** LSP position/location types */
@@ -32,7 +32,7 @@ export interface DocumentSymbol {
   kind: SymbolKind;
   range: Range;
   selectionRange: Range;
-  children?: DocumentSymbol[];
+  children?: DocumentSymbol[] | undefined;
 }
 
 export enum SymbolKind {
@@ -49,13 +49,13 @@ export interface Diagnostic {
   range: Range;
   severity?: 1 | 2 | 3 | 4;  // Error, Warning, Info, Hint
   message: string;
-  source?: string;
+  source?: string | undefined;
 }
 
 /** LSP hover result */
 export interface Hover {
   contents: string | { kind: string; value: string };
-  range?: Range;
+  range?: Range | undefined;
 }
 
 /** LSP initialize params (minimal) */

@@ -22,7 +22,7 @@ export interface OpenAICodexTokenResult {
   readonly refreshToken: string;
   readonly tokenType: string;
   readonly expiresAt: number;
-  readonly scopes?: readonly string[];
+  readonly scopes?: readonly string[] | undefined;
 }
 
 export async function beginOpenAICodexLogin(): Promise<OpenAICodexLoginStart> {

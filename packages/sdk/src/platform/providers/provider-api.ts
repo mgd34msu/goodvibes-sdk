@@ -30,9 +30,9 @@ export interface ProviderApiModelReference {
 export interface ProviderApiFavoriteState {
   readonly pinned: boolean;
   readonly recent: boolean;
-  readonly pinnedAt?: string;
-  readonly lastUsed?: string;
-  readonly useCount?: number;
+  readonly pinnedAt?: string | undefined;
+  readonly lastUsed?: string | undefined;
+  readonly useCount?: number | undefined;
 }
 
 export interface ProviderApiSyntheticRouting {
@@ -45,14 +45,14 @@ export interface ProviderApiSyntheticRouting {
 export interface ProviderApiModelRouting {
   readonly kind: 'direct' | 'synthetic';
   readonly failoverStrategy: 'none' | 'synthetic-wrapper' | 'same-tier-provider' | 'intra-synthetic';
-  readonly alternative?: ProviderApiModelReference;
-  readonly synthetic?: ProviderApiSyntheticRouting;
+  readonly alternative?: ProviderApiModelReference | undefined;
+  readonly synthetic?: ProviderApiSyntheticRouting | undefined;
 }
 
 export interface ProviderApiCatalogBenchmarkRecord extends ProviderApiModelReference {
   readonly kind: 'catalog';
   readonly available: boolean;
-  readonly displayName?: string;
+  readonly displayName?: string | undefined;
   readonly organization: string;
   readonly sourceName: string;
   readonly benchmarks: ModelBenchmarks;
@@ -63,12 +63,12 @@ export interface ProviderApiCatalogBenchmarkRecord extends ProviderApiModelRefer
 export interface ProviderApiSyntheticBenchmarkRecord extends ProviderApiModelReference {
   readonly kind: 'synthetic';
   readonly available: boolean;
-  readonly displayName?: string;
+  readonly displayName?: string | undefined;
   readonly backendCount: number;
   readonly keyedBackendCount: number;
   readonly tier: string;
   readonly compositeScore: number | null;
-  readonly qualityTier?: QualityTier;
+  readonly qualityTier?: QualityTier | undefined;
 }
 
 export type ProviderApiBenchmarkRecord =
@@ -82,22 +82,22 @@ export interface ProviderApiModelRecord extends ProviderApiModelReference {
   readonly current: boolean;
   readonly capabilities: ModelDefinition['capabilities'];
   readonly contextWindow: number;
-  readonly tier?: ModelDefinition['tier'];
-  readonly reasoningEffort?: readonly string[];
+  readonly tier?: ModelDefinition['tier'] | undefined;
+  readonly reasoningEffort?: readonly string[] | undefined;
   readonly favorite: ProviderApiFavoriteState;
-  readonly benchmark?: ProviderApiBenchmarkRecord;
+  readonly benchmark?: ProviderApiBenchmarkRecord | undefined;
   readonly routing: ProviderApiModelRouting;
 }
 
 export interface ProviderApiFavoriteRecord {
   readonly modelId: string;
   readonly available: boolean;
-  readonly providerId?: string;
-  readonly registryKey?: string;
-  readonly displayName?: string;
-  readonly pinnedAt?: string;
-  readonly lastUsed?: string;
-  readonly useCount?: number;
+  readonly providerId?: string | undefined;
+  readonly registryKey?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly pinnedAt?: string | undefined;
+  readonly lastUsed?: string | undefined;
+  readonly useCount?: number | undefined;
 }
 
 export interface ProviderApiFavoritesSnapshot {
@@ -106,14 +106,14 @@ export interface ProviderApiFavoritesSnapshot {
 }
 
 export interface ProviderApiModelQuery {
-  readonly providerId?: string;
-  readonly selectableOnly?: boolean;
-  readonly favorites?: 'all' | 'pinned' | 'recent';
+  readonly providerId?: string | undefined;
+  readonly selectableOnly?: boolean | undefined;
+  readonly favorites?: 'all' | 'pinned' | 'recent' | undefined;
 }
 
 export interface ProviderApiBenchmarkQuery {
-  readonly modelRefs?: readonly string[];
-  readonly limit?: number;
+  readonly modelRefs?: readonly string[] | undefined;
+  readonly limit?: number | undefined;
 }
 
 export interface ProviderApiCatalogRefreshResult {
@@ -339,9 +339,9 @@ function buildFavoriteRecord(
   modelId: string,
   models: readonly ModelDefinition[],
   extras: {
-    readonly pinnedAt?: string;
-    readonly lastUsed?: string;
-    readonly useCount?: number;
+    readonly pinnedAt?: string | undefined;
+    readonly lastUsed?: string | undefined;
+    readonly useCount?: number | undefined;
   },
 ): ProviderApiFavoriteRecord {
   const model = findModelDefinition(models, modelId);

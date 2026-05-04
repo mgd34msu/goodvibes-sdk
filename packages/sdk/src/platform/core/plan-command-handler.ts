@@ -29,7 +29,7 @@ export interface PlanCommandDeps {
     AdaptivePlannerType,
     'getMode' | 'setMode' | 'explain' | 'override' | 'clearOverride' | 'getOverride' | 'getLatest'
   >;
-  runtimeBus?: RuntimeEventBus | null;
+  runtimeBus?: RuntimeEventBus | null | undefined;
 }
 
 function emitStrategyOverride(
@@ -57,7 +57,7 @@ export function handlePlanCommand(
 ): PlanCommandResult {
   switch (subcommand.toLowerCase()) {
     case 'mode': {
-      const value = args[0];
+      const value = args[0]!;
       if (!value) {
         const current = deps.adaptivePlanner.getMode();
         return {
@@ -85,7 +85,7 @@ export function handlePlanCommand(
     }
 
     case 'override': {
-      const strategy = args[0];
+      const strategy = args[0]!;
       if (!strategy) {
         return {
           ok: false,

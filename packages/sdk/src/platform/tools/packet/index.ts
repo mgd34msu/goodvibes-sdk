@@ -11,11 +11,11 @@ interface PacketRecord {
   readonly goals: readonly string[];
   readonly constraints: readonly string[];
   readonly risks: readonly string[];
-  readonly audience?: string;
+  readonly audience?: string | undefined;
   readonly status: 'draft' | 'published';
   readonly createdAt: number;
   readonly updatedAt: number;
-  readonly publishedAt?: number;
+  readonly publishedAt?: number | undefined;
 }
 
 function summarizePacket(record: PacketRecord) {

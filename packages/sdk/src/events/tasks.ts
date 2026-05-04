@@ -20,7 +20,7 @@ export type TaskEvent =
   /** Task failed with an error. */
   | { type: 'TASK_FAILED'; taskId: string; agentId?: string; error: string; durationMs: number }
   /** Task was cancelled before completion. */
-  | { type: 'TASK_CANCELLED'; taskId: string; agentId?: string; reason?: string };
+  | { type: 'TASK_CANCELLED'; taskId: string; agentId?: string | undefined; reason?: string | undefined };
 
 /** All task event type literals as a union. */
 export type TaskEventType = TaskEvent['type'];

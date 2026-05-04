@@ -8,7 +8,7 @@ export interface ProviderModelSnapshot {
   readonly displayName: string;
   readonly selectable: boolean;
   readonly contextWindow: number;
-  readonly tier?: string;
+  readonly tier?: string | undefined;
   readonly pricing?: {
     readonly inputPerMillionTokens: number;
     readonly outputPerMillionTokens: number;
@@ -27,7 +27,7 @@ export interface ProviderRuntimeSnapshot {
 export interface ProviderUsageSnapshot {
   readonly providerId: string;
   readonly active: boolean;
-  readonly currentModelId?: string;
+  readonly currentModelId?: string | undefined;
   readonly pricingSource: 'catalog' | 'provider' | 'none';
   readonly models: readonly ProviderModelSnapshot[];
   readonly usage: NonNullable<ProviderRuntimeMetadata['usage']>;

@@ -83,20 +83,20 @@ export type {
 export type { AutomationHeartbeatWake } from './manager-runtime-scheduling.js';
 
 interface AutomationManagerConfig {
-  readonly jobStore?: AutomationJobStore;
-  readonly runStore?: AutomationRunStore;
-  readonly spawnTask?: (input: SpawnAutomationTaskInput) => string;
-  readonly cancelTask?: (agentId: string) => void;
-  readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'>;
-  readonly runtimeStore?: RuntimeStore;
-  readonly runtimeBus?: RuntimeEventBus;
-  readonly deliveryManager?: AutomationDeliveryManager;
+  readonly jobStore?: AutomationJobStore | undefined;
+  readonly runStore?: AutomationRunStore | undefined;
+  readonly spawnTask?: ((input: SpawnAutomationTaskInput) => string) | undefined | undefined;
+  readonly cancelTask?: ((agentId: string) => void) | undefined | undefined;
+  readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'> | undefined;
+  readonly runtimeStore?: RuntimeStore | undefined;
+  readonly runtimeBus?: RuntimeEventBus | undefined;
+  readonly deliveryManager?: AutomationDeliveryManager | undefined;
   readonly configManager: ConfigManager;
   readonly routeBindings: RouteBindingManager;
   readonly sessionBroker: SharedSessionBroker;
-  readonly defaultSurfaceKind?: AutomationSurfaceKind;
-  readonly defaultSurfaceId?: string;
-  readonly featureFlags?: FeatureFlagReader;
+  readonly defaultSurfaceKind?: AutomationSurfaceKind | undefined;
+  readonly defaultSurfaceId?: string | undefined;
+  readonly featureFlags?: FeatureFlagReader | undefined;
 }
 
 export interface AutomationHeartbeatResult {
@@ -112,14 +112,14 @@ export interface AutomationHeartbeatResult {
 export class AutomationManager {
   private readonly jobStore: AutomationJobStore;
   private readonly runStore: AutomationRunStore;
-  private readonly spawnTask?: (input: SpawnAutomationTaskInput) => string;
-  private readonly cancelTask?: (agentId: string) => void;
-  private readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'>;
+  private readonly spawnTask?: ((input: SpawnAutomationTaskInput) => string) | undefined | undefined;
+  private readonly cancelTask?: ((agentId: string) => void) | undefined | undefined;
+  private readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'> | undefined;
   private readonly configManager: ConfigManager;
   private readonly routeBindings: RouteBindingManager;
   private readonly sessionBroker: SharedSessionBroker;
-  private readonly defaultSurfaceKind?: AutomationSurfaceKind;
-  private readonly defaultSurfaceId?: string;
+  private readonly defaultSurfaceKind?: AutomationSurfaceKind | undefined;
+  private readonly defaultSurfaceId?: string | undefined;
   private readonly jobs = new Map<string, AutomationJob>();
   private readonly runs = new Map<string, AutomationRun>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -260,9 +260,9 @@ export class AutomationManager {
   }
 
   attachRuntime(config: {
-    readonly runtimeStore?: RuntimeStore | null;
-    readonly runtimeBus?: RuntimeEventBus | null;
-    readonly deliveryManager?: AutomationDeliveryManager | null;
+    readonly runtimeStore?: RuntimeStore | null | undefined;
+    readonly runtimeBus?: RuntimeEventBus | null | undefined;
+    readonly deliveryManager?: AutomationDeliveryManager | null | undefined;
   }): void {
     if (config.runtimeStore) {
       this.runtimeDispatch = createDomainDispatch(config.runtimeStore);
@@ -451,10 +451,10 @@ export class AutomationManager {
     runId: string,
     input: {
       readonly status: 'completed' | 'failed' | 'cancelled';
-      readonly result?: unknown;
-      readonly error?: string;
-      readonly telemetry?: AutomationRunTelemetry;
-      readonly metadata?: Record<string, unknown>;
+      readonly result?: unknown | undefined;
+      readonly error?: string | undefined;
+      readonly telemetry?: AutomationRunTelemetry | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     },
   ): Promise<AutomationRun | null> {
     this.requireEnabled('record automation run result');

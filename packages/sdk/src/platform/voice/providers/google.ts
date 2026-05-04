@@ -18,21 +18,21 @@ type GoogleGenerateContentResponse = {
   readonly candidates?: ReadonlyArray<{
     readonly content?: {
       readonly parts?: ReadonlyArray<{
-        readonly text?: string;
+        readonly text?: string | undefined;
       }>;
     };
   }>;
 };
 
 type GoogleFileRecord = {
-  readonly name?: string;
-  readonly uri?: string;
-  readonly mimeType?: string;
-  readonly mime_type?: string;
+  readonly name?: string | undefined;
+  readonly uri?: string | undefined;
+  readonly mimeType?: string | undefined;
+  readonly mime_type?: string | undefined;
 };
 
 type GoogleFileUploadResponse = {
-  readonly file?: GoogleFileRecord;
+  readonly file?: GoogleFileRecord | undefined;
 };
 
 function parseGoogleTranscript(payload: GoogleGenerateContentResponse): string {

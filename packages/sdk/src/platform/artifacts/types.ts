@@ -11,12 +11,12 @@ export interface ArtifactDescriptor {
   readonly id: string;
   readonly kind: ArtifactKind;
   readonly mimeType: string;
-  readonly filename?: string;
+  readonly filename?: string | undefined;
   readonly sizeBytes: number;
   readonly sha256: string;
   readonly createdAt: number;
-  readonly expiresAt?: number;
-  readonly sourceUri?: string;
+  readonly expiresAt?: number | undefined;
+  readonly sourceUri?: string | undefined;
   readonly acquisitionMode: ArtifactAcquisitionMode;
   readonly fetchMode: ArtifactFetchMode;
   readonly metadata: Record<string, unknown>;
@@ -29,32 +29,32 @@ export interface ArtifactRecord extends ArtifactDescriptor {
 
 export interface ArtifactReference {
   readonly artifactId: string;
-  readonly label?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly label?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ArtifactAttachment extends ArtifactDescriptor {
   readonly artifactId: string;
-  readonly label?: string;
+  readonly label?: string | undefined;
   readonly contentPath: string;
-  readonly contentUrl?: string;
-  readonly dataBase64?: string;
+  readonly contentUrl?: string | undefined;
+  readonly dataBase64?: string | undefined;
 }
 
 export interface ArtifactCreateInput {
-  readonly kind?: ArtifactKind;
-  readonly mimeType?: string;
-  readonly filename?: string;
-  readonly dataBase64?: string;
-  readonly text?: string;
-  readonly path?: string;
-  readonly uri?: string;
-  readonly sourceUri?: string;
-  readonly retentionMs?: number;
-  readonly acquisitionMode?: ArtifactAcquisitionMode;
-  readonly fetchMode?: ArtifactFetchMode;
-  readonly allowPrivateHosts?: boolean;
-  readonly metadata?: Record<string, unknown>;
+  readonly kind?: ArtifactKind | undefined;
+  readonly mimeType?: string | undefined;
+  readonly filename?: string | undefined;
+  readonly dataBase64?: string | undefined;
+  readonly text?: string | undefined;
+  readonly path?: string | undefined;
+  readonly uri?: string | undefined;
+  readonly sourceUri?: string | undefined;
+  readonly retentionMs?: number | undefined;
+  readonly acquisitionMode?: ArtifactAcquisitionMode | undefined;
+  readonly fetchMode?: ArtifactFetchMode | undefined;
+  readonly allowPrivateHosts?: boolean | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ArtifactStreamCreateInput {
@@ -62,15 +62,15 @@ export interface ArtifactStreamCreateInput {
     | ReadableStream<Uint8Array>
     | AsyncIterable<Uint8Array | Buffer | string>
     | Iterable<Uint8Array | Buffer | string>;
-  readonly kind?: ArtifactKind;
-  readonly mimeType?: string;
-  readonly filename?: string;
-  readonly sourceUri?: string;
-  readonly sizeBytes?: number;
-  readonly retentionMs?: number;
-  readonly acquisitionMode?: ArtifactAcquisitionMode;
-  readonly fetchMode?: ArtifactFetchMode;
-  readonly metadata?: Record<string, unknown>;
+  readonly kind?: ArtifactKind | undefined;
+  readonly mimeType?: string | undefined;
+  readonly filename?: string | undefined;
+  readonly sourceUri?: string | undefined;
+  readonly sizeBytes?: number | undefined;
+  readonly retentionMs?: number | undefined;
+  readonly acquisitionMode?: ArtifactAcquisitionMode | undefined;
+  readonly fetchMode?: ArtifactFetchMode | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export const EXTENSION_MIME_TYPES: Record<string, string> = {

@@ -11,8 +11,8 @@ export interface RepairSubjectHint {
 
 export function canonicalRepairSubjectNodes(input: {
   readonly nodes: readonly (KnowledgeNodeRecord | undefined)[];
-  readonly text?: string;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
+  readonly text?: string | undefined;
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
 }): KnowledgeNodeRecord[] {
   const objectProfiles = input.objectProfiles ?? [];
   const usable = uniqueNodes(input.nodes)
@@ -40,8 +40,8 @@ export function canonicalRepairSubjectNodes(input: {
 
 export function repairSubjectIds(input: {
   readonly nodes: readonly (KnowledgeNodeRecord | undefined)[];
-  readonly text?: string;
-  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[];
+  readonly text?: string | undefined;
+  readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
 }): string[] {
   return canonicalRepairSubjectNodes(input).map((node) => node.id);
 }

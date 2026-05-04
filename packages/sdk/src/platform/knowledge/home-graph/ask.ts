@@ -17,7 +17,7 @@ import { HOME_GRAPH_KNOWLEDGE_EXTENSION } from './extension.js';
 
 export async function answerHomeGraphQuery(input: {
   readonly store: KnowledgeStore;
-  readonly semanticService?: KnowledgeSemanticService;
+  readonly semanticService?: KnowledgeSemanticService | undefined;
   readonly spaceId: string;
   readonly query: HomeGraphAskInput;
   readonly state: HomeGraphSearchState;
@@ -28,7 +28,7 @@ export async function answerHomeGraphQuery(input: {
 
 async function answerHomeGraphQueryOnce(input: {
   readonly store: KnowledgeStore;
-  readonly semanticService?: KnowledgeSemanticService;
+  readonly semanticService?: KnowledgeSemanticService | undefined;
   readonly spaceId: string;
   readonly query: HomeGraphAskInput;
   readonly state: HomeGraphSearchState;

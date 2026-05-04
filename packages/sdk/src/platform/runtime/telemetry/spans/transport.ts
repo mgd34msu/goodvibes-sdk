@@ -35,11 +35,11 @@ export interface TransportSpanEndContext {
   /** Final outcome of the transport lifecycle. */
   readonly outcome: 'connected' | 'disconnected' | 'terminal_failure';
   /** Disconnect or failure reason if applicable. */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
   /** Whether a reconnect will be attempted. */
-  readonly willRetry?: boolean;
+  readonly willRetry?: boolean | undefined;
   /** Remote endpoint address when outcome is 'connected'. */
-  readonly endpoint?: string;
+  readonly endpoint?: string | undefined;
 }
 
 /**

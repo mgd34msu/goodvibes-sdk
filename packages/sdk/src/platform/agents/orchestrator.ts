@@ -37,8 +37,8 @@ type ResolvedAgentProviderRouting = {
   readonly providerSelection: NonNullable<AgentProviderRoutingPolicy['providerSelection']>;
   readonly unresolvedModelPolicy: NonNullable<AgentProviderRoutingPolicy['unresolvedModelPolicy']>;
   readonly providerFailurePolicy: NonNullable<AgentProviderRoutingPolicy['providerFailurePolicy']>;
-  readonly providerId?: string;
-  readonly providerOverride?: string;
+  readonly providerId?: string | undefined;
+  readonly providerOverride?: string | undefined;
   readonly fallbackModels: readonly string[];
 };
 
@@ -51,21 +51,21 @@ type AgentOrchestratorToolDeps = {
   readonly modeManager: import('../state/mode-manager.js').ModeManager;
   readonly processManager: import('../tools/shared/process-manager.js').ProcessManager;
   readonly agentMessageBus: AgentMessageBus;
-  readonly webSearchService?: import('../web-search/index.js').WebSearchService;
-  readonly channelRegistry?: import('../channels/index.js').ChannelPluginRegistry | null;
-  readonly remoteRunnerRegistry?: import('../runtime/remote/index.js').RemoteRunnerRegistry;
-  readonly knowledgeService?: import('../knowledge/index.js').KnowledgeService;
-  readonly memoryRegistry?: import('../state/index.js').MemoryRegistry;
+  readonly webSearchService?: import('../web-search/index.js').WebSearchService | undefined;
+  readonly channelRegistry?: import('../channels/index.js').ChannelPluginRegistry | null | undefined;
+  readonly remoteRunnerRegistry?: import('../runtime/remote/index.js').RemoteRunnerRegistry | undefined;
+  readonly knowledgeService?: import('../knowledge/index.js').KnowledgeService | undefined;
+  readonly memoryRegistry?: import('../state/index.js').MemoryRegistry | undefined;
   readonly sessionOrchestration: import('../sessions/orchestration/index.js').CrossSessionTaskRegistry;
-  readonly archetypeLoader?: import('./archetypes.js').ArchetypeLoader;
-  readonly configManager?: ConfigManager;
-  readonly providerRegistry?: ProviderRegistry;
-  readonly providerOptimizer?: import('../providers/optimizer.js').ProviderOptimizer;
-  readonly toolLLM?: ToolLLM;
-  readonly serviceRegistry?: import('../config/service-registry.js').ServiceRegistry;
-  readonly secretsManager?: Pick<import('../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
-  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
-  readonly overflowHandler?: import('../tools/shared/overflow.js').OverflowHandler;
+  readonly archetypeLoader?: import('./archetypes.js').ArchetypeLoader | undefined;
+  readonly configManager?: ConfigManager | undefined;
+  readonly providerRegistry?: ProviderRegistry | undefined;
+  readonly providerOptimizer?: import('../providers/optimizer.js').ProviderOptimizer | undefined;
+  readonly toolLLM?: ToolLLM | undefined;
+  readonly serviceRegistry?: import('../config/service-registry.js').ServiceRegistry | undefined;
+  readonly secretsManager?: Pick<import('../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+  readonly overflowHandler?: import('../tools/shared/overflow.js').OverflowHandler | undefined;
   readonly sandboxSessionRegistry: import('../runtime/sandbox/session-registry.js').SandboxSessionRegistry;
   readonly workflowServices: ReturnType<typeof import('../tools/workflow/index.js').createWorkflowServices>;
 };
@@ -87,7 +87,7 @@ export class AgentOrchestrator {
   private readonly messageBus: import('./message-bus.js').AgentMessageBus;
 
   constructor(config: {
-    channelRegistry?: ChannelPluginRegistry | null;
+    channelRegistry?: ChannelPluginRegistry | null | undefined;
     messageBus: import('./message-bus.js').AgentMessageBus;
   } = {
     messageBus: new AgentMessageBus(),

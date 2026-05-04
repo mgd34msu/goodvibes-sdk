@@ -5,15 +5,15 @@
  */
 
 export interface OrchestrationTaskContract {
-  allowedTools?: string[];
-  capabilityCeiling?: string[];
-  successCriteria?: string[];
-  requiredEvidence?: string[];
-  writeScope?: string[];
-  executionProtocol?: 'direct' | 'gather-plan-apply';
-  reviewMode?: 'none' | 'wrfc';
-  inheritsParentConstraints?: boolean;
-  communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
+  allowedTools?: string[] | undefined;
+  capabilityCeiling?: string[] | undefined;
+  successCriteria?: string[] | undefined;
+  requiredEvidence?: string[] | undefined;
+  writeScope?: string[] | undefined;
+  executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
+  reviewMode?: 'none' | 'wrfc' | undefined;
+  inheritsParentConstraints?: boolean | undefined;
+  communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
 }
 
 export type OrchestrationEvent =
@@ -26,6 +26,6 @@ export type OrchestrationEvent =
   | { type: 'ORCHESTRATION_NODE_COMPLETED'; graphId: string; nodeId: string; summary?: string }
   | { type: 'ORCHESTRATION_NODE_FAILED'; graphId: string; nodeId: string; error: string }
   | { type: 'ORCHESTRATION_NODE_CANCELLED'; graphId: string; nodeId: string; reason?: string }
-  | { type: 'ORCHESTRATION_RECURSION_GUARD_TRIGGERED'; graphId: string; nodeId?: string; depth: number; activeAgents: number; reason: string };
+  | { type: 'ORCHESTRATION_RECURSION_GUARD_TRIGGERED'; graphId: string; nodeId?: string | undefined; depth: number; activeAgents: number; reason: string };
 
 export type OrchestrationEventType = OrchestrationEvent['type'];

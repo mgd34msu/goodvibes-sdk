@@ -11,20 +11,20 @@ export interface InboundTlsSnapshot {
   readonly mode: InboundTlsMode;
   readonly scheme: 'http' | 'https';
   readonly trustProxy: boolean;
-  readonly certFile?: string;
-  readonly keyFile?: string;
+  readonly certFile?: string | undefined;
+  readonly keyFile?: string | undefined;
   readonly usingDefaultPaths: boolean;
   readonly ready: boolean;
   readonly errors: readonly string[];
   readonly keyPermissions?: {
     readonly available: boolean;
-    readonly safe?: boolean;
-    readonly mode?: string;
+    readonly safe?: boolean | undefined;
+    readonly mode?: string | undefined;
   };
 }
 
 export interface ResolvedInboundTlsContext extends InboundTlsSnapshot {
-  readonly tls?: Bun.TLSOptions;
+  readonly tls?: Bun.TLSOptions | undefined;
 }
 
 export interface InboundTlsConfigReader {

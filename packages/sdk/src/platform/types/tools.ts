@@ -17,13 +17,13 @@ export interface ToolDefinition {
   description: string;
   parameters: Record<string, unknown>;
   /** Side effects the tool may perform when executed successfully. */
-  sideEffects?: readonly ToolSideEffect[];
+  sideEffects?: readonly ToolSideEffect[] | undefined;
   /** Whether multiple calls can safely run in parallel. */
-  concurrency?: ToolConcurrencyMode;
+  concurrency?: ToolConcurrencyMode | undefined;
   /** Whether the tool can emit meaningful progress before final completion. */
-  supportsProgress?: boolean;
+  supportsProgress?: boolean | undefined;
   /** Whether results may be streamed or delivered incrementally. */
-  supportsStreamingOutput?: boolean;
+  supportsStreamingOutput?: boolean | undefined;
 }
 
 /** A tool invocation requested by the LLM. */
@@ -37,8 +37,8 @@ export interface ToolCall {
 export interface ToolResult {
   callId: string;
   success: boolean;
-  output?: string;
-  error?: string;
+  output?: string | undefined;
+  error?: string | undefined;
 }
 
 /** A registered tool with its definition and executor. */

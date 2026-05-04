@@ -22,24 +22,24 @@ import { resolveScopedDirectory } from './surface-root.js';
 
 export type SessionSnapshot = {
   messages: Array<Record<string, unknown>>;
-  timestamp?: number;
-  title?: string;
-  titleSource?: ConversationTitleSource;
-  returnContext?: SessionReturnContextSummary;
+  timestamp?: number | undefined;
+  title?: string | undefined;
+  titleSource?: ConversationTitleSource | undefined;
+  returnContext?: SessionReturnContextSummary | undefined;
 };
 
 export type RecoveryFileInfo = {
   title: string;
   timestamp: number;
   sessionId: string;
-  returnContext?: SessionReturnContextSummary;
+  returnContext?: SessionReturnContextSummary | undefined;
 };
 
 export type SessionPersistenceOptions = {
-  workingDirectory?: string;
-  homeDirectory?: string;
-  sessionManager?: SessionManager;
-  surfaceRoot?: string;
+  workingDirectory?: string | undefined;
+  homeDirectory?: string | undefined;
+  sessionManager?: SessionManager | undefined;
+  surfaceRoot?: string | undefined;
 };
 
 export type SessionPersistencePaths = {
@@ -184,7 +184,7 @@ export function writeRecoveryFile(
     const lines: string[] = [];
     lines.push(JSON.stringify({ type: 'meta', sessionId, title, timestamp: Date.now() }));
     if (snapshot.titleSource || snapshot.returnContext) {
-      lines[0] = JSON.stringify({
+      lines[0]! = JSON.stringify({
         type: 'meta',
         sessionId,
         title,
@@ -233,11 +233,11 @@ export function checkRecoveryFile(options?: SessionPersistenceOptions): Recovery
     const bytesRead = readSync(fd, buf, 0, 4096, 0);
     closeSync(fd);
     const firstLine = buf.toString('utf-8', 0, bytesRead).split('\n')[0];
-    const meta = JSON.parse(firstLine) as {
-      title?: string;
-      timestamp?: number;
-      sessionId?: string;
-      returnContext?: SessionReturnContextSummary;
+    const meta = JSON.parse(firstLine!) as {
+      title?: string | undefined;
+      timestamp?: number | undefined;
+      sessionId?: string | undefined;
+      returnContext?: SessionReturnContextSummary | undefined;
     };
     return {
       title: meta.title ?? '',
@@ -261,10 +261,10 @@ export function loadRecoveryConversation(options?: SessionPersistenceOptions): S
     return {
       title: (() => {
         try {
-          const metaLine = JSON.parse(lines[0]) as {
-            title?: string;
-            titleSource?: ConversationTitleSource;
-            returnContext?: SessionReturnContextSummary;
+          const metaLine = JSON.parse(lines[0]!) as {
+            title?: string | undefined;
+            titleSource?: ConversationTitleSource | undefined;
+            returnContext?: SessionReturnContextSummary | undefined;
           };
           return metaLine.title;
         } catch {
@@ -273,7 +273,7 @@ export function loadRecoveryConversation(options?: SessionPersistenceOptions): S
       })(),
       titleSource: (() => {
         try {
-          const metaLine = JSON.parse(lines[0]) as { titleSource?: ConversationTitleSource };
+          const metaLine = JSON.parse(lines[0]!) as { titleSource?: ConversationTitleSource };
           return metaLine.titleSource;
         } catch {
           return undefined;
@@ -281,7 +281,7 @@ export function loadRecoveryConversation(options?: SessionPersistenceOptions): S
       })(),
       returnContext: (() => {
         try {
-          const metaLine = JSON.parse(lines[0]) as { returnContext?: SessionReturnContextSummary };
+          const metaLine = JSON.parse(lines[0]!) as { returnContext?: SessionReturnContextSummary };
           return metaLine.returnContext;
         } catch {
           return undefined;

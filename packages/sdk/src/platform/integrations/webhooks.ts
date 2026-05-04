@@ -24,7 +24,7 @@ export class WebhookNotifier {
   private readonly timeoutMs: number;
   private readonly maxConcurrent: number;
   private readonly maxBodyBytes: number;
-  private readonly signingSecret?: string | Uint8Array;
+  private readonly signingSecret?: string | Uint8Array | undefined;
 
   constructor(urls: string[] = [], options: WebhookNotifierOptions = {}) {
     this.urls = validateWebhookUrls(urls);
@@ -95,7 +95,7 @@ export class WebhookNotifier {
     const results = await mapSettledWithConcurrency(this.urls, this.maxConcurrent, (url) => this.postOne(url, text));
 
     for (let i = 0; i < results.length; i++) {
-      const result = results[i];
+      const result = results[i]!;
       if (result.status === 'rejected') {
         const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
         logger.warn('WebhookNotifier: delivery failed', { url: this.urls[i], error: msg });
@@ -112,7 +112,7 @@ export class WebhookNotifier {
     const results = await mapSettledWithConcurrency(this.urls, this.maxConcurrent, (url) => this.postOne(url, 'goodvibes-sdk: webhook test'));
 
     return this.urls.map((url, i) => {
-      const result = results[i];
+      const result = results[i]!;
       if (result.status === 'fulfilled') {
         return { url, ok: true };
       } else {
@@ -220,10 +220,10 @@ export class WebhookNotifier {
 }
 
 export interface WebhookNotifierOptions {
-  timeoutMs?: number;
-  maxConcurrent?: number;
-  maxBodyBytes?: number;
-  signingSecret?: string | Uint8Array;
+  timeoutMs?: number | undefined;
+  maxConcurrent?: number | undefined;
+  maxBodyBytes?: number | undefined;
+  signingSecret?: string | Uint8Array | undefined;
 }
 
 function normalizeWebhookTimeoutMs(timeoutMs: number | undefined): number {

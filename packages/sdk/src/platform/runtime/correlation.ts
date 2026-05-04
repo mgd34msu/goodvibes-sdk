@@ -18,13 +18,13 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 /** Correlation identifiers propagated via AsyncLocalStorage. */
 export interface CorrelationContext {
   /** HTTP request ID — seeded by the HTTP listener on every inbound request. */
-  readonly requestId?: string;
+  readonly requestId?: string | undefined;
   /** Session ID — seeded when a session starts or resumes. */
-  readonly sessionId?: string;
+  readonly sessionId?: string | undefined;
   /** Run ID — seeded when a run (multi-turn conversation) begins. */
-  readonly runId?: string;
+  readonly runId?: string | undefined;
   /** Turn ID — seeded when a turn starts within a run. */
-  readonly turnId?: string;
+  readonly turnId?: string | undefined;
 }
 
 /** The singleton AsyncLocalStorage instance for correlation context. */

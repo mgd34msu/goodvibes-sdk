@@ -35,7 +35,7 @@ export interface AutoRegisterEntry extends CatalogProvider {
    * Wire format used by this endpoint.
    * Defaults to 'openai' (OpenAI-compatible).
    */
-  apiFormat?: ApiFormat;
+  apiFormat?: ApiFormat | undefined;
   /**
    * Default model ID sent when no model is specified in a request.
    * Auto-register uses the first entry from the catalog where available;
@@ -47,7 +47,7 @@ export interface AutoRegisterEntry extends CatalogProvider {
    * Auto-registered providers start with an empty list; these seeds allow the
    * provider to be usable immediately without waiting for a catalog fetch.
    */
-  seedModels?: string[];
+  seedModels?: string[] | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +308,7 @@ export function isProviderRegistered(
  */
 export function resolveApiKey(entry: AutoRegisterEntry): string {
   for (const varName of entry.envVars) {
-    const val = process.env[varName];
+    const val = process.env[varName]!;
     if (typeof val === 'string' && val.length > 0) {
       return val;
     }

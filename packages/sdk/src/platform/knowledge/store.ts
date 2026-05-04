@@ -189,17 +189,17 @@ export class KnowledgeStore {
   }
 
   listUsageRecords(limit = 100, input: {
-    readonly targetKind?: KnowledgeUsageRecord['targetKind'];
-    readonly targetId?: string;
-    readonly usageKind?: KnowledgeUsageRecord['usageKind'];
+    readonly targetKind?: KnowledgeUsageRecord['targetKind'] | undefined;
+    readonly targetId?: string | undefined;
+    readonly usageKind?: KnowledgeUsageRecord['usageKind'] | undefined;
   } = {}): KnowledgeUsageRecord[] {
     return listKnowledgeUsageRecords(this.asReadView(), limit, input);
   }
 
   listConsolidationCandidates(limit = 100, input: {
-    readonly status?: KnowledgeConsolidationCandidateRecord['status'];
-    readonly subjectKind?: KnowledgeConsolidationCandidateRecord['subjectKind'];
-    readonly subjectId?: string;
+    readonly status?: KnowledgeConsolidationCandidateRecord['status'] | undefined;
+    readonly subjectKind?: KnowledgeConsolidationCandidateRecord['subjectKind'] | undefined;
+    readonly subjectId?: string | undefined;
   } = {}): KnowledgeConsolidationCandidateRecord[] {
     return listKnowledgeConsolidationCandidates(this.asReadView(), limit, input);
   }

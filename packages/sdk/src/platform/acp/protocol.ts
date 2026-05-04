@@ -42,7 +42,7 @@ export interface SubagentInfo {
   status: SubagentStatus;
   startedAt: number;
   /** Latest progress text from session updates. */
-  progress?: string;
+  progress?: string | undefined;
 }
 
 /** Final result after a subagent completes. */
@@ -65,7 +65,7 @@ export interface SubagentTask {
   /** App-owned working directory for the spawned ACP session. */
   workingDirectory: string;
   /** Optional model override (e.g. "claude-sonnet-4-5"). */
-  model?: string;
+  model?: string | undefined;
   /** Optional provider override (e.g. "anthropic"). */
-  provider?: string;
+  provider?: string | undefined;
 }

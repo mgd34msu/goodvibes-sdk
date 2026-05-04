@@ -55,13 +55,13 @@ export type CompanionProviderMessage = ProviderMessage;
 
 export interface CompanionProviderChunk {
   readonly type: 'text_delta' | 'tool_call' | 'tool_result' | 'done' | 'error';
-  readonly delta?: string;
-  readonly toolCallId?: string;
-  readonly toolName?: string;
-  readonly toolInput?: unknown;
-  readonly result?: unknown;
-  readonly isError?: boolean;
-  readonly error?: string;
+  readonly delta?: string | undefined;
+  readonly toolCallId?: string | undefined;
+  readonly toolName?: string | undefined;
+  readonly toolInput?: unknown | undefined;
+  readonly result?: unknown | undefined;
+  readonly isError?: boolean | undefined;
+  readonly error?: string | undefined;
 }
 
 export interface CompanionLLMProvider {
@@ -69,11 +69,11 @@ export interface CompanionLLMProvider {
   chatStream(
     messages: CompanionProviderMessage[],
     options: {
-      readonly systemPrompt?: string | null;
-      readonly model?: string | null;
-      readonly provider?: string | null;
-      readonly tools?: readonly ToolDefinition[];
-      readonly abortSignal?: AbortSignal;
+      readonly systemPrompt?: string | null | undefined;
+      readonly model?: string | null | undefined;
+      readonly provider?: string | null | undefined;
+      readonly tools?: readonly ToolDefinition[] | undefined;
+      readonly abortSignal?: AbortSignal | undefined;
     },
   ): AsyncIterable<CompanionProviderChunk>;
 }
@@ -123,9 +123,9 @@ type MutableSessionMeta = {
 
 export interface CompanionChatReplyResult {
   readonly messageId: string;
-  readonly assistantMessageId?: string;
-  readonly response?: string;
-  readonly error?: string;
+  readonly assistantMessageId?: string | undefined;
+  readonly response?: string | undefined;
+  readonly error?: string | undefined;
 }
 
 interface PendingReply {
@@ -145,34 +145,34 @@ export interface CompanionChatManagerConfig {
    * When omitted, tool_call chunks are published as events but not executed;
    * the LLM receives no tool result and must degrade gracefully.
    */
-  readonly toolRegistry?: ToolRegistry;
+  readonly toolRegistry?: ToolRegistry | undefined;
   /**
    * Permission boundary used when executing model-originated tool calls.
    * Tool calls are denied when a registry is present without this manager.
    */
-  readonly permissionManager?: PermissionManager | null;
+  readonly permissionManager?: PermissionManager | null | undefined;
   /** Optional hook dispatcher for Pre/Post/Fail tool hooks. */
-  readonly hookDispatcher?: HookDispatcherLike | null;
+  readonly hookDispatcher?: HookDispatcherLike | null | undefined;
   /** Optional runtime event bus for typed tool telemetry. */
-  readonly runtimeBus?: RuntimeEventBus | null;
+  readonly runtimeBus?: RuntimeEventBus | null | undefined;
   /**
    * Directory under which session JSON files are persisted.
    * Default: ~/.goodvibes/companion-chat/sessions/
    */
-  readonly sessionsDir?: string;
+  readonly sessionsDir?: string | undefined;
   /**
    * Pass `false` to disable disk persistence entirely (useful in tests).
    * Default: true
    */
-  readonly persist?: boolean;
+  readonly persist?: boolean | undefined;
   /** Rate-limiting options. Defaults: 30 msgs/min per client, 10/min per session. */
-  readonly rateLimiter?: CompanionChatRateLimiterOptions | false;
+  readonly rateLimiter?: CompanionChatRateLimiterOptions | false | undefined;
   /** Override for tests */
-  readonly idleActiveMs?: number;
+  readonly idleActiveMs?: number | undefined;
   /** Override for tests */
-  readonly idleEmptyMs?: number;
+  readonly idleEmptyMs?: number | undefined;
   /** Override for tests */
-  readonly gcIntervalMs?: number;
+  readonly gcIntervalMs?: number | undefined;
 }
 
 export class CompanionChatManager {
@@ -400,7 +400,7 @@ export class CompanionChatManager {
     sessionId: string,
     content: string,
     clientId = '',
-    options: { readonly timeoutMs?: number } = {},
+    options: { readonly timeoutMs?: number | undefined } = {},
   ): Promise<CompanionChatReplyResult> {
     let messageId = '';
     const result = new Promise<CompanionChatReplyResult>((resolve) => {
@@ -685,7 +685,7 @@ export class CompanionChatManager {
     }, turnId, toolCalls);
 
     for (const [index, toolResult] of results.entries()) {
-      const call = toolCalls[index];
+      const call = toolCalls[index]!;
       if (!call) continue;
       publish({
         type: 'turn.tool_result',

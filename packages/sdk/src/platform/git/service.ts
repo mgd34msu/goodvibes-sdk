@@ -151,8 +151,8 @@ export class GitService {
       // Hash line: 40-char hex + original_line + final_line + num_lines
       if (/^[0-9a-f]{40}\s/.test(line)) {
         const parts = line.split(' ');
-        currentHash = parts[0];
-        currentLine = parseInt(parts[2] ?? parts[1], 10);
+        currentHash = parts[0]!;
+        currentLine = parseInt(parts[2]! ?? parts[1]!, 10);
       } else if (line.startsWith('author ')) {
         currentAuthor = line.slice(7);
       } else if (line.startsWith('\t')) {

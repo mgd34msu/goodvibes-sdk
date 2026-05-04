@@ -25,11 +25,11 @@ import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-fla
 export interface RegisterWatcherInput {
   readonly id: string;
   readonly label: string;
-  readonly kind?: WatcherKind;
+  readonly kind?: WatcherKind | undefined;
   readonly source: AutomationSourceRecord;
-  readonly intervalMs?: number;
-  readonly metadata?: Record<string, unknown>;
-  readonly run?: () => Promise<string | void> | string | void;
+  readonly intervalMs?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly run?: (() => Promise<string | void> | string | void) | undefined | undefined;
 }
 
 export interface RegisterPollingWatcherInput {
@@ -41,8 +41,8 @@ export interface RegisterPollingWatcherInput {
 }
 
 export interface WatcherRegistryOptions {
-  readonly storePath?: string;
-  readonly featureFlags?: FeatureFlagReader;
+  readonly storePath?: string | undefined;
+  readonly featureFlags?: FeatureFlagReader | undefined;
 }
 
 interface RegisteredWatcher {
@@ -77,10 +77,10 @@ function toWatcherSourceKind(kind: WatcherKind): WatcherSourceKind {
 }
 
 function sourceStatusFor(record: WatcherRecord, ts = now()): {
-  readonly sourceLagMs?: number;
+  readonly sourceLagMs?: number | undefined;
   readonly sourceStatus: WatcherSourceStatus;
-  readonly degradedReason?: string;
-  readonly nextState?: WatcherRecord['state'];
+  readonly degradedReason?: string | undefined;
+  readonly nextState?: WatcherRecord['state'] | undefined;
 } {
   const lastSeenAt = record.lastHeartbeatAt ?? record.source.lastSeenAt ?? record.source.updatedAt ?? record.source.createdAt;
   if (record.state === 'failed') {
@@ -164,8 +164,8 @@ export class WatcherRegistry {
   }
 
   attachRuntime(config: {
-    readonly runtimeStore?: RuntimeStore | null;
-    readonly runtimeBus?: RuntimeEventBus | null;
+    readonly runtimeStore?: RuntimeStore | null | undefined;
+    readonly runtimeBus?: RuntimeEventBus | null | undefined;
   }): void {
     if (config.runtimeStore) {
       this.runtimeDispatch = createDomainDispatch(config.runtimeStore);
@@ -512,12 +512,13 @@ export class WatcherRegistry {
       const url = typeof merged.url === 'string' ? merged.url : '';
       return async () => {
         if (!url) return `${record.id}:webhook-no-url`;
+        const headers = typeof merged.headers === 'object' && merged.headers !== null
+          ? Object.fromEntries(Object.entries(merged.headers).filter(([, value]) => typeof value === 'string')) as Record<string, string>
+          : undefined;
         const response = await instrumentedFetch(url, {
           method: typeof merged.method === 'string' ? merged.method.toUpperCase() : 'GET',
-          headers: typeof merged.headers === 'object' && merged.headers !== null
-            ? Object.fromEntries(Object.entries(merged.headers).filter(([, value]) => typeof value === 'string')) as Record<string, string>
-            : undefined,
-        });
+          ...(headers !== undefined ? { headers } : {}),
+        } as RequestInit);
         const text = await response.text().catch(() => '');
         return `${response.status}:${text.slice(0, 120)}`;
       };
@@ -538,12 +539,13 @@ export class WatcherRegistry {
     const url = typeof merged.url === 'string' ? merged.url : typeof merged.endpoint === 'string' ? merged.endpoint : '';
     if (url) {
       return async () => {
+        const headers2 = typeof merged.headers === 'object' && merged.headers !== null
+          ? Object.fromEntries(Object.entries(merged.headers).filter(([, value]) => typeof value === 'string')) as Record<string, string>
+          : undefined;
         const response = await instrumentedFetch(url, {
           method: typeof merged.method === 'string' ? merged.method.toUpperCase() : 'GET',
-          headers: typeof merged.headers === 'object' && merged.headers !== null
-            ? Object.fromEntries(Object.entries(merged.headers).filter(([, value]) => typeof value === 'string')) as Record<string, string>
-            : undefined,
-        });
+          ...(headers2 !== undefined ? { headers: headers2 } : {}),
+        } as RequestInit);
         const text = await response.text().catch(() => '');
         return `${response.status}:${text.slice(0, 120)}`;
       };

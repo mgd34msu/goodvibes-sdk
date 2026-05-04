@@ -56,9 +56,9 @@ export class CodeIntelligence {
   private readonly shellPaths: Pick<ShellPathService, 'workingDirectory' | 'homeDirectory' | 'resolveProjectPath'> | null;
 
   constructor(options: {
-    shellPaths?: Pick<ShellPathService, 'workingDirectory' | 'homeDirectory' | 'resolveProjectPath'>;
-    treeSitter?: TreeSitterService;
-    lsp?: LspService;
+    shellPaths?: Pick<ShellPathService, 'workingDirectory' | 'homeDirectory' | 'resolveProjectPath'> | undefined;
+    treeSitter?: TreeSitterService | undefined;
+    lsp?: LspService | undefined;
   } = {}) {
     this.shellPaths = options.shellPaths ?? null;
     this.treeSitter = options.treeSitter ?? new TreeSitterService();

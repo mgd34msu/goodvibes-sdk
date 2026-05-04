@@ -25,18 +25,18 @@ interface FileWriteResult {
   resolved_path: string;
   bytes_written: number;
   mode_applied: WriteMode;
-  backup_path?: string;
+  backup_path?: string | undefined;
   /** true if this was a dry-run entry */
-  would_write?: boolean;
+  would_write?: boolean | undefined;
   /** decoded content — used internally to avoid double resolveContent call */
-  _content?: string;
+  _content?: string | undefined;
 }
 
 interface WriteOutput {
   files_written: number;
   bytes_written: number;
-  files?: FileWriteResult[];
-  dry_run?: boolean;
+  files?: FileWriteResult[] | undefined;
+  dry_run?: boolean | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -317,12 +317,12 @@ function formatOutput(
 
 export function createWriteTool(options?: {
   projectRoot: string;
-  fileCache?: FileStateCache;
-  projectIndex?: ProjectIndex;
-  fileUndoManager?: FileUndoManager;
-  configManager?: Pick<ConfigManager, 'get'>;
-  toolLLM?: Pick<ToolLLM, 'chat'>;
-  changeTracker?: Pick<SessionChangeTracker, 'recordChange'>;
+  fileCache?: FileStateCache | undefined;
+  projectIndex?: ProjectIndex | undefined;
+  fileUndoManager?: FileUndoManager | undefined;
+  configManager?: Pick<ConfigManager, 'get'> | undefined;
+  toolLLM?: Pick<ToolLLM, 'chat'> | undefined;
+  changeTracker?: Pick<SessionChangeTracker, 'recordChange'> | undefined;
 }): Tool {
   if (typeof options?.projectRoot !== 'string' || options.projectRoot.trim().length === 0) {
     throw new Error('createWriteTool requires projectRoot');

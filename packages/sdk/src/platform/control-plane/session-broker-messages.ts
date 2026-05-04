@@ -14,13 +14,13 @@ export interface AppendSharedSessionMessageInput {
   readonly sessionId: string;
   readonly role: SharedSessionMessageRole;
   readonly body: string;
-  readonly surfaceKind?: SharedSessionMessage['surfaceKind'];
-  readonly surfaceId?: string;
-  readonly routeId?: string;
-  readonly agentId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly surfaceKind?: SharedSessionMessage['surfaceKind'] | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly agentId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export function listSharedSessionMessages(

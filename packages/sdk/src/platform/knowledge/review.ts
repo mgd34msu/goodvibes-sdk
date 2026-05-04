@@ -6,17 +6,17 @@ export type KnowledgeReviewAction = 'accept' | 'reject' | 'resolve' | 'reopen' |
 export interface KnowledgeIssueReviewInput {
   readonly issueId: string;
   readonly action: KnowledgeReviewAction;
-  readonly reviewer?: string;
-  readonly value?: Record<string, unknown>;
+  readonly reviewer?: string | undefined;
+  readonly value?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeIssueReviewResult {
   readonly ok: true;
   readonly issue: KnowledgeIssueRecord;
-  readonly node?: KnowledgeNodeRecord;
-  readonly source?: KnowledgeSourceRecord;
-  readonly suppression?: Record<string, unknown>;
-  readonly appliedFacts?: Record<string, unknown>;
+  readonly node?: KnowledgeNodeRecord | undefined;
+  readonly source?: KnowledgeSourceRecord | undefined;
+  readonly suppression?: Record<string, unknown> | undefined;
+  readonly appliedFacts?: Record<string, unknown> | undefined;
 }
 
 export async function reviewKnowledgeIssue(

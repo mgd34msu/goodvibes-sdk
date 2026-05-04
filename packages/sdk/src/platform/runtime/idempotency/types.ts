@@ -27,12 +27,12 @@ export interface IdempotencyRecord {
   /** Unix timestamp (ms) when the record was first created. */
   readonly createdAt: number;
   /** Unix timestamp (ms) when the record transitioned out of `in-flight`. */
-  completedAt?: number;
+  completedAt?: number | undefined;
   /**
    * Cached result from a completed execution.
    * Returned verbatim to duplicate callers instead of re-running the operation.
    */
-  result?: unknown;
+  result?: unknown | undefined;
 }
 
 /**
@@ -64,11 +64,11 @@ export interface IdempotencyStoreConfig {
    *
    * @default 300_000 (5 minutes)
    */
-  ttlMs?: number;
+  ttlMs?: number | undefined;
   /**
    * Maximum number of records retained before a sweep evicts TTL-expired entries.
    *
    * @default 5_000
    */
-  maxRecords?: number;
+  maxRecords?: number | undefined;
 }

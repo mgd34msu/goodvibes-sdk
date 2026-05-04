@@ -20,8 +20,8 @@ import { toRecord } from '../../utils/record-coerce.js';
 import { mapWithConcurrency } from '../../utils/concurrency.js';
 
 export interface FetchRuntimeDeps {
-  readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null;
-  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+  readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null | undefined;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
 }
 
 interface CacheEntry {
@@ -123,7 +123,7 @@ export class FetchRuntimeService {
         if (i > 0 && rateLimitMs > 0) {
           await delay(rateLimitMs);
         }
-        results.push(await fetchOne(input.urls[i], fetchOpts, this));
+        results.push(await fetchOne(input.urls[i]!, fetchOpts, this));
       }
     }
 
@@ -190,7 +190,7 @@ interface FetchOneOptions {
   globalExtract: FetchExtractMode;
   verbosity: FetchVerbosity;
   cacheTtlSeconds: number;
-  maxContentLength?: number;
+  maxContentLength?: number | undefined;
   sanitizeMode: FetchSanitizeMode;
   trustTierConfig: TrustTierConfig;
   deps: FetchRuntimeDeps;
@@ -198,7 +198,7 @@ interface FetchOneOptions {
 
 interface PreparedFetchRequest {
   headers: Record<string, string>;
-  body?: string | FormData;
+  body?: string | FormData | undefined;
 }
 
 function applyAuthHeaders(headers: Record<string, string>, auth: FetchAuthInput): void {
@@ -257,10 +257,10 @@ async function fetchOneRaw(
         })
       : await instrumentedFetch(effectiveUrl, {
           method,
-          headers: Object.keys(headers).length > 0 ? (headers as HeadersInit) : undefined,
-          body,
+          ...(Object.keys(headers).length > 0 ? { headers: headers as HeadersInit } : {}),
+          ...(body !== undefined ? { body } : {}),
           signal: controller.signal,
-        });
+        } as RequestInit);
     clearTimeout(timer);
     return response;
   } catch (err) {
@@ -285,11 +285,11 @@ async function fetchWithValidatedRedirects(input: {
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
     const response = await instrumentedFetch(currentUrl, {
       method: currentMethod,
-      headers: Object.keys(currentHeaders).length > 0 ? (currentHeaders as HeadersInit) : undefined,
-      body: currentBody,
+      ...(Object.keys(currentHeaders).length > 0 ? { headers: currentHeaders as HeadersInit } : {}),
+      ...(currentBody !== undefined ? { body: currentBody } : {}),
       signal: input.signal,
       redirect: 'manual',
-    });
+    } as RequestInit);
 
     if (!isRedirectStatus(response.status)) return response;
 

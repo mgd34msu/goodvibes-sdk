@@ -28,12 +28,12 @@ export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {}
 
 export interface OperatorRemoteClientOptions {
-  readonly getResponseSchema?: (methodId: string) => ContractInvokeOptions['responseSchema'];
+  readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined | undefined;
   /**
    * Applies to JSON request/response methods. Server-sent event stream payloads
    * are validated by their realtime event schemas at the transport boundary.
    */
-  readonly validateResponses?: boolean;
+  readonly validateResponses?: boolean | undefined;
 }
 
 type KnownMethodArgs<TMethodId extends OperatorTypedMethodId> = MethodArgs<

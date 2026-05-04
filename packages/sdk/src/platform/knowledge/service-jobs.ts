@@ -15,9 +15,9 @@ export interface KnowledgeServiceJobRunnerContext {
   readonly refreshSources: (
     kind: 'stale' | 'bookmark',
     sourceIds?: readonly string[],
-    limit?: number,
+    limit?: number | undefined,
   ) => Promise<number>;
-  readonly syncBrowserHistory: (input: { readonly limit?: number }) => Promise<
+  readonly syncBrowserHistory: (input: { readonly limit?: number | undefined }) => Promise<
     KnowledgeBatchIngestResult & { readonly profiles: readonly BrowserKnowledgeProfile[] }
   >;
   readonly materializeProjection: (input: {
@@ -27,13 +27,13 @@ export interface KnowledgeServiceJobRunnerContext {
   readonly semanticService: KnowledgeSemanticService;
   readonly runConsolidation: (
     kind: 'light-consolidation' | 'deep-consolidation',
-    input: { readonly limit?: number; readonly autoPromote: boolean },
+    input: { readonly limit?: number | undefined; readonly autoPromote: boolean },
   ) => Promise<{ readonly id: string; readonly metrics: Record<string, number> }>;
 }
 
 export async function runKnowledgeServiceJobByKind(
   kind: KnowledgeJobRecord['kind'],
-  input: { readonly mode?: KnowledgeJobMode; readonly sourceIds?: readonly string[]; readonly limit?: number },
+  input: { readonly mode?: KnowledgeJobMode | undefined; readonly sourceIds?: readonly string[] | undefined; readonly limit?: number | undefined },
   context: KnowledgeServiceJobRunnerContext,
 ): Promise<Record<string, unknown>> {
   switch (kind) {

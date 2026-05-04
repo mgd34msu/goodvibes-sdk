@@ -14,12 +14,12 @@ import {
 type AutomationScheduleBody = {
   readonly prompt: string;
   readonly kind: string;
-  readonly cron?: string;
-  readonly every?: string;
-  readonly at?: string | number;
-  readonly timezone?: string;
-  readonly timeoutMs?: number;
-  readonly fallbackModels?: string[];
+  readonly cron?: string | undefined;
+  readonly every?: string | undefined;
+  readonly at?: string | number | undefined;
+  readonly timezone?: string | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly fallbackModels?: string[] | undefined;
 };
 
 export function createDaemonRuntimeAutomationRouteHandlers(

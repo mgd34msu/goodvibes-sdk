@@ -50,7 +50,7 @@ export function sourcesLinkedToNode(nodeId: string, state: HomeGraphState): Know
 }
 
 export function collectLinkedObjects(
-  results: readonly { readonly source?: KnowledgeSourceRecord; readonly node?: KnowledgeNodeRecord }[],
+  results: readonly { readonly source?: KnowledgeSourceRecord | undefined; readonly node?: KnowledgeNodeRecord | undefined }[],
   state: {
     readonly edges: readonly KnowledgeEdgeRecord[];
     readonly nodes: readonly KnowledgeNodeRecord[];
@@ -178,7 +178,7 @@ export function safeHomeGraphFilename(value: string): string {
 
 export function renderAskAnswer(
   query: string,
-  results: readonly { readonly title: string; readonly summary?: string; readonly excerpt?: string; readonly source?: KnowledgeSourceRecord; readonly node?: KnowledgeNodeRecord }[],
+  results: readonly { readonly title: string; readonly summary?: string | undefined; readonly excerpt?: string | undefined; readonly source?: KnowledgeSourceRecord | undefined; readonly node?: KnowledgeNodeRecord | undefined }[],
   mode: 'concise' | 'standard' | 'detailed',
 ): string {
   if (results.length === 0) {
@@ -202,6 +202,6 @@ export function edgeConnectsNode(edge: KnowledgeEdgeRecord, nodeId: string, rela
 
 function readHomeAssistantString(node: KnowledgeNodeRecord, key: string): string | undefined {
   const homeAssistant = readRecord(node.metadata.homeAssistant);
-  const value = homeAssistant[key];
+  const value = homeAssistant[key]!;
   return typeof value === 'string' ? value : undefined;
 }

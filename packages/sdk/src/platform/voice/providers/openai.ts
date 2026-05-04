@@ -41,25 +41,25 @@ const DEFAULT_OPENAI_VOICE = 'coral';
 const DEFAULT_OPENAI_REALTIME_TTL_SECONDS = 600;
 
 type OpenAITranscriptionVerboseSegment = {
-  readonly text?: string;
-  readonly start?: number;
-  readonly end?: number;
-  readonly avg_logprob?: number;
+  readonly text?: string | undefined;
+  readonly start?: number | undefined;
+  readonly end?: number | undefined;
+  readonly avg_logprob?: number | undefined;
 };
 
 type OpenAITranscriptionVerboseResponse = {
-  readonly text?: string;
-  readonly language?: string;
-  readonly segments?: readonly OpenAITranscriptionVerboseSegment[];
+  readonly text?: string | undefined;
+  readonly language?: string | undefined;
+  readonly segments?: readonly OpenAITranscriptionVerboseSegment[] | undefined;
 };
 
 type OpenAIRealtimeClientSecretResponse = {
   readonly client_secret?: {
-    readonly value?: string;
-    readonly expires_at?: number;
+    readonly value?: string | undefined;
+    readonly expires_at?: number | undefined;
   };
-  readonly id?: string;
-  readonly model?: string;
+  readonly id?: string | undefined;
+  readonly model?: string | undefined;
 };
 
 function resolveOpenAISpeechFormat(format: string | undefined): string {
@@ -99,7 +99,7 @@ function buildOpenAIRealtimeMetadata(params: {
   baseUrl: string;
   model: string;
   clientSecret: string;
-  expiresAt?: number;
+  expiresAt?: number | undefined;
   request: VoiceRealtimeSessionRequest;
   sessionPayload: Record<string, unknown>;
 }): Record<string, unknown> {

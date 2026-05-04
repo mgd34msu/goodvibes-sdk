@@ -24,45 +24,45 @@ export interface BrowserKnowledgeProfile {
   readonly browser: BrowserKnowledgeKind;
   readonly profileName: string;
   readonly profilePath: string;
-  readonly historyPath?: string;
-  readonly bookmarksPath?: string;
+  readonly historyPath?: string | undefined;
+  readonly bookmarksPath?: string | undefined;
 }
 
 export interface BrowserHistoryEntry {
   readonly sourceKind: 'history';
   readonly url: string;
-  readonly title?: string;
+  readonly title?: string | undefined;
   readonly browser: BrowserKnowledgeKind;
   readonly family: BrowserKnowledgeFamily;
   readonly profileName: string;
   readonly profilePath: string;
-  readonly visitedAtMs?: number;
-  readonly visitCount?: number;
-  readonly transition?: string;
-  readonly rawId?: string | number;
+  readonly visitedAtMs?: number | undefined;
+  readonly visitCount?: number | undefined;
+  readonly transition?: string | undefined;
+  readonly rawId?: string | number | undefined;
 }
 
 export interface BrowserBookmarkEntry {
   readonly sourceKind: 'bookmark';
   readonly url: string;
-  readonly title?: string;
+  readonly title?: string | undefined;
   readonly browser: BrowserKnowledgeKind;
   readonly family: BrowserKnowledgeFamily;
   readonly profileName: string;
   readonly profilePath: string;
-  readonly folderPath?: string;
-  readonly addedAtMs?: number;
-  readonly rawId?: string | number;
+  readonly folderPath?: string | undefined;
+  readonly addedAtMs?: number | undefined;
+  readonly rawId?: string | number | undefined;
 }
 
 export type BrowserKnowledgeEntry = BrowserHistoryEntry | BrowserBookmarkEntry;
 
 export interface BrowserKnowledgeFilter {
-  readonly browsers?: readonly BrowserKnowledgeKind[];
-  readonly sourceKinds?: readonly BrowserKnowledgeSourceKind[];
-  readonly homeOverride?: string;
-  readonly limit?: number;
-  readonly sinceMs?: number;
+  readonly browsers?: readonly BrowserKnowledgeKind[] | undefined;
+  readonly sourceKinds?: readonly BrowserKnowledgeSourceKind[] | undefined;
+  readonly homeOverride?: string | undefined;
+  readonly limit?: number | undefined;
+  readonly sinceMs?: number | undefined;
 }
 
 export interface BrowserKnowledgeCollectResult {

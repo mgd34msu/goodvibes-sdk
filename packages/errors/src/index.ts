@@ -83,23 +83,23 @@ function inferKind(category: ErrorCategory): SDKErrorKind {
 }
 
 export interface GoodVibesSdkErrorOptions {
-  readonly code?: string;
-  readonly category?: ErrorCategory;
-  readonly source?: ErrorSource;
-  readonly recoverable?: boolean;
-  readonly status?: number;
-  readonly url?: string;
-  readonly method?: string;
-  readonly body?: unknown;
-  readonly hint?: string;
-  readonly provider?: string;
-  readonly operation?: string;
-  readonly phase?: string;
-  readonly requestId?: string;
-  readonly providerCode?: string;
-  readonly providerType?: string;
-  readonly retryAfterMs?: number;
-  readonly cause?: unknown;
+  readonly code?: string | undefined;
+  readonly category?: ErrorCategory | undefined;
+  readonly source?: ErrorSource | undefined;
+  readonly recoverable?: boolean | undefined;
+  readonly status?: number | undefined;
+  readonly url?: string | undefined;
+  readonly method?: string | undefined;
+  readonly body?: unknown | undefined;
+  readonly hint?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly operation?: string | undefined;
+  readonly phase?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly providerCode?: string | undefined;
+  readonly providerType?: string | undefined;
+  readonly retryAfterMs?: number | undefined;
+  readonly cause?: unknown | undefined;
 }
 
 export const RETRYABLE_STATUS_CODES: readonly number[] = [408, 429, 500, 502, 503, 504];
@@ -152,10 +152,10 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth 
   if (seen.has(objectCause)) return undefined;
   seen.add(objectCause);
   const record = cause as {
-    readonly category?: unknown;
-    readonly cause?: unknown;
-    readonly originalError?: unknown;
-    readonly error?: unknown;
+    readonly category?: unknown | undefined;
+    readonly cause?: unknown | undefined;
+    readonly originalError?: unknown | undefined;
+    readonly error?: unknown | undefined;
   };
   const category = readErrorCategory(record.category);
   if (category && category !== 'unknown') return category;
@@ -189,23 +189,23 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth 
  */
 export class GoodVibesSdkError extends Error {
   public readonly kind: SDKErrorKind;
-  public readonly code?: string;
+  public readonly code?: string | undefined;
   public readonly category: ErrorCategory;
   public readonly source: ErrorSource;
   public readonly recoverable: boolean;
-  public readonly status?: number;
-  public readonly url?: string;
-  public readonly method?: string;
-  public readonly body?: unknown;
-  public readonly hint?: string;
-  public readonly provider?: string;
-  public readonly operation?: string;
-  public readonly phase?: string;
-  public readonly requestId?: string;
-  public readonly providerCode?: string;
-  public readonly providerType?: string;
-  public readonly retryAfterMs?: number;
-  public override readonly cause?: unknown;
+  public readonly status?: number | undefined;
+  public readonly url?: string | undefined;
+  public readonly method?: string | undefined;
+  public readonly body?: unknown | undefined;
+  public readonly hint?: string | undefined;
+  public readonly provider?: string | undefined;
+  public readonly operation?: string | undefined;
+  public readonly phase?: string | undefined;
+  public readonly requestId?: string | undefined;
+  public readonly providerCode?: string | undefined;
+  public readonly providerType?: string | undefined;
+  public readonly retryAfterMs?: number | undefined;
+  public override readonly cause?: unknown | undefined;
 
   static override [Symbol.hasInstance](value: unknown): boolean {
     if (this !== GoodVibesSdkError) {

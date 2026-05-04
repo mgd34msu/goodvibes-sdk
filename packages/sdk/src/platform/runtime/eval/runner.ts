@@ -23,7 +23,7 @@ export interface EvalRunnerOptions {
    * A scenario regresses if its composite score drops by more than this amount.
    * Default: 5 (5-point drop).
    */
-  regressionThreshold?: number;
+  regressionThreshold?: number | undefined;
 }
 
 /**

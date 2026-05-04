@@ -8,7 +8,7 @@ import { clean, collectAsync } from './utils.js';
 
 export async function discoverZones(
   client: CloudflareApiClient,
-  input: { readonly accountId: string; readonly zoneName?: string; readonly warnings: string[] },
+  input: { readonly accountId: string; readonly zoneName?: string | undefined; readonly warnings: string[] },
 ): Promise<readonly CloudflareZoneLike[]> {
   if (!client.zones) return [];
   return await tryDiscover('zones', input.warnings, async () => {
@@ -24,8 +24,8 @@ export async function selectDiscoveredZone(
   client: CloudflareApiClient,
   zones: readonly CloudflareZoneLike[],
   input: {
-    readonly zoneId?: string;
-    readonly zoneName?: string;
+    readonly zoneId?: string | undefined;
+    readonly zoneName?: string | undefined;
     readonly configuredZoneId: string;
     readonly configuredZoneName: string;
     readonly warnings: string[];
@@ -48,8 +48,8 @@ export async function resolveZone(
   client: CloudflareApiClient,
   input: {
     readonly accountId: string;
-    readonly zoneId?: string;
-    readonly zoneName?: string;
+    readonly zoneId?: string | undefined;
+    readonly zoneName?: string | undefined;
     readonly configuredZoneId: string;
     readonly configuredZoneName: string;
     readonly required: boolean;

@@ -33,7 +33,7 @@ function extractExportedSymbols(content: string): Array<{ name: string; kind: st
   ];
 
   for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trimStart();
+    const trimmed = lines[i]!.trimStart();
     for (const { kind, regex } of patterns) {
       const m = trimmed.match(regex);
       if (m?.[1]) {
@@ -111,7 +111,7 @@ export async function runImpact(
     for (const exported of exportedNames) {
       const nameRegex = new RegExp(`\\b${escapeRegex(exported.name)}\\b`);
       for (let i = 0; i < lines.length; i++) {
-        if (nameRegex.test(lines[i])) {
+        if (nameRegex.test(lines[i]!)) {
           const entry = affected.get(file) ?? [];
           entry.push({ name: exported.name, line: i + 1 });
           affected.set(file, entry);
@@ -154,9 +154,9 @@ async function buildDepGraph(
     const specs: string[] = [];
     for (const line of lines) {
       const importMatch = line.match(/(?:import|export)\s.*?from\s+['"]([^'"]+)['"]/);
-      if (importMatch?.[1]) specs.push(importMatch[1]);
+      if (importMatch?.[1]) specs.push(importMatch[1]!);
       const requireMatch = line.match(/require\(['"]([^'"]+)['"]\)/);
-      if (requireMatch?.[1]) specs.push(requireMatch[1]);
+      if (requireMatch?.[1]) specs.push(requireMatch[1]!);
     }
 
     for (const spec of specs) {
@@ -247,7 +247,7 @@ export async function runDependencies(
       for (const dep of deps) {
         if (!dep.startsWith('.') && !dep.startsWith('/')) {
           const parts = dep.split('/');
-          const pkg = dep.startsWith('@') ? `${parts[0]}/${parts[1]}` : parts[0];
+          const pkg = dep.startsWith('@') ? `${parts[0]!}/${parts[1]!}` : parts[0]!;
           if (pkg) externals.add(pkg);
         }
       }
@@ -266,7 +266,7 @@ export async function runDeadCode(
   const intelligence = new CodeIntelligence({});
   const scanRoot =
     input.files && input.files.length > 0
-      ? resolve(projectRoot, input.files[0])
+      ? resolve(projectRoot, input.files[0]!)
       : projectRoot;
 
   const allFiles = await collectTextFiles(scanRoot, MAX_SCAN_FILES, deadline);
@@ -336,7 +336,7 @@ export async function runSecurity(
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         for (const { name, regex } of SECRET_PATTERNS) {
-          const m = lines[i].match(regex);
+          const m = lines[i]!.match(regex);
           if (m) {
             findings.push({
               file: relative(projectRoot, file),
@@ -519,7 +519,7 @@ export async function runPreview(
     return { error: 'preview mode requires find string' };
   }
 
-  const filePath = resolve(projectRoot, input.files[0]);
+  const filePath = resolve(projectRoot, input.files[0]!);
   const relPath = relative(projectRoot, filePath);
   const findStr = input.find;
   const replaceStr = input.replace ?? '';
@@ -633,14 +633,14 @@ export async function runPermissions(
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
       for (const { name, regex, severity } of DANGEROUS_PATTERNS) {
-        const m = lines[i].match(regex);
+        const m = lines[i]!.match(regex);
         if (m) {
           findings.push({
             file: relative(projectRoot, file),
             line: i + 1,
             pattern: name,
             severity,
-            match: lines[i].trim().slice(0, 100),
+            match: lines[i]!.trim().slice(0, 100),
           });
         }
       }

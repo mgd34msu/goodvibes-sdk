@@ -42,7 +42,7 @@ function extractCommandPrefix(
   args: Record<string, unknown>,
 ): string | undefined {
   for (const key of ['command', 'path', 'url']) {
-    const val = args[key];
+    const val = args[key]!;
     if (typeof val === 'string' && val.length > 0) {
       return val.split(/[\s/]+/)[0];
     }
@@ -271,21 +271,21 @@ export class PermissionSimulator {
       accumulatedOverall = accumulateStats(accumulatedOverall, type);
 
       // By class
-      const existingClass = byToolClass[cls];
+      const existingClass = byToolClass[cls]!;
       if (existingClass !== undefined) {
         byToolClass[cls] = accumulateStats(existingClass, type);
       }
 
       // By prefix
       if (prefix !== undefined) {
-        const existingPrefix = byCommandPrefix[prefix];
+        const existingPrefix = byCommandPrefix[prefix]!;
         if (existingPrefix !== undefined) {
           byCommandPrefix[prefix] = accumulateStats(existingPrefix, type);
         }
       }
 
       // By mode
-      const existingMode = byMode[mode];
+      const existingMode = byMode[mode]!;
       if (existingMode !== undefined) {
         byMode[mode] = accumulateStats(existingMode, type);
       }

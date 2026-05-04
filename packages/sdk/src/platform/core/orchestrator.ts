@@ -78,7 +78,7 @@ interface LowPrioritySystemMessageSink {
 }
 
 export interface OrchestratorUserInputOptions {
-  readonly origin?: TurnInputOrigin;
+  readonly origin?: TurnInputOrigin | undefined;
 }
 
 /**
@@ -113,20 +113,20 @@ export interface OrchestratorOptions {
   /** Manages tool-use permission grants and denials. */
   permissionManager: PermissionManager;
   /** Returns the current system prompt text. Defaults to `() => ''`. */
-  getSystemPrompt?: () => string;
+  getSystemPrompt?: (() => string) | undefined | undefined;
   /** Optional hook dispatcher for lifecycle events. */
-  hookDispatcher?: HookDispatcherLike | null;
+  hookDispatcher?: HookDispatcherLike | null | undefined;
   /** Optional feature flag manager. */
-  flagManager?: FeatureFlagManager | null;
+  flagManager?: FeatureFlagManager | null | undefined;
   /** Optional render request callback, called after state changes requiring a redraw. */
-  requestRender?: (() => void) | null;
+  requestRender?: (() => void) | null | undefined | undefined;
   /** Optional runtime event bus for cross-system event propagation. */
-  runtimeBus?: RuntimeEventBus | null;
+  runtimeBus?: RuntimeEventBus | null | undefined;
   /**
    * Stable session id used in runtime events, hook events, idempotency keys,
    * plans, and reply correlation. Defaults to a generated private id.
    */
-  sessionId?: string;
+  sessionId?: string | undefined;
   /** Required runtime service dependencies. */
   services: {
     readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
@@ -154,7 +154,7 @@ export class Orchestrator {
   public streamingInputTokens = 0;
   /** Output tokens received so far in the current streaming turn (one per delta chunk). */
   public streamingOutputTokens = 0;
-  public messageQueue: { text: string; content?: ContentPart[]; options?: OrchestratorUserInputOptions }[] = [];
+  public messageQueue: { text: string; content?: ContentPart[] | undefined; options?: OrchestratorUserInputOptions | undefined }[] = [];
 
   private animInterval: ReturnType<typeof setInterval> | null = null;
   private abortController: AbortController | null = null;
@@ -387,7 +387,7 @@ export class Orchestrator {
   }
 
   public getSpinner(): string {
-    return THINKING_SPINNER_FRAMES[this.thinkingFrame % THINKING_SPINNER_FRAMES.length];
+    return THINKING_SPINNER_FRAMES[this.thinkingFrame % THINKING_SPINNER_FRAMES.length]!;
   }
 
   public setSystemMessageRouter(router: LowPrioritySystemMessageSink | null): void {
@@ -449,7 +449,7 @@ export class Orchestrator {
   public async handleUserInput(
     text: string,
     content?: ContentPart[],
-    options?: OrchestratorUserInputOptions,
+    options?: OrchestratorUserInputOptions | undefined,
   ): Promise<void> {
     if (!text.trim() && !content?.length) return;
 
@@ -508,7 +508,7 @@ export class Orchestrator {
   private async runTurn(
     text: string,
     content?: ContentPart[],
-    options?: OrchestratorUserInputOptions,
+    options?: OrchestratorUserInputOptions | undefined,
   ): Promise<void> {
     const turnStartTime = Date.now();
     const configManager = requireConfigManager(this.coreServices);

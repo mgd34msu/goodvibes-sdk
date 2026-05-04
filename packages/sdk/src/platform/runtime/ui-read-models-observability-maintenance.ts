@@ -24,7 +24,7 @@ export interface UiContinuitySnapshot {
   readonly lastSessionPointer: string | null;
   readonly recoveryFilePresent: boolean;
   readonly recoveryFile: Record<string, unknown> | null;
-  readonly returnContext?: SessionReturnContextSummary;
+  readonly returnContext?: SessionReturnContextSummary | undefined;
 }
 
 export interface UiWorktreeSnapshot {

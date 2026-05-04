@@ -11,10 +11,10 @@ type EventLike = { readonly type: string };
 
 export interface SerializedEventEnvelope<TEvent extends EventLike = EventLike> {
   readonly type: string;
-  readonly ts?: number;
-  readonly traceId?: string;
-  readonly sessionId?: string;
-  readonly source?: string;
+  readonly ts?: number | undefined;
+  readonly traceId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly source?: string | undefined;
   readonly payload: TEvent;
 }
 
@@ -32,7 +32,7 @@ export type DomainEvents<
 > = RuntimeEventFeeds<TDomain, TEvent>;
 
 export interface RemoteDomainEventsOptions<TDomain extends string = string> {
-  readonly onConnectionError?: (error: Error, domain: TDomain) => void;
+  readonly onConnectionError?: ((error: Error, domain: TDomain) => void) | undefined | undefined;
 }
 
 function addListener<T>(map: Map<string, Set<T>>, type: string, listener: T): () => void {

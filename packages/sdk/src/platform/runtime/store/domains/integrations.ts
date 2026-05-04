@@ -36,11 +36,11 @@ export interface IntegrationRecord {
   /** Number of failed operations this session. */
   errorCount: number;
   /** Epoch ms of last successful operation. */
-  lastSuccessAt?: number;
+  lastSuccessAt?: number | undefined;
   /** Epoch ms of last error. */
-  lastErrorAt?: number;
+  lastErrorAt?: number | undefined;
   /** Last error message. */
-  lastError?: string;
+  lastError?: string | undefined;
   /** Integration-specific metadata. */
   meta: Record<string, unknown>;
 }

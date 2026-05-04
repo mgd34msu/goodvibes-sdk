@@ -34,7 +34,7 @@ export interface BuiltinChannelRuntimeDeps {
   readonly routeBindings: RouteBindingManager;
   readonly channelPolicy: ChannelPolicyManager;
   readonly channelPlugins: ChannelPluginRegistry;
-  readonly providerRuntime?: ChannelProviderRuntimeManager;
+  readonly providerRuntime?: ChannelProviderRuntimeManager | undefined;
   readonly deliveryRouter: ChannelDeliveryRouter;
   readonly surfaceDeliveryEnabled: (surface: ManagedSurface) => boolean;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;

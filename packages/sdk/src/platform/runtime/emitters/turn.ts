@@ -98,14 +98,14 @@ export function emitLlmResponseReceived(
     toolCallCount: number;
     inputTokens: number;
     outputTokens: number;
-    cacheReadTokens?: number;
-    cacheWriteTokens?: number;
+    cacheReadTokens?: number | undefined;
+    cacheWriteTokens?: number | undefined;
     /** OBS-04 enrichments */
-    durationMs?: number;
-    retries?: number;
-    costUsdCents?: number;
-    finishReason?: string;
-    providerRequestId?: string;
+    durationMs?: number | undefined;
+    retries?: number | undefined;
+    costUsdCents?: number | undefined;
+    finishReason?: string | undefined;
+    providerRequestId?: string | undefined;
   }
 ): void {
   bus.emit('turn', createEventEnvelope('LLM_RESPONSE_RECEIVED', { type: 'LLM_RESPONSE_RECEIVED', ...data }, ctx));

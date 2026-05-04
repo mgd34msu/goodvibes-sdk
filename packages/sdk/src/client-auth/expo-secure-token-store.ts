@@ -48,13 +48,13 @@ export interface ExpoSecureTokenStoreOptions {
    * The key used for the secure-store entry.
    * @default 'goodvibes-sdk-token'
    */
-  readonly key?: string;
+  readonly key?: string | undefined;
 
   /**
    * iOS Keychain service name. Passed through to `SecureStore.setItemAsync`
    * as `keychainService`. Has no effect on Android.
    */
-  readonly keychainService?: string;
+  readonly keychainService?: string | undefined;
 
   /**
    * Controls when the stored data is accessible. Maps to the
@@ -62,7 +62,7 @@ export interface ExpoSecureTokenStoreOptions {
    *
    * @default 'WHEN_UNLOCKED_THIS_DEVICE_ONLY'
    */
-  readonly accessible?: ExpoSecureStoreAccessible;
+  readonly accessible?: ExpoSecureStoreAccessible | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -228,7 +228,8 @@ export function createExpoSecureTokenStore(
     async getTokenEntry(): Promise<{ token: string | null; expiresAt?: number }> {
       const payload = await readPayload();
       if (payload === null) return { token: null };
-      return { token: payload.token, expiresAt: payload.expiresAt ?? undefined };
+      const expiresAt = payload.expiresAt ?? undefined;
+      return expiresAt !== undefined ? { token: payload.token, expiresAt } : { token: payload.token };
     },
   };
 }

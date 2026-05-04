@@ -27,7 +27,7 @@ export function shellSplit(input: string): string[] {
 
   while (i < len) {
     // Skip leading whitespace between tokens
-    if (/\s/.test(input[i])) {
+    if (/\s/.test(input[i]!)) {
       i++;
       continue;
     }
@@ -35,8 +35,8 @@ export function shellSplit(input: string): string[] {
     // Accumulate one token
     let token = '';
 
-    while (i < len && !/\s/.test(input[i])) {
-      const ch = input[i];
+    while (i < len && !/\s/.test(input[i]!)) {
+      const ch = input[i]!;
 
       if (ch === '"') {
         // Double-quoted region: process \\ and \" escapes

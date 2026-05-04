@@ -31,7 +31,7 @@ export class TokenStore {
    */
   async setTokenEntry(token: string | null, expiresAt?: number): Promise<void> {
     const store = this.#store as GoodVibesTokenStore & {
-      setTokenEntry?: (token: string | null, expiresAt?: number) => Promise<void>;
+      setTokenEntry?: ((token: string | null, expiresAt?: number) => Promise<void>) | undefined | undefined;
     };
     if (typeof store.setTokenEntry === 'function') {
       return store.setTokenEntry(token, expiresAt);

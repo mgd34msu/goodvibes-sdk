@@ -589,9 +589,9 @@ export class DaemonServer {
   private validateGatewayInvocation(
     descriptor: import('../control-plane/index.js').GatewayMethodDescriptor,
     context?: {
-      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
-      readonly scopes?: readonly string[];
-      readonly admin?: boolean;
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer' | undefined;
+      readonly scopes?: readonly string[] | undefined;
+      readonly admin?: boolean | undefined;
     },
   ): { status: number; ok: false; body: Record<string, unknown> } | null {
     return this.controlPlaneHelper.validateGatewayInvocation(descriptor, context);
@@ -631,12 +631,12 @@ export class DaemonServer {
     readonly authToken: string;
     readonly method: string;
     readonly path: string;
-    readonly query?: Record<string, unknown>;
-    readonly body?: unknown;
+    readonly query?: Record<string, unknown> | undefined;
+    readonly body?: unknown | undefined;
     readonly context?: {
-      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
-      readonly admin?: boolean;
-      readonly scopes?: readonly string[];
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer' | undefined;
+      readonly admin?: boolean | undefined;
+      readonly scopes?: readonly string[] | undefined;
     };
   }): Promise<{ status: number; ok: boolean; body: unknown }> {
     return await this.controlPlaneHelper.invokeWebSocketControlPlaneCall(input);
@@ -645,14 +645,14 @@ export class DaemonServer {
   private async invokeGatewayMethodCall(input: {
     readonly authToken: string;
     readonly methodId: string;
-    readonly query?: Record<string, unknown>;
-    readonly body?: unknown;
+    readonly query?: Record<string, unknown> | undefined;
+    readonly body?: unknown | undefined;
     readonly context?: {
-      readonly principalId?: string;
-      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
-      readonly admin?: boolean;
-      readonly scopes?: readonly string[];
-      readonly clientKind?: string;
+      readonly principalId?: string | undefined;
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer' | undefined;
+      readonly admin?: boolean | undefined;
+      readonly scopes?: readonly string[] | undefined;
+      readonly clientKind?: string | undefined;
     };
   }): Promise<{ status: number; ok: boolean; body: unknown }> {
     return await this.controlPlaneHelper.invokeGatewayMethodCall(input);

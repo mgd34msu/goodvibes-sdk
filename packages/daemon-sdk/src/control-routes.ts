@@ -10,7 +10,7 @@ import {
 } from './route-helpers.js';
 
 interface GatewayMethodDescriptorLike {
-  readonly access?: 'public' | 'authenticated' | 'admin' | 'remote-peer';
+  readonly access?: 'public' | 'authenticated' | 'admin' | 'remote-peer' | undefined;
 }
 
 interface GatewayMethodCatalogLike {
@@ -45,14 +45,14 @@ interface ControlRouteContext {
   readonly invokeGatewayMethodCall: (input: {
     readonly authToken: string;
     readonly methodId: string;
-    readonly query?: Record<string, unknown>;
-    readonly body?: unknown;
+    readonly query?: Record<string, unknown> | undefined;
+    readonly body?: unknown | undefined;
     readonly context?: {
-      readonly principalId?: string;
-      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
-      readonly admin?: boolean;
-      readonly scopes?: readonly string[];
-      readonly clientKind?: string;
+      readonly principalId?: string | undefined;
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer' | undefined;
+      readonly admin?: boolean | undefined;
+      readonly scopes?: readonly string[] | undefined;
+      readonly clientKind?: string | undefined;
     };
   }) => Promise<{ status: number; ok: boolean; body: unknown }>;
   readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
@@ -61,8 +61,8 @@ interface ControlRouteContext {
 }
 
 type GatewayInvokeBody = {
-  readonly query?: Record<string, unknown>;
-  readonly body?: unknown;
+  readonly query?: Record<string, unknown> | undefined;
+  readonly body?: unknown | undefined;
 };
 
 const controlBodySchemas = createRouteBodySchemaRegistry({

@@ -26,8 +26,8 @@ export interface SymbolInfo {
   endLine: number;
   column: number;
   exported: boolean;
-  signature?: string;
-  container?: string;
+  signature?: string | undefined;
+  container?: string | undefined;
 }
 
 export interface OutlineEntry {

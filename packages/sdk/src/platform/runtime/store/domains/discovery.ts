@@ -17,13 +17,13 @@ export interface LanguageServerRecord {
   /** Whether the server is currently running. */
   running: boolean;
   /** Server PID when running. */
-  pid?: number;
+  pid?: number | undefined;
   /** Whether the server is ready to handle requests. */
   ready: boolean;
   /** Epoch ms when the server started. */
-  startedAt?: number;
+  startedAt?: number | undefined;
   /** Last LSP error message. */
-  lastError?: string;
+  lastError?: string | undefined;
 }
 
 /** File watcher status. */
@@ -35,7 +35,7 @@ export interface FileWatcherStatus {
   /** Number of events received since session start. */
   eventCount: number;
   /** Epoch ms of the last file change event. */
-  lastEventAt?: number;
+  lastEventAt?: number | undefined;
 }
 
 /**
@@ -58,11 +58,11 @@ export interface DiscoveryDomainState {
   /** Total number of directories indexed. */
   dirCount: number;
   /** Epoch ms of the last index completion. */
-  lastIndexedAt?: number;
+  lastIndexedAt?: number | undefined;
   /** Indexing duration in ms of the last run. */
-  lastIndexDurationMs?: number;
+  lastIndexDurationMs?: number | undefined;
   /** Error message if indexStatus === 'error'. */
-  indexError?: string;
+  indexError?: string | undefined;
 
   // ── File watcher ──────────────────────────────────────────────────────────
   /** File watcher status. */

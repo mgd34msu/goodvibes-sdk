@@ -46,10 +46,10 @@ async function runValidators(validators: ValidatorName[], cwd: string): Promise<
 interface EditExecutionContext {
   fileCache: FileStateCache;
   cwd: string;
-  fileUndoManager?: FileUndoManager;
-  configManager?: Pick<ConfigManager, 'get' | 'getWorkingDirectory'>;
-  toolLLM?: Pick<ToolLLM, 'chat'>;
-  changeTracker?: Pick<SessionChangeTracker, 'recordChange'>;
+  fileUndoManager?: FileUndoManager | undefined;
+  configManager?: Pick<ConfigManager, 'get' | 'getWorkingDirectory'> | undefined;
+  toolLLM?: Pick<ToolLLM, 'chat'> | undefined;
+  changeTracker?: Pick<SessionChangeTracker, 'recordChange'> | undefined;
 }
 
 interface ResolvedTextEditInput {
@@ -402,13 +402,13 @@ async function executeTextEdits(
       continue;
     }
 
-    let editResult: { newContent: string; occurrencesReplaced: number; warning?: string } | { error: string; hint?: string };
+    let editResult: { newContent: string; occurrencesReplaced: number; warning?: string | undefined } | { error: string; hint?: string | undefined };
     if (matchMode === 'ast_pattern') {
       editResult = await computeAstPatternEdit(currentContent, item, resolvedPath);
     } else if (matchMode === 'ast') {
       editResult = await computeAstEdit(currentContent, item, resolvedPath);
     } else {
-      editResult = computeSingleEdit(currentContent, item, matchMode, caseSensitive, whitespaceSensitive, multiline);
+      editResult! = computeSingleEdit(currentContent, item, matchMode, caseSensitive, whitespaceSensitive, multiline);
     }
 
     if ('error' in editResult) {
@@ -456,7 +456,7 @@ async function executeTextEdits(
 
   if (transactionMode === 'atomic' && atomicFailed) {
     const atomicResults: EditResult[] = input.edits!.map((item, idx) => {
-      const r = results[idx];
+      const r = results[idx]!;
       if (r && !r.success) return r;
       return {
         id: item.id,
@@ -506,11 +506,11 @@ async function executeTextEdits(
 }
 
 export interface EditToolOptions {
-  cwd?: string;
-  fileUndoManager?: FileUndoManager;
-  configManager?: Pick<ConfigManager, 'get' | 'getWorkingDirectory'>;
-  toolLLM?: Pick<ToolLLM, 'chat'>;
-  changeTracker?: Pick<SessionChangeTracker, 'recordChange'>;
+  cwd?: string | undefined;
+  fileUndoManager?: FileUndoManager | undefined;
+  configManager?: Pick<ConfigManager, 'get' | 'getWorkingDirectory'> | undefined;
+  toolLLM?: Pick<ToolLLM, 'chat'> | undefined;
+  changeTracker?: Pick<SessionChangeTracker, 'recordChange'> | undefined;
 }
 
 function resolveEditCwd(options?: EditToolOptions): string {

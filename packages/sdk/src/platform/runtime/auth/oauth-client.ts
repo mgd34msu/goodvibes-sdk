@@ -35,9 +35,9 @@ export class OAuthClient {
    * Redirect the user's browser to `result.authorizationUrl`.
    */
   async beginAuthorization(input?: {
-    readonly state?: string;
-    readonly verifier?: string;
-    readonly redirectUri?: string;
+    readonly state?: string | undefined;
+    readonly verifier?: string | undefined;
+    readonly redirectUri?: string | undefined;
   }): Promise<OAuthStartState> {
     return buildOAuthAuthorizationStart(this.#config, input);
   }
@@ -50,7 +50,7 @@ export class OAuthClient {
     readonly code: string;
     readonly verifier: string;
     readonly redirectUri: string;
-    readonly state?: string;
+    readonly state?: string | undefined;
   }): Promise<OAuthTokenPayload> {
     return exchangeOAuthAuthorizationCode(this.#config, input);
   }

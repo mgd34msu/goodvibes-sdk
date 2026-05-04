@@ -5,7 +5,7 @@ import { clampText, normalizeWhitespace, uniqueStrings } from './utils.js';
 export interface RepairProfileFact {
   readonly kind: 'feature' | 'capability' | 'specification' | 'compatibility' | 'configuration';
   readonly title: string;
-  readonly value?: string;
+  readonly value?: string | undefined;
   readonly summary: string;
   readonly evidence: string;
   readonly labels: readonly string[];
@@ -182,7 +182,7 @@ function profileEvidenceText(values: readonly (string | undefined)[]): string {
 }
 
 function joinValues(values: readonly string[]): string {
-  if (values.length <= 1) return values[0] ?? '';
-  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  if (values.length <= 1) return values[0]! ?? '';
+  if (values.length === 2) return `${values[0]!} and ${values[1]!}`;
   return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
 }

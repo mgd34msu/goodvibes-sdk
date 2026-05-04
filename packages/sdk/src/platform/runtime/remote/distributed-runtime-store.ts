@@ -30,10 +30,10 @@ const MAX_PAIR_REQUESTS = 250;
 export function attachDistributedRuntime(
   state: DistributedRuntimeManagerState,
   input: {
-    readonly sessionBridge?: DistributedRuntimeManagerState['sessionBridge'];
-    readonly approvalBridge?: DistributedRuntimeManagerState['approvalBridge'];
-    readonly automationBridge?: DistributedRuntimeManagerState['automationBridge'];
-    readonly eventPublisher?: DistributedRuntimeManagerState['eventPublisher'];
+    readonly sessionBridge?: DistributedRuntimeManagerState['sessionBridge'] | undefined;
+    readonly approvalBridge?: DistributedRuntimeManagerState['approvalBridge'] | undefined;
+    readonly automationBridge?: DistributedRuntimeManagerState['automationBridge'] | undefined;
+    readonly eventPublisher?: DistributedRuntimeManagerState['eventPublisher'] | undefined;
   },
 ): void {
   if (input.sessionBridge) state.sessionBridge = input.sessionBridge;

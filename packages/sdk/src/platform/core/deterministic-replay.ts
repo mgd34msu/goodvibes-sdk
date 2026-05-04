@@ -71,17 +71,17 @@ export interface ReplayMismatch {
   /** Human-readable description — sufficient to act on without raw dumps. */
   readonly description: string;
   /** The event name involved, if applicable. */
-  readonly eventName?: string;
+  readonly eventName?: string | undefined;
   /** Key fields from the recorded payload, if applicable. */
-  readonly recordedSummary?: string;
+  readonly recordedSummary?: string | undefined;
   /** Key fields from the replayed payload, if applicable. */
-  readonly replayedSummary?: string;
+  readonly replayedSummary?: string | undefined;
   /** Likely owning runtime domain for the divergence. */
-  readonly ownerDomain?: ReplayMismatchOwnerDomain;
+  readonly ownerDomain?: ReplayMismatchOwnerDomain | undefined;
   /** Narrower replay failure mode for operator triage. */
-  readonly failureMode?: ReplayMismatchFailureMode;
+  readonly failureMode?: ReplayMismatchFailureMode | undefined;
   /** Related turn ID when the divergence can be tied to a single turn. */
-  readonly relatedTurnId?: string;
+  readonly relatedTurnId?: string | undefined;
 }
 
 export type ReplayTurnOutcome = 'completed' | 'failed' | 'cancelled';
@@ -90,10 +90,10 @@ export interface ReplayTurnSummary {
   readonly turnId: string;
   readonly outcome: ReplayTurnOutcome;
   readonly terminalEvent: 'PREFLIGHT_FAIL' | 'TURN_COMPLETED' | 'TURN_ERROR' | 'TURN_CANCEL';
-  readonly startedRev?: number;
+  readonly startedRev?: number | undefined;
   readonly terminalRev: number;
-  readonly stopReason?: string;
-  readonly message?: string;
+  readonly stopReason?: string | undefined;
+  readonly message?: string | undefined;
 }
 
 // ── Replay state ───────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ export interface ReplayFrame {
   /** The revision this frame represents (0 = initial snapshot). */
   readonly rev: number;
   /** The event that produced this frame (absent for the initial snapshot). */
-  readonly entry?: LedgerEntry;
+  readonly entry?: LedgerEntry | undefined;
   /** Domain state at this revision — merged from snapshot + events applied so far. */
   readonly domains: Record<string, Record<string, unknown>>;
 }
@@ -211,7 +211,7 @@ export class DeterministicReplayEngine {
     this._frames = [initialFrame];
     for (const entry of sorted) {
       const prev = this._frames[this._frames.length - 1];
-      const next = this._applyEntry(prev, entry);
+      const next = this._applyEntry(prev!, entry);
       this._frames.push(next);
     }
 
@@ -250,7 +250,7 @@ export class DeterministicReplayEngine {
       }
       this._currentFrameIndex++;
       this._status = 'running';
-      stepped.push(this._frames[this._currentFrameIndex]);
+      stepped.push(this._frames[this._currentFrameIndex]!);
     }
 
     if (this._currentFrameIndex >= this._frames.length - 1) {
@@ -317,7 +317,7 @@ export class DeterministicReplayEngine {
     const maxRev = Math.max(this._entries.length, this._frames.length - 1);
 
     for (let i = 0; i < maxRev; i++) {
-      const recorded = this._entries[i];
+      const recorded = this._entries[i]!;
       const frame = this._frames[i + 1]; // frame[0] is snapshot (rev 0)
 
       if (!recorded && frame) {
@@ -509,7 +509,7 @@ export class DeterministicReplayEngine {
     // Events without a colon separator fall back to the synthetic "_events" domain.
     const rawDomain = entry.eventName.split(':')[0];
     const domain = rawDomain && rawDomain !== entry.eventName ? rawDomain : '_events';
-    const prevDomainState = prev.domains[domain] ?? {};
+    const prevDomainState = prev.domains[domain]! ?? {};
 
     const payload = entry.payload as Record<string, unknown> | null | undefined;
     const merged: Record<string, unknown> = {
@@ -576,8 +576,8 @@ export class DeterministicReplayEngine {
     const rec = recorded as Record<string, unknown>;
     const rep = replayed as Record<string, unknown>;
     for (const key of recKeys) {
-      const rv = rec[key];
-      const pv = rep[key];
+      const rv = rec[key]!;
+      const pv = rep[key]!;
       if (typeof rv !== typeof pv) {
         return {
           rev,

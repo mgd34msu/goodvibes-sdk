@@ -30,7 +30,7 @@ export function validateNotebook(parsed: unknown): parsed is JupyterNotebook {
 
 export function resolveCellId(cells: NotebookCell[], cellId: string): number {
   for (let i = 0; i < cells.length; i++) {
-    const cell = cells[i];
+    const cell = cells[i]!;
     if (cell.id === cellId) return i;
     if (cell.metadata && (cell.metadata as Record<string, unknown>)['id'] === cellId) return i;
   }
@@ -105,7 +105,7 @@ export function applyNotebookOperations(
         return { success: false, applied, summary: summaryLines.join('\n'), error: 'replace: source is required' };
       }
 
-      const cell = notebook.cells[idx];
+      const cell = notebook.cells[idx]!;
       cell.source = normalizeSource(op.source);
       if (op.cell_type !== undefined && op.cell_type !== cell.cell_type) {
         cell.cell_type = op.cell_type;
@@ -218,7 +218,7 @@ export function formatNotebookOutput(
 
 export function executeNotebookEdit(
   input: EditInput,
-  env: { fileCache: FileStateCache; cwd: string; fileUndoManager?: FileUndoManager },
+  env: { fileCache: FileStateCache; cwd: string; fileUndoManager?: FileUndoManager | undefined },
 ): Promise<{ success: boolean; output?: string; error?: string }> {
   const nbOps = input.notebook_operations!;
   const outputFormat = input.output?.format ?? 'minimal';
@@ -252,7 +252,7 @@ export function executeNotebookEdit(
   const rawContent = notebookRead.rawContent;
   const opsResult = applyNotebookOperations(notebook, nbOps.operations);
   if (!opsResult.success) {
-    return Promise.resolve({ success: false, error: opsResult.error });
+    return Promise.resolve({ success: false, error: opsResult.error ?? '' });
   }
 
   const newContent = JSON.stringify(notebook, null, 1) + '\n';

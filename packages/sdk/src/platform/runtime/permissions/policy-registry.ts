@@ -54,13 +54,13 @@ export interface PolicyBundleVersion {
   /** ISO 8601 timestamp when this version was loaded. */
   loadedAt: string;
   /** ISO 8601 timestamp when this version became active, if ever. */
-  activatedAt?: string;
+  activatedAt?: string | undefined;
   /** ISO 8601 timestamp when this version was rolled back, if applicable. */
-  rolledBackAt?: string;
+  rolledBackAt?: string | undefined;
   /** Simulation report collected before promotion, if any. */
-  simulationReport?: DivergenceReport;
+  simulationReport?: DivergenceReport | undefined;
   /** The gate result that was evaluated at promotion time, if any. */
-  gateResult?: EnforceGateResult;
+  gateResult?: EnforceGateResult | undefined;
 }
 
 /**
@@ -90,11 +90,11 @@ export interface PromoteResult {
   /** Whether the promotion succeeded. */
   ok: boolean;
   /** The gate result evaluated at promotion time. */
-  gate?: EnforceGateResult;
+  gate?: EnforceGateResult | undefined;
   /** Human-readable explanation when promotion is blocked. */
-  error?: string;
+  error?: string | undefined;
   /** The bundle that was promoted, if successful. */
-  bundleId?: string;
+  bundleId?: string | undefined;
 }
 
 /**
@@ -104,9 +104,9 @@ export interface RollbackResult {
   /** Whether the rollback succeeded. */
   ok: boolean;
   /** The bundle ID restored to active state. */
-  restoredBundleId?: string;
+  restoredBundleId?: string | undefined;
   /** Human-readable error when rollback fails. */
-  error?: string;
+  error?: string | undefined;
 }
 
 /**
@@ -118,11 +118,11 @@ export interface PolicyRegistryConfig {
    * Oldest entries are dropped when the limit is exceeded.
    * Defaults to 10.
    */
-  maxHistorySize?: number;
+  maxHistorySize?: number | undefined;
   /**
    * Options forwarded to `loadPolicyBundle()` for every bundle load.
    */
-  loaderOptions?: PolicyLoaderOptions;
+  loaderOptions?: PolicyLoaderOptions | undefined;
 }
 
 // ── PolicyRegistry ─────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ import {
 export interface RepairFactClassification {
   readonly kind: 'feature' | 'capability' | 'specification' | 'compatibility' | 'configuration';
   readonly title: string;
-  readonly value?: string;
+  readonly value?: string | undefined;
   readonly summary: string;
   readonly labels: readonly string[];
   readonly aliases: readonly string[];
@@ -174,8 +174,8 @@ function buildRepairFactClassification(
 }
 
 function joinValues(values: readonly string[]): string {
-  if (values.length <= 1) return values[0] ?? '';
-  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  if (values.length <= 1) return values[0]! ?? '';
+  if (values.length === 2) return `${values[0]!} and ${values[1]!}`;
   return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
 }
 

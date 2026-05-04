@@ -23,15 +23,15 @@ import {
 /** Internal mutable agent record for in-progress agents. */
 interface MutableAgentRecord {
   agentId: string;
-  taskId?: string;
+  taskId?: string | undefined;
   task: string;
   state: AgentDiagnosticState;
   spawnedAt: number;
-  completedAt?: number;
-  durationMs?: number;
-  error?: string;
-  blockedOnCallId?: string;
-  blockedOnTool?: string;
+  completedAt?: number | undefined;
+  durationMs?: number | undefined;
+  error?: string | undefined;
+  blockedOnCallId?: string | undefined;
+  blockedOnTool?: string | undefined;
   traceId: string;
   sessionId: string;
 }

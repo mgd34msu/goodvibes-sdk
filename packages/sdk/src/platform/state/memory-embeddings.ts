@@ -12,15 +12,15 @@ export interface MemoryEmbeddingRequest {
   readonly text: string;
   readonly dimensions: number;
   readonly usage: MemoryEmbeddingUsage;
-  readonly recordId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly recordId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MemoryEmbeddingResult {
   readonly vector: Float32Array | readonly number[];
   readonly dimensions: number;
-  readonly modelId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly modelId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MemoryEmbeddingProviderStatus {
@@ -29,8 +29,8 @@ export interface MemoryEmbeddingProviderStatus {
   readonly state: MemoryEmbeddingProviderState;
   readonly dimensions: number;
   readonly configured: boolean;
-  readonly deterministic?: boolean;
-  readonly detail?: string;
+  readonly deterministic?: boolean | undefined;
+  readonly detail?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -38,8 +38,8 @@ export interface MemoryEmbeddingProvider {
   readonly id: string;
   readonly label: string;
   readonly dimensions: number;
-  readonly deterministic?: boolean;
-  readonly local?: boolean;
+  readonly deterministic?: boolean | undefined;
+  readonly local?: boolean | undefined;
   embedSync?(request: MemoryEmbeddingRequest): MemoryEmbeddingResult;
   embed?(request: MemoryEmbeddingRequest): Promise<MemoryEmbeddingResult>;
   status?(): MemoryEmbeddingProviderStatus | Promise<MemoryEmbeddingProviderStatus>;
@@ -75,7 +75,7 @@ export function embedMemoryText(text: string, dims = DEFAULT_MEMORY_EMBEDDING_DI
   }
 
   for (let i = 0; i < tokens.length - 1; i++) {
-    addHashedFeature(vector, `bigram:${tokens[i]} ${tokens[i + 1]}`, 0.9);
+    addHashedFeature(vector, `bigram:${tokens[i]!} ${tokens[i + 1]}`, 0.9);
   }
 
   const compact = normalized.replace(/\s+/g, ' ').trim();
@@ -299,7 +299,7 @@ function addHashedFeature(vector: Float32Array, feature: string, weight: number)
   const hash = fnv1a(feature);
   const index = hash % vector.length;
   const sign = (hash & 0x80000000) === 0 ? 1 : -1;
-  vector[index] += sign * weight;
+  vector[index]! += sign * weight;
 }
 
 function fnv1a(value: string): number {

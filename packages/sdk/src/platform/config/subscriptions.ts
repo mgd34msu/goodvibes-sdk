@@ -14,23 +14,23 @@ export interface OAuthProviderConfig {
   readonly tokenUrl: string;
   readonly clientId: string;
   readonly redirectUri: string;
-  readonly manualRedirectUri?: string;
-  readonly scopes?: readonly string[];
-  readonly audience?: string;
-  readonly usePkce?: boolean;
-  readonly authParams?: Readonly<Record<string, string>>;
-  readonly tokenRequestEncoding?: 'form' | 'json';
-  readonly includeStateInTokenRequest?: boolean;
-  readonly tokenRequestExtras?: Readonly<Record<string, string | number | boolean>>;
-  readonly refreshRequestEncoding?: 'form' | 'json';
-  readonly refreshRequestExtras?: Readonly<Record<string, string | number | boolean>>;
-  readonly refreshScopes?: readonly string[];
-  readonly overrideAmbientApiKeys?: boolean;
+  readonly manualRedirectUri?: string | undefined;
+  readonly scopes?: readonly string[] | undefined;
+  readonly audience?: string | undefined;
+  readonly usePkce?: boolean | undefined;
+  readonly authParams?: Readonly<Record<string, string>> | undefined;
+  readonly tokenRequestEncoding?: 'form' | 'json' | undefined;
+  readonly includeStateInTokenRequest?: boolean | undefined;
+  readonly tokenRequestExtras?: Readonly<Record<string, string | number | boolean>> | undefined;
+  readonly refreshRequestEncoding?: 'form' | 'json' | undefined;
+  readonly refreshRequestExtras?: Readonly<Record<string, string | number | boolean>> | undefined;
+  readonly refreshScopes?: readonly string[] | undefined;
+  readonly overrideAmbientApiKeys?: boolean | undefined;
   readonly localCallback?: {
-    readonly host?: string;
-    readonly port?: number;
-    readonly path?: string;
-    readonly autoComplete?: boolean;
+    readonly host?: string | undefined;
+    readonly port?: number | undefined;
+    readonly path?: string | undefined;
+    readonly autoComplete?: boolean | undefined;
   };
 }
 
@@ -45,10 +45,10 @@ export interface PendingSubscriptionLogin {
 export interface ProviderSubscription {
   readonly provider: string;
   readonly accessToken: string;
-  readonly refreshToken?: string;
+  readonly refreshToken?: string | undefined;
   readonly tokenType: string;
-  readonly expiresAt?: number;
-  readonly scopes?: readonly string[];
+  readonly expiresAt?: number | undefined;
+  readonly scopes?: readonly string[] | undefined;
   readonly authMode: 'oauth';
   readonly overrideAmbientApiKeys: boolean;
   readonly createdAt: number;
@@ -161,7 +161,7 @@ export class SubscriptionManager {
     code: string,
   ): Promise<ProviderSubscription> {
     const store = this.read();
-    const pending = store.pending[provider];
+    const pending = store.pending[provider]!;
     if (!pending) {
       throw new Error(`No pending OAuth login for ${provider}. Start with /subscription login ${provider} start.`);
     }
@@ -200,7 +200,7 @@ export class SubscriptionManager {
     config: OAuthProviderConfig,
   ): Promise<ProviderSubscription> {
     const store = this.read();
-    const existing = store.subscriptions[provider];
+    const existing = store.subscriptions[provider]!;
     if (!existing) {
       throw new Error(`No stored OAuth subscription for ${provider}.`);
     }

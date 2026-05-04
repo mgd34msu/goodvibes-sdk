@@ -23,16 +23,16 @@ import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
  * Attach to the RuntimeEventBus to automatically post notifications for key events.
  */
 export class Notifier {
-  private slack?: SlackIntegration;
-  private discord?: DiscordIntegration;
+  private slack?: SlackIntegration | undefined;
+  private discord?: DiscordIntegration | undefined;
   private unsubscribers: Array<() => void> = [];
   private readonly _queue: DeliveryQueue;
 
   constructor(options?: {
-    slack?: SlackIntegration;
-    discord?: DiscordIntegration;
-    delivery?: Partial<DeliveryQueueConfig>;
-    featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+    slack?: SlackIntegration | undefined;
+    discord?: DiscordIntegration | undefined;
+    delivery?: Partial<DeliveryQueueConfig> | undefined;
+    featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
   }) {
     this.slack = options?.slack;
     this.discord = options?.discord;

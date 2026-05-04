@@ -16,7 +16,7 @@ function getRegisteredProvider(
 ): LLMProvider {
   const p = providers.get(name);
   if (p) return p;
-  const aliased = CATALOG_PROVIDER_NAME_ALIASES[name];
+  const aliased = CATALOG_PROVIDER_NAME_ALIASES[name]!;
   if (aliased) {
     const pa = providers.get(aliased);
     if (pa) return pa;

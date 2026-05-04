@@ -12,10 +12,10 @@ export type SharedSessionMessageRole = 'user' | 'assistant' | 'system';
 export interface SharedSessionParticipant {
   readonly surfaceKind: AutomationSurfaceKind;
   readonly surfaceId: string;
-  readonly externalId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
-  readonly routeId?: string;
+  readonly externalId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly routeId?: string | undefined;
   readonly lastSeenAt: number;
 }
 
@@ -25,12 +25,12 @@ export interface SharedSessionMessage {
   readonly role: SharedSessionMessageRole;
   readonly body: string;
   readonly createdAt: number;
-  readonly surfaceKind?: AutomationSurfaceKind;
-  readonly surfaceId?: string;
-  readonly routeId?: string;
-  readonly agentId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
+  readonly surfaceKind?: AutomationSurfaceKind | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly agentId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -49,8 +49,8 @@ export interface SharedSessionRecord {
   readonly status: SharedSessionStatus;
   readonly createdAt: number;
   readonly updatedAt: number;
-  readonly lastMessageAt?: number;
-  readonly closedAt?: number;
+  readonly lastMessageAt?: number | undefined;
+  readonly closedAt?: number | undefined;
   /**
    * Epoch ms of the most recent activity on this session.
    * Updated on every session-level mutation (createSession, bindAgent,
@@ -64,46 +64,46 @@ export interface SharedSessionRecord {
   readonly routeIds: readonly string[];
   readonly surfaceKinds: readonly AutomationSurfaceKind[];
   readonly participants: readonly SharedSessionParticipant[];
-  readonly activeAgentId?: string;
-  readonly lastAgentId?: string;
-  readonly lastError?: string;
+  readonly activeAgentId?: string | undefined;
+  readonly lastAgentId?: string | undefined;
+  readonly lastError?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface SharedSessionSubmission {
   readonly session: SharedSessionRecord;
   readonly userMessage: SharedSessionMessage;
-  readonly routeBinding?: AutomationRouteBinding;
+  readonly routeBinding?: AutomationRouteBinding | undefined;
   readonly input: SharedSessionInputRecord;
   readonly intent: SharedSessionInputIntent;
   readonly mode: 'spawn' | 'continued-live' | 'queued-follow-up' | 'rejected';
   readonly state: SharedSessionInputRecord['state'];
-  readonly task?: string;
-  readonly activeAgentId?: string;
+  readonly task?: string | undefined;
+  readonly activeAgentId?: string | undefined;
   readonly created: boolean;
 }
 
 export interface SubmitSharedSessionMessageInput {
-  readonly sessionId?: string;
-  readonly routeId?: string;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
   readonly surfaceKind: AutomationSurfaceKind;
   readonly surfaceId: string;
-  readonly externalId?: string;
-  readonly threadId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
-  readonly title?: string;
+  readonly externalId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly title?: string | undefined;
   readonly body: string;
-  readonly metadata?: Record<string, unknown>;
-  readonly routing?: SharedSessionRoutingIntent;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly routing?: SharedSessionRoutingIntent | undefined;
 }
 
 export interface SteerSharedSessionMessageInput extends SubmitSharedSessionMessageInput {
-  readonly allowSpawnFallback?: boolean;
+  readonly allowSpawnFallback?: boolean | undefined;
 }
 
 export interface FindSharedSessionOptions {
-  readonly surfaceKind?: AutomationSurfaceKind;
-  readonly routeId?: string;
-  readonly includeClosed?: boolean;
+  readonly surfaceKind?: AutomationSurfaceKind | undefined;
+  readonly routeId?: string | undefined;
+  readonly includeClosed?: boolean | undefined;
 }

@@ -50,19 +50,19 @@ export interface EvalRawResult {
   /** Token counts consumed during the run (if applicable). */
   tokens?: { input: number; output: number };
   /** Estimated cost in USD (if applicable). */
-  costUsd?: number;
+  costUsd?: number | undefined;
   /** PerfReport from a PerfMonitor.evaluate() call during the run. */
-  perfReport?: PerfReport;
+  perfReport?: PerfReport | undefined;
   /** Safety violations detected (0 = clean). */
-  safetyViolations?: number;
+  safetyViolations?: number | undefined;
   /** Recovery was attempted and succeeded. */
-  recoverySucceeded?: boolean;
+  recoverySucceeded?: boolean | undefined;
   /** Recovery was attempted and failed. */
-  recoveryFailed?: boolean;
+  recoveryFailed?: boolean | undefined;
   /** Custom key-value observations from the scenario. */
-  observations?: Record<string, number | string | boolean>;
+  observations?: Record<string, number | string | boolean> | undefined;
   /** Error message if the run threw or did not complete. */
-  errorMessage?: string;
+  errorMessage?: string | undefined;
 }
 
 // ── Scorecard ────────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ export interface EvalScorecard {
   /** Whether all dimensions cleared their minimum thresholds. */
   passed: boolean;
   /** Optional notes or warnings from the scorer. */
-  notes?: string[];
+  notes?: string[] | undefined;
 }
 
 // ── Run result ───────────────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ export interface EvalGateResult {
   /** Fresh suite result. */
   fresh: EvalSuiteResult;
   /** Baseline used for comparison (undefined if no baseline exists yet). */
-  baseline?: EvalBaseline;
+  baseline?: EvalBaseline | undefined;
   /** Per-scenario regression entries where the score dropped. */
   regressions: RegressionEntry[];
 }

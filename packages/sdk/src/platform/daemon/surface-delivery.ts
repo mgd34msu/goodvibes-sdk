@@ -53,23 +53,23 @@ function isSupportedDeliverySurface(surface: string): surface is DeliverySurface
 interface SurfaceReplyInput {
   readonly agentId: string;
   readonly task: string;
-  readonly agentTask?: string;
-  readonly workflowChainId?: string;
-  readonly sessionId?: string;
+  readonly agentTask?: string | undefined;
+  readonly workflowChainId?: string | undefined;
+  readonly sessionId?: string | undefined;
 }
 
 interface WebhookReplyInput extends SurfaceReplyInput {
-  readonly routeId?: string;
-  readonly callbackUrl?: string;
-  readonly callbackCorrelationId?: string;
-  readonly callbackSignature?: PendingSurfaceReply['callbackSignature'];
+  readonly routeId?: string | undefined;
+  readonly callbackUrl?: string | undefined;
+  readonly callbackCorrelationId?: string | undefined;
+  readonly callbackSignature?: PendingSurfaceReply['callbackSignature'] | undefined;
 }
 
 interface DaemonSurfaceDeliveryContext {
   readonly pendingSurfaceReplies: Map<string, PendingSurfaceReply>;
   readonly channelReplyPipeline: ChannelReplyPipeline;
   readonly configManager: ConfigManager;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   readonly serviceRegistry: ServiceRegistry;
   readonly agentManager: AgentManager;
   readonly sessionBroker: SharedSessionBroker;
@@ -353,7 +353,7 @@ export class DaemonSurfaceDeliveryHelper {
     }
   }
 
-  controlPlaneWebUrl(input: { readonly approvalId?: string; readonly sessionId?: string }): string | undefined {
+  controlPlaneWebUrl(input: { readonly approvalId?: string; readonly sessionId?: string | undefined }): string | undefined {
     const base = String(this.context.configManager.get('controlPlane.baseUrl') ?? this.context.configManager.get('web.publicBaseUrl') ?? '');
     if (!base) return undefined;
     const url = new URL(`${base.replace(/\/+$/, '')}/api/control-plane/web`);

@@ -18,36 +18,36 @@ export type DeepReadonly<T> = {
 
 /** Constructor overrides for CLI args and programmatic instantiation. */
 interface ConfigCliOverrides {
-  model?: string;
-  provider?: string;
-  autoApprove?: boolean;
-  systemPromptFile?: string;
-  workingDir?: string;
-  surfaceRoot?: string;
+  model?: string | undefined;
+  provider?: string | undefined;
+  autoApprove?: boolean | undefined;
+  systemPromptFile?: string | undefined;
+  workingDir?: string | undefined;
+  surfaceRoot?: string | undefined;
 }
 
 export type ConfigOverrides = ConfigCliOverrides & (
   | {
     configDir: string;
-    homeDir?: string;
-    sharedConfigPath?: string;
+    homeDir?: string | undefined;
+    sharedConfigPath?: string | undefined;
   }
   | {
     homeDir: string;
-    configDir?: string;
-    sharedConfigPath?: string;
+    configDir?: string | undefined;
+    sharedConfigPath?: string | undefined;
   }
 );
 
 interface ConfigRoots {
-  configDir?: string;
-  homeDir?: string;
-  sharedConfigPath?: string;
-  surfaceRoot?: string;
+  configDir?: string | undefined;
+  homeDir?: string | undefined;
+  sharedConfigPath?: string | undefined;
+  surfaceRoot?: string | undefined;
 }
 
 export interface ConfigSetOptions {
-  bypassManagedLock?: boolean;
+  bypassManagedLock?: boolean | undefined;
 }
 
 /** Callback invoked when a watched config key changes. */
@@ -227,7 +227,7 @@ export class ConfigManager {
     }
 
     const { parent, field } = this.resolvePath(key);
-    const previousValue = parent[field];
+    const previousValue = parent[field]!;
     parent[field] = value;
     this.save();
     this.notifyListeners(key, previousValue, value);
@@ -382,7 +382,7 @@ export class ConfigManager {
    * The patch is shallow-merged into the existing category value.
    */
   mergeCategory<C extends keyof GoodVibesConfig>(category: C, patch: Partial<GoodVibesConfig[C]>): void {
-    const current = this.config[category] as Record<string, unknown>;
+    const current = this.config[category]! as Record<string, unknown>;
     const patchObj = patch as Record<string, unknown>;
     for (const key of Object.keys(patchObj)) {
       if (patchObj[key] !== undefined) {
@@ -418,8 +418,8 @@ function deepMerge(target: unknown, source: unknown): unknown {
     : {};
   if (!isObject(source)) return result;
   for (const key of Object.keys(source)) {
-    const sv = source[key];
-    const tv = result[key];
+    const sv = source[key]!;
+    const tv = result[key]!;
     if (isObject(sv) && isObject(tv)) {
       result[key] = deepMerge(tv, sv);
     } else if (sv !== undefined && !isObject(tv)) {

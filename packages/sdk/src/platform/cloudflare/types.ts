@@ -6,8 +6,8 @@ export type CloudflareProvisionStepStatus = 'ok' | 'skipped' | 'warning';
 export interface CloudflareProvisionStep {
   readonly name: string;
   readonly status: CloudflareProvisionStepStatus;
-  readonly message?: string;
-  readonly resourceId?: string;
+  readonly message?: string | undefined;
+  readonly resourceId?: string | undefined;
 }
 
 export type CloudflareComponent =
@@ -85,9 +85,9 @@ export interface CloudflareControlPlaneStatus {
 }
 
 export interface CloudflareValidateInput {
-  readonly accountId?: string;
-  readonly apiToken?: string;
-  readonly apiTokenRef?: string;
+  readonly accountId?: string | undefined;
+  readonly apiToken?: string | undefined;
+  readonly apiTokenRef?: string | undefined;
 }
 
 export interface CloudflareValidateResult {
@@ -95,51 +95,51 @@ export interface CloudflareValidateResult {
   readonly account?: {
     readonly id: string;
     readonly name: string;
-    readonly type?: string;
+    readonly type?: string | undefined;
   };
   readonly tokenSource: CloudflareSecretSource;
 }
 
 export interface CloudflareProvisionInput extends CloudflareValidateInput {
-  readonly components?: CloudflareComponentSelection;
-  readonly workerName?: string;
-  readonly workerSubdomain?: string;
-  readonly workerHostname?: string;
-  readonly workerBaseUrl?: string;
-  readonly daemonBaseUrl?: string;
-  readonly daemonHostname?: string;
-  readonly zoneId?: string;
-  readonly zoneName?: string;
-  readonly queueName?: string;
-  readonly deadLetterQueueName?: string;
-  readonly tunnelName?: string;
-  readonly tunnelId?: string;
-  readonly tunnelServiceUrl?: string;
-  readonly tunnelTokenRef?: string;
-  readonly accessAppId?: string;
-  readonly accessServiceTokenId?: string;
-  readonly accessServiceTokenRef?: string;
-  readonly kvNamespaceName?: string;
-  readonly kvNamespaceId?: string;
-  readonly durableObjectNamespaceName?: string;
-  readonly durableObjectNamespaceId?: string;
-  readonly r2BucketName?: string;
-  readonly secretsStoreName?: string;
-  readonly secretsStoreId?: string;
-  readonly workerCron?: string;
-  readonly operatorToken?: string;
-  readonly operatorTokenRef?: string;
-  readonly workerClientToken?: string;
-  readonly workerClientTokenRef?: string;
-  readonly storeApiToken?: boolean;
-  readonly storeOperatorToken?: boolean;
-  readonly storeWorkerClientToken?: boolean;
-  readonly returnGeneratedSecrets?: boolean;
-  readonly enableWorkersDev?: boolean;
-  readonly queueJobPayloads?: boolean;
-  readonly verify?: boolean;
-  readonly persistConfig?: boolean;
-  readonly batchMode?: 'off' | 'explicit' | 'eligible-by-default';
+  readonly components?: CloudflareComponentSelection | undefined;
+  readonly workerName?: string | undefined;
+  readonly workerSubdomain?: string | undefined;
+  readonly workerHostname?: string | undefined;
+  readonly workerBaseUrl?: string | undefined;
+  readonly daemonBaseUrl?: string | undefined;
+  readonly daemonHostname?: string | undefined;
+  readonly zoneId?: string | undefined;
+  readonly zoneName?: string | undefined;
+  readonly queueName?: string | undefined;
+  readonly deadLetterQueueName?: string | undefined;
+  readonly tunnelName?: string | undefined;
+  readonly tunnelId?: string | undefined;
+  readonly tunnelServiceUrl?: string | undefined;
+  readonly tunnelTokenRef?: string | undefined;
+  readonly accessAppId?: string | undefined;
+  readonly accessServiceTokenId?: string | undefined;
+  readonly accessServiceTokenRef?: string | undefined;
+  readonly kvNamespaceName?: string | undefined;
+  readonly kvNamespaceId?: string | undefined;
+  readonly durableObjectNamespaceName?: string | undefined;
+  readonly durableObjectNamespaceId?: string | undefined;
+  readonly r2BucketName?: string | undefined;
+  readonly secretsStoreName?: string | undefined;
+  readonly secretsStoreId?: string | undefined;
+  readonly workerCron?: string | undefined;
+  readonly operatorToken?: string | undefined;
+  readonly operatorTokenRef?: string | undefined;
+  readonly workerClientToken?: string | undefined;
+  readonly workerClientTokenRef?: string | undefined;
+  readonly storeApiToken?: boolean | undefined;
+  readonly storeOperatorToken?: boolean | undefined;
+  readonly storeWorkerClientToken?: boolean | undefined;
+  readonly returnGeneratedSecrets?: boolean | undefined;
+  readonly enableWorkersDev?: boolean | undefined;
+  readonly queueJobPayloads?: boolean | undefined;
+  readonly verify?: boolean | undefined;
+  readonly persistConfig?: boolean | undefined;
+  readonly batchMode?: 'off' | 'explicit' | 'eligible-by-default' | undefined;
 }
 
 export interface CloudflareProvisionResult {
@@ -155,29 +155,29 @@ export interface CloudflareProvisionResult {
     readonly queueId: string;
     readonly deadLetterQueueName: string;
     readonly deadLetterQueueId: string;
-    readonly consumerId?: string;
+    readonly consumerId?: string | undefined;
   };
   readonly worker?: {
     readonly name: string;
-    readonly baseUrl?: string;
-    readonly subdomain?: string;
-    readonly hostname?: string;
-    readonly cron?: string;
+    readonly baseUrl?: string | undefined;
+    readonly subdomain?: string | undefined;
+    readonly hostname?: string | undefined;
+    readonly cron?: string | undefined;
   };
   readonly tunnel?: {
     readonly id: string;
     readonly name: string;
-    readonly hostname?: string;
-    readonly tokenRef?: string;
+    readonly hostname?: string | undefined;
+    readonly tokenRef?: string | undefined;
   };
   readonly access?: {
-    readonly appId?: string;
-    readonly serviceTokenId?: string;
-    readonly serviceTokenRef?: string;
+    readonly appId?: string | undefined;
+    readonly serviceTokenId?: string | undefined;
+    readonly serviceTokenRef?: string | undefined;
   };
   readonly dns?: {
     readonly zoneId: string;
-    readonly zoneName?: string;
+    readonly zoneName?: string | undefined;
     readonly records: readonly CloudflareDnsRecordLike[];
   };
   readonly kv?: {
@@ -186,7 +186,7 @@ export interface CloudflareProvisionResult {
   };
   readonly durableObjects?: {
     readonly namespaceName: string;
-    readonly namespaceId?: string;
+    readonly namespaceId?: string | undefined;
   };
   readonly r2?: {
     readonly bucketName: string;
@@ -196,26 +196,26 @@ export interface CloudflareProvisionResult {
     readonly storeName: string;
     readonly storeId: string;
   };
-  readonly verification?: CloudflareVerifyResult;
+  readonly verification?: CloudflareVerifyResult | undefined;
   readonly generatedSecrets?: {
-    readonly workerClientToken?: string;
-    readonly tunnelToken?: string;
-    readonly accessServiceTokenClientId?: string;
-    readonly accessServiceTokenClientSecret?: string;
+    readonly workerClientToken?: string | undefined;
+    readonly tunnelToken?: string | undefined;
+    readonly accessServiceTokenClientId?: string | undefined;
+    readonly accessServiceTokenClientSecret?: string | undefined;
   };
 }
 
 export interface CloudflareTokenRequirementsInput {
-  readonly components?: CloudflareComponentSelection;
-  readonly includeBootstrap?: boolean;
+  readonly components?: CloudflareComponentSelection | undefined;
+  readonly includeBootstrap?: boolean | undefined;
 }
 
 export interface CloudflareTokenPermissionRequirement {
   readonly component: CloudflareComponent | 'bootstrap';
   readonly scope: 'account' | 'zone' | 'user';
-  readonly scopeAlternatives?: readonly string[];
+  readonly scopeAlternatives?: readonly string[] | undefined;
   readonly permission: string;
-  readonly alternatives?: readonly string[];
+  readonly alternatives?: readonly string[] | undefined;
   readonly reason: string;
 }
 
@@ -237,58 +237,58 @@ export interface CloudflareTokenRequirementsResult {
 }
 
 export interface CloudflareOperationalTokenInput extends CloudflareTokenRequirementsInput {
-  readonly accountId?: string;
-  readonly zoneId?: string;
-  readonly zoneName?: string;
-  readonly bootstrapToken?: string;
-  readonly tokenName?: string;
-  readonly expiresOn?: string;
-  readonly persistConfig?: boolean;
-  readonly storeApiToken?: boolean;
-  readonly returnGeneratedToken?: boolean;
+  readonly accountId?: string | undefined;
+  readonly zoneId?: string | undefined;
+  readonly zoneName?: string | undefined;
+  readonly bootstrapToken?: string | undefined;
+  readonly tokenName?: string | undefined;
+  readonly expiresOn?: string | undefined;
+  readonly persistConfig?: boolean | undefined;
+  readonly storeApiToken?: boolean | undefined;
+  readonly returnGeneratedToken?: boolean | undefined;
 }
 
 export interface CloudflareOperationalTokenResult {
   readonly ok: true;
-  readonly tokenId?: string;
+  readonly tokenId?: string | undefined;
   readonly tokenName: string;
   readonly tokenSource: 'bootstrap';
-  readonly apiTokenRef?: string;
-  readonly generatedToken?: string;
+  readonly apiTokenRef?: string | undefined;
+  readonly generatedToken?: string | undefined;
   readonly accountId: string;
-  readonly zoneId?: string;
+  readonly zoneId?: string | undefined;
   readonly permissions: readonly CloudflareTokenPermissionRequirement[];
 }
 
 export interface CloudflareDiscoverInput extends CloudflareValidateInput {
-  readonly components?: CloudflareComponentSelection;
-  readonly zoneId?: string;
-  readonly zoneName?: string;
-  readonly includeResources?: boolean;
+  readonly components?: CloudflareComponentSelection | undefined;
+  readonly zoneId?: string | undefined;
+  readonly zoneName?: string | undefined;
+  readonly includeResources?: boolean | undefined;
 }
 
 export interface CloudflareDiscoverResult {
   readonly ok: true;
   readonly tokenSource: CloudflareSecretSource;
   readonly accounts: readonly CloudflareAccountLike[];
-  readonly selectedAccount?: CloudflareAccountLike;
+  readonly selectedAccount?: CloudflareAccountLike | undefined;
   readonly zones: readonly CloudflareZoneLike[];
-  readonly selectedZone?: CloudflareZoneLike;
-  readonly workerSubdomain?: string;
-  readonly queues?: readonly CloudflareQueueLike[];
-  readonly kvNamespaces?: readonly CloudflareKvNamespaceLike[];
-  readonly durableObjectNamespaces?: readonly CloudflareDurableObjectNamespaceLike[];
-  readonly r2Buckets?: readonly CloudflareR2BucketLike[];
-  readonly secretsStores?: readonly CloudflareSecretsStoreLike[];
-  readonly tunnels?: readonly CloudflareTunnelLike[];
-  readonly accessApplications?: readonly CloudflareAccessApplicationLike[];
+  readonly selectedZone?: CloudflareZoneLike | undefined;
+  readonly workerSubdomain?: string | undefined;
+  readonly queues?: readonly CloudflareQueueLike[] | undefined;
+  readonly kvNamespaces?: readonly CloudflareKvNamespaceLike[] | undefined;
+  readonly durableObjectNamespaces?: readonly CloudflareDurableObjectNamespaceLike[] | undefined;
+  readonly r2Buckets?: readonly CloudflareR2BucketLike[] | undefined;
+  readonly secretsStores?: readonly CloudflareSecretsStoreLike[] | undefined;
+  readonly tunnels?: readonly CloudflareTunnelLike[] | undefined;
+  readonly accessApplications?: readonly CloudflareAccessApplicationLike[] | undefined;
   readonly warnings: readonly string[];
 }
 
 export interface CloudflareVerifyInput {
-  readonly workerBaseUrl?: string;
-  readonly workerClientToken?: string;
-  readonly workerClientTokenRef?: string;
+  readonly workerBaseUrl?: string | undefined;
+  readonly workerClientToken?: string | undefined;
+  readonly workerClientTokenRef?: string | undefined;
 }
 
 export interface CloudflareVerifyResult {
@@ -296,23 +296,23 @@ export interface CloudflareVerifyResult {
   readonly workerHealth: {
     readonly ok: boolean;
     readonly status: number;
-    readonly error?: string;
+    readonly error?: string | undefined;
   };
   readonly daemonBatchProxy?: {
     readonly ok: boolean;
     readonly status: number;
-    readonly error?: string;
+    readonly error?: string | undefined;
   };
 }
 
 export interface CloudflareDisableInput {
-  readonly accountId?: string;
-  readonly apiToken?: string;
-  readonly apiTokenRef?: string;
-  readonly workerName?: string;
-  readonly disableWorkerSubdomain?: boolean;
-  readonly disableCron?: boolean;
-  readonly persistConfig?: boolean;
+  readonly accountId?: string | undefined;
+  readonly apiToken?: string | undefined;
+  readonly apiTokenRef?: string | undefined;
+  readonly workerName?: string | undefined;
+  readonly disableWorkerSubdomain?: boolean | undefined;
+  readonly disableCron?: boolean | undefined;
+  readonly persistConfig?: boolean | undefined;
 }
 
 export interface CloudflareDisableResult {
@@ -328,60 +328,60 @@ export interface CloudflareResolvedSecret {
 }
 
 export interface CloudflareQueueLike {
-  readonly queue_id?: string;
-  readonly queue_name?: string;
+  readonly queue_id?: string | undefined;
+  readonly queue_name?: string | undefined;
 }
 
 export interface CloudflareConsumerLike {
-  readonly consumer_id?: string;
-  readonly script?: string;
-  readonly type?: string;
+  readonly consumer_id?: string | undefined;
+  readonly script?: string | undefined;
+  readonly type?: string | undefined;
 }
 
 export interface CloudflareAccountLike {
   readonly id: string;
   readonly name: string;
-  readonly type?: string;
+  readonly type?: string | undefined;
 }
 
 export interface CloudflareZoneLike {
   readonly id: string;
   readonly name: string;
-  readonly status?: string;
-  readonly type?: string;
+  readonly status?: string | undefined;
+  readonly type?: string | undefined;
 }
 
 export interface CloudflareDnsRecordLike {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly name: string;
   readonly type: string;
   readonly content: string;
-  readonly proxied?: boolean;
-  readonly ttl?: number;
+  readonly proxied?: boolean | undefined;
+  readonly ttl?: number | undefined;
 }
 
 export interface CloudflareKvNamespaceLike {
-  readonly id?: string;
-  readonly title?: string;
+  readonly id?: string | undefined;
+  readonly title?: string | undefined;
 }
 
 export interface CloudflareDurableObjectNamespaceLike {
-  readonly id?: string;
-  readonly name?: string;
-  readonly class?: string;
-  readonly script?: string;
-  readonly use_sqlite?: boolean;
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly class?: string | undefined;
+  readonly script?: string | undefined;
+  readonly use_sqlite?: boolean | undefined;
 }
 
 export interface CloudflareWorkerScriptLike {
-  readonly id?: string;
-  readonly name?: string;
-  readonly migration_tag?: string;
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly migration_tag?: string | undefined;
 }
 
 export interface CloudflareR2BucketLike {
-  readonly name?: string;
-  readonly storage_class?: 'Standard' | 'InfrequentAccess';
+  readonly name?: string | undefined;
+  readonly storage_class?: 'Standard' | 'InfrequentAccess' | undefined;
 }
 
 export interface CloudflareSecretsStoreLike {
@@ -390,29 +390,29 @@ export interface CloudflareSecretsStoreLike {
 }
 
 export interface CloudflareTunnelLike {
-  readonly id?: string;
-  readonly name?: string;
-  readonly status?: string;
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly status?: string | undefined;
 }
 
 export interface CloudflareAccessServiceTokenLike {
-  readonly id?: string;
-  readonly name?: string;
-  readonly client_id?: string;
-  readonly client_secret?: string;
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly client_id?: string | undefined;
+  readonly client_secret?: string | undefined;
 }
 
 export interface CloudflareAccessApplicationLike {
-  readonly id?: string;
-  readonly name?: string;
-  readonly domain?: string;
-  readonly type?: string;
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly domain?: string | undefined;
+  readonly type?: string | undefined;
 }
 
 export interface CloudflarePermissionGroupLike {
-  readonly id?: string;
-  readonly name?: string;
-  readonly scopes?: readonly string[];
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly scopes?: readonly string[] | undefined;
 }
 
 export type CloudflareTokenResourceMap = Record<string, string | Record<string, string>>;
@@ -424,15 +424,15 @@ export interface CloudflareTokenPolicyParam {
 }
 
 export interface CloudflareTokenCreateResponseLike {
-  readonly id?: string;
-  readonly name?: string;
-  readonly policies?: readonly CloudflareTokenPolicyParam[];
-  readonly value?: string;
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly policies?: readonly CloudflareTokenPolicyParam[] | undefined;
+  readonly value?: string | undefined;
 }
 
 export interface CloudflareTokenVerifyResponseLike {
-  readonly id?: string;
-  readonly status?: string;
+  readonly id?: string | undefined;
+  readonly status?: string | undefined;
 }
 
 export interface CloudflareApiClient {
@@ -444,7 +444,7 @@ export interface CloudflareApiClient {
         readonly account_id: string;
         readonly name: string;
         readonly policies: readonly CloudflareTokenPolicyParam[];
-        readonly expires_on?: string;
+        readonly expires_on?: string | undefined;
       }): Promise<CloudflareTokenCreateResponseLike>;
       get?(tokenId: string, params: { readonly account_id: string }): Promise<CloudflareTokenCreateResponseLike>;
       verify(params: { readonly account_id: string }): Promise<CloudflareTokenVerifyResponseLike>;
@@ -459,7 +459,7 @@ export interface CloudflareApiClient {
       create(params: {
         readonly name: string;
         readonly policies: readonly CloudflareTokenPolicyParam[];
-        readonly expires_on?: string;
+        readonly expires_on?: string | undefined;
       }): Promise<CloudflareTokenCreateResponseLike>;
       get?(tokenId: string): Promise<CloudflareTokenCreateResponseLike>;
       verify(): Promise<CloudflareTokenVerifyResponseLike>;
@@ -479,9 +479,9 @@ export interface CloudflareApiClient {
         readonly type: 'CNAME' | 'TXT' | 'A' | 'AAAA';
         readonly name: string;
         readonly content: string;
-        readonly proxied?: boolean;
-        readonly ttl?: number;
-        readonly comment?: string;
+        readonly proxied?: boolean | undefined;
+        readonly ttl?: number | undefined;
+        readonly comment?: string | undefined;
       }): Promise<CloudflareDnsRecordLike>;
       update(
         dnsRecordId: string,
@@ -490,15 +490,15 @@ export interface CloudflareApiClient {
           readonly type: 'CNAME' | 'TXT' | 'A' | 'AAAA';
           readonly name: string;
           readonly content: string;
-          readonly proxied?: boolean;
-          readonly ttl?: number;
-          readonly comment?: string;
+          readonly proxied?: boolean | undefined;
+          readonly ttl?: number | undefined;
+          readonly comment?: string | undefined;
         },
       ): Promise<CloudflareDnsRecordLike>;
       list(params: {
         readonly zone_id: string;
-        readonly type?: string;
-        readonly name?: { readonly exact?: string } | string;
+        readonly type?: string | undefined;
+        readonly name?: { readonly exact?: string } | string | undefined;
       }): AsyncIterable<CloudflareDnsRecordLike>;
     };
   };
@@ -513,12 +513,12 @@ export interface CloudflareApiClient {
           readonly account_id: string;
           readonly type: 'worker';
           readonly script_name: string;
-          readonly dead_letter_queue?: string;
+          readonly dead_letter_queue?: string | undefined;
           readonly settings?: {
-            readonly batch_size?: number;
-            readonly max_retries?: number;
-            readonly max_wait_time_ms?: number;
-            readonly retry_delay?: number;
+            readonly batch_size?: number | undefined;
+            readonly max_retries?: number | undefined;
+            readonly max_wait_time_ms?: number | undefined;
+            readonly retry_delay?: number | undefined;
           };
         },
       ): Promise<CloudflareConsumerLike>;
@@ -529,12 +529,12 @@ export interface CloudflareApiClient {
           readonly account_id: string;
           readonly type: 'worker';
           readonly script_name: string;
-          readonly dead_letter_queue?: string;
+          readonly dead_letter_queue?: string | undefined;
           readonly settings?: {
-            readonly batch_size?: number;
-            readonly max_retries?: number;
-            readonly max_wait_time_ms?: number;
-            readonly retry_delay?: number;
+            readonly batch_size?: number | undefined;
+            readonly max_retries?: number | undefined;
+            readonly max_wait_time_ms?: number | undefined;
+            readonly retry_delay?: number | undefined;
           };
         },
       ): Promise<CloudflareConsumerLike>;
@@ -630,12 +630,12 @@ export interface CloudflareApiClient {
 
 export interface CloudflareControlPlaneOptions {
   readonly configManager: Pick<ConfigManager, 'get' | 'set'>;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
-  readonly authToken?: () => string | null;
-  readonly createClient?: (apiToken: string) => Promise<CloudflareApiClient>;
-  readonly fetch?: typeof fetch;
-  readonly now?: () => number;
-  readonly randomUUID?: () => string;
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
+  readonly authToken?: (() => string | null) | undefined | undefined;
+  readonly createClient?: ((apiToken: string) => Promise<CloudflareApiClient>) | undefined | undefined;
+  readonly fetch?: typeof fetch | undefined;
+  readonly now?: (() => number) | undefined | undefined;
+  readonly randomUUID?: (() => string) | undefined | undefined;
 }
 
 export class CloudflareControlPlaneError extends Error {

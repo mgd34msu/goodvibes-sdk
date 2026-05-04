@@ -50,7 +50,7 @@ export function repairToolCall(
         continue;
       }
 
-      const value = fixed[key];
+      const value = fixed[key]!;
       const expectedType = propSchema['type'] as string | undefined;
       const enumValues = propSchema['enum'] as unknown[] | undefined;
 
@@ -101,7 +101,7 @@ export function repairToolCall(
         continue; // already present
       }
 
-      const targetSchema = properties[requiredKey];
+      const targetSchema = properties[requiredKey]!;
       if (!targetSchema) continue;
 
       const targetType = targetSchema['type'] as string | undefined;
@@ -183,7 +183,7 @@ function _findStringCandidate(
   const nonRequiredStringArgs = Object.entries(args).filter(([key, value]) => {
     if (required.includes(key)) return false; // skip required params
     if (typeof value !== 'string' || value.length === 0) return false;
-    const propType = properties[key]?.['type'];
+    const propType = properties[key]!?.['type'];
     // Accept if property schema says 'string' or schema doesn't define the key
     return propType === 'string' || propType === undefined;
   }) as [string, string][];

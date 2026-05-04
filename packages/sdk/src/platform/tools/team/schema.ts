@@ -24,11 +24,11 @@ export const TEAM_TOOL_SCHEMA = {
 
 export type TeamToolInput = {
   mode: 'create' | 'list' | 'show' | 'add-member' | 'remove-member' | 'set-lanes' | 'delete';
-  view?: 'summary' | 'full';
-  teamId?: string;
-  name?: string;
-  summary?: string;
-  memberId?: string;
-  role?: string;
-  lanes?: string[];
+  view?: 'summary' | 'full' | undefined;
+  teamId?: string | undefined;
+  name?: string | undefined;
+  summary?: string | undefined;
+  memberId?: string | undefined;
+  role?: string | undefined;
+  lanes?: string[] | undefined;
 };

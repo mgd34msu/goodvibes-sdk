@@ -27,9 +27,9 @@ export interface CacheStrategy {
   /** Whether prefix stability should be enforced (universal — true for all caching providers). */
   prefixStable: boolean;
   /** Session affinity header to send (for providers like Fireworks). */
-  sessionAffinityHeader?: string;
+  sessionAffinityHeader?: string | undefined;
   /** Keep-alive duration hint for local runtimes (seconds, -1 = indefinite). */
-  keepAliveSeconds?: number;
+  keepAliveSeconds?: number | undefined;
   /** Re-evaluate strategy after this many turns. */
   refreshAfterTurns: number;
 }
@@ -43,9 +43,9 @@ export interface CacheContext {
   conversationTurns: number;
   conversationTokens: number;
   /** Recent cache hit rate (0-1). Undefined if not yet tracked. */
-  recentCacheHitRate?: number;
+  recentCacheHitRate?: number | undefined;
   /** Whether the user has configured a custom TTL preference. Accepts any TTL label string to accommodate future provider options. */
-  configuredTtl?: string;
+  configuredTtl?: string | undefined;
 }
 
 /** Cache hit rate tracking. */
@@ -217,8 +217,8 @@ export class CacheHitTracker {
    */
   recordTurn(usage: {
     inputTokens: number;
-    cacheReadTokens?: number;
-    cacheWriteTokens?: number;
+    cacheReadTokens?: number | undefined;
+    cacheWriteTokens?: number | undefined;
   }): void {
     this.metrics.totalInputTokens += usage.inputTokens;
     this.metrics.cacheReadTokens += usage.cacheReadTokens ?? 0;

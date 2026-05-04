@@ -18,7 +18,7 @@ export interface AgentSpanContext {
   /** Agent ID (unique per spawn). */
   readonly agentId: string;
   /** Task ID this agent is executing (if any). */
-  readonly taskId?: string;
+  readonly taskId?: string | undefined;
   /** Human-readable description of the agent task. */
   readonly task: string;
   /** Trace ID for cross-span correlation. */
@@ -27,7 +27,7 @@ export interface AgentSpanContext {
    * Optional parent span ID for nesting under a turn span.
    * When provided, this agent span becomes a child of the parent.
    */
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
 }
 
 /** Phase transitions recordable on an agent lifecycle span. */
@@ -44,9 +44,9 @@ export interface AgentSpanEndContext {
   /** Duration of the agent run in milliseconds. */
   readonly durationMs: number;
   /** Error description when outcome is 'failed'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Cancel reason when outcome is 'cancelled'. */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
 }
 
 /**

@@ -421,8 +421,8 @@ function finalizeBuiltinChannelAccount(input: {
   surface: ChannelSurface;
   label: string;
   enabled: boolean;
-  accountId?: string;
-  workspaceId?: string;
+  accountId?: string | undefined;
+  workspaceId?: string | undefined;
   secrets: readonly ChannelSecretStatus[];
   metadata: Record<string, unknown>;
 }): ChannelAccountRecord {

@@ -14,7 +14,7 @@ export interface KnowledgeSchedulingContext {
   ) => void;
   readonly runJobByKind: (
     kind: KnowledgeJobRecord['kind'],
-    input: { readonly sourceIds?: readonly string[]; readonly limit?: number },
+    input: { readonly sourceIds?: readonly string[] | undefined; readonly limit?: number | undefined },
   ) => Promise<Record<string, unknown>>;
 }
 
@@ -50,12 +50,12 @@ export class KnowledgeScheduleService {
   }
 
   async saveSchedule(input: {
-    readonly id?: string;
+    readonly id?: string | undefined;
     readonly jobId: string;
-    readonly label?: string;
-    readonly enabled?: boolean;
+    readonly label?: string | undefined;
+    readonly enabled?: boolean | undefined;
     readonly schedule: AutomationScheduleDefinition;
-    readonly metadata?: Record<string, unknown>;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<KnowledgeScheduleRecord> {
     const job = this.getJob(input.jobId);
     if (!job) throw new Error(`Unknown knowledge job: ${input.jobId}`);
@@ -107,9 +107,9 @@ export class KnowledgeScheduleService {
   async runJob(
     id: string,
     input: {
-      readonly mode?: KnowledgeJobMode;
-      readonly sourceIds?: readonly string[];
-      readonly limit?: number;
+      readonly mode?: KnowledgeJobMode | undefined;
+      readonly sourceIds?: readonly string[] | undefined;
+      readonly limit?: number | undefined;
     } = {},
   ): Promise<KnowledgeJobRunRecord> {
     const job = this.getJob(id);
@@ -247,7 +247,7 @@ export class KnowledgeScheduleService {
   private async executeJobRun(
     job: KnowledgeJobRecord,
     runId: string,
-    input: { readonly sourceIds?: readonly string[]; readonly limit?: number; readonly mode?: KnowledgeJobMode },
+    input: { readonly sourceIds?: readonly string[] | undefined; readonly limit?: number | undefined; readonly mode?: KnowledgeJobMode | undefined },
   ): Promise<KnowledgeJobRunRecord> {
     const startedAt = Date.now();
     let run = await this.context.store.upsertJobRun({

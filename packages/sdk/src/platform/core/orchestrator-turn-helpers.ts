@@ -16,8 +16,8 @@ import type { AgentManager } from '../tools/agent/index.js';
 
 type EmitterContextFactory = (turnId: string) => import('../runtime/emitters/index.js').EmitterContext;
 export type ChatResponseWithReasoning = Awaited<ReturnType<LLMProvider['chat']>> & {
-  reasoning?: string;
-  reasoningSummary?: string;
+  reasoning?: string | undefined;
+  reasoningSummary?: string | undefined;
 };
 
 const PROJECT_PRIMING_SIGNALS = new Set([
@@ -123,7 +123,7 @@ export async function handleToolResponseOutcome(args: {
   setPendingToolCalls: (calls: ToolCall[]) => void;
   messageQueueLength: number;
   requestRender: () => void;
-  sessionId?: string;
+  sessionId?: string | undefined;
 }): Promise<{ continueLoop: boolean; results: ToolResult[] }> {
   args.setPendingToolCalls(args.response.toolCalls);
   args.conversation.addAssistantMessage(args.response.content, {
@@ -226,7 +226,7 @@ export function handleFinalResponseOutcome(args: {
   requestRender: () => void;
   setAutoSpawnTimeout: (timeout: ReturnType<typeof setTimeout> | null) => void;
   autoSpawnTimeoutMs: number;
-  sessionId?: string;
+  sessionId?: string | undefined;
 }): false {
   args.conversation.addAssistantMessage(args.response.content, {
     reasoningContent: args.response.reasoning || undefined,

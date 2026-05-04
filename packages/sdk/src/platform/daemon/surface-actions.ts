@@ -30,11 +30,11 @@ interface PendingNtfyChatReply {
   readonly sessionId: string;
   readonly topic: string;
   readonly body: string;
-  readonly title?: string;
+  readonly title?: string | undefined;
   readonly messageId: string;
   readonly createdAt: number;
-  turnId?: string;
-  turnSessionId?: string;
+  turnId?: string | undefined;
+  turnSessionId?: string | undefined;
 }
 
 interface DaemonSurfaceActionContext {
@@ -56,16 +56,16 @@ interface DaemonSurfaceActionContext {
   ) => AgentRecord | Response;
   readonly queueSurfaceReplyFromBinding: (
     binding: import('../automation/routes.js').AutomationRouteBinding | undefined,
-    input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string },
+    input: { readonly agentId: string; readonly task: string; readonly agentTask?: string | undefined; readonly workflowChainId?: string | undefined; readonly sessionId?: string | undefined },
   ) => void;
   readonly queueWebhookReply: (input: {
     readonly agentId: string;
     readonly task: string;
-    readonly sessionId?: string;
-    readonly routeId?: string;
-    readonly callbackUrl?: string;
-    readonly callbackCorrelationId?: string;
-    readonly callbackSignature?: import('./types.js').PendingSurfaceReply['callbackSignature'];
+    readonly sessionId?: string | undefined;
+    readonly routeId?: string | undefined;
+    readonly callbackUrl?: string | undefined;
+    readonly callbackCorrelationId?: string | undefined;
+    readonly callbackSignature?: import('./types.js').PendingSurfaceReply['callbackSignature'] | undefined;
   }) => void;
   readonly surfaceDeliveryEnabled: (
     surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
@@ -76,7 +76,7 @@ interface DaemonSurfaceActionContext {
     action: 'claim' | 'approve' | 'deny' | 'cancel',
     req: Request,
   ) => Promise<Response>;
-  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
+  readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
 }
 
 export class DaemonSurfaceActionHelper {
@@ -196,7 +196,7 @@ export class DaemonSurfaceActionHelper {
     if (approvalMatch) {
       const [, action, approvalId] = approvalMatch;
       const result = await this.context.handleApprovalAction(
-        approvalId,
+        approvalId!,
         action as 'approve' | 'deny' | 'claim',
         new Request(req.url, {
           method: 'POST',
@@ -212,11 +212,11 @@ export class DaemonSurfaceActionHelper {
     if (runMatch) {
       const [, action, runId] = runMatch;
       if (action === 'cancel') {
-        const run = await this.context.automationManager.cancelRun(runId, 'interactive-surface-cancel');
+        const run = await this.context.automationManager.cancelRun(runId!, 'interactive-surface-cancel');
         return run ? `Cancelled run ${runId}` : `Failed to cancel run ${runId}`;
       }
       try {
-        await this.context.automationManager.retryRun(runId);
+        await this.context.automationManager.retryRun(runId!);
         return `Retried run ${runId}`;
       } catch (error) {
         return error instanceof Error ? error.message : `Failed to retry run ${runId}`;
@@ -423,7 +423,7 @@ export class DaemonSurfaceActionHelper {
   private async postNtfyRemoteChatMessage(input: {
     readonly topic: string;
     readonly body: string;
-    readonly title?: string;
+    readonly title?: string | undefined;
   }): Promise<{ readonly sessionId: string; readonly messageId: string; readonly delivered: boolean; readonly error?: string }> {
     const manager = this.context.companionChatManager;
     if (!manager) {
@@ -495,7 +495,7 @@ export class DaemonSurfaceActionHelper {
     input: {
       readonly topic: string;
       readonly body: string;
-      readonly title?: string;
+      readonly title?: string | undefined;
     },
   ): Promise<void> {
     try {
@@ -528,24 +528,24 @@ export class DaemonSurfaceActionHelper {
     readonly conversationId: string;
     readonly surfaceId: string;
     readonly channelId: string;
-    readonly threadId?: string;
-    readonly userId?: string;
-    readonly displayName?: string;
+    readonly threadId?: string | undefined;
+    readonly userId?: string | undefined;
+    readonly displayName?: string | undefined;
     readonly title: string;
-    readonly providerId?: string;
-    readonly modelId?: string;
-    readonly tools?: readonly string[];
-    readonly context?: Record<string, unknown>;
-    readonly remoteSessionTtlMs?: number;
-    readonly publishEvent?: boolean;
+    readonly providerId?: string | undefined;
+    readonly modelId?: string | undefined;
+    readonly tools?: readonly string[] | undefined;
+    readonly context?: Record<string, unknown> | undefined;
+    readonly remoteSessionTtlMs?: number | undefined;
+    readonly publishEvent?: boolean | undefined;
   }): Promise<{
     readonly sessionId: string;
-    readonly routeId?: string;
+    readonly routeId?: string | undefined;
     readonly messageId: string;
-    readonly assistantMessageId?: string;
-    readonly response?: string;
+    readonly assistantMessageId?: string | undefined;
+    readonly response?: string | undefined;
     readonly delivered: boolean;
-    readonly error?: string;
+    readonly error?: string | undefined;
   }> {
     const manager = this.context.companionChatManager;
     if (!manager) {
@@ -639,16 +639,16 @@ export class DaemonSurfaceActionHelper {
       readonly conversationId: string;
       readonly surfaceId: string;
       readonly channelId: string;
-      readonly threadId?: string;
-      readonly userId?: string;
-      readonly displayName?: string;
+      readonly threadId?: string | undefined;
+      readonly userId?: string | undefined;
+      readonly displayName?: string | undefined;
       readonly title: string;
-      readonly context?: Record<string, unknown>;
+      readonly context?: Record<string, unknown> | undefined;
     },
     result: {
       readonly sessionId: string;
-      readonly routeId?: string;
-      readonly assistantMessageId?: string;
+      readonly routeId?: string | undefined;
+      readonly assistantMessageId?: string | undefined;
       readonly response: string;
       readonly status: string;
     },

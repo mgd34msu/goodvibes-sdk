@@ -243,73 +243,73 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
 };
 
 export interface AgentProviderRoutingPolicy {
-  providerSelection?: 'inherit-current' | 'concrete' | 'synthetic';
-  unresolvedModelPolicy?: 'fallback-to-current' | 'fail';
-  providerFailurePolicy?: 'ordered-fallbacks' | 'fail';
-  fallbackModels?: readonly string[];
+  providerSelection?: 'inherit-current' | 'concrete' | 'synthetic' | undefined;
+  unresolvedModelPolicy?: 'fallback-to-current' | 'fail' | undefined;
+  providerFailurePolicy?: 'ordered-fallbacks' | 'fail' | undefined;
+  fallbackModels?: readonly string[] | undefined;
 }
 
 /** Input shape for the agent tool. */
 export interface AgentInput {
   mode: 'spawn' | 'batch-spawn' | 'status' | 'cancel' | 'list' | 'templates' | 'get' | 'budget' | 'plan' | 'wait' | 'message' | 'wrfc-chains' | 'wrfc-history' | 'cohort-status' | 'cohort-report';
   // spawn
-  task?: string;
-  template?: string;
-  model?: string;
-  provider?: string;
-  fallbackModels?: string[];
-  routing?: AgentProviderRoutingPolicy;
-  executionIntent?: ExecutionIntent;
-  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high';
-  tools?: string[];
-  restrictTools?: boolean;
-  context?: string;
-  successCriteria?: string[];
-  requiredEvidence?: string[];
-  writeScope?: string[];
-  executionProtocol?: 'direct' | 'gather-plan-apply';
-  reviewMode?: 'none' | 'wrfc';
-  communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
-  parentAgentId?: string;
-  orchestrationGraphId?: string;
-  orchestrationNodeId?: string;
-  parentNodeId?: string;
-  dangerously_disable_wrfc?: boolean;
+  task?: string | undefined;
+  template?: string | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
+  fallbackModels?: string[] | undefined;
+  routing?: AgentProviderRoutingPolicy | undefined;
+  executionIntent?: ExecutionIntent | undefined;
+  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  tools?: string[] | undefined;
+  restrictTools?: boolean | undefined;
+  context?: string | undefined;
+  successCriteria?: string[] | undefined;
+  requiredEvidence?: string[] | undefined;
+  writeScope?: string[] | undefined;
+  executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
+  reviewMode?: 'none' | 'wrfc' | undefined;
+  communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
+  parentAgentId?: string | undefined;
+  orchestrationGraphId?: string | undefined;
+  orchestrationNodeId?: string | undefined;
+  parentNodeId?: string | undefined;
+  dangerously_disable_wrfc?: boolean | undefined;
   // cohort grouping
-  cohort?: string;
+  cohort?: string | undefined;
   // batch-spawn
   tasks?: Array<{
     task: string;
-    template?: string;
-    model?: string;
-    provider?: string;
-    fallbackModels?: string[];
-    routing?: AgentProviderRoutingPolicy;
-    executionIntent?: ExecutionIntent;
-    reasoningEffort?: 'instant' | 'low' | 'medium' | 'high';
-    tools?: string[];
-    restrictTools?: boolean;
-    context?: string;
-    successCriteria?: string[];
-    requiredEvidence?: string[];
-    writeScope?: string[];
-    executionProtocol?: 'direct' | 'gather-plan-apply';
-    reviewMode?: 'none' | 'wrfc';
-    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
-    parentAgentId?: string;
-    orchestrationGraphId?: string;
-    orchestrationNodeId?: string;
-    parentNodeId?: string;
-    dangerously_disable_wrfc?: boolean;
+    template?: string | undefined;
+    model?: string | undefined;
+    provider?: string | undefined;
+    fallbackModels?: string[] | undefined;
+    routing?: AgentProviderRoutingPolicy | undefined;
+    executionIntent?: ExecutionIntent | undefined;
+    reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+    tools?: string[] | undefined;
+    restrictTools?: boolean | undefined;
+    context?: string | undefined;
+    successCriteria?: string[] | undefined;
+    requiredEvidence?: string[] | undefined;
+    writeScope?: string[] | undefined;
+    executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
+    reviewMode?: 'none' | 'wrfc' | undefined;
+    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
+    parentAgentId?: string | undefined;
+    orchestrationGraphId?: string | undefined;
+    orchestrationNodeId?: string | undefined;
+    parentNodeId?: string | undefined;
+    dangerously_disable_wrfc?: boolean | undefined;
   }>;
   // status / cancel / get / budget / plan / wait / message
-  agentId?: string;
-  detail?: 'summary' | 'contract' | 'messages' | 'full';
+  agentId?: string | undefined;
+  detail?: 'summary' | 'contract' | 'messages' | 'full' | undefined;
   // wait
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
   // message
-  message?: string;
-  kind?: 'directive' | 'status' | 'question' | 'finding' | 'review' | 'handoff' | 'escalation' | 'completion';
+  message?: string | undefined;
+  kind?: 'directive' | 'status' | 'question' | 'finding' | 'review' | 'handoff' | 'escalation' | 'completion' | undefined;
   // wrfc-history
-  wrfcId?: string;
+  wrfcId?: string | undefined;
 }

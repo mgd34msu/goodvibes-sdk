@@ -63,11 +63,11 @@ export function findFuzzyLineMatch(
     const similarity = matchingLines / windowSize;
     if (similarity > bestSimilarity) {
       bestSimilarity = similarity;
-      bestStart = lineOffsets[i];
+      bestStart = lineOffsets[i]!;
       const lastLineIdx = i + windowSize - 1;
       bestEnd =
         lastLineIdx + 1 < contentLines.length
-          ? lineOffsets[lastLineIdx + 1]
+          ? lineOffsets[lastLineIdx + 1]!
           : content.length;
       bestCandidateLines = contentLines.slice(i, i + windowSize);
       if (similarity === 1.0) break;
@@ -126,15 +126,15 @@ export function findAllPositions(
     for (let i = 0; i <= tokens.length - findTokens.length; i++) {
       let match = true;
       for (let j = 0; j < findTokens.length; j++) {
-        if (tokens[i + j].norm !== findTokens[j]) {
+        if (tokens[i + j]!.norm !== findTokens[j]) {
           match = false;
           break;
         }
       }
       if (match) {
         positions.push({
-          start: tokens[i].origStart,
-          end: tokens[i + findTokens.length - 1].origEnd,
+          start: tokens[i]!.origStart,
+          end: tokens[i + findTokens.length - 1]!.origEnd,
         });
       }
     }
@@ -161,7 +161,7 @@ export function applyHints(
   positions: { start: number; end: number }[],
   hints: EditItem['hints'],
   nearLine?: number,
-): { positions: { start: number; end: number }[]; warning?: string } {
+): { positions: { start: number; end: number }[]; warning?: string | undefined } {
   if (!hints) return { positions };
 
   let filtered = positions;
@@ -200,7 +200,7 @@ export function applyHints(
   }
 
   if (nearLine !== undefined && filtered.length > 1) {
-    let best = filtered[0];
+    let best = filtered[0]!;
     let bestDist = Math.abs(lineNumberAt(content, best.start) - nearLine);
     for (const pos of filtered.slice(1)) {
       const dist = Math.abs(lineNumberAt(content, pos.start) - nearLine);
@@ -260,14 +260,14 @@ export function selectOccurrences(
     return { selected: positions };
   }
 
-  if (occurrence === 'first') return { selected: [positions[0]] };
-  if (occurrence === 'last') return { selected: [positions[positions.length - 1]] };
+  if (occurrence === 'first') return { selected: [positions[0]!] };
+  if (occurrence === 'last') return { selected: [positions[positions.length - 1]!] };
   if (occurrence === 'all') return { selected: positions };
   const n = occurrence as number;
   if (n < 1 || n > positions.length) {
     return { error: `Occurrence ${n} out of range: file has ${positions.length} match(es)` };
   }
-  return { selected: [positions[n - 1]] };
+  return { selected: [positions[n - 1]!] };
 }
 
 export function applyReplacements(
@@ -378,7 +378,7 @@ export function computeAstEdit(
       if (sig.includes(normalizedFind) || normalizedFind.includes(sig)) {
         let lineOffset = 0;
         for (let i = 0; i < symbol.line - 1 && i < lines.length; i++) {
-          lineOffset += lines[i].length + 1;
+          lineOffset += lines[i]!.length + 1;
         }
         const lineText = lines[symbol.line - 1] ?? '';
         const col = lineText.indexOf(findStr);
@@ -457,7 +457,7 @@ export async function computeAstPatternEdit(
     if (occSpec < 1 || occSpec > positions.length) {
       return { error: `ast_pattern: occurrence ${occSpec} out of range (found ${positions.length} matches)` };
     }
-    selected = [positions[occSpec - 1]];
+    selected = [positions[occSpec - 1]!];
   } else {
     selected = positions;
   }
@@ -508,7 +508,7 @@ export function computeSingleEdit(
   caseSensitive: boolean,
   whitespaceSensitive: boolean = true,
   multiline: boolean = false,
-): { newContent: string; occurrencesReplaced: number; warning?: string } | { error: string; hint?: string } {
+): { newContent: string; occurrencesReplaced: number; warning?: string | undefined } | { error: string; hint?: string | undefined } {
   const findStr = item.find_base64 ? decodeBase64(item.find_base64) : item.find;
   const replaceStr = item.replace_base64 ? decodeBase64(item.replace_base64) : item.replace;
 

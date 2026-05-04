@@ -57,7 +57,7 @@ export interface OrchestratorTurnLoopContext {
   readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
   readonly configManager: Pick<ConfigManager, 'get'>;
   readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel' | 'getTokenLimitsForModel'>;
-  readonly favoritesStore?: Pick<FavoritesStore, 'recordUsage'>;
+  readonly favoritesStore?: Pick<FavoritesStore, 'recordUsage'> | undefined;
   readonly cacheHitTracker: Pick<CacheHitTracker, 'getMetrics'>;
   readonly helperModel: HelperModel;
   readonly sessionId: string;
@@ -67,7 +67,7 @@ export interface OrchestratorTurnLoopContext {
     'getActive' | 'getSummary' | 'getNextItems' | 'toMarkdown' | 'create' | 'save' | 'parseFromMarkdown' | 'replaceItems' | 'load' | 'updateItem'
   > | null;
   readonly text: string;
-  readonly content?: ContentPart[];
+  readonly content?: ContentPart[] | undefined;
   readonly turnId: string;
   readonly emitterContext: (turnId: string) => EmitterContext;
   readonly executeToolCalls: (turnId: string, calls: ToolCall[]) => Promise<ToolResult[]>;

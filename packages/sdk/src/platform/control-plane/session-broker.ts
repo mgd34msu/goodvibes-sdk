@@ -89,13 +89,13 @@ export class SharedSessionBroker {
    * @param config.idleLongMs  - Idle timeout for sessions with content (default: 24 hours).
    */
   constructor(config: {
-    readonly store?: PersistentStore<SharedSessionStoreSnapshot>;
-    readonly storePath?: string;
+    readonly store?: PersistentStore<SharedSessionStoreSnapshot> | undefined;
+    readonly storePath?: string | undefined;
     readonly routeBindings: RouteBindingManager;
     readonly agentStatusProvider: SharedSessionAgentStatusProvider;
     readonly messageSender: SharedSessionMessageSender;
-    readonly idleEmptyMs?: number;
-    readonly idleLongMs?: number;
+    readonly idleEmptyMs?: number | undefined;
+    readonly idleLongMs?: number | undefined;
   }) {
     if (!config.store && !config.storePath) {
       throw new Error('SharedSessionBroker requires an explicit store or storePath.');
@@ -187,7 +187,7 @@ export class SharedSessionBroker {
     for (const [sessionId, bucket] of this.inputs.entries()) {
       let changed = false;
       for (let i = 0; i < bucket.length; i++) {
-        const entry = bucket[i];
+        const entry = bucket[i]!;
         if (entry.state === 'spawned' || entry.state === 'delivered') {
           bucket[i] = { ...entry, state: 'cancelled', updatedAt: Date.now(), error: restartReason };
           changed = true;
@@ -229,11 +229,11 @@ export class SharedSessionBroker {
   }
 
   async ensureSession(input: {
-    readonly sessionId?: string;
-    readonly title?: string;
-    readonly metadata?: Record<string, unknown>;
-    readonly routeBinding?: AutomationRouteBinding;
-    readonly participant?: SharedSessionParticipant;
+    readonly sessionId?: string | undefined;
+    readonly title?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
+    readonly routeBinding?: AutomationRouteBinding | undefined;
+    readonly participant?: SharedSessionParticipant | undefined;
   } = {}): Promise<SharedSessionRecord> {
     await this.start();
     if (input.sessionId) {
@@ -264,12 +264,12 @@ export class SharedSessionBroker {
   }
 
   async createSession(input: {
-    readonly id?: string;
-    readonly title?: string;
-    readonly metadata?: Record<string, unknown>;
-    readonly routeBinding?: AutomationRouteBinding;
-    readonly participant?: SharedSessionParticipant;
-    readonly kind?: SharedSessionRecord['kind'];
+    readonly id?: string | undefined;
+    readonly title?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
+    readonly routeBinding?: AutomationRouteBinding | undefined;
+    readonly participant?: SharedSessionParticipant | undefined;
+    readonly kind?: SharedSessionRecord['kind'] | undefined;
   } = {}): Promise<SharedSessionRecord> {
     await this.start();
     const session = createSharedSessionRecord(input);

@@ -24,7 +24,7 @@ export interface OperatorSdkOptions extends HttpTransportOptions {
    * This is useful when a caller wants raw response bodies for contract
    * debugging or benchmarking.
    */
-  readonly validateResponses?: boolean;
+  readonly validateResponses?: boolean | undefined;
 }
 
 /**

@@ -24,19 +24,19 @@ export interface ReplaySnapshotInput {
     readonly rev: number;
     readonly kind: string;
     readonly description: string;
-    readonly eventName?: string;
-    readonly ownerDomain?: string;
-    readonly failureMode?: string;
-    readonly relatedTurnId?: string;
+    readonly eventName?: string | undefined;
+    readonly ownerDomain?: string | undefined;
+    readonly failureMode?: string | undefined;
+    readonly relatedTurnId?: string | undefined;
   }>;
   readonly turnSummaries: ReadonlyArray<{
     readonly turnId: string;
     readonly outcome: 'completed' | 'failed' | 'cancelled';
     readonly terminalEvent: 'PREFLIGHT_FAIL' | 'TURN_COMPLETED' | 'TURN_ERROR' | 'TURN_CANCEL';
-    readonly startedRev?: number;
+    readonly startedRev?: number | undefined;
     readonly terminalRev: number;
-    readonly stopReason?: string;
-    readonly message?: string;
+    readonly stopReason?: string | undefined;
+    readonly message?: string | undefined;
   }>;
 }
 

@@ -26,7 +26,7 @@ interface TeamFile {
 }
 
 type TeamExecutionInput = TeamToolInput & {
-  readonly storageRoot?: string;
+  readonly storageRoot?: string | undefined;
 };
 
 function summarizeTeam(team: TeamRecord) {

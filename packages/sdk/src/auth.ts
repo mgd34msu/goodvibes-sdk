@@ -38,8 +38,8 @@ export type {
 } from './client-auth/types.js';
 
 export interface BrowserTokenStoreOptions {
-  readonly key?: string;
-  readonly storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+  readonly key?: string | undefined;
+  readonly storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | undefined;
 }
 
 /**
@@ -127,7 +127,7 @@ export function createMemoryTokenStore(initialToken: string | null = null, initi
       expiresAt = undefined;
     },
     async getTokenEntry(): Promise<{ token: string | null; expiresAt?: number }> {
-      return { token, expiresAt };
+      return expiresAt !== undefined ? { token, expiresAt } : { token };
     },
     async setTokenEntry(nextToken: string | null, nextExpiresAt?: number): Promise<void> {
       token = nextToken;
@@ -179,7 +179,8 @@ export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}):
       const token = value && value.trim() ? value : null;
       const expiresAtStr = storage.getItem(expiresAtKey);
       const expiresAt = expiresAtStr ? parseInt(expiresAtStr, 10) : undefined;
-      return { token, expiresAt: Number.isFinite(expiresAt) ? expiresAt : undefined };
+      const finalExpiresAt = Number.isFinite(expiresAt) ? expiresAt : undefined;
+      return finalExpiresAt !== undefined ? { token, expiresAt: finalExpiresAt } : { token };
     },
     async setTokenEntry(token: string | null, expiresAt?: number): Promise<void> {
       if (!token) {
@@ -244,7 +245,7 @@ export function createGoodVibesAuthClient(
   operator: OperatorSdk,
   tokenStore: GoodVibesTokenStore | null,
   getAuthToken?: AuthTokenResolver,
-  observer?: SDKObserver,
+  observer?: SDKObserver | undefined,
   autoRefreshOptions?: AutoRefreshOptions,
   /**
    * Optional pre-built `AutoRefreshCoordinator`. When provided, it is reused
@@ -270,7 +271,7 @@ export function createGoodVibesAuthClient(
               tokenStore,
               autoRefresh,
               refreshLeewayMs,
-              refresh: autoRefreshOptions?.refresh,
+              ...(autoRefreshOptions?.refresh !== undefined ? { refresh: autoRefreshOptions.refresh } : {}),
               observer,
             })
           : null;

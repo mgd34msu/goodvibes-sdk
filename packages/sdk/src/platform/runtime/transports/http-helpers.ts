@@ -35,7 +35,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function readArrayResponse<T>(body: unknown, key: string): readonly T[] {
   if (Array.isArray(body)) return body as readonly T[];
   if (isRecord(body)) {
-    const maybeEntries = body[key];
+    const maybeEntries = body[key]!;
     if (Array.isArray(maybeEntries)) return maybeEntries as readonly T[];
   }
   return [];

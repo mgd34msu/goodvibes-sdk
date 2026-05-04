@@ -64,7 +64,7 @@ export function getConfiguredApiKeys(): Record<string, string> {
     if (!value && prov === 'github-copilot') value = process.env['GH_TOKEN'] ?? process.env['GITHUB_TOKEN'];
     if (!value && prov === 'qwen') value = process.env['DASHSCOPE_API_KEY'] ?? process.env['MODELSTUDIO_API_KEY'];
     if (!value && prov === 'zai') value = process.env['Z_AI_API_KEY'];
-    if (value) keys[prov] = value;
+    if (value) keys[prov]! = value;
   }
   return keys;
 }

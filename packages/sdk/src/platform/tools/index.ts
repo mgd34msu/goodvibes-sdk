@@ -159,32 +159,32 @@ export function registerToolWithContractGate(
 export function registerAllTools(
   registry: ToolRegistry,
   deps?: {
-    fileCache?: FileStateCache;
-    projectIndex?: ProjectIndex;
+    fileCache?: FileStateCache | undefined;
+    projectIndex?: ProjectIndex | undefined;
     fileUndoManager: FileUndoManager;
     modeManager: ModeManager;
     processManager: ProcessManager;
-    agentManager?: AgentManager;
+    agentManager?: AgentManager | undefined;
     agentMessageBus: AgentMessageBus;
-    wrfcController?: WrfcController;
-    webSearchService?: WebSearchService;
-    channelRegistry?: ChannelPluginRegistry | null;
-    remoteRunnerRegistry?: RemoteRunnerRegistry;
+    wrfcController?: WrfcController | undefined;
+    webSearchService?: WebSearchService | undefined;
+    channelRegistry?: ChannelPluginRegistry | null | undefined;
+    remoteRunnerRegistry?: RemoteRunnerRegistry | undefined;
     workflowServices: ReturnType<typeof createWorkflowServices>;
-    mcpRegistry?: import('../mcp/registry.js').McpRegistry;
-    sessionOrchestration?: CrossSessionTaskRegistry;
-    sandboxSessionRegistry?: SandboxSessionRegistry;
+    mcpRegistry?: import('../mcp/registry.js').McpRegistry | undefined;
+    sessionOrchestration?: CrossSessionTaskRegistry | undefined;
+    sandboxSessionRegistry?: SandboxSessionRegistry | undefined;
     workingDirectory: string;
     surfaceRoot: string;
-    archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'>;
-    configManager?: ConfigManager;
-    providerRegistry?: ProviderRegistry;
-    toolLLM?: ToolLLM;
-    featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
-    serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth' | 'getAll' | 'inspect'> | null;
-    secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
-    overflowHandler?: OverflowHandler;
-    changeTracker?: SessionChangeTracker;
+    archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'> | undefined;
+    configManager?: ConfigManager | undefined;
+    providerRegistry?: ProviderRegistry | undefined;
+    toolLLM?: ToolLLM | undefined;
+    featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+    serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth' | 'getAll' | 'inspect'> | null | undefined;
+    secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
+    overflowHandler?: OverflowHandler | undefined;
+    changeTracker?: SessionChangeTracker | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();

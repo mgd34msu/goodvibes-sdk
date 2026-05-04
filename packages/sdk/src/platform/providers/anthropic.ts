@@ -42,20 +42,20 @@ interface AnthropicResponseBody {
 /** Anthropic SSE event types used in streaming responses. */
 interface AnthropicSSEEvent {
   type: string;
-  index?: number;
+  index?: number | undefined;
   delta?: {
-    type?: string;
-    text?: string;
-    thinking?: string;
-    partial_json?: string;
-    stop_reason?: string;
+    type?: string | undefined;
+    text?: string | undefined;
+    thinking?: string | undefined;
+    partial_json?: string | undefined;
+    stop_reason?: string | undefined;
   };
   content_block?: {
     type: string;
-    id?: string;
-    name?: string;
-    text?: string;
-    thinking?: string;
+    id?: string | undefined;
+    name?: string | undefined;
+    text?: string | undefined;
+    thinking?: string | undefined;
   };
   message?: {
     usage?: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
@@ -176,7 +176,7 @@ export class AnthropicProvider implements LLMProvider {
           } else if (systemPrompt) {
             const sysBlocks = body['system'] as Array<Record<string, unknown>>;
             if (sysBlocks?.length) {
-              sysBlocks[sysBlocks.length - 1]['cache_control'] = bp1.ttl !== '5m'
+              sysBlocks[sysBlocks.length - 1]!['cache_control'] = bp1.ttl !== '5m'
                 ? { type: 'ephemeral', ttl: bp1.ttl }
                 : { type: 'ephemeral' };
               breakpointsPlaced++;
@@ -193,7 +193,7 @@ export class AnthropicProvider implements LLMProvider {
             if (msg.role === 'assistant') {
               const content = msg.content as Array<Record<string, unknown>>;
               if (content?.length) {
-                content[content.length - 1]['cache_control'] = { type: 'ephemeral' };
+                content[content.length - 1]!['cache_control'] = { type: 'ephemeral' };
                 bp2MessageIdx = i;
                 breakpointsPlaced++;
               }
@@ -220,7 +220,7 @@ export class AnthropicProvider implements LLMProvider {
                 const alreadyCached = content.some(b => b['cache_control'] != null);
                 if (alreadyCached) continue;
                 for (let j = 0; j < content.length; j++) {
-                  const block = content[j];
+                  const block = content[j]!;
                   if (block['type'] === 'tool_result') {
                     const size = typeof block['content'] === 'string'
                       ? block['content'].length
@@ -240,7 +240,7 @@ export class AnthropicProvider implements LLMProvider {
             const msg = toRecord(anthropicMessages[largestIdx]);
             const content = msg.content as Array<Record<string, unknown>>;
             // Target the specific tool_result block, not the last block in the message.
-            content[largestBlockIdx]['cache_control'] = { type: 'ephemeral' };
+            content[largestBlockIdx]!['cache_control'] = { type: 'ephemeral' };
             breakpointsPlaced++;
           }
         }
@@ -249,7 +249,7 @@ export class AnthropicProvider implements LLMProvider {
       body['messages'] = anthropicMessages;
 
       if (reasoningEffort && reasoningEffort !== 'instant') {
-        const budget = REASONING_BUDGET_MAP[reasoningEffort];
+        const budget = REASONING_BUDGET_MAP[reasoningEffort]!;
         if (budget !== undefined && budget > 0) {
           body['thinking'] = { type: 'enabled', budget_tokens: budget };
           // max_tokens must be strictly greater than thinking.budget_tokens
@@ -285,8 +285,8 @@ export class AnthropicProvider implements LLMProvider {
           method: 'POST',
           headers,
           body: JSON.stringify(body),
-          signal,
-        });
+          ...(signal !== undefined ? { signal } : {}),
+        } as RequestInit);
       } catch (err: unknown) {
         throw toProviderError(err, {
           provider: this.name,

@@ -36,13 +36,13 @@ export interface PhaseTimingEntry {
   /** Epoch ms when the phase started. */
   readonly startedAt: number;
   /** Epoch ms when the phase ended (undefined if still in progress at report time). */
-  readonly endedAt?: number;
+  readonly endedAt?: number | undefined;
   /** Duration in ms (undefined if still in progress). */
-  readonly durationMs?: number;
+  readonly durationMs?: number | undefined;
   /** Whether this phase completed successfully. */
   readonly success: boolean;
   /** Error message if the phase failed. */
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 export type PhaseLedgerOutcome = 'in_progress' | 'succeeded' | 'failed' | 'cancelled';
@@ -53,11 +53,11 @@ export interface PhaseLedgerEntry {
   readonly phase: string;
   readonly enterEventType: string;
   readonly enteredAt: number;
-  readonly exitEventType?: string;
-  readonly exitedAt?: number;
-  readonly durationMs?: number;
+  readonly exitEventType?: string | undefined;
+  readonly exitedAt?: number | undefined;
+  readonly durationMs?: number | undefined;
   readonly outcome: PhaseLedgerOutcome;
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 // ── Causal chain ─────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ export interface CausalChainEntry {
   /** Event type that produced this link (from the event bus). */
   readonly sourceEventType: string;
   /** Optional structured context (tool name, error code, domain, etc.). */
-  readonly context?: Readonly<Record<string, string | number | boolean>>;
+  readonly context?: Readonly<Record<string, string | number | boolean>> | undefined;
   /** Whether this link is the diagnosed root cause. */
   readonly isRootCause: boolean;
 }
@@ -102,7 +102,7 @@ export interface ForensicsJumpLink {
   /** Panel ID or slash command string (without leading slash). */
   readonly target: string;
   /** Optional arguments (e.g. task ID or turn ID to pre-select). */
-  readonly args?: string;
+  readonly args?: string | undefined;
 }
 
 // ── Failure report ────────────────────────────────────────────────────────────
@@ -125,15 +125,15 @@ export interface FailureReport {
   /** Human-readable summary of the failure for the panel header. */
   readonly summary: string;
   /** Stop reason from the LLM provider (if applicable). */
-  readonly stopReason?: string;
+  readonly stopReason?: string | undefined;
   /** Terminal error message (most specific error available). */
-  readonly errorMessage?: string;
+  readonly errorMessage?: string | undefined;
   /** Task ID if this is a task failure. */
-  readonly taskId?: string;
+  readonly taskId?: string | undefined;
   /** Turn ID if this is a turn failure. */
-  readonly turnId?: string;
+  readonly turnId?: string | undefined;
   /** Agent ID if this failure was associated with a specific agent. */
-  readonly agentId?: string;
+  readonly agentId?: string | undefined;
   /** Ordered phase timings from the originating turn or task execution. */
   readonly phaseTimings: readonly PhaseTimingEntry[];
   /** Ordered phase transition ledger for explicit runtime reconstruction. */
@@ -155,15 +155,15 @@ export interface FailureReport {
 export interface PermissionEvidenceEntry {
   readonly callId: string;
   readonly tool: string;
-  readonly requestedAt?: number;
-  readonly decidedAt?: number;
-  readonly durationMs?: number;
-  readonly approved?: boolean;
-  readonly source?: string;
-  readonly reasonCode?: string;
-  readonly classification?: string;
-  readonly riskLevel?: string;
-  readonly summary?: string;
+  readonly requestedAt?: number | undefined;
+  readonly decidedAt?: number | undefined;
+  readonly durationMs?: number | undefined;
+  readonly approved?: boolean | undefined;
+  readonly source?: string | undefined;
+  readonly reasonCode?: string | undefined;
+  readonly classification?: string | undefined;
+  readonly riskLevel?: string | undefined;
+  readonly summary?: string | undefined;
 }
 
 export interface BudgetBreachEvidence {
@@ -179,27 +179,27 @@ export interface ForensicsReplayMismatchEvidence {
   readonly rev: number;
   readonly kind: string;
   readonly description: string;
-  readonly eventName?: string;
-  readonly ownerDomain?: string;
-  readonly failureMode?: string;
-  readonly relatedTurnId?: string;
+  readonly eventName?: string | undefined;
+  readonly ownerDomain?: string | undefined;
+  readonly failureMode?: string | undefined;
+  readonly relatedTurnId?: string | undefined;
 }
 
 export interface ForensicsReplayTurnEvidence {
   readonly turnId: string;
   readonly outcome: 'completed' | 'failed' | 'cancelled';
   readonly terminalEvent: 'PREFLIGHT_FAIL' | 'TURN_COMPLETED' | 'TURN_ERROR' | 'TURN_CANCEL';
-  readonly startedRev?: number;
+  readonly startedRev?: number | undefined;
   readonly terminalRev: number;
-  readonly stopReason?: string;
-  readonly message?: string;
+  readonly stopReason?: string | undefined;
+  readonly message?: string | undefined;
 }
 
 export interface ForensicsReplayEvidence {
   readonly status: 'unavailable' | 'not_loaded' | 'available';
-  readonly runId?: string;
-  readonly currentRev?: number;
-  readonly totalRevisions?: number;
+  readonly runId?: string | undefined;
+  readonly currentRev?: number | undefined;
+  readonly totalRevisions?: number | undefined;
   readonly mismatchCount: number;
   readonly mismatches: readonly ForensicsReplayMismatchEvidence[];
   readonly relatedMismatches: readonly ForensicsReplayMismatchEvidence[];
@@ -209,13 +209,13 @@ export interface ForensicsReplayEvidence {
     readonly byOwnerDomain: Readonly<Record<string, number>>;
   };
   readonly turnSummaries: readonly ForensicsReplayTurnEvidence[];
-  readonly matchingTurnSummary?: ForensicsReplayTurnEvidence;
+  readonly matchingTurnSummary?: ForensicsReplayTurnEvidence | undefined;
 }
 
 export interface ForensicsEvidenceSummary {
-  readonly rootCause?: string;
-  readonly terminalPhase?: string;
-  readonly terminalOutcome?: PhaseLedgerOutcome;
+  readonly rootCause?: string | undefined;
+  readonly terminalPhase?: string | undefined;
+  readonly terminalOutcome?: PhaseLedgerOutcome | undefined;
   readonly phaseCount: number;
   readonly causalCount: number;
   readonly cascadeCount: number;
@@ -225,9 +225,9 @@ export interface ForensicsEvidenceSummary {
   readonly slowPhases: readonly string[];
   readonly jumpLinkCount: number;
   readonly relatedIds: {
-    readonly turnId?: string;
-    readonly taskId?: string;
-    readonly agentId?: string;
+    readonly turnId?: string | undefined;
+    readonly taskId?: string | undefined;
+    readonly agentId?: string | undefined;
   };
 }
 

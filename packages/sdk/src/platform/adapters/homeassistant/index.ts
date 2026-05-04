@@ -169,9 +169,9 @@ function conversationKindForHomeAssistant(
 }
 
 function readRouting(body: Record<string, unknown>): {
-  providerId?: string;
-  modelId?: string;
-  tools?: readonly string[];
+  providerId?: string | undefined;
+  modelId?: string | undefined;
+  tools?: readonly string[] | undefined;
 } | undefined {
   const providerId = readString(body.providerId ?? body.provider);
   const modelId = readString(body.modelId ?? body.model);

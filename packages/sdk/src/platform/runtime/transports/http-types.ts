@@ -34,8 +34,8 @@ import type { TransportPaths } from './shared.js';
 
 export interface HttpTransportOptions {
   readonly baseUrl: string;
-  readonly authToken?: string | null;
-  readonly fetchImpl?: typeof fetch;
+  readonly authToken?: string | null | undefined;
+  readonly fetchImpl?: typeof fetch | undefined;
 }
 
 export interface HttpProvidersSnapshot {
@@ -139,12 +139,12 @@ export interface HttpTransportTelemetryStreamReady {
   readonly capabilities: TelemetryCapabilities;
   readonly view: TelemetryViewMode;
   readonly rawAccessible: boolean;
-  readonly resumedFrom?: string;
+  readonly resumedFrom?: string | undefined;
 }
 
 export interface HttpTransportTelemetryStreamHandlers {
   readonly onRecord: (record: TelemetryRecord) => void;
-  readonly onReady?: (payload: HttpTransportTelemetryStreamReady) => void;
+  readonly onReady?: ((payload: HttpTransportTelemetryStreamReady) => void) | undefined | undefined;
 }
 
 export interface HttpTransportTelemetryClient {
@@ -214,61 +214,61 @@ export interface HttpTransport {
 }
 
 export interface HttpSessionEnsureInput {
-  readonly sessionId?: string;
-  readonly title?: string;
-  readonly metadata?: Record<string, unknown>;
-  readonly routeId?: string;
+  readonly sessionId?: string | undefined;
+  readonly title?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly routeId?: string | undefined;
   readonly participant?: {
     readonly surfaceKind: string;
     readonly surfaceId: string;
-    readonly externalId?: string;
-    readonly userId?: string;
-    readonly displayName?: string;
+    readonly externalId?: string | undefined;
+    readonly userId?: string | undefined;
+    readonly displayName?: string | undefined;
   };
 }
 
 export interface HttpSessionMessageInput {
   readonly body: string;
-  readonly surfaceKind?: string;
-  readonly surfaceId?: string;
-  readonly externalId?: string;
-  readonly threadId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
-  readonly title?: string;
-  readonly routeId?: string;
-  readonly metadata?: Record<string, unknown>;
-  readonly routing?: SteerSharedSessionMessageInput['routing'];
+  readonly surfaceKind?: string | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly externalId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly title?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly routing?: SteerSharedSessionMessageInput['routing'] | undefined;
 }
 
 export interface HttpSteerSessionMessageInput extends HttpSessionMessageInput {
-  readonly allowSpawnFallback?: boolean;
+  readonly allowSpawnFallback?: boolean | undefined;
 }
 
 export interface HttpTaskSubmitInput {
   readonly task: string;
-  readonly model?: string;
-  readonly tools?: readonly string[];
-  readonly routing?: HttpSessionMessageInput['routing'];
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly surfaceKind?: string;
-  readonly surfaceId?: string;
-  readonly externalId?: string;
-  readonly threadId?: string;
-  readonly userId?: string;
-  readonly displayName?: string;
-  readonly title?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly model?: string | undefined;
+  readonly tools?: readonly string[] | undefined;
+  readonly routing?: HttpSessionMessageInput['routing'] | undefined;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly surfaceKind?: string | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly externalId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly title?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface HttpTaskSubmitResponse {
   readonly acknowledged: boolean;
-  readonly mode?: string;
-  readonly sessionId?: string | null;
-  readonly agentId?: string | null;
-  readonly status?: string;
-  readonly task?: string;
+  readonly mode?: string | undefined;
+  readonly sessionId?: string | null | undefined;
+  readonly agentId?: string | null | undefined;
+  readonly status?: string | undefined;
+  readonly task?: string | undefined;
 }
 
 export interface HttpTaskActionResponse {
@@ -276,23 +276,23 @@ export interface HttpTaskActionResponse {
 }
 
 export interface HttpTaskRetryResponse {
-  readonly retried?: boolean;
+  readonly retried?: boolean | undefined;
   readonly task: import('../store/domains/tasks.js').RuntimeTask | null;
-  readonly agentId?: string;
+  readonly agentId?: string | undefined;
 }
 
 export interface HttpRemotePairRequestInput {
   readonly peerKind: DistributedPeerKind;
   readonly label: string;
-  readonly requestedId?: string;
-  readonly platform?: string;
-  readonly deviceFamily?: string;
-  readonly version?: string;
-  readonly clientMode?: string;
-  readonly capabilities?: readonly string[];
-  readonly commands?: readonly string[];
-  readonly ttlMs?: number;
-  readonly metadata?: Record<string, unknown>;
+  readonly requestedId?: string | undefined;
+  readonly platform?: string | undefined;
+  readonly deviceFamily?: string | undefined;
+  readonly version?: string | undefined;
+  readonly clientMode?: string | undefined;
+  readonly capabilities?: readonly string[] | undefined;
+  readonly commands?: readonly string[] | undefined;
+  readonly ttlMs?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface HttpRemotePairResponse {
@@ -311,11 +311,11 @@ export interface HttpRemotePairVerificationResponse {
 }
 
 export interface HttpRemotePeerHeartbeatInput {
-  readonly capabilities?: readonly string[];
-  readonly commands?: readonly string[];
-  readonly version?: string;
-  readonly clientMode?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly capabilities?: readonly string[] | undefined;
+  readonly commands?: readonly string[] | undefined;
+  readonly version?: string | undefined;
+  readonly clientMode?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface HttpRemotePeerTokenResponse {
@@ -326,16 +326,16 @@ export interface HttpRemotePeerTokenResponse {
 export interface HttpRemotePeerInvokeInput {
   readonly peerId: string;
   readonly command: string;
-  readonly payload?: unknown;
-  readonly priority?: DistributedWorkPriority;
-  readonly waitMs?: number;
-  readonly timeoutMs?: number;
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly automationRunId?: string;
-  readonly automationJobId?: string;
-  readonly approvalId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly payload?: unknown | undefined;
+  readonly priority?: DistributedWorkPriority | undefined;
+  readonly waitMs?: number | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly automationRunId?: string | undefined;
+  readonly automationJobId?: string | undefined;
+  readonly approvalId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface HttpRemotePeerInvokeResponse {
@@ -344,15 +344,15 @@ export interface HttpRemotePeerInvokeResponse {
 }
 
 export interface HttpRemotePeerClaimInput {
-  readonly maxItems?: number;
-  readonly leaseMs?: number;
+  readonly maxItems?: number | undefined;
+  readonly leaseMs?: number | undefined;
 }
 
 export interface HttpRemotePeerCompleteInput {
-  readonly status?: 'completed' | 'failed' | 'cancelled';
-  readonly result?: unknown;
-  readonly error?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
+  readonly result?: unknown | undefined;
+  readonly error?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface HttpPeerRecordSnapshot {

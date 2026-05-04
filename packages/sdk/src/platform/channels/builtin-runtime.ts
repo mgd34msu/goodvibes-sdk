@@ -126,7 +126,7 @@ export class BuiltinChannelRuntime {
   async runTool(surface: ChannelSurface, toolId: string, input?: Record<string, unknown>): Promise<unknown> {
     const tool = this.listTools(surface).find((entry) => entry.id === toolId || entry.name === toolId);
     if (!tool) return null;
-    const actionId = tool.actionIds[0];
+    const actionId = tool.actionIds[0]!;
     if (!actionId) return null;
     return this.runOperatorAction(surface, actionId, input);
   }

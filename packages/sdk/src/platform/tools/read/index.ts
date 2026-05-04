@@ -81,9 +81,9 @@ export class ReadTool implements Tool {
       const pages = paginateFiles(allFiles, tokenBudget, this.projectIndex.baseDir);
       const totalPages = Math.max(1, pages.length);
       const pageIdx = Math.min(page - 1, totalPages - 1);
-      const pageIndices = pages[pageIdx] ?? [];
+      const pageIndices = pages[pageIdx]! ?? [];
 
-      filesToProcess = pageIndices.map((i) => allFiles[i]);
+      filesToProcess = pageIndices.map((i) => allFiles[i]).filter((f): f is (typeof allFiles)[number] => f !== undefined);
 
       const deliveredSet = new Set(pages.slice(0, pageIdx + 1).flat());
       const pendingFiles = allFiles

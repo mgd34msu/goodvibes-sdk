@@ -22,7 +22,7 @@ import {
 export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {}
 
 export interface PeerRemoteClientOptions {
-  readonly validateResponses?: boolean;
+  readonly validateResponses?: boolean | undefined;
 }
 
 type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<

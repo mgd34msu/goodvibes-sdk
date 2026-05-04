@@ -6,17 +6,17 @@
 
 export interface PartialToolCall {
   readonly index: number;
-  readonly id?: string;
-  readonly name?: string;
-  readonly arguments?: string;
+  readonly id?: string | undefined;
+  readonly name?: string | undefined;
+  readonly arguments?: string | undefined;
 }
 
 export interface TurnInputOrigin {
-  readonly source?: string;
-  readonly surface?: string;
-  readonly messageId?: string;
-  readonly topic?: string;
-  readonly metadata?: Readonly<Record<string, unknown>>;
+  readonly source?: string | undefined;
+  readonly surface?: string | undefined;
+  readonly messageId?: string | undefined;
+  readonly topic?: string | undefined;
+  readonly metadata?: Readonly<Record<string, unknown>> | undefined;
 }
 
 export type TurnStopReason =
@@ -70,14 +70,14 @@ export type TurnEvent =
     toolCallCount: number;
     inputTokens: number;
     outputTokens: number;
-    cacheReadTokens?: number;
-    cacheWriteTokens?: number;
+    cacheReadTokens?: number | undefined;
+    cacheWriteTokens?: number | undefined;
     /** OBS-04 enrichments */
-    durationMs?: number;
-    retries?: number;
-    costUsdCents?: number;
-    finishReason?: string;
-    providerRequestId?: string;
+    durationMs?: number | undefined;
+    retries?: number | undefined;
+    costUsdCents?: number | undefined;
+    finishReason?: string | undefined;
+    providerRequestId?: string | undefined;
   }
   /** A batch of tool calls is ready for execution. */
   | { type: 'TOOL_BATCH_READY'; turnId: string; toolCalls: string[] }

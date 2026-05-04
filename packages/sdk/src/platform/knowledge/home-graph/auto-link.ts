@@ -34,15 +34,15 @@ export async function autoLinkHomeGraphSource(input: {
   readonly spaceId: string;
   readonly installationId: string;
   readonly source: KnowledgeSourceRecord;
-  readonly extraction?: KnowledgeExtractionRecord;
+  readonly extraction?: KnowledgeExtractionRecord | undefined;
   readonly state: HomeGraphState;
 }): Promise<HomeGraphAutoLinkResult | undefined> {
   if (isGeneratedPageSource(input.source) || shouldSkipAutoLink(input.source)) return undefined;
   if (hasActiveSourceLink(input.source.id, input.state.edges)) return undefined;
   const candidates = scoreCandidates(input.source, input.extraction, input.state);
-  const best = candidates[0];
+  const best = candidates[0]!;
   if (!best || best.score < MIN_AUTO_LINK_SCORE) return undefined;
-  const next = candidates[1];
+  const next = candidates[1]!;
   if (next && best.score - next.score < 20 && !best.reasons.some((reason) => reason.startsWith('exact-model:'))) {
     return undefined;
   }

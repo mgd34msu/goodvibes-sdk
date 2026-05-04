@@ -291,7 +291,7 @@ export async function handleSlackSurfacePayload(
   const actionPayload = event.payload;
   const actionId = Array.isArray(actionPayload.actions)
     ? (() => {
-        const first = actionPayload.actions[0] as Record<string, unknown> | undefined;
+        const first = actionPayload.actions[0]! as Record<string, unknown> | undefined;
         return typeof first?.action_id === 'string' ? first.action_id : '';
       })()
     : '';

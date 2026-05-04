@@ -230,11 +230,11 @@ export class SandboxSessionRegistry {
     args: readonly string[],
     configManager: ConfigManagerLike,
     options: {
-      readonly cwd?: string;
-      readonly env?: NodeJS.ProcessEnv;
-      readonly inheritHostEnv?: boolean;
-      readonly timeoutMs?: number;
-      readonly input?: string;
+      readonly cwd?: string | undefined;
+      readonly env?: NodeJS.ProcessEnv | undefined;
+      readonly inheritHostEnv?: boolean | undefined;
+      readonly timeoutMs?: number | undefined;
+      readonly input?: string | undefined;
     } = {},
   ): SandboxCommandResult {
     const session = this.get(sessionId);

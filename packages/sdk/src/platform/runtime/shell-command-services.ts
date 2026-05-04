@@ -36,34 +36,34 @@ export interface BootstrapCommandShellServices {
 }
 
 export interface CreateBootstrapCommandShellServicesOptions {
-  readonly agentManager?: import('./shell-command-ops.js').ShellAgentManagerService;
-  readonly acpManager?: import('./shell-command-ops.js').ShellAcpManagerService;
-  readonly automationManager?: import('./shell-command-ops.js').ShellAutomationManagerRuntimeService;
-  readonly modeManager?: import('./shell-command-ops.js').ShellModeManagerService;
-  readonly planManager?: import('./shell-command-ops.js').ShellPlanManagerService;
-  readonly adaptivePlanner?: AdaptivePlanner;
-  readonly sessionOrchestration?: import('./shell-command-ops.js').ShellSessionOrchestrationService;
+  readonly agentManager?: import('./shell-command-ops.js').ShellAgentManagerService | undefined;
+  readonly acpManager?: import('./shell-command-ops.js').ShellAcpManagerService | undefined;
+  readonly automationManager?: import('./shell-command-ops.js').ShellAutomationManagerRuntimeService | undefined;
+  readonly modeManager?: import('./shell-command-ops.js').ShellModeManagerService | undefined;
+  readonly planManager?: import('./shell-command-ops.js').ShellPlanManagerService | undefined;
+  readonly adaptivePlanner?: AdaptivePlanner | undefined;
+  readonly sessionOrchestration?: import('./shell-command-ops.js').ShellSessionOrchestrationService | undefined;
   readonly shellPaths: ShellPathService;
   readonly componentHealthMonitor: ComponentHealthMonitor;
   readonly worktreeRegistry: WorktreeRegistry;
   readonly sandboxSessionRegistry: SandboxSessionRegistry;
   readonly readModels: import('./ui-read-models.js').UiReadModels;
-  readonly serviceRegistry?: import('../config/service-registry.js').ServiceRegistry;
-  readonly subscriptionManager?: import('../config/subscriptions.js').SubscriptionManager;
-  readonly secretsManager?: import('../config/secrets.js').SecretsManager;
-  readonly localUserAuthManager?: import('../security/user-auth.js').UserAuthManager;
-  readonly tokenAuditor?: import('../security/token-audit.js').ApiTokenAuditor;
-  readonly replayEngine?: import('../core/deterministic-replay.js').DeterministicReplayEngine;
-  readonly webhookNotifier?: import('../integrations/webhooks.js').WebhookNotifier;
-  readonly remoteRuntime?: RemoteCommandService;
-  readonly planRuntime?: PlanRuntimeService;
+  readonly serviceRegistry?: import('../config/service-registry.js').ServiceRegistry | undefined;
+  readonly subscriptionManager?: import('../config/subscriptions.js').SubscriptionManager | undefined;
+  readonly secretsManager?: import('../config/secrets.js').SecretsManager | undefined;
+  readonly localUserAuthManager?: import('../security/user-auth.js').UserAuthManager | undefined;
+  readonly tokenAuditor?: import('../security/token-audit.js').ApiTokenAuditor | undefined;
+  readonly replayEngine?: import('../core/deterministic-replay.js').DeterministicReplayEngine | undefined;
+  readonly webhookNotifier?: import('../integrations/webhooks.js').WebhookNotifier | undefined;
+  readonly remoteRuntime?: RemoteCommandService | undefined;
+  readonly planRuntime?: PlanRuntimeService | undefined;
   readonly forensicsRegistry: ForensicsRegistry;
   readonly policyRuntimeState: PolicyRuntimeState;
-  readonly memoryRegistry?: import('../state/memory-store.js').MemoryRegistry;
-  readonly integrationHelpers?: IntegrationHelperService;
-  readonly knowledgeService?: KnowledgeService;
-  readonly pluginManager?: PluginManager;
-  readonly hookWorkbench?: HookWorkbench;
+  readonly memoryRegistry?: import('../state/memory-store.js').MemoryRegistry | undefined;
+  readonly integrationHelpers?: IntegrationHelperService | undefined;
+  readonly knowledgeService?: KnowledgeService | undefined;
+  readonly pluginManager?: PluginManager | undefined;
+  readonly hookWorkbench?: HookWorkbench | undefined;
 }
 
 export function createBootstrapCommandShellServices(

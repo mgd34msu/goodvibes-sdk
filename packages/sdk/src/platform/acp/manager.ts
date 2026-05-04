@@ -43,14 +43,14 @@ export class AcpManager {
   private connections = new Map<string, AcpConnection>();
   private pending = new Map<string, Promise<SubagentResult>>();
   private agentCmd: string[];
-  private readonly requestPermission?: PermissionRequestHandler;
+  private readonly requestPermission?: PermissionRequestHandler | undefined;
   private readonly runtimeBus: RuntimeEventBus | null;
   private readonly hookDispatcher: Pick<HookDispatcher, 'fire'> | null;
 
   constructor(options: {
-    readonly requestPermission?: PermissionRequestHandler;
-    readonly runtimeBus?: RuntimeEventBus | null;
-    readonly hookDispatcher?: Pick<HookDispatcher, 'fire'> | null;
+    readonly requestPermission?: PermissionRequestHandler | undefined;
+    readonly runtimeBus?: RuntimeEventBus | null | undefined;
+    readonly hookDispatcher?: Pick<HookDispatcher, 'fire'> | null | undefined;
   } = {}) {
     this.agentCmd = resolveAgentCommand();
     this.requestPermission = options.requestPermission;

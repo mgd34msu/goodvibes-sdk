@@ -26,9 +26,9 @@ export function parseOAuthScopes(raw: unknown): readonly string[] | undefined {
 export async function buildOAuthAuthorizationStart(
   config: OAuthProviderConfig,
   input?: {
-    readonly state?: string;
-    readonly verifier?: string;
-    readonly redirectUri?: string;
+    readonly state?: string | undefined;
+    readonly verifier?: string | undefined;
+    readonly redirectUri?: string | undefined;
   },
 ): Promise<OAuthStartState> {
   const state = input?.state ?? createOAuthState();
@@ -80,11 +80,11 @@ async function exchangeOAuthRequest(
     throw new Error(`OAuth token exchange failed (${response.status}): ${text}`);
   }
   const json = await response.json() as {
-    access_token?: unknown;
-    refresh_token?: unknown;
-    token_type?: unknown;
-    expires_in?: unknown;
-    scope?: unknown;
+    access_token?: unknown | undefined;
+    refresh_token?: unknown | undefined;
+    token_type?: unknown | undefined;
+    expires_in?: unknown | undefined;
+    scope?: unknown | undefined;
   };
   if (typeof json.access_token !== 'string' || json.access_token.length === 0) {
     throw new Error('OAuth token exchange did not return an access token.');
@@ -108,7 +108,7 @@ export async function exchangeOAuthAuthorizationCode(
     readonly code: string;
     readonly verifier: string;
     readonly redirectUri: string;
-    readonly state?: string;
+    readonly state?: string | undefined;
   },
 ): Promise<OAuthTokenPayload> {
   const payload: Record<string, string | number | boolean> = {

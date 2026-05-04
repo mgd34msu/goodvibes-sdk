@@ -26,9 +26,9 @@ export interface IntegrationHelpersContext {
   readonly homeDirectory: string;
   readonly runtimeStore: RuntimeStore;
   readonly runtimeBus: RuntimeEventBus;
-  readonly configManager?: ConfigManager;
-  readonly featureFlags?: FeatureFlagManager;
-  readonly getConversationTitle?: () => string | undefined;
+  readonly configManager?: ConfigManager | undefined;
+  readonly featureFlags?: FeatureFlagManager | undefined;
+  readonly getConversationTitle?: (() => string | undefined) | undefined | undefined;
   readonly automationManager: AutomationManager;
   readonly approvalBroker: ApprovalBroker;
   readonly sessionBroker: SharedSessionBroker;
@@ -64,7 +64,7 @@ export interface SettingsSnapshotAvailable {
   readonly resolvedCounts: Readonly<Record<string, number>>;
   readonly conflicts: readonly SettingsConflictRecord[];
   readonly recentFailures: readonly { readonly surface: string; readonly message: string; readonly timestamp: number }[];
-  readonly stagedManagedBundle?: StagedManagedBundle;
+  readonly stagedManagedBundle?: StagedManagedBundle | undefined;
   readonly rollbackHistory: readonly ManagedRollbackRecord[];
 }
 

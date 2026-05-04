@@ -9,14 +9,14 @@ export interface AutomationAtSchedule {
 export interface AutomationEverySchedule {
   readonly kind: 'every';
   readonly intervalMs: number;
-  readonly anchorAt?: number;
+  readonly anchorAt?: number | undefined;
 }
 
 export interface AutomationCronSchedule {
   readonly kind: 'cron';
   readonly expression: string;
-  readonly timezone?: string;
-  readonly staggerMs?: number;
+  readonly timezone?: string | undefined;
+  readonly staggerMs?: number | undefined;
 }
 
 export type AutomationScheduleDefinition =
@@ -46,7 +46,7 @@ export function parseEveryInterval(input: string): number {
   if (!match) {
     throw new Error(`Invalid interval: "${input}". Use values like 30s, 5m, 1h, or 1d.`);
   }
-  const amount = Number.parseFloat(match[1]);
+  const amount = Number.parseFloat(match[1]!);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error(`Invalid interval amount: "${input}"`);
   }
@@ -90,11 +90,11 @@ export function isRecurringTopOfHourCronExpression(expression: string): boolean 
   const fields = parseCronFields(expression);
   if (fields.length === 5) {
     const [minuteField, hourField] = fields;
-    return minuteField === '0' && hourField.includes('*');
+    return minuteField === '0' && hourField!.includes('*');
   }
   if (fields.length === 6) {
     const [secondField, minuteField, hourField] = fields;
-    return secondField === '0' && minuteField === '0' && hourField.includes('*');
+    return secondField === '0' && minuteField === '0' && hourField!.includes('*');
   }
   return false;
 }

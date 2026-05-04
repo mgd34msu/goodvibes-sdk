@@ -74,7 +74,7 @@ export interface SurfacePerfDomainState {
   /** Bun process RSS in bytes. */
   rssBytes: number;
   /** Epoch ms of the last memory sample. */
-  lastMemorySampleAt?: number;
+  lastMemorySampleAt?: number | undefined;
 }
 
 /**

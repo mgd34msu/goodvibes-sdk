@@ -287,7 +287,7 @@ export class AgentTaskAdapter {
   private _transitionTask(
     taskId: string,
     status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled',
-    opts: { isTerminal?: boolean; error?: string },
+    opts: { isTerminal?: boolean; error?: string | undefined },
   ): void {
     const current = this._store.getState().tasks.tasks.get(taskId);
     const timestamp = Date.now();

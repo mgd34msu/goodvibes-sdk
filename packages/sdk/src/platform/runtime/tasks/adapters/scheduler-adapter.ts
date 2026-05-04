@@ -98,7 +98,7 @@ export class SchedulerTaskAdapter {
   handleRunComplete(
     runAgentId: string,
     status: 'completed' | 'failed',
-    error?: string,
+    error?: string | undefined,
   ): void {
     const taskId = this._runToTask.get(runAgentId);
     if (taskId === undefined) return;
@@ -178,7 +178,7 @@ export class SchedulerTaskAdapter {
   private _transitionTask(
     taskId: string,
     status: 'completed' | 'failed' | 'cancelled',
-    opts: { error?: string },
+    opts: { error?: string | undefined },
   ): void {
     this._dispatch.transitionRuntimeTask(
       taskId,

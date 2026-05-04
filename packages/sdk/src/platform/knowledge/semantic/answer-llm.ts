@@ -57,7 +57,7 @@ export async function synthesizeAnswer(
 
 export function answerConfidence(answer: KnowledgeSemanticLlmAnswer | null, evidence: readonly EvidenceItem[]): number {
   if (typeof answer?.confidence === 'number') return answer.confidence;
-  const top = evidence[0]?.score ?? 0;
+  const top = evidence[0]!?.score ?? 0;
   const factBoost = Math.min(35, uniqueNodes(evidence.flatMap((item) => item.facts)).length * 4);
   return Math.max(10, Math.min(92, Math.round(top / 5) + factBoost));
 }

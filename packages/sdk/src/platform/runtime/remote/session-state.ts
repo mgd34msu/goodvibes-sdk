@@ -9,10 +9,10 @@ export interface RemoteSessionStateSnapshot {
   readonly runnerId: string;
   readonly label: string;
   readonly transportState: string;
-  readonly taskId?: string;
+  readonly taskId?: string | undefined;
   readonly messageCount: number;
   readonly errorCount: number;
-  readonly lastError?: string;
+  readonly lastError?: string | undefined;
   readonly heartbeat: RemoteHeartbeatSnapshot;
   readonly negotiation: RemoteNegotiationSnapshot;
   readonly capabilities: readonly RemoteCapabilitySnapshot[];
@@ -22,8 +22,8 @@ export interface RemoteSessionStateSnapshot {
 export function buildRemoteSessionStateSnapshot(input: {
   runnerId: string;
   label: string;
-  connection?: AcpConnection | null;
-  contract?: RemoteRunnerContract | null;
+  connection?: AcpConnection | null | undefined;
+  contract?: RemoteRunnerContract | null | undefined;
   heartbeat: RemoteHeartbeatSnapshot;
   negotiation: RemoteNegotiationSnapshot;
   capabilities: readonly RemoteCapabilitySnapshot[];

@@ -35,7 +35,7 @@ export type FieldKind = 'string' | 'number' | 'boolean' | 'string[]' | 'enum' | 
 export interface FieldSpec {
   readonly key: string;
   readonly kind: FieldKind;
-  readonly values?: readonly string[];
+  readonly values?: readonly string[] | undefined;
 }
 
 export function validateEventFields(type: string, v: unknown, fields: readonly FieldSpec[]): ContractResult {

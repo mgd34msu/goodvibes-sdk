@@ -61,11 +61,11 @@ export interface QuarantineRecord {
   /** Epoch ms when quarantine was applied. */
   quarantinedAt: number;
   /** Human-readable detail for display in the MCP panel. */
-  detail?: string;
+  detail?: string | undefined;
   /** Operator identifier who acknowledged and approved override, if any. */
-  overrideAcknowledgedBy?: string;
+  overrideAcknowledgedBy?: string | undefined;
   /** Epoch ms when the operator acknowledged the quarantine override. */
-  overrideAcknowledgedAt?: number;
+  overrideAcknowledgedAt?: number | undefined;
 }
 
 /** Per-server schema record tracking freshness metadata. */
@@ -75,15 +75,15 @@ export interface McpSchemaRecord {
   /** Current freshness state. */
   freshness: SchemaFreshness;
   /** Epoch ms when schemas were last successfully fetched. */
-  fetchedAt?: number;
+  fetchedAt?: number | undefined;
   /** Epoch ms when the next fetch is required (fetchedAt + ttl). */
-  expiresAt?: number;
+  expiresAt?: number | undefined;
   /** Error message from the last failed fetch attempt. */
-  lastFetchError?: string;
+  lastFetchError?: string | undefined;
   /** Number of consecutive failed fetch attempts. */
   consecutiveFailures: number;
   /** Quarantine metadata, present only when freshness is 'quarantined'. */
-  quarantine?: QuarantineRecord;
+  quarantine?: QuarantineRecord | undefined;
 }
 
 // ── Permissions ───────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ export interface McpTrustProfile {
   allowedPaths: string[];
   allowedHosts: string[];
   allowedCapabilities: McpCapabilityClass[];
-  notes?: string;
+  notes?: string | undefined;
   lastModifiedAt: number;
 }
 
@@ -176,11 +176,11 @@ export interface McpSecuritySnapshot {
   /** Current schema freshness state. */
   schemaFreshness: SchemaFreshness;
   /** Active quarantine reason when schema execution is blocked. */
-  quarantineReason?: QuarantineReason;
+  quarantineReason?: QuarantineReason | undefined;
   /** Human-readable quarantine detail. */
-  quarantineDetail?: string;
+  quarantineDetail?: string | undefined;
   /** Whether the server is currently connected. */
-  connected?: boolean;
+  connected?: boolean | undefined;
 }
 
 /** Type of attack-path finding surfaced by the security review. */
@@ -205,11 +205,11 @@ export interface McpAttackPathFinding {
   /** Evidence strings used to derive the finding. */
   evidence: readonly string[];
   /** Optional tool name for recent decision findings. */
-  toolName?: string;
+  toolName?: string | undefined;
   /** Optional capability class for recent decision findings. */
-  capability?: McpCapabilityClass;
+  capability?: McpCapabilityClass | undefined;
   /** Optional timestamp for recent decision findings. */
-  evaluatedAt?: number;
+  evaluatedAt?: number | undefined;
 }
 
 /** Aggregated attack-path review across all MCP servers and recent decisions. */
@@ -247,15 +247,15 @@ export interface McpPermission {
   /** Human-readable explanation for the verdict. */
   reason: string;
   /** Richer verdict used by the hardened trust layer. */
-  verdict?: McpCoherenceVerdict;
+  verdict?: McpCoherenceVerdict | undefined;
   /** Risk associated with the evaluated tool call. */
-  riskLevel?: McpRiskLevel;
+  riskLevel?: McpRiskLevel | undefined;
   /** Inferred capability class. */
-  capability?: McpCapabilityClass;
+  capability?: McpCapabilityClass | undefined;
   /** Whether the request was flagged as incoherent for its server role. */
-  incoherent?: boolean;
+  incoherent?: boolean | undefined;
   /** Effective trust mode when the decision was made. */
-  profileMode?: McpTrustMode;
+  profileMode?: McpTrustMode | undefined;
 }
 
 /** Per-tool permission override stored in a server's permission record. */
@@ -265,7 +265,7 @@ export interface McpToolPermission {
   /** Explicit allow or deny override. */
   verdict: 'allow' | 'deny';
   /** Optional note recorded when the override was set. */
-  note?: string;
+  note?: string | undefined;
 }
 
 /** Complete permission configuration for a single MCP server. */
@@ -299,15 +299,15 @@ export interface McpServerEntry {
   /** Number of reconnect attempts in the current reconnection cycle. */
   reconnectAttempts: number;
   /** Epoch ms of the most recent successful connection. */
-  connectedAt?: number;
+  connectedAt?: number | undefined;
   /** Epoch ms of the most recent disconnection. */
-  disconnectedAt?: number;
+  disconnectedAt?: number | undefined;
   /** Reason for the most recent disconnection or failure. */
-  lastError?: string;
+  lastError?: string | undefined;
   /** Whether a reconnect timer is currently scheduled. */
   reconnectPending: boolean;
   /** Auth challenge type if state is auth_required. */
-  authType?: string;
+  authType?: string | undefined;
   /** Tools available from this server (populated on connect). */
   availableTools: string[];
   /** Resources available from this server (populated on connect). */

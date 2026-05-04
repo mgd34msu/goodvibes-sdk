@@ -12,11 +12,11 @@ import { AutomationSourceStore } from './store/sources.js';
 
 export interface AutomationServiceConfig {
   readonly configManager: ConfigManager;
-  readonly jobs?: AutomationJobStore;
-  readonly runs?: AutomationRunStore;
-  readonly routes?: AutomationRouteStore;
-  readonly sources?: AutomationSourceStore;
-  readonly manager?: AutomationManager;
+  readonly jobs?: AutomationJobStore | undefined;
+  readonly runs?: AutomationRunStore | undefined;
+  readonly routes?: AutomationRouteStore | undefined;
+  readonly sources?: AutomationSourceStore | undefined;
+  readonly manager?: AutomationManager | undefined;
 }
 
 function sortJobs(jobs: Iterable<AutomationJob>): AutomationJob[] {

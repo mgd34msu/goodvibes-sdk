@@ -172,7 +172,7 @@ export function wrapText(text: string, width: number): string[] {
           let splitIdx = 0;
           let currentW = 0;
           for (let i = 0; i < remaining.length; i++) {
-            const charW = getDisplayWidth(remaining[i]);
+            const charW = getDisplayWidth(remaining[i]!);
             if (currentW + charW > width) break;
             currentW += charW;
             splitIdx = i + 1;
@@ -209,8 +209,8 @@ export function interpolateColor(startHex: string, endHex: string, factor: numbe
   };
   const [r1, g1, b1] = parse(startHex);
   const [r2, g2, b2] = parse(endHex);
-  const r = Math.round(r1 + factor * (r2 - r1));
-  const g = Math.round(g1 + factor * (g2 - g1));
-  const b = Math.round(b1 + factor * (b2 - b1));
+  const r = Math.round(r1! + factor * (r2! - r1!));
+  const g = Math.round(g1! + factor * (g2! - g1!));
+  const b = Math.round(b1! + factor * (b2! - b1!));
   return `${r};${g};${b}`;
 }

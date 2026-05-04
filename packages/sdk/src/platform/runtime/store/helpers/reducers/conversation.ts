@@ -121,7 +121,7 @@ export function updateConversationState(
         stream: {
           accumulated: event.accumulated,
           reasoningAccumulated: `${domain.stream.reasoningAccumulated}${event.reasoning ?? ''}`,
-          partialToolPreview: formatPartialToolPreview(event.toolCalls),
+          partialToolPreview: formatPartialToolPreview(event.toolCalls!),
           deltaCount: domain.stream.deltaCount + 1,
           firstDeltaAt: domain.stream.firstDeltaAt ?? now(),
           lastDeltaAt: now(),

@@ -11,23 +11,23 @@ export interface WebSearchEvidence {
   readonly extract: FetchExtractMode;
   readonly content: string;
   readonly tokensUsed: number;
-  readonly status?: number;
-  readonly contentType?: string;
-  readonly truncated?: boolean;
+  readonly status?: number | undefined;
+  readonly contentType?: string | undefined;
+  readonly truncated?: boolean | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
 export interface WebSearchResult {
   readonly rank: number;
   readonly url: string;
-  readonly title?: string;
-  readonly snippet?: string;
-  readonly displayUrl?: string;
-  readonly domain?: string;
+  readonly title?: string | undefined;
+  readonly snippet?: string | undefined;
+  readonly displayUrl?: string | undefined;
+  readonly domain?: string | undefined;
   readonly type: WebSearchResultType;
   readonly providerId: string;
   readonly metadata: Record<string, unknown>;
-  readonly evidence?: readonly WebSearchEvidence[];
+  readonly evidence?: readonly WebSearchEvidence[] | undefined;
 }
 
 export interface WebSearchRelatedTopic {
@@ -36,12 +36,12 @@ export interface WebSearchRelatedTopic {
 }
 
 export interface WebSearchInstantAnswer {
-  readonly heading?: string;
-  readonly answer?: string;
-  readonly abstract?: string;
-  readonly source?: string;
-  readonly url?: string;
-  readonly image?: string;
+  readonly heading?: string | undefined;
+  readonly answer?: string | undefined;
+  readonly abstract?: string | undefined;
+  readonly source?: string | undefined;
+  readonly url?: string | undefined;
+  readonly image?: string | undefined;
   readonly type: string;
   readonly related: readonly WebSearchRelatedTopic[];
   readonly metadata: Record<string, unknown>;
@@ -49,24 +49,24 @@ export interface WebSearchInstantAnswer {
 
 export interface WebSearchRequest {
   readonly query: string;
-  readonly providerId?: string;
-  readonly maxResults?: number;
-  readonly verbosity?: WebSearchVerbosity;
-  readonly region?: string;
-  readonly safeSearch?: WebSearchSafeSearch;
-  readonly timeRange?: WebSearchTimeRange;
-  readonly includeInstantAnswer?: boolean;
-  readonly includeEvidence?: boolean;
-  readonly evidenceTopN?: number;
-  readonly evidenceExtract?: FetchExtractMode;
-  readonly trustedHosts?: readonly string[];
-  readonly blockedHosts?: readonly string[];
-  readonly metadata?: Record<string, unknown>;
+  readonly providerId?: string | undefined;
+  readonly maxResults?: number | undefined;
+  readonly verbosity?: WebSearchVerbosity | undefined;
+  readonly region?: string | undefined;
+  readonly safeSearch?: WebSearchSafeSearch | undefined;
+  readonly timeRange?: WebSearchTimeRange | undefined;
+  readonly includeInstantAnswer?: boolean | undefined;
+  readonly includeEvidence?: boolean | undefined;
+  readonly evidenceTopN?: number | undefined;
+  readonly evidenceExtract?: FetchExtractMode | undefined;
+  readonly trustedHosts?: readonly string[] | undefined;
+  readonly blockedHosts?: readonly string[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface WebSearchProviderResponse {
   readonly results: readonly WebSearchResult[];
-  readonly instantAnswer?: WebSearchInstantAnswer;
+  readonly instantAnswer?: WebSearchInstantAnswer | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -76,7 +76,7 @@ export interface WebSearchResponse {
   readonly query: string;
   readonly verbosity: WebSearchVerbosity;
   readonly results: readonly WebSearchResult[];
-  readonly instantAnswer?: WebSearchInstantAnswer;
+  readonly instantAnswer?: WebSearchInstantAnswer | undefined;
   readonly metadata: Record<string, unknown>;
 }
 
@@ -86,7 +86,7 @@ export interface WebSearchProviderDescriptor {
   readonly capabilities: readonly WebSearchProviderCapability[];
   readonly requiresAuth: boolean;
   readonly configured: boolean;
-  readonly note?: string;
+  readonly note?: string | undefined;
 }
 
 export interface WebSearchProvider {

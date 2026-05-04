@@ -27,7 +27,7 @@ export interface RuntimePlugin {
   /** Plugin description. */
   description: string;
   /** Optional author. */
-  author?: string;
+  author?: string | undefined;
   /** Current lifecycle state. */
   status: PluginLifecycleState;
   /** Whether the plugin is enabled in persistent config. */
@@ -37,11 +37,11 @@ export interface RuntimePlugin {
   /** Number of tools contributed by this plugin. */
   toolCount: number;
   /** Error message if status === 'error' | 'degraded'. */
-  error?: string;
+  error?: string | undefined;
   /** Epoch ms when the plugin was last loaded. */
-  loadedAt?: number;
+  loadedAt?: number | undefined;
   /** Epoch ms when the plugin encountered its last error. */
-  errorAt?: number;
+  errorAt?: number | undefined;
   /** Plugin-specific configuration record. */
   config: Record<string, unknown>;
   /** Number of hook invocations this session. */

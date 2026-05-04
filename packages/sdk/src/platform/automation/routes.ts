@@ -16,15 +16,15 @@ export interface AutomationRouteBinding {
   readonly surfaceKind: AutomationSurfaceKind;
   readonly surfaceId: string;
   readonly externalId: string;
-  readonly sessionPolicy?: AutomationSessionPolicy;
-  readonly threadPolicy?: AutomationThreadPolicy;
-  readonly deliveryGuarantee?: AutomationDeliveryGuarantee;
-  readonly threadId?: string;
-  readonly channelId?: string;
-  readonly sessionId?: string;
-  readonly jobId?: string;
-  readonly runId?: string;
-  readonly title?: string;
+  readonly sessionPolicy?: AutomationSessionPolicy | undefined;
+  readonly threadPolicy?: AutomationThreadPolicy | undefined;
+  readonly deliveryGuarantee?: AutomationDeliveryGuarantee | undefined;
+  readonly threadId?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly jobId?: string | undefined;
+  readonly runId?: string | undefined;
+  readonly title?: string | undefined;
   readonly lastSeenAt: number;
   readonly createdAt: number;
   readonly updatedAt: number;
@@ -32,10 +32,10 @@ export interface AutomationRouteBinding {
 }
 
 export interface AutomationRouteResolution {
-  readonly bindingId?: string;
+  readonly bindingId?: string | undefined;
   readonly surfaceKind: AutomationSurfaceKind;
   readonly externalId: string;
-  readonly threadId?: string;
-  readonly confidence?: number;
-  readonly reason?: string;
+  readonly threadId?: string | undefined;
+  readonly confidence?: number | undefined;
+  readonly reason?: string | undefined;
 }

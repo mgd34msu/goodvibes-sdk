@@ -94,7 +94,7 @@ function parseNetscapeBookmarks(content: string): KnowledgeBookmarkSeed[] {
 
     const folderMatch = line.match(/<H3[^>]*>([\s\S]*?)<\/H3>/i);
     if (folderMatch?.[1]) {
-      pendingFolder = decodeHtml(folderMatch[1].replace(/<[^>]+>/g, ''));
+      pendingFolder = decodeHtml(folderMatch[1]!.replace(/<[^>]+>/g, ''));
       continue;
     }
 
@@ -114,12 +114,12 @@ function parseNetscapeBookmarks(content: string): KnowledgeBookmarkSeed[] {
     const linkMatch = line.match(/<A\s+([^>]*?)>([\s\S]*?)<\/A>/i);
     if (!linkMatch) continue;
 
-    const attrs = linkMatch[1];
+    const attrs = linkMatch[1]!;
     const href = attrs.match(/\bHREF=["']([^"']+)["']/i)?.[1];
     if (!href || !/^https?:\/\//i.test(href)) continue;
     const tags = attrs.match(/\bTAGS=["']([^"']+)["']/i)?.[1];
     const addDate = attrs.match(/\bADD_DATE=["']([^"']+)["']/i)?.[1];
-    const title = decodeHtml(linkMatch[2].replace(/<[^>]+>/g, ''));
+    const title = decodeHtml(linkMatch[2]!.replace(/<[^>]+>/g, ''));
     const folderPath = folderStack.length > 0 ? folderStack.join(' / ') : undefined;
     entries.push({
       url: href,

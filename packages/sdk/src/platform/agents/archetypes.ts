@@ -23,25 +23,25 @@ export interface AgentArchetype {
   /** Tool names the agent has access to. */
   tools: string[];
   /** Model override (optional). */
-  model?: string;
+  model?: string | undefined;
   /** Provider override (optional). */
-  provider?: string;
+  provider?: string | undefined;
   /** System prompt injected at agent start (optional). */
-  systemPrompt?: string;
+  systemPrompt?: string | undefined;
   /** True if loaded from a markdown file, false if built-in. */
   isCustom: boolean;
   /** Where this archetype came from. */
   origin: 'builtin' | 'local-markdown';
   /** Source path when loaded from a markdown file. */
-  sourcePath?: string;
+  sourcePath?: string | undefined;
   /** Validation or schema issues discovered while loading. */
-  validationIssues?: readonly string[];
+  validationIssues?: readonly string[] | undefined;
   /** Brief preview of the archetype body. */
-  preview?: string;
+  preview?: string | undefined;
   /** Lazy @ references discovered in the body. */
-  includes?: readonly string[];
+  includes?: readonly string[] | undefined;
   /** Markdown headings discovered in the body. */
-  sections?: readonly string[];
+  sections?: readonly string[] | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,12 +99,12 @@ const BUILT_IN_ARCHETYPES: AgentArchetype[] = [
 // ---------------------------------------------------------------------------
 
 interface RawFrontmatter {
-  name?: string;
-  description?: string;
-  tools?: string[];
-  model?: string;
-  provider?: string;
-  system_prompt?: string;
+  name?: string | undefined;
+  description?: string | undefined;
+  tools?: string[] | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
+  system_prompt?: string | undefined;
 }
 
 function parseSimpleYaml(yaml: string): RawFrontmatter {
@@ -124,7 +124,7 @@ function parseSimpleYaml(yaml: string): RawFrontmatter {
   };
 
   while (i < lines.length) {
-    const line = lines[i];
+    const line = lines[i]!;
     i++;
 
     // Skip comments and blank lines
@@ -136,7 +136,7 @@ function parseSimpleYaml(yaml: string): RawFrontmatter {
     // List item under current key
     const listItemMatch = line.match(/^\s+-\s+(.+)$/);
     if (listItemMatch && collectingList) {
-      listBuffer.push(listItemMatch[1].trim());
+      listBuffer.push(listItemMatch[1]!.trim());
       continue;
     }
 
@@ -146,8 +146,8 @@ function parseSimpleYaml(yaml: string): RawFrontmatter {
       // Flush any pending list
       if (collectingList) flushList();
 
-      currentKey = kvMatch[1];
-      const rawValue = kvMatch[2].trim();
+      currentKey = kvMatch[1]!;
+      const rawValue = kvMatch[2]!.trim();
 
       if (!rawValue) {
         // Value will be on following list lines
@@ -158,7 +158,7 @@ function parseSimpleYaml(yaml: string): RawFrontmatter {
       // Inline list: [a, b, c]
       const inlineListMatch = rawValue.match(/^\[(.*)\]$/);
       if (inlineListMatch) {
-        (result as Record<string, unknown>)[currentKey] = inlineListMatch[1]
+        (result as Record<string, unknown>)[currentKey] = inlineListMatch[1]!
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean);
@@ -337,9 +337,9 @@ export class ArchetypeLoader {
   mergeWithOverrides(
     name: string,
     overrides: {
-      model?: string;
-      provider?: string;
-      tools?: string[];
+      model?: string | undefined;
+      provider?: string | undefined;
+      tools?: string[] | undefined;
     },
   ): AgentArchetype | null {
     const archetype = this.loadArchetype(name);

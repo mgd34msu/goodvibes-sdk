@@ -14,18 +14,18 @@ export interface McpServerSecurityRecord {
   readonly allowedPaths: readonly string[];
   readonly allowedHosts: readonly string[];
   readonly schemaFreshness: SchemaFreshness;
-  readonly quarantineReason?: QuarantineReason;
-  readonly quarantineDetail?: string;
-  readonly quarantineApprovedBy?: string;
+  readonly quarantineReason?: QuarantineReason | undefined;
+  readonly quarantineDetail?: string | undefined;
+  readonly quarantineApprovedBy?: string | undefined;
 }
 
 export interface McpSandboxBindingRecord {
   readonly name: string;
-  readonly sessionId?: string;
-  readonly profileId?: 'mcp-shared' | 'mcp-per-server';
-  readonly state?: import('../runtime/sandbox/types.js').SandboxSessionState;
-  readonly backend?: import('../runtime/sandbox/types.js').SandboxResolvedBackend | import('../runtime/sandbox/types.js').SandboxVmBackend;
-  readonly startupStatus?: 'verified' | 'planned' | 'failed';
+  readonly sessionId?: string | undefined;
+  readonly profileId?: 'mcp-shared' | 'mcp-per-server' | undefined;
+  readonly state?: import('../runtime/sandbox/types.js').SandboxSessionState | undefined;
+  readonly backend?: import('../runtime/sandbox/types.js').SandboxResolvedBackend | import('../runtime/sandbox/types.js').SandboxVmBackend | undefined;
+  readonly startupStatus?: 'verified' | 'planned' | 'failed' | undefined;
 }
 
 export interface McpApi {

@@ -21,12 +21,12 @@ export interface ControlPlaneClientRecord {
   readonly label: string;
   readonly transport: ControlPlaneTransportKind;
   readonly connected: boolean;
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly surfaceId?: string;
-  readonly authenticatedAt?: number;
-  readonly lastSeenAt?: number;
-  readonly remoteAddress?: string;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly authenticatedAt?: number | undefined;
+  readonly lastSeenAt?: number | undefined;
+  readonly remoteAddress?: string | undefined;
   readonly capabilities: readonly string[];
   readonly metadata: Record<string, unknown>;
 }
@@ -44,14 +44,14 @@ export interface ControlPlaneDomainState {
   readonly clientIds: string[];
   readonly activeClientIds: string[];
   readonly isRunning: boolean;
-  readonly lastError?: string;
+  readonly lastError?: string | undefined;
   readonly totalConnections: number;
   readonly totalDisconnects: number;
   readonly totalFailures: number;
   readonly requestCount: number;
   readonly errorCount: number;
-  readonly lastRequestAt?: number;
-  readonly lastEventAt?: number;
+  readonly lastRequestAt?: number | undefined;
+  readonly lastEventAt?: number | undefined;
 }
 
 export function createInitialControlPlaneState(): ControlPlaneDomainState {

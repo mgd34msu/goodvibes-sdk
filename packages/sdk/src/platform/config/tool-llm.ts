@@ -66,8 +66,8 @@ export function resolveToolLLM(deps: ToolLLMDeps): ResolvedToolLLM | null {
 
 /** Chat options for tool-internal LLM calls. */
 export interface ToolLLMChatOptions {
-  maxTokens?: number;
-  systemPrompt?: string;
+  maxTokens?: number | undefined;
+  systemPrompt?: string | undefined;
 }
 
 /**

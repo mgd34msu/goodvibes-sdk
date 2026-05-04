@@ -57,7 +57,7 @@ export function emitWrfcAutoCommitted(
   runtimeBus: RuntimeEventBus,
   sessionId: string,
   chainId: string,
-  commitHash?: string,
+  commitHash?: string | undefined,
 ): void {
   emitWorkflowAutoCommitted(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId, commitHash });
 }

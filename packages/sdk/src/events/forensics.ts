@@ -16,18 +16,18 @@ export type ForensicsEvent =
       /** Classification label for the failure. */
       classification: string;
       /** Primary error message. */
-      errorMessage?: string;
+      errorMessage?: string | undefined;
       /** Task ID if this is a task failure. */
-      taskId?: string;
+      taskId?: string | undefined;
       /** Turn ID if this is a turn failure. */
-      turnId?: string;
+      turnId?: string | undefined;
     }
   /** A report was exported (to stdout or file). */
   | {
       type: 'FORENSICS_REPORT_EXPORTED';
       reportId: string;
       destination: 'stdout' | 'file';
-      path?: string;
+      path?: string | undefined;
     };
 
 /** All forensics event type literals as a union. */

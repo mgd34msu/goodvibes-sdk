@@ -11,9 +11,9 @@ export interface McpSecurityCapture {
   readonly allowedPaths: readonly string[];
   readonly allowedHosts: readonly string[];
   readonly schemaFreshness: string;
-  readonly quarantineReason?: string;
-  readonly quarantineDetail?: string;
-  readonly quarantineApprovedBy?: string;
+  readonly quarantineReason?: string | undefined;
+  readonly quarantineDetail?: string | undefined;
+  readonly quarantineApprovedBy?: string | undefined;
 }
 
 export function buildIncidentMemoryAddOptions(bundle: ForensicsBundle): MemoryAddOptions {

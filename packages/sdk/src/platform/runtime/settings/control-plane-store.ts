@@ -30,9 +30,9 @@ export interface SettingsLayerRecord {
   readonly source: Exclude<SettingsSource, 'default' | 'local'>;
   readonly sourceLabel: string;
   readonly detail: string;
-  readonly path?: string;
+  readonly path?: string | undefined;
   readonly updatedAt: number;
-  readonly locked?: boolean;
+  readonly locked?: boolean | undefined;
 }
 
 export interface SettingsConflictRecord {
@@ -87,7 +87,7 @@ export interface SettingsControlPlaneStore {
   readonly syncedSettings: ReadonlyArray<SettingsLayerRecord>;
   readonly managedSettings: ReadonlyArray<SettingsLayerRecord>;
   readonly conflicts: ReadonlyArray<SettingsConflictRecord>;
-  readonly stagedManagedBundle?: StagedManagedBundle;
+  readonly stagedManagedBundle?: StagedManagedBundle | undefined;
   readonly rollbackHistory: ReadonlyArray<ManagedRollbackRecord>;
 }
 
@@ -98,13 +98,13 @@ export interface ResolvedSettingEntry {
   readonly effectiveSource: SettingsSource;
   readonly defaultValue: unknown;
   readonly localValue: unknown;
-  readonly syncedValue?: unknown;
-  readonly managedValue?: unknown;
+  readonly syncedValue?: unknown | undefined;
+  readonly managedValue?: unknown | undefined;
   readonly overriddenSources: readonly SettingsSource[];
   readonly locked: boolean;
-  readonly lockReason?: string;
-  readonly sourceLabel?: string;
-  readonly updatedAt?: number;
+  readonly lockReason?: string | undefined;
+  readonly sourceLabel?: string | undefined;
+  readonly updatedAt?: number | undefined;
   readonly conflict: boolean;
 }
 
@@ -113,21 +113,21 @@ export interface SettingsControlPlaneSnapshot {
   readonly profileCount: number;
   readonly managedLockCount: number;
   readonly resolvedCounts: Readonly<Record<SettingsSource, number>>;
-  readonly lastSync?: SettingsSyncEvent;
+  readonly lastSync?: SettingsSyncEvent | undefined;
   readonly recentEvents: ReadonlyArray<SettingsSyncEvent>;
   readonly recentFailures: SettingsControlPlaneStore['failures'];
   readonly managedLocks: ReadonlyArray<ManagedSettingLock>;
   readonly conflicts: ReadonlyArray<SettingsConflictRecord>;
-  readonly stagedManagedBundle?: StagedManagedBundle;
+  readonly stagedManagedBundle?: StagedManagedBundle | undefined;
   readonly rollbackHistory: ReadonlyArray<ManagedRollbackRecord>;
   readonly resolvedEntries: ReadonlyArray<ResolvedSettingEntry>;
 }
 
 export interface ResolvedSettingLookup {
   readonly entry: ResolvedSettingEntry;
-  readonly lock?: ManagedSettingLock;
-  readonly syncedLayer?: SettingsLayerRecord;
-  readonly managedLayer?: SettingsLayerRecord;
+  readonly lock?: ManagedSettingLock | undefined;
+  readonly syncedLayer?: SettingsLayerRecord | undefined;
+  readonly managedLayer?: SettingsLayerRecord | undefined;
 }
 
 export interface SettingsSyncBundle {

@@ -11,8 +11,8 @@ export interface AutomationRetryPolicy {
   readonly maxAttempts: number;
   readonly delayMs: number;
   readonly strategy: AutomationRetryStrategy;
-  readonly maxDelayMs?: number;
-  readonly jitterMs?: number;
+  readonly maxDelayMs?: number | undefined;
+  readonly jitterMs?: number | undefined;
 }
 
 export interface AutomationFailurePolicy {
@@ -20,20 +20,20 @@ export interface AutomationFailurePolicy {
   readonly maxConsecutiveFailures: number;
   readonly cooldownMs: number;
   readonly retryPolicy: AutomationRetryPolicy;
-  readonly deadLetterRouteId?: string;
-  readonly disableAfterFailures?: boolean;
-  readonly notifyRouteId?: string;
+  readonly deadLetterRouteId?: string | undefined;
+  readonly disableAfterFailures?: boolean | undefined;
+  readonly notifyRouteId?: string | undefined;
 }
 
 export interface AutomationFailureRecord {
   readonly id: string;
   readonly jobId: string;
-  readonly runId?: string;
+  readonly runId?: string | undefined;
   readonly occurredAt: number;
   readonly reason: string;
   readonly action: AutomationFailureAction;
   readonly consecutiveFailures: number;
   readonly autoDisabled: boolean;
-  readonly deadLetterRouteId?: string;
+  readonly deadLetterRouteId?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }

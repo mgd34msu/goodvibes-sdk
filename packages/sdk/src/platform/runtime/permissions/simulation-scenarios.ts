@@ -14,7 +14,7 @@ export interface PolicySimulationScenarioResult {
   simulatedDecision: PermissionDecision;
   authoritativeDecision: PermissionDecision;
   diverged: boolean;
-  divergenceType?: DivergenceType;
+  divergenceType?: DivergenceType | undefined;
 }
 
 export interface PolicySimulationSummary {

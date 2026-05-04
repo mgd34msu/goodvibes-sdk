@@ -8,9 +8,9 @@ export function emitForensicsReportCreated(
   data: {
     reportId: string;
     classification: string;
-    errorMessage?: string;
-    taskId?: string;
-    turnId?: string;
+    errorMessage?: string | undefined;
+    taskId?: string | undefined;
+    turnId?: string | undefined;
   },
 ): void {
   bus.emit('forensics', createEventEnvelope('FORENSICS_REPORT_CREATED', { type: 'FORENSICS_REPORT_CREATED', ...data }, ctx));

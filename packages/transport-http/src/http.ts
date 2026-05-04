@@ -100,9 +100,9 @@ type TransportFailure = {
     readonly status: number;
     readonly url: string;
     readonly body: unknown;
-    readonly method?: string;
-    readonly retryAfterMs?: number;
-    readonly cause?: unknown;
+    readonly method?: string | undefined;
+    readonly retryAfterMs?: number | undefined;
+    readonly cause?: unknown | undefined;
   };
 };
 

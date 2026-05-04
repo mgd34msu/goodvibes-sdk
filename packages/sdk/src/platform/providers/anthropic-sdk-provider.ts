@@ -34,8 +34,8 @@ type AnthropicMessageStream = AsyncIterable<MessageStreamEvent> & {
     usage: {
       input_tokens: number;
       output_tokens: number;
-      cache_read_input_tokens?: number | null;
-      cache_creation_input_tokens?: number | null;
+      cache_read_input_tokens?: number | null | undefined;
+      cache_creation_input_tokens?: number | null | undefined;
     };
   }>;
 };
@@ -50,12 +50,12 @@ export interface AnthropicSdkProviderAuthConfig {
   readonly mode: 'api-key' | 'anonymous';
   readonly configured: boolean;
   readonly detail: string;
-  readonly envVars?: readonly string[];
-  readonly secretKeys?: readonly string[];
-  readonly serviceNames?: readonly string[];
-  readonly allowAnonymous?: boolean;
-  readonly anonymousConfigured?: boolean;
-  readonly anonymousDetail?: string;
+  readonly envVars?: readonly string[] | undefined;
+  readonly secretKeys?: readonly string[] | undefined;
+  readonly serviceNames?: readonly string[] | undefined;
+  readonly allowAnonymous?: boolean | undefined;
+  readonly anonymousConfigured?: boolean | undefined;
+  readonly anonymousDetail?: string | undefined;
 }
 
 export interface AnthropicSdkProviderOptions {
@@ -66,7 +66,7 @@ export interface AnthropicSdkProviderOptions {
   readonly createClient: () => AnthropicStreamCapableClient;
   readonly auth: AnthropicSdkProviderAuthConfig;
   readonly streamProtocol: string;
-  readonly notes?: readonly string[];
+  readonly notes?: readonly string[] | undefined;
 }
 
 export class AnthropicSdkProvider implements LLMProvider {

@@ -22,7 +22,7 @@ export interface SyntheticToolResult extends ToolResult {
    * LLM-directed guidance for the model — separate from the operational `error`
    * field so telemetry and rendering can treat them independently.
    */
-  readonly instruction?: string;
+  readonly instruction?: string | undefined;
 }
 
 /**
@@ -64,7 +64,7 @@ export interface ReconciliationEvent {
    * `true` when the event was triggered by a malformed provider response
    * (stopReason=tool_use with zero tool calls). Useful for telemetry triage.
    */
-  isMalformed?: boolean;
+  isMalformed?: boolean | undefined;
 }
 
 /**

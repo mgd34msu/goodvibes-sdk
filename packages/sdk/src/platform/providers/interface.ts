@@ -25,59 +25,59 @@ export interface ProviderAuthRouteDescriptor {
   readonly route: ProviderDeclaredAuthRoute;
   readonly label: string;
   readonly configured: boolean;
-  readonly usable?: boolean;
-  readonly freshness?: 'healthy' | 'expiring' | 'expired' | 'pending' | 'unconfigured';
-  readonly detail?: string;
-  readonly envVars?: readonly string[];
-  readonly secretKeys?: readonly string[];
-  readonly serviceNames?: readonly string[];
-  readonly providerId?: string;
-  readonly repairHints?: readonly string[];
+  readonly usable?: boolean | undefined;
+  readonly freshness?: 'healthy' | 'expiring' | 'expired' | 'pending' | 'unconfigured' | undefined;
+  readonly detail?: string | undefined;
+  readonly envVars?: readonly string[] | undefined;
+  readonly secretKeys?: readonly string[] | undefined;
+  readonly serviceNames?: readonly string[] | undefined;
+  readonly providerId?: string | undefined;
+  readonly repairHints?: readonly string[] | undefined;
 }
 
 export interface ProviderUsageCostMetadata {
   readonly source: 'catalog' | 'provider' | 'none';
-  readonly currency?: string;
-  readonly inputPerMillionTokens?: number;
-  readonly outputPerMillionTokens?: number;
-  readonly detail?: string;
+  readonly currency?: string | undefined;
+  readonly inputPerMillionTokens?: number | undefined;
+  readonly outputPerMillionTokens?: number | undefined;
+  readonly detail?: string | undefined;
 }
 
 export interface ProviderRuntimeMetadata {
   readonly auth?: {
     readonly mode: 'api-key' | 'oauth' | 'anonymous' | 'none';
     readonly configured: boolean;
-    readonly detail?: string;
-    readonly envVars?: readonly string[];
-    readonly routes?: readonly ProviderAuthRouteDescriptor[];
+    readonly detail?: string | undefined;
+    readonly envVars?: readonly string[] | undefined;
+    readonly routes?: readonly ProviderAuthRouteDescriptor[] | undefined;
   };
   readonly models?: {
-    readonly defaultModel?: string;
+    readonly defaultModel?: string | undefined;
     readonly models: readonly string[];
-    readonly embeddingModel?: string;
-    readonly embeddingDimensions?: number;
-    readonly aliases?: readonly string[];
-    readonly suppressedModels?: readonly string[];
+    readonly embeddingModel?: string | undefined;
+    readonly embeddingDimensions?: number | undefined;
+    readonly aliases?: readonly string[] | undefined;
+    readonly suppressedModels?: readonly string[] | undefined;
   };
   readonly usage?: {
     readonly streaming: boolean;
     readonly toolCalling: boolean;
     readonly parallelTools: boolean;
-    readonly promptCaching?: boolean;
-    readonly batch?: ProviderBatchRuntimeMetadata;
-    readonly cost?: ProviderUsageCostMetadata;
-    readonly notes?: readonly string[];
+    readonly promptCaching?: boolean | undefined;
+    readonly batch?: ProviderBatchRuntimeMetadata | undefined;
+    readonly cost?: ProviderUsageCostMetadata | undefined;
+    readonly notes?: readonly string[] | undefined;
   };
   readonly policy?: {
-    readonly local?: boolean;
-    readonly dataRetention?: string;
-    readonly streamProtocol?: string;
-    readonly reasoningMode?: string;
-    readonly supportedReasoningEfforts?: readonly string[];
-    readonly cacheStrategy?: string;
-    readonly notes?: readonly string[];
+    readonly local?: boolean | undefined;
+    readonly dataRetention?: string | undefined;
+    readonly streamProtocol?: string | undefined;
+    readonly reasoningMode?: string | undefined;
+    readonly supportedReasoningEfforts?: readonly string[] | undefined;
+    readonly cacheStrategy?: string | undefined;
+    readonly notes?: readonly string[] | undefined;
   };
-  readonly notes?: readonly string[];
+  readonly notes?: readonly string[] | undefined;
 }
 
 export interface ProviderRuntimeMetadataDeps {
@@ -91,27 +91,27 @@ export interface ProviderEmbeddingRequest {
   readonly text: string;
   readonly dimensions: number;
   readonly usage: 'record' | 'query' | 'doctor';
-  readonly model?: string;
-  readonly signal?: AbortSignal;
-  readonly metadata?: Record<string, unknown>;
+  readonly model?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 /** Shared embedding response shape used by providers and provider-backed adapters. */
 export interface ProviderEmbeddingResult {
   readonly vector: Float32Array | readonly number[];
   readonly dimensions: number;
-  readonly modelId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly modelId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ProviderBatchRuntimeMetadata {
   readonly supported: boolean;
-  readonly discount?: string;
-  readonly completionWindow?: string;
-  readonly endpoints?: readonly string[];
-  readonly maxRequestsPerProviderBatch?: number;
-  readonly maxInputBytes?: number;
-  readonly notes?: readonly string[];
+  readonly discount?: string | undefined;
+  readonly completionWindow?: string | undefined;
+  readonly endpoints?: readonly string[] | undefined;
+  readonly maxRequestsPerProviderBatch?: number | undefined;
+  readonly maxInputBytes?: number | undefined;
+  readonly notes?: readonly string[] | undefined;
 }
 
 export type ProviderBatchStatus =
@@ -130,14 +130,14 @@ export interface ProviderBatchChatRequest {
 
 export interface ProviderBatchCreateInput {
   readonly requests: readonly ProviderBatchChatRequest[];
-  readonly metadata?: Record<string, string>;
-  readonly completionWindow?: '24h';
+  readonly metadata?: Record<string, string> | undefined;
+  readonly completionWindow?: '24h' | undefined;
 }
 
 export interface ProviderBatchCreateResult {
   readonly providerBatchId: string;
   readonly status: ProviderBatchStatus;
-  readonly raw?: unknown;
+  readonly raw?: unknown | undefined;
 }
 
 export interface ProviderBatchPollResult extends ProviderBatchCreateResult {
@@ -147,13 +147,13 @@ export interface ProviderBatchPollResult extends ProviderBatchCreateResult {
 export interface ProviderBatchResult {
   readonly customId: string;
   readonly status: 'succeeded' | 'failed' | 'cancelled' | 'expired';
-  readonly response?: ChatResponse;
+  readonly response?: ChatResponse | undefined;
   readonly error?: {
     readonly message: string;
-    readonly code?: string;
-    readonly raw?: unknown;
+    readonly code?: string | undefined;
+    readonly raw?: unknown | undefined;
   };
-  readonly raw?: unknown;
+  readonly raw?: unknown | undefined;
 }
 
 export interface ProviderBatchAdapter {
@@ -169,7 +169,7 @@ export interface ProviderBatchAdapter {
 export interface LLMProvider {
   readonly name: string;
   readonly models: string[];
-  readonly batch?: ProviderBatchAdapter;
+  readonly batch?: ProviderBatchAdapter | undefined;
   /**
    * Optional self-declared capability overrides for this provider instance.
    * When present, these take precedence over the built-in `PROVIDER_DEFAULTS`
@@ -178,7 +178,7 @@ export interface LLMProvider {
    * @remarks Useful for custom / dynamically-discovered providers that know
    * their own capabilities and want to participate in explainable routing.
    */
-  readonly capabilities?: Partial<ProviderCapability>;
+  readonly capabilities?: Partial<ProviderCapability> | undefined;
   chat(params: ChatRequest): Promise<ChatResponse>;
   embed?(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult>;
   describeRuntime?(deps: ProviderRuntimeMetadataDeps): ProviderRuntimeMetadata | Promise<ProviderRuntimeMetadata>;
@@ -194,9 +194,9 @@ export interface LLMProvider {
 /** Incremental tool call data received during streaming. */
 export interface PartialToolCall {
   index: number;
-  id?: string;
-  name?: string;
-  arguments?: string;  // Partial JSON string
+  id?: string | undefined;
+  name?: string | undefined;
+  arguments?: string | undefined;  // Partial JSON string
 }
 
 /** A single streaming delta from the provider. */
@@ -213,17 +213,17 @@ export type ContentPart =
 
 export interface ChatRequest {
   messages: ProviderMessage[];
-  tools?: ToolDefinition[];
+  tools?: ToolDefinition[] | undefined;
   model: string;
-  maxTokens?: number;
-  signal?: AbortSignal;
-  systemPrompt?: string;
+  maxTokens?: number | undefined;
+  signal?: AbortSignal | undefined;
+  systemPrompt?: string | undefined;
   /** Controls reasoning depth for models that support it. Format varies by provider. */
-  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high';
+  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
   /** Mercury-2 specific: whether to include a reasoning summary in the response. */
-  reasoningSummary?: boolean;
+  reasoningSummary?: boolean | undefined;
   /** Called per-chunk during streaming when streaming is enabled. */
-  onDelta?: (delta: StreamDelta) => void;
+  onDelta?: ((delta: StreamDelta) => void) | undefined | undefined;
 }
 
 /**
@@ -254,9 +254,9 @@ export interface ChatResponse {
    * Raw stop reason string emitted by the underlying provider, preserved for
    * consumers that need provider-specific detail (e.g. analytics, debugging).
    */
-  providerStopReason?: string;
+  providerStopReason?: string | undefined;
   /** Mercury-2 specific: condensed chain-of-thought, if requested. */
-  reasoningSummary?: string;
+  reasoningSummary?: string | undefined;
   /**
    * Cache metrics for this response.
    * @remarks Currently only populated by the Anthropic provider. Other providers return `undefined`.
@@ -264,11 +264,11 @@ export interface ChatResponse {
   cacheMetrics?: {
     strategy: string;           // e.g. 'explicit-4bp', 'automatic', 'implicit', 'none'
     breakpointsPlaced: number;
-    hitRate?: number;           // Computed from this response's usage
+    hitRate?: number | undefined;  // Computed from this response's usage
   };
 }
 
 export type ProviderMessage =
   | { role: 'user'; content: string | ContentPart[] }
   | { role: 'assistant'; content: string; toolCalls?: ToolCall[] }
-  | { role: 'tool'; callId: string; content: string; name?: string };
+  | { role: 'tool'; callId: string; content: string; name?: string | undefined };

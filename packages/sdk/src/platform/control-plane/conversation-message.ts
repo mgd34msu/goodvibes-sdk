@@ -33,5 +33,5 @@ export interface ConversationMessageEnvelope {
   readonly source: MessageSource;
   readonly timestamp: number;
   /** Optional metadata for tool info, model id, etc. */
-  readonly metadata?: Readonly<Record<string, unknown>>;
+  readonly metadata?: Readonly<Record<string, unknown>> | undefined;
 }

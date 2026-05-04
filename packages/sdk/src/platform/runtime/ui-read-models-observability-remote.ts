@@ -10,7 +10,7 @@ export interface UiRemoteSnapshot {
     readonly isRunning: boolean;
     readonly reconnectAttempts: number;
     readonly runningJobCount: number;
-    readonly lastError?: string;
+    readonly lastError?: string | undefined;
   };
   readonly acp: {
     readonly transportState: string;
@@ -39,9 +39,9 @@ export function createRemoteReadModels(runtimeServices: RuntimeServices): UiRemo
     remote: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState();
       const distributedRaw = runtimeServices.distributedRuntime.getSnapshot() as {
-        pairRequests?: readonly DistributedRuntimePairRequest[];
-        peers?: readonly DistributedPeerRecord[];
-        work?: readonly DistributedPendingWork[];
+        pairRequests?: readonly DistributedRuntimePairRequest[] | undefined;
+        peers?: readonly DistributedPeerRecord[] | undefined;
+        work?: readonly DistributedPendingWork[] | undefined;
       };
       return {
         daemon: {

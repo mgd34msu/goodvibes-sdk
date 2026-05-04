@@ -121,7 +121,7 @@ export function invokeObserver(fn: () => void): void {
 
 export interface ConsoleObserverOptions {
   /** Minimum log level. Defaults to `'info'`. */
-  readonly level?: 'debug' | 'info';
+  readonly level?: 'debug' | 'info' | undefined;
 }
 
 /**

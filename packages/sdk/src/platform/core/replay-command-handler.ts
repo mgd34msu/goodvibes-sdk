@@ -50,7 +50,7 @@ export function handleReplayCommand(
 
   switch (subcommand.toLowerCase()) {
     case 'load': {
-      const runId = args[0];
+      const runId = args[0]!;
       if (!runId) {
         // List available runs if no ledger argument.
         if (!ledger) {
@@ -93,7 +93,7 @@ export function handleReplayCommand(
       // Here we use an empty-domain snapshot as the baseline; domain state will be
       // populated incrementally as events are replayed.
       const syntheticSnapshot: import('../runtime/diagnostics/types.js').RuntimeStateSnapshot = {
-        capturedAt: entries[0].ts,
+        capturedAt: entries[0]!.ts,
         domains: [],
       };
 
@@ -105,8 +105,8 @@ export function handleReplayCommand(
         output: [
           `Run "${runId}" loaded.`,
           `  Events: ${entries.length}`,
-          `  First: ${new Date(entries[0].ts).toISOString()}`,
-          `  Last:  ${new Date(entries[entries.length - 1].ts).toISOString()}`,
+          `  First: ${new Date(entries[0]!.ts).toISOString()}`,
+          `  Last:  ${new Date(entries[entries.length - 1]!.ts).toISOString()}`,
           '',
           'Use /replay step to advance, /replay seek <rev> to jump, /replay diff to compare.',
         ].join('\n'),
@@ -128,11 +128,11 @@ export function handleReplayCommand(
         };
       }
 
-      const n = args[0] ? parseInt(args[0], 10) : 1;
+      const n = args[0]! ? parseInt(args[0]!, 10) : 1;
       if (isNaN(n) || n < 1) {
         return {
           ok: false,
-          output: `Invalid step count "${args[0]}". Must be a positive integer.`,
+          output: `Invalid step count "${args[0]!}". Must be a positive integer.`,
         };
       }
 
@@ -169,7 +169,7 @@ export function handleReplayCommand(
         };
       }
 
-      const rev = args[0] ? parseInt(args[0], 10) : NaN;
+      const rev = args[0]! ? parseInt(args[0]!, 10) : NaN;
       if (isNaN(rev) || rev < 0) {
         return {
           ok: false,
@@ -230,7 +230,7 @@ export function handleReplayCommand(
         };
       }
 
-      const filePath = args[0];
+      const filePath = args[0]!;
       if (!filePath) {
         return {
           ok: false,

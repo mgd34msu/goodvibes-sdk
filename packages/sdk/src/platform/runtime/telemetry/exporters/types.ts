@@ -68,7 +68,7 @@ export interface ExportResult {
   /** Number of retry attempts made (0 = first attempt succeeded). */
   readonly attempts: number;
   /** Error message if the export failed after all retries. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Epoch ms when the export completed. */
   readonly completedAt: number;
 }
@@ -96,11 +96,11 @@ export interface OtlpConfig {
    * Optional HTTP headers to include in OTLP requests
    * (e.g. authentication tokens).
    */
-  readonly headers?: Record<string, string>;
+  readonly headers?: Record<string, string> | undefined;
   /** Export queue configuration. Defaults to DEFAULT_QUEUE_CONFIG. */
-  readonly queue?: Partial<ExportQueueConfig>;
+  readonly queue?: Partial<ExportQueueConfig> | undefined;
   /** Retry configuration. Overrides queue.retry when provided. */
-  readonly retry?: Partial<RetryConfig>;
+  readonly retry?: Partial<RetryConfig> | undefined;
 }
 
 /** Default OTLP exporter configuration. */

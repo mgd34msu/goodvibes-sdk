@@ -111,7 +111,7 @@ function buildQualityInfo(
   model: ModelDefinition,
   benchmarkStore: Pick<BenchmarkStore, 'getBenchmarks'>,
   providerRegistry: Pick<ProviderRegistry, 'getSyntheticModelInfoFromCatalog'>,
-): { qualityTier?: string; benchmarkScore?: number } {
+): { qualityTier?: string; benchmarkScore?: number | undefined } {
   if (model.provider === 'synthetic') {
     const info = providerRegistry.getSyntheticModelInfoFromCatalog(model.id);
     if (info?.bestCompositeScore != null) {
@@ -141,7 +141,7 @@ function buildFallbackPositionMap(modelState: ModelDomainState): Map<string, num
   // Position 0 is always the primary active model
   map.set(modelState.activeModelId, 0);
   for (let i = 0; i < modelState.fallbackChain.length; i++) {
-    const entry = modelState.fallbackChain[i];
+    const entry = modelState.fallbackChain[i]!;
     if (!map.has(entry.modelId)) {
       map.set(entry.modelId, i + 1);
     }

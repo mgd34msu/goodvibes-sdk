@@ -70,7 +70,7 @@ export interface AndroidKeystoreTokenStoreOptions {
    * prefix on Android).
    * @default 'com.pellux.goodvibes-sdk'
    */
-  readonly service?: string;
+  readonly service?: string | undefined;
 
   /**
    * Access control policy. Maps to `Keychain.ACCESS_CONTROL` constants.
@@ -81,14 +81,14 @@ export interface AndroidKeystoreTokenStoreOptions {
    * Leave undefined to use the default Keystore protection without interactive
    * authentication prompts.
    */
-  readonly accessControl?: AndroidAccessControl;
+  readonly accessControl?: AndroidAccessControl | undefined;
 
   /**
    * Controls when stored data is accessible.
    * Maps to `Keychain.ACCESSIBLE` constants (Android respects a subset).
    * @default 'WHEN_UNLOCKED_THIS_DEVICE_ONLY'
    */
-  readonly accessible?: AndroidAccessible;
+  readonly accessible?: AndroidAccessible | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +282,8 @@ export function createAndroidKeystoreTokenStore(
     async getTokenEntry(): Promise<{ token: string | null; expiresAt?: number }> {
       const payload = await readPayload();
       if (payload === null) return { token: null };
-      return { token: payload.token, expiresAt: payload.expiresAt ?? undefined };
+      const expiresAt = payload.expiresAt ?? undefined;
+      return expiresAt !== undefined ? { token: payload.token, expiresAt } : { token: payload.token };
     },
   };
 }

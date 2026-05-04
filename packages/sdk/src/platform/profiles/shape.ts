@@ -4,8 +4,8 @@ import type { ProfileData } from './manager.js';
 function setNestedValue(target: Record<string, unknown>, path: readonly string[], value: unknown): void {
   let current: Record<string, unknown> = target;
   for (let index = 0; index < path.length - 1; index += 1) {
-    const segment = path[index];
-    const existing = current[segment];
+    const segment = path[index]!;
+    const existing = current[segment]!;
     if (!existing || typeof existing !== 'object') {
       current[segment] = {};
     }

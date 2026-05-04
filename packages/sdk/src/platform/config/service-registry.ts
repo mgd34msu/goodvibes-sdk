@@ -35,39 +35,39 @@ export interface ServiceConfig {
   /** Human-readable / lookup name. */
   name: string;
   /** Base URL for the service (informational). */
-  baseUrl?: string;
+  baseUrl?: string | undefined;
   /** Auth type used by this service. */
   authType: 'bearer' | 'basic' | 'api-key' | 'oauth';
   /** SecretsManager key that holds the primary credential (token or API key). */
   tokenKey: string;
   /** Optional external/local secret reference for the primary credential. */
-  tokenRef?: SecretRefInput;
+  tokenRef?: SecretRefInput | undefined;
   /** For basic auth: SecretsManager key that holds the password. */
-  passwordKey?: string;
+  passwordKey?: string | undefined;
   /** Optional external/local secret reference for the basic-auth password. */
-  passwordRef?: SecretRefInput;
+  passwordRef?: SecretRefInput | undefined;
   /** For api-key auth: the header name. Defaults to X-API-Key. */
-  apiKeyHeader?: string;
+  apiKeyHeader?: string | undefined;
   /** Optional secret key holding a webhook or callback URL for this service. */
-  webhookUrlKey?: string;
+  webhookUrlKey?: string | undefined;
   /** Optional external/local secret reference for a webhook or callback URL. */
-  webhookUrlRef?: SecretRefInput;
+  webhookUrlRef?: SecretRefInput | undefined;
   /** Optional secret key for inbound request signing/verification. */
-  signingSecretKey?: string;
+  signingSecretKey?: string | undefined;
   /** Optional external/local secret reference for inbound request signing/verification. */
-  signingSecretRef?: SecretRefInput;
+  signingSecretRef?: SecretRefInput | undefined;
   /** Optional public-key secret used for inbound signature verification. */
-  publicKeyKey?: string;
+  publicKeyKey?: string | undefined;
   /** Optional external/local secret reference for inbound public-key verification. */
-  publicKeyRef?: SecretRefInput;
+  publicKeyRef?: SecretRefInput | undefined;
   /** Optional Slack-style app-level token key used by socket/client runtimes. */
-  appTokenKey?: string;
+  appTokenKey?: string | undefined;
   /** Optional external/local secret reference for app-level socket/client runtimes. */
-  appTokenRef?: SecretRefInput;
+  appTokenRef?: SecretRefInput | undefined;
   /** Optional provider ID used for subscription token override lookup. */
-  providerId?: string;
+  providerId?: string | undefined;
   /** OAuth metadata for subscription-backed services. */
-  oauth?: OAuthProviderConfig;
+  oauth?: OAuthProviderConfig | undefined;
 }
 
 export type ServiceSecretField =
@@ -92,7 +92,7 @@ export interface ServiceConnectionTestResult {
   readonly ok: boolean;
   readonly status: number | null;
   readonly testedUrl: string | null;
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 export interface ServiceRegistryOptions {

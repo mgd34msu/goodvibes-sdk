@@ -21,7 +21,7 @@ export interface GitFileRecord {
   /** Relative file path from repo root. */
   path: string;
   /** Old path (only present for renames). */
-  oldPath?: string;
+  oldPath?: string | undefined;
   /** Working tree status. */
   workingStatus: GitFileStatus;
   /** Index (staged) status. */
@@ -51,7 +51,7 @@ export interface GitBranchInfo {
   /** Whether HEAD is detached. */
   detached: boolean;
   /** Remote tracking branch (if any). */
-  upstream?: string;
+  upstream?: string | undefined;
   /** Number of commits ahead of upstream. */
   ahead: number;
   /** Number of commits behind upstream. */
@@ -74,11 +74,11 @@ export interface GitDomainState {
   /** Whether the session's project root is a git repository. */
   isRepo: boolean;
   /** Absolute path to the repository root. */
-  repoRoot?: string;
+  repoRoot?: string | undefined;
 
   // ── Branch ────────────────────────────────────────────────────────────────
   /** Current branch info (undefined if not a repo or not loaded). */
-  branch?: GitBranchInfo;
+  branch?: GitBranchInfo | undefined;
 
   // ── Working tree ──────────────────────────────────────────────────────────
   /** All tracked changed files in the working tree. */
@@ -96,11 +96,11 @@ export interface GitDomainState {
   /** Recent commits (last 20). */
   recentCommits: GitCommitSummary[];
   /** Hash of the HEAD commit. */
-  headCommitHash?: string;
+  headCommitHash?: string | undefined;
 
   // ── Refresh ─────────────────────────────────────────────────────────────
   /** Epoch ms of the last git status refresh. */
-  lastRefreshedAt?: number;
+  lastRefreshedAt?: number | undefined;
   /** Whether a git status refresh is in progress. */
   refreshing: boolean;
 }

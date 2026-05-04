@@ -1,7 +1,7 @@
 import { computeBackoffDelay, normalizeBackoffPolicy, type BackoffPolicy, type ResolvedBackoffPolicy } from './backoff.js';
 
 export interface StreamReconnectPolicy extends BackoffPolicy {
-  readonly enabled?: boolean;
+  readonly enabled?: boolean | undefined;
 }
 
 export interface ResolvedStreamReconnectPolicy extends ResolvedBackoffPolicy {

@@ -51,8 +51,8 @@ function assertWriteAccess(context: KnowledgeGraphqlContext): void {
 
 export interface KnowledgeGraphqlExecuteInput {
   readonly query: string;
-  readonly operationName?: string;
-  readonly variables?: Record<string, unknown>;
+  readonly operationName?: string | undefined;
+  readonly variables?: Record<string, unknown> | undefined;
   readonly admin: boolean;
   readonly scopes: readonly string[];
 }
@@ -114,13 +114,13 @@ export class KnowledgeGraphqlService {
       item: ({ id }: { id: string }) => this.service.getItem(id),
       items: ({ ids }: { ids: string[] }) => this.service.getItems(ids),
       sourcesConnection: (args: {
-        limit?: number;
-        offset?: number;
-        status?: string;
-        connectorId?: string;
-        sourceType?: string;
-        tag?: string;
-        query?: string;
+        limit?: number | undefined;
+        offset?: number | undefined;
+        status?: string | undefined;
+        connectorId?: string | undefined;
+        sourceType?: string | undefined;
+        tag?: string | undefined;
+        query?: string | undefined;
       }) => this.service.querySources({
         limit: clampInt(args.limit, 100),
         offset: clampOffset(args.offset),
@@ -151,7 +151,7 @@ export class KnowledgeGraphqlService {
           .slice(0, clampInt(limit, 100))
       ),
       sourceExtraction: ({ sourceId }: { sourceId: string }) => this.service.getSourceExtraction(sourceId),
-      neighbors: ({ kind, id, relation, limit }: { kind: 'source' | 'node'; id: string; relation?: string; limit?: number }) => {
+      neighbors: ({ kind, id, relation, limit }: { kind: 'source' | 'node'; id: string; relation?: string | undefined; limit?: number }) => {
         if (kind !== 'source' && kind !== 'node') {
           throw new GraphQLError(`Unsupported knowledge neighbor kind: ${kind}`);
         }
@@ -208,14 +208,14 @@ export class KnowledgeGraphqlService {
       ingestUrl: async (
         args: {
           url: string;
-          title?: string;
-          tags?: string[];
-          folderPath?: string;
-          sessionId?: string;
-          sourceType?: string;
-          connectorId?: string;
-          allowPrivateHosts?: boolean;
-          metadata?: Record<string, unknown>;
+          title?: string | undefined;
+          tags?: string[] | undefined;
+          folderPath?: string | undefined;
+          sessionId?: string | undefined;
+          sourceType?: string | undefined;
+          connectorId?: string | undefined;
+          allowPrivateHosts?: boolean | undefined;
+          metadata?: Record<string, unknown> | undefined;
         },
         context: KnowledgeGraphqlContext,
       ) => {
@@ -235,17 +235,17 @@ export class KnowledgeGraphqlService {
       },
       ingestArtifact: async (
         args: {
-          artifactId?: string;
-          path?: string;
-          uri?: string;
-          title?: string;
-          tags?: string[];
-          folderPath?: string;
-          sessionId?: string;
-          sourceType?: string;
-          connectorId?: string;
-          allowPrivateHosts?: boolean;
-          metadata?: Record<string, unknown>;
+          artifactId?: string | undefined;
+          path?: string | undefined;
+          uri?: string | undefined;
+          title?: string | undefined;
+          tags?: string[] | undefined;
+          folderPath?: string | undefined;
+          sessionId?: string | undefined;
+          sourceType?: string | undefined;
+          connectorId?: string | undefined;
+          allowPrivateHosts?: boolean | undefined;
+          metadata?: Record<string, unknown> | undefined;
         },
         context: KnowledgeGraphqlContext,
       ) => {

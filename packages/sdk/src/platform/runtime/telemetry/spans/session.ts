@@ -19,11 +19,11 @@ export interface SessionSpanContext {
   /** Trace ID for cross-span correlation. */
   readonly traceId: string;
   /** Profile ID used for this session (present on new sessions). */
-  readonly profileId?: string;
+  readonly profileId?: string | undefined;
   /** Working directory for this session (present on new sessions). */
-  readonly workingDir?: string;
+  readonly workingDir?: string | undefined;
   /** Path to the saved session file (present on resumed sessions). */
-  readonly path?: string;
+  readonly path?: string | undefined;
 }
 
 /** Phase transitions recordable on a session lifecycle span. */
@@ -38,11 +38,11 @@ export interface SessionSpanEndContext {
   /** Final outcome of the session initialisation. */
   readonly outcome: 'ready' | 'recovery_failed';
   /** Error description when outcome is 'recovery_failed'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Number of turns loaded on resume (if applicable). */
-  readonly turnCount?: number;
+  readonly turnCount?: number | undefined;
   /** Number of messages reconciled (if applicable). */
-  readonly messageCount?: number;
+  readonly messageCount?: number | undefined;
 }
 
 /**

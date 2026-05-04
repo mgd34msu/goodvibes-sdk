@@ -16,8 +16,8 @@ export interface PolicyPreflightIssue {
   readonly severity: 'info' | 'warn' | 'error';
   readonly source: 'policy' | 'runtime' | 'mcp';
   readonly message: string;
-  readonly detail?: string;
-  readonly serverName?: string;
+  readonly detail?: string | undefined;
+  readonly serverName?: string | undefined;
 }
 
 export interface PolicyPreflightReview {

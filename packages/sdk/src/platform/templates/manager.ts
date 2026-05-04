@@ -11,8 +11,8 @@ export interface TemplateEntry {
 export interface TemplateManagerRoots {
   projectRoot: string;
   homeDirectory: string;
-  projectDirectory?: string;
-  globalDirectory?: string;
+  projectDirectory?: string | undefined;
+  globalDirectory?: string | undefined;
 }
 
 /**

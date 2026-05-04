@@ -56,13 +56,13 @@ export const MEMORY_VECTOR_DIMS = 384;
 export { embedMemoryText } from './memory-embeddings.js';
 
 export interface MemoryVectorSearchFilter {
-  scope?: MemoryScope;
-  cls?: MemoryClass;
-  since?: number;
-  reviewState?: MemoryReviewState | MemoryReviewState[];
-  minConfidence?: number;
-  staleOnly?: boolean;
-  limit?: number;
+  scope?: MemoryScope | undefined;
+  cls?: MemoryClass | undefined;
+  since?: number | undefined;
+  reviewState?: MemoryReviewState | MemoryReviewState[] | undefined;
+  minConfidence?: number | undefined;
+  staleOnly?: boolean | undefined;
+  limit?: number | undefined;
 }
 
 export interface MemoryVectorCandidate {
@@ -80,7 +80,7 @@ export interface MemoryVectorStats {
   indexedRecords: number;
   embeddingProviderId: string;
   embeddingProviderLabel: string;
-  error?: string;
+  error?: string | undefined;
 }
 
 type VectorRow = {
@@ -309,7 +309,7 @@ export class SqliteVecMemoryIndex {
       const states = Array.isArray(filter.reviewState) ? filter.reviewState : [filter.reviewState];
       if (states.length === 1) {
         where.push('review_state = ?');
-        params.push(states[0]);
+        params.push(states[0]!);
       }
     }
     if (filter.minConfidence !== undefined) {

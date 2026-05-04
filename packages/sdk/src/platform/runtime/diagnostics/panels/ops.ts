@@ -36,11 +36,11 @@ export interface OpsAuditEntry {
   /** The reason code for the intervention. */
   readonly reason: OpsInterventionReason;
   /** Optional operator note. */
-  readonly note?: string;
+  readonly note?: string | undefined;
   /** Outcome of the intervention. */
   readonly outcome: 'success' | 'rejected' | 'error';
   /** Error message if outcome is not success. */
-  readonly errorMessage?: string;
+  readonly errorMessage?: string | undefined;
   /** Trace identifier from the event envelope. */
   readonly traceId: string;
   /** Session identifier from the event envelope. */
@@ -59,9 +59,9 @@ type MutableAuditRecord = {
   targetId: string;
   targetKind: 'task' | 'agent';
   reason: OpsInterventionReason;
-  note?: string;
+  note?: string | undefined;
   outcome: 'success' | 'rejected' | 'error';
-  errorMessage?: string;
+  errorMessage?: string | undefined;
   traceId: string;
   sessionId: string;
 };

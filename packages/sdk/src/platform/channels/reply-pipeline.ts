@@ -20,26 +20,26 @@ export interface TrackedChannelReply {
   readonly agentId: string;
   readonly surfaceKind: ChannelSurface;
   readonly task: string;
-  readonly agentTask?: string;
-  readonly workflowChainId?: string;
+  readonly agentTask?: string | undefined;
+  readonly workflowChainId?: string | undefined;
   readonly createdAt: number;
-  readonly sessionId?: string;
-  readonly routeId?: string;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
   readonly [key: string]: unknown;
 }
 
 interface ReplyPipelineDeps {
   readonly channelPlugins: ChannelPluginRegistry;
   readonly routeBindings: RouteBindingManager;
-  readonly runtimeBus?: RuntimeEventBus | null;
-  readonly now?: () => number;
+  readonly runtimeBus?: RuntimeEventBus | null | undefined;
+  readonly now?: (() => number) | undefined | undefined;
 }
 
 interface ReplyBufferState {
   readonly pending: TrackedChannelReply;
   readonly events: ChannelRenderEvent[];
-  lastDeliveredText?: string;
-  lastDeliveredAt?: number;
+  lastDeliveredText?: string | undefined;
+  lastDeliveredAt?: number | undefined;
 }
 
 const DEFAULT_POLICY: Record<ChannelSurface, ChannelRenderPolicy> = {

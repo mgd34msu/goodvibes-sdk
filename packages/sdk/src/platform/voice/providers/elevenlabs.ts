@@ -29,24 +29,24 @@ const DEFAULT_ELEVENLABS_OUTPUT_FORMAT = 'mp3_44100_128';
 const ELEVENLABS_SINGLE_USE_TOKEN_TTL_MS = 15 * 60 * 1000;
 
 type ElevenLabsWord = {
-  readonly text?: string;
-  readonly start?: number;
-  readonly end?: number;
-  readonly type?: string;
-  readonly speaker_id?: string;
-  readonly logprob?: number;
+  readonly text?: string | undefined;
+  readonly start?: number | undefined;
+  readonly end?: number | undefined;
+  readonly type?: string | undefined;
+  readonly speaker_id?: string | undefined;
+  readonly logprob?: number | undefined;
 };
 
 type ElevenLabsTranscriptionResponse = {
-  readonly language_code?: string;
-  readonly language_probability?: number;
-  readonly text?: string;
-  readonly words?: readonly ElevenLabsWord[];
-  readonly transcription_id?: string;
+  readonly language_code?: string | undefined;
+  readonly language_probability?: number | undefined;
+  readonly text?: string | undefined;
+  readonly words?: readonly ElevenLabsWord[] | undefined;
+  readonly transcription_id?: string | undefined;
 };
 
 type ElevenLabsSingleUseTokenResponse = {
-  readonly token?: string;
+  readonly token?: string | undefined;
 };
 
 function normalizeBooleanString(value: unknown): string | undefined {
@@ -150,8 +150,8 @@ async function* streamResponseAudioChunks(
 
 function parseElevenLabsTranscript(payload: ElevenLabsTranscriptionResponse): {
   text: string;
-  language?: string;
-  segments: Array<{ text: string; startMs?: number; endMs?: number; confidence?: number }>;
+  language?: string | undefined;
+  segments: Array<{ text: string; startMs?: number | undefined; endMs?: number | undefined; confidence?: number | undefined }>;
 } {
   const text = trimToUndefined(payload.text);
   if (!text) throw new Error('ElevenLabs transcription response missing transcript');
@@ -167,17 +167,17 @@ function parseElevenLabsTranscript(payload: ElevenLabsTranscriptionResponse): {
   return {
     text,
     language: trimToUndefined(payload.language_code),
-    segments,
+    segments: segments!,
   };
 }
 
 function buildElevenLabsRealtimeMetadata(params: {
   baseUrl: string;
   websocketUrl: string;
-  token?: string;
-  expiresAt?: number;
+  token?: string | undefined;
+  expiresAt?: number | undefined;
   request: VoiceRealtimeSessionRequest;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | undefined;
 }): Record<string, unknown> {
   return {
     authMode: params.token ? 'single-use-token' : 'api-key',
@@ -235,7 +235,7 @@ export function createElevenLabsProvider(): VoiceProvider {
       });
       if (!response.ok) throw new Error(`ElevenLabs voices failed: HTTP ${response.status}`);
       const payload = await response.json() as {
-        voices?: Array<{ voice_id?: string; name?: string; category?: string; description?: string }>;
+        voices?: Array<{ voice_id?: string; name?: string; category?: string; description?: string }> | undefined;
       };
       return (payload.voices ?? [])
         .map((voice) => ({
@@ -321,9 +321,9 @@ export function createElevenLabsProvider(): VoiceProvider {
           'Content-Type': 'application/json',
           Accept: mimeType,
         },
-        signal: request.signal,
+        ...(request.signal !== undefined ? { signal: request.signal } : {}),
         body: JSON.stringify(body),
-      });
+      } as RequestInit);
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
         throw new Error(`ElevenLabs streaming synthesis failed: HTTP ${response.status}${errorText ? `: ${errorText}` : ''}`);

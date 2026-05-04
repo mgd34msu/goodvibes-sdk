@@ -21,11 +21,11 @@ export const WORKLIST_TOOL_SCHEMA = {
 
 export type WorklistToolInput = {
   mode: 'create' | 'list' | 'show' | 'add-item' | 'complete-item' | 'reopen-item' | 'remove-item';
-  view?: 'summary' | 'full';
-  worklistId?: string;
-  title?: string;
-  itemId?: string;
-  text?: string;
-  owner?: string;
-  priority?: 'low' | 'medium' | 'high';
+  view?: 'summary' | 'full' | undefined;
+  worklistId?: string | undefined;
+  title?: string | undefined;
+  itemId?: string | undefined;
+  text?: string | undefined;
+  owner?: string | undefined;
+  priority?: 'low' | 'medium' | 'high' | undefined;
 };

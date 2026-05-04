@@ -57,7 +57,7 @@ interface Bucket {
 
 export interface CompanionChatRateLimiterOptions {
   /** Max messages per 60-second window per clientId. Default: 30. */
-  readonly perClientLimit?: number;
+  readonly perClientLimit?: number | undefined;
   /**
    * Max messages per 60-second window per sessionId. Default: 10.
    *
@@ -69,9 +69,9 @@ export interface CompanionChatRateLimiterOptions {
    * on every `check()` call (when a `configManager` is provided) and takes
    * precedence over the env-var-captured fallback.
    */
-  readonly perSessionLimit?: number;
+  readonly perSessionLimit?: number | undefined;
   /** Window size in ms. Default: 60000 (1 minute). */
-  readonly windowMs?: number;
+  readonly windowMs?: number | undefined;
   /**
    * Optional ConfigManager for runtime lookup of
    * `runtime.companionChatLimiter.perSessionLimit`.
@@ -79,7 +79,7 @@ export interface CompanionChatRateLimiterOptions {
    * effective per-session limit (falling back to the constructor-time value
    * when the config key is absent or not a positive integer).
    */
-  readonly configManager?: Pick<ConfigManager, 'get'> | null;
+  readonly configManager?: Pick<ConfigManager, 'get'> | null | undefined;
 }
 
 export class CompanionChatRateLimiter {

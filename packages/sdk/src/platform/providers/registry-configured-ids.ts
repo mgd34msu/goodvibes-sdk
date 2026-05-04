@@ -31,7 +31,7 @@ export function computeConfiguredProviderIds(
     if (envVars.length === 0) {
       configured.add(providerId);
     } else if (envVars.some((envVar) => {
-      const value = process.env[envVar];
+      const value = process.env[envVar]!;
       return typeof value === 'string' && value.length > 0;
     })) {
       configured.add(providerId);

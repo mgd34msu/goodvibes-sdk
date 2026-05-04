@@ -14,7 +14,7 @@ import {
 
 export interface SkillLoaderRoots {
   readonly workingDirectory: string;
-  readonly homeDirectory?: string;
+  readonly homeDirectory?: string | undefined;
 }
 
 function getSkillDirs(roots: SkillLoaderRoots): string[] {

@@ -64,7 +64,7 @@ export function createVydraProvider(): VoiceProvider {
               .filter((entry): entry is string => Boolean(entry))
           : []),
       ].filter((value): value is string => Boolean(value && value.trim()));
-      const audioUrl = urls[0];
+      const audioUrl = urls[0]!;
       if (!audioUrl) throw new Error('Vydra speech synthesis response missing audio URL');
       const audioResponse = await instrumentedFetch(audioUrl);
       if (!audioResponse.ok) throw new Error(`Vydra audio download failed: HTTP ${audioResponse.status}`);

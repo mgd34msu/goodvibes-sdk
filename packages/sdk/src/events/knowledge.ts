@@ -10,14 +10,14 @@ export type KnowledgeEvent =
       sourceId: string;
       connectorId: string;
       sourceType: string;
-      uri?: string;
+      uri?: string | undefined;
     }
   | {
       type: 'KNOWLEDGE_INGEST_COMPLETED';
       sourceId: string;
       status: string;
-      artifactId?: string;
-      title?: string;
+      artifactId?: string | undefined;
+      title?: string | undefined;
     }
   | {
       type: 'KNOWLEDGE_INGEST_FAILED';

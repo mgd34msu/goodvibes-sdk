@@ -32,36 +32,36 @@ import type { EmitterContext } from '../runtime/emitters/index.js';
 import type { MemoryEmbeddingProviderRegistry, MemoryRegistry } from '../state/index.js';
 
 export interface DaemonConfig {
-  port?: number;
-  host?: string;
-  workingDir?: string;
-  homeDirectory?: string;
+  port?: number | undefined;
+  host?: string | undefined;
+  workingDir?: string | undefined;
+  homeDirectory?: string | undefined;
   /**
    * Absolute path to the daemon home directory (`daemon.homeDir`).
    * Resolved from --daemon-home CLI flag, GOODVIBES_DAEMON_HOME env, or
    * ~/.goodvibes/daemon/ default. Holds immutable-after-startup identity state:
    * auth-users.json, auth-bootstrap.txt, daemon-settings.json, operator-tokens.json.
    */
-  daemonHomeDir?: string;
-  configManager?: ConfigManager;
-  githubWebhookSecret?: string;
-  agentManager?: AgentManager;
-  serveFactory?: typeof Bun.serve;
-  userAuth?: UserAuthManager;
-  runtimeBus?: RuntimeEventBus | null;
-  runtimeServices?: RuntimeServices;
+  daemonHomeDir?: string | undefined;
+  configManager?: ConfigManager | undefined;
+  githubWebhookSecret?: string | undefined;
+  agentManager?: AgentManager | undefined;
+  serveFactory?: typeof Bun.serve | undefined;
+  userAuth?: UserAuthManager | undefined;
+  runtimeBus?: RuntimeEventBus | null | undefined;
+  runtimeServices?: RuntimeServices | undefined;
   /**
    * Override companion-chat rate-limiter thresholds from daemon config.
    * Takes precedence over GOODVIBES_CHAT_LIMITER_THRESHOLD env var.
    */
-  companionChatRateLimiterOptions?: { threshold?: number };
+  companionChatRateLimiterOptions?: { threshold?: number } | undefined;
   /**
    * WorkspaceSwapManager instance to handle runtime.workingDir transitions.
    * When provided, POST /config runtime.workingDir requests are delegated
    * to the swap manager rather than rejected. Injected by cli.ts at startup;
    * omitted in embedded/test contexts where workspace swaps are not supported.
    */
-  swapManager?: import('./http/system-route-types.js').WorkspaceSwapManagerLike | null;
+  swapManager?: import('./http/system-route-types.js').WorkspaceSwapManagerLike | null | undefined;
 }
 
 export interface DaemonDangerConfig {
@@ -94,8 +94,8 @@ export interface ControlPlaneWebSocketData {
     | 'mattermost'
     | 'matrix'
     | 'daemon';
-  readonly remoteAddress?: string;
-  clientId?: string;
+  readonly remoteAddress?: string | undefined;
+  clientId?: string | undefined;
 }
 
 export interface PendingSurfaceReply {
@@ -103,22 +103,22 @@ export interface PendingSurfaceReply {
   readonly surfaceKind: ChannelSurface;
   readonly task: string;
   readonly createdAt: number;
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly responseUrl?: string;
-  readonly channelId?: string;
-  readonly applicationId?: string;
-  readonly interactionToken?: string;
-  readonly topic?: string;
-  readonly callbackUrl?: string;
-  readonly callbackSecret?: string;
-  readonly callbackSignature?: 'shared-secret' | 'hmac-sha256';
-  readonly callbackCorrelationId?: string;
-  readonly targetAddress?: string;
-  readonly threadId?: string;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly responseUrl?: string | undefined;
+  readonly channelId?: string | undefined;
+  readonly applicationId?: string | undefined;
+  readonly interactionToken?: string | undefined;
+  readonly topic?: string | undefined;
+  readonly callbackUrl?: string | undefined;
+  readonly callbackSecret?: string | undefined;
+  readonly callbackSignature?: 'shared-secret' | 'hmac-sha256' | undefined;
+  readonly callbackCorrelationId?: string | undefined;
+  readonly targetAddress?: string | undefined;
+  readonly threadId?: string | undefined;
   [key: string]: unknown;
-  lastProgressAt?: number;
-  lastProgress?: string;
+  lastProgressAt?: number | undefined;
+  lastProgress?: string | undefined;
 }
 
 export interface DaemonRouteContext {
@@ -186,14 +186,14 @@ export interface DaemonRouteContext {
   readonly trySpawnAgent: (input: {
     mode: 'spawn';
     task: string;
-    model?: string;
-    tools?: readonly string[];
-    provider?: string;
-    context?: string;
-    executionProtocol?: 'direct' | 'gather-plan-apply';
-    reviewMode?: 'none' | 'wrfc';
-    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct';
-    dangerously_disable_wrfc?: boolean;
+    model?: string | undefined;
+    tools?: readonly string[] | undefined;
+    provider?: string | undefined;
+    context?: string | undefined;
+    executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
+    reviewMode?: 'none' | 'wrfc' | undefined;
+    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
+    dangerously_disable_wrfc?: boolean | undefined;
   }, logLabel: string, sessionId?: string) => import('../tools/agent/index.js').AgentRecord | Response;
   readonly syncSpawnedAgentTask: (record: import('../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../tools/agent/index.js').AgentRecord) => void;

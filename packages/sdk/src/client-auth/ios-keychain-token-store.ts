@@ -49,20 +49,20 @@ export interface IOSKeychainTokenStoreOptions {
    * The keychain service identifier.
    * @default 'com.pellux.goodvibes-sdk'
    */
-  readonly service?: string;
+  readonly service?: string | undefined;
 
   /**
    * Controls when stored data is accessible.
    * Maps to `Keychain.ACCESSIBLE` constants.
    * @default 'WHEN_UNLOCKED_THIS_DEVICE_ONLY'
    */
-  readonly accessible?: KeychainAccessible;
+  readonly accessible?: KeychainAccessible | undefined;
 
   /**
    * iOS Keychain access group for sharing credentials between apps.
    * Maps to `Keychain.Options.accessGroup`.
    */
-  readonly accessGroup?: string;
+  readonly accessGroup?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -243,7 +243,8 @@ export function createIOSKeychainTokenStore(
     async getTokenEntry(): Promise<{ token: string | null; expiresAt?: number }> {
       const payload = await readPayload();
       if (payload === null) return { token: null };
-      return { token: payload.token, expiresAt: payload.expiresAt ?? undefined };
+      const expiresAt = payload.expiresAt ?? undefined;
+      return expiresAt !== undefined ? { token: payload.token, expiresAt } : { token: payload.token };
     },
   };
 }

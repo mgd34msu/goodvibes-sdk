@@ -20,8 +20,8 @@ export type GeneratedKnowledgePageGraphNeighbor<TNode extends GeneratedKnowledge
 export interface GeneratedKnowledgeRelatedPage<TNode extends GeneratedKnowledgePageGraphNode = GeneratedKnowledgePageGraphNode> {
   readonly sourceId: string;
   readonly title: string;
-  readonly projectionKind?: string;
-  readonly subject?: TNode;
+  readonly projectionKind?: string | undefined;
+  readonly subject?: TNode | undefined;
 }
 
 export interface GeneratedKnowledgePageEntry<TNode extends GeneratedKnowledgePageGraphNode = GeneratedKnowledgePageGraphNode> {
@@ -29,15 +29,15 @@ export interface GeneratedKnowledgePageEntry<TNode extends GeneratedKnowledgePag
   readonly artifact?: {
     readonly id: string;
     readonly mimeType: string;
-    readonly filename?: string;
+    readonly filename?: string | undefined;
     readonly createdAt: number;
     readonly metadata: Record<string, unknown>;
   };
-  readonly markdown?: string;
-  readonly target?: TNode;
-  readonly subject?: TNode;
-  readonly neighbors?: readonly GeneratedKnowledgePageGraphNeighbor<TNode>[];
-  readonly relatedPages?: readonly GeneratedKnowledgeRelatedPage<TNode>[];
+  readonly markdown?: string | undefined;
+  readonly target?: TNode | undefined;
+  readonly subject?: TNode | undefined;
+  readonly neighbors?: readonly GeneratedKnowledgePageGraphNeighbor<TNode>[] | undefined;
+  readonly relatedPages?: readonly GeneratedKnowledgeRelatedPage<TNode>[] | undefined;
 }
 
 export interface GeneratedKnowledgePageListResult<TNode extends GeneratedKnowledgePageGraphNode = GeneratedKnowledgePageGraphNode> {
@@ -54,16 +54,16 @@ export interface GeneratedKnowledgePageListOptions<TNode extends GeneratedKnowle
   readonly edges: readonly KnowledgeEdgeRecord[];
   readonly limit: number;
   readonly includeMarkdown: boolean;
-  readonly isGeneratedSource?: (source: KnowledgeSourceRecord) => boolean;
-  readonly isPageSubjectNode?: (node: KnowledgeNodeRecord) => boolean;
-  readonly resolvePageSubject?: (target: KnowledgeNodeRecord, graph: GeneratedKnowledgePageGraph) => KnowledgeNodeRecord | undefined;
-  readonly projectNode?: (node: KnowledgeNodeRecord) => TNode;
+  readonly isGeneratedSource?: ((source: KnowledgeSourceRecord) => boolean) | undefined | undefined;
+  readonly isPageSubjectNode?: ((node: KnowledgeNodeRecord) => boolean) | undefined | undefined;
+  readonly resolvePageSubject?: ((target: KnowledgeNodeRecord, graph: GeneratedKnowledgePageGraph) => KnowledgeNodeRecord | undefined) | undefined | undefined;
+  readonly projectNode?: ((node: KnowledgeNodeRecord) => TNode) | undefined | undefined;
   readonly compareGeneratedPages?: (
     left: KnowledgeSourceRecord,
     right: KnowledgeSourceRecord,
     graph: GeneratedKnowledgePageGraph,
   ) => number;
-  readonly relatedPageLimit?: number;
+  readonly relatedPageLimit?: number | undefined;
 }
 
 export interface GeneratedKnowledgePageGraph {

@@ -80,7 +80,7 @@ export class CrossSessionTaskRegistry {
     ref: CrossSessionTaskRef,
     dependsOn?: { sessionId: string; taskId: string },
     reason?: string,
-  ): { ok: boolean; error?: string } {
+  ): { ok: boolean; error?: string | undefined } {
     this._graph.upsertRef(ref);
 
     if (dependsOn) {
@@ -171,7 +171,7 @@ export class CrossSessionTaskRegistry {
     fromSessionId: string,
     toSessionId: string,
     reason?: string,
-  ): { ok: boolean; handoffId?: string; error?: string } {
+  ): { ok: boolean; handoffId?: string; error?: string | undefined } {
     const ref = this._graph.getRef(taskRef.sessionId, taskRef.taskId);
     if (!ref) {
       return {

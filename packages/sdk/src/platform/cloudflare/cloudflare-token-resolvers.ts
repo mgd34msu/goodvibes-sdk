@@ -21,8 +21,8 @@ export interface TokenResolverContext {
   readonly secretsManager?: Pick<{
     get(key: string): Promise<string | null>;
     getGlobalHome(): string | undefined;
-  }, 'get' | 'getGlobalHome'> | null;
-  readonly authToken?: () => string | null;
+  }, 'get' | 'getGlobalHome'> | null | undefined;
+  readonly authToken?: (() => string | null) | undefined;
   readonly readConfig: () => CloudflareControlPlaneConfig;
 }
 
@@ -79,7 +79,7 @@ export async function resolveApiToken(
 
 export async function resolveOperatorToken(
   ctx: TokenResolverContext,
-  input: { readonly operatorToken?: string; readonly operatorTokenRef?: string },
+  input: { readonly operatorToken?: string | undefined; readonly operatorTokenRef?: string | undefined },
 ): Promise<CloudflareResolvedSecret> {
   const bodyToken = clean(input.operatorToken);
   if (bodyToken) return { value: bodyToken, source: 'body' };
@@ -95,7 +95,7 @@ export async function resolveOperatorToken(
 
 export async function resolveWorkerClientToken(
   ctx: TokenResolverContext,
-  input: { readonly workerClientToken?: string; readonly workerClientTokenRef?: string },
+  input: { readonly workerClientToken?: string | undefined; readonly workerClientTokenRef?: string | undefined },
 ): Promise<CloudflareResolvedSecret> {
   const bodyToken = clean(input.workerClientToken);
   if (bodyToken) return { value: bodyToken, source: 'body' };

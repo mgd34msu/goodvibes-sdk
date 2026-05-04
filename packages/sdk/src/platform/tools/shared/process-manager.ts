@@ -26,7 +26,7 @@ export interface BackgroundProcess {
    * Null if the process completed normally or SIGKILL was never scheduled.
    */
   killDeadline: number | null;
-  completedAt?: number;
+  completedAt?: number | undefined;
 }
 
 const MAX_PROCESS_OUTPUT_BYTES = 256 * 1024;
@@ -37,9 +37,9 @@ const COMPLETED_PROCESS_TTL_MS = 30 * 60 * 1000;
 
 export interface SpawnOptions {
   /** Abort the process if it hasn't completed within this many ms. Default: 60000. */
-  timeout_ms?: number;
+  timeout_ms?: number | undefined;
   /** Grace period (ms) between SIGTERM and SIGKILL after timeout. Default: 5000. */
-  sigterm_grace_ms?: number;
+  sigterm_grace_ms?: number | undefined;
 }
 
 // ─── ExecCommandResult subset (for command handler return values) ─────────────
@@ -50,8 +50,8 @@ export interface BgCommandResult {
   stdout: string;
   stderr: string;
   success: boolean;
-  process_id?: string;
-  pid?: number;
+  process_id?: string | undefined;
+  pid?: number | undefined;
 }
 
 // ─── ProcessManager ───────────────────────────────────────────────────────────
@@ -112,11 +112,11 @@ export class ProcessManager {
     let proc: ReturnType<typeof Bun.spawn>;
     try {
       proc = Bun.spawn(['/bin/sh', '-c', cmd], {
-        cwd,
+        ...(cwd !== undefined ? { cwd } : {}),
         env: mergedEnv,
         stdout: 'pipe',
         stderr: 'pipe',
-      });
+      } as Parameters<typeof Bun.spawn>[1]);
     } catch (spawnErr: unknown) {
       // Surface ENOENT / EACCES immediately — callers should not retry these
       this._processes.delete(id);
@@ -247,9 +247,9 @@ export class ProcessManager {
     // bg_status <id>
     const statusMatch = cmd.match(/^bg_status\s+(\S+)$/);
     if (statusMatch) {
-      const entry = this._processes.get(statusMatch[1]);
+      const entry = this._processes.get(statusMatch[1]!);
       if (!entry) {
-        return { cmd, exit_code: 1, stdout: '', stderr: `Unknown process: ${statusMatch[1]}`, success: false };
+        return { cmd, exit_code: 1, stdout: '', stderr: `Unknown process: ${statusMatch[1]!}`, success: false };
       }
       const status = entry.done ? `done (exit ${entry.exitCode})` : 'running';
       return {
@@ -264,9 +264,9 @@ export class ProcessManager {
     // bg_output <id>
     const outputMatch = cmd.match(/^bg_output\s+(\S+)$/);
     if (outputMatch) {
-      const entry = this._processes.get(outputMatch[1]);
+      const entry = this._processes.get(outputMatch[1]!);
       if (!entry) {
-        return { cmd, exit_code: 1, stdout: '', stderr: `Unknown process: ${outputMatch[1]}`, success: false };
+        return { cmd, exit_code: 1, stdout: '', stderr: `Unknown process: ${outputMatch[1]!}`, success: false };
       }
       return {
         cmd,
@@ -280,11 +280,11 @@ export class ProcessManager {
     // bg_stop <id>
     const stopMatch = cmd.match(/^bg_stop\s+(\S+)$/);
     if (stopMatch) {
-      const found = this.stop(stopMatch[1]);
+      const found = this.stop(stopMatch[1]!);
       if (!found) {
-        return { cmd, exit_code: 1, stdout: '', stderr: `Unknown process: ${stopMatch[1]}`, success: false };
+        return { cmd, exit_code: 1, stdout: '', stderr: `Unknown process: ${stopMatch[1]!}`, success: false };
       }
-      return { cmd, exit_code: 0, stdout: `Stopped ${stopMatch[1]}`, stderr: '', success: true };
+      return { cmd, exit_code: 0, stdout: `Stopped ${stopMatch[1]!}`, stderr: '', success: true };
     }
 
     // bg_list

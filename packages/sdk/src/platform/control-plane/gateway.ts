@@ -36,14 +36,14 @@ import {
 export type { ControlPlaneRecentEvent } from './gateway-utils.js';
 
 export interface ControlPlaneGatewayConfig {
-  readonly runtimeBus?: RuntimeEventBus | null;
-  readonly runtimeStore?: RuntimeStore | null;
-  readonly server?: Partial<ControlPlaneServerConfig>;
-  readonly featureFlags?: FeatureFlagReader;
+  readonly runtimeBus?: RuntimeEventBus | null | undefined;
+  readonly runtimeStore?: RuntimeStore | null | undefined;
+  readonly server?: Partial<ControlPlaneServerConfig> | undefined;
+  readonly featureFlags?: FeatureFlagReader | undefined;
 }
 
 export interface ControlPlaneEventStreamOptions {
-  readonly clientId?: string;
+  readonly clientId?: string | undefined;
   readonly clientKind?:
     | 'tui'
     | 'web'
@@ -62,17 +62,17 @@ export interface ControlPlaneEventStreamOptions {
     | 'mattermost'
     | 'matrix'
     | 'daemon';
-  readonly transport?: 'local' | 'http' | 'sse' | 'ws' | 'webhook';
-  readonly label?: string;
-  readonly domains?: readonly RuntimeEventDomain[];
-  readonly principalId?: string;
-  readonly principalKind?: 'user' | 'bot' | 'service' | 'token';
-  readonly scopes?: readonly string[];
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly surfaceId?: string;
-  readonly remoteAddress?: string;
-  readonly capabilities?: readonly string[];
+  readonly transport?: 'local' | 'http' | 'sse' | 'ws' | 'webhook' | undefined;
+  readonly label?: string | undefined;
+  readonly domains?: readonly RuntimeEventDomain[] | undefined;
+  readonly principalId?: string | undefined;
+  readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | undefined;
+  readonly scopes?: readonly string[] | undefined;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly remoteAddress?: string | undefined;
+  readonly capabilities?: readonly string[] | undefined;
 }
 
 interface LiveControlPlaneClient {
@@ -95,8 +95,8 @@ interface LiveControlPlaneClient {
     | 'mattermost'
     | 'matrix'
     | 'daemon';
-  readonly surfaceId?: string;
-  readonly routeId?: string;
+  readonly surfaceId?: string | undefined;
+  readonly routeId?: string | undefined;
   readonly send: (event: string, payload: unknown, id?: string) => void;
 }
 
@@ -128,7 +128,7 @@ export class ControlPlaneGateway {
     const cap = this._recentEventsCapacity;
     for (let i = 0; i < count; i++) {
       const idx = (this._recentEventsHead - 1 - i + cap) % cap;
-      const entry = this._recentEventsRing[idx];
+      const entry = this._recentEventsRing[idx]!;
       if (entry) {
         out.push(entry);
       } else if (process.env.NODE_ENV !== 'production') {
@@ -172,8 +172,8 @@ export class ControlPlaneGateway {
   }
 
   attachRuntime(config: {
-    readonly runtimeBus?: RuntimeEventBus | null;
-    readonly runtimeStore?: RuntimeStore | null;
+    readonly runtimeBus?: RuntimeEventBus | null | undefined;
+    readonly runtimeStore?: RuntimeStore | null | undefined;
   }): void {
     if (config.runtimeBus) {
       this.runtimeBus = config.runtimeBus;
@@ -274,10 +274,10 @@ export class ControlPlaneGateway {
   }
 
   publishEvent(event: string, payload: unknown, filter?: {
-    readonly clientKind?: LiveControlPlaneClient['kind'];
-    readonly clientId?: string;
-    readonly routeId?: string;
-    readonly surfaceId?: string;
+    readonly clientKind?: LiveControlPlaneClient['kind'] | undefined;
+    readonly clientId?: string | undefined;
+    readonly routeId?: string | undefined;
+    readonly surfaceId?: string | undefined;
   }): void {
     if (!this.isEnabled()) return;
     const record = this.rememberEvent(event, payload, filter);
@@ -294,8 +294,8 @@ export class ControlPlaneGateway {
     readonly method: string;
     readonly path: string;
     readonly status: number;
-    readonly clientKind?: ControlPlaneEventStreamOptions['clientKind'];
-    readonly error?: string;
+    readonly clientKind?: ControlPlaneEventStreamOptions['clientKind'] | undefined;
+    readonly error?: string | undefined;
   }): void {
     if (!this.isEnabled()) return;
     this.requestCount += 1;
@@ -452,10 +452,10 @@ export class ControlPlaneGateway {
 
   authenticateClient(clientId: string, input: {
     readonly principalId: string;
-    readonly principalKind?: 'user' | 'bot' | 'service' | 'token';
-    readonly scopes?: readonly string[];
-    readonly label?: string;
-    readonly capabilities?: readonly string[];
+    readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | undefined;
+    readonly scopes?: readonly string[] | undefined;
+    readonly label?: string | undefined;
+    readonly capabilities?: readonly string[] | undefined;
   }): void {
     if (!this.isEnabled()) return;
     const existing = this.clients.get(clientId);

@@ -72,7 +72,7 @@ export interface CompactionManagerOptions {
   /** Model context window size (tokens). */
   contextWindow: number;
   /** Threshold fraction at which compaction is triggered (default: 0.75). */
-  thresholdFraction?: number;
+  thresholdFraction?: number | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ export class CompactionManager {
     messages: ProviderMessage[];
     tokenCount: number;
     trigger: CompactionTrigger;
-    isPromptTooLong?: boolean;
+    isPromptTooLong?: boolean | undefined;
   }): Promise<CompactionLifecycleResult | null> {
     // ── Feature flag gate ────────────────────────────────────────────────────
     if (!this._flags.isEnabled('session-compaction')) {

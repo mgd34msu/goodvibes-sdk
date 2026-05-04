@@ -506,9 +506,9 @@ export function configureDaemonSessionContinuation(options: {
   readonly queueSurfaceReplyFromBinding: (binding: import('../automation/routes.js').AutomationRouteBinding | undefined, input: {
     readonly agentId: string;
     readonly task: string;
-    readonly agentTask?: string;
-    readonly workflowChainId?: string;
-    readonly sessionId?: string;
+    readonly agentTask?: string | undefined;
+    readonly workflowChainId?: string | undefined;
+    readonly sessionId?: string | undefined;
   }) => void;
 }): void {
   options.sessionBroker.setContinuationRunner(async ({ sessionId, input, task, routeBinding }) => {

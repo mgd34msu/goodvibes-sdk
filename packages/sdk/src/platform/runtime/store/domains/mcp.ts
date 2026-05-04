@@ -46,11 +46,11 @@ export interface McpServerRecord {
   /** Number of failed tool calls to this server. */
   errorCount: number;
   /** Epoch ms of connection establishment. */
-  connectedAt?: number;
+  connectedAt?: number | undefined;
   /** Epoch ms of last tool call. */
-  lastCallAt?: number;
+  lastCallAt?: number | undefined;
   /** Last error message. */
-  lastError?: string;
+  lastError?: string | undefined;
   /** Number of reconnect attempts. */
   reconnectAttempts: number;
   /** Runtime trust mode for this server. */
@@ -64,11 +64,11 @@ export interface McpServerRecord {
   /** Current schema freshness state. */
   schemaFreshness: import('../../mcp/types.js').SchemaFreshness;
   /** Active quarantine reason when schema execution is blocked. */
-  quarantineReason?: import('../../mcp/types.js').QuarantineReason;
+  quarantineReason?: import('../../mcp/types.js').QuarantineReason | undefined;
   /** Human-readable quarantine detail. */
-  quarantineDetail?: string;
+  quarantineDetail?: string | undefined;
   /** Operator id that approved the last quarantine override. */
-  quarantineApprovedBy?: string;
+  quarantineApprovedBy?: string | undefined;
 }
 
 /**

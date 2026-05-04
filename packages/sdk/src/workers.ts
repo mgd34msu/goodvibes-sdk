@@ -17,36 +17,36 @@ export interface GoodVibesCloudflareExecutionContext {
 }
 
 export interface GoodVibesCloudflareWorkerEnv {
-  GOODVIBES_DAEMON_URL?: string;
-  GOODVIBES_OPERATOR_TOKEN?: string;
-  GOODVIBES_WORKER_TOKEN?: string;
-  GOODVIBES_QUEUE_JOB_PAYLOADS?: string;
-  GOODVIBES_BATCH_QUEUE?: GoodVibesCloudflareQueue<GoodVibesCloudflareQueuePayload>;
+  GOODVIBES_DAEMON_URL?: string | undefined;
+  GOODVIBES_OPERATOR_TOKEN?: string | undefined;
+  GOODVIBES_WORKER_TOKEN?: string | undefined;
+  GOODVIBES_QUEUE_JOB_PAYLOADS?: string | undefined;
+  GOODVIBES_BATCH_QUEUE?: GoodVibesCloudflareQueue<GoodVibesCloudflareQueuePayload> | undefined;
 }
 
 export type GoodVibesCloudflareQueuePayload =
   | {
       readonly type: 'batch.tick';
-      readonly force?: boolean;
-      readonly enqueuedAt?: number;
+      readonly force?: boolean | undefined;
+      readonly enqueuedAt?: number | undefined;
     }
   | {
       readonly type: 'batch.job.create';
       readonly body: Record<string, unknown>;
-      readonly enqueuedAt?: number;
+      readonly enqueuedAt?: number | undefined;
     };
 
 export interface GoodVibesCloudflareWorkerOptions {
-  readonly daemonUrl?: string;
-  readonly authToken?: string;
-  readonly workerAuthToken?: string;
-  readonly queueJobPayloads?: boolean;
+  readonly daemonUrl?: string | undefined;
+  readonly authToken?: string | undefined;
+  readonly workerAuthToken?: string | undefined;
+  readonly queueJobPayloads?: boolean | undefined;
   /**
    * Explicitly allow unauthenticated non-health endpoints.
    * Default is false: GOODVIBES_WORKER_TOKEN or workerAuthToken is required.
    */
-  readonly allowUnauthenticated?: boolean;
-  readonly maxRequestBodyBytes?: number;
+  readonly allowUnauthenticated?: boolean | undefined;
+  readonly maxRequestBodyBytes?: number | undefined;
 }
 
 export interface GoodVibesCloudflareWorker {
@@ -181,7 +181,7 @@ async function proxyDaemonJson(
   env: GoodVibesCloudflareWorkerEnv,
   options: GoodVibesCloudflareWorkerOptions,
   path: string,
-  init: { readonly method: string; readonly body?: string; readonly search?: string },
+  init: { readonly method: string; readonly body?: string | undefined; readonly search?: string },
 ): Promise<Response> {
   const baseUrl = resolveDaemonUrl(env, options);
   if (!baseUrl) {
@@ -194,7 +194,7 @@ async function proxyDaemonJson(
   return fetch(`${baseUrl}${path}${init.search ?? ''}`, {
     method: init.method,
     headers,
-    body: init.body,
+    body: init.body ?? null,
   });
 }
 

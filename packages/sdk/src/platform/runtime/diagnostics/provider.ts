@@ -52,9 +52,9 @@ export interface DiagnosticsProviderConfig {
    * Domain adapters to expose in the state inspector.
    * Pass one adapter per runtime store domain.
    */
-  readonly domains?: readonly InspectableDomain[];
+  readonly domains?: readonly InspectableDomain[] | undefined;
   /** Optional per-panel buffer configuration. */
-  readonly panelConfig?: ComponentConfig;
+  readonly panelConfig?: ComponentConfig | undefined;
 }
 
 /** Panel name literals for use with subscribe(). */

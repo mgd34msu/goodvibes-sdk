@@ -8,8 +8,8 @@ export interface HookActivityRecord {
   readonly hookName: string;
   readonly hookType: HookType;
   readonly ok: boolean;
-  readonly decision?: HookResult['decision'];
-  readonly error?: string;
+  readonly decision?: HookResult['decision'] | undefined;
+  readonly error?: string | undefined;
   readonly durationMs: number;
   readonly async: boolean;
 }
@@ -23,7 +23,7 @@ export class HookActivityTracker {
     event: HookEvent,
     params: {
       pattern: string;
-      hookName?: string;
+      hookName?: string | undefined;
       hookType: HookType;
       result: HookResult;
       durationMs: number;

@@ -29,8 +29,8 @@ export type OpenAIContentPart =
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | OpenAIContentPart[] | null;
-  tool_calls?: OpenAIToolCall[];
-  tool_call_id?: string;
+  tool_calls?: OpenAIToolCall[] | undefined;
+  tool_call_id?: string | undefined;
 }
 
 /** Convert internal ToolDefinitions to OpenAI tools array. */
@@ -214,7 +214,7 @@ export interface GeminiFunctionDeclaration {
 }
 
 export interface GeminiPart {
-  text?: string;
+  text?: string | undefined;
   inlineData?: { mimeType: string; data: string };
   functionCall?: { name: string; args: Record<string, unknown> };
   functionResponse?: { name: string; response: { content: string } };
@@ -277,7 +277,7 @@ export function fromGeminiParts(parts: GeminiPart[]): {
 export function toGeminiContents(
   messages: ProviderMessage[],
   systemPrompt?: string,
-): { contents: GeminiContent[]; systemInstruction?: { parts: GeminiPart[] } } {
+): { contents: GeminiContent[]; systemInstruction?: { parts: GeminiPart[] } | undefined } {
   const contents: GeminiContent[] = [];
   const systemInstruction = systemPrompt
     ? { parts: [{ text: systemPrompt }] }
@@ -379,8 +379,8 @@ export function extractTextToolCalls(content: string): {
     segments.push(content.slice(lastEnd, matchStart));
     lastEnd = matchEnd;
 
-    const toolName = match[1];
-    const rawArgs = match[2];
+    const toolName = match[1]!;
+    const rawArgs = match[2]!;
     toolCalls.push({
       id: `text-call-${index}`,
       name: toolName,

@@ -33,8 +33,8 @@ export function recordSharedSessionInput(
     readonly sessionId: string;
     readonly intent: SharedSessionInputIntent;
     readonly message: SubmitSharedSessionMessageInput;
-    readonly routeId?: string;
-    readonly causationId?: string;
+    readonly routeId?: string | undefined;
+    readonly causationId?: string | undefined;
     readonly maxPersistedInputs: number;
   },
 ): SharedSessionInputRecord {
@@ -83,7 +83,7 @@ export function updateSharedSessionInput(
   if (!bucket) return null;
   const index = bucket.findIndex((entry) => entry.id === inputId);
   if (index < 0) return null;
-  const updated = transform(bucket[index]);
+  const updated = transform(bucket[index]!);
   bucket[index] = updated;
   store.inputs.set(sessionId, bucket);
   refreshPendingInputCount(store, sessionId);
@@ -122,7 +122,7 @@ export function finalizeAgentSessionInputs(
   let changed = false;
   const updatedInputs: SharedSessionInputRecord[] = [];
   for (let index = 0; index < bucket.length; index += 1) {
-    const entry = bucket[index];
+    const entry = bucket[index]!;
     if (entry.activeAgentId !== agentId) continue;
     if (entry.state !== 'delivered' && entry.state !== 'spawned') continue;
     bucket[index] = {

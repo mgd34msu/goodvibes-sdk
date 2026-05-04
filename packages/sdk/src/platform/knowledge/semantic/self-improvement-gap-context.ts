@@ -30,9 +30,9 @@ export interface GapContext {
 
 export interface GapClassification {
   readonly action: 'repair' | 'skip' | 'suppress';
-  readonly reason?: string;
-  readonly status?: string;
-  readonly markAttempt?: boolean;
+  readonly reason?: string | undefined;
+  readonly status?: string | undefined;
+  readonly markAttempt?: boolean | undefined;
 }
 
 export function collectCandidateGaps(

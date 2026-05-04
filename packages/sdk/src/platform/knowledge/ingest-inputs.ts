@@ -27,14 +27,14 @@ export async function ingestKnowledgeUrl(
   context: KnowledgeIngestContext,
   input: {
     readonly url: string;
-    readonly title?: string;
-    readonly tags?: readonly string[];
-    readonly folderPath?: string;
-    readonly sessionId?: string;
-    readonly sourceType?: KnowledgeSourceType;
-    readonly connectorId?: string;
-    readonly allowPrivateHosts?: boolean;
-    readonly metadata?: Record<string, unknown>;
+    readonly title?: string | undefined;
+    readonly tags?: readonly string[] | undefined;
+    readonly folderPath?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly sourceType?: KnowledgeSourceType | undefined;
+    readonly connectorId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   },
 ): Promise<{ source: KnowledgeSourceRecord; artifactId?: string; extraction?: KnowledgeExtractionRecord; issues: readonly KnowledgeIssueRecord[] }> {
   await context.store.init();
@@ -115,17 +115,17 @@ export async function ingestKnowledgeUrl(
 export async function ingestKnowledgeArtifact(
   context: KnowledgeIngestContext,
   input: {
-    readonly artifactId?: string;
-    readonly path?: string;
-    readonly uri?: string;
-    readonly title?: string;
-    readonly tags?: readonly string[];
-    readonly folderPath?: string;
-    readonly sessionId?: string;
-    readonly sourceType?: KnowledgeSourceType;
-    readonly connectorId?: string;
-    readonly allowPrivateHosts?: boolean;
-    readonly metadata?: Record<string, unknown>;
+    readonly artifactId?: string | undefined;
+    readonly path?: string | undefined;
+    readonly uri?: string | undefined;
+    readonly title?: string | undefined;
+    readonly tags?: readonly string[] | undefined;
+    readonly folderPath?: string | undefined;
+    readonly sessionId?: string | undefined;
+    readonly sourceType?: KnowledgeSourceType | undefined;
+    readonly connectorId?: string | undefined;
+    readonly allowPrivateHosts?: boolean | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   },
 ): Promise<{ source: KnowledgeSourceRecord; artifactId?: string; extraction?: KnowledgeExtractionRecord; issues: readonly KnowledgeIssueRecord[] }> {
   await context.store.init();
@@ -229,7 +229,7 @@ export async function ingestKnowledgeArtifact(
 
 export async function importKnowledgeBookmarksFromFile(
   context: KnowledgeIngestContext,
-  input: { readonly path: string; readonly sessionId?: string; readonly allowPrivateHosts?: boolean },
+  input: { readonly path: string; readonly sessionId?: string | undefined; readonly allowPrivateHosts?: boolean | undefined },
 ): Promise<KnowledgeBatchIngestResult> {
   const content = await readFile(input.path, 'utf-8');
   return ingestKnowledgeWithConnector(context, 'bookmark', content, input.sessionId, input.allowPrivateHosts);
@@ -237,7 +237,7 @@ export async function importKnowledgeBookmarksFromFile(
 
 export async function importKnowledgeUrlsFromFile(
   context: KnowledgeIngestContext,
-  input: { readonly path: string; readonly sessionId?: string; readonly allowPrivateHosts?: boolean },
+  input: { readonly path: string; readonly sessionId?: string | undefined; readonly allowPrivateHosts?: boolean | undefined },
 ): Promise<KnowledgeBatchIngestResult> {
   const content = await readFile(input.path, 'utf-8');
   return ingestKnowledgeWithConnector(context, 'url-list', content, input.sessionId, input.allowPrivateHosts);
@@ -299,11 +299,11 @@ export async function ingestKnowledgeWithConnector(
 
 export async function ingestKnowledgeConnectorInput(context: KnowledgeIngestContext, input: {
   readonly connectorId: string;
-  readonly input?: unknown;
-  readonly content?: string;
-  readonly path?: string;
-  readonly sessionId?: string;
-  readonly allowPrivateHosts?: boolean;
+  readonly input?: unknown | undefined;
+  readonly content?: string | undefined;
+  readonly path?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly allowPrivateHosts?: boolean | undefined;
 }): Promise<KnowledgeBatchIngestResult> {
   const connectorId = input.connectorId.trim();
   if (!connectorId) throw new Error('Missing connectorId');

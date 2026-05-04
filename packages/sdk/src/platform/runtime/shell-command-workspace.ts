@@ -4,10 +4,10 @@ import type { ShellPathService } from './shell-paths.js';
 import type { WorktreeRegistry } from './worktree/registry.js';
 
 export interface CommandWorkspaceShellServices {
-  readonly shellPaths?: ShellPathService;
-  readonly componentHealthMonitor?: ComponentHealthMonitor;
-  readonly worktreeRegistry?: WorktreeRegistry;
-  readonly sandboxSessionRegistry?: SandboxSessionRegistry;
+  readonly shellPaths?: ShellPathService | undefined;
+  readonly componentHealthMonitor?: ComponentHealthMonitor | undefined;
+  readonly worktreeRegistry?: WorktreeRegistry | undefined;
+  readonly sandboxSessionRegistry?: SandboxSessionRegistry | undefined;
 }
 
 export interface CreateShellWorkspaceServicesOptions extends CommandWorkspaceShellServices {}

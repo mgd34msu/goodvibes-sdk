@@ -52,7 +52,7 @@ export function canonicalize(raw: string): string {
   // Strip env var prefixes (e.g. "FOO=bar command" — take the last space-separated part)
   const parts = value.split(/\s+/);
   // Walk forward past any KEY=value segments
-  let commandPart = parts[0] ?? '';
+  let commandPart = parts[0]! ?? '';
   for (const part of parts) {
     if (!ENV_VAR_PREFIX.test(part)) {
       commandPart = part;

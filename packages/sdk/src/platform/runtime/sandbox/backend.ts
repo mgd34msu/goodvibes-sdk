@@ -174,7 +174,7 @@ export interface SandboxCommandPlan {
   readonly command: string;
   readonly args: readonly string[];
   readonly summary: string;
-  readonly env?: NodeJS.ProcessEnv;
+  readonly env?: NodeJS.ProcessEnv | undefined;
 }
 
 export function resolveSandboxCommandPlan(
@@ -238,11 +238,11 @@ function runSandboxCommand(
   args: readonly string[],
   managerLike: ConfigManagerLike | undefined,
   options: {
-    readonly cwd?: string;
-    readonly env?: NodeJS.ProcessEnv;
-    readonly inheritHostEnv?: boolean;
-    readonly timeoutMs?: number;
-    readonly input?: string;
+    readonly cwd?: string | undefined;
+    readonly env?: NodeJS.ProcessEnv | undefined;
+    readonly inheritHostEnv?: boolean | undefined;
+    readonly timeoutMs?: number | undefined;
+    readonly input?: string | undefined;
   } = {},
 ): SandboxCommandResult {
   const resolved = resolveSandboxCommandPlan(launchPlan, command, args, managerLike);
@@ -267,11 +267,11 @@ export function executeSandboxCommand(
   command: string,
   args: readonly string[],
   options: {
-    readonly cwd?: string;
-    readonly env?: NodeJS.ProcessEnv;
-    readonly inheritHostEnv?: boolean;
-    readonly timeoutMs?: number;
-    readonly input?: string;
+    readonly cwd?: string | undefined;
+    readonly env?: NodeJS.ProcessEnv | undefined;
+    readonly inheritHostEnv?: boolean | undefined;
+    readonly timeoutMs?: number | undefined;
+    readonly input?: string | undefined;
   } = {},
 ): SandboxCommandResult {
   return runSandboxCommand(launchPlan, command, args, undefined, options);
@@ -283,11 +283,11 @@ export function executeSandboxManagedCommand(
   args: readonly string[],
   manager: ConfigManagerLike,
   options: {
-    readonly cwd?: string;
-    readonly env?: NodeJS.ProcessEnv;
-    readonly inheritHostEnv?: boolean;
-    readonly timeoutMs?: number;
-    readonly input?: string;
+    readonly cwd?: string | undefined;
+    readonly env?: NodeJS.ProcessEnv | undefined;
+    readonly inheritHostEnv?: boolean | undefined;
+    readonly timeoutMs?: number | undefined;
+    readonly input?: string | undefined;
   } = {},
 ): SandboxCommandResult {
   return runSandboxCommand(launchPlan, command, args, manager, options);

@@ -35,7 +35,7 @@ export interface FeatureFlag {
   defaultState: FlagState;
 
   /** When killed, this message explains why the flag was killed */
-  killReason?: string;
+  killReason?: string | undefined;
 
   /** The implementation tier that introduced this flag (1-based) */
   tier: number;
@@ -74,5 +74,5 @@ export interface FlagTransition {
   timestamp: number;
 
   /** Optional reason supplied with a kill operation */
-  reason?: string;
+  reason?: string | undefined;
 }

@@ -23,12 +23,12 @@ export const PACKET_TOOL_SCHEMA: ToolDefinition = {
 
 export interface PacketToolInput {
   readonly mode: 'create' | 'list' | 'show' | 'revise' | 'publish';
-  readonly view?: 'summary' | 'full';
-  readonly packetId?: string;
-  readonly title?: string;
-  readonly summary?: string;
-  readonly goals?: readonly string[];
-  readonly constraints?: readonly string[];
-  readonly risks?: readonly string[];
-  readonly audience?: string;
+  readonly view?: 'summary' | 'full' | undefined;
+  readonly packetId?: string | undefined;
+  readonly title?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly goals?: readonly string[] | undefined;
+  readonly constraints?: readonly string[] | undefined;
+  readonly risks?: readonly string[] | undefined;
+  readonly audience?: string | undefined;
 }

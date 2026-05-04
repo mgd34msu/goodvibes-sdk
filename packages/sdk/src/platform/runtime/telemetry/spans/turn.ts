@@ -28,14 +28,14 @@ export interface TurnSpanEndContext {
   /** Final outcome of the turn. */
   readonly outcome: 'completed' | 'error' | 'cancelled';
   /** Error message if outcome is 'error'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Cancel reason if outcome is 'cancelled'. */
-  readonly cancelReason?: string;
+  readonly cancelReason?: string | undefined;
   /** Token usage if available. */
   readonly tokens?: {
     readonly input: number;
     readonly output: number;
-    readonly cacheRead?: number;
+    readonly cacheRead?: number | undefined;
   };
 }
 

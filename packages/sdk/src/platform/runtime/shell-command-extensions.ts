@@ -8,24 +8,24 @@ import type { PluginManager } from '../plugins/manager.js';
 import type { HookWorkbench } from '../hooks/workbench.js';
 
 export interface CommandExtensionShellServices {
-  readonly forensicsRegistry?: ForensicsRegistry;
-  readonly policyRegistry?: PolicyRegistry;
-  readonly policyRuntimeState?: PolicyRuntimeState;
-  readonly memoryRegistry?: MemoryRegistry;
-  readonly integrationHelpers?: IntegrationHelperService;
-  readonly knowledgeService?: KnowledgeService;
-  readonly pluginManager?: PluginManager;
-  readonly hookWorkbench?: HookWorkbench;
+  readonly forensicsRegistry?: ForensicsRegistry | undefined;
+  readonly policyRegistry?: PolicyRegistry | undefined;
+  readonly policyRuntimeState?: PolicyRuntimeState | undefined;
+  readonly memoryRegistry?: MemoryRegistry | undefined;
+  readonly integrationHelpers?: IntegrationHelperService | undefined;
+  readonly knowledgeService?: KnowledgeService | undefined;
+  readonly pluginManager?: PluginManager | undefined;
+  readonly hookWorkbench?: HookWorkbench | undefined;
 }
 
 export interface CreateShellExtensionServicesOptions {
   readonly forensicsRegistry: ForensicsRegistry;
   readonly policyRuntimeState: PolicyRuntimeState;
-  readonly memoryRegistry?: MemoryRegistry;
-  readonly integrationHelpers?: IntegrationHelperService;
-  readonly knowledgeService?: KnowledgeService;
-  readonly pluginManager?: PluginManager;
-  readonly hookWorkbench?: HookWorkbench;
+  readonly memoryRegistry?: MemoryRegistry | undefined;
+  readonly integrationHelpers?: IntegrationHelperService | undefined;
+  readonly knowledgeService?: KnowledgeService | undefined;
+  readonly pluginManager?: PluginManager | undefined;
+  readonly hookWorkbench?: HookWorkbench | undefined;
 }
 
 export function createShellExtensionServices(

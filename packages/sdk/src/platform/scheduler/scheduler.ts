@@ -27,7 +27,7 @@ export interface TaskRunRecord {
   startedAt: number;
   agentId: string;
   status: 'running' | 'completed' | 'failed';
-  error?: string;
+  error?: string | undefined;
 }
 
 interface CronFields {
@@ -51,11 +51,11 @@ interface StoreData extends Record<string, unknown> {
 }
 
 interface TaskSchedulerConfig {
-  readonly storePath?: string;
+  readonly storePath?: string | undefined;
   readonly spawnTask?: (input: {
     readonly prompt: string;
-    readonly model?: string;
-    readonly template?: string;
+    readonly model?: string | undefined;
+    readonly template?: string | undefined;
   }) => string;
 }
 
@@ -98,8 +98,8 @@ function parseCronField(token: string, min: number, max: number): CronField {
     // Base can be a range (N-M) or a plain number
     if (base.includes('-')) {
       const [fromRaw, toRaw] = base.split('-');
-      const from = parseInt(fromRaw, 10);
-      const to = parseInt(toRaw, 10);
+      const from = parseInt(fromRaw!, 10);
+      const to = parseInt(toRaw!, 10);
       if (isNaN(from) || isNaN(to) || from < min || to > max || from > to) {
         throw new Error(`Invalid cron range in step: ${token} (allowed ${min}-${max})`);
       }
@@ -119,8 +119,8 @@ function parseCronField(token: string, min: number, max: number): CronField {
     for (const part of token.split(',')) {
       if (part.includes('-')) {
         const [fromRaw, toRaw] = part.split('-');
-        const from = parseInt(fromRaw, 10);
-        const to = parseInt(toRaw, 10);
+        const from = parseInt(fromRaw!, 10);
+        const to = parseInt(toRaw!, 10);
         if (isNaN(from) || isNaN(to) || from < min || to > max || from > to) {
           throw new Error(`Invalid cron range in list: ${part} (allowed ${min}-${max})`);
         }
@@ -139,8 +139,8 @@ function parseCronField(token: string, min: number, max: number): CronField {
   // Range: N-M
   if (token.includes('-')) {
     const [fromRaw, toRaw] = token.split('-');
-    const from = parseInt(fromRaw, 10);
-    const to = parseInt(toRaw, 10);
+    const from = parseInt(fromRaw!, 10);
+    const to = parseInt(toRaw!, 10);
     if (isNaN(from) || isNaN(to) || from < min || to > max || from > to) {
       throw new Error(`Invalid cron range: ${token} (allowed ${min}-${max})`);
     }
@@ -164,11 +164,11 @@ function parseCron(expr: string): CronFields {
     throw new Error(`Cron expression must have 5 fields: "${expr}"`);
   }
   return {
-    minute: parseCronField(parts[0], 0, 59),
-    hour: parseCronField(parts[1], 0, 23),
-    dayOfMonth: parseCronField(parts[2], 1, 31),
-    month: parseCronField(parts[3], 1, 12),
-    dayOfWeek: normalizeDayOfWeek(parseCronField(parts[4], 0, 7)),
+    minute: parseCronField(parts[0]!, 0, 59),
+    hour: parseCronField(parts[1]!, 0, 23),
+    dayOfMonth: parseCronField(parts[2]!, 1, 31),
+    month: parseCronField(parts[3]!, 1, 12),
+    dayOfWeek: normalizeDayOfWeek(parseCronField(parts[4]!, 0, 7)),
   };
 }
 
@@ -415,11 +415,11 @@ export class TaskScheduler {
    */
   private historyByTask: Map<string, TaskRunRecord[]> = new Map();
   private store: PersistentStore<StoreData>;
-  private readonly spawnTask?: (input: {
+  private readonly spawnTask: ((input: {
     readonly prompt: string;
-    readonly model?: string;
-    readonly template?: string;
-  }) => string;
+    readonly model?: string | undefined;
+    readonly template?: string | undefined;
+  }) => string) | undefined;
   private running = false;
   /** Debounce handle for coalescing rapid successive save() calls (PERF-03). */
   private _saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;

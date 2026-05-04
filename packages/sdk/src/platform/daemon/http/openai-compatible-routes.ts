@@ -19,12 +19,12 @@ interface ResolvedModel {
 }
 
 interface ChatCompletionRequest {
-  readonly model?: unknown;
-  readonly messages?: unknown;
-  readonly stream?: unknown;
-  readonly max_tokens?: unknown;
-  readonly max_completion_tokens?: unknown;
-  readonly tools?: unknown;
+  readonly model?: unknown | undefined;
+  readonly messages?: unknown | undefined;
+  readonly stream?: unknown | undefined;
+  readonly max_tokens?: unknown | undefined;
+  readonly max_completion_tokens?: unknown | undefined;
+  readonly tools?: unknown | undefined;
 }
 
 const OPENAI_COMPAT_PATH_PREFIX = '/v1';
@@ -96,7 +96,7 @@ async function handleChatCompletions(
     return openAIError(summarizeError(error), 400, 'invalid_request_error', 'model_not_found');
   }
 
-  let prepared: { messages: ProviderMessage[]; systemPrompt?: string; tools?: ToolDefinition[] };
+  let prepared: { readonly messages: ProviderMessage[]; readonly systemPrompt?: string | undefined; readonly tools?: ToolDefinition[] | undefined };
   try {
     prepared = prepareChatRequest(parsed);
   } catch (error) {
@@ -177,8 +177,8 @@ function resolveModel(
 
 function prepareChatRequest(input: ChatCompletionRequest): {
   readonly messages: ProviderMessage[];
-  readonly systemPrompt?: string;
-  readonly tools?: ToolDefinition[];
+  readonly systemPrompt?: string | undefined;
+  readonly tools?: ToolDefinition[] | undefined;
 } {
   const systemParts: string[] = [];
   const messages: ProviderMessage[] = [];
@@ -342,8 +342,8 @@ function buildChatCompletionResponse(model: string, response: ChatResponse): Jso
 function streamChatCompletion(input: {
   readonly request: Request;
   readonly resolved: ResolvedModel;
-  readonly prepared: { readonly messages: ProviderMessage[]; readonly systemPrompt?: string; readonly tools?: ToolDefinition[] };
-  readonly maxTokens?: number;
+  readonly prepared: { readonly messages: ProviderMessage[]; readonly systemPrompt?: string | undefined; readonly tools?: ToolDefinition[] | undefined };
+  readonly maxTokens?: number | undefined;
 }): Response {
   const encoder = new TextEncoder();
   const id = `chatcmpl-goodvibes-${crypto.randomUUID()}`;
@@ -499,7 +499,7 @@ function normalizePathPrefix(prefix: string): string {
 function parseDataUrl(value: string): { mediaType: string; data: string } | null {
   const match = value.match(/^data:([^;,]+);base64,(.+)$/u);
   if (!match) return null;
-  return { mediaType: match[1], data: match[2] };
+  return { mediaType: match[1]!, data: match[2]! };
 }
 
 function isRecord(value: unknown): value is JsonRecord {

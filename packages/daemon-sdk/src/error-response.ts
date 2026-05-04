@@ -7,54 +7,54 @@ import {
 } from '@pellux/goodvibes-errors';
 
 export interface JsonErrorResponseOptions {
-  readonly status?: number;
-  readonly fallbackMessage?: string;
-  readonly source?: DaemonErrorSource;
+  readonly status?: number | undefined;
+  readonly fallbackMessage?: string | undefined;
+  readonly source?: DaemonErrorSource | undefined;
   /**
    * MAJ-5: when false (default), internal pipeline fields (`provider`,
    * `operation`, `phase`, `providerCode`, `providerType`) are stripped from
    * the wire body to prevent information disclosure to unprivileged clients.
    * Pass `true` only for admin/operator-authenticated callers.
    */
-  readonly isPrivileged?: boolean;
+  readonly isPrivileged?: boolean | undefined;
 }
 
 interface StructuredErrorLike {
   readonly message: string;
-  readonly code?: string;
-  readonly recoverable?: boolean;
-  readonly status?: number;
-  readonly statusCode?: number;
-  readonly hint?: string;
-  readonly guidance?: string;
-  readonly source?: string;
-  readonly category?: string;
-  readonly provider?: string;
-  readonly operation?: string;
-  readonly phase?: string;
-  readonly requestId?: string;
-  readonly providerCode?: string;
-  readonly providerType?: string;
-  readonly retryAfterMs?: number;
+  readonly code?: string | undefined;
+  readonly recoverable?: boolean | undefined;
+  readonly status?: number | undefined;
+  readonly statusCode?: number | undefined;
+  readonly hint?: string | undefined;
+  readonly guidance?: string | undefined;
+  readonly source?: string | undefined;
+  readonly category?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly operation?: string | undefined;
+  readonly phase?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly providerCode?: string | undefined;
+  readonly providerType?: string | undefined;
+  readonly retryAfterMs?: number | undefined;
 }
 
 interface ErrorPropertyLike {
   readonly error: string;
-  readonly code?: string;
-  readonly recoverable?: boolean;
-  readonly status?: number;
-  readonly statusCode?: number;
-  readonly hint?: string;
-  readonly guidance?: string;
-  readonly source?: string;
-  readonly category?: string;
-  readonly provider?: string;
-  readonly operation?: string;
-  readonly phase?: string;
-  readonly requestId?: string;
-  readonly providerCode?: string;
-  readonly providerType?: string;
-  readonly retryAfterMs?: number;
+  readonly code?: string | undefined;
+  readonly recoverable?: boolean | undefined;
+  readonly status?: number | undefined;
+  readonly statusCode?: number | undefined;
+  readonly hint?: string | undefined;
+  readonly guidance?: string | undefined;
+  readonly source?: string | undefined;
+  readonly category?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly operation?: string | undefined;
+  readonly phase?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly providerCode?: string | undefined;
+  readonly providerType?: string | undefined;
+  readonly retryAfterMs?: number | undefined;
 }
 
 const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: DaemonErrorCategory; message: (provider?: string) => string }> = [
@@ -213,9 +213,9 @@ function inferHint(category: DaemonErrorCategory, status?: number): string | und
 function buildSummary(
   message: string,
   metadata: {
-    readonly requestId?: string;
-    readonly providerCode?: string;
-    readonly phase?: string;
+    readonly requestId?: string | undefined;
+    readonly providerCode?: string | undefined;
+    readonly phase?: string | undefined;
   },
 ): string {
   const tags: string[] = [];

@@ -118,7 +118,7 @@ export function applySettingsSyncBundle(
     const schema = CONFIG_SCHEMA.find((entry) => entry.key === rawKey);
     if (!schema) continue;
     const key = rawKey as ConfigKey;
-    const previousValue = before[key];
+    const previousValue = before[key]!;
     if (JSON.stringify(previousValue) !== JSON.stringify(nextValue)) {
       conflictCount++;
       nextConflicts.push({
@@ -208,7 +208,7 @@ export function stageManagedSettingsBundle(
     const schema = CONFIG_SCHEMA.find((entry) => entry.key === rawKey);
     if (!schema) continue;
     const key = rawKey as ConfigKey;
-    const previousValue = current[key];
+    const previousValue = current[key]!;
     changes.push({
       key,
       previousValue: structuredClone(previousValue),
@@ -330,7 +330,7 @@ export function rollbackManagedApply(configManager: ConfigManager, token: string
   const nextManaged = store.managedSettings.filter((entry) => !record.restoredKeys.includes(entry.key));
   const nextLocks = store.managedLocks.filter((entry) => !record.restoredKeys.includes(entry.key));
   for (const key of record.restoredKeys) {
-    const previousValue = record.previousValues[key];
+    const previousValue = record.previousValues[key]!;
     if (previousValue !== undefined) {
       configManager.setDynamic(key, structuredClone(previousValue), { bypassManagedLock: true });
       restored++;

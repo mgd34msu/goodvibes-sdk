@@ -12,11 +12,11 @@ import { summarizeError } from '../utils/error-display.js';
 
 export interface McpProcessSpec {
   command: string;
-  args?: string[];
-  env?: Record<string, string>;
-  cwd?: string;
-  summary?: string;
-  sandboxSessionId?: string;
+  args?: string[] | undefined;
+  env?: Record<string, string> | undefined;
+  cwd?: string | undefined;
+  summary?: string | undefined;
+  sandboxSessionId?: string | undefined;
 }
 
 export interface McpToolInfo {
@@ -32,13 +32,13 @@ interface JsonRpcRequest {
   jsonrpc: '2.0';
   id: number;
   method: string;
-  params?: unknown;
+  params?: unknown | undefined;
 }
 
 interface JsonRpcResponse {
   jsonrpc: '2.0';
   id: number;
-  result?: unknown;
+  result?: unknown | undefined;
   error?: { code: number; message: string; data?: unknown };
 }
 

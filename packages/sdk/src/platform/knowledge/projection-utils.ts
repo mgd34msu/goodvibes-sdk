@@ -43,7 +43,7 @@ export function buildBulletList(items: readonly string[]): string {
   return items.length > 0 ? items.map((item) => `- ${item}`).join('\n') : '- none';
 }
 
-export function sortByTitle<T extends { title?: string }>(values: readonly T[]): T[] {
+export function sortByTitle<T extends { title?: string | undefined }>(values: readonly T[]): T[] {
   return [...values].sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
 }
 

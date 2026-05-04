@@ -9,7 +9,7 @@ export type SymbolKind = 'function' | 'class' | 'interface' | 'type' | 'variable
 export interface QueryBase {
   id: string;
   mode: 'files' | 'content' | 'symbols' | 'references' | 'structural';
-  path?: string;
+  path?: string | undefined;
 }
 
 async function statCachedSearchFile(filePath: string): Promise<Awaited<ReturnType<typeof statAsync>> | null> {
@@ -22,42 +22,42 @@ async function statCachedSearchFile(filePath: string): Promise<Awaited<ReturnTyp
 
 export interface FilesQuery extends QueryBase {
   mode: 'files';
-  patterns?: string[];
-  exclude?: string[];
-  min_size?: number;
-  max_size?: number;
-  modified_after?: string;
-  modified_before?: string;
-  respect_gitignore?: boolean;
-  sort_by?: 'name' | 'size' | 'modified';
-  sort_order?: 'asc' | 'desc';
-  has_content?: string;
-  is_empty?: boolean;
-  follow_symlinks?: boolean;
-  include_hidden?: boolean;
+  patterns?: string[] | undefined;
+  exclude?: string[] | undefined;
+  min_size?: number | undefined;
+  max_size?: number | undefined;
+  modified_after?: string | undefined;
+  modified_before?: string | undefined;
+  respect_gitignore?: boolean | undefined;
+  sort_by?: 'name' | 'size' | 'modified' | undefined;
+  sort_order?: 'asc' | 'desc' | undefined;
+  has_content?: string | undefined;
+  is_empty?: boolean | undefined;
+  follow_symlinks?: boolean | undefined;
+  include_hidden?: boolean | undefined;
 }
 
 export interface ContentQuery extends QueryBase {
   mode: 'content';
-  pattern?: string;
-  pattern_base64?: string;
-  glob?: string;
-  case_sensitive?: boolean;
-  whole_word?: boolean;
-  multiline?: boolean;
-  negate?: boolean;
-  ranked?: boolean;
-  preview_replace?: string;
-  relationships?: boolean;
+  pattern?: string | undefined;
+  pattern_base64?: string | undefined;
+  glob?: string | undefined;
+  case_sensitive?: boolean | undefined;
+  whole_word?: boolean | undefined;
+  multiline?: boolean | undefined;
+  negate?: boolean | undefined;
+  ranked?: boolean | undefined;
+  preview_replace?: string | undefined;
+  relationships?: boolean | undefined;
 }
 
 export interface SymbolsQuery extends QueryBase {
   mode: 'symbols';
-  query?: string;
-  kinds?: SymbolKind[];
-  exported_only?: boolean;
-  include_private?: boolean;
-  group_by?: 'file' | 'kind' | 'none';
+  query?: string | undefined;
+  kinds?: SymbolKind[] | undefined;
+  exported_only?: boolean | undefined;
+  include_private?: boolean | undefined;
+  group_by?: 'file' | 'kind' | 'none' | undefined;
 }
 
 export interface ReferencesQuery extends QueryBase {
@@ -71,29 +71,29 @@ export interface ReferencesQuery extends QueryBase {
 export interface StructuralQuery extends QueryBase {
   mode: 'structural';
   pattern: string;
-  lang?: 'ts' | 'tsx' | 'js' | 'jsx' | 'css' | 'html';
-  glob?: string;
+  lang?: 'ts' | 'tsx' | 'js' | 'jsx' | 'css' | 'html' | undefined;
+  glob?: string | undefined;
 }
 
 export type FindQuery = FilesQuery | ContentQuery | SymbolsQuery | ReferencesQuery | StructuralQuery;
 
 export interface OutputOptions {
-  format?: OutputFormat;
-  context_before?: number;
-  context_after?: number;
-  expand_to?: 'line' | 'block' | 'function' | 'class';
-  max_results?: number;
-  max_per_item?: number;
-  max_total_matches?: number;
-  max_tokens?: number;
-  preview_lines?: number;
-  max_line_length?: number;
+  format?: OutputFormat | undefined;
+  context_before?: number | undefined;
+  context_after?: number | undefined;
+  expand_to?: 'line' | 'block' | 'function' | 'class' | undefined;
+  max_results?: number | undefined;
+  max_per_item?: number | undefined;
+  max_total_matches?: number | undefined;
+  max_tokens?: number | undefined;
+  preview_lines?: number | undefined;
+  max_line_length?: number | undefined;
 }
 
 export interface FindInput {
   queries: FindQuery[];
-  output?: OutputOptions;
-  parallel?: boolean;
+  output?: OutputOptions | undefined;
+  parallel?: boolean | undefined;
 }
 
 type CountResult = { count: number; file_count?: number; source?: string };
@@ -118,10 +118,10 @@ export interface ContentMatch {
   file: string;
   line: number;
   text: string;
-  startLine?: number;
-  endLine?: number;
-  context_before?: string[];
-  context_after?: string[];
+  startLine?: number | undefined;
+  endLine?: number | undefined;
+  context_before?: string[] | undefined;
+  context_after?: string[] | undefined;
 }
 
 export function makeCountResult(count: number, source?: string, fileCount?: number): CountResult {
@@ -229,7 +229,7 @@ export function toSymbolKind(kind: string | undefined): SymbolKind {
     property: 'variable',
     namespace: 'variable',
   };
-  const mappedKind = kindMap[kind ?? ''] ?? (kind ?? 'variable');
+  const mappedKind = (kindMap[kind ?? ''] ?? kind ?? 'variable') as SymbolKind;
   return VALID_SYMBOL_KINDS.has(mappedKind) ? mappedKind : 'variable';
 }
 
@@ -368,8 +368,8 @@ export class FindRuntimeService {
     const entries = Array.from(cached.fileMtimes.entries());
     const stats = await Promise.all(entries.map(([filePath]) => statCachedSearchFile(filePath)));
     for (let i = 0; i < entries.length; i++) {
-      const stat = stats[i];
-      if (!stat || stat.mtimeMs !== entries[i][1]) return false;
+      const stat = stats[i]!;
+      if (!stat || stat.mtimeMs !== entries[i]![1]) return false;
     }
     return true;
   }

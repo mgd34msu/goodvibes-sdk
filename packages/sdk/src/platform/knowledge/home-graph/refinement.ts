@@ -6,10 +6,10 @@ import type { HomeGraphSpaceInput } from './types.js';
 
 export async function listHomeGraphRefinementTasks(input: HomeGraphSpaceInput & {
   readonly store: KnowledgeStore;
-  readonly limit?: number;
-  readonly state?: string;
-  readonly subjectId?: string;
-  readonly gapId?: string;
+  readonly limit?: number | undefined;
+  readonly state?: string | undefined;
+  readonly subjectId?: string | undefined;
+  readonly gapId?: string | undefined;
 }): Promise<{ readonly ok: true; readonly spaceId: string; readonly tasks: readonly KnowledgeRefinementTaskRecord[] }> {
   await input.store.init();
   const { spaceId } = resolveReadableHomeGraphSpace(input.store, input);
@@ -38,12 +38,12 @@ export async function getHomeGraphRefinementTask(input: HomeGraphSpaceInput & {
 
 export async function runHomeGraphRefinement(input: HomeGraphSpaceInput & {
   readonly store: KnowledgeStore;
-  readonly semanticService?: KnowledgeSemanticService;
-  readonly gapIds?: readonly string[];
-  readonly sourceIds?: readonly string[];
-  readonly limit?: number;
-  readonly maxRunMs?: number;
-  readonly force?: boolean;
+  readonly semanticService?: KnowledgeSemanticService | undefined;
+  readonly gapIds?: readonly string[] | undefined;
+  readonly sourceIds?: readonly string[] | undefined;
+  readonly limit?: number | undefined;
+  readonly maxRunMs?: number | undefined;
+  readonly force?: boolean | undefined;
 }) {
   await input.store.init();
   const { spaceId } = resolveReadableHomeGraphSpace(input.store, input);

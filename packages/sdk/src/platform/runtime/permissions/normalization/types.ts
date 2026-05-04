@@ -46,7 +46,7 @@ export interface CommandSegment {
    * The operator that joins this segment to the NEXT one, if any.
    * Undefined for the last segment in a compound command.
    */
-  operator?: '&&' | '||' | ';' | '|';
+  operator?: '&&' | '||' | ';' | '|' | undefined;
 }
 
 /**
@@ -77,5 +77,5 @@ export interface NormalizedCommand {
   /** True if any dangerous patterns were detected. */
   hasDangerousPatterns: boolean;
   /** Descriptions of each dangerous pattern detected, if any. */
-  dangerousPatterns?: string[];
+  dangerousPatterns?: string[] | undefined;
 }

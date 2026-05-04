@@ -30,29 +30,29 @@ export interface CustomProviderConfig {
   /** Base URL for the API, e.g. 'http://localhost:11434/v1' */
   baseURL: string;
   /** Optional env var name whose value is used as the API key */
-  apiKeyEnv?: string;
+  apiKeyEnv?: string | undefined;
   /** Optional explicit API key (takes precedence over apiKeyEnv) */
-  apiKey?: string;
+  apiKey?: string | undefined;
   /** Optional extra HTTP headers sent with every request */
-  defaultHeaders?: Record<string, string>;
+  defaultHeaders?: Record<string, string> | undefined;
   /** How to send reasoning params. Default: 'none' (don't send). */
-  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'none';
+  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'none' | undefined;
   /** List of models exposed by this provider */
   models: Array<{
     id: string;
     displayName: string;
-    description?: string;
+    description?: string | undefined;
     contextWindow: number;
-    selectable?: boolean;
+    selectable?: boolean | undefined;
     capabilities: {
       toolCalling: boolean;
       codeEditing: boolean;
       reasoning: boolean;
       multimodal: boolean;
     };
-    reasoningEffort?: string[];
+    reasoningEffort?: string[] | undefined;
     /** Model capability tier — controls system prompt verbosity. */
-    tier?: 'free' | 'standard' | 'premium';
+    tier?: 'free' | 'standard' | 'premium' | undefined;
   }>;
 }
 
@@ -73,8 +73,8 @@ export interface LoadCustomProvidersOptions {
    * provenance. Falls back to the configured contextWindow or DEFAULT_CONTEXT_WINDOW.
    * Defaults to false.
    */
-  ingestContextWindows?: boolean;
-  contextIngestion?: Pick<LocalContextIngestionService, 'ingestProviderContextWindows'>;
+  ingestContextWindows?: boolean | undefined;
+  contextIngestion?: Pick<LocalContextIngestionService, 'ingestProviderContextWindows'> | undefined;
 }
 
 /**
@@ -299,7 +299,7 @@ export async function loadCustomProviders(
     );
     const settled = await Promise.allSettled(ingestionPromises);
     for (let i = 0; i < settled.length; i++) {
-      const result = settled[i];
+      const result = settled[i]!;
       if (result) {
         ingestionResults[i] = result.status === 'fulfilled' ? (result.value ?? null) : null;
       }
@@ -309,7 +309,7 @@ export async function loadCustomProviders(
   // Phase 3: Build model definitions and populate output arrays.
   for (let i = 0; i < validConfigs.length; i++) {
     const { cfg, provider } = validConfigs[i]!;
-    const apiContextMap = ingestionResults[i] ?? null;
+    const apiContextMap = ingestionResults[i]! ?? null;
 
     const modelDefs: ModelDefinition[] = cfg.models.map((m) => {
       const apiContextLength = apiContextMap?.get(m.id) ?? null;

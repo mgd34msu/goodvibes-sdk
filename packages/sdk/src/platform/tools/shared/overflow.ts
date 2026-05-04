@@ -20,11 +20,11 @@ const OVERFLOW_DIR = '.goodvibes/.overflow';
  */
 export interface RetentionPolicyConfig {
   /** Maximum age of a spill entry in milliseconds. Default: 1 hour. */
-  maxAgeMs?: number;
+  maxAgeMs?: number | undefined;
   /** Maximum number of retained entries. Default: unlimited. */
-  maxCount?: number;
+  maxCount?: number | undefined;
   /** Maximum total size of retained entries in bytes. Default: unlimited. */
-  maxSizeBytes?: number;
+  maxSizeBytes?: number | undefined;
 }
 
 const DEFAULT_RETENTION: Required<RetentionPolicyConfig> = {
@@ -76,14 +76,14 @@ export interface SpillBackend {
 export interface OverflowResult {
   content: string;
   /** Typed ref: `file:path`, `ledger:key`, or `diagnostics:key`. */
-  overflowRef?: string;
+  overflowRef?: string | undefined;
   /** Backend type that stored the overflow content. */
-  spillBackend?: SpillBackendType;
+  spillBackend?: SpillBackendType | undefined;
 }
 
 export interface OverflowOptions {
-  maxChars?: number;
-  label?: string;
+  maxChars?: number | undefined;
+  label?: string | undefined;
 }
 
 // ─── File Backend ────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ export class FileBackend implements SpillBackend {
   }
 
   cleanup(policy?: RetentionPolicyConfig): void {
-    const cfg = { ...DEFAULT_RETENTION, ...policy };
+    const cfg: Required<RetentionPolicyConfig> = { ...DEFAULT_RETENTION, ...policy };
     const now = Date.now();
     let files: string[];
     try {
@@ -184,16 +184,16 @@ export class FileBackend implements SpillBackend {
     entries.sort((a, b) => a.mtimeMs - b.mtimeMs);
 
     const toDelete = new Set<string>();
-    for (const e of entries) { if (now - e.mtimeMs >= cfg.maxAgeMs) toDelete.add(e.path); }
+    for (const e of entries) { if (now - e.mtimeMs >= cfg.maxAgeMs!) toDelete.add(e.path); }
     const rem = entries.filter((e) => !toDelete.has(e.path));
-    if (cfg.maxCount !== Infinity && rem.length > cfg.maxCount) {
-      const excess = rem.length - cfg.maxCount;
+    if (cfg.maxCount! !== Infinity && rem.length > cfg.maxCount!) {
+      const excess = rem.length - cfg.maxCount!;
       for (let i = 0; i < excess; i++) toDelete.add(rem[i]!.path);
     }
     const ac = entries.filter((e) => !toDelete.has(e.path));
     if (cfg.maxSizeBytes !== Infinity) {
       let total = ac.reduce((s, e) => s + e.size, 0);
-      for (const e of ac) { if (total <= cfg.maxSizeBytes) break; toDelete.add(e.path); total -= e.size; }
+      for (const e of ac) { if (total <= cfg.maxSizeBytes!) break; toDelete.add(e.path); total -= e.size; }
     }
     for (const p of toDelete) {
       try {
@@ -269,20 +269,20 @@ export class LedgerBackend implements SpillBackend {
   read(id: string): string | null { return this.entries.get(id)?.content ?? null; }
 
   cleanup(policy?: RetentionPolicyConfig): void {
-    const cfg = { ...DEFAULT_RETENTION, ...policy };
+    const cfg: Required<RetentionPolicyConfig> = { ...DEFAULT_RETENTION, ...policy };
     const now = Date.now();
     const sorted = Array.from(this.entries.values()).sort((a, b) => a.createdAt - b.createdAt);
     const toDelete = new Set<string>();
-    for (const e of sorted) { if (now - e.createdAt >= cfg.maxAgeMs) toDelete.add(e.id); }
+    for (const e of sorted) { if (now - e.createdAt >= cfg.maxAgeMs!) toDelete.add(e.id); }
     const rem = sorted.filter((e) => !toDelete.has(e.id));
-    if (cfg.maxCount !== Infinity && rem.length > cfg.maxCount) {
-      const excess = rem.length - cfg.maxCount;
+    if (cfg.maxCount! !== Infinity && rem.length > cfg.maxCount!) {
+      const excess = rem.length - cfg.maxCount!;
       for (let i = 0; i < excess; i++) toDelete.add(rem[i]!.id);
     }
     const ac = sorted.filter((e) => !toDelete.has(e.id));
     if (cfg.maxSizeBytes !== Infinity) {
       let total = ac.reduce((s, e) => s + e.sizeBytes, 0);
-      for (const e of ac) { if (total <= cfg.maxSizeBytes) break; toDelete.add(e.id); total -= e.sizeBytes; }
+      for (const e of ac) { if (total <= cfg.maxSizeBytes!) break; toDelete.add(e.id); total -= e.sizeBytes; }
     }
     for (const id of toDelete) this.entries.delete(id);
   }
@@ -311,20 +311,20 @@ export class DiagnosticsBackend implements SpillBackend {
   read(_id: string): string | null { return null; }
 
   cleanup(policy?: RetentionPolicyConfig): void {
-    const cfg = { ...DEFAULT_RETENTION, ...policy };
+    const cfg: Required<RetentionPolicyConfig> = { ...DEFAULT_RETENTION, ...policy };
     const now = Date.now();
     const sorted = [...this.log].sort((a, b) => a.createdAt - b.createdAt);
     const toDelete = new Set<string>();
-    for (const e of sorted) { if (now - e.createdAt >= cfg.maxAgeMs) toDelete.add(e.id); }
+    for (const e of sorted) { if (now - e.createdAt >= cfg.maxAgeMs!) toDelete.add(e.id); }
     const rem = sorted.filter((e) => !toDelete.has(e.id));
-    if (cfg.maxCount !== Infinity && rem.length > cfg.maxCount) {
-      const excess = rem.length - cfg.maxCount;
+    if (cfg.maxCount! !== Infinity && rem.length > cfg.maxCount!) {
+      const excess = rem.length - cfg.maxCount!;
       for (let i = 0; i < excess; i++) toDelete.add(rem[i]!.id);
     }
     const ac = sorted.filter((e) => !toDelete.has(e.id));
     if (cfg.maxSizeBytes !== Infinity) {
       let total = ac.reduce((s, e) => s + e.sizeBytes, 0);
-      for (const e of ac) { if (total <= cfg.maxSizeBytes) break; toDelete.add(e.id); total -= e.sizeBytes; }
+      for (const e of ac) { if (total <= cfg.maxSizeBytes!) break; toDelete.add(e.id); total -= e.sizeBytes; }
     }
     for (let i = this.log.length - 1; i >= 0; i--) {
       if (toDelete.has(this.log[i]!.id)) this.log.splice(i, 1);
@@ -362,15 +362,15 @@ export interface OverflowHandlerConfig {
   /**
    * Which backend to use. Defaults to `'file'`.
    */
-  spillBackend?: SpillBackendType;
+  spillBackend?: SpillBackendType | undefined;
   /** Base directory for FileBackend. */
-  baseDir?: string;
+  baseDir?: string | undefined;
   /** Retention policy applied during cleanup(). */
-  retention?: RetentionPolicyConfig;
+  retention?: RetentionPolicyConfig | undefined;
   /** Inject a custom backend directly (takes precedence over spillBackend). */
-  backend?: SpillBackend;
+  backend?: SpillBackend | undefined;
   /** Feature flags gate alternate spill backends when supplied by SDK runtime services. */
-  featureFlags?: FeatureFlagReader;
+  featureFlags?: FeatureFlagReader | undefined;
 }
 
 // ─── OverflowHandler ────────────────────────────────────────────────────────

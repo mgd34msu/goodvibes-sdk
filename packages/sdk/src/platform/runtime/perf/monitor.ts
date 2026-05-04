@@ -27,7 +27,7 @@ export interface PerfSnapshot {
    * Useful for injecting tool executor or compaction metrics from
    * other subsystems that are not yet reflected in the store domain.
    */
-  extraMetrics?: Record<string, number>;
+  extraMetrics?: Record<string, number> | undefined;
 }
 
 /**

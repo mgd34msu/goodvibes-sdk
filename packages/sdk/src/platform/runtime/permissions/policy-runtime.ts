@@ -14,18 +14,18 @@ export interface PermissionAuditEntry {
   readonly callId: string;
   readonly tool: string;
   readonly category: string;
-  readonly approved?: boolean;
-  readonly sourceLayer?: string;
-  readonly reasonCode?: string;
+  readonly approved?: boolean | undefined;
+  readonly sourceLayer?: string | undefined;
+  readonly reasonCode?: string | undefined;
   readonly riskLevel: string;
   readonly classification: string;
   readonly summary: string;
   readonly reasons: readonly string[];
-  readonly target?: string;
-  readonly host?: string;
+  readonly target?: string | undefined;
+  readonly host?: string | undefined;
   readonly requestedAt: number;
-  readonly decidedAt?: number;
-  readonly persisted?: boolean;
+  readonly decidedAt?: number | undefined;
+  readonly persisted?: boolean | undefined;
 }
 
 export class PolicyRuntimeState {

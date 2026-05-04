@@ -8,10 +8,10 @@ import { summarizeError } from '../../utils/error-display.js';
 export interface FileOpResult {
   op: string;
   source: string;
-  destination?: string;
-  dry_run?: boolean;
-  would_delete?: string[];
-  updated_imports?: string[];
+  destination?: string | undefined;
+  dry_run?: boolean | undefined;
+  would_delete?: string[] | undefined;
+  updated_imports?: string[] | undefined;
 }
 
 function resolveFileOpPath(p: string, op: 'copy' | 'move' | 'delete', projectRoot: string): string {

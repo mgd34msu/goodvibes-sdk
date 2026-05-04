@@ -150,8 +150,8 @@ export { DomainBridge, createInstrumentation } from './instrumentation/index.js'
 export type TelemetryConfig = TelemetryProviderConfig;
 
 export interface TelemetryProviderOptions {
-  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
-  readonly otlp?: OtlpConfig;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+  readonly otlp?: OtlpConfig | undefined;
 }
 
 /**

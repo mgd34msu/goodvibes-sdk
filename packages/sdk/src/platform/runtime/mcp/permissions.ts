@@ -590,7 +590,7 @@ export class McpPermissionManager {
 
 export function buildMcpAttackPathReview(params: {
   servers: readonly McpSecuritySnapshot[];
-  recentDecisions?: readonly McpDecisionRecord[];
+  recentDecisions?: readonly McpDecisionRecord[] | undefined;
 }): McpAttackPathReview {
   const findings: McpAttackPathFinding[] = [];
   let allowAllServers = 0;

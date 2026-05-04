@@ -7,10 +7,10 @@ import { QUERY_TOOL_SCHEMA, type QueryToolInput } from './schema.js';
 interface QueryRecord {
   readonly id: string;
   readonly prompt: string;
-  readonly askedBy?: string;
-  readonly target?: string;
-  readonly answer?: string;
-  readonly resolution?: string;
+  readonly askedBy?: string | undefined;
+  readonly target?: string | undefined;
+  readonly answer?: string | undefined;
+  readonly resolution?: string | undefined;
   readonly status: 'open' | 'answered' | 'closed';
   readonly createdAt: number;
   readonly updatedAt: number;

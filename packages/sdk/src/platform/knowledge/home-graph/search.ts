@@ -417,7 +417,7 @@ function selectAnchorNodes(tokens: readonly string[], nodes: readonly KnowledgeN
   })
     .filter((entry) => entry.score >= 10)
     .sort((a, b) => b.score - a.score || a.node.id.localeCompare(b.node.id));
-  const topScore = scored[0]?.score ?? 0;
+  const topScore = scored[0]!?.score ?? 0;
   return scored
     .filter((entry) => entry.score >= Math.max(10, topScore - 12))
     .slice(0, 12);

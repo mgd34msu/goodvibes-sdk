@@ -1,9 +1,9 @@
 export interface HostSlashCommand {
   readonly name: string;
-  readonly aliases?: readonly string[];
+  readonly aliases?: readonly string[] | undefined;
   readonly description: string;
-  readonly usage?: string;
-  readonly argsHint?: string;
+  readonly usage?: string | undefined;
+  readonly argsHint?: string | undefined;
   readonly handler: (args: string[]) => void | Promise<void>;
 }
 
@@ -14,9 +14,9 @@ export interface CommandRegistryLike {
 
 export interface HostKeyCombo {
   readonly key: string;
-  readonly ctrl?: boolean;
-  readonly shift?: boolean;
-  readonly alt?: boolean;
+  readonly ctrl?: boolean | undefined;
+  readonly shift?: boolean | undefined;
+  readonly alt?: boolean | undefined;
 }
 
 export interface KeybindingEntry {

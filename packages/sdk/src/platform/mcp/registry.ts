@@ -264,9 +264,9 @@ export class McpRegistry {
     allowedPaths: string[];
     allowedHosts: string[];
     schemaFreshness: SchemaFreshness;
-    quarantineReason?: QuarantineReason;
-    quarantineDetail?: string;
-    quarantineApprovedBy?: string;
+    quarantineReason?: QuarantineReason | undefined;
+    quarantineDetail?: string | undefined;
+    quarantineApprovedBy?: string | undefined;
   }> {
     return this.listServers().map((server) => {
       const permissions = this.permissions.getServerPermissions(server.name);
@@ -288,11 +288,11 @@ export class McpRegistry {
 
   listServerSandboxBindings(): Array<{
     name: string;
-    sessionId?: string;
-    profileId?: 'mcp-shared' | 'mcp-per-server';
-    state?: import('../runtime/sandbox/types.js').SandboxSessionState;
-    backend?: import('../runtime/sandbox/types.js').SandboxResolvedBackend | import('../runtime/sandbox/types.js').SandboxVmBackend;
-    startupStatus?: 'verified' | 'planned' | 'failed';
+    sessionId?: string | undefined;
+    profileId?: 'mcp-shared' | 'mcp-per-server' | undefined;
+    state?: import('../runtime/sandbox/types.js').SandboxSessionState | undefined;
+    backend?: import('../runtime/sandbox/types.js').SandboxResolvedBackend | import('../runtime/sandbox/types.js').SandboxVmBackend | undefined;
+    startupStatus?: 'verified' | 'planned' | 'failed' | undefined;
   }> {
     return this.serverNames.map((name) => {
       const sessionId = this.sandboxSessionByServer.get(name);
@@ -481,9 +481,9 @@ export class McpRegistry {
    */
   private _parseQualifiedName(qualifiedName: string): { serverName: string; toolName: string } | null {
     const parts = qualifiedName.split(':');
-    if (parts.length < 3 || parts[0] !== 'mcp') return null;
+    if (parts.length < 3 || parts[0]! !== 'mcp') return null;
     // serverName is parts[1], toolName is the rest joined (tools can have colons)
-    const serverName = parts[1];
+    const serverName = parts[1]!;
     const toolName = parts.slice(2).join(':');
     if (!serverName || !toolName) return null;
     return { serverName, toolName };

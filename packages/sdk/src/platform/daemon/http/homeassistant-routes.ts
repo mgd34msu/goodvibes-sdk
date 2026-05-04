@@ -18,7 +18,7 @@ type JsonRecord = Record<string, unknown>;
 
 interface HomeAssistantMessageIndex {
   readonly messageId: string;
-  readonly assistantMessageId?: string;
+  readonly assistantMessageId?: string | undefined;
   readonly sessionId: string;
   readonly routeId: string;
   readonly conversationId: string;
@@ -36,16 +36,16 @@ interface HomeAssistantSubmitResult {
   readonly newSession: boolean;
   readonly sessionExpired: boolean;
   readonly status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'rejected' | 'timeout';
-  readonly assistant?: HomeAssistantAssistantResult;
-  readonly timeoutMs?: number;
-  readonly error?: string;
+  readonly assistant?: HomeAssistantAssistantResult | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly error?: string | undefined;
 }
 
 interface HomeAssistantAssistantResult {
   readonly text: string;
   readonly speechText: string;
   readonly status: string;
-  readonly completedAt?: number;
+  readonly completedAt?: number | undefined;
 }
 
 interface HomeAssistantRouteContext {
@@ -53,7 +53,7 @@ interface HomeAssistantRouteContext {
   readonly routeBindings: Pick<RouteBindingManager, 'start' | 'upsertBinding' | 'patchBinding'>;
   readonly chatManager: CompanionChatManager;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
+  readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
 }
 
 interface ParsedHomeAssistantInput extends HomeAssistantChatInput {

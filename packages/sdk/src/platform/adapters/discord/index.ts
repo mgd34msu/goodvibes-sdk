@@ -205,7 +205,7 @@ export async function handleDiscordInteractionPayload(
 }
 
 export async function handleDiscordGatewayDispatchPayload(
-  dispatch: { readonly t?: string; readonly d?: Record<string, unknown> | null },
+  dispatch: { readonly t?: string | undefined; readonly d?: Record<string, unknown> | null | undefined },
   context: SurfaceAdapterContext,
   discord = new DiscordIntegration(),
 ): Promise<Response> {

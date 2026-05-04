@@ -20,7 +20,7 @@ export interface DiagnosticCheckResult {
   /** Human-readable summary of the check outcome. */
   readonly summary: string;
   /** Optional structured context for the diagnostics panel. */
-  readonly context?: Record<string, string | number | boolean>;
+  readonly context?: Record<string, string | number | boolean> | undefined;
   /** Severity when the check fails. */
   readonly severity: DiagnosticSeverity;
 }
@@ -68,9 +68,9 @@ export interface PlaybookStep {
    * For 'wait' steps: condition description.
    * Optional for 'observe' and 'escalate' steps.
    */
-  readonly command?: string;
+  readonly command?: string | undefined;
   /** Expected outcome if the step succeeds. */
-  readonly expectedOutcome?: string;
+  readonly expectedOutcome?: string | undefined;
   /** Whether this step can be safely automated. */
   readonly automatable: boolean;
 }

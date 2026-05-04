@@ -11,19 +11,19 @@ export interface ContractRouteDefinition {
 export interface ContractRouteLike {
   readonly id: string;
   /** When true, this route is safe to retry on 5xx even for mutating HTTP verbs. */
-  readonly idempotent?: boolean;
+  readonly idempotent?: boolean | undefined;
 }
 
 export interface ContractInvokeOptions {
-  readonly signal?: AbortSignal;
-  readonly headers?: HeadersInit;
+  readonly signal?: AbortSignal | undefined;
+  readonly headers?: HeadersInit | undefined;
   /**
    * Optional Zod v4 schema to validate the parsed response body against.
    * When provided, a failed parse throws a {@link ContractError} with
    * field-level detail: operation, field path, expected type, and a
    * recovery hint.
    */
-  readonly responseSchema?: ZodType;
+  readonly responseSchema?: ZodType | undefined;
 }
 
 export interface ContractStreamOptions extends ContractInvokeOptions {
@@ -60,7 +60,7 @@ export async function invokeContractRoute<T = unknown>(
   if (options.responseSchema) {
     const result = options.responseSchema.safeParse(body);
     if (!result.success) {
-      const issue = result.error.issues[0];
+      const issue = result.error.issues[0]!;
       const fieldPath = issue ? issue.path.join('.') || '(root)' : '(unknown)';
       const expected = issue ? (issue as { readonly expected?: string }).expected ?? issue.code : 'unknown';
       const received = issue ? (issue as { readonly received?: string }).received ?? 'unknown' : 'unknown';

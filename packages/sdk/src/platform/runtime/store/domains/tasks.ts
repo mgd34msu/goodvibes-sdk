@@ -51,7 +51,7 @@ export interface RuntimeTask {
   /** Human-readable title for display in task monitor. */
   title: string;
   /** Optional detailed description. */
-  description?: string;
+  description?: string | undefined;
   /** Current lifecycle state. */
   status: TaskLifecycleState;
 
@@ -63,7 +63,7 @@ export interface RuntimeTask {
 
   // ── Hierarchy ────────────────────────────────────────────────────────────
   /** Parent task ID if this is a subtask. */
-  parentTaskId?: string;
+  parentTaskId?: string | undefined;
   /** IDs of child tasks spawned by this task. */
   childTaskIds: string[];
 
@@ -71,39 +71,39 @@ export interface RuntimeTask {
   /** Epoch ms when the task was queued. */
   queuedAt: number;
   /** Epoch ms when the task started running. */
-  startedAt?: number;
+  startedAt?: number | undefined;
   /** Epoch ms when the task completed, failed, or was cancelled. */
-  endedAt?: number;
+  endedAt?: number | undefined;
 
   // ── Retry ────────────────────────────────────────────────────────────────
   /** Retry policy (undefined = no retries). */
-  retryPolicy?: TaskRetryPolicy;
+  retryPolicy?: TaskRetryPolicy | undefined;
   /**
    * Computed delay in ms before the next retry attempt.
    * Set by TaskManager.failTask() when re-queuing. The task runner is
    * responsible for not starting the task until `retryAt` has elapsed.
    */
-  retryDelayMs?: number;
+  retryDelayMs?: number | undefined;
   /**
    * Epoch ms at which the task is eligible to run again after a retry re-queue.
    * Computed as `Date.now() + retryDelayMs` by TaskManager.failTask().
    * The task runner must not dequeue this task before this timestamp.
    */
-  retryAt?: number;
+  retryAt?: number | undefined;
 
   // ── Result ───────────────────────────────────────────────────────────────
   /** Exit code for exec tasks. */
-  exitCode?: number;
+  exitCode?: number | undefined;
   /** Error message if status === 'failed'. */
-  error?: string;
+  error?: string | undefined;
   /** Optional structured result payload. */
-  result?: unknown;
+  result?: unknown | undefined;
 
   // ── Correlation ──────────────────────────────────────────────────────────
   /** Correlation ID for distributed tracing. */
-  correlationId?: string;
+  correlationId?: string | undefined;
   /** Turn ID this task was spawned within. */
-  turnId?: string;
+  turnId?: string | undefined;
 }
 
 /**

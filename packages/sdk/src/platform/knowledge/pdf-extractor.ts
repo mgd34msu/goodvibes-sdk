@@ -149,8 +149,8 @@ function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult | undef
   const streamRe = /(<<[\s\S]{0,4096}?>>)\s*stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let match: RegExpExecArray | null;
   while ((match = streamRe.exec(body)) !== null) {
-    const dictionary = match[1] ?? '';
-    const rawChunk = match[2] ?? '';
+    const dictionary = match[1]! ?? '';
+    const rawChunk = match[2]! ?? '';
     const chunk = decodePdfStreamChunk(dictionary, rawChunk);
     for (const text of extractPdfTextStrings(chunk)) {
       if (isReadablePdfText(text)) texts.push(text);
@@ -292,7 +292,7 @@ function decodeHexPdfString(value: string): string | undefined {
   const hex = value.replace(/\s+/g, '');
   if (hex.length < 4 || hex.length % 2 !== 0) return undefined;
   const bytes = Buffer.from(hex, 'hex');
-  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+  if (bytes.length >= 2 && bytes[0]! === 0xfe && bytes[1]! === 0xff) {
     return decodeUtf16Be(bytes.subarray(2));
   }
   const mostlyUtf16 = bytes.length >= 4 && bytes.filter((byte, index) => index % 2 === 0 && byte === 0).length >= Math.floor(bytes.length / 4);

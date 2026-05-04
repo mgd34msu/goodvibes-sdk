@@ -105,7 +105,7 @@ export class RetentionPolicy {
 
     // Validate merged config values.
     for (const cls of ['short', 'standard', 'forensic'] as const) {
-      const c = merged[cls];
+      const c = merged[cls]!;
       if (c.maxAgeMs < 0) {
         throw new RangeError(`RetentionPolicy: ${cls}.maxAgeMs must be >= 0, got ${c.maxAgeMs}`);
       }
@@ -234,7 +234,7 @@ export class RetentionPolicy {
     const candidates: CheckpointRecord[] = [];
 
     for (const cls of classes) {
-      const config = this._config[cls];
+      const config = this._config[cls]!;
       const classRecords = this._getClassRecords(cls);
       const clsCandidates = this._evaluateClass(classRecords, config);
       for (const record of clsCandidates) {

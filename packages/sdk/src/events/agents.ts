@@ -11,11 +11,11 @@ export type AgentEvent =
   | {
       type: 'AGENT_SPAWNING';
       agentId: string;
-      taskId?: string;
+      taskId?: string | undefined;
       task: string;
-      parentAgentId?: string;
-      orchestrationGraphId?: string;
-      parentNodeId?: string;
+      parentAgentId?: string | undefined;
+      orchestrationGraphId?: string | undefined;
+      parentNodeId?: string | undefined;
     }
   /** Agent is actively running and processing. */
   | { type: 'AGENT_RUNNING'; agentId: string; taskId?: string }

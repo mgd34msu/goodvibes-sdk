@@ -18,7 +18,7 @@ export interface HealthCascadeSpanContext {
   /** Trace ID for cross-span correlation. */
   readonly traceId: string;
   /** Optional parent span ID if the cascade is causally linked to a specific operation. */
-  readonly parentSpanId?: string;
+  readonly parentSpanId?: string | undefined;
 }
 
 /**

@@ -22,22 +22,22 @@ export type NativeChatOutputItem =
   | { type: 'invalid_tool_call'; reason?: string };
 
 export type NativeChatResult = {
-  output?: NativeChatOutputItem[];
+  output?: NativeChatOutputItem[] | undefined;
   stats?: {
-    input_tokens?: number;
-    output_tokens?: number;
-    total_output_tokens?: number;
+    input_tokens?: number | undefined;
+    output_tokens?: number | undefined;
+    total_output_tokens?: number | undefined;
   };
-  response_id?: string;
+  response_id?: string | undefined;
 };
 
 export type NativeChatContext = {
   input: string | Array<Record<string, unknown>>;
-  previousResponseId?: string;
+  previousResponseId?: string | undefined;
 };
 
 export type LMStudioResponsesStream = AsyncIterable<unknown> & {
-  finalResponse?: () => Promise<Record<string, unknown>>;
+  finalResponse?: (() => Promise<Record<string, unknown>>) | undefined | undefined;
 };
 
 export type LMStudioResponsesClient = {

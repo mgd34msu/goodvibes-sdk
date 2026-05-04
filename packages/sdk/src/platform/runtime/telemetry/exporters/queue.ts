@@ -69,7 +69,7 @@ function sleep(ms: number): Promise<void> {
 export class ExportQueue {
   private readonly _config: ExportQueueConfig;
   private readonly _exportFn: ExportFn<ReadableSpan>;
-  private readonly _onResult?: ExportResultCallback;
+  private readonly _onResult?: ExportResultCallback | undefined;
 
   /** Ring buffer holding pending batches. */
   private readonly _ring: Array<QueueEntry | undefined>;

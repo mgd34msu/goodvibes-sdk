@@ -22,7 +22,7 @@ export interface ToolSpanContext {
   /** Parent span ID (the turn span's spanId). */
   readonly parentSpanId: string;
   /** Tool call arguments (stored as JSON string, truncated). */
-  readonly args?: Record<string, unknown>;
+  readonly args?: Record<string, unknown> | undefined;
 }
 
 /** Phase transition events that can be recorded on a tool span. */
@@ -41,11 +41,11 @@ export interface ToolSpanEndContext {
   /** Duration in ms. */
   readonly durationMs: number;
   /** Error message if outcome is 'failed'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Cancel reason if outcome is 'cancelled'. */
-  readonly cancelReason?: string;
+  readonly cancelReason?: string | undefined;
   /** Whether the tool call was approved by permissions. */
-  readonly approved?: boolean;
+  readonly approved?: boolean | undefined;
 }
 
 /**

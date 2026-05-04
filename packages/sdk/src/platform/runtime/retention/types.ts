@@ -92,7 +92,7 @@ export interface PruneOptions {
    * When `true`, the pruner returns what WOULD be deleted without performing
    * any file-system operations. Useful for previewing prune impact.
    */
-  dryRun?: boolean;
+  dryRun?: boolean | undefined;
 }
 
 /**

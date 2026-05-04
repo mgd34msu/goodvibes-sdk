@@ -19,7 +19,7 @@ export function buildFallbackChainData(
   });
 
   for (let index = 0; index < modelState.fallbackChain.length; index++) {
-    const entry = modelState.fallbackChain[index];
+    const entry = modelState.fallbackChain[index]!;
     const record = healthState.providers.get(entry.providerId);
     nodes.push({
       providerId: entry.providerId,

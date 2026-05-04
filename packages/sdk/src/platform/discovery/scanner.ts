@@ -374,7 +374,7 @@ export async function fetchModelContextWindows(
             if (!result[model] && typeof data.parameters === 'string') {
               const match = (data.parameters as string).match(/num_ctx\s+(\d+)/);
               if (match) {
-                const ctxLen = parseInt(match[1], 10);
+                const ctxLen = parseInt(match[1]!, 10);
                 result[model] = ctxLen;
                 logger.info(`[Scan] ${model}: context ${ctxLen} tokens`);
               }
@@ -559,7 +559,7 @@ async function fetchModelOutputLimits(
             if (!result[model] && typeof data.parameters === 'string') {
               const match = (data.parameters as string).match(/num_predict\s+(\d+)/);
               if (match) {
-                const limit = parseInt(match[1], 10);
+                const limit = parseInt(match[1]!, 10);
                 result[model] = limit;
                 logger.info(`[Scan] ${model}: output limit ${limit} tokens (from parameters)`);
               }
@@ -705,7 +705,7 @@ function buildServerName(serverType: ServerType, host: string, port: number): st
     return `local-${host}:${port}`;
   }
 
-  const display = SERVER_DISPLAY_NAMES[serverType] ?? serverType;
+  const display = SERVER_DISPLAY_NAMES[serverType]! ?? serverType;
   return isLocal ? display : `${display} (${host})`;
 }
 

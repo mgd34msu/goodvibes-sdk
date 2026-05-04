@@ -21,7 +21,7 @@ export interface CompanionChatRouteContext {
    * Called at session-create time when the caller does not specify provider/model.
    * Returns null if no provider is currently configured.
    */
-  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
+  readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
   /**
    * Open an SSE event stream scoped to a session.
    * Callers must call chatManager.registerSubscriber(sessionId, clientId)

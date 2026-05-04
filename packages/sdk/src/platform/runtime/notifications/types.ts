@@ -67,9 +67,9 @@ export interface NotificationAction {
   /** The type of action to perform. */
   type: 'jump_to_panel' | 'dismiss' | 'custom';
   /** Panel ID to focus when type is `jump_to_panel`. */
-  panelId?: string;
+  panelId?: string | undefined;
   /** Arbitrary payload for `custom` action types. */
-  payload?: Record<string, unknown>;
+  payload?: Record<string, unknown> | undefined;
 }
 
 /** A single notification to be routed and potentially displayed. */
@@ -86,18 +86,18 @@ export interface Notification {
   /** Short human-readable title. */
   title: string;
   /** Optional extended body text. */
-  body?: string;
+  body?: string | undefined;
   /** Unix timestamp in milliseconds when the notification was created. */
   timestamp: number;
   /** Panel ID that should display this notification when routed to panel_only. */
-  panelId?: string;
+  panelId?: string | undefined;
   /** Optional action (e.g. jump to panel) presented alongside the notification. */
-  action?: NotificationAction;
+  action?: NotificationAction | undefined;
   /**
    * Optional semantic tag classifying the notification's operational role.
    * When absent, the notification is treated as `operational` by default.
    */
-  tag?: NotificationTag;
+  tag?: NotificationTag | undefined;
 }
 
 /**
@@ -111,12 +111,12 @@ export interface RoutingDecision {
    * Batch group key when this notification has been collapsed into a batch.
    * Consumers should coalesce all notifications sharing the same batchKey.
    */
-  batchKey?: string;
+  batchKey?: string | undefined;
   /**
    * When set, this notification was suppressed and should not be displayed.
    * The string value describes the suppression reason (e.g. 'quiet_while_typing').
    */
-  suppressed?: string;
+  suppressed?: string | undefined;
   /**
    * Structured reason code for this routing decision.
    * Always present; reflects the final policy that determined the outcome.
@@ -140,5 +140,5 @@ export interface DomainConfig {
   /** Verbosity level controlling how aggressively noise is suppressed. */
   verbosity: DomainVerbosity;
   /** Override the default panel target for panel_only notifications. */
-  defaultPanelId?: string;
+  defaultPanelId?: string | undefined;
 }

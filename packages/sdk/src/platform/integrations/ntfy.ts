@@ -20,9 +20,9 @@ export const GOODVIBES_NTFY_DEFAULT_TOPICS = [
 ] as const;
 
 export interface GoodVibesNtfyTopicConfig {
-  readonly chatTopic?: string | null;
-  readonly agentTopic?: string | null;
-  readonly remoteTopic?: string | null;
+  readonly chatTopic?: string | null | undefined;
+  readonly agentTopic?: string | null | undefined;
+  readonly remoteTopic?: string | null | undefined;
 }
 
 export interface GoodVibesNtfyTopics {
@@ -49,41 +49,41 @@ export function createNtfyLiveSubscriptionSince(nowMs = Date.now()): string {
 }
 
 export interface NtfyPublishOptions {
-  readonly title?: string;
-  readonly priority?: 1 | 2 | 3 | 4 | 5;
-  readonly tags?: readonly string[];
-  readonly click?: string;
-  readonly attach?: string;
-  readonly actions?: readonly string[];
-  readonly markGoodVibesOrigin?: boolean;
+  readonly title?: string | undefined;
+  readonly priority?: 1 | 2 | 3 | 4 | 5 | undefined;
+  readonly tags?: readonly string[] | undefined;
+  readonly click?: string | undefined;
+  readonly attach?: string | undefined;
+  readonly actions?: readonly string[] | undefined;
+  readonly markGoodVibesOrigin?: boolean | undefined;
 }
 
 export interface NtfyMessage {
-  readonly id?: string;
-  readonly time?: number;
+  readonly id?: string | undefined;
+  readonly time?: number | undefined;
   readonly event: 'open' | 'keepalive' | 'message' | 'message_delete' | 'message_clear' | 'poll_request' | string;
-  readonly topic?: string;
-  readonly message?: string;
-  readonly title?: string;
-  readonly priority?: number;
-  readonly tags?: readonly string[];
-  readonly click?: string;
-  readonly actions?: readonly unknown[];
+  readonly topic?: string | undefined;
+  readonly message?: string | undefined;
+  readonly title?: string | undefined;
+  readonly priority?: number | undefined;
+  readonly tags?: readonly string[] | undefined;
+  readonly click?: string | undefined;
+  readonly actions?: readonly unknown[] | undefined;
   readonly [key: string]: unknown;
 }
 
 export interface NtfySubscribeOptions {
-  readonly since?: string;
-  readonly scheduled?: boolean;
-  readonly poll?: boolean;
-  readonly filters?: Record<string, string | number | boolean | readonly string[]>;
-  readonly signal?: AbortSignal;
-  readonly reconnect?: boolean;
-  readonly reconnectDelayMs?: number;
+  readonly since?: string | undefined;
+  readonly scheduled?: boolean | undefined;
+  readonly poll?: boolean | undefined;
+  readonly filters?: Record<string, string | number | boolean | readonly string[]> | undefined;
+  readonly signal?: AbortSignal | undefined;
+  readonly reconnect?: boolean | undefined;
+  readonly reconnectDelayMs?: number | undefined;
 }
 
 export interface NtfyWebSocketOptions extends NtfySubscribeOptions {
-  readonly WebSocketImpl?: typeof WebSocket;
+  readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 export class NtfyIntegration {
@@ -141,8 +141,8 @@ export class NtfyIntegration {
     const response = await instrumentedFetch(url, {
       method: 'GET',
       headers,
-      signal: options.signal,
-    });
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+    } as RequestInit);
     if (!response.ok) {
       const body = await response.text().catch(() => '');
       throw new Error(`NtfyIntegration.poll failed (${response.status}): ${body}`);
@@ -270,7 +270,7 @@ async function readNtfyJsonStreamWithNodeTransport(
   url: string,
   headers: Headers,
   onMessage: (message: NtfyMessage) => void | Promise<void>,
-  signal?: AbortSignal,
+  signal?: AbortSignal | undefined,
 ): Promise<void> {
   const parsed = new URL(url);
   if (parsed.protocol === 'http:') {
@@ -360,7 +360,7 @@ function readNtfyJsonStreamWithHttp2(
   url: string,
   headers: Headers,
   onMessage: (message: NtfyMessage) => void | Promise<void>,
-  signal?: AbortSignal,
+  signal?: AbortSignal | undefined,
 ): Promise<void> {
   if (signal?.aborted) return Promise.resolve();
   return new Promise((resolve, reject) => {

@@ -247,7 +247,7 @@ export async function ensureAccess(
     readonly accessAppId: string;
     readonly accessServiceTokenId: string;
     readonly accessServiceTokenRef: string;
-    readonly zone?: CloudflareZoneLike;
+    readonly zone?: CloudflareZoneLike | undefined;
     readonly persist: boolean;
     readonly returnGeneratedSecrets: boolean;
     readonly steps: CloudflareProvisionStep[];
@@ -371,7 +371,7 @@ export async function configureDns(
   client: CloudflareApiClient,
   input: {
     readonly enabled: boolean;
-    readonly zone?: CloudflareZoneLike;
+    readonly zone?: CloudflareZoneLike | undefined;
     readonly daemonHostname: string;
     readonly tunnelId: string;
     readonly workerHostname: string;

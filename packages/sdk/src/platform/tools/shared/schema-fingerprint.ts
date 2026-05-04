@@ -15,7 +15,7 @@
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 
 export interface SchemaFingerprintOptions {
-  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
 }
 
 /**

@@ -18,16 +18,16 @@ export interface SyntheticBackend {
    * Compound registry key for this backend: `${providerName}:${modelId}`.
    * Used for unambiguous routing and provider lookup.
    */
-  registryKey?: string;
+  registryKey?: string | undefined;
   /** Context window in tokens (used for backend sort order). */
-  contextWindow?: number;
+  contextWindow?: number | undefined;
   /** Maximum output tokens (used as tiebreaker in sort order). */
-  maxOutputTokens?: number;
+  maxOutputTokens?: number | undefined;
   /**
    * Environment variable names that gate this backend.
    * Empty array or undefined means no key required (always available).
    */
-  envVars?: string[];
+  envVars?: string[] | undefined;
 }
 
 /**
@@ -41,7 +41,7 @@ function hasKey(backend: SyntheticBackend): boolean {
   const vars = backend.envVars;
   if (!vars || vars.length === 0) return true;
   return vars.some(v => {
-    const val = process.env[v];
+    const val = process.env[v]!;
     return typeof val === 'string' && val.length > 0;
   });
 }
@@ -248,7 +248,7 @@ export class SyntheticProvider implements LLMProvider {
     resolveProvider: (providerName: string) => LLMProvider;
     getCatalogModels: SyntheticCatalogAccessor;
     getBenchmarks: BenchmarkLookup;
-    runtimeBus?: RuntimeEventBus | null;
+    runtimeBus?: RuntimeEventBus | null | undefined;
   }) {
     this.resolveProvider = options.resolveProvider;
     this.getCatalogModels = options.getCatalogModels;
@@ -315,7 +315,7 @@ export class SyntheticProvider implements LLMProvider {
     }
 
     // Reset to preferred backend if its cooldown expired
-    if (cooldownArr[0] <= now) {
+    if (cooldownArr[0]! <= now) {
       this.activeBackend.set(syntheticId, 0);
     }
 
@@ -326,11 +326,11 @@ export class SyntheticProvider implements LLMProvider {
     // Try each backend in order, starting from active
     for (let i = 0; i < backends.length; i++) {
       const idx = (startIndex + i) % backends.length;
-      const backend = backends[idx];
+      const backend = backends[idx]!;
 
       // Skip if still in cooldown
-      if (cooldownArr[idx] > now) {
-        const remaining = cooldownArr[idx] - now;
+      if (cooldownArr[idx]! > now) {
+        const remaining = cooldownArr[idx]! - now;
         if (remaining < shortestCooldown) shortestCooldown = remaining;
         continue;
       }
@@ -366,7 +366,7 @@ export class SyntheticProvider implements LLMProvider {
           const cooldownMs = (err instanceof ProviderError && err.retryAfterMs)
             ? err.retryAfterMs
             : DEFAULT_COOLDOWN_MS;
-          cooldownArr[idx] = now + cooldownMs;
+          cooldownArr[idx]! = now + cooldownMs;
           this.cooldowns.set(syntheticId, cooldownArr);
           if (cooldownMs < shortestCooldown) shortestCooldown = cooldownMs;
 
@@ -390,7 +390,7 @@ export class SyntheticProvider implements LLMProvider {
           && err.statusCode < 500;
 
         if (isProviderClientError) {
-          cooldownArr[idx] = now + DEFAULT_COOLDOWN_MS;
+          cooldownArr[idx]! = now + DEFAULT_COOLDOWN_MS;
           this.cooldowns.set(syntheticId, cooldownArr);
           if (DEFAULT_COOLDOWN_MS < shortestCooldown) shortestCooldown = DEFAULT_COOLDOWN_MS;
           logger.info(`[Synthetic] ${backend.providerName} returned ${(err as ProviderError).statusCode} for ${syntheticId}, trying next backend`);
@@ -399,7 +399,7 @@ export class SyntheticProvider implements LLMProvider {
         }
 
         // Transient/server error — short cooldown, failover to next backend
-        cooldownArr[idx] = now + TRANSIENT_COOLDOWN_MS;
+        cooldownArr[idx]! = now + TRANSIENT_COOLDOWN_MS;
         this.cooldowns.set(syntheticId, cooldownArr);
         if (TRANSIENT_COOLDOWN_MS < shortestCooldown) shortestCooldown = TRANSIENT_COOLDOWN_MS;
         logger.debug(`[Synthetic] ${backend.providerName} failed for ${syntheticId}: ${summarizeError(err) ?? err}, trying next backend`);
@@ -415,12 +415,12 @@ export class SyntheticProvider implements LLMProvider {
       let waitIdx = 0;
       let minExpiry = Infinity;
       for (let i = 0; i < cooldownArr.length; i++) {
-        if (cooldownArr[i] > nowForWait && cooldownArr[i] < minExpiry) {
-          minExpiry = cooldownArr[i];
+        if (cooldownArr[i]! > nowForWait && cooldownArr[i]! < minExpiry) {
+          minExpiry = cooldownArr[i]!;
           waitIdx = i;
         }
       }
-      const waitBackend = backends[waitIdx];
+      const waitBackend = backends[waitIdx]!;
       const waitMs = minExpiry - nowForWait;
 
       logger.debug(

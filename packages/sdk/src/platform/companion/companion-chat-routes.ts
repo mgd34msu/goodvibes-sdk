@@ -50,7 +50,7 @@ export async function dispatchCompanionChatRoutes(
   if (!sessionMatch) return null;
 
   const sessionId = sessionMatch[1]!;
-  const sub = sessionMatch[3] ?? '';
+  const sub = sessionMatch[3]! ?? '';
 
   // GET /api/companion/chat/sessions/:sessionId
   if (!sub && req.method === 'GET') {
@@ -159,7 +159,7 @@ function readOptionalNonEmptyString(
   key: string,
 ): string | Response | undefined {
   if (!hasOwn(body, key)) return undefined;
-  const value = body[key];
+  const value = body[key]!;
   if (typeof value !== 'string' || value.trim().length === 0) {
     return Response.json(
       { error: `${key} must be a non-empty string`, code: 'INVALID_INPUT' },

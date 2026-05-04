@@ -17,20 +17,20 @@ export interface AuthenticatedPrincipalLike {
 
 export interface KnowledgeGraphqlAccessLike {
   readonly requiredScopes: readonly string[];
-  readonly adminRequired?: boolean;
+  readonly adminRequired?: boolean | undefined;
 }
 
 export interface KnowledgeGraphqlResultLike {
-  readonly data?: unknown;
-  readonly errors?: readonly unknown[];
+  readonly data?: unknown | undefined;
+  readonly errors?: readonly unknown[] | undefined;
 }
 
 export interface KnowledgeGraphqlServiceLike {
   readonly schemaText: string;
   execute(input: {
     readonly query: string;
-    readonly operationName?: string;
-    readonly variables?: Record<string, unknown>;
+    readonly operationName?: string | undefined;
+    readonly variables?: Record<string, unknown> | undefined;
     readonly admin: boolean;
     readonly scopes: readonly string[];
   }): Promise<KnowledgeGraphqlResultLike>;
@@ -94,21 +94,21 @@ export interface KnowledgeServiceLike {
   lint(): Promise<readonly unknown[]>;
   reindex(): Promise<unknown>;
   saveSchedule(input: {
-    readonly id?: string;
+    readonly id?: string | undefined;
     readonly jobId: string;
     readonly schedule: AutomationScheduleDefinition;
-    readonly label?: string;
-    readonly enabled?: boolean;
-    readonly metadata?: Record<string, unknown>;
+    readonly label?: string | undefined;
+    readonly enabled?: boolean | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<unknown>;
   deleteSchedule(id: string): Promise<boolean>;
   setScheduleEnabled(id: string, enabled: boolean): Promise<unknown | null>;
   renderProjection(input: { kind: KnowledgeProjectionTargetKind; id?: string; limit?: number }): Promise<unknown>;
   materializeProjection(input: {
     kind: KnowledgeProjectionTargetKind;
-    id?: string;
-    limit?: number;
-    filename?: string;
+    id?: string | undefined;
+    limit?: number | undefined;
+    filename?: string | undefined;
   }): Promise<unknown>;
 }
 

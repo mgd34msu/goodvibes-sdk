@@ -99,7 +99,7 @@ function extractArtifactReferences(result: unknown): ArtifactReference[] {
 
 interface ResolvedDeliveryTarget {
   readonly target: AutomationDeliveryTarget;
-  readonly binding?: AutomationRouteBinding;
+  readonly binding?: AutomationRouteBinding | undefined;
 }
 
 export class AutomationDeliveryManager {
@@ -110,15 +110,15 @@ export class AutomationDeliveryManager {
   private runtimeBus: RuntimeEventBus | null = null;
 
   constructor(config: {
-    readonly serviceRegistry?: ServiceRegistry;
-    readonly secretsManager?: Pick<import('../config/secrets.js').SecretsManager, 'get' | 'getGlobalHome'>;
-    readonly configManager?: import('../config/manager.js').ConfigManager;
+    readonly serviceRegistry?: ServiceRegistry | undefined;
+    readonly secretsManager?: Pick<import('../config/secrets.js').SecretsManager, 'get' | 'getGlobalHome'> | undefined;
+    readonly configManager?: import('../config/manager.js').ConfigManager | undefined;
     readonly routeBindings: RouteBindingManager;
-    readonly deliveryRouter?: ChannelDeliveryRouter;
-    readonly artifactStore?: ArtifactStore;
-    readonly runtimeStore?: RuntimeStore;
-    readonly runtimeBus?: RuntimeEventBus;
-    readonly featureFlags?: FeatureFlagReader;
+    readonly deliveryRouter?: ChannelDeliveryRouter | undefined;
+    readonly artifactStore?: ArtifactStore | undefined;
+    readonly runtimeStore?: RuntimeStore | undefined;
+    readonly runtimeBus?: RuntimeEventBus | undefined;
+    readonly featureFlags?: FeatureFlagReader | undefined;
   }) {
     this.routeBindings = config.routeBindings;
     this.featureFlags = config.featureFlags ?? null;
@@ -142,8 +142,8 @@ export class AutomationDeliveryManager {
   }
 
   attachRuntime(config: {
-    readonly runtimeStore?: RuntimeStore | null;
-    readonly runtimeBus?: RuntimeEventBus | null;
+    readonly runtimeStore?: RuntimeStore | null | undefined;
+    readonly runtimeBus?: RuntimeEventBus | null | undefined;
   }): void {
     if (config.runtimeStore) {
       this.runtimeDispatch = createDomainDispatch(config.runtimeStore);

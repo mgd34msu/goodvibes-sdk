@@ -329,7 +329,7 @@ export class PhasedToolExecutor {
     call: ToolCall,
     context: ToolRuntimeContext,
     emitterCtx: { sessionId: string; traceId: string; source: string },
-    reason?: string,
+    reason?: string | undefined,
   ): ToolResult {
     record.currentPhase = 'cancelled';
     record.cancelled = true;

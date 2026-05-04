@@ -32,12 +32,12 @@ export interface OrchestrationPolicyConfig {
 
 interface ValidateResult {
   valid: boolean;
-  reason?: string;
+  reason?: string | undefined;
 }
 
 interface CanSpawnResult {
   allowed: boolean;
-  reason?: string;
+  reason?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ export class SpawnTokenManager {
   createOrchestratorToken(ttlMs: number = DEFAULT_TOKEN_TTL_MS): SpawnToken {
     const partial: Omit<SpawnToken, 'signature'> = {
       type: 'orchestrator',
-      sessionId: this.secret.split(':')[0],
+      sessionId: this.secret.split(':')[0]!,
       issuedTo: 'main',
       issuedBy: 'system',
       depth: 0,

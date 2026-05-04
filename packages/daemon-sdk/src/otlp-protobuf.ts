@@ -54,7 +54,7 @@ class ProtoReader {
     this.ensure(8);
     let value = 0n;
     for (let i = 0; i < 8; i++) {
-      value |= BigInt(this.bytes[this.offset + i]) << BigInt(i * 8);
+      value |= BigInt(this.bytes[this.offset + i]!) << BigInt(i * 8);
     }
     this.offset += 8;
     return value;
@@ -113,7 +113,7 @@ class ProtoReader {
 
   private readByte(): number {
     this.ensure(1);
-    return this.bytes[this.offset++];
+    return this.bytes[this.offset++]!;
   }
 
   private ensure(length: number): void {

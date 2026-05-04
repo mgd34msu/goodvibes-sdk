@@ -97,9 +97,9 @@ import {
 
 interface RemoteSnapshotResponse extends Record<string, unknown> {
   readonly distributed?: {
-    readonly pairRequests?: readonly DistributedRuntimePairRequest[];
-    readonly peers?: readonly DistributedPeerRecord[];
-    readonly work?: readonly DistributedPendingWork[];
+    readonly pairRequests?: readonly DistributedRuntimePairRequest[] | undefined;
+    readonly peers?: readonly DistributedPeerRecord[] | undefined;
+    readonly work?: readonly DistributedPendingWork[] | undefined;
   };
 }
 

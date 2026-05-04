@@ -15,8 +15,8 @@ function defaultSnapshot(): AutomationRoutesSnapshot {
 }
 
 export interface AutomationRouteStoreConfig {
-  readonly path?: string;
-  readonly configManager?: AutomationStorePathConfig;
+  readonly path?: string | undefined;
+  readonly configManager?: AutomationStorePathConfig | undefined;
 }
 
 export class AutomationRouteStore {

@@ -35,20 +35,20 @@ export function inspectComponents(content: string): ComponentInfo[] {
   const CHILD_COMP_RE = /<([A-Z]\w*)(?:\s|>|\/)/g;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     let name: string | null = null;
     let kind: ComponentInfo['kind'] = 'function';
 
     let fnMatch = FN_COMP_RE.exec(line);
     if (fnMatch) {
-      name = fnMatch[1];
+      name = fnMatch[1]!;
       kind = 'function';
     }
 
     if (!name) {
       const arrowMatch = ARROW_COMP_RE.exec(line);
       if (arrowMatch) {
-        name = arrowMatch[1];
+        name = arrowMatch[1]!;
         kind = 'arrow';
       }
     }
@@ -56,7 +56,7 @@ export function inspectComponents(content: string): ComponentInfo[] {
     if (!name) {
       const classMatch = CLASS_COMP_RE.exec(line);
       if (classMatch) {
-        name = classMatch[1];
+        name = classMatch[1]!;
         kind = 'class';
       }
     }
@@ -65,16 +65,16 @@ export function inspectComponents(content: string): ComponentInfo[] {
 
     let body = '';
     const end = Math.min(i + 50, lines.length);
-    for (let j = i; j < end; j++) body += lines[j] + '\n';
+    for (let j = i; j < end; j++) body += lines[j]! + '\n';
 
     const hooks: string[] = [];
     const hooksSeen = new Set<string>();
     let hm: RegExpExecArray | null;
     const hookRe = new RegExp(HOOK_RE.source, 'g');
     while ((hm = hookRe.exec(body)) !== null) {
-      if (!hooksSeen.has(hm[1])) {
-        hooksSeen.add(hm[1]);
-        hooks.push(hm[1]);
+      if (!hooksSeen.has(hm[1]!)) {
+        hooksSeen.add(hm[1]!);
+        hooks.push(hm[1]!);
       }
     }
 
@@ -83,9 +83,9 @@ export function inspectComponents(content: string): ComponentInfo[] {
     let cm: RegExpExecArray | null;
     const childRe = new RegExp(CHILD_COMP_RE.source, 'g');
     while ((cm = childRe.exec(body)) !== null) {
-      if (!childSeen.has(cm[1]) && cm[1] !== name) {
-        childSeen.add(cm[1]);
-        children.push(cm[1]);
+      if (!childSeen.has(cm[1]!) && cm[1]! !== name) {
+        childSeen.add(cm[1]!);
+        children.push(cm[1]!);
       }
     }
 
@@ -95,7 +95,7 @@ export function inspectComponents(content: string): ComponentInfo[] {
     const pm = PROPS_DESTRUCTURE_RE.exec(propLine);
     if (pm) {
       props.push(
-        ...pm[1]
+        ...pm[1]!
           .split(',')
           .map((p) => p.trim().replace(/[=:][^,]*/g, '').trim())
           .filter((p) => /^\w+$/.test(p)),
@@ -126,9 +126,9 @@ export function inspectLayout(content: string, file: string): LayoutInfo {
     let m: RegExpExecArray | null;
     const r = new RegExp(re.source, 'g');
     while ((m = r.exec(content)) !== null) {
-      if (!seen.has(m[1])) {
-        seen.add(m[1]);
-        target.push(m[1]);
+      if (!seen.has(m[1]!)) {
+        seen.add(m[1]!);
+        target.push(m[1]!);
       }
     }
   };
@@ -147,7 +147,7 @@ export function inspectAccessibility(content: string): A11yIssue[] {
   const lines = content.split('\n');
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const lineNo = i + 1;
 
     if (/<img\b(?![^>]*\balt=)/i.test(line)) {
@@ -206,17 +206,17 @@ export function inspectComponentState(content: string, file: string): ComponentS
   const useStateRe = /const\s*\[\s*(\w+)\s*,/;
   const useContextRe = /(?:const|let|var)\s+(\w+)\s*=\s*useContext\s*\(/;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const ln = i + 1;
     if (/\buseState\s*\(/.test(line)) {
       const m = useStateRe.exec(line);
-      stateVars.push({ name: m ? m[1] : '(unknown)', kind: 'useState', line: ln });
+      stateVars.push({ name: m ? m[1]! : '(unknown)', kind: 'useState', line: ln });
     } else if (/\buseReducer\s*\(/.test(line)) {
       const m = useStateRe.exec(line);
-      stateVars.push({ name: m ? m[1] : '(unknown)', kind: 'useReducer', line: ln });
+      stateVars.push({ name: m ? m[1]! : '(unknown)', kind: 'useReducer', line: ln });
     } else if (/\buseContext\s*\(/.test(line)) {
       const m = useContextRe.exec(line);
-      stateVars.push({ name: m ? m[1] : '(unknown)', kind: 'useContext', line: ln });
+      stateVars.push({ name: m ? m[1]! : '(unknown)', kind: 'useContext', line: ln });
     }
   }
   return { file, stateVars, count: stateVars.length };
@@ -227,11 +227,11 @@ export function inspectRenderTriggers(content: string, file: string): RenderTrig
   const triggers: RenderTrigger[] = [];
   const setterRe = /const\s*\[\s*\w+\s*,\s*(set\w+)\s*\]/;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const ln = i + 1;
     if (setterRe.test(line)) {
       const m = setterRe.exec(line);
-      if (m) triggers.push({ kind: 'state_setter', name: m[1], line: ln });
+      if (m) triggers.push({ kind: 'state_setter', name: m[1]!, line: ln });
     }
     if (/\buseEffect\s*\(/.test(line)) triggers.push({ kind: 'effect_dep', name: 'useEffect', line: ln });
     if (/\buseMemo\s*\(/.test(line)) triggers.push({ kind: 'memo_dep', name: 'useMemo', line: ln });
@@ -249,20 +249,20 @@ export function inspectHooks(content: string, file: string): HooksInfo {
   const inlineDepsRe = /[},]\s*\[([^\]]*)\]\s*\)/;
   const skipKeywords = new Set(['useEffect', 'useMemo', 'useCallback', 'return', 'const', 'let', 'var', 'if', 'else', 'for', 'while', 'true', 'false', 'null', 'undefined', 'async', 'await', 'function', 'new', 'this', 'of', 'in', 'console', 'Math', 'JSON', 'Array', 'Object', 'Promise', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'window', 'document', 'fetch', 'NaN', 'Infinity', 'Error', 'RegExp', 'Date', 'Map', 'Set', 'parseInt', 'parseFloat']);
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const hm = hookRe.exec(line);
     if (!hm) continue;
-    const hookKind = hm[1] as 'useEffect' | 'useMemo' | 'useCallback';
+    const hookKind = hm[1]! as 'useEffect' | 'useMemo' | 'useCallback';
     const ln = i + 1;
     const body = lines.slice(i, Math.min(i + 30, lines.length)).join('\n');
     const dm = inlineDepsRe.exec(body);
-    const deps = dm ? dm[1].split(',').map((d) => d.trim()).filter(Boolean) : [];
+    const deps = dm ? dm[1]!.split(',').map((d) => d.trim()).filter(Boolean) : [];
     const callbackBody = body.slice(0, body.lastIndexOf(']'));
     const usedVarsRe = /\b([a-zA-Z_$][\w$]*)\b/g;
     const usedVars = new Set<string>();
     let vm: RegExpExecArray | null;
     while ((vm = usedVarsRe.exec(callbackBody)) !== null) {
-      if (!skipKeywords.has(vm[1]) && vm[1].length > 1) usedVars.add(vm[1]);
+      if (!skipKeywords.has(vm[1]!) && vm[1]!.length > 1) usedVars.add(vm[1]!);
     }
     const missing = [...usedVars].filter((v) => !deps.includes(v) && /^[a-z]/.test(v)).slice(0, 5);
     if (missing.length) missingDepsCount++;
@@ -276,7 +276,7 @@ export function inspectOverflow(content: string, file: string): OverflowInfo {
   const issues: OverflowIssue[] = [];
   const hasHeightRe = /\b(?:h-|max-h-|height)\b/;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const ln = i + 1;
     if (/\boverflow-hidden\b/.test(line) || /overflow\s*:\s*hidden/.test(line)) {
       if (!hasHeightRe.test(line)) {
@@ -303,12 +303,12 @@ export function inspectSizing(content: string, file: string): SizingInfo {
   const cssPxRe = /(?:width|height|min-width|max-width|min-height|max-height)\s*:\s*(\d+)px/g;
   const cssPctRe = /(?:width|height)\s*:\s*(\d+%)/g;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const ln = i + 1;
     let m: RegExpExecArray | null;
     tailwindFixedRe.lastIndex = 0;
     while ((m = tailwindFixedRe.exec(line)) !== null) {
-      const val = parseInt(m[1]);
+      const val = parseInt(m[1]!);
       const flagged = val > 96;
       if (flagged) hardcodedCount++;
       items.push({ line: ln, kind: 'fixed_px', value: m[0], flagged });
@@ -331,7 +331,7 @@ export function inspectSizing(content: string, file: string): SizingInfo {
     }
     cssPxRe.lastIndex = 0;
     while ((m = cssPxRe.exec(line)) !== null) {
-      const flagged = parseInt(m[1]) > 200;
+      const flagged = parseInt(m[1]!) > 200;
       if (flagged) hardcodedCount++;
       items.push({ line: ln, kind: 'fixed_px', value: m[0], flagged });
     }
@@ -349,7 +349,7 @@ export function inspectStacking(content: string, file: string): StackingInfo {
   const tailwindZRe = /-?z-(\d+|auto)\b/g;
   const cssZRe = /z-index\s*:\s*(-?\d+)/g;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const ln = i + 1;
     let m: RegExpExecArray | null;
     tailwindZRe.lastIndex = 0;
@@ -384,7 +384,7 @@ export function inspectResponsive(content: string, file: string): ResponsiveInfo
     re.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(line)) !== null) {
-      const arr = breakpointMap.get(m[1])!;
+      const arr = breakpointMap.get(m[1]!)!;
       arr.push(m[0]);
     }
   }
@@ -404,7 +404,7 @@ export function inspectEvents(content: string, file: string): EventsInfo {
   const stopPropagationRe = /\.stopPropagation\s*\(/;
   const delegationRe = /(?:document|window)\s*\.\s*addEventListener\s*\(/;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     eventRe.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = eventRe.exec(line)) !== null) {
@@ -440,11 +440,11 @@ export function inspectTailwind(content: string, file: string): TailwindInfo {
   ];
   const classNameRe = /className\s*=\s*["']([^"']+)["']/g;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     let cm: RegExpExecArray | null;
     classNameRe.lastIndex = 0;
     while ((cm = classNameRe.exec(line)) !== null) {
-      const classStr = cm[1];
+      const classStr = cm[1]!;
       for (const { pattern, name } of conflictGroups) {
         const found: string[] = [];
         pattern.lastIndex = 0;
@@ -474,7 +474,7 @@ export function inspectClientBoundary(content: string, file: string): ClientBoun
   const importRe = /import\s+[\s\S]*?from\s+['"]([^'"]+)['"]/g;
   let im: RegExpExecArray | null;
   while ((im = importRe.exec(content)) !== null) {
-    if (serverOnlyModules.some((mod) => im![1] === mod || im![1].startsWith(mod + '/'))) serverOnlyImports.push(im[1]);
+    if (serverOnlyModules.some((mod) => im![1]! === mod || im![1]!.startsWith(mod + '/'))) serverOnlyImports.push(im[1]!);
   }
   return { file, directive, importsServerOnly: serverOnlyImports.length > 0, serverOnlyImports };
 }
@@ -485,7 +485,7 @@ export function inspectErrorBoundary(content: string, file: string): ErrorBounda
   const errorBoundaryRe = /(?:class\s+(\w*ErrorBoundary\w*)\s+extends|<(\w*ErrorBoundary\w*)|import\s+.*?(\w*ErrorBoundary\w*).*?from)/g;
   let m: RegExpExecArray | null;
   while ((m = errorBoundaryRe.exec(content)) !== null) {
-    const name = m[1] || m[2] || m[3];
+    const name = m[1]! || m[2] || m[3];
     if (name && !boundaryComponents.includes(name)) boundaryComponents.push(name);
   }
   if (/(?:^|[\/\\])error\.[jt]sx?$/.test(file)) boundaryComponents.push('error.tsx (Next.js App Router)');
@@ -493,7 +493,7 @@ export function inspectErrorBoundary(content: string, file: string): ErrorBounda
   let wr: RegExpExecArray | null;
   while ((wr = wrappedRouteRe.exec(content)) !== null) {
     const routeMatch = /<(\w+)/.exec(wr[0].slice(wr[0].indexOf('>') + 1));
-    if (routeMatch && !coveredRoutes.includes(routeMatch[1])) coveredRoutes.push(routeMatch[1]);
+    if (routeMatch && !coveredRoutes.includes(routeMatch[1]!)) coveredRoutes.push(routeMatch[1]!);
   }
   return { file, hasErrorBoundary: boundaryComponents.length > 0, boundaryComponents, coveredRoutes };
 }

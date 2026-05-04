@@ -70,9 +70,9 @@ export async function collectInputFiles(
   inputFiles: string[] | undefined,
   projectRoot: string,
   options: {
-    expandDirectories?: boolean;
-    limit?: number;
-    deadline?: number;
+    expandDirectories?: boolean | undefined;
+    limit?: number | undefined;
+    deadline?: number | undefined;
   } = {},
 ): Promise<string[]> {
   const expandDirectories = options.expandDirectories ?? false;
@@ -240,7 +240,7 @@ export async function readJsonFile<T extends JsonObject = JsonObject>(filePath: 
 }
 
 export function resolveScanRoot(input: AnalyzeInput, projectRoot: string): string {
-  return input.files && input.files.length > 0 ? resolve(projectRoot, input.files[0]) : projectRoot;
+  return input.files && input.files.length > 0 ? resolve(projectRoot, input.files[0]!) : projectRoot;
 }
 
 export function collectExistingPaths(projectRoot: string, names: string[]): string[] {
@@ -266,9 +266,9 @@ export function parseDiffStats(statOutput: string): DiffStatFile[] {
   for (const line of statOutput.trim().split('\n')) {
     const m = line.match(/^\s*(.+?)\s+\|\s+(\d+)\s+([+\-]+)?/);
     if (!m) continue;
-    const plusMinus = m[3] ?? '';
+    const plusMinus = m[3]! ?? '';
     files.push({
-      file: m[1].trim(),
+      file: m[1]!.trim(),
       insertions: (plusMinus.match(/\+/g) ?? []).length,
       deletions: (plusMinus.match(/-/g) ?? []).length,
     });
@@ -311,7 +311,7 @@ export function truncateDiffAtBoundary(diff: string, maxChars: number): string {
 export function parseSemver(version: string): [number, number, number] {
   const clean = version.replace(/^[^0-9]*/, '');
   const parts = clean.split('.').map((p) => parseInt(p, 10) || 0);
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+  return [parts[0]! ?? 0, parts[1]! ?? 0, parts[2]! ?? 0];
 }
 
 export function isBreakingUpgrade(current: string, latest: string): boolean {

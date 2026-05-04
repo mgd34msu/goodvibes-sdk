@@ -26,29 +26,29 @@ export interface NormalizedError {
   readonly name: string;
   readonly message: string;
   readonly summary: string;
-  readonly hint?: string;
-  readonly code?: string;
+  readonly hint?: string | undefined;
+  readonly code?: string | undefined;
   readonly category: ErrorCategory;
   readonly source: ErrorSource;
   readonly recoverable: boolean;
-  readonly statusCode?: number;
-  readonly provider?: string;
-  readonly operation?: string;
-  readonly phase?: string;
-  readonly requestId?: string;
-  readonly providerCode?: string;
-  readonly providerType?: string;
-  readonly retryAfterMs?: number;
+  readonly statusCode?: number | undefined;
+  readonly provider?: string | undefined;
+  readonly operation?: string | undefined;
+  readonly phase?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly providerCode?: string | undefined;
+  readonly providerType?: string | undefined;
+  readonly retryAfterMs?: number | undefined;
 }
 
 export interface ErrorNormalizationOptions {
-  readonly provider?: string;
-  readonly fallbackMessage?: string;
-  readonly source?: ErrorSource;
+  readonly provider?: string | undefined;
+  readonly fallbackMessage?: string | undefined;
+  readonly source?: ErrorSource | undefined;
 }
 
 export interface ProviderErrorNormalizationOptions extends ProviderErrorOptions {
-  readonly fallbackMessage?: string;
+  readonly fallbackMessage?: string | undefined;
 }
 
 function truncateMessage(msg: string): string {
@@ -57,7 +57,7 @@ function truncateMessage(msg: string): string {
 }
 
 function extractStringField(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key];
+  const value = record[key]!;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
@@ -162,9 +162,9 @@ function inferSource(error: unknown, override?: ErrorSource): ErrorSource {
 function buildSummary(
   message: string,
   metadata: {
-    readonly requestId?: string;
-    readonly providerCode?: string;
-    readonly phase?: string;
+    readonly requestId?: string | undefined;
+    readonly providerCode?: string | undefined;
+    readonly phase?: string | undefined;
   },
 ): string {
   const tags: string[] = [];

@@ -121,7 +121,7 @@ export function buildHomeGraphNodeInput(
   readonly kind: KnowledgeNodeKind;
   readonly slug: string;
   readonly title: string;
-  readonly summary?: string;
+  readonly summary?: string | undefined;
   readonly aliases: readonly string[];
   readonly metadata: Record<string, unknown>;
 } {
@@ -208,7 +208,7 @@ export function homeAssistantSpaceComponent(spaceId: string): string | undefined
 export function targetToReference(target: HomeGraphKnowledgeTarget): {
   readonly kind: KnowledgeReferenceKind;
   readonly id: string;
-  readonly nodeKind?: HomeGraphNodeKind;
+  readonly nodeKind?: HomeGraphNodeKind | undefined;
 } {
   if (target.kind === 'source') return { kind: 'source', id: target.id };
   if (target.kind === 'node') return { kind: 'node', id: target.id };
@@ -337,10 +337,10 @@ export function normalizeHomeGraphObjectInput(
 function idForKind(
   kind: HomeGraphObjectKind | HomeGraphNodeKind,
   input: {
-    readonly entityId?: string;
-    readonly deviceId?: string;
-    readonly areaId?: string;
-    readonly integrationId?: string;
+    readonly entityId?: string | undefined;
+    readonly deviceId?: string | undefined;
+    readonly areaId?: string | undefined;
+    readonly integrationId?: string | undefined;
   },
 ): string | undefined {
   switch (nodeKindForHomeGraphObject(kind)) {

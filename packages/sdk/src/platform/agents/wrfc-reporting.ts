@@ -12,21 +12,21 @@ export function extractScoreFromText(text: string): number | null {
   const scorePattern = /\*{0,2}(?:overall\s+)?score\s*:?\s*\*{0,2}\s*(\d+(?:\.\d+)?)\s*\/\s*10/i;
   const matchScore = text.match(scorePattern);
   if (matchScore) {
-    const value = parseFloat(matchScore[1]);
+    const value = parseFloat(matchScore[1]!);
     if (value <= 10) return value;
   }
 
   const slashPattern = /(\d+(?:\.\d+)?)\s*\/\s*10/;
   const matchSlash = text.match(slashPattern);
   if (matchSlash) {
-    const value = parseFloat(matchSlash[1]);
+    const value = parseFloat(matchSlash[1]!);
     if (value <= 10) return value;
   }
 
   const ratedPattern = /\b(?:rated|scored|rating)\s*:?\s*(\d+(?:\.\d+)?)/i;
   const matchRated = text.match(ratedPattern);
   if (matchRated) {
-    const value = parseFloat(matchRated[1]);
+    const value = parseFloat(matchRated[1]!);
     if (value <= 10) return value;
   }
 
@@ -45,10 +45,10 @@ export function extractIssuesFromText(text: string): ReviewerReport['issues'] {
   const issuePattern = /(?:^|\n)\s*(?:\d+\.\s*|-\s*|\*\s*)?(?:\*{1,2})?\[?\(?(critical|major|minor|suggestion)\)?\]?(?:\*{1,2})?[\s:*]*(.+)/gi;
   let match: RegExpExecArray | null;
   while ((match = issuePattern.exec(text)) !== null) {
-    const severity = match[1].toLowerCase() as 'critical' | 'major' | 'minor' | 'suggestion';
+    const severity = match[1]!.toLowerCase() as 'critical' | 'major' | 'minor' | 'suggestion';
     issues.push({
       severity,
-      description: match[2].trim(),
+      description: match[2]!.trim(),
       pointValue: severity === 'critical' ? 3 : severity === 'major' ? 2 : 1,
     });
   }

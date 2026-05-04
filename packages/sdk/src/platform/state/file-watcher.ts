@@ -38,7 +38,7 @@ const DEFAULT_ENV_GLOBS = [
 export class FileWatcher {
   private readonly fileCache: FileStateCache;
   private readonly projectIndex: ProjectIndex;
-  private readonly hookDispatcher?: HookDispatcher;
+  private readonly hookDispatcher?: HookDispatcher | undefined;
   private readonly projectRoot: string;
 
   /** Absolute paths currently being watched */

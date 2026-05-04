@@ -22,7 +22,7 @@ export interface PlannerDecision {
     readonly isMultiStep: boolean;
     readonly remoteAvailable: boolean;
     readonly backgroundEligible: boolean;
-    readonly taskDescription?: string;
+    readonly taskDescription?: string | undefined;
   };
 }
 
@@ -33,7 +33,7 @@ export type PlannerEvent =
   | {
     type: 'PLAN_STRATEGY_OVERRIDDEN';
     strategy: ExecutionStrategy | null;
-    clearedBy?: string;
+    clearedBy?: string | undefined;
   };
 
 export type PlannerEventType = PlannerEvent['type'];

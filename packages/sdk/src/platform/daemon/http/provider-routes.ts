@@ -83,8 +83,8 @@ export interface ProviderModelEntry {
   readonly id: string;
   readonly registryKey: string;
   readonly provider: string;
-  readonly label?: string;
-  readonly contextWindow?: number;
+  readonly label?: string | undefined;
+  readonly contextWindow?: number | undefined;
 }
 
 export type ConfiguredVia = 'env' | 'secrets' | 'subscription' | 'anonymous';
@@ -93,9 +93,9 @@ export interface ProviderEntry {
   readonly id: string;
   readonly label: string;
   readonly configured: boolean;
-  readonly configuredVia?: ConfiguredVia;
+  readonly configuredVia?: ConfiguredVia | undefined;
   readonly envVars: string[];
-  readonly routes?: readonly ProviderAuthRouteDescriptor[];
+  readonly routes?: readonly ProviderAuthRouteDescriptor[] | undefined;
   readonly models: ProviderModelEntry[];
 }
 
@@ -121,8 +121,8 @@ export interface ListProvidersResponse {
 export interface CurrentModelResponse {
   readonly model: ProviderModelRef | null;
   readonly configured: boolean;
-  readonly configuredVia?: ConfiguredVia;
-  readonly routes?: readonly ProviderAuthRouteDescriptor[];
+  readonly configuredVia?: ConfiguredVia | undefined;
+  readonly routes?: readonly ProviderAuthRouteDescriptor[] | undefined;
 }
 
 export interface PatchCurrentModelResponse extends CurrentModelResponse {
@@ -138,7 +138,7 @@ export interface ProviderRouteContext {
   readonly configManager: ConfigManager;
   readonly runtimeBus: RuntimeEventBus;
   readonly parseJsonBody: (req: Request) => Promise<Record<string, unknown> | Response>;
-  readonly secretsManager?: Pick<SecretsManager, 'get'> | null;
+  readonly secretsManager?: Pick<SecretsManager, 'get'> | null | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +177,7 @@ function getConfiguredVia(
 ): ConfiguredVia | undefined {
   // Tier 1: env var present
   const hasEnvKey = envVars.some((v) => {
-    const val = process.env[v];
+    const val = process.env[v]!;
     return typeof val === 'string' && val.length > 0;
   });
   if (hasEnvKey) return 'env';
@@ -215,7 +215,7 @@ function getConfiguredViaFromRuntimeRoutes(
   const apiKeyRoute = usableRoutes.find((route) => route.route === 'api-key');
   if (apiKeyRoute) {
     const hasEnv = (apiKeyRoute.envVars ?? []).some((envVar) => {
-      const value = process.env[envVar];
+      const value = process.env[envVar]!;
       return typeof value === 'string' && value.length > 0;
     });
     return hasEnv ? 'env' : 'secrets';
@@ -229,7 +229,7 @@ async function describeAuthRoutes(
   providerId: string,
 ): Promise<readonly ProviderAuthRouteDescriptor[]> {
   const maybeRegistry = providerRegistry as unknown as {
-    describeRuntime?: (name: string) => Promise<ProviderRuntimeMetadata | null>;
+    describeRuntime?: ((name: string) => Promise<ProviderRuntimeMetadata | null>) | undefined | undefined;
   };
   if (typeof maybeRegistry.describeRuntime !== 'function') return [];
 
@@ -246,8 +246,8 @@ async function describeAuthRoutes(
 
 interface ProviderConfiguredStatus {
   readonly configured: boolean;
-  readonly configuredVia?: ConfiguredVia;
-  readonly routes?: readonly ProviderAuthRouteDescriptor[];
+  readonly configuredVia?: ConfiguredVia | undefined;
+  readonly routes?: readonly ProviderAuthRouteDescriptor[] | undefined;
 }
 
 async function resolveProviderConfiguredStatus(

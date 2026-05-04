@@ -120,21 +120,21 @@ const DANGEROUS_PATTERNS: DangerousPattern[] = [
     description: 'git reset --hard: irreversible history rewrite',
     match: (seg) =>
       seg.command === 'git' &&
-      seg.args[0] === 'reset' &&
+      seg.args[0]! === 'reset' &&
       seg.flags.includes('--hard'),
   },
   {
     description: 'git clean -fd: removes untracked files and directories',
     match: (seg) =>
       seg.command === 'git' &&
-      seg.args[0] === 'clean' &&
+      seg.args[0]! === 'clean' &&
       seg.flags.some((f) => f.includes('f')),
   },
   {
     description: 'git push --force: force-pushes, may rewrite remote history',
     match: (seg) =>
       seg.command === 'git' &&
-      seg.args[0] === 'push' &&
+      seg.args[0]! === 'push' &&
       (seg.flags.includes('--force') || seg.flags.includes('-f')),
   },
   {
@@ -151,12 +151,12 @@ const DANGEROUS_PATTERNS: DangerousPattern[] = [
   {
     description: 'docker exec: executing inside a container',
     match: (seg) =>
-      seg.command === 'docker' && seg.args[0] === 'exec',
+      seg.command === 'docker' && seg.args[0]! === 'exec',
   },
   {
     description: 'kubectl exec: executing inside a Kubernetes pod',
     match: (seg) =>
-      seg.command === 'kubectl' && seg.args[0] === 'exec',
+      seg.command === 'kubectl' && seg.args[0]! === 'exec',
   },
   {
     description: 'dd: raw disk write (potentially destructive)',
@@ -224,7 +224,7 @@ export function classifySegment(seg: CommandSegment): CommandClassification {
 
   // ── git sub-command routing ─────────────────────────────────────────────────
   if (command === 'git') {
-    const sub = args[0] ?? '';
+    const sub = args[0]! ?? '';
     if (GIT_DESTRUCTIVE_SUBCOMMANDS.has(sub)) {
       // git reset --hard is always destructive; other git destructive cmds need flags
       if (sub === 'reset' && flags.includes('--hard')) return 'destructive';
@@ -244,7 +244,7 @@ export function classifySegment(seg: CommandSegment): CommandClassification {
   // ── npm / npx / yarn / pnpm / bun routing ───────────────────────────────────
   const isPackageManager = ['npm', 'npx', 'yarn', 'pnpm', 'bun'].includes(command);
   if (isPackageManager) {
-    const sub = args[0] ?? '';
+    const sub = args[0]! ?? '';
     if (NPM_NETWORK_SUBCOMMANDS.has(sub)) return 'network';
     if (NPM_WRITE_SUBCOMMANDS.has(sub)) return 'write';
     // run, exec, x, dlx — treat as write (executes code)

@@ -8,7 +8,7 @@ type EnvMap = Record<string, string | undefined>;
 type FetchExecutor = (input: FetchInput) => Promise<FetchOutput>;
 
 export interface SearchProviderContext {
-  readonly fetcher?: FetchExecutor;
+  readonly fetcher?: FetchExecutor | undefined;
   readonly env: EnvMap;
   readonly serviceRegistry: Pick<ServiceRegistry, 'get'>;
 }
@@ -17,23 +17,23 @@ export interface SearchProviderConfig {
   readonly id: string;
   readonly label: string;
   readonly note: string;
-  readonly envKeyCandidates?: readonly string[];
-  readonly serviceName?: string;
-  readonly baseUrlEnvCandidates?: readonly string[];
-  readonly defaultBaseUrl?: string;
-  readonly requiresAuth?: boolean;
+  readonly envKeyCandidates?: readonly string[] | undefined;
+  readonly serviceName?: string | undefined;
+  readonly baseUrlEnvCandidates?: readonly string[] | undefined;
+  readonly defaultBaseUrl?: string | undefined;
+  readonly requiresAuth?: boolean | undefined;
 }
 
 export interface JsonRequestConfig {
   readonly url: string;
-  readonly method?: 'GET' | 'POST';
-  readonly params?: Record<string, string>;
-  readonly body?: Record<string, unknown>;
-  readonly headers?: Record<string, string>;
-  readonly service?: string;
-  readonly auth?: FetchAuthInput;
-  readonly fetcher?: FetchExecutor;
-  readonly maxContentLength?: number;
+  readonly method?: 'GET' | 'POST' | undefined;
+  readonly params?: Record<string, string> | undefined;
+  readonly body?: Record<string, unknown> | undefined;
+  readonly headers?: Record<string, string> | undefined;
+  readonly service?: string | undefined;
+  readonly auth?: FetchAuthInput | undefined;
+  readonly fetcher?: FetchExecutor | undefined;
+  readonly maxContentLength?: number | undefined;
 }
 
 export interface JsonRequestResult<T = unknown> {
@@ -82,7 +82,7 @@ export function withInlineApiKey(
 ): FetchAuthInput | undefined {
   if (!envKeys || envKeys.length === 0) return undefined;
   for (const key of envKeys) {
-    const value = env[key];
+    const value = env[key]!;
     if (typeof value === 'string' && value.trim().length > 0) {
       return {
         type: 'api-key',
@@ -100,7 +100,7 @@ export function withInlineBearer(
 ): FetchAuthInput | undefined {
   if (!envKeys || envKeys.length === 0) return undefined;
   for (const key of envKeys) {
-    const value = env[key];
+    const value = env[key]!;
     if (typeof value === 'string' && value.trim().length > 0) {
       return {
         type: 'bearer',
@@ -130,7 +130,7 @@ export function resolveBaseUrl(
   defaultBaseUrl?: string,
 ): string | null {
   for (const key of envKeys ?? []) {
-    const value = env[key];
+    const value = env[key]!;
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim().replace(/\/+$/, '');
     }
@@ -196,12 +196,12 @@ export function resultFromRecord(
   rank: number,
   record: Record<string, unknown>,
   options: {
-    readonly urlKeys?: readonly string[];
-    readonly titleKeys?: readonly string[];
-    readonly snippetKeys?: readonly string[];
-    readonly displayUrlKeys?: readonly string[];
-    readonly evidenceKeys?: readonly string[];
-    readonly metadata?: Record<string, unknown>;
+    readonly urlKeys?: readonly string[] | undefined;
+    readonly titleKeys?: readonly string[] | undefined;
+    readonly snippetKeys?: readonly string[] | undefined;
+    readonly displayUrlKeys?: readonly string[] | undefined;
+    readonly evidenceKeys?: readonly string[] | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
   } = {},
 ): WebSearchResult | null {
   const url = firstString(record, options.urlKeys ?? ['url', 'link', 'id']);
@@ -229,7 +229,7 @@ export function resultFromRecord(
 
 export function firstString(record: Record<string, unknown>, keys: readonly string[]): string | undefined {
   for (const key of keys) {
-    const value = record[key];
+    const value = record[key]!;
     if (typeof value === 'string' && value.trim().length > 0) return value.trim();
   }
   return undefined;
@@ -241,7 +241,7 @@ function providerEvidence(
   keys: readonly string[] | undefined,
 ): WebSearchEvidence[] | undefined {
   for (const key of keys ?? []) {
-    const value = record[key];
+    const value = record[key]!;
     if (typeof value !== 'string' || value.trim().length === 0) continue;
     return makeEvidence(url, value, { providerField: key });
   }

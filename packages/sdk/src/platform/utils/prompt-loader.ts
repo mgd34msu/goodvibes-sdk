@@ -81,8 +81,8 @@ export function readPromptFile(
 export interface LoadSystemPromptOptions {
   readonly workingDirectory: string;
   readonly homeDirectory: string;
-  readonly getConfigPath?: () => string | undefined;
-  readonly argv?: readonly string[];
+  readonly getConfigPath?: (() => string | undefined) | undefined | undefined;
+  readonly argv?: readonly string[] | undefined;
 }
 
 export function loadSystemPrompt(

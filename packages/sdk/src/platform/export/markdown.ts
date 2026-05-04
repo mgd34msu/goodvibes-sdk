@@ -8,25 +8,25 @@ import type { ContentPart } from '../providers/interface.js';
 export interface ExportMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string | ContentPart[];
-  toolCalls?: ToolCall[];
-  callId?: string;
-  toolName?: string;
-  reasoningContent?: string;
-  reasoningSummary?: string;
+  toolCalls?: ToolCall[] | undefined;
+  callId?: string | undefined;
+  toolName?: string | undefined;
+  reasoningContent?: string | undefined;
+  reasoningSummary?: string | undefined;
   usage?: {
     inputTokens: number;
     outputTokens: number;
-    cacheReadTokens?: number;
-    cacheWriteTokens?: number;
+    cacheReadTokens?: number | undefined;
+    cacheWriteTokens?: number | undefined;
   };
-  cancelled?: boolean;
+  cancelled?: boolean | undefined;
 }
 
 export interface ExportMetadata {
-  model?: string;
-  provider?: string;
-  sessionId?: string;
-  title?: string;
+  model?: string | undefined;
+  provider?: string | undefined;
+  sessionId?: string | undefined;
+  title?: string | undefined;
 }
 
 /**

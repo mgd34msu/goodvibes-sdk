@@ -38,7 +38,7 @@ export interface DaemonHomeOptions {
   /** Value of --daemon-home CLI flag, if provided. */
   readonly daemonHomeArg?: string | undefined;
   /** Override process.env for testing. */
-  readonly env?: NodeJS.ProcessEnv;
+  readonly env?: NodeJS.ProcessEnv | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +156,7 @@ export function readDaemonSetting(daemonHomeDir: string, key: string): string | 
   try {
     const raw = readFileSync(settingsPath, 'utf-8');
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const val = parsed[key];
+    const val = parsed[key]!;
     return typeof val === 'string' ? val : undefined;
   } catch {
     return undefined;

@@ -112,7 +112,7 @@ interface DaemonHttpRouterContext {
   readonly runtimeBus: RuntimeEventBus;
   readonly runtimeStore: RuntimeStore | null;
   readonly runtimeDispatch: DomainDispatch | null;
-  readonly batchManager?: DaemonBatchManager | null;
+  readonly batchManager?: DaemonBatchManager | null | undefined;
   readonly githubWebhookSecret: string | null;
   readonly authToken: () => string | null;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;
@@ -131,14 +131,14 @@ interface DaemonHttpRouterContext {
   readonly invokeGatewayMethodCall: (input: {
     readonly authToken: string;
     readonly methodId: string;
-    readonly query?: Record<string, unknown>;
-    readonly body?: unknown;
+    readonly query?: Record<string, unknown> | undefined;
+    readonly body?: unknown | undefined;
     readonly context?: {
-      readonly principalId?: string;
-      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer';
-      readonly admin?: boolean;
-      readonly scopes?: readonly string[];
-      readonly clientKind?: string;
+      readonly principalId?: string | undefined;
+      readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | 'remote-peer' | undefined;
+      readonly admin?: boolean | undefined;
+      readonly scopes?: readonly string[] | undefined;
+      readonly clientKind?: string | undefined;
     };
   }) => Promise<{ status: number; ok: boolean; body: unknown }>;
   readonly queueSurfaceReplyFromBinding: (
@@ -160,13 +160,13 @@ interface DaemonHttpRouterContext {
    * (/api/companion/chat/...) are enabled. Injected by the daemon facade
    * when the companion feature is active.
    */
-  readonly companionChatManager?: CompanionChatManager | null;
+  readonly companionChatManager?: CompanionChatManager | null | undefined;
   /**
    * F16b: Resolve the current default provider/model from the provider registry.
    * Forwarded into CompanionChatRouteContext so that session-create can fill in
    * provider/model when the caller does not supply them.
    */
-  readonly resolveDefaultProviderModel?: () => { provider: string; model: string } | null;
+  readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
   /**
    * SecretsManager instance used to resolve provider API keys stored as secrets
    * rather than env vars. Threaded into ProviderRouteContext so that
@@ -174,7 +174,7 @@ interface DaemonHttpRouterContext {
    * Without this, the production router always passes undefined and the secrets
    * tier is permanently dead on live code paths.
    */
-  readonly secretsManager?: Pick<import('../../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null;
+  readonly secretsManager?: Pick<import('../../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
   readonly trySpawnAgent: (
     input: Parameters<AgentManager['spawn']>[0],
     logLabel?: string,
@@ -286,7 +286,7 @@ export class DaemonHttpRouter {
         parseJsonBody: (request) => this.parseJsonBody(request),
         requireRemotePeer: (request, scope) => this.context.requireRemotePeer(request, scope),
         distributedRuntime: this.context.distributedRuntime,
-      }, remoteWorkCompleteMatch[1], req);
+      }, remoteWorkCompleteMatch[1]!, req);
     }
 
     if (url.pathname === '/webhook/github' && req.method === 'POST') {
@@ -477,22 +477,22 @@ export class DaemonHttpRouter {
         requireAdmin: (request) => this.context.requireAdmin(request),
         sessionBroker: {
           start: () => this.context.sessionBroker.start(),
-          submitMessage: (input) => this.context.sessionBroker.submitMessage(
+          submitMessage: (input) => this!.context.sessionBroker.submitMessage(
             input as Parameters<SharedSessionBroker['submitMessage']>[0],
-          ),
-          steerMessage: (input) => this.context.sessionBroker.steerMessage(
+          ) as never,
+          steerMessage: (input) => this!.context.sessionBroker.steerMessage(
             input as Parameters<SharedSessionBroker['steerMessage']>[0],
-          ),
-          followUpMessage: (input) => this.context.sessionBroker.followUpMessage(
+          ) as never,
+          followUpMessage: (input) => this!.context.sessionBroker.followUpMessage(
             input as Parameters<SharedSessionBroker['followUpMessage']>[0],
-          ),
+          ) as never,
           bindAgent: async (sessionId, agentId) => {
             await this.context.sessionBroker.bindAgent(sessionId, agentId);
           },
           createSession: (input) => this.context.sessionBroker.createSession(
             input as Parameters<SharedSessionBroker['createSession']>[0],
           ),
-          getSession: (sessionId) => this.context.sessionBroker.getSession(sessionId),
+          getSession: (sessionId) => this.context.sessionBroker.getSession(sessionId) as never,
           getMessages: (sessionId, limit) => this.context.sessionBroker.getMessages(sessionId, limit),
           getInputs: (sessionId, limit) => this.context.sessionBroker.getInputs(sessionId, limit),
           closeSession: (sessionId) => this.context.sessionBroker.closeSession(sessionId),
@@ -521,7 +521,7 @@ export class DaemonHttpRouter {
             await this.context.automationManager.removeJob(jobId);
           },
           setEnabled: (jobId, enabled) => this.context.automationManager.setEnabled(jobId, enabled),
-          runNow: (jobId) => this.context.automationManager.runNow(jobId),
+          runNow: (jobId) => this.context.automationManager.runNow(jobId) as never,
           getSchedulerCapacity: () => this.context.automationManager.getSchedulerCapacity(),
         },
         normalizeAtSchedule,

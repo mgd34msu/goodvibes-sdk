@@ -17,24 +17,24 @@ export type DaemonBatchJobStatus =
 
 export interface DaemonBatchChatRequest {
   readonly messages: readonly ProviderMessage[];
-  readonly tools?: readonly ToolDefinition[];
-  readonly systemPrompt?: string;
-  readonly maxTokens?: number;
-  readonly reasoningEffort?: ChatRequest['reasoningEffort'];
-  readonly reasoningSummary?: boolean;
+  readonly tools?: readonly ToolDefinition[] | undefined;
+  readonly systemPrompt?: string | undefined;
+  readonly maxTokens?: number | undefined;
+  readonly reasoningEffort?: ChatRequest['reasoningEffort'] | undefined;
+  readonly reasoningSummary?: boolean | undefined;
 }
 
 export interface CreateDaemonBatchJobInput {
-  readonly provider?: string;
-  readonly model?: string;
+  readonly provider?: string | undefined;
+  readonly model?: string | undefined;
   readonly request: DaemonBatchChatRequest;
-  readonly executionMode?: 'batch' | 'live';
+  readonly executionMode?: 'batch' | 'live' | undefined;
   readonly source?: {
     readonly kind: 'daemon-api' | 'cloudflare-worker' | 'cloudflare-queue' | 'automation' | 'client';
-    readonly id?: string;
+    readonly id?: string | undefined;
   };
-  readonly metadata?: Record<string, string>;
-  readonly flush?: boolean;
+  readonly metadata?: Record<string, string> | undefined;
+  readonly flush?: boolean | undefined;
 }
 
 export interface DaemonBatchJob {
@@ -45,18 +45,18 @@ export interface DaemonBatchJob {
   readonly createdAt: number;
   readonly updatedAt: number;
   readonly request: DaemonBatchChatRequest;
-  readonly source?: CreateDaemonBatchJobInput['source'];
-  readonly metadata?: Record<string, string>;
+  readonly source?: CreateDaemonBatchJobInput['source'] | undefined;
+  readonly metadata?: Record<string, string> | undefined;
   readonly attempts: number;
-  readonly providerBatchId?: string;
-  readonly providerBatchStatus?: ProviderBatchStatus;
-  readonly submittedAt?: number;
-  readonly completedAt?: number;
-  readonly result?: ChatResponse;
+  readonly providerBatchId?: string | undefined;
+  readonly providerBatchStatus?: ProviderBatchStatus | undefined;
+  readonly submittedAt?: number | undefined;
+  readonly completedAt?: number | undefined;
+  readonly result?: ChatResponse | undefined;
   readonly error?: {
     readonly message: string;
-    readonly code?: string;
-    readonly raw?: unknown;
+    readonly code?: string | undefined;
+    readonly raw?: unknown | undefined;
   };
 }
 

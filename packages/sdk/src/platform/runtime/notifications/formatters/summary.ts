@@ -53,17 +53,17 @@ export function formatBatchSummary(notifications: Notification[]): string {
   }
 
   if (notifications.length === 1) {
-    return formatNotificationSummary(notifications[0]);
+    return formatNotificationSummary(notifications[0]!);
   }
 
   const last = notifications[notifications.length - 1];
-  const label = LEVEL_LABELS[last.level];
+  const label = LEVEL_LABELS[last!.level];
   const count = notifications.length;
   const preview =
-    last.body && last.body.length > MAX_BODY_PREVIEW
-      ? `${last.body.slice(0, MAX_BODY_PREVIEW)}…`
-      : last.body;
+    last!.body && last!.body.length > MAX_BODY_PREVIEW
+      ? `${last!.body.slice(0, MAX_BODY_PREVIEW)}…`
+      : last!.body;
 
   const suffix = preview ? ` — last: ${preview}` : '';
-  return `[${label}] ${last.title} (\xD7${count} events)${suffix}`;
+  return `[${label}] ${last!.title} (\xD7${count} events)${suffix}`;
 }

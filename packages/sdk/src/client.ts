@@ -86,7 +86,7 @@ export interface GoodVibesSdkOptions {
    *
    * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
    */
-  readonly authToken?: string | null;
+  readonly authToken?: string | null | undefined;
 
   /**
    * Async token resolver called before every authenticated request.
@@ -100,7 +100,7 @@ export interface GoodVibesSdkOptions {
    *
    * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
    */
-  readonly getAuthToken?: AuthTokenResolver;
+  readonly getAuthToken?: AuthTokenResolver | undefined;
 
   /**
    * A mutable token store implementing `getToken / setToken / clearToken`.
@@ -113,44 +113,44 @@ export interface GoodVibesSdkOptions {
    *
    * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
    */
-  readonly tokenStore?: GoodVibesTokenStore;
+  readonly tokenStore?: GoodVibesTokenStore | undefined;
 
   /**
    * Custom `fetch` implementation. Falls back to `globalThis.fetch`.
    * Required in environments without a native fetch (e.g. older Node.js).
    */
-  readonly fetch?: typeof fetch;
+  readonly fetch?: typeof fetch | undefined;
 
   /**
    * Static extra headers sent on every request, e.g.
    * `{ 'X-Tenant-Id': 'acme' }`.
    */
-  readonly headers?: HeadersInit;
+  readonly headers?: HeadersInit | undefined;
 
   /**
    * Async resolver for per-request headers. Called on each request after the
    * auth header is set. Useful for adding request-scoped tracing headers.
    */
-  readonly getHeaders?: HeaderResolver;
+  readonly getHeaders?: HeaderResolver | undefined;
 
   /**
    * HTTP retry policy for transient failures (408, 429, 5xx).
    * Runtime-specific factories (e.g. `createBrowserGoodVibesSdk`,
    * `createReactNativeGoodVibesSdk`) apply sensible defaults; pass this to override.
    */
-  readonly retry?: HttpRetryPolicy;
+  readonly retry?: HttpRetryPolicy | undefined;
 
   /**
    * Custom `WebSocket` constructor. Falls back to `globalThis.WebSocket`.
    * Required in Node.js < 21 or when using a polyfill.
    */
-  readonly WebSocketImpl?: typeof WebSocket;
+  readonly WebSocketImpl?: typeof WebSocket | undefined;
 
   /**
    * Options that control realtime transport behaviour (SSE and WebSocket
    * reconnect policies, error callback).
    */
-  readonly realtime?: GoodVibesRealtimeOptions;
+  readonly realtime?: GoodVibesRealtimeOptions | undefined;
 
   /**
    * Optional observer for SDK-level observability hooks.
@@ -162,7 +162,7 @@ export interface GoodVibesSdkOptions {
    * All observer methods are wrapped in a silent try/catch — observer
    * exceptions never propagate into SDK logic.
    */
-  readonly observer?: SDKObserver;
+  readonly observer?: SDKObserver | undefined;
 
   /**
    * Initial middleware chain applied to every HTTP request/response cycle.
@@ -183,7 +183,7 @@ export interface GoodVibesSdkOptions {
    *   ],
    * });
    */
-  readonly middleware?: TransportMiddleware[];
+  readonly middleware?: TransportMiddleware[] | undefined;
 
   /**
    * Options for silent token auto-refresh.
@@ -197,16 +197,16 @@ export interface GoodVibesSdkOptions {
    *   401 retry re-reads the token store (useful when an external party updates
    *   it). See `AutoRefreshOptions.refresh` for a full example.
    */
-  readonly autoRefresh?: AutoRefreshOptions;
+  readonly autoRefresh?: AutoRefreshOptions | undefined;
 }
 
 /**
  * Options controlling realtime transport behaviour.
  */
 export interface GoodVibesRealtimeOptions {
-  readonly sseReconnect?: StreamReconnectPolicy;
-  readonly webSocketReconnect?: StreamReconnectPolicy;
-  readonly onError?: (error: unknown) => void;
+  readonly sseReconnect?: StreamReconnectPolicy | undefined;
+  readonly webSocketReconnect?: StreamReconnectPolicy | undefined;
+  readonly onError?: ((error: unknown) => void) | undefined | undefined;
 }
 
 /**
@@ -341,7 +341,7 @@ function createClientOptions<T extends OperatorSdkOptions | PeerSdkOptions>(
   // The `as T` cast is necessary because the return type is generic (T extends
   // a union of ClientOptions subtypes). The object literal satisfies all members
   // of GoodVibesSdkOptions; T is always a structural subset of that shape.
-  } as T;
+  } as unknown as T;
 }
 
 /**

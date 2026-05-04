@@ -28,11 +28,11 @@ export type WorkflowEvent =
       score: number;
       passed: boolean;
       /** Number of constraints that were satisfied (optional; populated in Phase 2+). */
-      constraintsSatisfied?: number;
+      constraintsSatisfied?: number | undefined;
       /** Total number of constraints evaluated (optional; populated in Phase 2+). */
-      constraintsTotal?: number;
+      constraintsTotal?: number | undefined;
       /** IDs of constraints that were NOT satisfied (optional; populated in Phase 2+). */
-      unsatisfiedConstraintIds?: string[];
+      unsatisfiedConstraintIds?: string[] | undefined;
     }
   | {
       type: 'WORKFLOW_FIX_ATTEMPTED';
@@ -40,12 +40,12 @@ export type WorkflowEvent =
       attempt: number;
       maxAttempts: number;
       /** Constraint IDs this fix iteration is targeting (optional; populated in Phase 2+). */
-      targetConstraintIds?: string[];
+      targetConstraintIds?: string[] | undefined;
     }
   | { type: 'WORKFLOW_GATE_RESULT'; chainId: string; gate: string; passed: boolean }
   | { type: 'WORKFLOW_CHAIN_PASSED'; chainId: string }
   | { type: 'WORKFLOW_CHAIN_FAILED'; chainId: string; reason: string }
-  | { type: 'WORKFLOW_AUTO_COMMITTED'; chainId: string; commitHash?: string }
+  | { type: 'WORKFLOW_AUTO_COMMITTED'; chainId: string; commitHash?: string | undefined }
   | { type: 'WORKFLOW_CASCADE_ABORTED'; chainId: string; reason: string }
   | { type: 'WORKFLOW_CONSTRAINTS_ENUMERATED'; chainId: string; constraints: Constraint[] };
 

@@ -43,16 +43,16 @@ export interface OrchestrationNodeRecord {
   title: string;
   role: OrchestrationNodeRole;
   status: OrchestrationNodeState;
-  parentNodeId?: string;
+  parentNodeId?: string | undefined;
   childNodeIds: string[];
   dependencyNodeIds: string[];
-  taskId?: string;
-  agentId?: string;
-  latestMessage?: string;
-  startedAt?: number;
-  endedAt?: number;
-  error?: string;
-  contract?: OrchestrationTaskContract;
+  taskId?: string | undefined;
+  agentId?: string | undefined;
+  latestMessage?: string | undefined;
+  startedAt?: number | undefined;
+  endedAt?: number | undefined;
+  error?: string | undefined;
+  contract?: OrchestrationTaskContract | undefined;
 }
 
 export interface OrchestrationGraphRecord {
@@ -63,13 +63,13 @@ export interface OrchestrationGraphRecord {
   nodeOrder: string[];
   nodes: Map<string, OrchestrationNodeRecord>;
   createdAt: number;
-  startedAt?: number;
-  endedAt?: number;
+  startedAt?: number | undefined;
+  endedAt?: number | undefined;
   lastRecursionGuard?: {
     depth: number;
     activeAgents: number;
     reason: string;
-    nodeId?: string;
+    nodeId?: string | undefined;
     triggeredAt: number;
   };
 }

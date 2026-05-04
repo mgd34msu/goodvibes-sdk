@@ -34,14 +34,14 @@ export interface PhasedTool extends Tool {
    * For example, low-risk read tools may skip `prehook` and `posthook`
    * to avoid unnecessary permission checks and audit overhead.
    */
-  skipPhases?: ToolExecutionPhase[];
+  skipPhases?: ToolExecutionPhase[] | undefined;
 
   /**
    * Per-phase timeout overrides in milliseconds.
    * If not set, the phased executor's global defaults apply.
    * Only meaningful for `executing` in most cases; hook phases are fast.
    */
-  phaseTimeouts?: Partial<Record<ToolExecutionPhase, number>>;
+  phaseTimeouts?: Partial<Record<ToolExecutionPhase, number>> | undefined;
 
   /**
    * Whether this tool supports cooperative cancellation via AbortSignal.
@@ -65,8 +65,8 @@ export function asPhasedTool(
   options: {
     category: PhasedTool['category'];
     cancellable: boolean;
-    skipPhases?: ToolExecutionPhase[];
-    phaseTimeouts?: Partial<Record<ToolExecutionPhase, number>>;
+    skipPhases?: ToolExecutionPhase[] | undefined;
+    phaseTimeouts?: Partial<Record<ToolExecutionPhase, number>> | undefined;
   },
 ): PhasedTool {
   return {

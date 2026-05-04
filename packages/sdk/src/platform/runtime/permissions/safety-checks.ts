@@ -88,13 +88,13 @@ export interface SafetyCheckResult {
   /** Whether the call is blocked by a safety check. */
   blocked: boolean;
   /** Reason code if blocked (always a SAFETY_* code). */
-  reason?: DecisionReason;
+  reason?: DecisionReason | undefined;
   /** Human-readable explanation for the evaluation trace. */
-  detail?: string;
+  detail?: string | undefined;
   /** Steps added to the trace during evaluation (one per check run). */
   steps: EvaluationStep[];
   /** Semantic classification if determined by the safety layer. */
-  classification?: CommandClassification;
+  classification?: CommandClassification | undefined;
 }
 
 // ── Exec-class tool detection ──────────────────────────────────────────────────
@@ -128,7 +128,7 @@ const DB_CLASS_TOOLS: ReadonlySet<string> = new Set([
 function extractPrimaryArg(args: Record<string, unknown>): string | null {
   const candidates = ['command', 'cmd', 'path', 'query', 'sql', 'script'];
   for (const key of candidates) {
-    if (typeof args[key] === 'string') return args[key] as string;
+    if (typeof args[key]! === 'string') return args[key]! as string;
   }
   // Fallback: first string value
   for (const value of Object.values(args)) {

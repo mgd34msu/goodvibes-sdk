@@ -16,15 +16,15 @@ interface ReplHistoryEntry {
   readonly ts: number;
   readonly runtime: 'javascript' | 'typescript' | 'python' | 'sql' | 'graphql';
   readonly expression: string;
-  readonly sessionId?: string;
-  readonly backend?: string;
-  readonly launchSummary?: string;
-  readonly result?: string;
-  readonly error?: string;
+  readonly sessionId?: string | undefined;
+  readonly backend?: string | undefined;
+  readonly launchSummary?: string | undefined;
+  readonly result?: string | undefined;
+  readonly error?: string | undefined;
 }
 
 type ReplExecutionInput = ReplToolInput & {
-  readonly workspaceRoot?: string;
+  readonly workspaceRoot?: string | undefined;
 };
 
 export interface ReplToolOptions {
@@ -38,7 +38,7 @@ function resolveHistoryPath(workspaceRoot: string, surfaceRoot: string): string 
 function createReplEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
   const env: Record<string, string> = {};
   for (const key of REPL_ENV_ALLOWLIST) {
-    const value = process.env[key];
+    const value = process.env[key]!;
     if (value !== undefined) env[key] = value;
   }
   return { ...env, ...extra };

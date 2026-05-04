@@ -125,7 +125,7 @@ export function pasteImageFromClipboard(): { data: string; mediaType: string } |
         // raw is like: «data PNGf89504e47...»
         const match = raw.match(/«data PNGf([0-9a-fA-F]+)»/);
         if (match) {
-          const osaBuf = Buffer.from(match[1], 'hex');
+          const osaBuf = Buffer.from(match[1]!, 'hex');
           if (osaBuf.length > MIN_IMAGE_BYTES) {
             return { data: osaBuf.toString('base64'), mediaType: 'image/png' };
           }

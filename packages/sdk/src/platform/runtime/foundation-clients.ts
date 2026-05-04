@@ -26,7 +26,7 @@ export interface RuntimeFoundationClientsOptions extends OperatorClientServicesO
     getSnapshot(): UiTasksSnapshot;
   };
   readonly taskManager: TaskManager;
-  readonly opsControlPlane?: OpsControlPlane;
+  readonly opsControlPlane?: OpsControlPlane | undefined;
 }
 
 export interface RuntimeFoundationClients {

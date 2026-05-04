@@ -196,7 +196,7 @@ async function runCommand(
     return runCommandWithProgress(processManager, overflowHandler, cmdStr, cmdInput, workingDirectory, cwd, mergedEnv, timeoutMs, startTime);
   }
 
-  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { cwd, env: mergedEnv, stdout: 'pipe', stderr: 'pipe' });
+  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
   let timedOut = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
   let timeoutResolve!: () => void;
@@ -219,8 +219,8 @@ async function runCommand(
   try {
     type ProcResult = [string, string, number];
     const procPromise = Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
+      new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
+      new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
       proc.exited,
     ]) as Promise<ProcResult>;
 
@@ -278,7 +278,7 @@ async function runCommandWithProgress(
   startTime: number,
 ): Promise<ExecCommandResult> {
   const progressFile = initProgressFile(cmdStr, workingDirectory);
-  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { cwd, env: mergedEnv, stdout: 'pipe', stderr: 'pipe' });
+  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
   let timedOut = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
   let timeoutResolve!: () => void;
@@ -302,7 +302,7 @@ async function runCommandWithProgress(
   let stderrBuf = '';
   const readStdout = async (): Promise<void> => {
     const decoder = new TextDecoder();
-    const reader = proc.stdout.getReader();
+    const reader = (proc.stdout as ReadableStream<Uint8Array>).getReader();
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -319,7 +319,7 @@ async function runCommandWithProgress(
   };
   const readStderr = async (): Promise<void> => {
     const decoder = new TextDecoder();
-    const reader = proc.stderr.getReader();
+    const reader = (proc.stderr as ReadableStream<Uint8Array>).getReader();
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -393,7 +393,7 @@ async function runUntil(
   const pattern = compileSafeRegExp(until.pattern, '', { operation: 'exec until pattern' });
   const untilTimeout = until.timeout_ms ?? timeoutMs;
   const killAfter = until.kill_after ?? false;
-  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { cwd, env, stdout: 'pipe', stderr: 'pipe' });
+  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
 
   let stdoutBuf = '';
   let stderrBuf = '';
@@ -428,7 +428,7 @@ async function runUntil(
   };
 
   const timeoutPromise = sleep(untilTimeout).then(() => undefined);
-  await Promise.race([Promise.all([readStream(proc.stdout, false), readStream(proc.stderr, true)]), timeoutPromise]);
+  await Promise.race([Promise.all([readStream(proc.stdout as ReadableStream<Uint8Array>, false), readStream(proc.stderr as ReadableStream<Uint8Array>, true)]), timeoutPromise]);
 
   if (!killAfter && !matched) {
     killExecProcess(proc, cmdStr, 'timeout');
@@ -507,7 +507,7 @@ export function isRetryableExecResult(
   const effectiveAllowed = allowed ?? ['network', 'lock', 'busy'];
 
   for (const category of effectiveAllowed) {
-    const patterns = CATEGORY_PATTERNS[category] ?? [];
+    const patterns = CATEGORY_PATTERNS[category]! ?? [];
     for (const pat of patterns) {
       if (pat.test(combined)) return true;
     }
@@ -663,8 +663,8 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
 export function createExecTool(
   processManager: ProcessManager,
   options: {
-    readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
-    readonly overflowHandler?: OverflowHandler;
+    readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+    readonly overflowHandler?: OverflowHandler | undefined;
   } = {},
 ): Tool {
   if (!options.overflowHandler) {

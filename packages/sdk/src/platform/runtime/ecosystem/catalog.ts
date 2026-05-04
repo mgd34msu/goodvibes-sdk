@@ -7,10 +7,10 @@ export type EcosystemEntryKind = 'plugin' | 'skill' | 'hook-pack' | 'policy-pack
 export interface EcosystemCatalogPathOptions {
   readonly cwd: string;
   readonly homeDir: string;
-  readonly projectCatalogRoot?: string;
-  readonly userCatalogRoot?: string;
-  readonly projectInstallRoot?: string;
-  readonly userInstallRoot?: string;
+  readonly projectCatalogRoot?: string | undefined;
+  readonly userCatalogRoot?: string | undefined;
+  readonly projectInstallRoot?: string | undefined;
+  readonly userInstallRoot?: string | undefined;
 }
 
 export interface EcosystemCatalogEntry {
@@ -18,29 +18,29 @@ export interface EcosystemCatalogEntry {
   readonly kind: EcosystemEntryKind;
   readonly name: string;
   readonly summary: string;
-  readonly version?: string;
-  readonly author?: string;
+  readonly version?: string | undefined;
+  readonly author?: string | undefined;
   readonly source: string;
   readonly tags: readonly string[];
-  readonly trustNotes?: string;
-  readonly installHint?: string;
-  readonly provenance?: string;
-  readonly signature?: string;
-  readonly updateHint?: string;
+  readonly trustNotes?: string | undefined;
+  readonly installHint?: string | undefined;
+  readonly provenance?: string | undefined;
+  readonly signature?: string | undefined;
+  readonly updateHint?: string | undefined;
   readonly runtimeFit?: {
-    readonly minAppVersion?: string;
-    readonly maxAppVersion?: string;
-    readonly platforms?: readonly string[];
-    readonly requiresSandbox?: boolean;
+    readonly minAppVersion?: string | undefined;
+    readonly maxAppVersion?: string | undefined;
+    readonly platforms?: readonly string[] | undefined;
+    readonly requiresSandbox?: boolean | undefined;
   };
   readonly compatibility?: {
-    readonly minAppVersion?: string;
-    readonly maxAppVersion?: string;
-    readonly platforms?: readonly string[];
-    readonly requiresSandbox?: boolean;
-    readonly appVersion?: string;
-    readonly status?: 'supported' | 'warning';
-    readonly reasons?: readonly string[];
+    readonly minAppVersion?: string | undefined;
+    readonly maxAppVersion?: string | undefined;
+    readonly platforms?: readonly string[] | undefined;
+    readonly requiresSandbox?: boolean | undefined;
+    readonly appVersion?: string | undefined;
+    readonly status?: 'supported' | 'warning' | undefined;
+    readonly reasons?: readonly string[] | undefined;
   };
 }
 
@@ -260,8 +260,8 @@ function compareVersions(a: string, b: string): number {
   const right = parseVersionParts(b);
   const length = Math.max(left.length, right.length);
   for (let index = 0; index < length; index++) {
-    const l = left[index] ?? 0;
-    const r = right[index] ?? 0;
+    const l = left[index]! ?? 0;
+    const r = right[index]! ?? 0;
     if (l > r) return 1;
     if (l < r) return -1;
   }

@@ -28,7 +28,7 @@ export interface ControlPlaneServerConfig {
   enabled: boolean;
   host: string;
   port: number;
-  baseUrl?: string;
+  baseUrl?: string | undefined;
   streamingMode: ControlPlaneStreamingMode;
   sessionTtlMs: number;
 }
@@ -39,7 +39,7 @@ export interface ControlPlaneClientDescriptor {
   label: string;
   connectedAt: number;
   lastSeenAt: number;
-  userId?: string;
+  userId?: string | undefined;
 }
 
 export interface ControlPlaneEventSubscription {
@@ -55,10 +55,10 @@ export interface ControlPlaneSurfaceMessage {
   createdAt: number;
   title: string;
   body: string;
-  level?: 'info' | 'success' | 'warn' | 'error';
-  routeId?: string;
-  surfaceId?: string;
-  clientId?: string;
-  attachments?: readonly ArtifactAttachment[];
-  metadata?: Record<string, unknown>;
+  level?: 'info' | 'success' | 'warn' | 'error' | undefined;
+  routeId?: string | undefined;
+  surfaceId?: string | undefined;
+  clientId?: string | undefined;
+  attachments?: readonly ArtifactAttachment[] | undefined;
+  metadata?: Record<string, unknown> | undefined;
 }

@@ -14,9 +14,9 @@ const bplistParser = bplistParserDefault as unknown as {
 };
 
 export interface BrowserKnowledgeReadOptions {
-  readonly limit?: number;
-  readonly sinceMs?: number;
-  readonly sourceKinds?: readonly ('history' | 'bookmark')[];
+  readonly limit?: number | undefined;
+  readonly sinceMs?: number | undefined;
+  readonly sourceKinds?: readonly ('history' | 'bookmark')[] | undefined;
 }
 
 const CHROMIUM_EPOCH_OFFSET_MS = 11_644_473_600_000;
@@ -129,12 +129,12 @@ async function readChromiumHistory(profile: BrowserKnowledgeProfile, options: Br
 }
 
 interface ChromiumBookmarkNode {
-  readonly id?: string;
-  readonly type?: 'url' | 'folder';
-  readonly name?: string;
-  readonly url?: string;
-  readonly date_added?: string;
-  readonly children?: readonly ChromiumBookmarkNode[];
+  readonly id?: string | undefined;
+  readonly type?: 'url' | 'folder' | undefined;
+  readonly name?: string | undefined;
+  readonly url?: string | undefined;
+  readonly date_added?: string | undefined;
+  readonly children?: readonly ChromiumBookmarkNode[] | undefined;
 }
 
 function walkChromiumBookmarkNode(
@@ -176,7 +176,7 @@ async function readChromiumBookmarks(profile: BrowserKnowledgeProfile, options: 
   if (!profile.bookmarksPath) return [];
   const limit = normalizeLimit(options.limit);
   const parsed = JSON.parse(await readFile(profile.bookmarksPath, 'utf8')) as {
-    roots?: Record<string, ChromiumBookmarkNode | undefined>;
+    roots?: Record<string, ChromiumBookmarkNode | undefined> | undefined;
   };
   const out: BrowserBookmarkEntry[] = [];
   for (const key of ['bookmark_bar', 'other', 'synced']) {
@@ -253,7 +253,7 @@ function geckoFolderPath(parent: number, rows: Map<number, GeckoBookmarkRow>): s
     visited.add(current);
     const row = rows.get(current);
     if (!row) break;
-    const root = GECKO_ROOT_LABELS[current];
+    const root = GECKO_ROOT_LABELS[current]!;
     if (root) {
       segments.unshift(root);
       break;
@@ -363,12 +363,12 @@ async function readWebKitHistory(profile: BrowserKnowledgeProfile, options: Brow
 }
 
 interface WebKitBookmarkNode {
-  readonly WebBookmarkType?: string;
-  readonly URLString?: string;
-  readonly URIDictionary?: { readonly title?: string };
-  readonly Title?: string;
-  readonly Children?: readonly WebKitBookmarkNode[];
-  readonly WebBookmarkDateAdded?: number;
+  readonly WebBookmarkType?: string | undefined;
+  readonly URLString?: string | undefined;
+  readonly URIDictionary?: { readonly title?: string } | undefined;
+  readonly Title?: string | undefined;
+  readonly Children?: readonly WebKitBookmarkNode[] | undefined;
+  readonly WebBookmarkDateAdded?: number | undefined;
 }
 
 function walkWebKitBookmarkNode(
@@ -408,7 +408,7 @@ async function readWebKitBookmarks(profile: BrowserKnowledgeProfile, options: Br
   if (!profile.bookmarksPath || profile.browser === 'epiphany') return [];
   const [root] = bplistParser.parseFileSync<WebKitBookmarkNode>(profile.bookmarksPath);
   const out: BrowserBookmarkEntry[] = [];
-  for (const child of root.Children ?? []) {
+  for (const child of root!.Children ?? []) {
     walkWebKitBookmarkNode(profile, child, '', out, normalizeLimit(options.limit));
     if (out.length >= normalizeLimit(options.limit)) break;
   }

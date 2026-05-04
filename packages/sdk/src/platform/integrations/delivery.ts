@@ -167,7 +167,7 @@ export interface DeliveryQueueConfig {
 }
 
 export interface DeliveryQueueOptions extends Partial<DeliveryQueueConfig> {
-  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null;
+  readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
 }
 
 const DEFAULT_CONFIG: DeliveryQueueConfig = {

@@ -25,7 +25,7 @@ export interface OverlayInstance {
   /** Epoch ms when the overlay was opened. */
   openedAt: number;
   /** Optional opaque payload specific to each overlay type. */
-  payload?: unknown;
+  payload?: unknown | undefined;
   /** Z-order (higher = on top). */
   zIndex: number;
 }
@@ -48,7 +48,7 @@ export interface OverlayDomainState {
   /** Stack of currently visible overlay IDs in z-order (bottom → top). */
   visibleStack: OverlayId[];
   /** The overlay currently holding keyboard focus (undefined = none). */
-  focusedOverlayId?: OverlayId;
+  focusedOverlayId?: OverlayId | undefined;
 
   // ── Permission prompt state ─────────────────────────────────────────────────
   /**
@@ -60,7 +60,7 @@ export interface OverlayDomainState {
     toolName: string;
     category: string;
     args: Record<string, unknown>;
-  };
+  } | undefined;
 
   // ── Confirmation overlay state ─────────────────────────────────────────────
   /**
@@ -69,11 +69,11 @@ export interface OverlayDomainState {
    */
   pendingConfirmation?: {
     message: string;
-    detail?: string;
+    detail?: string | undefined;
     confirmLabel: string;
     cancelLabel: string;
     resolveKey: string;
-  };
+  } | undefined;
 }
 
 /**

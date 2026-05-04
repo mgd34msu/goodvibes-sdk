@@ -64,9 +64,9 @@ export interface SignedPolicyBundle<T = unknown> {
    * Hex-encoded HMAC-SHA256 of the canonical JSON of `{ bundleId, issuedAt, issuer, payload }`.
    * Absent when the bundle is unsigned.
    */
-  signature?: string;
+  signature?: string | undefined;
   /** Human-readable hint about the signer or issuer. */
-  issuer?: string;
+  issuer?: string | undefined;
 }
 
 /**

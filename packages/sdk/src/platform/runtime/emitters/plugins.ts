@@ -63,7 +63,7 @@ export function emitPluginError(
 export function emitPluginUnloading(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { pluginId: string; reason?: string }
+  data: { pluginId: string; reason?: string | undefined }
 ): void {
   bus.emit('plugins', createEventEnvelope('PLUGIN_UNLOADING', { type: 'PLUGIN_UNLOADING', ...data }, ctx));
 }

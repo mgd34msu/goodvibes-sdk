@@ -19,69 +19,69 @@ export interface CreateAutomationJobInput {
   readonly name: string;
   readonly prompt: string;
   readonly schedule: import('./schedules.js').AutomationScheduleDefinition;
-  readonly description?: string;
-  readonly model?: string;
-  readonly provider?: string;
-  readonly fallbackModels?: readonly string[];
-  readonly fallbacks?: readonly string[];
-  readonly routing?: ProviderModelRoutingPolicy;
-  readonly executionIntent?: ExecutionIntent;
-  readonly template?: string;
-  readonly target?: AutomationSessionTarget;
-  readonly reasoningEffort?: AutomationExecutionPolicy['reasoningEffort'];
-  readonly thinking?: string;
-  readonly wakeMode?: AutomationWakeMode;
-  readonly timeoutMs?: number;
-  readonly toolAllowlist?: readonly string[];
-  readonly autoApprove?: boolean;
-  readonly allowUnsafeExternalContent?: boolean;
-  readonly externalContentSource?: AutomationExternalContentSource;
-  readonly lightContext?: boolean;
-  readonly delivery?: Partial<AutomationDeliveryPolicy>;
-  readonly failure?: Partial<AutomationFailurePolicy>;
-  readonly enabled?: boolean;
-  readonly deleteAfterRun?: boolean;
+  readonly description?: string | undefined;
+  readonly model?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly fallbackModels?: readonly string[] | undefined;
+  readonly fallbacks?: readonly string[] | undefined;
+  readonly routing?: ProviderModelRoutingPolicy | undefined;
+  readonly executionIntent?: ExecutionIntent | undefined;
+  readonly template?: string | undefined;
+  readonly target?: AutomationSessionTarget | undefined;
+  readonly reasoningEffort?: AutomationExecutionPolicy['reasoningEffort'] | undefined;
+  readonly thinking?: string | undefined;
+  readonly wakeMode?: AutomationWakeMode | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly toolAllowlist?: readonly string[] | undefined;
+  readonly autoApprove?: boolean | undefined;
+  readonly allowUnsafeExternalContent?: boolean | undefined;
+  readonly externalContentSource?: AutomationExternalContentSource | undefined;
+  readonly lightContext?: boolean | undefined;
+  readonly delivery?: Partial<AutomationDeliveryPolicy> | undefined;
+  readonly failure?: Partial<AutomationFailurePolicy> | undefined;
+  readonly enabled?: boolean | undefined;
+  readonly deleteAfterRun?: boolean | undefined;
 }
 
 export interface UpdateAutomationJobInput {
-  readonly name?: string;
-  readonly prompt?: string;
-  readonly schedule?: import('./schedules.js').AutomationScheduleDefinition;
-  readonly description?: string;
-  readonly model?: string;
-  readonly provider?: string;
-  readonly fallbackModels?: readonly string[];
-  readonly fallbacks?: readonly string[];
-  readonly routing?: ProviderModelRoutingPolicy;
-  readonly executionIntent?: ExecutionIntent;
-  readonly template?: string;
-  readonly target?: AutomationSessionTarget;
-  readonly reasoningEffort?: AutomationExecutionPolicy['reasoningEffort'];
-  readonly thinking?: string;
-  readonly wakeMode?: AutomationWakeMode;
-  readonly timeoutMs?: number;
-  readonly toolAllowlist?: readonly string[];
-  readonly autoApprove?: boolean;
-  readonly allowUnsafeExternalContent?: boolean;
-  readonly externalContentSource?: AutomationExternalContentSource;
-  readonly lightContext?: boolean;
-  readonly delivery?: Partial<AutomationDeliveryPolicy>;
-  readonly failure?: Partial<AutomationFailurePolicy>;
-  readonly enabled?: boolean;
-  readonly deleteAfterRun?: boolean;
+  readonly name?: string | undefined;
+  readonly prompt?: string | undefined;
+  readonly schedule?: import('./schedules.js').AutomationScheduleDefinition | undefined;
+  readonly description?: string | undefined;
+  readonly model?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly fallbackModels?: readonly string[] | undefined;
+  readonly fallbacks?: readonly string[] | undefined;
+  readonly routing?: ProviderModelRoutingPolicy | undefined;
+  readonly executionIntent?: ExecutionIntent | undefined;
+  readonly template?: string | undefined;
+  readonly target?: AutomationSessionTarget | undefined;
+  readonly reasoningEffort?: AutomationExecutionPolicy['reasoningEffort'] | undefined;
+  readonly thinking?: string | undefined;
+  readonly wakeMode?: AutomationWakeMode | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly toolAllowlist?: readonly string[] | undefined;
+  readonly autoApprove?: boolean | undefined;
+  readonly allowUnsafeExternalContent?: boolean | undefined;
+  readonly externalContentSource?: AutomationExternalContentSource | undefined;
+  readonly lightContext?: boolean | undefined;
+  readonly delivery?: Partial<AutomationDeliveryPolicy> | undefined;
+  readonly failure?: Partial<AutomationFailurePolicy> | undefined;
+  readonly enabled?: boolean | undefined;
+  readonly deleteAfterRun?: boolean | undefined;
 }
 
 export interface SpawnAutomationTaskInput {
   readonly prompt: string;
-  readonly modelId?: string;
-  readonly modelProvider?: string;
-  readonly fallbackModels?: readonly string[];
-  readonly routing?: ProviderModelRoutingPolicy;
-  readonly executionIntent?: ExecutionIntent;
-  readonly template?: string;
-  readonly reasoningEffort?: AutomationExecutionPolicy['reasoningEffort'];
-  readonly toolAllowlist?: readonly string[];
-  readonly context?: string;
+  readonly modelId?: string | undefined;
+  readonly modelProvider?: string | undefined;
+  readonly fallbackModels?: readonly string[] | undefined;
+  readonly routing?: ProviderModelRoutingPolicy | undefined;
+  readonly executionIntent?: ExecutionIntent | undefined;
+  readonly template?: string | undefined;
+  readonly reasoningEffort?: AutomationExecutionPolicy['reasoningEffort'] | undefined;
+  readonly toolAllowlist?: readonly string[] | undefined;
+  readonly context?: string | undefined;
 }
 
 export function sortJobs(jobs: Iterable<AutomationJob>): AutomationJob[] {
@@ -145,11 +145,11 @@ export function normalizeOptionalString(value: string | undefined): string | und
 }
 
 export function normalizeProviderRoutingPolicy(input: {
-  readonly provider?: string;
-  readonly modelProvider?: string;
-  readonly fallbackModels?: readonly string[];
-  readonly fallbacks?: readonly string[];
-  readonly routing?: ProviderModelRoutingPolicy;
+  readonly provider?: string | undefined;
+  readonly modelProvider?: string | undefined;
+  readonly fallbackModels?: readonly string[] | undefined;
+  readonly fallbacks?: readonly string[] | undefined;
+  readonly routing?: ProviderModelRoutingPolicy | undefined;
 }): ProviderModelRoutingPolicy {
   const providerId = input.modelProvider ?? input.provider;
   const fallbackModels = normalizeStringList(

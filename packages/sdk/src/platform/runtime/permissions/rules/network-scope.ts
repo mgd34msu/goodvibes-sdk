@@ -60,8 +60,8 @@ function extractHostAndPort(
   // Try URL-shaped fields first
   const urlCandidates = ['url', 'endpoint', 'uri', 'href'];
   for (const key of urlCandidates) {
-    if (typeof args[key] === 'string') {
-      const raw = args[key] as string;
+    if (typeof args[key]! === 'string') {
+      const raw = args[key]! as string;
       try {
         const parsed = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
         const port = parsed.port ? parseInt(parsed.port, 10) : null;

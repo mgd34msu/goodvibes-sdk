@@ -57,7 +57,7 @@ export async function executeReferencesQuery(
     for (let i = 0; i < lines.length; i++) {
       if (locations.length >= maxResults) break;
       regex.lastIndex = 0;
-      if (regex.test(lines[i])) {
+      if (regex.test(lines[i]!)) {
         locations.push({ file, line: i + 1 });
       }
     }

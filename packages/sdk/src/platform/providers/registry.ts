@@ -294,7 +294,7 @@ export class ProviderRegistry {
    */
   has(id: string): boolean {
     if (this.providers.has(id)) return true;
-    const aliased = CATALOG_PROVIDER_NAME_ALIASES[id];
+    const aliased = CATALOG_PROVIDER_NAME_ALIASES[id]!;
     return aliased !== undefined && this.providers.has(aliased);
   }
 
@@ -332,7 +332,7 @@ export class ProviderRegistry {
     const p = this.providers.get(name);
     if (p) return p;
     // Check alias map — catalog may use a different name than the registered provider
-    const aliased = CATALOG_PROVIDER_NAME_ALIASES[name];
+    const aliased = CATALOG_PROVIDER_NAME_ALIASES[name]!;
     if (aliased) {
       const pa = this.providers.get(aliased);
       if (pa) return pa;
@@ -355,7 +355,7 @@ export class ProviderRegistry {
     const p = this.providers.get(name);
     if (p) return p;
     // Check alias map — catalog may use a different name than the registered provider
-    const aliased = CATALOG_PROVIDER_NAME_ALIASES[name];
+    const aliased = CATALOG_PROVIDER_NAME_ALIASES[name]!;
     if (aliased) {
       const pa = this.providers.get(aliased);
       if (pa) return pa;
@@ -557,10 +557,10 @@ export class ProviderRegistry {
       const traceId = `model:changed:${Date.now()}`;
       emitModelChanged(this.runtimeBus, { sessionId: 'system', source: 'provider-registry', traceId }, {
         registryKey: this.currentModelId,
-        provider: def.provider,
-        previous: previousRegistryKey !== this.currentModelId
-          ? { registryKey: previousRegistryKey, provider: previousProvider }
-          : undefined,
+        provider: def.provider ?? '',
+        ...(previousRegistryKey !== this.currentModelId
+          ? { previous: { registryKey: previousRegistryKey, provider: previousProvider ?? '' } }
+          : {}),
       });
     }
   }

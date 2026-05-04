@@ -180,7 +180,7 @@ export function createNtfyDeliveryStrategy(
       if (!topic) throw new Error('Missing ntfy topic');
       const ntfy = new NtfyIntegration(baseUrl, token ?? undefined);
       const baseUrlHint = String(configManager.get('controlPlane.baseUrl') ?? configManager.get('web.publicBaseUrl') ?? '');
-      const primaryAttachment = attachments[0];
+      const primaryAttachment = attachments[0]!;
       await ntfy.publish(topic, appendAttachmentSummary(request.body, attachments), {
         title: request.target.label ?? titleFromBody(request.body),
         ...(request.includeLinks && baseUrlHint ? { click: `${baseUrlHint.replace(/\/+$/, '')}/api/control-plane/web` } : {}),

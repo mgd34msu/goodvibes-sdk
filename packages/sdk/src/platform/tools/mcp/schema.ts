@@ -33,10 +33,10 @@ export const MCP_TOOL_SCHEMA: ToolDefinition = {
 
 export interface McpToolInput {
   readonly mode: 'servers' | 'tools' | 'schema' | 'resources' | 'security' | 'auth' | 'approve-quarantine' | 'set-trust' | 'set-role';
-  readonly view?: 'descriptor' | 'preview' | 'full';
-  readonly qualifiedName?: string;
-  readonly serverName?: string;
-  readonly operatorId?: string;
-  readonly trustMode?: 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked';
-  readonly role?: 'general' | 'docs' | 'filesystem' | 'git' | 'database' | 'browser' | 'deploy' | 'automation';
+  readonly view?: 'descriptor' | 'preview' | 'full' | undefined;
+  readonly qualifiedName?: string | undefined;
+  readonly serverName?: string | undefined;
+  readonly operatorId?: string | undefined;
+  readonly trustMode?: 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked' | undefined;
+  readonly role?: 'general' | 'docs' | 'filesystem' | 'git' | 'database' | 'browser' | 'deploy' | 'automation' | undefined;
 }

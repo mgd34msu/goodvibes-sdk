@@ -24,13 +24,13 @@ export interface LocalLedgerConfig {
    * When the file exceeds this size, it is renamed to `<filePath>.1` and a
    * fresh file is started. Defaults to 10 MB.
    */
-  readonly maxFileSizeBytes?: number;
+  readonly maxFileSizeBytes?: number | undefined;
   /**
    * Optional path for the typed event ledger file.
    * When provided, `recordEvent()` appends `LedgerEntry` lines here.
    * Defaults to `<filePath>.ledger.jsonl`.
    */
-  readonly ledgerFilePath?: string;
+  readonly ledgerFilePath?: string | undefined;
 }
 
 /**

@@ -8,10 +8,10 @@ const DEFAULT_HOME_ASSISTANT_RESPONSE_BYTES = 2_000_000;
 export interface HomeAssistantStateRecord {
   readonly entity_id: string;
   readonly state: string;
-  readonly attributes?: Record<string, unknown>;
-  readonly last_changed?: string;
-  readonly last_updated?: string;
-  readonly context?: Record<string, unknown>;
+  readonly attributes?: Record<string, unknown> | undefined;
+  readonly last_changed?: string | undefined;
+  readonly last_updated?: string | undefined;
+  readonly context?: Record<string, unknown> | undefined;
 }
 
 export interface HomeAssistantServiceRecord {
@@ -21,33 +21,33 @@ export interface HomeAssistantServiceRecord {
 
 export interface HomeAssistantClientOptions {
   readonly baseUrl: string;
-  readonly accessToken?: string;
-  readonly timeoutMs?: number;
-  readonly maxResponseBytes?: number;
+  readonly accessToken?: string | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly maxResponseBytes?: number | undefined;
 }
 
 export interface HomeAssistantGoodVibesEvent {
   readonly type: string;
-  readonly title?: string;
+  readonly title?: string | undefined;
   readonly body: string;
-  readonly speechText?: string;
-  readonly status?: string;
-  readonly jobId?: string;
-  readonly runId?: string;
-  readonly agentId?: string;
-  readonly sessionId?: string;
-  readonly routeId?: string;
-  readonly surfaceId?: string;
-  readonly externalId?: string;
-  readonly messageId?: string;
-  readonly replyToMessageId?: string;
-  readonly conversationId?: string;
-  readonly metadata?: Record<string, unknown>;
+  readonly speechText?: string | undefined;
+  readonly status?: string | undefined;
+  readonly jobId?: string | undefined;
+  readonly runId?: string | undefined;
+  readonly agentId?: string | undefined;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly surfaceId?: string | undefined;
+  readonly externalId?: string | undefined;
+  readonly messageId?: string | undefined;
+  readonly replyToMessageId?: string | undefined;
+  readonly conversationId?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export class HomeAssistantIntegration {
   private readonly baseUrl: string;
-  private readonly accessToken?: string;
+  private readonly accessToken?: string | undefined;
   private readonly timeoutMs: number;
   private readonly maxResponseBytes: number;
 
@@ -87,8 +87,8 @@ export class HomeAssistantIntegration {
   async callService(input: {
     readonly domain: string;
     readonly service: string;
-    readonly serviceData?: Record<string, unknown>;
-    readonly returnResponse?: boolean;
+    readonly serviceData?: Record<string, unknown> | undefined;
+    readonly returnResponse?: boolean | undefined;
   }): Promise<unknown> {
     const path = `/api/services/${encodeURIComponent(input.domain)}/${encodeURIComponent(input.service)}`
       + (input.returnResponse ? '?return_response' : '');
@@ -130,10 +130,10 @@ export class HomeAssistantIntegration {
   private async requestJson(
     path: string,
     options: {
-      readonly auth?: boolean;
-      readonly method?: string;
-      readonly body?: Record<string, unknown>;
-      readonly notFoundAsNull?: boolean;
+      readonly auth?: boolean | undefined;
+      readonly method?: string | undefined;
+      readonly body?: Record<string, unknown> | undefined;
+      readonly notFoundAsNull?: boolean | undefined;
     } = {},
   ): Promise<unknown> {
     const response = await this.request(path, options);
@@ -153,9 +153,9 @@ export class HomeAssistantIntegration {
   private async requestText(
     path: string,
     options: {
-      readonly auth?: boolean;
-      readonly method?: string;
-      readonly body?: Record<string, unknown>;
+      readonly auth?: boolean | undefined;
+      readonly method?: string | undefined;
+      readonly body?: Record<string, unknown> | undefined;
     } = {},
   ): Promise<string> {
     const response = await this.request(path, options);
@@ -169,9 +169,9 @@ export class HomeAssistantIntegration {
   private async request(
     path: string,
     options: {
-      readonly auth?: boolean;
-      readonly method?: string;
-      readonly body?: Record<string, unknown>;
+      readonly auth?: boolean | undefined;
+      readonly method?: string | undefined;
+      readonly body?: Record<string, unknown> | undefined;
     },
   ): Promise<Response> {
     if (options.auth && !this.accessToken) {

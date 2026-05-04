@@ -86,14 +86,16 @@ export class OpenAIProvider implements LLMProvider {
             ...(maxTokens ? { max_tokens: maxTokens } : {}),
             stream: true,
             stream_options: { include_usage: true },
-          },
-          { signal },
-        );
+          } as Parameters<typeof this.client.chat.completions.create>[0],
+          signal !== undefined ? { signal } : undefined,
+        ) as unknown as AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & {
+          controller: AbortController;
+        };
 
         const accToolCalls: Map<number, { id: string; name: string; args: string }> = new Map();
 
         for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta;
+          const delta = chunk.choices[0]!?.delta;
           const textDelta = extractOpenAIStreamTextDelta(chunk);
           for (const contentDelta of textDelta.content) {
             responseText += contentDelta;
@@ -120,7 +122,7 @@ export class OpenAIProvider implements LLMProvider {
             }
           }
 
-          const finishReason = chunk.choices[0]?.finish_reason;
+          const finishReason = chunk.choices[0]!?.finish_reason;
           if (finishReason) {
             rawStopReason = finishReason;
             stopReason = mapOpenAIStopReason(finishReason);
@@ -203,7 +205,7 @@ export class OpenAIProvider implements LLMProvider {
         phase: 'request',
       });
     }
-    const embedding = response.data[0]?.embedding ?? [];
+    const embedding = response.data[0]!?.embedding ?? [];
     return {
       vector: Float32Array.from(embedding),
       dimensions: embedding.length,

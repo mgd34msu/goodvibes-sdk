@@ -44,7 +44,7 @@ export interface ActiveToolCall {
   /** Phase timestamps keyed by ToolExecutionState. */
   phaseTimestamps: Partial<Record<ToolExecutionState, number>>;
   /** Error message if state === 'failed'. */
-  error?: string;
+  error?: string | undefined;
 }
 
 /** Token usage accumulated for the current or most recent turn. */
@@ -63,13 +63,13 @@ export interface StreamProgress {
   /** Latest reasoning delta (if any). */
   reasoningAccumulated: string;
   /** Compact preview of the most recent partial tool call streamed so far. */
-  partialToolPreview?: string;
+  partialToolPreview?: string | undefined;
   /** Number of delta events received. */
   deltaCount: number;
   /** Epoch ms of the first delta. */
-  firstDeltaAt?: number;
+  firstDeltaAt?: number | undefined;
   /** Epoch ms of the most recent delta. */
-  lastDeltaAt?: number;
+  lastDeltaAt?: number | undefined;
 }
 
 export interface TurnReconciliationRecord {
@@ -97,19 +97,19 @@ export interface ConversationDomainState {
   /** Current state of the turn lifecycle machine. */
   turnState: TurnState;
   /** Unique ID of the current turn (undefined when idle). */
-  currentTurnId?: string;
+  currentTurnId?: string | undefined;
   /** Epoch ms when the current turn started (undefined when idle). */
-  turnStartedAt?: number;
+  turnStartedAt?: number | undefined;
   /** Epoch ms when the current turn completed/failed (undefined while active). */
-  turnEndedAt?: number;
+  turnEndedAt?: number | undefined;
   /** Error from the most recent failed turn. */
-  lastTurnError?: string;
+  lastTurnError?: string | undefined;
   /** Explicit terminal reason for the most recently finished turn. */
-  lastTurnStopReason?: TurnStopReason;
+  lastTurnStopReason?: TurnStopReason | undefined;
   /** Final assistant response for the most recently completed turn. */
-  lastTurnResponse?: string;
+  lastTurnResponse?: string | undefined;
   /** Most recent preflight failure message, if any. */
-  lastPreflightFailure?: string;
+  lastPreflightFailure?: string | undefined;
   /** Total number of turns completed in this session. */
   totalTurns: number;
 
@@ -123,7 +123,7 @@ export interface ConversationDomainState {
   /** Count of tool calls dispatched in the current turn. */
   toolCallsThisTurn: number;
   /** Most recent reconciliation record for unresolved or malformed tool calls. */
-  lastToolReconciliation?: TurnReconciliationRecord;
+  lastToolReconciliation?: TurnReconciliationRecord | undefined;
 
   // ── Token accounting ───────────────────────────────────────────────────────
   /** Usage for the current or most recent turn. */

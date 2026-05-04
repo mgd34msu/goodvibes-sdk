@@ -109,10 +109,10 @@ async function executeContentQuery(
       for (let i = 0; i < lines.length; i++) {
         if (fileMatches.length >= maxPerFile) break;
         if (totalMatches >= maxTotal) break outer;
-        if (lines[i].length > 50_000) continue;
+        if (lines[i]!.length > 50_000) continue;
 
-        if (safeRegExpTest(regex, lines[i], { operation: 'find content line' })) {
-          const match: ContentMatch = { file, line: i + 1, text: lines[i] };
+        if (safeRegExpTest(regex, lines[i]!, { operation: 'find content line' })) {
+          const match: ContentMatch = { file, line: i + 1, text: lines[i]! };
           if (format === 'context') {
             match.context_before = lines.slice(Math.max(0, i - ctxBefore), i);
             match.context_after = lines.slice(i + 1, i + 1 + ctxAfter);
@@ -223,11 +223,11 @@ async function executeContentQuery(
       file: string;
       line: number;
       text: string;
-      replaced?: string;
-      startLine?: number;
-      endLine?: number;
-      context_before?: string[];
-      context_after?: string[];
+      replaced?: string | undefined;
+      startLine?: number | undefined;
+      endLine?: number | undefined;
+      context_before?: string[] | undefined;
+      context_after?: string[] | undefined;
     }> = [];
     for (const [, { matches }] of matchedFiles) {
       for (const m of matches) {

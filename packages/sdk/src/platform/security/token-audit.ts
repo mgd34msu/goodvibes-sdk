@@ -66,12 +66,12 @@ export interface TokenScopePolicy {
    * Rotation cadence in ms. Tokens older than this value are overdue.
    * Defaults to DEFAULT_ROTATION_CADENCE_MS when not specified.
    */
-  rotationCadenceMs?: number;
+  rotationCadenceMs?: number | undefined;
   /**
    * Warning threshold in ms before the rotation deadline.
    * Defaults to DEFAULT_ROTATION_WARNING_THRESHOLD_MS when not specified.
    */
-  rotationWarningThresholdMs?: number;
+  rotationWarningThresholdMs?: number | undefined;
 }
 
 /** Outcome of a single scope audit check. */
@@ -143,7 +143,7 @@ export interface TokenAuditorConfig {
    * Feature flags gate managed blocking when supplied by SDK runtime services.
    * Audits still report violations while disabled.
    */
-  featureFlags?: FeatureFlagReader;
+  featureFlags?: FeatureFlagReader | undefined;
 }
 
 /**

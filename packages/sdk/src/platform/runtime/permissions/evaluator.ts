@@ -61,7 +61,7 @@ function classifyTool(toolName: string): CommandClassification {
 interface ModeCheckResult {
   deny: boolean;
   allow: boolean;
-  reason?: DecisionReason;
+  reason?: DecisionReason | undefined;
   step: EvaluationStep;
 }
 
@@ -244,12 +244,12 @@ export class LayeredPolicyEvaluator {
   private readonly mode: PermissionMode;
   private readonly rules: PolicyRule[];
   private readonly defaultEffect: 'allow' | 'deny';
-  private readonly projectRoot?: string;
+  private readonly projectRoot?: string | undefined;
   private readonly sessionCache: Map<string, boolean> = new Map();
   private sessionCacheInsertOrder: string[] = [];
   readonly log: DecisionLog;
   /** GC-PERM-011: Provenance from the loaded policy bundle, if any. */
-  private readonly provenance?: BundleProvenance;
+  private readonly provenance?: BundleProvenance | undefined;
 
   private static readonly MAX_SESSION_CACHE_SIZE = 500;
 

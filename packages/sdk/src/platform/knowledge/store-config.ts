@@ -1,9 +1,9 @@
 import { resolveKnowledgeDbPathFromControlPlaneDir } from './store-schema.js';
 
 export interface KnowledgeStoreConfig {
-  readonly dbPath?: string;
+  readonly dbPath?: string | undefined;
   readonly configManager?: {
-    getControlPlaneConfigDir?: () => string;
+    getControlPlaneConfigDir?: (() => string) | undefined | undefined;
   };
 }
 

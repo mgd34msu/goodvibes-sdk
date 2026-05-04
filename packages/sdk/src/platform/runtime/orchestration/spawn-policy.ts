@@ -4,7 +4,7 @@ export type OrchestrationSpawnMode = 'manual-batch' | 'plan-auto' | 'recursive-c
 
 export type OrchestrationSpawnDecision = {
   allowed: boolean;
-  reason?: string;
+  reason?: string | undefined;
   maxAgents: number;
   activeAgents: number;
   availableSlots: number;
@@ -17,11 +17,11 @@ export function evaluateOrchestrationSpawn(input: {
   configManager: Pick<ConfigManager, 'get'>;
   mode: OrchestrationSpawnMode;
   activeAgents: number;
-  requestedDepth?: number;
+  requestedDepth?: number | undefined;
   overrides?: {
-    recursionEnabled?: boolean;
-    maxAgents?: number;
-    maxDepth?: number;
+    recursionEnabled?: boolean | undefined;
+    maxAgents?: number | undefined;
+    maxDepth?: number | undefined;
   };
 }): OrchestrationSpawnDecision {
   const maxAgents = input.overrides?.maxAgents ?? ((input.configManager.get('orchestration.maxActiveAgents') as number | null) ?? 8);

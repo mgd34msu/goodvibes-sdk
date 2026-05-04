@@ -20,7 +20,7 @@ export class LspClient {
   constructor(
     private command: string,
     private args: string[],
-    private options?: { cwd?: string; env?: Record<string, string>; timeout?: number },
+    private options?: { cwd?: string | undefined; env?: Record<string, string>; timeout?: number },
   ) {}
 
   /** Start the LSP server process. */
@@ -31,9 +31,9 @@ export class LspClient {
         stdin: 'pipe',
         stdout: 'pipe',
         stderr: 'pipe',
-        cwd: this.options?.cwd,
-        env: this.options?.env ? { ...process.env, ...this.options.env } : undefined,
-      });
+        ...(this.options?.cwd !== undefined ? { cwd: this.options.cwd } : {}),
+        ...(this.options?.env !== undefined ? { env: { ...process.env, ...this.options.env } } : {}),
+      } as Parameters<typeof Bun.spawn>[1]);
       this._startReadLoop();
     } catch (err) {
       logger.error('LspClient: failed to start process', { command: this.command, err: summarizeError(err) });
@@ -170,7 +170,7 @@ export class LspClient {
         continue;
       }
 
-      const contentLength = parseInt(contentLengthMatch[1], 10);
+      const contentLength = parseInt(contentLengthMatch[1]!, 10);
       const bodyStart = headerEnd + 4;
       const bodyEnd = bodyStart + contentLength;
 
@@ -233,7 +233,7 @@ export class LspClient {
         continue;
       }
 
-      const contentLength = parseInt(contentLengthMatch[1], 10);
+      const contentLength = parseInt(contentLengthMatch[1]!, 10);
       const bodyStart = headerEnd + 4;
       const bodyEnd = bodyStart + contentLength;
 

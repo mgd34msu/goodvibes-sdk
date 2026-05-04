@@ -28,16 +28,16 @@ import { summarizeError } from '../../utils/error-display.js';
 export interface FileReadResult {
   path: string;
   resolvedPath: string;
-  content?: string;
+  content?: string | undefined;
   lineCount: number;
   byteSize: number;
   tokenEstimate: number;
   extract: ExtractMode;
-  binary?: boolean;
-  image?: boolean;
-  mediaType?: string;
-  error?: string;
-  cache?: { status: 'miss' | 'unchanged' | 'modified' };
+  binary?: boolean | undefined;
+  image?: boolean | undefined;
+  mediaType?: string | undefined;
+  error?: string | undefined;
+  cache?: { status: 'miss' | 'unchanged' | 'modified' } | undefined;
   metadata?: {
     encoding: string;
     sizeBytes: number;
@@ -45,23 +45,23 @@ export interface FileReadResult {
   };
   imageData?: { base64: string; mediaType: string };
   imageMetadata?: {
-    width?: number;
-    height?: number;
+    width?: number | undefined;
+    height?: number | undefined;
     format: string;
     fileSize: number;
-    resized?: boolean;
-    converted?: boolean;
-    originalFormat?: string;
-    mode?: ImageMode;
+    resized?: boolean | undefined;
+    converted?: boolean | undefined;
+    originalFormat?: string | undefined;
+    mode?: ImageMode | undefined;
   };
-  archive?: boolean;
+  archive?: boolean | undefined;
 }
 
 export interface ReadOutput {
   success: boolean;
-  error?: string;
-  files?: FileReadResult[];
-  images?: Array<{ path: string; base64: string; mediaType: string; description: string }>;
+  error?: string | undefined;
+  files?: FileReadResult[] | undefined;
+  images?: Array<{ path: string; base64: string; mediaType: string; description: string }> | undefined;
   summary: {
     files_read: number;
     files_binary: number;
@@ -85,11 +85,11 @@ function extractPdfText(body: string, pages?: string): string {
   const streamRe = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let m: RegExpExecArray | null;
   while ((m = streamRe.exec(body)) !== null) {
-    const chunk = m[1];
+    const chunk = m[1]!;
     const parenRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g;
     let pm: RegExpExecArray | null;
     while ((pm = parenRe.exec(chunk)) !== null) {
-      const text = pm[1]
+      const text = pm[1]!
         .replace(/\\n/g, '\n')
         .replace(/\\r/g, '\r')
         .replace(/\\t/g, '\t')
@@ -117,7 +117,7 @@ function extractPdfText(body: string, pages?: string): string {
 interface NotebookCell {
   cell_type: string;
   source: string | string[];
-  outputs?: Array<{ output_type: string; text?: string | string[]; data?: Record<string, string | string[]> }>;
+  outputs?: Array<{ output_type: string; text?: string | string[]; data?: Record<string, string | string[]> }> | undefined;
 }
 
 interface NotebookJSON {
@@ -165,12 +165,12 @@ function formatNotebook(raw: string): string {
 export interface ReadExecutionContext {
   format: OutputFormat;
   includeLineNumbers: boolean;
-  maxPerItem?: number;
+  maxPerItem?: number | undefined;
   fileCache: FileStateCache;
   projectIndex: ProjectIndex;
-  globalImageMode?: ImageMode;
+  globalImageMode?: ImageMode | undefined;
   maxImageSize: number;
-  codeIntelligence?: Pick<CodeIntelligence, 'getOutline' | 'getSymbols'>;
+  codeIntelligence?: Pick<CodeIntelligence, 'getOutline' | 'getSymbols'> | undefined;
 }
 
 export interface ReadTarget {
@@ -276,7 +276,7 @@ async function readImageFile(
     originalFormat = convertResult.originalFormat;
   }
 
-  const resizeTarget = RESIZE_TARGETS[imageMode];
+  const resizeTarget = RESIZE_TARGETS[imageMode]!;
   if (resizeTarget !== null) {
     const resizeResult = await resizeImage(processedBuffer, mediaType, resizeTarget);
     if (resizeResult.resized) {
@@ -476,7 +476,7 @@ export function paginateFiles(files: ReadFileInput[], tokenBudget: number, proje
   for (let i = 0; i < files.length; i++) {
     let est = 0;
     try {
-      const resolved = resolveAndValidatePath(files[i].path, projectRoot);
+      const resolved = resolveAndValidatePath(files[i]!.path, projectRoot);
       est = Math.ceil(statSync(resolved).size / 4);
     } catch {
       est = 0;

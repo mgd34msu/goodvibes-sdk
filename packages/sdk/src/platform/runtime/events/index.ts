@@ -75,7 +75,7 @@ export interface RuntimeEventBusOptions {
    * Values above zero are accepted; the cap is applied per event-type channel
    * and per domain channel independently.
    */
-  maxListeners?: number;
+  maxListeners?: number | undefined;
 }
 
 /** Extract a plain string error message from an unknown thrown value. */

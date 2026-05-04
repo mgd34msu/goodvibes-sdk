@@ -60,13 +60,13 @@ type CandidateListInput = Parameters<KnowledgeService['listConsolidationCandidat
 type RemoteKnowledgeFetchMode = Extract<ArtifactFetchMode, 'public-only' | 'allow-private-hosts'>;
 
 export interface KnowledgeApiUrlIngestInput extends Omit<IngestUrlInput, 'allowPrivateHosts' | 'metadata'> {
-  readonly fetchMode?: RemoteKnowledgeFetchMode;
-  readonly metadata?: Record<string, unknown>;
+  readonly fetchMode?: RemoteKnowledgeFetchMode | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface KnowledgeApiArtifactIngestInput extends Omit<IngestArtifactInput, 'allowPrivateHosts' | 'metadata'> {
-  readonly fetchMode?: RemoteKnowledgeFetchMode;
-  readonly metadata?: Record<string, unknown>;
+  readonly fetchMode?: RemoteKnowledgeFetchMode | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MemoryExplainResult {
@@ -117,7 +117,7 @@ export type MemoryApiRegistry = Pick<
 >;
 
 export interface CreateKnowledgeApiOptions {
-  readonly memoryRegistry?: MemoryApiRegistry;
+  readonly memoryRegistry?: MemoryApiRegistry | undefined;
 }
 
 export interface KnowledgeApi {
@@ -236,12 +236,12 @@ export interface KnowledgeApi {
       input?: ConsolidationDecisionInput,
     ): ReturnType<KnowledgeService['decideConsolidationCandidate']>;
   };
-  readonly memory?: MemoryApi;
+  readonly memory?: MemoryApi | undefined;
 }
 
 function normalizeKnowledgeFetchMode(fetchMode: RemoteKnowledgeFetchMode | undefined): {
-  fetchMode?: RemoteKnowledgeFetchMode;
-  allowPrivateHosts?: boolean;
+  fetchMode?: RemoteKnowledgeFetchMode | undefined;
+  allowPrivateHosts?: boolean | undefined;
 } {
   if (!fetchMode) return {};
   return {

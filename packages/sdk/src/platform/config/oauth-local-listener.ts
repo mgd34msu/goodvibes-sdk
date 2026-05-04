@@ -4,10 +4,10 @@ import { summarizeError } from '../utils/error-display.js';
 
 export interface OAuthLocalListenerConfig {
   readonly expectedState: string;
-  readonly host?: string;
-  readonly port?: number;
-  readonly path?: string;
-  readonly timeoutMs?: number;
+  readonly host?: string | undefined;
+  readonly port?: number | undefined;
+  readonly path?: string | undefined;
+  readonly timeoutMs?: number | undefined;
 }
 
 export interface OAuthLocalListenerResult {

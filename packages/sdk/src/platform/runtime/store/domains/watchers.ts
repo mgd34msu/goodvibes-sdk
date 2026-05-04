@@ -14,13 +14,13 @@ export interface WatcherRecord {
   readonly label: string;
   readonly state: WatcherState;
   readonly source: AutomationSourceRecord;
-  readonly intervalMs?: number;
-  readonly lastHeartbeatAt?: number;
-  readonly sourceLagMs?: number;
-  readonly sourceStatus?: WatcherSourceStatus;
-  readonly degradedReason?: string;
-  readonly lastCheckpoint?: string;
-  readonly lastError?: string;
+  readonly intervalMs?: number | undefined;
+  readonly lastHeartbeatAt?: number | undefined;
+  readonly sourceLagMs?: number | undefined;
+  readonly sourceStatus?: WatcherSourceStatus | undefined;
+  readonly degradedReason?: string | undefined;
+  readonly lastCheckpoint?: string | undefined;
+  readonly lastError?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
 

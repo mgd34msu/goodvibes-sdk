@@ -6,9 +6,9 @@ export interface BuiltinProviderDefinition {
   readonly id: string;
   readonly label: string;
   readonly envVars: readonly string[];
-  readonly serviceNames?: readonly string[];
-  readonly aliases?: readonly string[];
-  readonly subscriptionProviderId?: string;
+  readonly serviceNames?: readonly string[] | undefined;
+  readonly aliases?: readonly string[] | undefined;
+  readonly subscriptionProviderId?: string | undefined;
 }
 
 export interface BuiltinOpenAICompatDefinition extends BuiltinProviderDefinition {
@@ -16,14 +16,14 @@ export interface BuiltinOpenAICompatDefinition extends BuiltinProviderDefinition
   readonly baseURL: string;
   readonly defaultModel: string;
   readonly models: readonly string[];
-  readonly embeddingModel?: string;
-  readonly reasoningFormat?: OpenAICompatOptions['reasoningFormat'];
-  readonly suppressedModels?: readonly string[];
-  readonly streamProtocol?: string;
-  readonly defaultHeaders?: Record<string, string>;
-  readonly allowAnonymous?: boolean;
-  readonly anonymousConfigured?: boolean;
-  readonly anonymousDetail?: string;
+  readonly embeddingModel?: string | undefined;
+  readonly reasoningFormat?: OpenAICompatOptions['reasoningFormat'] | undefined;
+  readonly suppressedModels?: readonly string[] | undefined;
+  readonly streamProtocol?: string | undefined;
+  readonly defaultHeaders?: Record<string, string> | undefined;
+  readonly allowAnonymous?: boolean | undefined;
+  readonly anonymousConfigured?: boolean | undefined;
+  readonly anonymousDetail?: string | undefined;
 }
 
 export interface BuiltinAnthropicCompatDefinition extends BuiltinProviderDefinition {
@@ -31,12 +31,12 @@ export interface BuiltinAnthropicCompatDefinition extends BuiltinProviderDefinit
   readonly baseURL: string;
   readonly defaultModel: string;
   readonly models: readonly string[];
-  readonly defaultHeaders?: Record<string, string>;
-  readonly authHeaderMode?: AnthropicCompatOptions['authHeaderMode'];
-  readonly streamProtocol?: string;
-  readonly allowAnonymous?: boolean;
-  readonly anonymousConfigured?: boolean;
-  readonly anonymousDetail?: string;
+  readonly defaultHeaders?: Record<string, string> | undefined;
+  readonly authHeaderMode?: AnthropicCompatOptions['authHeaderMode'] | undefined;
+  readonly streamProtocol?: string | undefined;
+  readonly allowAnonymous?: boolean | undefined;
+  readonly anonymousConfigured?: boolean | undefined;
+  readonly anonymousDetail?: string | undefined;
 }
 
 export type BuiltinCompatDefinition =

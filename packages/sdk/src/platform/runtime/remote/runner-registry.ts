@@ -220,11 +220,11 @@ export class RemoteRunnerRegistry {
 
   createPool(input: {
     id: string;
-    label?: string;
-    description?: string;
-    trustClass?: RemoteRunnerPool['trustClass'];
-    preferredTemplate?: string;
-    maxRunners?: number;
+    label?: string | undefined;
+    description?: string | undefined;
+    trustClass?: RemoteRunnerPool['trustClass'] | undefined;
+    preferredTemplate?: string | undefined;
+    maxRunners?: number | undefined;
   }): RemoteRunnerPool {
     const existing = this.pools.get(input.id);
     const now = Date.now();

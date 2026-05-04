@@ -64,7 +64,7 @@ const LANG_TO_PACKAGE: Record<string, string> = {
 export function detectLanguage(filePath: string): string | null {
   const parts = filePath.split('.');
   if (parts.length < 2) return null;
-  const ext = parts[parts.length - 1].toLowerCase();
+  const ext = parts[parts.length - 1]!.toLowerCase();
   return EXT_TO_LANG[ext] ?? null;
 }
 

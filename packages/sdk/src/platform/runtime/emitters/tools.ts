@@ -73,7 +73,7 @@ export function emitToolPosthooked(
  * for safe emission in the event stream. Never leaks raw output; provides kind, byteSize, preview.
  */
 export function toToolResultSummary(
-  result: { success?: boolean; output?: string; error?: string }
+  result: { success?: boolean | undefined; output?: string | undefined; error?: string | undefined }
 ): import('../../../events/tools.js').ToolResultSummary {
   if (!result.success) {
     const errStr = result.error ?? 'unknown error';
@@ -126,7 +126,7 @@ export function emitToolReconciled(
     toolNames: string[];
     reason: string;
     timestamp: number;
-    isMalformed?: boolean;
+    isMalformed?: boolean | undefined;
   }
 ): void {
   bus.emit('tools', createEventEnvelope('TOOL_RECONCILED', { type: 'TOOL_RECONCILED', ...data }, ctx));
@@ -136,7 +136,7 @@ export function emitToolReconciled(
 export function emitToolCancelled(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { callId: string; turnId: string; tool: string; reason?: string }
+  data: { callId: string; turnId: string; tool: string; reason?: string | undefined }
 ): void {
   bus.emit('tools', createEventEnvelope('TOOL_CANCELLED', { type: 'TOOL_CANCELLED', ...data }, ctx));
 }

@@ -44,7 +44,7 @@ export class DaemonBatchManager {
     private readonly options: {
       readonly configManager: Pick<ConfigManager, 'get' | 'getControlPlaneConfigDir'>;
       readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'getRegistered' | 'listProviders'>;
-      readonly storePath?: string;
+      readonly storePath?: string | undefined;
     },
   ) {
     this.store = new PersistentStore(
@@ -174,7 +174,7 @@ export class DaemonBatchManager {
 
   async cancelJob(jobId: string): Promise<DaemonBatchJob> {
     const loaded = await this.load();
-    const job = loaded.jobs[jobId];
+    const job = loaded.jobs[jobId]!;
     if (!job) throw new DaemonBatchError(`Batch job '${jobId}' was not found.`, 'BATCH_JOB_NOT_FOUND', 404);
     if (TERMINAL_JOB_STATUSES.has(job.status)) return job;
     if (job.status !== 'queued') {
@@ -246,7 +246,7 @@ export class DaemonBatchManager {
     jobs: readonly DaemonBatchJob[],
     result: DaemonBatchTickResult,
   ): Promise<void> {
-    const first = jobs[0];
+    const first = jobs[0]!;
     if (!first) return;
     try {
       const provider = this.getBatchProvider(first.model, first.provider);
@@ -317,7 +317,7 @@ export class DaemonBatchManager {
       pendingByProviderBatch.set(key, bucket);
     }
     for (const jobs of pendingByProviderBatch.values()) {
-      const first = jobs[0];
+      const first = jobs[0]!;
       if (!first?.providerBatchId) continue;
       try {
         const provider = this.getBatchProvider(first.model, first.provider);
@@ -345,7 +345,7 @@ export class DaemonBatchManager {
               updatedAt: timestamp,
               completedAt: timestamp,
               error: status === 'failed' ? { message: 'Provider batch failed.', raw: polled.raw } : data.jobs[job.id]!.error,
-            };
+            } as DaemonBatchJob;
             if (status === 'failed') result.failedJobs += 1;
           }
         }

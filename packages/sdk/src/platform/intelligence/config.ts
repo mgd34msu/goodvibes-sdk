@@ -16,10 +16,10 @@ export interface LanguageConfig {
   lsp?: {
     command: string;
     args: string[];
-    initializationOptions?: Record<string, unknown>;
+    initializationOptions?: Record<string, unknown> | undefined;
   };
   /** Grammar ID passed to the tree-sitter service (usually the same as langId). */
-  treeSitter?: string;
+  treeSitter?: string | undefined;
   formatter?: { command: string; args: string[] };
   linter?: { command: string; args: string[] };
 }

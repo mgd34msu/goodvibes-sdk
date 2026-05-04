@@ -18,7 +18,7 @@ export const REPL_TOOL_SCHEMA: ToolDefinition = {
 
 export interface ReplToolInput {
   readonly mode: 'eval' | 'history';
-  readonly runtime?: 'javascript' | 'typescript' | 'python' | 'sql' | 'graphql';
-  readonly expression?: string;
-  readonly bindings?: Record<string, unknown>;
+  readonly runtime?: 'javascript' | 'typescript' | 'python' | 'sql' | 'graphql' | undefined;
+  readonly expression?: string | undefined;
+  readonly bindings?: Record<string, unknown> | undefined;
 }

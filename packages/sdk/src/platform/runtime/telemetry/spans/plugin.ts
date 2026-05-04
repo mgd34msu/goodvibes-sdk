@@ -31,11 +31,11 @@ export interface PluginSpanEndContext {
   /** Final outcome of the plugin lifecycle. */
   readonly outcome: 'active' | 'error' | 'disabled';
   /** Error description when outcome is 'error'. */
-  readonly error?: string;
+  readonly error?: string | undefined;
   /** Reason for disabling when outcome is 'disabled'. */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
   /** Capabilities registered by the plugin (populated on 'active'). */
-  readonly capabilities?: string[];
+  readonly capabilities?: string[] | undefined;
 }
 
 /**

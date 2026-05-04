@@ -25,8 +25,8 @@ import type {
 } from './types.js';
 
 export interface BrowserKnowledgeIngestOptions extends BrowserKnowledgeFilter {
-  readonly sessionId?: string;
-  readonly connectorId?: string;
+  readonly sessionId?: string | undefined;
+  readonly connectorId?: string | undefined;
 }
 
 interface BrowserKnowledgeAggregate {
@@ -36,8 +36,8 @@ interface BrowserKnowledgeAggregate {
   readonly browsers: readonly string[];
   readonly profileKeys: readonly string[];
   readonly folders: readonly string[];
-  readonly firstRecordedAt?: number;
-  readonly lastRecordedAt?: number;
+  readonly firstRecordedAt?: number | undefined;
+  readonly lastRecordedAt?: number | undefined;
   readonly visitCount: number;
 }
 
@@ -64,7 +64,7 @@ function sourceTypeForAggregate(aggregate: BrowserKnowledgeAggregate): Knowledge
 
 function titleForAggregate(aggregate: BrowserKnowledgeAggregate): string {
   return aggregate.entries.find((entry) => entry.title)?.title
-    ?? aggregate.entries[0]?.url
+    ?? aggregate.entries[0]!?.url
     ?? aggregate.canonicalUri;
 }
 

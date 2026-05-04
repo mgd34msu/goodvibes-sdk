@@ -111,7 +111,7 @@ export function listBuiltinAgentTools(
 
 function buildDeliveryTarget(
   surface: ChannelSurface,
-  request: { readonly pending?: Record<string, unknown> },
+  request: { readonly pending?: Record<string, unknown> | undefined },
   binding?: AutomationRouteBinding,
 ): ChannelDeliveryRequest['target'] {
   const pending = request.pending ?? {};
@@ -170,12 +170,12 @@ function formatApprovalMessage(approval: SharedApprovalRecord): string {
 }
 
 function readPendingString(pending: Record<string, unknown>, key: string): string | undefined {
-  const value = pending[key];
+  const value = pending[key]!;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function readMetadataString(metadata: Record<string, unknown> | undefined, key: string): string | undefined {
   if (!metadata) return undefined;
-  const value = metadata[key];
+  const value = metadata[key]!;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }

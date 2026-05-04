@@ -90,7 +90,7 @@ export function getCompactionEvents(): readonly CompactionEvent[] {
 
 export function getLastCompactionEvent(): CompactionEvent | null {
   return compactionEvents.length > 0
-    ? compactionEvents[compactionEvents.length - 1]
+    ? compactionEvents[compactionEvents.length - 1]!
     : null;
 }
 
@@ -317,10 +317,10 @@ async function runCompaction(
   const planTitle = ctx.activePlan?.title ?? null;
   const lastUserMsg = (() => {
     for (let i = ctx.messages.length - 1; i >= 0; i--) {
-      if (ctx.messages[i].role === 'user') {
-        const text = typeof ctx.messages[i].content === 'string'
-          ? ctx.messages[i].content as string
-          : (ctx.messages[i].content as ContentPart[]).filter(
+      if (ctx.messages[i]!.role === 'user') {
+        const text = typeof ctx.messages[i]!.content === 'string'
+          ? ctx.messages[i]!.content as string
+          : (ctx.messages[i]!.content as ContentPart[]).filter(
               (p): p is { type: 'text'; text: string } => p.type === 'text'
             ).map((p) => p.text).join('');
         if (text.trim()) return text.trim();

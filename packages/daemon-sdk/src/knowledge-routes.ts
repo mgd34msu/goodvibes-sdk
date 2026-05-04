@@ -34,29 +34,29 @@ type KnowledgeSearchBody = {
 
 type KnowledgeAskBody = {
   readonly query: string;
-  readonly knowledgeSpaceId?: string;
-  readonly limit?: number;
-  readonly mode?: 'concise' | 'standard' | 'detailed';
-  readonly includeSources?: boolean;
-  readonly includeConfidence?: boolean;
-  readonly includeLinkedObjects?: boolean;
-  readonly candidateSourceIds?: string[];
-  readonly candidateNodeIds?: string[];
-  readonly strictCandidates?: boolean;
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly limit?: number | undefined;
+  readonly mode?: 'concise' | 'standard' | 'detailed' | undefined;
+  readonly includeSources?: boolean | undefined;
+  readonly includeConfidence?: boolean | undefined;
+  readonly includeLinkedObjects?: boolean | undefined;
+  readonly candidateSourceIds?: string[] | undefined;
+  readonly candidateNodeIds?: string[] | undefined;
+  readonly strictCandidates?: boolean | undefined;
 };
 
 type KnowledgePacketBody = {
   readonly task: string;
   readonly writeScope: string[];
   readonly limit: number;
-  readonly detail?: KnowledgePacketDetail;
-  readonly budgetLimit?: number;
+  readonly detail?: KnowledgePacketDetail | undefined;
+  readonly budgetLimit?: number | undefined;
 };
 
 type KnowledgeRunJobBody = {
-  readonly mode?: 'inline' | 'background';
-  readonly sourceIds?: string[];
-  readonly limit?: number;
+  readonly mode?: 'inline' | 'background' | undefined;
+  readonly sourceIds?: string[] | undefined;
+  readonly limit?: number | undefined;
 };
 
 const MAX_KNOWLEDGE_INGEST_TAGS = 64;

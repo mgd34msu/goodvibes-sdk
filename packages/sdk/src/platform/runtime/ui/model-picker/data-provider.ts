@@ -22,7 +22,7 @@ export interface ModelPickerDataProviderOptions {
    * Initial set of pinned model IDs.
    * Call updatePinnedIds() to update at runtime.
    */
-  readonly pinnedIds?: ReadonlySet<string>;
+  readonly pinnedIds?: ReadonlySet<string> | undefined;
   readonly benchmarkStore: Pick<BenchmarkStore, 'getBenchmarks'>;
   readonly providerRegistry: Pick<ProviderRegistry, 'getSyntheticModelInfoFromCatalog' | 'getContextWindowForModel'>;
 }

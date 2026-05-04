@@ -165,12 +165,12 @@ export class CachePlanner {
 
       const parsed = JSON.parse(jsonStr) as {
         breakpoints?: Array<{
-          position?: string;
-          ttl?: string;
-          ttlSeconds?: number;
-          reason?: string;
+          position?: string | undefined;
+          ttl?: string | undefined;
+          ttlSeconds?: number | undefined;
+          reason?: string | undefined;
         }>;
-        refreshAfterTurns?: number;
+        refreshAfterTurns?: number | undefined;
       };
 
       if (!parsed.breakpoints || !Array.isArray(parsed.breakpoints)) {

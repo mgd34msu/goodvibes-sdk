@@ -8,8 +8,8 @@ import { summarizeError } from '../utils/error-display.js';
 function parseDuration(s: string): number {
   const match = s.match(/^(\d+(\.\d+)?)(s|m|ms)$/);
   if (!match) return 0;
-  const value = parseFloat(match[1]);
-  const unit = match[3];
+  const value = parseFloat(match[1]!);
+  const unit = match[3]!;
   if (unit === 'ms') return value;
   if (unit === 's') return value * 1000;
   if (unit === 'm') return value * 60_000;
@@ -38,7 +38,7 @@ function tokenize(input: string): Token[] {
   let i = 0;
   while (i < input.length) {
     // Skip whitespace
-    if (/\s/.test(input[i])) { i++; continue; }
+    if (/\s/.test(input[i]!)) { i++; continue; }
     // String literals (single or double quoted)
     if (input[i] === '\'' || input[i] === '"') {
       const quote = input[i++];
@@ -52,10 +52,10 @@ function tokenize(input: string): Token[] {
       continue;
     }
     // Numbers
-    if (/[0-9]/.test(input[i]) || (input[i] === '-' && /[0-9]/.test(input[i + 1] ?? ''))) {
+    if (/[0-9]/.test(input[i]!) || (input[i] === '-' && /[0-9]/.test(input[i + 1] ?? ''))) {
       let n = '';
       if (input[i] === '-') n += input[i++];
-      while (i < input.length && /[0-9.]/.test(input[i])) n += input[i++];
+      while (i < input.length && /[0-9.]/.test(input[i]!)) n += input[i++];
       tokens.push({ kind: 'number', value: parseFloat(n) });
       continue;
     }
@@ -73,9 +73,9 @@ function tokenize(input: string): Token[] {
     if (input[i] === ')') { tokens.push({ kind: 'rparen' }); i++; continue; }
     if (input[i] === '.') { tokens.push({ kind: 'dot' }); i++; continue; }
     // Identifiers and keywords
-    if (/[a-zA-Z_$]/.test(input[i])) {
+    if (/[a-zA-Z_$]/.test(input[i]!)) {
       let id = '';
-      while (i < input.length && /[a-zA-Z0-9_$]/.test(input[i])) id += input[i++];
+      while (i < input.length && /[a-zA-Z0-9_$]/.test(input[i]!)) id += input[i++];
       if (id === 'true') tokens.push({ kind: 'bool', value: true });
       else if (id === 'false') tokens.push({ kind: 'bool', value: false });
       else if (id === 'null') tokens.push({ kind: 'null' });
@@ -111,8 +111,8 @@ export function safeEvaluate(condition: string, context: Record<string, unknown>
   const tokens = tokenize(condition);
   let pos = 0;
 
-  function peek(): Token | undefined { return tokens[pos]; }
-  function consume(): Token { return tokens[pos++]; }
+  function peek(): Token | undefined { return tokens[pos]!; }
+  function consume(): Token { return tokens[pos++]!; }
 
   function parseExpr(): unknown { return parseOr(); }
 
@@ -237,9 +237,9 @@ interface ChainState {
   captures: Record<string, string>;
   lastAdvance: number;
   /** Timer ID for debounce tracking */
-  debounceTimer?: ReturnType<typeof setTimeout>;
+  debounceTimer?: ReturnType<typeof setTimeout> | undefined;
   /** Pending debounce event */
-  pendingDebounce?: HookEvent;
+  pendingDebounce?: HookEvent | undefined;
 }
 
 export class ChainEngine {
@@ -361,7 +361,7 @@ export class ChainEngine {
     // Capture variables if specified
     if (step.capture) {
       for (const [varName, payloadKey] of Object.entries(step.capture)) {
-        const val = event.payload[payloadKey];
+        const val = event.payload[payloadKey]!;
         if (val !== undefined) {
           state.captures[varName] = String(val);
         }

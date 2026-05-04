@@ -43,11 +43,11 @@ export async function markGapRepairAttempt(
   spaceId: string,
   details: {
     readonly status: string;
-    readonly reason?: string;
-    readonly query?: string;
-    readonly acceptedSourceIds?: readonly string[];
-    readonly promotedFactCount?: number;
-    readonly nextRepairAttemptAt?: number;
+    readonly reason?: string | undefined;
+    readonly query?: string | undefined;
+    readonly acceptedSourceIds?: readonly string[] | undefined;
+    readonly promotedFactCount?: number | undefined;
+    readonly nextRepairAttemptAt?: number | undefined;
   },
 ): Promise<void> {
   const nextRepairAttemptAt = details.nextRepairAttemptAt ?? (

@@ -61,9 +61,9 @@ interface TurnTracker {
   hasPermissionDenial: boolean;
   hasCascadeEvents: boolean;
   hasCompactionError: boolean;
-  lastPhaseStart?: number;
-  currentPhase?: string;
-  currentPhaseEnterEventType?: string;
+  lastPhaseStart?: number | undefined;
+  currentPhase?: string | undefined;
+  currentPhaseEnterEventType?: string | undefined;
   _causalSeq: number;
   _phaseSeq: number;
 }
@@ -80,14 +80,14 @@ interface TaskTracker {
   readonly cascadeEvents: CausalChainEntry[];
   readonly permissionEvidence: PermissionEvidenceEntry[];
   readonly budgetBreaches: BudgetBreachEvidence[];
-  agentId?: string;
+  agentId?: string | undefined;
   hasToolFailure: boolean;
   hasPermissionDenial: boolean;
   hasCascadeEvents: boolean;
   hasCompactionError: boolean;
-  currentPhase?: string;
-  lastPhaseStart?: number;
-  currentPhaseEnterEventType?: string;
+  currentPhase?: string | undefined;
+  lastPhaseStart?: number | undefined;
+  currentPhaseEnterEventType?: string | undefined;
   _causalSeq: number;
   _phaseSeq: number;
 }
@@ -334,18 +334,18 @@ export class ForensicsCollector {
   ): void {
     const payload = env.payload as {
       type: string;
-      turnId?: string;
-      callId?: string;
-      tool?: string;
-      error?: string;
-      approved?: boolean;
-      phase?: string;
-      limitMs?: number;
-      elapsedMs?: number;
-      limitTokens?: number;
-      usedTokens?: number;
-      limitCostUsd?: number;
-      usedCostUsd?: number;
+      turnId?: string | undefined;
+      callId?: string | undefined;
+      tool?: string | undefined;
+      error?: string | undefined;
+      approved?: boolean | undefined;
+      phase?: string | undefined;
+      limitMs?: number | undefined;
+      elapsedMs?: number | undefined;
+      limitTokens?: number | undefined;
+      usedTokens?: number | undefined;
+      limitCostUsd?: number | undefined;
+      usedCostUsd?: number | undefined;
     };
 
     if (payload.callId && payload.turnId) {
@@ -428,14 +428,14 @@ export class ForensicsCollector {
   ): void {
     const payload = env.payload as {
       type: string;
-      callId?: string;
-      tool?: string;
-      approved?: boolean;
-      source?: string;
-      reasonCode?: string;
-      classification?: string;
-      riskLevel?: string;
-      summary?: string;
+      callId?: string | undefined;
+      tool?: string | undefined;
+      approved?: boolean | undefined;
+      source?: string | undefined;
+      reasonCode?: string | undefined;
+      classification?: string | undefined;
+      riskLevel?: string | undefined;
+      summary?: string | undefined;
     };
     const callId = payload.callId;
     if (!callId) return;

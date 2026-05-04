@@ -25,7 +25,7 @@ export interface SlackInteraction {
   payload: Record<string, unknown>;
   userId: string;
   channelId: string;
-  responseUrl?: string;
+  responseUrl?: string | undefined;
 }
 
 export interface SlackEventCallback {
@@ -35,8 +35,8 @@ export interface SlackEventCallback {
   userId: string;
   channelId: string;
   teamId: string;
-  threadTs?: string;
-  eventTs?: string;
+  threadTs?: string | undefined;
+  eventTs?: string | undefined;
   raw: Record<string, unknown>;
 }
 
@@ -44,69 +44,69 @@ export type SlackEvent = SlackSlashCommand | SlackInteraction | SlackEventCallba
 
 export interface SlackOAuthAuthorizeOptions {
   readonly clientId: string;
-  readonly redirectUri?: string;
-  readonly scopes?: readonly string[];
-  readonly userScopes?: readonly string[];
-  readonly state?: string;
-  readonly teamId?: string;
+  readonly redirectUri?: string | undefined;
+  readonly scopes?: readonly string[] | undefined;
+  readonly userScopes?: readonly string[] | undefined;
+  readonly state?: string | undefined;
+  readonly teamId?: string | undefined;
 }
 
 export interface SlackOAuthExchangeOptions {
   readonly clientId: string;
   readonly clientSecret: string;
   readonly code: string;
-  readonly redirectUri?: string;
+  readonly redirectUri?: string | undefined;
 }
 
 export interface SlackOAuthExchangeResult {
   readonly ok: boolean;
-  readonly access_token?: string;
-  readonly bot_user_id?: string;
-  readonly app_id?: string;
+  readonly access_token?: string | undefined;
+  readonly bot_user_id?: string | undefined;
+  readonly app_id?: string | undefined;
   readonly team?: { readonly id?: string; readonly name?: string };
-  readonly authed_user?: Record<string, unknown>;
-  readonly error?: string;
+  readonly authed_user?: Record<string, unknown> | undefined;
+  readonly error?: string | undefined;
   readonly [key: string]: unknown;
 }
 
 export interface SlackAuthTestResult {
   readonly ok: boolean;
-  readonly url?: string;
-  readonly team?: string;
-  readonly user?: string;
-  readonly team_id?: string;
-  readonly user_id?: string;
-  readonly bot_id?: string;
-  readonly error?: string;
+  readonly url?: string | undefined;
+  readonly team?: string | undefined;
+  readonly user?: string | undefined;
+  readonly team_id?: string | undefined;
+  readonly user_id?: string | undefined;
+  readonly bot_id?: string | undefined;
+  readonly error?: string | undefined;
   readonly [key: string]: unknown;
 }
 
 export interface SlackSocketModeConnection {
   readonly ok: boolean;
-  readonly url?: string;
-  readonly error?: string;
+  readonly url?: string | undefined;
+  readonly error?: string | undefined;
   readonly [key: string]: unknown;
 }
 
 export interface SlackConversationRecord {
   readonly id: string;
-  readonly name?: string;
-  readonly is_channel?: boolean;
-  readonly is_group?: boolean;
-  readonly is_im?: boolean;
-  readonly is_mpim?: boolean;
-  readonly is_archived?: boolean;
-  readonly num_members?: number;
+  readonly name?: string | undefined;
+  readonly is_channel?: boolean | undefined;
+  readonly is_group?: boolean | undefined;
+  readonly is_im?: boolean | undefined;
+  readonly is_mpim?: boolean | undefined;
+  readonly is_archived?: boolean | undefined;
+  readonly num_members?: number | undefined;
   readonly [key: string]: unknown;
 }
 
 export interface SlackUserRecord {
   readonly id: string;
-  readonly name?: string;
-  readonly real_name?: string;
-  readonly is_bot?: boolean;
-  readonly deleted?: boolean;
-  readonly profile?: Record<string, unknown>;
+  readonly name?: string | undefined;
+  readonly real_name?: string | undefined;
+  readonly is_bot?: boolean | undefined;
+  readonly deleted?: boolean | undefined;
+  readonly profile?: Record<string, unknown> | undefined;
   readonly [key: string]: unknown;
 }
 
@@ -114,14 +114,14 @@ export interface SlackCursorPage<T> {
   readonly ok: boolean;
   readonly entries: readonly T[];
   readonly nextCursor: string;
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 export interface SlackSocketModeEnvelope {
-  readonly envelope_id?: string;
-  readonly type?: string;
-  readonly accepts_response_payload?: boolean;
-  readonly payload?: Record<string, unknown>;
+  readonly envelope_id?: string | undefined;
+  readonly type?: string | undefined;
+  readonly accepts_response_payload?: boolean | undefined;
+  readonly payload?: Record<string, unknown> | undefined;
   readonly [key: string]: unknown;
 }
 
@@ -129,7 +129,7 @@ export interface SlackSocketModeClientOptions {
   readonly appToken: string;
   readonly integration: SlackIntegration;
   readonly onEnvelope: (envelope: SlackSocketModeEnvelope, client: SlackSocketModeClient) => void | Promise<void>;
-  readonly WebSocketImpl?: typeof WebSocket;
+  readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,18 +193,18 @@ export class SlackIntegration {
   }
 
   async listConversations(options: {
-    readonly token?: string;
-    readonly cursor?: string;
-    readonly limit?: number;
-    readonly types?: readonly string[];
-    readonly excludeArchived?: boolean;
-    readonly teamId?: string;
+    readonly token?: string | undefined;
+    readonly cursor?: string | undefined;
+    readonly limit?: number | undefined;
+    readonly types?: readonly string[] | undefined;
+    readonly excludeArchived?: boolean | undefined;
+    readonly teamId?: string | undefined;
   } = {}): Promise<SlackCursorPage<SlackConversationRecord>> {
     const data = await this.callApi<{
       ok: boolean;
-      channels?: SlackConversationRecord[];
-      response_metadata?: { next_cursor?: string };
-      error?: string;
+      channels?: SlackConversationRecord[] | undefined;
+      response_metadata?: { next_cursor?: string } | undefined;
+      error?: string | undefined;
     }>('conversations.list', {
       limit: String(Math.max(1, Math.min(1000, options.limit ?? 200))),
       types: (options.types?.length ? options.types : ['public_channel', 'private_channel', 'mpim', 'im']).join(','),
@@ -221,16 +221,16 @@ export class SlackIntegration {
   }
 
   async listUsers(options: {
-    readonly token?: string;
-    readonly cursor?: string;
-    readonly limit?: number;
-    readonly teamId?: string;
+    readonly token?: string | undefined;
+    readonly cursor?: string | undefined;
+    readonly limit?: number | undefined;
+    readonly teamId?: string | undefined;
   } = {}): Promise<SlackCursorPage<SlackUserRecord>> {
     const data = await this.callApi<{
       ok: boolean;
-      members?: SlackUserRecord[];
-      response_metadata?: { next_cursor?: string };
-      error?: string;
+      members?: SlackUserRecord[] | undefined;
+      response_metadata?: { next_cursor?: string } | undefined;
+      error?: string | undefined;
     }>('users.list', {
       limit: String(Math.max(1, Math.min(1000, options.limit ?? 200))),
       ...(options.cursor ? { cursor: options.cursor } : {}),
@@ -350,7 +350,7 @@ export class SlackIntegration {
     };
   }
 
-  private async callApi<T extends { ok?: boolean; error?: string }>(
+  private async callApi<T extends { ok?: boolean | undefined; error?: string | undefined }>(
     method: string,
     params: Record<string, string> = {},
     token = this.botToken,

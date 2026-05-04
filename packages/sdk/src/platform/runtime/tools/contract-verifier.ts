@@ -60,7 +60,7 @@ export interface ContractViolation {
   /** Human-readable explanation of what is wrong. */
   readonly message: string;
   /** Optional hint for how to fix the violation. */
-  readonly hint?: string;
+  readonly hint?: string | undefined;
 }
 
 /** Full contract verification result for a single tool. */
@@ -87,12 +87,12 @@ export interface ContractVerifierOptions {
    *
    * Set to false while tightening tool metadata requirements incrementally.
    */
-  strictIdempotency?: boolean;
+  strictIdempotency?: boolean | undefined;
   /**
    * Whether to treat missing permission class metadata as errors (true) or
    * warnings (false, default for tool definitions that omit that metadata).
    */
-  strictPermissionClass?: boolean;
+  strictPermissionClass?: boolean | undefined;
 }
 
 // ── Dimension checkers ────────────────────────────────────────────────────────
@@ -362,9 +362,9 @@ export class ToolContractVerifier {
     const violations: ContractViolation[] = [
       ...checkSchema(tool.definition),
       ...checkTimeoutCancellation(phased, tool.definition.name),
-      ...checkPermissionClass(phased, tool.definition.name, this._opts.strictPermissionClass),
+      ...checkPermissionClass(phased, tool.definition.name, this._opts.strictPermissionClass!),
       ...checkOutputPolicy(phased, tool.definition.name),
-      ...checkIdempotency(phased, tool.definition.name, this._opts.strictIdempotency),
+      ...checkIdempotency(phased, tool.definition.name, this._opts.strictIdempotency!),
     ];
 
     const passed = !violations.some((v) => v.severity === 'error');

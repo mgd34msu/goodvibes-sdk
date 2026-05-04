@@ -15,8 +15,8 @@ function defaultSnapshot(): AutomationSourcesSnapshot {
 }
 
 export interface AutomationSourceStoreConfig {
-  readonly path?: string;
-  readonly configManager?: AutomationStorePathConfig;
+  readonly path?: string | undefined;
+  readonly configManager?: AutomationStorePathConfig | undefined;
 }
 
 export class AutomationSourceStore {
