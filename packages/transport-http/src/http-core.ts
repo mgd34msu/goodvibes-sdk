@@ -208,6 +208,12 @@ function addQueryValue(url: URL, key: string, value: unknown): void {
     // Contract query parameters are primitive or repeated primitive values.
     // Object values are preserved as JSON strings so callers do not silently
     // lose structured filters when a route explicitly accepts them.
+    // MIN-12: JSON.stringify does not guarantee canonical key order. Object
+    // query values whose keys are not insertion-ordered across environments
+    // may produce non-deterministic cache keys or signed-URL mismatches.
+    // Callers that need stable cache keys should pre-sort or serialize their
+    // objects before passing them as query parameters. The SDK intentionally
+    // preserves insertion order so the serialized form is caller-controlled.
     url.searchParams.append(key, JSON.stringify(value));
     return;
   }
@@ -227,7 +233,11 @@ function splitContractInput(path: string, input: Record<string, unknown> = {}): 
   const interpolatedPath = path.replace(/\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g, (_match, key: string) => {
     const value = toStringValue(remaining[key], key);
     delete remaining[key];
-    return encodeURIComponent(value);
+    // MIN-15: encodeURIComponent leaves RFC 3986 sub-delimiters (!'()*~) unencoded.
+    // If the server uses regex routing, an unencoded `!`, `(`, `)`, `*`, `~`, or
+    // `'` in a path segment could match against a route pattern unexpectedly.
+    // Encode those characters explicitly after the standard percent-encoding pass.
+    return encodeURIComponent(value).replace(/[!'()*~]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   });
   if (/[{}]/.test(interpolatedPath)) {
     throw new ContractError(`Malformed contract path "${path}". Path parameters must use "{name}" with identifier-like names.`);
