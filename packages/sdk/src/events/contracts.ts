@@ -138,64 +138,102 @@ import {
   validateSurfaceCapabilityChanged,
 } from './contracts/automation-route.js';
 
+// Domain-grouping rule: entries are arranged by event domain (turn/tool, agent,
+// mcp, plugin, automation, route, control-plane, delivery, watcher, surface).
+// Within each domain group entries are sorted alphabetically by key.
+// Event types without a registered validator are not listed here — they pass
+// through validateKnownEvent as unknown and are documented in that function.
 const EVENT_VALIDATORS: Record<string, (v: unknown) => import('./contracts/shared.js').ContractResult> = {
-  TURN_SUBMITTED: validateTurnStarted,
+  // turn / tool domain
   STREAM_DELTA: validateTurnStreaming,
-  TURN_COMPLETED: validateTurnCompleted,
-  TURN_ERROR: validateTurnFailed,
-  TURN_CANCEL: validateTurnCancelled,
+  TOOL_FAILED: validateToolFailed,
   TOOL_RECEIVED: validateToolReceived,
   TOOL_SUCCEEDED: validateToolSucceeded,
-  TOOL_FAILED: validateToolFailed,
-  AGENT_SPAWNING: validateAgentSpawning,
+  TURN_CANCEL: validateTurnCancelled,
+  TURN_COMPLETED: validateTurnCompleted,
+  TURN_ERROR: validateTurnFailed,
+  TURN_SUBMITTED: validateTurnStarted,
+  // agent / mcp domain
   AGENT_COMPLETED: validateAgentCompleted,
   AGENT_FAILED: validateAgentFailed,
+  AGENT_SPAWNING: validateAgentSpawning,
   MCP_CONNECTED: validateMcpConnected,
   MCP_DISCONNECTED: validateMcpDisconnected,
   MCP_RECONNECTING: validateMcpReconnecting,
-  PLUGIN_LOADED: validatePluginLoaded,
+  // plugin domain
   PLUGIN_FAILED: validatePluginFailed,
+  PLUGIN_LOADED: validatePluginLoaded,
+  // automation domain
+  AUTOMATION_JOB_AUTO_DISABLED: validateAutomationJobAutoDisabled,
   AUTOMATION_JOB_CREATED: validateAutomationJobCreated,
-  AUTOMATION_JOB_UPDATED: validateAutomationJobUpdated,
-  AUTOMATION_JOB_ENABLED: validateAutomationJobEnabled,
   AUTOMATION_JOB_DISABLED: validateAutomationJobDisabled,
-  AUTOMATION_RUN_QUEUED: validateAutomationRunQueued,
-  AUTOMATION_RUN_STARTED: validateAutomationRunStarted,
+  AUTOMATION_JOB_ENABLED: validateAutomationJobEnabled,
+  AUTOMATION_JOB_UPDATED: validateAutomationJobUpdated,
+  AUTOMATION_RUN_CANCELLED: validateAutomationRunCancelled,
   AUTOMATION_RUN_COMPLETED: validateAutomationRunCompleted,
   AUTOMATION_RUN_FAILED: validateAutomationRunFailed,
-  AUTOMATION_RUN_CANCELLED: validateAutomationRunCancelled,
+  AUTOMATION_RUN_QUEUED: validateAutomationRunQueued,
+  AUTOMATION_RUN_STARTED: validateAutomationRunStarted,
   AUTOMATION_SCHEDULE_ERROR: validateAutomationScheduleError,
-  AUTOMATION_JOB_AUTO_DISABLED: validateAutomationJobAutoDisabled,
+  // route domain
   ROUTE_BINDING_CREATED: validateRouteBindingCreated,
-  ROUTE_BINDING_UPDATED: validateRouteBindingUpdated,
+  ROUTE_BINDING_FAILED: validateRouteBindingFailed,
   ROUTE_BINDING_REMOVED: validateRouteBindingRemoved,
   ROUTE_BINDING_RESOLVED: validateRouteBindingResolved,
+  ROUTE_BINDING_UPDATED: validateRouteBindingUpdated,
   ROUTE_REPLY_TARGET_CAPTURED: validateRouteReplyTargetCaptured,
-  ROUTE_BINDING_FAILED: validateRouteBindingFailed,
+  // control-plane domain
+  CONTROL_PLANE_AUTH_GRANTED: validateControlPlaneAuthGranted,
+  CONTROL_PLANE_AUTH_REJECTED: validateControlPlaneAuthRejected,
   CONTROL_PLANE_CLIENT_CONNECTED: validateControlPlaneClientConnected,
   CONTROL_PLANE_CLIENT_DISCONNECTED: validateControlPlaneClientDisconnected,
   CONTROL_PLANE_SUBSCRIPTION_CREATED: validateControlPlaneSubscriptionCreated,
   CONTROL_PLANE_SUBSCRIPTION_DROPPED: validateControlPlaneSubscriptionDropped,
-  CONTROL_PLANE_AUTH_GRANTED: validateControlPlaneAuthGranted,
-  CONTROL_PLANE_AUTH_REJECTED: validateControlPlaneAuthRejected,
+  // delivery domain
+  DELIVERY_DEAD_LETTERED: validateDeliveryDeadLettered,
+  DELIVERY_FAILED: validateDeliveryFailed,
   DELIVERY_QUEUED: validateDeliveryQueued,
   DELIVERY_STARTED: validateDeliveryStarted,
   DELIVERY_SUCCEEDED: validateDeliverySucceeded,
-  DELIVERY_FAILED: validateDeliveryFailed,
-  DELIVERY_DEAD_LETTERED: validateDeliveryDeadLettered,
-  WATCHER_STARTED: validateWatcherStarted,
-  WATCHER_HEARTBEAT: validateWatcherHeartbeat,
+  // watcher domain
   WATCHER_CHECKPOINT_ADVANCED: validateWatcherCheckpointAdvanced,
   WATCHER_FAILED: validateWatcherFailed,
+  WATCHER_HEARTBEAT: validateWatcherHeartbeat,
+  WATCHER_STARTED: validateWatcherStarted,
   WATCHER_STOPPED: validateWatcherStopped,
-  SURFACE_ENABLED: validateSurfaceEnabled,
-  SURFACE_DISABLED: validateSurfaceDisabled,
+  // surface domain
   SURFACE_ACCOUNT_CONNECTED: validateSurfaceAccountConnected,
   SURFACE_ACCOUNT_DEGRADED: validateSurfaceAccountDegraded,
   SURFACE_CAPABILITY_CHANGED: validateSurfaceCapabilityChanged,
+  SURFACE_DISABLED: validateSurfaceDisabled,
+  SURFACE_ENABLED: validateSurfaceEnabled,
 };
 
+/**
+ * Validate a runtime event against its registered schema contract.
+ *
+ * NOTE: This function only validates event types that have a registered
+ * validator (approximately 54 of 219 total event types). For unknown types
+ * it returns `{ valid: false, violations: ["unknown event type: '...'"]}` —
+ * use `isKnownEventType` to guard before calling if you want permissive
+ * pass-through for unregistered types.
+ *
+ * @deprecated Prefer `validateKnownEvent` which makes the partial-coverage
+ * contract explicit in its name. This alias is retained for backwards
+ * compatibility.
+ */
 export function validateEvent(event: unknown): import('./contracts/shared.js').ContractResult {
+  return validateKnownEvent(event);
+}
+
+/**
+ * Validate a runtime event against its registered schema contract.
+ *
+ * Returns `{ valid: false }` for unknown event types — no validator is
+ * registered for approximately 165 of 219 total event types. Use
+ * `isKnownEventType` to distinguish "unknown type" from "validation failed".
+ */
+export function validateKnownEvent(event: unknown): import('./contracts/shared.js').ContractResult {
   if (!isObject(event)) return { valid: false, violations: ['event must be an object'] };
   const type = event['type'];
   if (!isString(type)) return { valid: false, violations: ['event.type must be a string'] };

@@ -1,31 +1,15 @@
-// Inline subset of platform/runtime/mcp/types.ts to avoid dragging platform internals
-// into the public events surface (browser / Expo / RN consumers must not see runtime/mcp).
+// Import shared MCP type primitives from the leaf-level mcp-types module.
+// Both the public events surface and the platform runtime reference this same
+// module, eliminating duplicate McpServerRole definitions that caused TS errors.
+export type { McpServerRole, McpTrustMode, QuarantineReason } from './mcp-types.js';
 
-/** High-level server role used for coherence evaluation. */
-export type McpServerRole =
-  | 'general'
-  | 'docs'
-  | 'filesystem'
-  | 'git'
-  | 'database'
-  | 'search'
-  | 'communication'
-  | 'devops'
-  | 'analytics'
-  | 'custom';
-
-/** Trust operating mode for an MCP server. */
-export type McpTrustMode = 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked';
-
-/** Reason a schema was quarantined. */
-export type QuarantineReason = 'stale_threshold' | 'unsupported' | 'operator_flagged' | 'incompatible';
+import type { McpServerRole, McpTrustMode, QuarantineReason } from './mcp-types.js';
 
 /**
  * McpEvent — discriminated union covering all MCP (Model Context Protocol) server events.
  *
  * Covers MCP server lifecycle events for the runtime event bus.
  */
-
 export type McpEvent =
   /** MCP server configuration has been parsed and validated. */
   | { type: 'MCP_CONFIGURED'; serverId: string; transport: string; url?: string; role?: McpServerRole; trustMode?: McpTrustMode; allowedPaths?: string[]; allowedHosts?: string[] }

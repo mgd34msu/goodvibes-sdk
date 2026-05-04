@@ -14,6 +14,7 @@ import type { ControlPlaneAuthSnapshot } from './client-auth/control-plane-auth-
 import type {
   GoodVibesAuthLoginOptions,
   GoodVibesCurrentAuth,
+  GoodVibesExpiringTokenStore,
   GoodVibesLoginInput,
   GoodVibesLoginOutput,
   GoodVibesTokenStore,
@@ -29,6 +30,7 @@ export type { OAuthStartState, OAuthTokenPayload } from './client-auth/oauth-typ
 export type {
   GoodVibesAuthLoginOptions,
   GoodVibesCurrentAuth,
+  GoodVibesExpiringTokenStore,
   GoodVibesLoginInput,
   GoodVibesLoginOutput,
   GoodVibesTokenStore,
@@ -107,7 +109,7 @@ function requireStorage(storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeI
  * const sdk = createGoodVibesSdk({ baseUrl: '...', tokenStore: store });
  * await sdk.auth.clearToken(); // clears only in-memory
  */
-export function createMemoryTokenStore(initialToken: string | null = null, initialExpiresAt?: number): GoodVibesTokenStore {
+export function createMemoryTokenStore(initialToken: string | null = null, initialExpiresAt?: number): GoodVibesExpiringTokenStore {
   let token = initialToken;
   let expiresAt: number | undefined = initialExpiresAt;
   return {
@@ -150,7 +152,7 @@ export function createMemoryTokenStore(initialToken: string | null = null, initi
  * await sdk.auth.login({ username: 'alice', password: 's3cr3t' });
  * // token is now stored in sessionStorage
  */
-export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}): GoodVibesTokenStore {
+export function createBrowserTokenStore(options: BrowserTokenStoreOptions = {}): GoodVibesExpiringTokenStore {
   const storage = requireStorage(options.storage);
   const key = options.key?.trim() || 'goodvibes.token';
   const expiresAtKey = `${key}.expiresAt`;

@@ -5,6 +5,14 @@
     "outDir": "dist",
     "lib": [
       "ES2024",
+      // DOM is intentionally included for this package:
+      // packages/sdk/src includes both browser/RN client code (needs DOM globals
+      // like WebSocket, fetch, EventSource, URLSearchParams) and Node/Bun daemon
+      // code. Splitting into separate tsconfig.node.json would require duplicating
+      // references and paths across multiple configs with no compile-time benefit
+      // because daemon-side files already exclude DOM-only APIs by convention.
+      // Acceptable trade-off until the browser and daemon entrypoints are separated
+      // into distinct sub-packages.
       "DOM"
     ],
     "types": [
