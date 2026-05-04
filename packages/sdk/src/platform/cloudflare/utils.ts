@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { COMPONENT_ORDER, DEFAULT_COMPONENTS } from './constants.js';
 import type {
@@ -330,7 +331,8 @@ export function hostnameFromUrl(value: string): string {
   if (!value) return '';
   try {
     return new URL(value).hostname;
-  } catch {
+  } catch (err) {
+    logger.debug('hostnameFromUrl: failed to parse URL', { value, error: summarizeError(err) });
     return '';
   }
 }
@@ -384,7 +386,8 @@ export function requireKvNamespaceId(namespace: CloudflareKvNamespaceLike): stri
 export async function safeResponseText(response: Response): Promise<string> {
   try {
     return await response.text();
-  } catch {
+  } catch (err) {
+    logger.debug('safeResponseText: failed to read response text', { error: summarizeError(err) });
     return response.statusText;
   }
 }

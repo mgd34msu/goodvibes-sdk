@@ -97,7 +97,8 @@ export class ProfileManager {
     let files: string[];
     try {
       files = readdirSync(this.profilesDir).filter(f => f.endsWith('.json'));
-    } catch {
+    } catch (err) {
+      logger.debug('ProfileManager: failed to list profiles directory', { error: summarizeError(err) });
       return [];
     }
     const profiles: ProfileInfo[] = [];
@@ -109,8 +110,8 @@ export class ProfileManager {
         const raw = readFileSync(filePath, 'utf-8');
         const record = JSON.parse(raw) as Record<string, unknown>;
         timestamp = Number(record.timestamp ?? 0);
-      } catch {
-        // Skip unreadable files
+      } catch (err) {
+        logger.debug('ProfileManager: skipping unreadable profile file', { file, error: summarizeError(err) });
         continue;
       }
       profiles.push({ name, timestamp, filePath });
@@ -139,7 +140,8 @@ export class ProfileManager {
     try {
       unlinkSync(filePath);
       return true;
-    } catch {
+    } catch (err) {
+      logger.debug('ProfileManager: failed to delete profile', { error: summarizeError(err) });
       return false;
     }
   }

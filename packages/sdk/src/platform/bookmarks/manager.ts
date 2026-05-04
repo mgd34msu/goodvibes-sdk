@@ -97,7 +97,8 @@ export class BookmarkManager {
         .filter(f => f.endsWith('.txt'))
         .map(f => join(this.saveDir, f))
         .sort();
-    } catch {
+    } catch (err) {
+      logger.debug('BookmarkManager: failed to list saved files', { error: String(err) });
       return [];
     }
   }
@@ -115,7 +116,8 @@ export class BookmarkManager {
     if (!existsSync(filePath)) return null;
     try {
       return readFileSync(filePath, 'utf-8');
-    } catch {
+    } catch (err) {
+      logger.debug('BookmarkManager: failed to read saved file', { error: String(err) });
       return null;
     }
   }

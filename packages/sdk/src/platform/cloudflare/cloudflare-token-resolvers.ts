@@ -6,6 +6,8 @@ import {
 } from './constants.js';
 import type { CloudflareControlPlaneConfig, CloudflareResolvedSecret, CloudflareValidateInput } from './types.js';
 import { CloudflareControlPlaneError } from './types.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import { clean } from './utils.js';
 
 // ---------------------------------------------------------------------------
@@ -118,7 +120,8 @@ export async function resolveSecretRef(
       homeDirectory: ctx.secretsManager?.getGlobalHome(),
     });
     return value ? { value, source: 'config-ref' } : { value: null, source: 'missing' };
-  } catch {
+  } catch (err) {
+    logger.debug('resolveSecretRef: failed to resolve secret reference', { ref, error: summarizeError(err) });
     return { value: null, source: 'missing' };
   }
 }

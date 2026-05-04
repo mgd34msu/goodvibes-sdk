@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import ts from 'typescript';
 import { executeSandboxCommand } from '../../runtime/sandbox/backend.js';
@@ -51,17 +51,17 @@ function requireReplSandbox(launchPlan: SandboxLaunchPlan | undefined): SandboxL
   return launchPlan;
 }
 
-function loadHistory(historyPath: string): ReplHistoryEntry[] {
+async function loadHistory(historyPath: string): Promise<ReplHistoryEntry[]> {
   try {
-    return JSON.parse(readFileSync(historyPath, 'utf-8')) as ReplHistoryEntry[];
+    return JSON.parse(await readFile(historyPath, 'utf-8')) as ReplHistoryEntry[];
   } catch {
     return [];
   }
 }
 
-function saveHistory(historyPath: string, entries: readonly ReplHistoryEntry[]): void {
-  mkdirSync(dirname(historyPath), { recursive: true });
-  writeFileSync(historyPath, `${JSON.stringify(entries, null, 2)}\n`, 'utf-8');
+async function saveHistory(historyPath: string, entries: readonly ReplHistoryEntry[]): Promise<void> {
+  await mkdir(dirname(historyPath), { recursive: true });
+  await writeFile(historyPath, `${JSON.stringify(entries, null, 2)}\n`, 'utf-8');
 }
 
 function mapRuntimeToSandboxProfile(runtime: NonNullable<ReplToolInput['runtime']>) {
@@ -82,6 +82,9 @@ async function evalJavaScriptInSandbox(
   sandboxSessionRegistry: SandboxSessionRegistry,
   sessionId?: string,
 ): Promise<string> {
+  if (launchPlan.backend !== 'qemu') {
+    throw new Error('evalJavaScriptInSandbox: refusing to run outside QEMU sandbox');
+  }
   const payload = JSON.stringify({ expression, bindings });
   const runner = `
 const payload = JSON.parse(process.env.GV_REPL_PAYLOAD ?? '{}');
@@ -249,7 +252,7 @@ export function createReplTool(
         return { success: false, error: 'repl requires workspaceRoot.' };
       }
       const historyPath = resolveHistoryPath(input.workspaceRoot, surfaceRoot);
-      const history = loadHistory(historyPath);
+      const history = await loadHistory(historyPath);
 
       if (input.mode === 'history') {
         return { success: true, output: JSON.stringify({ count: history.length, history }) };
@@ -282,7 +285,7 @@ export function createReplTool(
             rendered = evalGraphql(input.expression, configManager, sandboxSessionRegistry, launchPlan, sandboxSession.id);
             break;
         }
-        saveHistory(historyPath, [...history, {
+        await saveHistory(historyPath, [...history, {
           ts: Date.now(),
           runtime,
           expression: input.expression,
@@ -293,7 +296,7 @@ export function createReplTool(
         }]);
         return { success: true, output: rendered };
       } catch (error) {
-        saveHistory(historyPath, [...history, {
+        await saveHistory(historyPath, [...history, {
           ts: Date.now(),
           runtime,
           expression: input.expression,

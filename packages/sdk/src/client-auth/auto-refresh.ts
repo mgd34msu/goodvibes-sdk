@@ -1,3 +1,6 @@
+import { logger } from '../platform/utils/logger.js';
+import { summarizeError } from '../platform/utils/error-display.js';
+
 /**
  * AutoRefreshCoordinator — Silent token refresh with in-flight request queuing.
  *
@@ -180,8 +183,9 @@ export class AutoRefreshCoordinator {
             reason: 'refresh',
           }),
         );
-      } catch {
+      } catch (err) {
         // Refresh failed — fall back to anonymous.
+        logger.debug('AutoRefreshCoordinator: token refresh failed, clearing to anonymous', { error: summarizeError(err) });
         await this.#tokenStore.clearToken();
         invokeObserver(() =>
           this.#observer?.onAuthTransition?.({

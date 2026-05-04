@@ -456,7 +456,6 @@ export function createGoodVibesSdk(
         return createRemoteRuntimeEvents(
           createEventSourceConnector<AnyRuntimeEvent>(baseUrl, tokenResolver, fetchImpl(), {
             reconnect: options.realtime?.sseReconnect,
-            onError: options.realtime?.onError,
             observer,
           }),
           {
@@ -473,7 +472,6 @@ export function createGoodVibesSdk(
             requireWebSocketImplementation(webSocketImpl ?? options.WebSocketImpl),
             {
               reconnect: options.realtime?.webSocketReconnect,
-              onError: options.realtime?.onError,
               observer,
             },
           ),

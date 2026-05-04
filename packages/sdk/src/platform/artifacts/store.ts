@@ -659,7 +659,8 @@ export class ArtifactStore {
     if (!match?.[1]) return undefined;
     try {
       return decodeURIComponent(match[1].replace(/^"|"$/g, ''));
-    } catch {
+    } catch (err) {
+      logger.debug('filenameFromContentDisposition: failed to decode URI component', { error: summarizeError(err) });
       return match[1].replace(/^"|"$/g, '');
     }
   }

@@ -124,7 +124,8 @@ export class ExecutionPlanManager {
     try {
       const raw = readFileSync(filePath, 'utf-8');
       return JSON.parse(raw) as ExecutionPlan;
-    } catch {
+    } catch (err) {
+      logger.debug('ExecutionPlanManager: failed to load plan', { planId: filePath, error: String(err) });
       return null;
     }
   }
@@ -150,7 +151,8 @@ export class ExecutionPlanManager {
       if (sessionId && plan.sessionId && plan.sessionId !== sessionId) return null;
       if (sessionId && !plan.sessionId) return null;
       return plan;
-    } catch {
+    } catch (err) {
+      logger.debug('ExecutionPlanManager: failed to read active plan pointer', { error: String(err) });
       return null;
     }
   }
