@@ -24,12 +24,12 @@ that handle credentials, pairing tokens, or daemon URLs.
 | `daemon-fetch-handler-quickstart.ts` | `bun examples/daemon-fetch-handler-quickstart.ts` | Minimal daemon route handler composition. |
 | `direct-transport-quickstart.ts` | `bun examples/direct-transport-quickstart.ts` | In-process direct transport usage. |
 | `expo-quickstart.tsx` | typecheck only | Expo client setup; run inside an Expo app. |
-| `operator-http-quickstart.mjs` | `node examples/operator-http-quickstart.mjs` | Operator HTTP client calls. |
-| `peer-http-quickstart.mjs` | `node examples/peer-http-quickstart.mjs` | Peer HTTP client calls. |
+| `operator-http-quickstart.mjs` | `bun examples/operator-http-quickstart.mjs` | Operator HTTP client calls. |
+| `peer-http-quickstart.mjs` | `bun examples/peer-http-quickstart.mjs` | Peer HTTP client calls. |
 | `react-native-quickstart.ts` | typecheck only | React Native client setup; run inside a React Native app. |
-| `realtime-events-quickstart.mjs` | `node examples/realtime-events-quickstart.mjs` | Runtime event streaming. |
-| `retry-and-reconnect.mjs` | `node examples/retry-and-reconnect.mjs` | Retry and reconnect policy configuration. |
-| `submit-turn-quickstart.mjs` | `node examples/submit-turn-quickstart.mjs` | Submit a conversation turn. |
+| `realtime-events-quickstart.mjs` | `bun examples/realtime-events-quickstart.mjs` | Runtime event streaming. |
+| `retry-and-reconnect.mjs` | `bun examples/retry-and-reconnect.mjs` | Retry and reconnect policy configuration. |
+| `submit-turn-quickstart.mjs` | `bun examples/submit-turn-quickstart.mjs` | Submit a conversation turn. |
 | `android-kotlin-quickstart.kt` | not runnable by Bun | Android integration sketch; copy into an Android project. |
 | `ios-swift-quickstart.swift` | not runnable by Bun | iOS integration sketch; copy into an iOS project. |
 

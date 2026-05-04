@@ -87,7 +87,7 @@ List all registered providers and their models. Returns configured status, auth 
 
 ```bash
 curl -H "Authorization: Bearer $GV_TOKEN" \
-  http://localhost:5789/api/providers | jq .
+  http://127.0.0.1:3210/api/providers | jq .
 ```
 
 ---
@@ -123,7 +123,7 @@ When no model is configured:
 
 ```bash
 curl -H "Authorization: Bearer $GV_TOKEN" \
-  http://localhost:5789/api/providers/current | jq .
+  http://127.0.0.1:3210/api/providers/current | jq .
 ```
 
 ---
@@ -190,14 +190,14 @@ curl -X PATCH \
   -H "Authorization: Bearer $GV_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"registryKey":"inception:mercury-2"}' \
-  http://localhost:5789/api/providers/current
+  http://127.0.0.1:3210/api/providers/current
 
 # Switch to OpenAI GPT-4o
 curl -X PATCH \
   -H "Authorization: Bearer $GV_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"registryKey":"openai:gpt-4o"}' \
-  http://localhost:5789/api/providers/current
+  http://127.0.0.1:3210/api/providers/current
 ```
 
 ---
