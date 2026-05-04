@@ -55,6 +55,16 @@ export interface HttpJsonTransportOptions {
   readonly observer?: TransportObserver | undefined;
   /** Middleware chain applied to every HTTP request/response cycle. */
   readonly middleware?: readonly TransportMiddleware[] | undefined;
+  /**
+   * COV-01..04: Optional callback invoked when the retry loop decides to back off.
+   * Fires immediately before the sleep delay. Use this to emit TRANSPORT_RETRY_SCHEDULED.
+   */
+  readonly onRetryScheduled?: ((info: { attempt: number; maxAttempts: number; backoffMs: number; reason: string }) => void) | undefined;
+  /**
+   * COV-01..04: Optional callback invoked when the sleep delay completes and the next
+   * attempt is about to start. Fires immediately after the sleep. Use to emit TRANSPORT_RETRY_EXECUTED.
+   */
+  readonly onRetryExecuted?: ((info: { attempt: number; maxAttempts: number }) => void) | undefined;
 }
 
 export interface HttpJsonRequestOptions {
@@ -337,6 +347,8 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
   const retryPolicy = options.retry;
   const paths = createTransportPaths(baseUrl);
   const observer = options.observer;
+  const onRetryScheduled = options.onRetryScheduled;
+  const onRetryExecuted = options.onRetryExecuted;
   // Persistent middleware chain — mutated via use().
   const middlewareChain: TransportMiddleware[] = [...(options.middleware ?? [])];
 
@@ -520,7 +532,13 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         if (!shouldRetry) {
           throw wrappedError;
         }
-        await sleepWithSignal(getHttpRetryDelay(attempt, resolvedRetry), requestOptions.signal);
+        const backoffMs = getHttpRetryDelay(attempt, resolvedRetry);
+        const retryReason = typeof status === 'number' && status > 0 ? `http-${status}` : 'network-error';
+        // COV-01..04: notify caller that retry is scheduled (before sleep).
+        onRetryScheduled?.({ attempt, maxAttempts: resolvedRetry.maxAttempts, backoffMs, reason: retryReason });
+        await sleepWithSignal(backoffMs, requestOptions.signal);
+        // COV-01..04: notify caller that retry is executing (after sleep).
+        onRetryExecuted?.({ attempt, maxAttempts: resolvedRetry.maxAttempts });
       }
     }
   };

@@ -60,6 +60,27 @@ describe('obs-01 http access log', () => {
     const caught = await fetchWithTimeout('http://example.com/slow', { signal: controller.signal }, 5_000).catch(
       (e: unknown) => e,
     );
-    expect(caught).not.toBeUndefined(); // presence-only: error captured
+    expect(caught).toBeInstanceOf(Error); // MIN-01: strengthened — abort must produce an Error
+  });
+
+  test('fetchWithTimeout propagates AbortError when aborted mid-call', async () => {
+    // MAJ-09: real mid-call abort — signal fires AFTER fetch starts, not before.
+    globalThis.fetch = async (_url, init) => {
+      return new Promise<Response>((_resolve, reject) => {
+        const sig = init?.signal;
+        if (sig?.aborted) { reject(new DOMException('AbortError', 'AbortError')); return; }
+        sig?.addEventListener('abort', () => {
+          reject(new DOMException('The operation was aborted.', 'AbortError'));
+        }, { once: true });
+      });
+    };
+    const controller = new AbortController();
+    const fetchPromise = fetchWithTimeout('http://example.com/slow', { signal: controller.signal }, 5_000);
+    // Yield to allow the fetch to start before aborting
+    await new Promise<void>((r) => setTimeout(r, 10));
+    controller.abort();
+    const caught = await fetchPromise.catch((e: unknown) => e);
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).name).toMatch(/AbortError/i);
   });
 });

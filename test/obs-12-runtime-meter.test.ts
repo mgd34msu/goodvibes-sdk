@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+import { resetMetrics } from '../packages/sdk/src/platform/runtime/metrics.js';
 
 /**
  * OBS-12: RuntimeMeter production wiring — verifies that the platform meter
@@ -8,6 +9,11 @@ import { describe, expect, test } from 'bun:test';
  * Gauge: set(value, labels?), value(labels?)
  */
 describe('obs-12 runtime meter', () => {
+  afterEach(() => {
+    // MAJ-13: reset singleton meter state so tests do not bleed into each other.
+    resetMetrics();
+  });
+
   test('platformMeter is exported from metrics module', async () => {
     const { platformMeter } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     expect(platformMeter).not.toBeNull(); // presence-only: platformMeter exported

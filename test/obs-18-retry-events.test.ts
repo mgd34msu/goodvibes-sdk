@@ -6,10 +6,6 @@ import { describe, expect, test } from 'bun:test';
  * that the corresponding emitter functions are exported.
  */
 describe('obs-18 retry events', () => {
-  // NOTE (CRIT-05): emitTransportRetryScheduled / emitTransportRetryExecuted have no
-  // production callers yet — the retry/backoff transport path does not invoke them.
-  // These tests verify the emitter functions themselves are correct; end-to-end
-  // production wiring is a separate engineering task.
 
   test('emitTransportRetryScheduled emits on the transport channel', async () => {
     const { emitTransportRetryScheduled } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
@@ -28,6 +24,32 @@ describe('obs-18 retry events', () => {
     const envelope = events[0] as { payload: { type: string; backoffMs: number } };
     expect(envelope.payload.type).toBe('TRANSPORT_RETRY_SCHEDULED');
     expect(envelope.payload.backoffMs).toBe(1000);
+  });
+
+  // COV-01..04: production wiring — createHttpJsonTransport fires callbacks in the retry loop.
+  test('createHttpJsonTransport onRetryScheduled fires when retry loop triggers', async () => {
+    const { createHttpJsonTransport } = await import('../packages/transport-http/src/http-core.js');
+    const scheduledEvents: { attempt: number; maxAttempts: number; backoffMs: number; reason: string }[] = [];
+    const executedEvents: { attempt: number; maxAttempts: number }[] = [];
+    let callCount = 0;
+    const transport = createHttpJsonTransport({
+      baseUrl: 'http://example.com',
+      fetchImpl: async () => {
+        callCount += 1;
+        if (callCount === 1) {
+          return new Response(JSON.stringify({ error: 'unavailable' }), { status: 503 });
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+      retry: { maxAttempts: 2, initialDelayMs: 0, maxDelayMs: 0 },
+      onRetryScheduled: (info) => { scheduledEvents.push(info); },
+      onRetryExecuted: (info) => { executedEvents.push(info); },
+    });
+    await transport.requestJson('/api/test');
+    expect(scheduledEvents.length).toBe(1);
+    expect(scheduledEvents[0]).toMatchObject({ attempt: 1, maxAttempts: 2, reason: 'http-503' });
+    expect(executedEvents.length).toBe(1);
+    expect(executedEvents[0]).toMatchObject({ attempt: 1, maxAttempts: 2 });
   });
 
   test('emitTransportRetryExecuted emits on the transport channel', async () => {

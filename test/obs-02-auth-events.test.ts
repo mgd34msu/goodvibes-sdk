@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
+import { resetMetrics } from '../packages/sdk/src/platform/runtime/metrics.js';
 
 /**
  * OBS-02: Auth events — verifies that auth-related metric counters exist and
@@ -9,6 +10,11 @@ import { afterEach, describe, expect, test } from 'bun:test';
  * Includes integration test driving the login path to assert counter wiring.
  */
 describe('obs-02 auth events', () => {
+  afterEach(() => {
+    // MAJ-13: reset singleton meter state so tests do not bleed into each other.
+    resetMetrics();
+  });
+
   test('authSuccessTotal and authFailureTotal counters are exported from metrics', async () => {
     const mod = await import('../packages/sdk/src/platform/runtime/metrics.js');
     expect(mod.authSuccessTotal).not.toBeNull(); // presence-only: counter exported
@@ -45,6 +51,8 @@ describe('obs-02 auth counter wiring — login path', () => {
     for (const root of tmpRoots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
     }
+    // MAJ-13: reset singleton meter state so tests do not bleed into each other.
+    resetMetrics();
   });
 
   test('bad login credentials increment authFailureTotal', async () => {

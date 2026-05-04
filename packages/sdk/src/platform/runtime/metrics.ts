@@ -63,6 +63,14 @@ export const telemetryBufferFill = platformMeter.gauge('telemetry.buffer.fill');
 export const listenerErrorsTotal = platformMeter.counter('listener_errors_total');
 
 /**
+ * MAJ-04: Reset all metric instruments on the singleton platform meter.
+ * Use in afterEach() hooks to prevent singleton state from bleeding between tests.
+ */
+export function resetMetrics(): void {
+  platformMeter.reset();
+}
+
+/**
  * OBS-12: Snapshot all metric instruments as a JSON-serialisable object.
  * Used by the GET /api/runtime/metrics endpoint.
  *
