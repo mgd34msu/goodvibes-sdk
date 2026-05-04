@@ -327,47 +327,49 @@ async function linkPromotedFactsToRepairSubjects(
   const edges = graph.edges;
   const nodesById = graph.nodesById;
   for (const sourceId of sourceIds) {
-    for (const fact of factsForSource(sourceId, edges, nodesById)) {
-      if (!isUsableRepairFact(fact) || !isRepairFactCompatibleWithSubjects(fact, subjects)) continue;
-      await store.upsertNode({
-        id: fact.id,
-        kind: fact.kind,
-        slug: fact.slug,
-        title: fact.title,
-        summary: fact.summary,
-        aliases: fact.aliases,
-        status: fact.status,
-        confidence: fact.confidence,
-        sourceId: fact.sourceId ?? sourceId,
-        metadata: semanticMetadata(spaceId, {
-          ...fact.metadata,
-          subject: readString(fact.metadata.subject) ?? subjects[0]?.title,
-          subjectIds: uniqueStrings([...readStringArray(fact.metadata.subjectIds), ...linkedObjectIds]),
-          linkedObjectIds: uniqueStrings([...readStringArray(fact.metadata.linkedObjectIds), ...linkedObjectIds]),
-          targetHints: uniqueTargetHints([
-            ...readTargetHints(fact.metadata.targetHints),
-            ...targetHints,
-          ]),
+    await store.batch(async () => {
+      for (const fact of factsForSource(sourceId, edges, nodesById)) {
+        if (!isUsableRepairFact(fact) || !isRepairFactCompatibleWithSubjects(fact, subjects)) continue;
+        await store.upsertNode({
+          id: fact.id,
+          kind: fact.kind,
+          slug: fact.slug,
+          title: fact.title,
+          summary: fact.summary,
+          aliases: fact.aliases,
+          status: fact.status,
+          confidence: fact.confidence,
           sourceId: fact.sourceId ?? sourceId,
-          linkedBy: readString(fact.metadata.linkedBy) ?? 'semantic-gap-repair',
-        }),
-      });
-      for (const objectId of linkedObjectIds) {
-        await store.upsertEdge({
-          fromKind: 'node',
-          fromId: fact.id,
-          toKind: 'node',
-          toId: objectId,
-          relation: 'describes',
-          weight: 0.82,
           metadata: semanticMetadata(spaceId, {
-            linkedBy: 'semantic-gap-repair',
-            repairedAt: Date.now(),
-            sourceId,
+            ...fact.metadata,
+            subject: readString(fact.metadata.subject) ?? subjects[0]?.title,
+            subjectIds: uniqueStrings([...readStringArray(fact.metadata.subjectIds), ...linkedObjectIds]),
+            linkedObjectIds: uniqueStrings([...readStringArray(fact.metadata.linkedObjectIds), ...linkedObjectIds]),
+            targetHints: uniqueTargetHints([
+              ...readTargetHints(fact.metadata.targetHints),
+              ...targetHints,
+            ]),
+            sourceId: fact.sourceId ?? sourceId,
+            linkedBy: readString(fact.metadata.linkedBy) ?? 'semantic-gap-repair',
           }),
         });
+        for (const objectId of linkedObjectIds) {
+          await store.upsertEdge({
+            fromKind: 'node',
+            fromId: fact.id,
+            toKind: 'node',
+            toId: objectId,
+            relation: 'describes',
+            weight: 0.82,
+            metadata: semanticMetadata(spaceId, {
+              linkedBy: 'semantic-gap-repair',
+              repairedAt: Date.now(),
+              sourceId,
+            }),
+          });
+        }
       }
-    }
+    });
   }
 }
 

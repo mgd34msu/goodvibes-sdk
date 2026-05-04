@@ -20,15 +20,17 @@ export async function recoverStaleActiveTasks(store: KnowledgeStore, spaceId: st
   const staleTasks = store.listRefinementTasks(10_000, { spaceId })
     .filter((task) => ACTIVE_REFINEMENT_STATES.has(task.state))
     .filter((task) => now - task.updatedAt >= STALE_ACTIVE_TASK_MS);
-  for (const task of staleTasks) {
-    await upsertRecoveredTask(
-      store,
-      task,
-      'blocked',
-      'Refinement task was interrupted or exceeded the active window; it can be retried.',
-      { recoveredFrom: 'stale_active' },
-    );
-  }
+  await store.batch(async () => {
+    for (const task of staleTasks) {
+      await upsertRecoveredTask(
+        store,
+        task,
+        'blocked',
+        'Refinement task was interrupted or exceeded the active window; it can be retried.',
+        { recoveredFrom: 'stale_active' },
+      );
+    }
+  });
 }
 
 export async function recoverNoRepairerTasks(store: KnowledgeStore, spaceId: string): Promise<void> {
@@ -36,37 +38,39 @@ export async function recoverNoRepairerTasks(store: KnowledgeStore, spaceId: str
     .filter((task) => task.state === 'blocked')
     .filter((task) => /no semantic gap repairer is configured/i.test(task.blockedReason ?? ''));
   for (const task of tasks) {
-    if (task.gapId) {
-      const gap = store.getNode(task.gapId);
-      if (gap && getKnowledgeSpaceId(gap) === spaceId && readString(gap.metadata.repairStatus) === 'no_repairer') {
-        await store.upsertNode({
-          id: gap.id,
-          kind: gap.kind,
-          slug: gap.slug,
-          title: gap.title,
-          summary: gap.summary,
-          aliases: gap.aliases,
-          status: gap.status,
-          confidence: gap.confidence,
-          sourceId: gap.sourceId,
-          metadata: {
-            ...gap.metadata,
-            repairStatus: 'open',
-            repairReason: 'Semantic gap repairer is now configured; retry is allowed.',
-            nextRepairAttemptAt: undefined,
-            knowledgeSpaceId: spaceId,
-          },
-        });
+    await store.batch(async () => {
+      if (task.gapId) {
+        const gap = store.getNode(task.gapId);
+        if (gap && getKnowledgeSpaceId(gap) === spaceId && readString(gap.metadata.repairStatus) === 'no_repairer') {
+          await store.upsertNode({
+            id: gap.id,
+            kind: gap.kind,
+            slug: gap.slug,
+            title: gap.title,
+            summary: gap.summary,
+            aliases: gap.aliases,
+            status: gap.status,
+            confidence: gap.confidence,
+            sourceId: gap.sourceId,
+            metadata: {
+              ...gap.metadata,
+              repairStatus: 'open',
+              repairReason: 'Semantic gap repairer is now configured; retry is allowed.',
+              nextRepairAttemptAt: undefined,
+              knowledgeSpaceId: spaceId,
+            },
+          });
+        }
       }
-    }
-    await upsertRecoveredTask(
-      store,
-      task,
-      'detected',
-      'Semantic gap repairer is now configured; task can be retried.',
-      { recoveredFrom: 'no_repairer' },
-      { repairStatus: 'open', recoveredFrom: 'no_repairer', recoveredAt: Date.now() },
-    );
+      await upsertRecoveredTask(
+        store,
+        task,
+        'detected',
+        'Semantic gap repairer is now configured; task can be retried.',
+        { recoveredFrom: 'no_repairer' },
+        { repairStatus: 'open', recoveredFrom: 'no_repairer', recoveredAt: Date.now() },
+      );
+    });
   }
 }
 

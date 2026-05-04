@@ -44,74 +44,76 @@ export async function persistAnswerGap(
   const fingerprint = answerGapFingerprint(spaceId, query, subject, linkedObjects[0]?.id);
   const id = `sem-answer-gap-${fingerprint}`;
   const existing = store.getNode(id);
-  const node = await store.upsertNode({
-    id,
-    kind: 'knowledge_gap',
-    slug: `answer-gap-${fingerprint}`,
-    title: query,
-    summary: reason,
-    confidence: 70,
-    ...(sources[0] ? { sourceId: sources[0].id } : {}),
-    metadata: semanticMetadata(spaceId, {
-      semanticKind: 'gap',
-      gapKind: 'answer',
-      query,
-      reason,
-      subject,
-      subjectFingerprint: fingerprint,
-      sourceIds: sources.map((source) => source.id),
-      linkedObjectIds: linkedObjects.map((node) => node.id),
-      repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
-      ...((readStringArray(existing?.metadata.acceptedSourceIds).length > 0) ? { acceptedSourceIds: readStringArray(existing?.metadata.acceptedSourceIds) } : {}),
-      ...(typeof existing?.metadata.promotedFactCount === 'number' ? { promotedFactCount: existing.metadata.promotedFactCount } : {}),
-      ...(typeof existing?.metadata.nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt: existing.metadata.nextRepairAttemptAt } : {}),
-      visibility: 'refinement',
-      displayRole: 'knowledge-gap',
-    }),
-  });
-  for (const source of sources) {
-    await store.upsertEdge({
-      fromKind: 'source',
-      fromId: source.id,
-      toKind: 'node',
-      toId: node.id,
-      relation: 'has_gap',
-      metadata: semanticMetadata(spaceId, { gapKind: 'answer' }),
-    });
-  }
-  for (const object of linkedObjects) {
-    await store.upsertEdge({
-      fromKind: 'node',
-      fromId: object.id,
-      toKind: 'node',
-      toId: node.id,
-      relation: 'has_gap',
-      metadata: semanticMetadata(spaceId, { gapKind: 'answer' }),
-    });
-  }
-  if (!isRepairedAnswerGap(node)) {
-    await store.upsertIssue({
-      id: `sem-answer-gap-issue-${fingerprint}`,
-      severity: 'info',
-      code: 'knowledge.answer_gap',
-      message: `No knowledge answer available for: ${query}`,
-      status: 'open',
+  return store.batch(async () => {
+    const node = await store.upsertNode({
+      id,
+      kind: 'knowledge_gap',
+      slug: `answer-gap-${fingerprint}`,
+      title: query,
+      summary: reason,
+      confidence: 70,
       ...(sources[0] ? { sourceId: sources[0].id } : {}),
-      nodeId: node.id,
       metadata: semanticMetadata(spaceId, {
-        namespace: `knowledge:${spaceId}:answers`,
+        semanticKind: 'gap',
+        gapKind: 'answer',
         query,
         reason,
         subject,
         subjectFingerprint: fingerprint,
         sourceIds: sources.map((source) => source.id),
-        linkedObjectIds: linkedObjects.map((entry) => entry.id),
+        linkedObjectIds: linkedObjects.map((node) => node.id),
+        repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
+        ...((readStringArray(existing?.metadata.acceptedSourceIds).length > 0) ? { acceptedSourceIds: readStringArray(existing?.metadata.acceptedSourceIds) } : {}),
+        ...(typeof existing?.metadata.promotedFactCount === 'number' ? { promotedFactCount: existing.metadata.promotedFactCount } : {}),
+        ...(typeof existing?.metadata.nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt: existing.metadata.nextRepairAttemptAt } : {}),
+        visibility: 'refinement',
+        displayRole: 'knowledge-gap',
       }),
     });
-  } else {
-    await resolveAnswerGapIssues(store, spaceId, node.id);
-  }
-  return node;
+    for (const source of sources) {
+      await store.upsertEdge({
+        fromKind: 'source',
+        fromId: source.id,
+        toKind: 'node',
+        toId: node.id,
+        relation: 'has_gap',
+        metadata: semanticMetadata(spaceId, { gapKind: 'answer' }),
+      });
+    }
+    for (const object of linkedObjects) {
+      await store.upsertEdge({
+        fromKind: 'node',
+        fromId: object.id,
+        toKind: 'node',
+        toId: node.id,
+        relation: 'has_gap',
+        metadata: semanticMetadata(spaceId, { gapKind: 'answer' }),
+      });
+    }
+    if (!isRepairedAnswerGap(node)) {
+      await store.upsertIssue({
+        id: `sem-answer-gap-issue-${fingerprint}`,
+        severity: 'info',
+        code: 'knowledge.answer_gap',
+        message: `No knowledge answer available for: ${query}`,
+        status: 'open',
+        ...(sources[0] ? { sourceId: sources[0].id } : {}),
+        nodeId: node.id,
+        metadata: semanticMetadata(spaceId, {
+          namespace: `knowledge:${spaceId}:answers`,
+          query,
+          reason,
+          subject,
+          subjectFingerprint: fingerprint,
+          sourceIds: sources.map((source) => source.id),
+          linkedObjectIds: linkedObjects.map((entry) => entry.id),
+        }),
+      });
+    } else {
+      await resolveAnswerGapIssues(store, spaceId, node.id);
+    }
+    return node;
+  });
 }
 
 export async function persistAnswerGaps(
