@@ -1,29 +1,29 @@
 /**
  * Coverage-gap smoke test — platform/git
- * Verifies that GitService loads and exposes the expected API surface.
+ * Verifies that GitService executes observable behavior when called.
  * Closes coverage gap: platform/git (eighth-review)
  */
 
 import { describe, expect, test } from 'bun:test';
+import { resolve } from 'node:path';
 import { GitService } from '../packages/sdk/src/platform/git/service.js';
 
-describe('platform/git — module load smoke', () => {
-  test('GitService is a constructor', () => {
-    expect(typeof GitService).toBe('function');
+const CWD = resolve(import.meta.dir, '..');
+
+describe('platform/git — behavior smoke', () => {
+  test('GitService.isGitRepo returns true for the SDK repo', async () => {
+    const result = await GitService.isGitRepo(CWD);
+    expect(result).toBe(true);
   });
 
-  test('GitService prototype has expected instance methods', () => {
-    const proto = GitService.prototype;
-    expect(typeof proto.status).toBe('function');
-    expect(typeof proto.branch).toBe('function');
-    expect(typeof proto.commit).toBe('function');
-    expect(typeof proto.getCwd).toBe('function');
-    expect(typeof proto.dispose).toBe('function');
+  test('new GitService(CWD).getCwd() returns the working directory', () => {
+    const svc = new GitService(CWD);
+    expect(svc.getCwd()).toBe(CWD);
   });
 
-  test('GitService has expected static methods', () => {
-    expect(typeof GitService.isGitRepo).toBe('function');
-    expect(typeof GitService.getRepoRoot).toBe('function');
-    expect(typeof GitService.initRepo).toBe('function');
+  test('GitService.getRepoRoot returns a non-empty string for the SDK repo', async () => {
+    const root = await GitService.getRepoRoot(CWD);
+    expect(typeof root).toBe('string');
+    expect((root as string).length).toBeGreaterThan(0);
   });
 });
