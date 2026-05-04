@@ -70,9 +70,15 @@ const controlBodySchemas = createRouteBodySchemaRegistry({
     const query = body.query && typeof body.query === 'object' && !Array.isArray(body.query)
       ? body.query as Record<string, unknown>
       : undefined;
+    if (!Object.hasOwn(body, 'body')) {
+      return jsonErrorResponse(
+        { error: 'Missing required field: body. Expected envelope shape: { query?, body }' },
+        { status: 400 },
+      );
+    }
     return {
       ...(query ? { query } : {}),
-      body: Object.hasOwn(body, 'body') ? body.body : body,
+      body: body.body,
     };
   }),
 });

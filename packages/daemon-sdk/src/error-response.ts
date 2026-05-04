@@ -136,12 +136,18 @@ function inferCategory(status?: number, code?: string): DaemonErrorCategory {
   return DaemonErrorCategory.UNKNOWN;
 }
 
+const MAX_INFER_MESSAGE_LENGTH = 2_000;
+
 function inferCategoryFromMessage(message: string): DaemonErrorCategory {
-  const msg = message.toLowerCase();
+  // m8: cap length before lowercasing to avoid regex on unbounded strings
+  const msg = message.length > MAX_INFER_MESSAGE_LENGTH
+    ? message.slice(0, MAX_INFER_MESSAGE_LENGTH).toLowerCase()
+    : message.toLowerCase();
   // Order matters: credential/authentication patterns are intentionally checked
   // before generic bad-request wording so provider credential failures remain
   // actionable for clients.
-  if (/api[_\s-]?key|auth|token|credential|jwt|unauthoriz/.test(msg)) return DaemonErrorCategory.AUTHENTICATION;
+  // m16: use word boundaries to avoid false positives on 'authority', 'author', etc.
+  if (/api[_\s-]?key|\bauth\b|\btoken\b|credential|\bjwt\b|unauthoriz/.test(msg)) return DaemonErrorCategory.AUTHENTICATION;
   if (/forbidden|access denied|permission denied|not allowed/.test(msg)) return DaemonErrorCategory.AUTHORIZATION;
   if (/billing|payment required|credits?|quota|depleted|insufficient balance/.test(msg)) return DaemonErrorCategory.BILLING;
   if (/rate.limit|too many requests|throttl/.test(msg)) return DaemonErrorCategory.RATE_LIMIT;

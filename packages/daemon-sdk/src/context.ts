@@ -22,7 +22,7 @@ export interface DaemonOperatorRouteHandlers
 export interface DaemonOperatorRuntimeRouteHandlers {
   getAutomationHeartbeat(): MaybeResponse;
   postAutomationHeartbeat(req: Request): MaybeResponse;
-  getSchedulerCapacity(): MaybeResponse;
+  getSchedulerCapacity(req: Request): MaybeResponse;
   getRuntimeMetrics(): MaybeResponse;
 }
 
@@ -194,7 +194,7 @@ export interface DaemonSystemRouteHandlers {
   stopService(req: Request): MaybeResponse;
   restartService(req: Request): MaybeResponse;
   uninstallService(req: Request): MaybeResponse;
-  getRouteBindings(): MaybeResponse;
+  getRouteBindings(req: Request): MaybeResponse;
   postRouteBinding(req: Request): MaybeResponse;
   patchRouteBinding(bindingId: string, req: Request): MaybeResponse;
   deleteRouteBinding(bindingId: string, req: Request): MaybeResponse;
@@ -354,7 +354,7 @@ export interface DaemonRuntimeAutomationRouteHandlers {
   deleteSchedule(scheduleId: string, req: Request): MaybeResponse;
   setScheduleEnabled(scheduleId: string, enabled: boolean, req: Request): MaybeResponse;
   runScheduleNow(scheduleId: string, req: Request): MaybeResponse;
-  getSchedulerCapacity(): MaybeResponse;
+  getSchedulerCapacity(req: Request): MaybeResponse;
 }
 
 export interface DaemonRuntimeRouteHandlers

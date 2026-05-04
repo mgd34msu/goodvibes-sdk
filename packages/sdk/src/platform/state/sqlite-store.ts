@@ -80,7 +80,7 @@ export class SQLiteStore {
       mkdirSync(dirname(dbPath), { recursive: true });
       const data = this.db.export();
       writeFileSync(dbPath, Buffer.from(data));
-      logger.info('SQLiteStore: saved to disk', { path: dbPath });
+      logger.debug('SQLiteStore: saved to disk', { path: dbPath });
       return true;
     } catch (err) {
       logger.error('SQLiteStore: failed to save', {

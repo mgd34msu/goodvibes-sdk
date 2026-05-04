@@ -301,8 +301,9 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
   // on the runtime bus; TUI's bootstrap-core subscriber delegates to
   // orchestrator.handleUserInput() which fires a real LLM turn (same entry as TUI input
   // box). Turn events stream to both TUI and companion over SSE automatically.
-  // Deliberately short-circuits BEFORE sessionBroker.submitMessage() to avoid the
-  // buildContinuationTask WRFC engineer-chain spawn path.
+  // m1: Intentionally duplicates some session-resolution logic from submitMessage() to
+  // short-circuit BEFORE sessionBroker.submitMessage() and avoid the buildContinuationTask
+  // WRFC engineer-chain spawn path (by design).
   if (kind === 'message') {
     const session = context.sessionBroker.getSession(sessionId);
     if (!session) {
@@ -364,6 +365,9 @@ async function handleGetSharedSessionEvents(
   if (!session) {
     return jsonErrorResponse({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
   }
+  // m20: stream lifetime is tied to the request connection; the SSE stream is
+  // cleaned up when the response body closes. No explicit Symbol.dispose is exposed
+  // here because the lifetime boundary is the HTTP response, not a held reference.
   return context.openSessionEventStream(req, sessionId);
 }
 
@@ -425,8 +429,9 @@ function handleGetRuntimeTask(context: DaemonRuntimeRouteContext, taskId: string
 /**
  * Extract the message body from an incoming POST body.
  *
- * F13 normalization: accepts the canonical 'body' field.
- * The caller must check for an empty result and return 400.
+ * Accepts the canonical `body` field from the request envelope.
+ * Returns an empty string when the field is absent or not a string; the
+ * caller must check for an empty result and return 400.
  *
  * @param body - Parsed JSON body from the request.
  * @returns Trimmed message string, or '' if none of the accepted fields are present.

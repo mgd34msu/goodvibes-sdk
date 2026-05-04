@@ -116,14 +116,14 @@ function prepareTextEditInput(
   };
 }
 
-function writeSuccessfulTextEdits(
+async function writeSuccessfulTextEdits(
   results: EditResult[],
   resolvedPaths: Map<string, string>,
   workingContents: Map<string, string>,
   fileContents: Map<string, string>,
   env: EditExecutionContext,
   writtenPaths: Set<string>,
-): void {
+): Promise<void> {
   for (const r of results) {
     if (!r.success) continue;
     const resolvedPath = resolvedPaths.get(r.path);
@@ -133,7 +133,7 @@ function writeSuccessfulTextEdits(
     if (newContent === undefined) continue;
 
     try {
-      writeFileSync(resolvedPath, newContent, 'utf-8');
+      await writeFile(resolvedPath, newContent, 'utf-8');
       env.fileCache.update(resolvedPath, newContent);
       writtenPaths.add(resolvedPath);
       if (env.fileUndoManager) {
@@ -475,7 +475,7 @@ async function executeTextEdits(
 
   const writtenPaths = new Set<string>();
   if (!dryRun) {
-    writeSuccessfulTextEdits(results, resolvedPaths, workingContents, fileContents, env, writtenPaths);
+    await writeSuccessfulTextEdits(results, resolvedPaths, workingContents, fileContents, env, writtenPaths);
   }
 
   const anySuccess = results.some((r) => r.success);

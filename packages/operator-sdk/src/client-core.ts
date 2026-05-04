@@ -215,6 +215,11 @@ export function createOperatorRemoteClient(
     // openContractRouteStream never has to infer a missing options object.
     // Response validation is not applied here because stream payloads are
     // delivered through per-event handlers rather than a single response body.
+    // M3: Note — if the underlying transport does not advertise event-schema
+    // validation (e.g. drops realtime-event envelope checks), stream payloads
+    // will be emitted to handlers without schema verification. The validateResponses
+    // option from clientOptions is intentionally not forwarded to streamOptions
+    // because there is no single response body to validate here.
     const streamOptions = options ?? { handlers: {} };
     return openContractRouteStream(
       transport,

@@ -57,6 +57,9 @@ export function readBoundedInteger(raw: string | null, options: BoundedIntegerOp
   const max = options.max ?? 1_000;
   if (raw === null || raw.trim() === '') return clampInteger(options.fallback, min, max);
   const value = Number(raw);
+  // m3: non-finite values (NaN from malformed strings like '?limit=abc') silently
+  // fall back to the default rather than returning an error. This is intentional:
+  // query-parameter callers that omit or mangle the field get a safe default.
   if (!Number.isFinite(value)) return clampInteger(options.fallback, min, max);
   return clampInteger(value, min, max);
 }
@@ -86,6 +89,8 @@ export function readOptionalStringField(body: JsonRecord, key: string): string |
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+// m4: `max` defaults to 128 but callers override it (e.g. MAX_SESSION_TOOL_NAMES=64);
+// the inconsistency is intentional — each call site uses a domain-specific limit.
 export function readStringArrayField(body: JsonRecord, key: string, max = 128): string[] | undefined {
   const value = body[key];
   if (!Array.isArray(value)) return undefined;
