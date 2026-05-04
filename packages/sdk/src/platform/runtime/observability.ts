@@ -1,25 +1,7 @@
 // ── Diagnostics ──────────────────────────────────────────────────────────────
-// MIN-05: Wildcard policy for `platform/runtime/observability` barrel.
-//
-// Unlike sibling barrels (e.g., `ui.ts`, `shell.ts`, `state.ts`) that use
-// `export *` from sub-barrels, this file uses ONLY named re-exports. Reasons:
-//
-// 1. Sub-barrels (`diagnostics/index.js`, `eval/index.js`, `forensics/index.js`,
-//    `health/index.js`, `inspection/index.js`) themselves contain symbols not
-//    intended for the public observability surface. Named re-exports here keep
-//    the public surface a deliberate curated allowlist instead of an inherited
-//    snapshot that grows whenever a sub-barrel adds an export.
-// 2. The `./platform/runtime/observability` subpath is one of the most-touched
-//    public entry points (sec-XX, obs-XX tests run through it). Forgotten or
-//    accidental exports here would surface in `etc/goodvibes-sdk.api.md` diff
-//    review, but a named-only barrel makes the contract explicit at edit time
-//    rather than catch-time.
-// 3. The `_N` suffix collisions historically traced to wildcard chains; this
-//    barrel pre-empts that class of problem by construction.
-//
-// If a new symbol must be exposed here, add it explicitly below. Do not switch
-// to `export *` for convenience.
-
+// MIN-05: This barrel uses ONLY named re-exports (no `export *`) so the public
+// observability surface is a curated allowlist; sub-barrels contain symbols not
+// intended for the public api.md. See bundle-budgets.README.md for context.
 export type {
   DiagnosticFilter,
   DiagnosticLevel,
