@@ -396,9 +396,7 @@ export type AutomationScheduleKind = (typeof AUTOMATION_SCHEDULE_KINDS)[number];
 // @public (undocumented)
 export type AutomationSessionPolicy = string;
 
-// Warning: (ae-internal-missing-underscore) The name "AutomationSurfaceKind" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal (undocumented)
+// @public (undocumented)
 export type AutomationSurfaceKind = string;
 
 // @public (undocumented)
@@ -2661,6 +2659,16 @@ export interface HttpJsonTransportOptions {
     readonly middleware?: readonly TransportMiddleware[] | undefined;
     // (undocumented)
     readonly observer?: TransportObserver | undefined;
+    readonly onRetryExecuted?: ((info: {
+        attempt: number;
+        maxAttempts: number;
+    }) => void) | undefined;
+    readonly onRetryScheduled?: ((info: {
+        attempt: number;
+        maxAttempts: number;
+        backoffMs: number;
+        reason: string;
+    }) => void) | undefined;
     // (undocumented)
     readonly retry?: HttpRetryPolicy | undefined;
 }
@@ -16273,8 +16281,6 @@ export interface RouteBindingRecordInput {
     readonly sessionPolicy?: AutomationSessionPolicy | undefined;
     // (undocumented)
     readonly surfaceId: string;
-    // Warning: (ae-incompatible-release-tags) The symbol "surfaceKind" is marked as @public, but its signature references "AutomationSurfaceKind" which is marked as @internal
-    //
     // (undocumented)
     readonly surfaceKind: AutomationSurfaceKind;
     // (undocumented)
@@ -17740,13 +17746,13 @@ export type WrfcState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'aw
 //
 // packages/daemon-sdk/src/knowledge-route-types.ts:54:76 - (ae-forgotten-export) The symbol "KnowledgeUsageKind" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/knowledge-route-types.ts:58:15 - (ae-forgotten-export) The symbol "KnowledgeCandidateStatus" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:86:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:91:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:172:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:176:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:177:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:203:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:219:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:87:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:92:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:173:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:177:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:178:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:204:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
+// packages/daemon-sdk/src/runtime-route-types.ts:220:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
 // packages/operator-sdk/src/client-core.ts:77:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
 // packages/peer-sdk/src/client-core.ts:64:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
 // packages/sdk/src/events/mcp.ts:15:82 - (ae-forgotten-export) The symbol "McpServerRole" needs to be exported by the entry point index.d.ts
