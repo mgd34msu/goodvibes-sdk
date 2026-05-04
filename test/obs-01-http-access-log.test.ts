@@ -1,18 +1,65 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test, afterEach } from 'bun:test';
+import {
+  instrumentedFetch,
+  fetchWithTimeout,
+  sanitizeUrlForLog,
+} from '../packages/sdk/src/platform/utils/fetch-with-timeout.js';
 
 /**
  * OBS-01: HTTP access log — verifies that instrumentedFetch records request/response
  * details and that the fetch-with-timeout module exports the correct surface.
  */
 describe('obs-01 http access log', () => {
-  test('instrumentedFetch is exported from fetch-with-timeout', async () => {
-    const mod = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
-    expect(typeof mod.instrumentedFetch).toBe('function');
-    expect(typeof mod.fetchWithTimeout).toBe('function');
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
-  test('fetchWithTimeout accepts AbortSignal options', async () => {
-    const { fetchWithTimeout } = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
-    expect(typeof fetchWithTimeout).toBe('function');
+  test('sanitizeUrlForLog redacts sensitive query parameters', () => {
+    expect(sanitizeUrlForLog('http://example.com/api?token=secret123&user=alice')).toBe(
+      'http://example.com/api?token=%5Bredacted%5D&user=alice',
+    );
+    expect(sanitizeUrlForLog('http://example.com/api?api_key=mykey')).toBe(
+      'http://example.com/api?api_key=%5Bredacted%5D',
+    );
+    expect(sanitizeUrlForLog('http://example.com/api?safe=ok')).toBe(
+      'http://example.com/api?safe=ok',
+    );
+  });
+
+  test('instrumentedFetch returns the response from the underlying fetch', async () => {
+    const stubResponse = new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+    globalThis.fetch = async () => stubResponse;
+    const res = await instrumentedFetch('http://example.com/api');
+    expect(res.status).toBe(200);
+  });
+
+  test('fetchWithTimeout returns the response and respects the caller signal', async () => {
+    const stubResponse = new Response(JSON.stringify({ pong: true }), { status: 200 });
+    globalThis.fetch = async () => stubResponse;
+    const res = await fetchWithTimeout('http://example.com/ping', {}, 5_000);
+    expect(res.status).toBe(200);
+  });
+
+  test('fetchWithTimeout aborts when the caller signal fires', async () => {
+    globalThis.fetch = async (_url, init) => {
+      // Simulate a slow fetch that respects the signal
+      await new Promise<void>((_resolve, reject) => {
+        const sig = init?.signal;
+        if (sig?.aborted) { reject(sig.reason); return; }
+        sig?.addEventListener('abort', () => reject(sig.reason), { once: true });
+      });
+      return new Response('', { status: 200 });
+    };
+    const controller = new AbortController();
+    controller.abort();
+    const caught = await fetchWithTimeout('http://example.com/slow', { signal: controller.signal }, 5_000).catch(
+      (e: unknown) => e,
+    );
+    expect(caught).toBeDefined();
   });
 });

@@ -79,6 +79,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [verify-tag-version, generate-sbom]
+    # Gate note: `(verify-tag-version == 'success' || == 'skipped')` is intentional.
+    # verify-tag-version only runs on `push` events (tag push); it is skipped on
+    # workflow_dispatch (manual dry-runs). The downstream publish steps are each
+    # independently gated by `if: github.event_name == 'push'`, so a manual
+    # dispatch cannot trigger a real publish even when tag-verification is skipped.
+    # WARNING: Removing any inner `github.event_name == 'push'` gate on a publish
+    # step would allow manual dispatch to publish without tag verification.
     if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped')
     steps:
       - name: Checkout
@@ -112,6 +119,9 @@ jobs:
     if: always() && (needs.verify-tag-version.result == 'success' || needs.verify-tag-version.result == 'skipped') && (needs.generate-sbom.result == 'success' || needs.generate-sbom.result == 'skipped') && needs.validate-release.result == 'success'
     environment:
       name: production
+      # Note: hardcoded to the default npm package name. A workflow_dispatch with
+      # GOODVIBES_PUBLIC_PACKAGE_NAME override will still show this URL in the
+      # GitHub UI environment widget (cosmetic only — does not affect publish logic).
       url: https://www.npmjs.com/package/@pellux/goodvibes-sdk
     permissions:
       contents: read

@@ -13,7 +13,7 @@ export type { PluginEvent, PluginEventType } from './plugins.js';
 export type { McpEvent, McpEventType } from './mcp.js';
 export type { TransportEvent, TransportEventType } from './transport.js';
 export type { CompactionEvent, CompactionEventType } from './compaction.js';
-export type { UIEvent, UIEventType } from './ui.js';
+export type { GoodVibesUIEvent, GoodVibesUIEventType, UIEvent, UIEventType } from './ui.js';
 export type { OpsEvent, OpsEventType } from './ops.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from './domain-map.js';
 export type {

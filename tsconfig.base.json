@@ -10,6 +10,8 @@
       // this lib entry provides the type stubs without changing emit target.
       // SOURCE: https://github.com/tc39/proposal-explicit-resource-management
       // Tested with TypeScript 6.0.3 (typescript devDependency pin).
+      // Re-evaluate when bumping `target` to `ES2025` or later — `ESNext.Disposable`
+      // will fold into the standard lib and this explicit entry can be removed.
       "ESNext.Disposable"
     ],
     "strict": true,

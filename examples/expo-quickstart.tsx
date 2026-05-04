@@ -21,7 +21,7 @@ export default function App() {
 
       // Note: Hermes (React Native / Expo) runtimes may require a WebSocket
       // polyfill injection. If you see a "WebSocket implementation is required"
-      // error, see docs/troubleshooting.md#websocket-not-available for the
+      // error, see docs/troubleshooting.md#websocket-implementation-is-required for the
       // WebSocketImpl option.
       stop = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (event) => {
         console.log('agent completed', event);

@@ -32,7 +32,7 @@ Use the platform this way:
 - load initial account/control/session state over HTTP
 - keep a lightweight WebSocket event channel open while the app is active
 - reload snapshots on foreground/resume
-- for true remote chat sessions, store provider/model on the companion chat session (`POST` or `PATCH /api/companion/chat/sessions/:id`) instead of calling the global `/api/providers/current` route
+- for true remote chat sessions, store provider/model on the companion chat session (`POST /api/companion/chat/sessions` to create, or `PATCH /api/companion/chat/sessions/:id` to update) instead of calling the global `/api/providers/current` route
 
 ### Provider/model selection
 

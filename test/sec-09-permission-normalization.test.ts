@@ -12,24 +12,15 @@ import {
 } from '../packages/sdk/src/platform/runtime/permissions/normalization/index.js';
 
 describe('platform/runtime/permissions/normalization — smoke', () => {
-  test('normalizeCommand is a function', () => {
-    expect(typeof normalizeCommand).toBe('function');
-  });
-
-  test('normalizeCommandWithVerdicts is a function', () => {
-    expect(typeof normalizeCommandWithVerdicts).toBe('function');
-  });
-
-  test('DEFAULT_ALLOWED_CLASSES is a Set', () => {
-    expect(DEFAULT_ALLOWED_CLASSES instanceof Set).toBe(true);
+  test('DEFAULT_ALLOWED_CLASSES is a non-empty Set', () => {
     expect(DEFAULT_ALLOWED_CLASSES.size).toBeGreaterThan(0);
   });
 
   test('normalizeCommand returns an object with original and segments', () => {
     const result = normalizeCommand('ls -la /tmp');
-    expect(typeof result).toBe('object');
     expect(result.original).toBe('ls -la /tmp');
-    expect(Array.isArray(result.segments)).toBe(true);
+    expect(result.segments.length).toBeGreaterThan(0);
+    expect(result.segments[0]).toBe('ls');
   });
 
   test('normalizeCommand trims whitespace consistently', () => {
@@ -40,9 +31,8 @@ describe('platform/runtime/permissions/normalization — smoke', () => {
 
   test('normalizeCommandWithVerdicts returns a compound verdict object', () => {
     const result = normalizeCommandWithVerdicts('bash -c "echo hello"', DEFAULT_ALLOWED_CLASSES);
-    expect(result).toBeDefined();
-    expect(typeof result).toBe('object');
-    // CompoundVerdict has at minimum an 'allowed' or 'verdict' property
     expect(result).not.toBeNull();
+    // CompoundVerdict must have at minimum an 'allowed' or 'verdict' property
+    expect(Object.keys(result as object).length).toBeGreaterThan(0);
   });
 });

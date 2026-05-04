@@ -28,7 +28,7 @@ import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
+  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3421',
   tokenStore: createMemoryTokenStore(process.env.GOODVIBES_TOKEN ?? null),
 });
 
@@ -40,7 +40,7 @@ If you have a static token and don't need login/logout flows, `authToken` is suf
 
 ```ts
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN,
 });
 ```
@@ -49,6 +49,7 @@ For daemon embedding in a Bun server host:
 
 ```ts
 import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
+// Pass handler to your server: server.fetch = dispatchDaemonApiRoutes(contract, options);
 ```
 
 ## Companion quickstart (React Native / Expo / browser / Cloudflare Workers)
@@ -136,7 +137,7 @@ import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   tokenStore: createMemoryTokenStore(),
 });
 
@@ -200,7 +201,7 @@ The SDK ships an `SDKObserver` interface and a built-in `createConsoleObserver` 
 import { createGoodVibesSdk, createConsoleObserver } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   observer: createConsoleObserver(),
 });
 ```

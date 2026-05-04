@@ -65,9 +65,11 @@ export function createRuntimeEventFeeds<
   for (const domain of domains) {
     feeds[domain] = createFeed(domain);
   }
+  // NIT-09: snapshot the domains array defensively.
+  const frozenDomains = Object.freeze([...domains] as TDomain[]);
   return Object.freeze({
     ...feeds,
-    domains,
+    domains: frozenDomains,
     domain(domain: TDomain): RuntimeEventFeed<TEvent> {
       return feeds[domain];
     },

@@ -391,7 +391,8 @@ async function handleArtifactContent(context: DaemonMediaRouteContext, artifactI
     });
     const download = new URL(req.url).searchParams.get('download');
     if (record.filename && download !== '0') {
-      const asciiFallback = record.filename.replace(/[\r\n"]/g, '_');
+      // NIT-05: strip non-ASCII bytes so the fallback filename is actually ASCII.
+      const asciiFallback = record.filename.replace(/[^\x20-\x7E]/g, '_').replace(/[\r\n"]/g, '_');
       headers.set('Content-Disposition', `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(record.filename)}`);
     }
     return new Response(bytes as BodyInit, { status: 200, headers });

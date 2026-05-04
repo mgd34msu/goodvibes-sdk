@@ -11,5 +11,6 @@ export {
 export type {
   OperatorRemoteClient,
   OperatorRemoteClientInvokeOptions,
+  OperatorRemoteClientOptions,
   OperatorRemoteClientStreamOptions,
 } from './client-core.js';

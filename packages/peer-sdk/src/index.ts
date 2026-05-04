@@ -10,4 +10,5 @@ export {
 export type {
   PeerRemoteClient,
   PeerRemoteClientInvokeOptions,
+  PeerRemoteClientOptions,
 } from './client-core.js';

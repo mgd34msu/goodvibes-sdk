@@ -35,7 +35,7 @@ Host applications are responsible for:
 |---|---|
 | `enabled` | The feature is active. |
 | `disabled` | The feature is inactive; missing config falls back to the registry default. |
-| `killed` | The feature is emergency-disabled and cannot be re-enabled until first moved back to `disabled`. |
+| `killed` | The feature is emergency-disabled. Cannot be re-enabled directly; must transition back to `disabled` first. |
 
 `runtimeToggleable: false` means a flag must be configured before startup, except
 for emergency kill operations. A host should not offer live toggles for these

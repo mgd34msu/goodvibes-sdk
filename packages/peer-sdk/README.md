@@ -8,7 +8,7 @@ Consumers should install `@pellux/goodvibes-sdk` and import this surface from th
 import { createPeerSdk } from '@pellux/goodvibes-sdk/peer';
 
 const peer = createPeerSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN,
 });
 
@@ -25,7 +25,7 @@ import { createPeerRemoteClient } from '@pellux/goodvibes-sdk/peer';
 import { createHttpTransport } from '@pellux/goodvibes-sdk/transport-http';
 
 const transport = createHttpTransport({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN,
 });
 

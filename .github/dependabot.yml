@@ -8,6 +8,19 @@ updates:
     # 5 open PRs: enough to batch patch groups without flooding the review queue.
     # Increase if you want minor/major updates to flow through faster.
     open-pull-requests-limit: 5
+    # Protect audited security overrides from silent Dependabot bumps.
+    # These packages are pinned intentionally (see overridesRationale in package.json).
+    ignore:
+      - dependency-name: "ajv"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "lodash"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "minimatch"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "fast-xml-parser"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "google-auth-library"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       production-patches:
         dependency-type: production
@@ -22,6 +35,8 @@ updates:
       development:
         dependency-type: development
   - package-ecosystem: "github-actions"
+    # github-actions updates: 2 open PRs because they require triage and SHA re-pinning;
+    # lower limit keeps the review queue manageable (vs 5 for npm patches).
     directory: "/"
     schedule:
       interval: "weekly"
@@ -36,6 +51,16 @@ updates:
       github-actions-major:
         update-types:
           - "version-update:semver-major"
+    labels:
+      - "dependencies"
+      - "github-actions"
+  # Also scan the composite action manifest so SHA pins inside it get the same
+  # maintenance pipeline as the workflow files (directory: "/" only covers .github/workflows/).
+  - package-ecosystem: "github-actions"
+    directory: "/.github/actions/setup"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
     labels:
       - "dependencies"
       - "github-actions"

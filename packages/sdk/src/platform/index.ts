@@ -13,6 +13,8 @@ export * as controlPlane from './control-plane/index.js';
 export * as core from './core/index.js';
 export * as daemon from './daemon/index.js';
 export * as discovery from './discovery/index.js';
+// `exportData` is used instead of `export` because `export` is a reserved keyword
+// and cannot be used as an identifier in `export * as <name>` syntax.
 export * as exportData from './export/index.js';
 export * as git from './git/index.js';
 export * as hooks from './hooks/index.js';

@@ -180,16 +180,11 @@ describe('RL3: rate-limit error includes retryAfterMs inside the rate-limit wind
 
     await manager.postMessage(session.id, 'first');
 
-    try {
-      await manager.postMessage(session.id, 'second — over limit');
-      expect(false).toBe(true); // should not reach
-    } catch (err: unknown) {
-      expect(err).toBeInstanceOf(GoodVibesSdkError);
-      const sdkErr = err as GoodVibesSdkError;
-      expect(sdkErr.retryAfterMs).toBeDefined();
-      expect(sdkErr.retryAfterMs).toBeGreaterThanOrEqual(59_000);
-      expect(sdkErr.retryAfterMs).toBeLessThanOrEqual(60_001);
-    }
+    const err = await manager.postMessage(session.id, 'second — over limit').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(GoodVibesSdkError);
+    const sdkErr = err as GoodVibesSdkError;
+    expect(sdkErr.retryAfterMs).toBeGreaterThanOrEqual(59_000);
+    expect(sdkErr.retryAfterMs).toBeLessThanOrEqual(60_001);
 
     manager.dispose();
   });

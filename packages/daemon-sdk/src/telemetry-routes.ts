@@ -301,7 +301,7 @@ function authenticateTelemetryRequest(
       recoverable: false,
       hint: 'Use a token or session with the read:telemetry scope, or elevate to an admin/shared-token session.',
       status: 403,
-      detail: JSON.stringify(missingRead),
+      detail: missingRead,
     }, { status: 403 });
   }
 

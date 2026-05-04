@@ -85,6 +85,7 @@ export interface GoodVibesAuthClient {
  * @see AutoRefreshOptions
  */
 export type { AutoRefreshOptions };
+export type { AutoRefreshCoordinatorOptions } from './client-auth/index.js';
 
 function requireStorage(storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   const resolved = storage ?? globalThis.localStorage;

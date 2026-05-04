@@ -14,7 +14,7 @@ The SDK uses exponential backoff with jitter for all retryable HTTP failures. Th
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN ?? null,
   retry: {
     maxAttempts: 4,       // 1 initial attempt + 3 retries
@@ -159,7 +159,7 @@ For long-lived clients where tokens expire, use `tokenStore` or `getAuthToken` i
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   tokenStore: createMemoryTokenStore(), // refreshed externally via tokenStore.setToken()
 });
 ```

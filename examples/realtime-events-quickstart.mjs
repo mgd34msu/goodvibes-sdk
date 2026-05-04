@@ -4,7 +4,7 @@
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
+  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN ?? null,
 });
 

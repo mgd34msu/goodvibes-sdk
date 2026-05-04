@@ -20,7 +20,7 @@ npm pack bash-language-server@5.6.0 --pack-destination "$TMPDIR"
 tar -xzf "$TMPDIR"/bash-language-server-5.6.0.tgz -C "$TMPDIR"
 rsync -a --delete "$TMPDIR"/package/ vendor/bash-language-server/
 node -e "const p=require('./vendor/bash-language-server/package.json'); p.dependencies.editorconfig='3.0.2'; require('fs').writeFileSync('./vendor/bash-language-server/package.json', JSON.stringify(p,null,2)+'\n')"
-find vendor/bash-language-server/out -name '*.js.map' -delete
+find vendor/bash-language-server/out -name '*.js.map' -exec rm -f {} +
 rm -rf "$TMPDIR"
 ```
 

@@ -8,7 +8,7 @@ Consumers should install `@pellux/goodvibes-sdk` and import this surface from th
 import { createOperatorSdk } from '@pellux/goodvibes-sdk/operator';
 
 const operator = createOperatorSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN,
 });
 
@@ -29,7 +29,7 @@ import { createOperatorRemoteClient } from '@pellux/goodvibes-sdk/operator';
 import { createHttpTransport } from '@pellux/goodvibes-sdk/transport-http';
 
 const transport = createHttpTransport({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN,
 });
 

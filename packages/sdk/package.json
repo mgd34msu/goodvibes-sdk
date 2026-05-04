@@ -157,8 +157,8 @@
       "import": "./dist/platform/runtime/store/index.js"
     },
     "./platform/runtime/ui": {
-      "types": "./dist/platform/runtime/ui-surface.d.ts",
-      "import": "./dist/platform/runtime/ui-surface.js"
+      "types": "./dist/platform/runtime/ui.d.ts",
+      "import": "./dist/platform/runtime/ui.js"
     },
     "./platform/tools": {
       "types": "./dist/platform/tools/index.d.ts",

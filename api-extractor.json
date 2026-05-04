@@ -49,11 +49,17 @@
       "default": {
         "logLevel": "warning"
       },
+      // TS1259: re-exported module not referenced by bundledPackages (expected for type-only re-exports)
       "TS1259": { "logLevel": "none" },
+      // TS2305: module has no exported member (stale after tree-shaking; actual shape validated by build)
       "TS2305": { "logLevel": "none" },
+      // TS2307: cannot find module (optional deps not installed in CI api-extractor pass)
       "TS2307": { "logLevel": "none" },
+      // TS2344: type does not satisfy constraint (conditional type narrowing in api-extractor's reduced checker)
       "TS2344": { "logLevel": "none" },
+      // TS2694: namespace has no exported member (triggered by ambient module declarations)
       "TS2694": { "logLevel": "none" },
+      // TS2707: generic type requires N type argument(s) (false positive from api-extractor's partial lib.dom.d.ts)
       "TS2707": { "logLevel": "none" }
     },
     "extractorMessageReporting": {

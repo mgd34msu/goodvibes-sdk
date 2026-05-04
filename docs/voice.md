@@ -84,3 +84,11 @@ then be piped to a streaming-capable local player such as `mpv` or `ffplay`.
 
 TTS failures should be non-blocking status messages. They should not fail or
 remove the text turn.
+
+For streaming audio playback in a TUI context, pipe the byte stream to `mpv` (e.g. `mpv --no-cache --demuxer=rawaudio stdin://`) or `ffplay` (e.g. `ffplay -autoexit -f s16le -ar 24000 -`). Adjust format flags to match the TTS provider's output encoding.
+
+## Next Reads
+
+- [Observability](./observability.md)
+- [Media, Multimodal, and Web Search](./media-and-search.md)
+- [Public Surface Reference](./public-surface.md)

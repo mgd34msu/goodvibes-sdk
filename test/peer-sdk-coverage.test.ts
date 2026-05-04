@@ -105,7 +105,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.pairing.verify({ requestId: 'pair-1', code: '123456' });
     expect(calls[0]).toContain('pair');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ verified: true });
   });
 
   test('peer.heartbeat calls the heartbeat endpoint', async () => {
@@ -120,7 +120,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.peer.heartbeat({ peerId: 'node-a' });
     expect(calls[0]).toContain('heartbeat');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ ok: true });
   });
 
   test('work.pull calls the pull endpoint', async () => {
@@ -135,7 +135,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.work.pull({ peerId: 'node-a' });
     expect(calls[0]).toContain('work');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ work: null });
   });
 
   test('operator.snapshot calls the operator snapshot endpoint', async () => {
@@ -150,7 +150,7 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.operator.snapshot();
     expect(calls[0]).toContain('remote');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ snapshot: {} });
   });
 });
 

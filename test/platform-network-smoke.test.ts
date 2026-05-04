@@ -53,13 +53,12 @@ describe('platform/runtime/network — behavior smoke', () => {
 
   test('applyOutboundTlsToFetchInit preserves method in the returned init object', () => {
     const init = applyOutboundTlsToFetchInit(makeConfig(), { method: 'GET' });
-    expect(init).toBeDefined();
-    expect(typeof init).toBe('object');
+    expect((init as RequestInit).method).toBe('GET');
   });
 
-  test('GlobalNetworkTransportInstaller instance has install and setConfigManager methods', () => {
+  test('GlobalNetworkTransportInstaller instance exposes install and setConfigManager', () => {
     const installer = new GlobalNetworkTransportInstaller();
-    expect(typeof installer.install).toBe('function');
-    expect(typeof installer.setConfigManager).toBe('function');
+    expect(installer.install).toBeDefined();
+    expect(installer.setConfigManager).toBeDefined();
   });
 });

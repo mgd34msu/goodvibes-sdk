@@ -29,4 +29,5 @@ test/workers-wrangler/.wrangler/
 # Review artifacts (transient)
 *-review.md
 *-review-*.md
+*-verification.md
 .claude/scheduled_tasks.lock

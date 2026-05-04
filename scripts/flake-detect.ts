@@ -146,6 +146,8 @@ if (allFail) {
   if (r1 && r1.stderr) {
     logLines.push('--- stderr (run 1) ---\n', r1.stderr, '\n');
   }
+  // flake-output.log lands in repo root (CWD). .gitignore covers *.log so it
+  // never leaks to source. ci.yml artifact uploader reads it from this path.
   writeFileSync('flake-output.log', logLines.join(''), 'utf8');
   // Also print last portion to console for inline log visibility.
   if (r1 && r1.stdout) {

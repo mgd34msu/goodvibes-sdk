@@ -48,7 +48,7 @@ The QR code encodes a `CompanionConnectionInfo` JSON object containing everythin
 
 ```json
 {
-  "url": "http://192.168.1.42:3210",
+  "url": "http://192.168.1.42:3421",
   "token": "gv_abc123...",
   "username": "admin",
   "version": "host-product-version",
@@ -92,7 +92,7 @@ This is synchronous and idempotent. Calling it repeatedly returns the same recor
 import { buildCompanionConnectionInfo } from '@pellux/goodvibes-sdk/platform/pairing';
 
 const payload = buildCompanionConnectionInfo({
-  daemonUrl: 'http://192.168.1.42:3210',
+  daemonUrl: 'http://192.168.1.42:3421',
   token: record.token,
   username: 'admin',      // optional; defaults to 'admin'
   version: 'host-product-version', // optional
@@ -104,7 +104,7 @@ const payload = buildCompanionConnectionInfo({
 // { url, token, username, version, surface, password? }
 ```
 
-The `daemonUrl` should be the address reachable by the companion device. For local-only use, `http://127.0.0.1:3210` works. For cross-device pairing, use the host machine's LAN address.
+The `daemonUrl` should be the address reachable by the companion device. For local-only use, `http://127.0.0.1:3421` works. For cross-device pairing, use the host machine's LAN address.
 
 ### Step 3: Host encodes the payload to a QR matrix
 

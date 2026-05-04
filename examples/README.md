@@ -13,7 +13,7 @@ Most examples read environment variables at startup:
 
 | Variable | Description |
 | --- | --- |
-| `GOODVIBES_BASE_URL` | HTTP base URL of the running GoodVibes daemon (e.g. `http://127.0.0.1:3210`). Defaults to `http://127.0.0.1:3210` when omitted. |
+| `GOODVIBES_BASE_URL` | HTTP base URL of the running GoodVibes daemon (defaults to `http://127.0.0.1:3421`). |
 | `GOODVIBES_TOKEN` | Operator bearer token issued by the daemon. Copy from the TUI settings or daemon log on first boot. |
 
 Keep example tokens local and never commit real credentials,
@@ -28,7 +28,7 @@ that handle credentials, pairing tokens, or daemon URLs.
 | `auth-login-and-token-store.ts` | `bun examples/auth-login-and-token-store.ts` | Login and token-store lifecycle. |
 | `browser-web-ui-quickstart.ts` | typecheck only | Browser/web UI client setup. |
 | `companion-approvals-feed.ts` | `bun examples/companion-approvals-feed.ts` | Approval feed via realtime events. |
-| `daemon-fetch-handler-quickstart.ts` | `bun examples/daemon-fetch-handler-quickstart.ts` | Minimal daemon route handler composition. |
+| `daemon-fetch-handler-quickstart.ts` | `bun examples/daemon-fetch-handler-quickstart.ts` | Minimal daemon route handler composition. Note: uses a contract placeholder; end-to-end operation requires swapping in `buildOperatorContract()`. |
 | `direct-transport-quickstart.ts` | `bun examples/direct-transport-quickstart.ts` | In-process direct transport usage. |
 | `expo-quickstart.tsx` | typecheck only | Expo client setup; run inside an Expo app. |
 | `operator-http-quickstart.mjs` | `bun examples/operator-http-quickstart.mjs` | Operator HTTP client calls. |

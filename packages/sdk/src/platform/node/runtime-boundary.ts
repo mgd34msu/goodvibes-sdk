@@ -31,11 +31,12 @@ export function getNodeRuntimeBoundaryStatus(
   const nodeVersion = processRef?.versions?.node;
   const runtimeName = processRef?.release?.name ?? (nodeVersion ? 'node' : 'unknown');
   return {
-    nodeLike: typeof nodeVersion === 'string' && nodeVersion.trim().length > 0,
+    // Bun 1.x sets process.versions.node for compat; `release.name === 'node'` disambiguates.
+    nodeLike: typeof nodeVersion === 'string' && nodeVersion.trim().length > 0 && runtimeName === 'node',
     runtimeName,
     ...(nodeVersion ? { nodeVersion } : {}),
     hasProcess: typeof processRef === 'object' && processRef !== null,
-    hasFilesystemAssumption: typeof nodeVersion === 'string' && nodeVersion.trim().length > 0,
+    hasFilesystemAssumption: typeof nodeVersion === 'string' && nodeVersion.trim().length > 0 && runtimeName === 'node',
   };
 }
 

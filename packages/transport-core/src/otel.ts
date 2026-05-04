@@ -71,7 +71,14 @@ export function __resetOtelCache(): void {
  * `new Function(...)` is not statically analysed for import() specifiers.
  */
 function dynamicImport(moduleName: string): Promise<unknown> {
-  // Using Function constructor prevents bundler static analysis of import().
+  // NIT-04: `new Function(...)` is intentional — it prevents bundlers (esbuild, Rollup,
+  // Miniflare/workerd) from statically analysing the import() specifier and either
+  // bundling @opentelemetry/api or raising an unresolvable-specifier error.
+  //
+  // CSP note: `new Function` violates strict `script-src 'self'` Content Security
+  // Policies (equivalent to eval). Call sites must guard with the WorkerGlobalScope /
+  // window checks in probeOtel() so this is never called in restricted browser / worker
+  // environments. In Node.js and non-CSP environments it is safe.
   // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
   return new Function('m', 'return import(m)')(moduleName) as Promise<unknown>;
 }

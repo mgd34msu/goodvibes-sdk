@@ -155,7 +155,9 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ---
 
-## WRFC synthetic critical issues
+## WRFC Synthetic Critical Issues
+
+> These are not `GoodVibesSdkError` error kinds — they are WRFC reviewer-report markers that may appear in review task payloads and can be confused for error kinds.
 
 See [WRFC Constraint Propagation](./wrfc-constraint-propagation.md) for the full constraint lifecycle context.
 
