@@ -42,7 +42,7 @@ export function createDaemonRuntimeAutomationRouteHandlers(
     deleteSchedule: async (scheduleId, request) => withAdmin(context, request, () => handleDeleteSchedule(context, scheduleId)),
     setScheduleEnabled: (scheduleId, enabled, request) => withAdmin(context, request, () => handleSetScheduleEnabled(context, scheduleId, enabled)),
     runScheduleNow: (scheduleId, request) => withAdmin(context, request, () => handleRunScheduleNow(context, scheduleId)),
-    getSchedulerCapacity: () => Response.json(context.automationManager.getSchedulerCapacity()),
+    getSchedulerCapacity: (req) => withAdmin(context, req, () => Response.json(context.automationManager.getSchedulerCapacity())),
   };
 }
 
@@ -182,8 +182,9 @@ async function handleRunScheduleNow(context: DaemonRuntimeRouteContext, id: stri
 async function handlePostAutomationHeartbeat(context: DaemonRuntimeRouteContext, req: Request): Promise<Response> {
   const body = await context.parseOptionalJsonBody(req);
   if (body instanceof Response) return body;
+  // m2: Schema: only `source` (optional string) is consumed; extra fields are ignored.
   const result = await context.automationManager.triggerHeartbeat({
-    source: body && typeof body.source === 'string' ? body.source : 'api',
+    source: body && typeof body.source === 'string' && body.source.trim() ? body.source.trim() : 'api',
   });
   return Response.json(result);
 }
@@ -196,11 +197,10 @@ async function handleAutomationRunAction(
 ): Promise<Response> {
   if (action === 'cancel') {
     const body = await context.parseOptionalJsonBody(req);
-    const reason = body instanceof Response
-      ? 'operator-cancelled'
-      : body && typeof body.reason === 'string'
-        ? body.reason
-        : 'operator-cancelled';
+    if (body instanceof Response) return body; // m19: preserve parse error rather than coercing to 'operator-cancelled'
+    const reason = body && typeof body.reason === 'string'
+      ? body.reason
+      : 'operator-cancelled';
     const run = await context.automationManager.cancelRun(runId, reason);
     return run
       ? context.recordApiResponse(req, `/api/automation/runs/${runId}/${action}`, Response.json({ run }))

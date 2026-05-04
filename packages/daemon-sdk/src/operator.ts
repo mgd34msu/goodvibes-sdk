@@ -1,6 +1,36 @@
 import type { DaemonOperatorRouteHandlers } from './context.js';
 import { readBoundedPositiveInteger } from './route-helpers.js';
 
+/**
+ * m7: Safe wrapper around decodeURIComponent that returns null instead of
+ * throwing URIError on malformed percent-encoded sequences (e.g. `%E0%A4`).
+ */
+function safeDecodeURIComponent(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * M4: Auth contract for dispatchOperatorRoutes
+ *
+ * Route-level authentication is enforced inside each handler, not at the
+ * dispatcher level. Handler auth requirements by category:
+ *
+ * - READ-ONLY routes (status, providers, settings, continuity, intelligence,
+ *   worktrees, watchers, approvals, telemetry snapshot) — require admin or
+ *   authenticated session per handler implementation.
+ * - STATE-CHANGING routes (service install/start/stop, route bindings,
+ *   automation jobs, knowledge ingest) — always `withAdmin(context, req, ...)`.
+ * - SCHEDULER/RUNTIME routes (getSchedulerCapacity, getRuntimeMetrics) —
+ *   require admin per handler implementation.
+ *
+ * Dispatcher does not short-circuit unauthenticated requests; all auth
+ * enforcement lives in the handler factories (system-routes.ts,
+ * integration-routes.ts, runtime-automation-routes.ts, etc.).
+ */
 export async function dispatchOperatorRoutes(
   req: Request,
   handlers: DaemonOperatorRouteHandlers,
@@ -154,7 +184,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/service/restart' && method === 'POST') return handlers.restartService(req);
   if (pathname === '/api/service/uninstall' && method === 'POST') return handlers.uninstallService(req);
 
-  if (pathname === '/api/routes/bindings' && method === 'GET') return handlers.getRouteBindings();
+  if (pathname === '/api/routes/bindings' && method === 'GET') return handlers.getRouteBindings(req);
   if (pathname === '/api/routes/bindings' && method === 'POST') return handlers.postRouteBinding(req);
   const routeBindingMatch = pathname.match(/^\/api\/routes\/bindings\/([^/]+)$/);
   if (routeBindingMatch && method === 'PATCH') return handlers.patchRouteBinding(routeBindingMatch[1], req);
@@ -292,7 +322,7 @@ export async function dispatchOperatorRoutes(
   if (sessionMatch && method === 'DELETE') return handlers.deleteLocalAuthSession(decodeURIComponent(sessionMatch[1]), req);
   if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile(req);
 
-  if (pathname === '/api/runtime/scheduler' && method === 'GET') return handlers.getSchedulerCapacity();
+  if (pathname === '/api/runtime/scheduler' && method === 'GET') return handlers.getSchedulerCapacity(req);
   if (pathname === '/api/runtime/metrics' && method === 'GET') return handlers.getRuntimeMetrics();
 
   if (pathname === '/api/panels' && method === 'GET') return handlers.getPanels();

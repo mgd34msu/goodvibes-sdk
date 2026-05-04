@@ -324,6 +324,9 @@ export async function handleRemotePeerWorkComplete(
     : jsonErrorResponse({ error: 'Unknown or unclaimed remote work item' }, { status: 404 });
 }
 
+// m9: returns undefined for non-numeric or non-finite input; callers use optional
+// spread (`...(maxItems !== undefined ? { maxItems } : {})`) so the field is simply
+// omitted from the downstream call, letting the service apply its own default.
 function boundedPositiveNumber(value: unknown, min: number, max: number): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   return Math.max(min, Math.min(max, Math.trunc(value)));

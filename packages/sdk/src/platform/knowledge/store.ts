@@ -288,6 +288,10 @@ export class KnowledgeStore {
         ? this.getSourceByCanonicalUri(input.canonicalUri)
         : null;
     const now = nowMs();
+    // n1: `opt` is a local helper that collapses the 18 conditional spread expressions
+    // in the record below. Returns `{ [key]: newVal }` when newVal is non-null,
+    // falls back to `{ [key]: existingVal }` to preserve existing value on partial
+    // update, or `{}` when neither is present.
     function opt<K extends string, V>(key: K, newVal: V | null, existingVal?: V): { [P in K]?: V } {
       if (newVal !== null) return { [key]: newVal } as { [P in K]?: V };
       if (existingVal !== undefined) return { [key]: existingVal } as { [P in K]?: V };

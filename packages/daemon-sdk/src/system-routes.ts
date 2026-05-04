@@ -7,6 +7,7 @@ import {
   type JsonRecord,
 } from './route-helpers.js';
 import { jsonErrorResponse } from './error-response.js';
+import { withAdmin } from './auth-helpers.js';
 import type {
   AutomationDeliveryGuarantee,
   AutomationRouteBindingKind,
@@ -120,7 +121,11 @@ export function createDaemonSystemRouteHandlers(
       if (admin) return admin;
       return Response.json(context.platformServiceManager.uninstall());
     },
-    getRouteBindings: () => Response.json({ bindings: context.routeBindings.listBindings() }),
+    getRouteBindings: (req) => {
+      const admin = context.requireAdmin(req);
+      if (admin) return admin;
+      return Response.json({ bindings: context.routeBindings.listBindings() });
+    },
     postRouteBinding: async (req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;

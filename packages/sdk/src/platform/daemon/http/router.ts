@@ -213,6 +213,8 @@ export class DaemonHttpRouter {
       async () => {
         const url = new URL(req.url);
 
+        // m2/m3: 24+ inline if (url.pathname === ...) chain below. Consider extracting
+        // a route table or trie-based dispatcher to reduce this file's 37 KB footprint.
         if (url.pathname === '/login' && req.method === 'POST') {
           return this.handleLogin(req);
         }

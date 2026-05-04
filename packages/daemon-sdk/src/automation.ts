@@ -38,6 +38,9 @@ export async function dispatchAutomationRoutes(
   const deliveryMatch = pathname.match(/^\/api\/deliveries\/([^/]+)$/);
   if (deliveryMatch && method === 'GET') return handlers.getDelivery(deliveryMatch[1]);
 
+  // m11: /schedules (non-/api/-prefixed) and /api/automation/jobs are dual surfaces
+  // with overlapping schedule semantics (both list/create/delete). Preserved for
+  // backward compatibility; /api/automation/jobs is the canonical surface.
   if (pathname === '/schedules' && method === 'GET') return handlers.getSchedules();
   if (pathname === '/schedules' && method === 'POST') return handlers.postSchedule(req);
   const scheduleIdMatch = pathname.match(/^\/schedules\/([^/]+)$/);

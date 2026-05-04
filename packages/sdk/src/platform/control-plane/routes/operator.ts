@@ -323,7 +323,7 @@ export async function dispatchOperatorRoutes(
   if (pathname === '/api/service/restart' && method === 'POST') return handlers.restartService(req);
   if (pathname === '/api/service/uninstall' && method === 'POST') return handlers.uninstallService(req);
 
-  if (pathname === '/api/routes/bindings' && method === 'GET') return handlers.getRouteBindings();
+  if (pathname === '/api/routes/bindings' && method === 'GET') return handlers.getRouteBindings(req);
   if (pathname === '/api/routes/bindings' && method === 'POST') return handlers.postRouteBinding(req);
   const routeBindingMatch = pathname.match(/^\/api\/routes\/bindings\/([^/]+)$/);
   if (routeBindingMatch && method === 'PATCH') return handlers.patchRouteBinding(routeBindingMatch[1], req);
