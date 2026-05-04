@@ -9,23 +9,6 @@ import { describe, expect, test } from 'bun:test';
 import { createStateInspector } from '../packages/sdk/src/platform/runtime/inspection/state-inspector.js';
 
 describe('platform/runtime/inspection/state-inspector — behavior smoke', () => {
-  test('createStateInspector with no domains returns inspector with expected methods', () => {
-    const inspector = createStateInspector({ domains: [] });
-    const methods = [
-      'getSnapshot',
-      'getTransitionHistory',
-      'getTransitionsByDomain',
-      'registeredDomainNames',
-      'subscribe',
-    ];
-    for (const m of methods) {
-      expect(
-        typeof (inspector as Record<string, unknown>)[m],
-        `inspector.${m} should be a function`,
-      ).toBe('function');
-    }
-  });
-
   test('getSnapshot returns an object with domains array and capturedAt timestamp', () => {
     const inspector = createStateInspector({ domains: [] });
     const snapshot = inspector.getSnapshot();

@@ -100,7 +100,8 @@
     "publint": "0.3.18",
     "typescript": "6.0.3",
     "verdaccio": "^6.5.2",
-    "wrangler": "4.87.0"
+    "wrangler": "4.87.0",
+    "@ast-grep/napi": "^0.42.0"
   },
   "overridesRationale": {
     "ajv": "Pinned to keep JSON Schema validation on the audited 8.x line used by release tooling dependencies.",

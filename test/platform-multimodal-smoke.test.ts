@@ -1,30 +1,76 @@
 /**
  * Coverage-gap smoke test — platform/multimodal
- * Verifies that MultimodalService has the expected prototype shape without
- * requiring full instantiation (constructor requires complex dependencies).
- * Closes coverage gap: platform/multimodal (eighth-review)
+ * Instantiates MultimodalService with minimal stub dependencies and
+ * invokes getStatus() and listProviders() to assert observable return shapes.
+ * Closes coverage gap: platform/multimodal (eighth-review, MAJ-1 fix)
  */
 
 import { describe, expect, test } from 'bun:test';
 import { MultimodalService } from '../packages/sdk/src/platform/multimodal/service.js';
 
+/** Minimal stub for MediaProviderRegistry — returns empty provider list. */
+function makeMediaProviders() {
+  return {
+    status: async () => [],
+  };
+}
+
+/** Minimal stub for VoiceService — returns status with empty providers. */
+function makeVoiceService() {
+  return {
+    getStatus: async (_detail?: boolean) => ({ providers: [] }),
+  };
+}
+
+/** Minimal stub for ArtifactStore — not used by getStatus/listProviders. */
+function makeArtifactStore() {
+  return {};
+}
+
+/** Minimal stub for KnowledgeService — not used by getStatus/listProviders. */
+function makeKnowledgeService() {
+  return {};
+}
+
+function makeService(): MultimodalService {
+  return new MultimodalService(
+    makeArtifactStore() as never,
+    makeMediaProviders() as never,
+    makeVoiceService() as never,
+    makeKnowledgeService() as never,
+  );
+}
+
 describe('platform/multimodal — behavior smoke', () => {
-  test('MultimodalService is a class with correct name', () => {
-    expect(MultimodalService.name).toBe('MultimodalService');
+  test('listProviders() resolves to a readonly array', async () => {
+    const service = makeService();
+    const providers = await service.listProviders();
+    expect(Array.isArray(providers)).toBe(true);
+    // With no configured media/voice providers, only the built-in extractor is present
+    expect(providers.length).toBeGreaterThanOrEqual(1);
+    const extractor = providers.find((p) => p.id === 'knowledge-extractors');
+    expect(extractor).toBeDefined();
+    expect(typeof extractor!.id).toBe('string');
+    expect(typeof extractor!.label).toBe('string');
+    expect(Array.isArray(extractor!.capabilities)).toBe(true);
+    expect(typeof extractor!.configured).toBe('boolean');
   });
 
-  test('MultimodalService constructor takes 4 arguments', () => {
-    expect(MultimodalService.length).toBe(4);
+  test('getStatus() resolves with enabled, providerCount, and providers fields', async () => {
+    const service = makeService();
+    const status = await service.getStatus();
+    expect(typeof status.enabled).toBe('boolean');
+    expect(typeof status.providerCount).toBe('number');
+    expect(Array.isArray(status.providers)).toBe(true);
+    expect(status.providerCount).toBe(status.providers.length);
   });
 
-  test('MultimodalService prototype has expected instance methods', () => {
-    const proto = MultimodalService.prototype as Record<string, unknown>;
-    const expectedMethods = ['analyze', 'buildPacket', 'getStatus', 'listProviders', 'writeBackAnalysis'];
-    for (const m of expectedMethods) {
-      expect(
-        typeof proto[m],
-        `MultimodalService.prototype.${m} should be a function`,
-      ).toBe('function');
-    }
+  test('getStatus() returns consistent providerCount matching providers array length', async () => {
+    const service = makeService();
+    const status = await service.getStatus();
+    // providerCount should always equal the length of the providers array
+    expect(status.providerCount).toBe(status.providers.length);
+    // enabled should be true when providers are present
+    expect(status.enabled).toBe(status.providers.length > 0);
   });
 });
