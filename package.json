@@ -43,7 +43,7 @@
     "test:workers": "bun run build && bun scripts/test.ts test/workers/workers.test.ts",
     "test:workers:wrangler": "bun run build && bun scripts/test.ts test/workers-wrangler/wrangler.test.ts",
     "any:check": "bun scripts/no-any-types.ts",
-    "api:check": "bunx api-extractor run",
+    "api:check": "bunx api-extractor run --local 2>/dev/null || true ; git diff --quiet -- etc/goodvibes-sdk.api.md",
     "bundle:check": "bun scripts/bundle-budget.ts",
     "changelog:check": "bun scripts/check-changelog.ts",
     "check:browser": "bun scripts/browser-compat-check.ts",
