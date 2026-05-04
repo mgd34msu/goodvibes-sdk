@@ -1,6 +1,6 @@
 /**
  * Coverage-gap smoke test — platform/voice (STT, realtime providers)
- * Verifies that voice provider modules load and export expected symbols.
+ * Verifies VoiceProviderRegistry can register a mock provider and query it.
  * Closes coverage gap: platform/voice/stt and realtime (eighth-review)
  */
 
@@ -8,20 +8,48 @@ import { describe, expect, test } from 'bun:test';
 import { ensureBuiltinVoiceProviders } from '../packages/sdk/src/platform/voice/builtin-providers.js';
 import { VoiceProviderRegistry } from '../packages/sdk/src/platform/voice/provider-registry.js';
 
-describe('platform/voice — module load smoke', () => {
-  test('ensureBuiltinVoiceProviders is a function', () => {
-    expect(typeof ensureBuiltinVoiceProviders).toBe('function');
+const MOCK_PROVIDER = {
+  id: 'test-stt-provider',
+  label: 'Test STT Provider',
+  capabilities: ['stt' as const],
+};
+
+describe('platform/voice — behavior smoke', () => {
+  test('register + get returns the registered provider', () => {
+    const registry = new VoiceProviderRegistry();
+    registry.register(MOCK_PROVIDER);
+    // VoiceProviderRegistry.get() returns null on miss, not undefined
+    const found = registry.get(MOCK_PROVIDER.id);
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe(MOCK_PROVIDER.id);
+    expect(found?.label).toBe(MOCK_PROVIDER.label);
   });
 
-  test('VoiceProviderRegistry is a constructor', () => {
-    expect(typeof VoiceProviderRegistry).toBe('function');
+  test('list includes the registered provider', () => {
+    const registry = new VoiceProviderRegistry();
+    registry.register(MOCK_PROVIDER);
+    const all = registry.list();
+    expect(Array.isArray(all)).toBe(true);
+    const ids = all.map((p) => p.id);
+    expect(ids).toContain(MOCK_PROVIDER.id);
   });
 
-  test('VoiceProviderRegistry instance has expected methods', () => {
-    const reg = new VoiceProviderRegistry();
-    expect(typeof reg.register).toBe('function');
-    expect(typeof reg.get).toBe('function');
-    expect(typeof reg.list).toBe('function');
-    expect(typeof reg.findProvider).toBe('function');
+  test('findProvider by capability returns the mock provider', () => {
+    const registry = new VoiceProviderRegistry();
+    registry.register(MOCK_PROVIDER);
+    const found = registry.findProvider('stt');
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe(MOCK_PROVIDER.id);
+  });
+
+  test('get on unknown id returns null (not undefined)', () => {
+    const registry = new VoiceProviderRegistry();
+    const result = registry.get('unknown-provider-id');
+    expect(result).toBeNull();
+  });
+
+  test('ensureBuiltinVoiceProviders does not throw when called with a registry', () => {
+    const registry = new VoiceProviderRegistry();
+    expect(() => ensureBuiltinVoiceProviders(registry)).not.toThrow();
   });
 });

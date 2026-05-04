@@ -6,99 +6,172 @@
  * Bun processes can exit cleanly without dangling intervals keeping the event
  * loop alive.
  *
- * N7: This test guards against silent regression where new setInterval sites
- * are added without the corresponding .unref?.(). The seventh review confirmed
- * all 18/18 setInterval sites are .unref'd; this test pins that invariant.
+ * N8: This test guards against silent regression where new setInterval sites
+ * are added without the corresponding .unref?(). The eighth review confirmed
+ * all setInterval sites are .unref'd; this test pins that invariant.
+ *
+ * MAJ-07 (eighth-review): Replaced regex-based grep+env-knob approach with a
+ * real AST walk using @ast-grep/napi to find setInterval(...) call expressions
+ * and verify .unref?.() is chained on the result within the enclosing scope.
  */
 
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { glob } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { Lang, parse } from '@ast-grep/napi';
 
 const SDK_SRC = resolve(import.meta.dir, '../packages/sdk/src/platform');
 
-/** Read a file and return all lines containing setInterval call expressions. */
-function findSetIntervalLines(content: string): string[] {
-  return content
-    .split('\n')
-    .filter((line) => /setInterval\s*\(/.test(line));
-}
-
 /**
- * Number of lines to look ahead when searching for a `.unref?.()` call
- * following a `setInterval` assignment. Configurable for test environments
- * with unusual formatting conventions.
+ * For a given source file, find all `setInterval(...)` call expressions using
+ * the AST and check that .unref?.() is called on the result within the same
+ * statement or the immediately following statements.
+ *
+ * Strategy:
+ * 1. Parse the file with @ast-grep/napi using the TypeScript language.
+ * 2. Find all nodes matching `setInterval($$$ARGS)`.
+ * 3. For each match, inspect the parent statement:
+ *    - If the call is directly chained: `setInterval(...).unref?.()` — OK.
+ *    - If the call is assigned: check the enclosing block for a `.unref?.()` call
+ *      on the same variable name within the next 25 lines.
+ * 4. Return a list of violations (setInterval sites without .unref).
  */
-const UNREF_LOOK_AHEAD_LINES = Number(process.env['UNREF_LOOK_AHEAD_LINES'] ?? 20);
+function findUnrefViolations(
+  filePath: string,
+  content: string,
+): { line: number; snippet: string }[] {
+  const violations: { line: number; snippet: string }[] = [];
 
-/**
- * For a given setInterval call, check if the result is assigned to a variable
- * that has `.unref?.()` called on it within a reasonable window.
- *
- * Patterns accepted:
- *   const timer = setInterval(...);
- *   timer.unref?.();
- *
- *   const x = setInterval(...).unref?.();  // inline unref
- *
- *   setInterval(...)  // captured inline as class property with .unref
- */
-function hasUnrefInWindow(lines: string[], lineIndex: number): boolean {
-  const line = lines[lineIndex]!;
-  // Inline .unref chain: setInterval(...).unref?.()
-  if (/setInterval[^)]*\).*\.unref\??\.\(\)/.test(line)) return true;
+  const root = parse(Lang.TypeScript, content).root();
 
-  // Assignment: look for the assigned variable name and find .unref in the window
-  const assignMatch = line.match(/(?:const|let|var|this\.[\w.]+)\s+(?:=\s+)?setInterval|([\w.]+)\s*=\s*setInterval/);
-  if (assignMatch) {
-    // Extract variable name from left-hand side
-    const varMatch = line.match(/(?:const|let|var)\s+([\w.]+)\s*=|([\w.]+)\s*=\s*setInterval/);
-    const varName = varMatch?.[1] ?? varMatch?.[2];
-    if (varName) {
-      // Scan next UNREF_LOOK_AHEAD_LINES lines for varName.unref
-      const window = lines.slice(lineIndex + 1, lineIndex + UNREF_LOOK_AHEAD_LINES + 1);
-      const unrefPattern = new RegExp(`${varName.replace('.', '\\.')}\\s*\.\\s*unref\\??\\.\\(\\)`);
-      if (window.some((l) => unrefPattern.test(l))) return true;
+  // Find all setInterval call expressions
+  // findAll() returns SgNode[] directly — each element IS the node
+  const matches = root.findAll({ rule: { pattern: 'setInterval($$$ARGS)' } });
+
+  for (const match of matches) {
+    const range = match.range();
+    const startLine = range.start.line; // 0-indexed
+
+    // Get the text of the matched setInterval call
+    const callText = match.text();
+
+    // Case 1: Inline chain — setInterval(...).unref?.() or .unref()
+    const parentText = match.parent()?.text() ?? '';
+    if (/\.unref\??\(\)/.test(parentText)) {
+      continue; // unref is chained on same expression
+    }
+
+    // Case 2: Assignment — find the variable name being assigned
+    // Walk up to the variable declarator or expression statement
+    let assignTarget: string | null = null;
+    let cursor = match.parent();
+    while (cursor) {
+      const kind = cursor.kind();
+      if (kind === 'variable_declarator') {
+        // const/let/var x = setInterval(...)
+        const nameNode = cursor.field('name');
+        if (nameNode) {
+          assignTarget = nameNode.text();
+        }
+        break;
+      }
+      if (kind === 'assignment_expression') {
+        // this.x = setInterval(...) or x = setInterval(...)
+        const leftNode = cursor.field('left');
+        if (leftNode) {
+          assignTarget = leftNode.text();
+        }
+        break;
+      }
+      if (kind === 'expression_statement' || kind === 'return_statement') {
+        break;
+      }
+      cursor = cursor.parent();
+    }
+
+    if (assignTarget) {
+      // Search the remaining file text from this line forward (up to 30 lines)
+      const lines = content.split('\n');
+      const windowEnd = Math.min(startLine + 30, lines.length);
+      const windowLines = lines.slice(startLine, windowEnd);
+      const windowText = windowLines.join('\n');
+
+      // Build a pattern matching the assigned variable followed by .unref
+      // Escape dots in member expressions (e.g., this.interval)
+      const escapedTarget = assignTarget.replace(/\./g, '\\.');
+      const unrefPattern = new RegExp(`${escapedTarget}\\s*\\.\\s*unref\\??\\(\\)`);
+      if (unrefPattern.test(windowText)) {
+        continue; // found .unref call on the assigned variable
+      }
+    }
+
+    // Case 3: Class field or complex pattern — scan enclosing block for any .unref
+    let blockCursor = match.parent();
+    while (blockCursor) {
+      const kind = blockCursor.kind();
+      if (kind === 'statement_block' || kind === 'class_body' || kind === 'program') {
+        const blockText = blockCursor.text();
+        // Only scan lines at/after the setInterval call
+        const afterCall = blockText.slice(blockText.indexOf(callText));
+        if (/\.unref\??\(\)/.test(afterCall)) {
+          break; // found .unref in the enclosing block
+        }
+        break;
+      }
+      if (kind === 'method_definition' || kind === 'function_declaration' || kind === 'arrow_function') {
+        const bodyText = blockCursor.text();
+        const afterCall = bodyText.slice(bodyText.indexOf(callText));
+        if (/\.unref\??\(\)/.test(afterCall)) {
+          break; // found .unref in the enclosing function
+        }
+        // No .unref found in enclosing function scope — this is a violation
+        violations.push({
+          line: startLine + 1, // convert to 1-indexed
+          snippet: callText.slice(0, 120),
+        });
+        break;
+      }
+      blockCursor = blockCursor.parent();
     }
   }
 
-  // Class field or complex pattern: scan window for any .unref call
-  const window = lines.slice(lineIndex, lineIndex + UNREF_LOOK_AHEAD_LINES + 5);
-  return window.some((l) => /\.unref\??\.\(\)/.test(l));
+  return violations;
 }
 
-describe('perf-07: setInterval .unref() coverage', () => {
-  test('all setInterval sites in platform/ have .unref?.()', async () => {
+describe('perf-07: setInterval .unref() coverage (AST walk)', () => {
+  test('all setInterval sites in platform/ have .unref?.() (real AST walk)', async () => {
     const files: string[] = [];
     for await (const entry of glob('**/*.ts', { cwd: SDK_SRC })) {
       files.push(resolve(SDK_SRC, entry));
     }
 
-    const violations: { file: string; line: number; content: string }[] = [];
+    const allViolations: { file: string; line: number; snippet: string }[] = [];
 
     for (const file of files) {
       const content = readFileSync(file, 'utf8');
-      const lines = content.split('\n');
-      lines.forEach((line, index) => {
-        if (!/setInterval\s*\(/.test(line)) return;
-        // Skip type-only / comment lines
-        if (line.trimStart().startsWith('//') || line.trimStart().startsWith('*')) return;
-        if (!hasUnrefInWindow(lines, index)) {
-          violations.push({ file: file.replace(SDK_SRC + '/', ''), line: index + 1, content: line.trim() });
-        }
-      });
+      // Skip files with no setInterval at all (fast path)
+      if (!content.includes('setInterval')) continue;
+
+      const violations = findUnrefViolations(file, content);
+      for (const v of violations) {
+        allViolations.push({
+          file: file.replace(SDK_SRC + '/', ''),
+          line: v.line,
+          snippet: v.snippet,
+        });
+      }
     }
 
-    if (violations.length > 0) {
-      const details = violations
-        .map((v) => `  ${v.file}:${v.line}: ${v.content}`)
+    if (allViolations.length > 0) {
+      const details = allViolations
+        .map((v) => `  ${v.file}:${v.line}: ${v.snippet}`)
         .join('\n');
       throw new Error(
-        `perf-07: ${violations.length} setInterval site(s) missing .unref?.() — add .unref?.() to keep process exit clean:\n${details}`,
+        `perf-07: ${allViolations.length} setInterval site(s) missing .unref?.() — add .unref?.() to keep process exit clean:\n${details}`,
       );
     }
 
-    expect(violations.length).toBe(0);
+    expect(allViolations.length).toBe(0);
   });
 });

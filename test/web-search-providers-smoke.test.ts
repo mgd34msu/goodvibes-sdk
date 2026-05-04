@@ -1,6 +1,7 @@
 /**
  * Coverage-gap smoke test — platform/web-search/providers
- * Verifies that each web-search provider factory loads and exports expected symbols.
+ * Constructs each web-search provider with minimal context and asserts
+ * the provider returns the correct shape.
  * Closes coverage gap: platform/web-search/providers per-provider (eighth-review)
  */
 
@@ -13,32 +14,64 @@ import { createPerplexitySearchProvider } from '../packages/sdk/src/platform/web
 import { createSearxngSearchProvider } from '../packages/sdk/src/platform/web-search/providers/searxng.js';
 import { createTavilySearchProvider } from '../packages/sdk/src/platform/web-search/providers/tavily.js';
 
-describe('platform/web-search/providers — module load smoke', () => {
-  test('createBraveSearchProvider is a function', () => {
-    expect(typeof createBraveSearchProvider).toBe('function');
+/** Minimal SearchProviderContext with no env and a noop serviceRegistry. */
+function makeContext() {
+  return {
+    env: {} as Record<string, string | undefined>,
+    serviceRegistry: { get: (_id: string) => undefined },
+  };
+}
+
+function assertProviderShape(
+  provider: { id: string; label: string; capabilities: readonly string[]; descriptor: () => unknown; search: (...args: unknown[]) => unknown },
+  expectedId: string,
+) {
+  expect(typeof provider.id).toBe('string');
+  expect(provider.id).toBe(expectedId);
+  expect(typeof provider.label).toBe('string');
+  expect(Array.isArray(provider.capabilities)).toBe(true);
+  expect(typeof provider.descriptor).toBe('function');
+  expect(typeof provider.search).toBe('function');
+  // descriptor() returns {id, label}
+  const desc = provider.descriptor() as Record<string, unknown>;
+  expect(typeof desc.id).toBe('string');
+  expect(typeof desc.label).toBe('string');
+}
+
+describe('platform/web-search/providers — behavior smoke', () => {
+  test('createBraveSearchProvider returns correct provider shape', () => {
+    const provider = createBraveSearchProvider(makeContext()) as Parameters<typeof assertProviderShape>[0];
+    assertProviderShape(provider, 'brave');
   });
 
-  test('createDuckDuckGoProvider is a function', () => {
-    expect(typeof createDuckDuckGoProvider).toBe('function');
+  test('createDuckDuckGoProvider returns correct provider shape (takes options, not context)', () => {
+    // DuckDuckGo takes DuckDuckGoProviderOptions ({}), not SearchProviderContext
+    const provider = createDuckDuckGoProvider({}) as Parameters<typeof assertProviderShape>[0];
+    assertProviderShape(provider, 'duckduckgo');
   });
 
-  test('createExaSearchProvider is a function', () => {
-    expect(typeof createExaSearchProvider).toBe('function');
+  test('createExaSearchProvider returns correct provider shape', () => {
+    const provider = createExaSearchProvider(makeContext()) as Parameters<typeof assertProviderShape>[0];
+    assertProviderShape(provider, 'exa');
   });
 
-  test('createFirecrawlSearchProvider is a function', () => {
-    expect(typeof createFirecrawlSearchProvider).toBe('function');
+  test('createFirecrawlSearchProvider returns correct provider shape', () => {
+    const provider = createFirecrawlSearchProvider(makeContext()) as Parameters<typeof assertProviderShape>[0];
+    assertProviderShape(provider, 'firecrawl');
   });
 
-  test('createPerplexitySearchProvider is a function', () => {
-    expect(typeof createPerplexitySearchProvider).toBe('function');
+  test('createPerplexitySearchProvider returns correct provider shape', () => {
+    const provider = createPerplexitySearchProvider(makeContext()) as Parameters<typeof assertProviderShape>[0];
+    assertProviderShape(provider, 'perplexity');
   });
 
-  test('createSearxngSearchProvider is a function', () => {
-    expect(typeof createSearxngSearchProvider).toBe('function');
+  test('createSearxngSearchProvider returns correct provider shape', () => {
+    const provider = createSearxngSearchProvider(makeContext()) as Parameters<typeof assertProviderShape>[0];
+    assertProviderShape(provider, 'searxng');
   });
 
-  test('createTavilySearchProvider is a function', () => {
-    expect(typeof createTavilySearchProvider).toBe('function');
+  test('createTavilySearchProvider returns correct provider shape', () => {
+    const provider = createTavilySearchProvider(makeContext()) as Parameters<typeof assertProviderShape>[0];
+    assertProviderShape(provider, 'tavily');
   });
 });

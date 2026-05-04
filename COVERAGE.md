@@ -4,137 +4,204 @@ This file maps test file numbers to test files for navigation and review.
 Generated from the sorted list of `test/*.test.ts` root-level files.
 Integration tests live under `test/integration/` and are listed separately.
 
+Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
+
 ## Root-level tests (`test/*.test.ts`)
 
 | # | File |
 |---|------|
-| T01 | `test/android-keystore-token-store.test.ts` |
-| T02 | `test/arch03-error-hierarchy.test.ts` |
-| T03 | `test/artifact-upload-ingest.test.ts` |
-| T04 | `test/auth-auto-refresh-transport-integration.test.ts` |
-| T05 | `test/auth-auto-refresh.test.ts` |
-| T06 | `test/auth-coverage.test.ts` |
-| T07 | `test/auth-facade.test.ts` |
-| T08 | `test/auth-normalize.test.ts` |
-| T09 | `test/auth-oauth-client.test.ts` |
-| T10 | `test/auth-permission-resolver.test.ts` |
-| T11 | `test/auth-session-manager.test.ts` |
-| T12 | `test/auth-token-store.test.ts` |
-| T13 | `test/bootstrap-services.test.ts` |
-| T14 | `test/cache-invariants.test.ts` |
-| T15 | `test/channel-builtin-plugins.test.ts` |
-| T16 | `test/channel-policy-patch.test.ts` |
-| T17 | `test/channel-reply-pipeline.test.ts` |
-| T18 | `test/cloudflare-control-plane.test.ts` |
-| T19 | `test/cloudflare-worker-batch.test.ts` |
-| T20 | `test/cloudflare-worker-settings.test.ts` |
-| T21 | `test/companion-adapter-model-resolution.test.ts` |
-| T22 | `test/companion-chat-daemon-wire.test.ts` |
-| T23 | `test/companion-chat-f21-messages-get.test.ts` |
-| T24 | `test/companion-chat-lifecycle.test.ts` |
-| T25 | `test/companion-chat-persistence.test.ts` |
-| T26 | `test/companion-chat-rate-limit.test.ts` |
-| T27 | `test/companion-chat-routes.test.ts` |
-| T28 | `test/companion-chat-session-create-provider-resolution.test.ts` |
-| T29 | `test/companion-chat-session-isolation.test.ts` |
-| T30 | `test/companion-chat-tool-registry.test.ts` |
-| T31 | `test/companion-followup-persistence.test.ts` |
-| T32 | `test/completion-report-constraints.test.ts` |
-| T33 | `test/contracts-portability.test.ts` |
-| T34 | `test/contracts-sync.test.ts` |
-| T35 | `test/conversation-message-routing.test.ts` |
-| T36 | `test/crypto-adapter.test.ts` |
-| T37 | `test/daemon-batch-manager.test.ts` |
-| T38 | `test/daemon-home.test.ts` |
-| T39 | `test/daemon-sdk-auth-boundary.test.ts` |
-| T40 | `test/daemon-sdk-helpers.test.ts` |
-| T41 | `test/daemon-sdk.test.ts` |
-| T42 | `test/daemon-state-reconciliation.test.ts` |
-| T43 | `test/default-config-runtime.test.ts` |
-| T44 | `test/dist-freshness.test.ts` |
-| T45 | `test/ecosystem-catalog-paths.test.ts` |
-| T46 | `test/error-kind.test.ts` |
-| T47 | `test/exec-retry.test.ts` |
-| T48 | `test/expo-secure-token-store.test.ts` |
-| T49 | `test/f13-field-normalization.test.ts` |
-| T50 | `test/f15-rate-limiter-env.test.ts` |
-| T51 | `test/feature-flag-gates.test.ts` |
-| T52 | `test/gateway.test.ts` |
-| T53 | `test/goodvibes-runtime-tools.test.ts` |
-| T54 | `test/homeassistant-surface.test.ts` |
-| T55 | `test/homegraph-ask-reindex.test.ts` |
-| T56 | `test/homegraph-ask-space-selection.test.ts` |
-| T57 | `test/homegraph-extension.test.ts` |
-| T58 | `test/homegraph-map-routes.test.ts` |
-| T59 | `test/homegraph-object-search.test.ts` |
-| T60 | `test/homegraph-page-quality.test.ts` |
-| T61 | `test/homegraph-repair-pages.test.ts` |
-| T62 | `test/homegraph-routes.test.ts` |
-| T63 | `test/homegraph-sync-pages.test.ts` |
-| T64 | `test/hostmode-restart.test.ts` |
-| T65 | `test/idempotency-keys.test.ts` |
-| T66 | `test/ios-keychain-token-store.test.ts` |
-| T67 | `test/knowledge-browser-history.test.ts` |
-| T68 | `test/knowledge-extraction-policy.test.ts` |
-| T69 | `test/knowledge-ingest-compile.test.ts` |
-| T70 | `test/knowledge-projections-map.test.ts` |
-| T71 | `test/knowledge-repair-profile.test.ts` |
-| T72 | `test/knowledge-review.test.ts` |
-| T73 | `test/knowledge-semantic-answer.test.ts` |
-| T74 | `test/knowledge-semantic-repair.test.ts` |
-| T75 | `test/knowledge-semantic-runtime.test.ts` |
-| T76 | `test/knowledge-semantic-self-improvement.test.ts` |
-| T77 | `test/lazy-native-imports.test.ts` |
-| T78 | `test/live-roundtrip.test.ts` |
-| T79 | `test/lsp-bash-bundled.test.ts` |
-| T80 | `test/ntfy-integration-stream.test.ts` |
-| T81 | `test/obs-01-http-access-log.test.ts` |
-| T82 | `test/obs-02-auth-events.test.ts` |
-| T83 | `test/obs-03-instrumented-fetch.test.ts` |
-| T84 | `test/obs-04-llm-instrumentation.test.ts` |
-| T85 | `test/obs-05-tool-result-summary.test.ts` |
-| T86 | `test/obs-06-prompt-redaction.test.ts` |
-| T87 | `test/obs-07-otlp-logger.test.ts` |
-| T88 | `test/obs-08-workspace-swap-failed.test.ts` |
-| T89 | `test/obs-09-config-audit.test.ts` |
-| T90 | `test/platform-adapter-contract.test.ts` — 31 tests |
+| T001 | `test/adapters-matrix.test.ts` |
+| T002 | `test/adapters-signal.test.ts` |
+| T003 | `test/adapters-telegram.test.ts` |
+| T004 | `test/adapters-webhook.test.ts` |
+| T005 | `test/adapters-whatsapp.test.ts` |
+| T006 | `test/android-keystore-token-store.test.ts` |
+| T007 | `test/arch03-error-hierarchy.test.ts` |
+| T008 | `test/artifact-upload-ingest.test.ts` |
+| T009 | `test/auth-auto-refresh-transport-integration.test.ts` |
+| T010 | `test/auth-auto-refresh.test.ts` |
+| T011 | `test/auth-coverage.test.ts` |
+| T012 | `test/auth-facade.test.ts` |
+| T013 | `test/auth-normalize.test.ts` |
+| T014 | `test/auth-oauth-client.test.ts` |
+| T015 | `test/auth-permission-resolver.test.ts` |
+| T016 | `test/auth-session-manager.test.ts` |
+| T017 | `test/auth-token-store.test.ts` |
+| T018 | `test/bootstrap-services.test.ts` |
+| T019 | `test/cache-invariants.test.ts` |
+| T020 | `test/channel-builtin-plugins.test.ts` |
+| T021 | `test/channel-policy-patch.test.ts` |
+| T022 | `test/channel-reply-pipeline.test.ts` |
+| T023 | `test/cloudflare-control-plane.test.ts` |
+| T024 | `test/cloudflare-worker-batch.test.ts` |
+| T025 | `test/cloudflare-worker-settings.test.ts` |
+| T026 | `test/companion-adapter-model-resolution.test.ts` |
+| T027 | `test/companion-chat-daemon-wire.test.ts` |
+| T028 | `test/companion-chat-f21-messages-get.test.ts` |
+| T029 | `test/companion-chat-lifecycle.test.ts` |
+| T030 | `test/companion-chat-persistence.test.ts` |
+| T031 | `test/companion-chat-rate-limit.test.ts` |
+| T032 | `test/companion-chat-routes.test.ts` |
+| T033 | `test/companion-chat-session-create-provider-resolution.test.ts` |
+| T034 | `test/companion-chat-session-isolation.test.ts` |
+| T035 | `test/companion-chat-tool-registry.test.ts` |
+| T036 | `test/companion-followup-persistence.test.ts` |
+| T037 | `test/completion-report-constraints.test.ts` |
+| T038 | `test/contracts-portability.test.ts` |
+| T039 | `test/contracts-sync.test.ts` |
+| T040 | `test/conversation-message-routing.test.ts` |
+| T041 | `test/crypto-adapter.test.ts` |
+| T042 | `test/daemon-batch-manager.test.ts` |
+| T043 | `test/daemon-home.test.ts` |
+| T044 | `test/daemon-sdk-auth-boundary.test.ts` |
+| T045 | `test/daemon-sdk-helpers.test.ts` |
+| T046 | `test/daemon-sdk.test.ts` |
+| T047 | `test/daemon-state-reconciliation.test.ts` |
+| T048 | `test/default-config-runtime.test.ts` |
+| T049 | `test/dist-freshness.test.ts` |
+| T050 | `test/ecosystem-catalog-paths.test.ts` |
+| T051 | `test/error-kind.test.ts` |
+| T052 | `test/exec-retry.test.ts` |
+| T053 | `test/expo-secure-token-store.test.ts` |
+| T054 | `test/f13-field-normalization.test.ts` |
+| T055 | `test/f15-rate-limiter-env.test.ts` |
+| T056 | `test/feature-flag-gates.test.ts` |
+| T057 | `test/gateway.test.ts` |
+| T058 | `test/goodvibes-runtime-tools.test.ts` |
+| T059 | `test/homeassistant-surface.test.ts` |
+| T060 | `test/homegraph-ask-reindex.test.ts` |
+| T061 | `test/homegraph-ask-space-selection.test.ts` |
+| T062 | `test/homegraph-extension.test.ts` |
+| T063 | `test/homegraph-map-routes.test.ts` |
+| T064 | `test/homegraph-object-search.test.ts` |
+| T065 | `test/homegraph-page-quality.test.ts` |
+| T066 | `test/homegraph-repair-pages.test.ts` |
+| T067 | `test/homegraph-routes.test.ts` |
+| T068 | `test/homegraph-sync-pages.test.ts` |
+| T069 | `test/hostmode-restart.test.ts` |
+| T070 | `test/idempotency-keys.test.ts` |
+| T071 | `test/ios-keychain-token-store.test.ts` |
+| T072 | `test/knowledge-browser-history.test.ts` |
+| T073 | `test/knowledge-extraction-policy.test.ts` |
+| T074 | `test/knowledge-ingest-compile.test.ts` |
+| T075 | `test/knowledge-projections-map.test.ts` |
+| T076 | `test/knowledge-repair-profile.test.ts` |
+| T077 | `test/knowledge-review.test.ts` |
+| T078 | `test/knowledge-semantic-answer.test.ts` |
+| T079 | `test/knowledge-semantic-repair.test.ts` |
+| T080 | `test/knowledge-semantic-runtime.test.ts` |
+| T081 | `test/knowledge-semantic-self-improvement.test.ts` |
+| T082 | `test/lazy-native-imports.test.ts` |
+| T083 | `test/live-roundtrip.test.ts` |
+| T084 | `test/lsp-bash-bundled.test.ts` |
+| T085 | `test/ntfy-integration-stream.test.ts` |
+| T086 | `test/obs-01-http-access-log.test.ts` |
+| T087 | `test/obs-02-auth-events.test.ts` |
+| T088 | `test/obs-03-instrumented-fetch.test.ts` |
+| T089 | `test/obs-04-llm-instrumentation.test.ts` |
+| T090 | `test/obs-05-tool-result-summary.test.ts` |
+| T091 | `test/obs-06-prompt-redaction.test.ts` |
+| T092 | `test/obs-07-otlp-logger.test.ts` |
+| T093 | `test/obs-08-workspace-swap-failed.test.ts` |
+| T094 | `test/obs-09-config-audit.test.ts` |
+| T095 | `test/obs-11-silent-catches.test.ts` |
+| T096 | `test/obs-12-runtime-meter.test.ts` |
+| T097 | `test/obs-13-listener-errors.test.ts` |
+| T098 | `test/obs-14-async-event-bus.test.ts` |
+| T099 | `test/obs-15-correlation-ids.test.ts` |
+| T100 | `test/obs-16-error-cause-chain.test.ts` |
+| T101 | `test/obs-18-retry-events.test.ts` |
+| T102 | `test/obs-19-sse-lifecycle.test.ts` |
+| T103 | `test/obs-21-companion-pairing.test.ts` |
+| T104 | `test/obs-22-label-allowlist.test.ts` |
+| T105 | `test/obs-24-bearer-redaction.test.ts` |
+| T106 | `test/observer-coverage.test.ts` |
+| T107 | `test/observer-otel.test.ts` |
+| T108 | `test/openai-compatible-routes.test.ts` |
+| T109 | `test/operator-contract-catalog.test.ts` |
+| T110 | `test/operator-sdk-coverage.test.ts` |
+| T111 | `test/operator-sdk-schema-registry.test.ts` |
+| T112 | `test/operator-sdk.test.ts` |
+| T113 | `test/operator-token-global.test.ts` |
+| T114 | `test/orchestrator-abort.test.ts` |
+| T115 | `test/otlp-ingest-e2e.test.ts` |
+| T116 | `test/otlp-ingest-routes.test.ts` |
+| T117 | `test/peer-sdk-coverage.test.ts` |
+| T118 | `test/peer-sdk.test.ts` |
+| T119 | `test/perf-02-rate-limiter-lru.test.ts` |
+| T120 | `test/perf-03-scheduler-history.test.ts` |
+| T121 | `test/perf-07-interval-unref.test.ts` |
+| T122 | `test/perf-10-max-listeners.test.ts` |
+| T123 | `test/perf-12-gateway-ring-buffer.test.ts` |
+| T124 | `test/platform-adapter-contract.test.ts` |
+| T125 | `test/platform-discovery-smoke.test.ts` |
+| T126 | `test/platform-eval-smoke.test.ts` |
+| T127 | `test/platform-forensics-smoke.test.ts` |
+| T128 | `test/platform-git-smoke.test.ts` |
+| T129 | `test/platform-http-context-inheritance.test.ts` |
+| T130 | `test/platform-multimodal-smoke.test.ts` |
+| T131 | `test/platform-network-smoke.test.ts` |
+| T132 | `test/platform-orchestration-smoke.test.ts` |
+| T133 | `test/platform-route-manager-emissions.test.ts` |
+| T134 | `test/platform-state-inspector-smoke.test.ts` |
+| T135 | `test/platform-stop-reason-mappers.test.ts` |
+| T136 | `test/platform-store-domains-smoke.test.ts` |
+| T137 | `test/platform-templates-smoke.test.ts` |
+| T138 | `test/platform-trigger-executor-shell-split.test.ts` |
+| T139 | `test/process-manager-timeout.test.ts` |
+| T140 | `test/project-planning-routes.test.ts` |
+| T141 | `test/project-planning-service.test.ts` |
+| T142 | `test/provider-registry-canonical-api.test.ts` |
+| T143 | `test/provider-routes-secrets-skipped.test.ts` |
+| T144 | `test/provider-routes.test.ts` |
+| T145 | `test/provider-sse-integration.test.ts` |
+| T146 | `test/rn-bundle-node-imports.test.ts` |
+| T147 | `test/router-e2e-automation.test.ts` |
+| T148 | `test/router-e2e-control.test.ts` |
+| T149 | `test/router-e2e-remote.test.ts` |
+| T150 | `test/router-e2e-session.test.ts` |
+| T151 | `test/router-e2e-tasks.test.ts` |
+| T152 | `test/router-e2e-telemetry.test.ts` |
+| T153 | `test/runtime-event-discriminated-union.test.ts` |
+| T154 | `test/runtime-session-input-cancel.test.ts` |
+| T155 | `test/scan-modes.test.ts` |
+| T156 | `test/scheduler-capacity.test.ts` |
+| T157 | `test/sdk-auth.test.ts` |
+| T158 | `test/sdk-observer.test.ts` |
+| T159 | `test/sdk-platforms.test.ts` |
+| T160 | `test/sdk-runtime-boundaries.test.ts` |
+| T161 | `test/sdk-transport-http.test.ts` |
+| T162 | `test/sec-01-user-auth-perms.test.ts` |
+| T163 | `test/sec-02-safecopy-perms.test.ts` |
+| T164 | `test/sec-03-login-ratelimit.test.ts` |
+| T165 | `test/sec-04-input-sanitization.test.ts` |
+| T166 | `test/sec-05-body-size-cap.test.ts` |
+| T167 | `test/sec-06-rate-limiter-lru.test.ts` |
+| T168 | `test/sec-07-origin-defaults.test.ts` |
+| T169 | `test/sec-08-ssrf-filter.test.ts` |
+| T170 | `test/sec-09-permission-normalization.test.ts` |
+| T171 | `test/sec-10-sandbox-boundary.test.ts` |
+| T172 | `test/secret-refs.test.ts` |
+| T173 | `test/session-broker.test.ts` |
+| T174 | `test/session-cookie-auth-roundtrip.test.ts` |
+| T175 | `test/slack-surface-credentials.test.ts` |
+| T176 | `test/smoke.test.ts` |
+| T177 | `test/sqlite-vec-resolver.test.ts` |
+| T178 | `test/state-tool-workspace-keys.test.ts` |
+| T179 | `test/traceparent-propagation.test.ts` |
+| T180 | `test/transport-direct.test.ts` |
+| T181 | `test/transport-http.test.ts` |
+| T182 | `test/transport-middleware.test.ts` |
+| T183 | `test/transport-realtime.test.ts` |
+| T184 | `test/version-consistency.test.ts` |
+| T185 | `test/version-sync.test.ts` |
+| T186 | `test/voice-stt-realtime-smoke.test.ts` |
+| T187 | `test/voice-tts-stream.test.ts` |
+| T188 | `test/web-search-providers-smoke.test.ts` |
+| T189 | `test/workspace-swap-http.test.ts` |
+| T190 | `test/workspace-swap-reroot.test.ts` |
+| T191 | `test/wrfc-constraint-propagation.test.ts` |
+| T192 | `test/wrfc-controller.test.ts` |
+| T193 | `test/wrfc-prompt-addenda.test.ts` |
+| T194 | `test/zod-validation.test.ts` |
 
-_Note: This list covers the first 90 root-level test files (sorted). Run `bun scripts/test.ts` to discover the full set dynamically._
-
-## Integration tests (`test/integration/*.test.ts`)
-
-| # | File |
-|---|------|
-| I01 | `test/integration/any-runtime-event-property.test.ts` |
-| I02 | `test/integration/auth-flow-e2e.test.ts` |
-
-## Specialised suites
-
-| # | File | Notes |
-|---|------|-------|
-| W01 | `test/workers/workers.test.ts` | Cloudflare Workers runtime |
-| W02 | `test/workers-wrangler/wrangler.test.ts` | Wrangler integration |
-| H01 | `test/hermes/` | React Native Hermes bundle |
-
-## Coverage areas by module
-
-| Module area | Test files |
-|-------------|------------|
-| Auth | T04–T12 |
-| Bootstrap | T13 |
-| Channel | T15–T17 |
-| Cloudflare Workers | T18–T20, W01–W02 |
-| Companion chat | T21–T31 |
-| Contracts | T33–T34 |
-| Daemon SDK | T39–T43 |
-| Dist freshness | T44 |
-| Error hierarchy | T02, T46 |
-| Feature flags | T51 |
-| HomeAssistant | T54 |
-| Homegraph | T55–T63 |
-| Idempotency | T65 |
-| Knowledge | T67–T76 |
-| Observability | T81–T89 |
-| Platform adapter contract | T90 |
-| ntfy integration | T80 |
-| Token stores (mobile) | T01, T48, T66 |

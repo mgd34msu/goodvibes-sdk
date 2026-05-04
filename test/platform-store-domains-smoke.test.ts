@@ -1,81 +1,107 @@
 /**
  * Coverage-gap smoke test — platform/runtime/store/domains
- * Verifies that each store domain module loads without throwing.
+ * Verifies that each store domain's createInitial*State() factory function
+ * returns an object with the expected base shape and key-field values.
  * Closes coverage gap: platform/runtime/store/domains per-domain (eighth-review)
  */
 
 import { describe, expect, test } from 'bun:test';
+import { createInitialAcpState } from '../packages/sdk/src/platform/runtime/store/domains/acp.js';
+import { createInitialAgentsState } from '../packages/sdk/src/platform/runtime/store/domains/agents.js';
+import { createInitialAutomationState } from '../packages/sdk/src/platform/runtime/store/domains/automation.js';
+import { createInitialConversationState } from '../packages/sdk/src/platform/runtime/store/domains/conversation.js';
+import { createInitialDaemonState } from '../packages/sdk/src/platform/runtime/store/domains/daemon.js';
+import { createInitialDiscoveryState } from '../packages/sdk/src/platform/runtime/store/domains/discovery.js';
+import { createInitialGitState } from '../packages/sdk/src/platform/runtime/store/domains/git.js';
+import { createInitialIntelligenceState } from '../packages/sdk/src/platform/runtime/store/domains/intelligence.js';
+import { createInitialMcpState } from '../packages/sdk/src/platform/runtime/store/domains/mcp.js';
+import { createInitialModelState } from '../packages/sdk/src/platform/runtime/store/domains/model.js';
+import { createInitialOrchestrationState } from '../packages/sdk/src/platform/runtime/store/domains/orchestration.js';
+import { createInitialPermissionsState } from '../packages/sdk/src/platform/runtime/store/domains/permissions.js';
+import { createInitialSessionState } from '../packages/sdk/src/platform/runtime/store/domains/session.js';
+import { createInitialTasksState } from '../packages/sdk/src/platform/runtime/store/domains/tasks.js';
 
-// Import each domain to verify it loads without errors
-import * as acp from '../packages/sdk/src/platform/runtime/store/domains/acp.js';
-import * as agents from '../packages/sdk/src/platform/runtime/store/domains/agents.js';
-import * as automation from '../packages/sdk/src/platform/runtime/store/domains/automation.js';
-import * as conversation from '../packages/sdk/src/platform/runtime/store/domains/conversation.js';
-import * as daemon from '../packages/sdk/src/platform/runtime/store/domains/daemon.js';
-import * as discovery from '../packages/sdk/src/platform/runtime/store/domains/discovery.js';
-import * as git from '../packages/sdk/src/platform/runtime/store/domains/git.js';
-import * as intelligence from '../packages/sdk/src/platform/runtime/store/domains/intelligence.js';
-import * as mcp from '../packages/sdk/src/platform/runtime/store/domains/mcp.js';
-import * as model from '../packages/sdk/src/platform/runtime/store/domains/model.js';
-import * as orchestration from '../packages/sdk/src/platform/runtime/store/domains/orchestration.js';
-import * as permissions from '../packages/sdk/src/platform/runtime/store/domains/permissions.js';
-import * as session from '../packages/sdk/src/platform/runtime/store/domains/session.js';
-import * as tasks from '../packages/sdk/src/platform/runtime/store/domains/tasks.js';
+/** All domain states must have a numeric revision field. */
+function assertBaseShape(state: unknown, domainName: string) {
+  const s = state as Record<string, unknown>;
+  expect(typeof s.revision, `${domainName}: revision should be a number`).toBe('number');
+}
 
-describe('platform/runtime/store/domains — module load smoke', () => {
-  test('acp domain loads without error', () => {
-    expect(acp).toBeDefined();
+describe('platform/runtime/store/domains — behavior smoke', () => {
+  test('createInitialAcpState returns correct shape', () => {
+    const state = createInitialAcpState();
+    assertBaseShape(state, 'acp');
+    expect(state.initialized).toBe(false);
+    expect(state.connections).toBeInstanceOf(Map);
   });
 
-  test('agents domain loads without error', () => {
-    expect(agents).toBeDefined();
+  test('createInitialAgentsState returns correct shape', () => {
+    const state = createInitialAgentsState();
+    assertBaseShape(state, 'agents');
+    expect(state.agents).toBeInstanceOf(Map);
+    expect(Array.isArray(state.activeAgentIds)).toBe(true);
+    expect(state.activeAgentIds.length).toBe(0);
+    expect(state.peakConcurrency).toBe(0);
   });
 
-  test('automation domain loads without error', () => {
-    expect(automation).toBeDefined();
+  test('createInitialAutomationState returns correct shape', () => {
+    const state = createInitialAutomationState();
+    assertBaseShape(state, 'automation');
   });
 
-  test('conversation domain loads without error', () => {
-    expect(conversation).toBeDefined();
+  test('createInitialConversationState returns correct shape', () => {
+    const state = createInitialConversationState();
+    assertBaseShape(state, 'conversation');
+    expect(state.turnState).toBe('idle');
   });
 
-  test('daemon domain loads without error', () => {
-    expect(daemon).toBeDefined();
+  test('createInitialDaemonState returns correct shape', () => {
+    const state = createInitialDaemonState();
+    assertBaseShape(state, 'daemon');
   });
 
-  test('discovery domain loads without error', () => {
-    expect(discovery).toBeDefined();
+  test('createInitialDiscoveryState returns correct shape', () => {
+    const state = createInitialDiscoveryState();
+    assertBaseShape(state, 'discovery');
   });
 
-  test('git domain loads without error', () => {
-    expect(git).toBeDefined();
+  test('createInitialGitState returns correct shape', () => {
+    const state = createInitialGitState();
+    assertBaseShape(state, 'git');
   });
 
-  test('intelligence domain loads without error', () => {
-    expect(intelligence).toBeDefined();
+  test('createInitialIntelligenceState returns correct shape', () => {
+    const state = createInitialIntelligenceState();
+    assertBaseShape(state, 'intelligence');
   });
 
-  test('mcp domain loads without error', () => {
-    expect(mcp).toBeDefined();
+  test('createInitialMcpState returns correct shape', () => {
+    const state = createInitialMcpState();
+    assertBaseShape(state, 'mcp');
   });
 
-  test('model domain loads without error', () => {
-    expect(model).toBeDefined();
+  test('createInitialModelState returns correct shape', () => {
+    const state = createInitialModelState();
+    assertBaseShape(state, 'model');
   });
 
-  test('orchestration domain loads without error', () => {
-    expect(orchestration).toBeDefined();
+  test('createInitialOrchestrationState returns correct shape', () => {
+    const state = createInitialOrchestrationState();
+    assertBaseShape(state, 'orchestration');
   });
 
-  test('permissions domain loads without error', () => {
-    expect(permissions).toBeDefined();
+  test('createInitialPermissionsState returns correct shape', () => {
+    const state = createInitialPermissionsState();
+    assertBaseShape(state, 'permissions');
   });
 
-  test('session domain loads without error', () => {
-    expect(session).toBeDefined();
+  test('createInitialSessionState returns correct shape', () => {
+    const state = createInitialSessionState();
+    assertBaseShape(state, 'session');
   });
 
-  test('tasks domain loads without error', () => {
-    expect(tasks).toBeDefined();
+  test('createInitialTasksState returns correct shape', () => {
+    const state = createInitialTasksState();
+    assertBaseShape(state, 'tasks');
   });
 });

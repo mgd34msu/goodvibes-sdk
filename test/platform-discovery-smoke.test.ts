@@ -1,11 +1,14 @@
 /**
  * Coverage-gap smoke test — platform/discovery
- * Verifies that the scanner and mcp-scanner modules load and export their
- * primary symbols without throwing at import time.
+ * Verifies that the scanner and mcp-scanner modules load, export their
+ * primary symbols, and execute observable behavior.
  * Closes coverage gap: platform/discovery (eighth-review)
  */
 
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   scan,
   scanHosts,
@@ -16,24 +19,42 @@ import {
   scanMcpServers,
 } from '../packages/sdk/src/platform/discovery/mcp-scanner.js';
 
-describe('platform/discovery — module load smoke', () => {
-  test('scan is a function', () => {
-    expect(typeof scan).toBe('function');
+describe('platform/discovery — behavior smoke', () => {
+  test('loadPersistedProviders returns empty array for non-existent persist path', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'gv-discovery-test-'));
+    try {
+      const result = loadPersistedProviders({
+        homeDirectory: tmp,
+        surfaceRoot: 'gv-test-surface',
+      });
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(0);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
-  test('scanHosts is a function', () => {
-    expect(typeof scanHosts).toBe('function');
+  test('scan is callable and returns a Promise', () => {
+    const result = scan({ hosts: [] });
+    expect(result).toBeInstanceOf(Promise);
+    void result.catch(() => {});
   });
 
-  test('scanLocalhost is a function', () => {
-    expect(typeof scanLocalhost).toBe('function');
+  test('scanHosts is callable and accepts a host list', () => {
+    const result = scanHosts({ hosts: [] });
+    expect(result).toBeInstanceOf(Promise);
+    void result.catch(() => {});
   });
 
-  test('loadPersistedProviders is a function', () => {
-    expect(typeof loadPersistedProviders).toBe('function');
+  test('scanLocalhost is callable and returns a Promise', () => {
+    const result = scanLocalhost();
+    expect(result).toBeInstanceOf(Promise);
+    void result.catch(() => {});
   });
 
-  test('scanMcpServers is a function', () => {
-    expect(typeof scanMcpServers).toBe('function');
+  test('scanMcpServers is callable and returns a Promise', () => {
+    const result = scanMcpServers();
+    expect(result).toBeInstanceOf(Promise);
+    void result.catch(() => {});
   });
 });

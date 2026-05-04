@@ -366,7 +366,7 @@ describe('sdk.use() — full SDK facade integration', () => {
 describe('middleware error wrap: HttpStatusError from middleware', () => {
   test('HttpStatusError thrown by middleware surfaces as SDKError with middleware identity in cause', async () => {
     const { createHttpJsonTransport } = await import('../packages/transport-http/src/http-core.js');
-    const { HttpStatusError, GoodVibesSdkError } = await import('./helpers/dist-errors.js');
+    const { HttpStatusError, GoodVibesSdkError } = await import('./_helpers/dist-errors.js');
 
     const fetchStub: typeof globalThis.fetch = async () => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -403,7 +403,7 @@ describe('middleware error wrap: HttpStatusError from middleware', () => {
 
   test('non-HttpStatusError thrown by middleware is also wrapped with middleware identity', async () => {
     const { createHttpJsonTransport } = await import('../packages/transport-http/src/http-core.js');
-    const { GoodVibesSdkError } = await import('./helpers/dist-errors.js');
+    const { GoodVibesSdkError } = await import('./_helpers/dist-errors.js');
 
     const fetchStub: typeof globalThis.fetch = async () => {
       return new Response('{}', { status: 200 });
