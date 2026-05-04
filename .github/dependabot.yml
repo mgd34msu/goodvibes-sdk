@@ -4,6 +4,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    versioning-strategy: lockfile-only
     # 5 open PRs: enough to batch patch groups without flooding the review queue.
     # Increase if you want minor/major updates to flow through faster.
     open-pull-requests-limit: 5

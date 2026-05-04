@@ -1,4 +1,3 @@
-import { createUuidV4 } from './uuid.js';
 
 export interface EventEnvelope<TType extends string, TPayload> {
   readonly type: TType;
@@ -30,12 +29,11 @@ export function createEventEnvelope<TType extends string, TPayload>(
     type,
     ts: Date.now(),
     // Callers that want multiple fan-out envelopes correlated under one trace
-    // must provide a shared traceId; this helper only creates a traceId when no
-    // correlation context was supplied.
-    // NIT-1: generating a UUIDv4 here consumes crypto entropy on every envelope.
-    // High-volume callers (telemetry, streaming deltas) should pre-compute a shared
-    // traceId and pass it in context rather than relying on this auto-fill path.
-    traceId: context.traceId ?? createUuidV4(),
+    // must provide a shared traceId.
+    // MIN-04: default to undefined instead of generating entropy on every envelope.
+    // High-volume callers (telemetry, streaming deltas) should provide a shared
+    // traceId in context to correlate fan-out envelopes under one trace.
+    traceId: context.traceId,
     sessionId: context.sessionId,
     turnId: context.turnId,
     agentId: context.agentId,

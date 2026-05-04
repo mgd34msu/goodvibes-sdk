@@ -21,6 +21,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -136,8 +137,17 @@ if (allFail) {
   // Consistently failing — this is a real failure, not a flake.
   console.error(`\nflake-detect: FAIL — all ${N} runs failed consistently.`);
   console.error('This is a deterministic failure, not a flake. Fix the failing tests first.\n');
-  // Print stdout/stderr from run 1 for diagnosis.
+  // Write full output to flake-output.log for CI artifact upload.
   const r1 = results[0];
+  const logLines: string[] = [`flake-detect: deterministic failure — all ${N} runs failed\n`];
+  if (r1 && r1.stdout) {
+    logLines.push('--- stdout (run 1) ---\n', r1.stdout, '\n');
+  }
+  if (r1 && r1.stderr) {
+    logLines.push('--- stderr (run 1) ---\n', r1.stderr, '\n');
+  }
+  writeFileSync('flake-output.log', logLines.join(''), 'utf8');
+  // Also print last portion to console for inline log visibility.
   if (r1 && r1.stdout) {
     console.error('--- stdout (run 1) ---');
     console.error(r1.stdout.slice(-4000));
