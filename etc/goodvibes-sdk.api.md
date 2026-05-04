@@ -2530,6 +2530,62 @@ export interface GoodVibesTokenStore {
     setTokenEntry?(token: string | null, expiresAt?: number): Promise<void>;
 }
 
+// @public
+export type GoodVibesUIEvent =
+/** A full re-render has been requested. */
+    {
+    type: 'UI_RENDER_REQUEST';
+}
+/** Scroll by a relative delta (positive = down, negative = up). */
+| {
+    type: 'UI_SCROLL_DELTA';
+    delta: number;
+}
+/** Scroll to an absolute line number. */
+| {
+    type: 'UI_SCROLL_TO';
+    line: number;
+}
+/** A collapsible block's collapsed state was toggled. */
+| {
+    type: 'UI_BLOCK_TOGGLE_COLLAPSE';
+    blockIndex: number;
+}
+/** A block was requested to re-run. */
+| {
+    type: 'UI_BLOCK_RERUN';
+    blockIndex: number;
+    content: string;
+}
+/** The screen was cleared. */
+| {
+    type: 'UI_CLEAR_SCREEN';
+}
+/** A panel was opened. */
+| {
+    type: 'UI_PANEL_OPEN';
+    panelId: string;
+}
+/** A panel was closed. */
+| {
+    type: 'UI_PANEL_CLOSE';
+    panelId: string;
+}
+/** A panel was focused. */
+| {
+    type: 'UI_PANEL_FOCUS';
+    panelId: string;
+}
+/** The active view changed (e.g. chat -> search -> help). */
+| {
+    type: 'UI_VIEW_CHANGED';
+    from: string;
+    to: string;
+};
+
+// @public
+export type GoodVibesUIEventType = GoodVibesUIEvent['type'];
+
 // @public (undocumented)
 export function handleRemotePairRequest(context: Pick<DaemonRemoteRouteContext, 'parseJsonBody' | 'distributedRuntime'>, req: Request): Promise<Response>;
 
@@ -17370,14 +17426,10 @@ export const TypedSerializedEventEnvelopeSchema: z.ZodObject<{
 // @public (undocumented)
 export type TypedSerializedEventEnvelopeShape = z.infer<typeof TypedSerializedEventEnvelopeSchema>;
 
-// Warning: (ae-forgotten-export) The symbol "GoodVibesUIEvent" needs to be exported by the entry point index.d.ts
-//
 // @public @deprecated (undocumented)
 type UIEvent_2 = GoodVibesUIEvent;
 export { UIEvent_2 as UIEvent }
 
-// Warning: (ae-forgotten-export) The symbol "GoodVibesUIEventType" needs to be exported by the entry point index.d.ts
-//
 // @public @deprecated (undocumented)
 export type UIEventType = GoodVibesUIEventType;
 
