@@ -509,17 +509,37 @@ export class Orchestrator {
     const configManager = requireConfigManager(this.coreServices);
     const providerRegistry = requireProviderRegistry(this.coreServices);
 
-    // --- Submission key — per-turn idempotency fence ---
+    // --- Phase 1: Preflight — idempotency, event emission, plan injection ---
+    const preflight = this.runTurnPreflight(text, content, options, providerRegistry);
+    if (!preflight) return; // duplicate in-flight turn — dropped
+    const { submissionKey, turnId, preTurnPlan } = preflight;
+
+    // --- Phase 2: Stream + tool dispatch ---
+    try {
+      await this.runTurnStream(text, content, turnId, preTurnPlan, configManager, providerRegistry);
+
+      // --- Phase 3: Post-turn reconciliation ---
+      await this.runTurnReconcile(turnId, configManager, providerRegistry);
+    } catch (err: unknown) {
+      this.handleTurnError(err, turnId, configManager, providerRegistry);
+    } finally {
+      this.finalizeTurn(turnStartTime, submissionKey, turnId, configManager);
+    }
+  }
+
+  /** Phase 1: Idempotency fence, event emission, adaptive planner, plan injection, thinking start.
+   *  Returns null when the turn is a duplicate in-flight submission (caller should return early). */
+  private runTurnPreflight(
+    text: string,
+    content: ContentPart[] | undefined,
+    options: OrchestratorUserInputOptions | undefined,
+    providerRegistry: ReturnType<typeof requireProviderRegistry>,
+  ): { submissionKey: string; turnId: string; preTurnPlan: ReturnType<typeof prepareConversationForTurn> } | null {
     // Generates a stable, deterministic key for this turn using a SHA-256 hash
     // of the message content (first 512 chars) + conversation length as context.
     // If the same physical turn is replayed (reconnect/restart) before the
     // prior execution completes, the second attempt hits 'in-flight' and is
     // silently dropped. After completion the key expires via TTL.
-    // Note: turnId is deliberately pre-hashed here (SHA-256, sliced to 16 chars) so
-    // that long message text does not bloat the intermediate string passed to
-    // generateKey — which applies its own SHA-256 internally. The double-hash is
-    // intentional and harmless: the outer hash provides key isolation and the
-    // inner hash ensures the final store key is a uniform 64-char hex digest.
     const turnId = createHash('sha256')
       .update(`${this.sessionId}:${this.conversation.getMessageCount()}:${text.slice(0, 512)}`)
       .digest('hex')
@@ -539,7 +559,7 @@ export class Orchestrator {
         submissionKey,
       });
       this.currentSubmissionKey = null;
-      return;
+      return null;
     }
     // 'duplicate' (completed/failed) — allow re-run (user sent same text intentionally).
     // We just let it proceed; the prior record will be overwritten.
@@ -552,10 +572,7 @@ export class Orchestrator {
       });
     }
 
-    // Adaptive Execution Planner.
-    // If the feature flag is enabled, score and select the execution strategy
-    // before the turn proceeds. The selected strategy and reason code are
-    // emitted for the Ops panel and logged for observability.
+    // Adaptive Execution Planner: score and select the execution strategy before the turn proceeds.
     maybeEmitAdaptivePlannerDecision(
       text,
       this.flagManager?.isEnabled('adaptive-execution-planner') ?? false,
@@ -564,7 +581,6 @@ export class Orchestrator {
       (id) => createEmitterContext(this.sessionId, id),
       turnId,
     );
-    // ────────────────────────────────────────────────────────────────────────
 
     // Pre-turn plan injection: if an active plan exists, inject its current state into
     // the conversation so the LLM can refer to it and update item statuses.
@@ -583,160 +599,193 @@ export class Orchestrator {
     const initialEstimatedTokens = estimateConversationTokens(this.conversation.getMessagesForLLM());
     this.startThinking(estimateFreshTurnInputTokens(this.lastInputTokens, initialEstimatedTokens, text, content));
 
-    try {
-      await executeOrchestratorTurnLoop({
-        conversation: this.conversation,
-        toolRegistry: this.toolRegistry,
-        getSystemPrompt: this.getSystemPrompt,
-        getAbortSignal: () => this.abortController?.signal,
-        hookDispatcher: this.hookDispatcher,
-        requestRender: this.requestRender,
-        runtimeBus: this.runtimeBus,
-        agentManager: this.agentManager,
-        configManager,
-        providerRegistry,
-        favoritesStore: this.coreServices.favoritesStore,
-        cacheHitTracker: getCacheHitTracker(this.coreServices, this.ownedCacheHitTracker),
-        helperModel: new HelperModel({ configManager, providerRegistry }),
-        sessionId: this.sessionId,
-        preTurnPlan,
-        planManager: this.coreServices.planManager ?? null,
-        text,
-        content,
-        turnId,
-        emitterContext: (id) => createEmitterContext(this.sessionId, id),
-        executeToolCalls: (id, calls) => this.executeToolCalls(id, calls),
-        checkContextWindowPreflight: (id, model) => this.checkContextWindowPreflight(id, model),
-        normalizeUsage,
-        estimateFreshTurnInputTokens: (currentEstimatedTokens, nextText, nextContent) =>
-          estimateFreshTurnInputTokens(this.lastInputTokens, currentEstimatedTokens, nextText, nextContent),
-        getMessageQueueLength: () => this.messageQueue.length,
-        isReconciliationEnabled: () => this.isReconciliationEnabled(),
-        setPendingToolCalls: (calls) => { this._pendingToolCalls = calls; },
-        setAutoSpawnTimeout: (timeout) => { this.autoSpawnTimeout = timeout; },
-        setStreamingActive: (value) => { this.isStreaming = value; },
-        setStreamingInputTokens: (value) => { this.streamingInputTokens = value; },
-        addStreamingOutputTokens: (value) => { this.streamingOutputTokens += value; },
-        setLastRequestInputTokens: (value) => { this.lastRequestInputTokens = value; },
-        setLastInputTokens: (value) => { this.lastInputTokens = value; },
-        markTurnFailed: () => { this._turnFailed = true; },
-        usage: this.usage,
-      });
+    return { submissionKey, turnId, preTurnPlan };
+  }
 
-      await handlePostTurnContextMaintenance({
-        conversation: this.conversation,
-        agentManager: this.agentManager,
-        wrfcController: this.wrfcController,
-        planManager: this.coreServices.planManager ?? null,
-        sessionMemoryStore: this.coreServices.sessionMemoryStore ?? null,
-        configManager,
-        providerRegistry,
-        sessionLineageTracker: getSessionLineageTracker(this.coreServices, this.ownedSessionLineageTracker),
-        runtimeBus: this.runtimeBus,
-        emitterContext: (id) => createEmitterContext(this.sessionId, id),
-        hookDispatcher: this.hookDispatcher,
-        sessionId: this.sessionId,
-        requestRender: this.requestRender,
-        isCompacting: this.isCompacting,
-        setIsCompacting: (value) => { this.isCompacting = value; },
-        lastWarningBracket: this.lastWarningBracket,
-        setLastWarningBracket: (value) => { this.lastWarningBracket = value; },
-      }, turnId, this.lastInputTokens);
-    } catch (err: unknown) {
-      if (this.abortController?.signal.aborted) {
-        // Clean up streaming block if one was active when aborted
-        if (this.isStreaming) {
-          this.isStreaming = false;
-          this.conversation.finalizeStreamingBlock();
-          if (this.runtimeBus) {
-            emitStreamEnd(this.runtimeBus, createEmitterContext(this.sessionId, turnId), { turnId });
-          }
-        }
-        // Remove any partial LLM response, keep user message but mark it cancelled
-        this.conversation.removeMessagesAfter(this.turnStartMessageCount);
-        this.conversation.markLastUserMessageCancelled();
-        this.conversation.addSystemMessage('[Response cancelled]');
+  /** Phase 2: Execute the LLM streaming loop and tool dispatch. */
+  private async runTurnStream(
+    text: string,
+    content: ContentPart[] | undefined,
+    turnId: string,
+    preTurnPlan: ReturnType<typeof prepareConversationForTurn>,
+    configManager: ReturnType<typeof requireConfigManager>,
+    providerRegistry: ReturnType<typeof requireProviderRegistry>,
+  ): Promise<void> {
+    await executeOrchestratorTurnLoop({
+      conversation: this.conversation,
+      toolRegistry: this.toolRegistry,
+      getSystemPrompt: this.getSystemPrompt,
+      getAbortSignal: () => this.abortController?.signal,
+      hookDispatcher: this.hookDispatcher,
+      requestRender: this.requestRender,
+      runtimeBus: this.runtimeBus,
+      agentManager: this.agentManager,
+      configManager,
+      providerRegistry,
+      favoritesStore: this.coreServices.favoritesStore,
+      cacheHitTracker: getCacheHitTracker(this.coreServices, this.ownedCacheHitTracker),
+      helperModel: new HelperModel({ configManager, providerRegistry }),
+      sessionId: this.sessionId,
+      preTurnPlan,
+      planManager: this.coreServices.planManager ?? null,
+      text,
+      content,
+      turnId,
+      emitterContext: (id) => createEmitterContext(this.sessionId, id),
+      executeToolCalls: (id, calls) => this.executeToolCalls(id, calls),
+      checkContextWindowPreflight: (id, model) => this.checkContextWindowPreflight(id, model),
+      normalizeUsage,
+      estimateFreshTurnInputTokens: (currentEstimatedTokens, nextText, nextContent) =>
+        estimateFreshTurnInputTokens(this.lastInputTokens, currentEstimatedTokens, nextText, nextContent),
+      getMessageQueueLength: () => this.messageQueue.length,
+      isReconciliationEnabled: () => this.isReconciliationEnabled(),
+      setPendingToolCalls: (calls) => { this._pendingToolCalls = calls; },
+      setAutoSpawnTimeout: (timeout) => { this.autoSpawnTimeout = timeout; },
+      setStreamingActive: (value) => { this.isStreaming = value; },
+      setStreamingInputTokens: (value) => { this.streamingInputTokens = value; },
+      addStreamingOutputTokens: (value) => { this.streamingOutputTokens += value; },
+      setLastRequestInputTokens: (value) => { this.lastRequestInputTokens = value; },
+      setLastInputTokens: (value) => { this.lastInputTokens = value; },
+      markTurnFailed: () => { this._turnFailed = true; },
+      usage: this.usage,
+    });
+  }
+
+  /** Phase 3: Post-turn context maintenance (compaction, memory, plan updates). */
+  private async runTurnReconcile(
+    turnId: string,
+    configManager: ReturnType<typeof requireConfigManager>,
+    providerRegistry: ReturnType<typeof requireProviderRegistry>,
+  ): Promise<void> {
+    await handlePostTurnContextMaintenance({
+      conversation: this.conversation,
+      agentManager: this.agentManager,
+      wrfcController: this.wrfcController,
+      planManager: this.coreServices.planManager ?? null,
+      sessionMemoryStore: this.coreServices.sessionMemoryStore ?? null,
+      configManager,
+      providerRegistry,
+      sessionLineageTracker: getSessionLineageTracker(this.coreServices, this.ownedSessionLineageTracker),
+      runtimeBus: this.runtimeBus,
+      emitterContext: (id) => createEmitterContext(this.sessionId, id),
+      hookDispatcher: this.hookDispatcher,
+      sessionId: this.sessionId,
+      requestRender: this.requestRender,
+      isCompacting: this.isCompacting,
+      setIsCompacting: (value) => { this.isCompacting = value; },
+      lastWarningBracket: this.lastWarningBracket,
+      setLastWarningBracket: (value) => { this.lastWarningBracket = value; },
+    }, turnId, this.lastInputTokens);
+  }
+
+  /** Catch handler: route to abort path or error path. */
+  private handleTurnError(
+    err: unknown,
+    turnId: string,
+    configManager: ReturnType<typeof requireConfigManager>,
+    providerRegistry: ReturnType<typeof requireProviderRegistry>,
+  ): void {
+    if (this.abortController?.signal.aborted) {
+      // Clean up streaming block if one was active when aborted
+      if (this.isStreaming) {
+        this.isStreaming = false;
+        this.conversation.finalizeStreamingBlock();
         if (this.runtimeBus) {
-          emitTurnCancel(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
-            turnId,
-            reason: 'cancelled',
-            stopReason: 'cancelled',
-          });
-        }
-        return;
-      }
-
-      const error = err instanceof Error ? err : new Error(summarizeError(err));
-      const msg = formatError(error, {
-        ...(error instanceof ProviderError
-          ? { provider: providerRegistry.getCurrentModel().provider, source: 'provider' as const }
-          : {}),
-      });
-      this.conversation.addSystemMessage(msg);
-      this.requestRender();
-      // Graceful degradation — suggest alternative when provider fails non-transiently
-      const autoSwitch = configManager.get('behavior.suggestAlternativeOnProviderFail') as boolean;
-      if (autoSwitch && isNonTransientProviderFailure(err)) {
-        const currentModel = providerRegistry.getCurrentModel();
-        const alt = currentModel ? providerRegistry.findAlternativeModel(currentModel.id) : null;
-        if (alt) {
-          this.conversation.addSystemMessage(`[Provider] ${currentModel?.provider ?? 'Unknown'} failed. Alternative available: ${alt.displayName} (${alt.provider}). Use /model to switch.`);
+          emitStreamEnd(this.runtimeBus, createEmitterContext(this.sessionId, turnId), { turnId });
         }
       }
-      this._turnFailed = true;
+      // Remove any partial LLM response, keep user message but mark it cancelled
+      this.conversation.removeMessagesAfter(this.turnStartMessageCount);
+      this.conversation.markLastUserMessageCancelled();
+      this.conversation.addSystemMessage('[Response cancelled]');
       if (this.runtimeBus) {
-        emitTurnError(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
+        emitTurnCancel(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
           turnId,
-          error: summarizeError(error),
-          stopReason: err instanceof ProviderError ? 'provider_error' : 'unexpected_error',
+          reason: 'cancelled',
+          stopReason: 'cancelled',
         });
       }
-    } finally {
-      // ── GC-ORCH-015: Terminal-state tool-call reconciliation ───────────────────
-      // If the turn threw an exception between addAssistantMessage (which sets
-      // _pendingToolCalls) and addToolResults (which clears it), there are
-      // unresolved tool-call blocks in the conversation. Reconcile them now
-      // so the conversation is always in a valid state on turn exit.
-      if (this._pendingToolCalls.length > 0) {
-        this.reconcileUnresolvedToolCalls([], 'exception-before-results');
-      }
-
-      // --- Submission key: mark turn complete or failed ---
-      // Success: markComplete caches the result for duplicate callers.
-      // Failure: markFailed allows retry on the next submission.
-      if (this.currentSubmissionKey) {
-        if (this._turnFailed) {
-          getIdempotencyStore(this.coreServices, this.ownedIdempotencyStore).markFailed(this.currentSubmissionKey);
-        } else {
-          getIdempotencyStore(this.coreServices, this.ownedIdempotencyStore).markComplete(this.currentSubmissionKey);
-        }
-        this.currentSubmissionKey = null;
-        this._turnFailed = false;
-      }
-      this.stopThinking();
-      const durationMs = Date.now() - turnStartTime;
-      const notifyEnabled = configManager.get('behavior.notifyOnComplete') as boolean | undefined;
-      if (notifyEnabled !== false) {
-        notifyCompletion('GoodVibes', `Response complete (${Math.round(durationMs / 1000)}s)`, durationMs);
-      }
-
-      // ── Event replay queue ────────────────────────────────────────────────
-      // Signal turn completion; if any tracked events went unacknowledged,
-      // inject them as system messages so the model sees them next turn.
-      const eventsToReplay = this.replayQueue.onTurnComplete();
-      if (eventsToReplay.length > 0) {
-        const messages = this.replayQueue.formatReplays(eventsToReplay);
-        for (const msg of messages) {
-          if (this.systemMessageRouter) {
-            this.systemMessageRouter.low(msg);
-          } else {
-            this.conversation.addSystemMessage(msg);
-          }
-        }
-        this.requestRender();
-      }
-      this.followUpRuntime.scheduleFlush();
+      return;
     }
+
+    const error = err instanceof Error ? err : new Error(summarizeError(err));
+    const msg = formatError(error, {
+      ...(error instanceof ProviderError
+        ? { provider: providerRegistry.getCurrentModel().provider, source: 'provider' as const }
+        : {}),
+    });
+    this.conversation.addSystemMessage(msg);
+    this.requestRender();
+    // Graceful degradation — suggest alternative when provider fails non-transiently
+    const autoSwitch = configManager.get('behavior.suggestAlternativeOnProviderFail') as boolean;
+    if (autoSwitch && isNonTransientProviderFailure(err)) {
+      const currentModel = providerRegistry.getCurrentModel();
+      const alt = currentModel ? providerRegistry.findAlternativeModel(currentModel.id) : null;
+      if (alt) {
+        this.conversation.addSystemMessage(`[Provider] ${currentModel?.provider ?? 'Unknown'} failed. Alternative available: ${alt.displayName} (${alt.provider}). Use /model to switch.`);
+      }
+    }
+    this._turnFailed = true;
+    if (this.runtimeBus) {
+      emitTurnError(this.runtimeBus, createEmitterContext(this.sessionId, turnId), {
+        turnId,
+        error: summarizeError(error),
+        stopReason: err instanceof ProviderError ? 'provider_error' : 'unexpected_error',
+      });
+    }
+  }
+
+  /** Finally handler: tool-call reconciliation, submission key finalization, notifications, replay queue. */
+  private finalizeTurn(
+    turnStartTime: number,
+    submissionKey: string,
+    turnId: string,
+    configManager: ReturnType<typeof requireConfigManager>,
+  ): void {
+    // ── GC-ORCH-015: Terminal-state tool-call reconciliation ───────────────────
+    // If the turn threw an exception between addAssistantMessage (which sets
+    // _pendingToolCalls) and addToolResults (which clears it), there are
+    // unresolved tool-call blocks in the conversation. Reconcile them now
+    // so the conversation is always in a valid state on turn exit.
+    if (this._pendingToolCalls.length > 0) {
+      this.reconcileUnresolvedToolCalls([], 'exception-before-results');
+    }
+
+    // --- Submission key: mark turn complete or failed ---
+    // Success: markComplete caches the result for duplicate callers.
+    // Failure: markFailed allows retry on the next submission.
+    if (this.currentSubmissionKey) {
+      if (this._turnFailed) {
+        getIdempotencyStore(this.coreServices, this.ownedIdempotencyStore).markFailed(this.currentSubmissionKey);
+      } else {
+        getIdempotencyStore(this.coreServices, this.ownedIdempotencyStore).markComplete(this.currentSubmissionKey);
+      }
+      this.currentSubmissionKey = null;
+      this._turnFailed = false;
+    }
+    this.stopThinking();
+    const durationMs = Date.now() - turnStartTime;
+    const notifyEnabled = configManager.get('behavior.notifyOnComplete') as boolean | undefined;
+    if (notifyEnabled !== false) {
+      notifyCompletion('GoodVibes', `Response complete (${Math.round(durationMs / 1000)}s)`, durationMs);
+    }
+
+    // ── Event replay queue ────────────────────────────────────────────────
+    // Signal turn completion; if any tracked events went unacknowledged,
+    // inject them as system messages so the model sees them next turn.
+    const eventsToReplay = this.replayQueue.onTurnComplete();
+    if (eventsToReplay.length > 0) {
+      const messages = this.replayQueue.formatReplays(eventsToReplay);
+      for (const msg of messages) {
+        if (this.systemMessageRouter) {
+          this.systemMessageRouter.low(msg);
+        } else {
+          this.conversation.addSystemMessage(msg);
+        }
+      }
+      this.requestRender();
+    }
+    this.followUpRuntime.scheduleFlush();
   }
 
   /**

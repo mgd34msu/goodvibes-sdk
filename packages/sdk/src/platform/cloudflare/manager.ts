@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import type { ConfigKey } from '../config/schema.js';
-import { resolveSecretInput } from '../config/secret-refs.js';
 import { summarizeError } from '../utils/error-display.js';
 import { createCloudflareApiClient } from './client.js';
 import { readCloudflareConfig } from './config.js';
@@ -80,6 +79,15 @@ import {
   verifyCreatedTokenPolicies,
 } from './utils.js';
 import { configureWorkerSchedule, configureWorkerSubdomain, describeWorkerUploadDurableObjectMigration, disableWorkerSchedule, disableWorkerSubdomain, uploadWorker } from './worker-settings.js';
+import {
+  resolveAccountId as _resolveAccountId,
+  resolveWorkerName as _resolveWorkerName,
+  resolveApiToken as _resolveApiToken,
+  resolveOperatorToken as _resolveOperatorToken,
+  resolveWorkerClientToken as _resolveWorkerClientToken,
+  resolveSecretRef as _resolveSecretRef,
+  type TokenResolverContext,
+} from './cloudflare-token-resolvers.js';
 
 export class CloudflareControlPlaneManager {
   private readonly createClient: (apiToken: string) => Promise<CloudflareApiClient>;
@@ -640,80 +648,36 @@ export class CloudflareControlPlaneManager {
     return readCloudflareConfig(this.options.configManager);
   }
 
+  private _tokenResolverCtx(): TokenResolverContext {
+    return {
+      secretsManager: this.options.secretsManager,
+      authToken: this.options.authToken,
+      readConfig: () => this.readConfig(),
+    };
+  }
+
   private resolveAccountId(inputAccountId: string | undefined): string {
-    const accountId = clean(inputAccountId) || this.readConfig().accountId;
-    if (!accountId) {
-      throw new CloudflareControlPlaneError(
-        'Cloudflare account id is required. Configure cloudflare.accountId or pass accountId.',
-        'CLOUDFLARE_ACCOUNT_REQUIRED',
-        400,
-      );
-    }
-    return accountId;
+    return _resolveAccountId(this._tokenResolverCtx(), inputAccountId);
   }
 
   private resolveWorkerName(inputWorkerName: string | undefined): string {
-    const workerName = clean(inputWorkerName) || this.readConfig().workerName || DEFAULT_WORKER_NAME;
-    if (!/^[a-z0-9][a-z0-9-]{0,62}$/i.test(workerName)) {
-      throw new CloudflareControlPlaneError(
-        'Cloudflare workerName must be 1-63 characters using letters, numbers, and dashes.',
-        'CLOUDFLARE_WORKER_NAME_INVALID',
-        400,
-      );
-    }
-    return workerName;
+    return _resolveWorkerName(this._tokenResolverCtx(), inputWorkerName, DEFAULT_WORKER_NAME);
   }
 
   private async resolveApiToken(input: CloudflareValidateInput): Promise<CloudflareResolvedSecret> {
-    const bodyToken = clean(input.apiToken);
-    if (bodyToken) return { value: bodyToken, source: 'body' };
-    const ref = clean(input.apiTokenRef) || this.readConfig().apiTokenRef;
-    const fromRef = await this.resolveSecretRef(ref);
-    if (fromRef.value) return { value: fromRef.value, source: 'config-ref' };
-    const envToken = clean(process.env['CLOUDFLARE_API_TOKEN']);
-    if (envToken) return { value: envToken, source: 'env' };
-    const stored = await this.options.secretsManager?.get(CLOUDFLARE_API_TOKEN_KEY) ?? null;
-    if (stored) return { value: stored, source: 'goodvibes-secret' };
-    return { value: null, source: 'missing' };
+    return _resolveApiToken(this._tokenResolverCtx(), input);
   }
 
   private async resolveOperatorToken(input: Pick<CloudflareProvisionInput, 'operatorToken' | 'operatorTokenRef'>): Promise<CloudflareResolvedSecret> {
-    const bodyToken = clean(input.operatorToken);
-    if (bodyToken) return { value: bodyToken, source: 'body' };
-    const ref = clean(input.operatorTokenRef) || this.readConfig().workerTokenRef;
-    const fromRef = await this.resolveSecretRef(ref);
-    if (fromRef.value) return { value: fromRef.value, source: 'config-ref' };
-    const stored = await this.options.secretsManager?.get(CLOUDFLARE_WORKER_OPERATOR_TOKEN_KEY) ?? null;
-    if (stored) return { value: stored, source: 'goodvibes-secret' };
-    const authToken = clean(this.options.authToken?.() ?? undefined);
-    if (authToken) return { value: authToken, source: 'auth-token' };
-    return { value: null, source: 'missing' };
+    return _resolveOperatorToken(this._tokenResolverCtx(), input);
   }
 
   private async resolveWorkerClientToken(input: Pick<CloudflareProvisionInput, 'workerClientToken' | 'workerClientTokenRef'>): Promise<CloudflareResolvedSecret> {
-    const bodyToken = clean(input.workerClientToken);
-    if (bodyToken) return { value: bodyToken, source: 'body' };
-    const ref = clean(input.workerClientTokenRef) || this.readConfig().workerClientTokenRef;
-    const fromRef = await this.resolveSecretRef(ref);
-    if (fromRef.value) return { value: fromRef.value, source: 'config-ref' };
-    const envToken = clean(process.env['GOODVIBES_CLOUDFLARE_WORKER_TOKEN']);
-    if (envToken) return { value: envToken, source: 'env' };
-    const stored = await this.options.secretsManager?.get(CLOUDFLARE_WORKER_CLIENT_TOKEN_KEY) ?? null;
-    if (stored) return { value: stored, source: 'goodvibes-secret' };
-    return { value: null, source: 'missing' };
+    return _resolveWorkerClientToken(this._tokenResolverCtx(), input);
   }
 
   private async resolveSecretRef(ref: string): Promise<CloudflareResolvedSecret> {
-    if (!ref) return { value: null, source: 'missing' };
-    try {
-      const value = await resolveSecretInput(ref, {
-        resolveLocalSecret: async (key) => await this.options.secretsManager?.get(key) ?? null,
-        homeDirectory: this.options.secretsManager?.getGlobalHome(),
-      });
-      return value ? { value, source: 'config-ref' } : { value: null, source: 'missing' };
-    } catch {
-      return { value: null, source: 'missing' };
-    }
+    return _resolveSecretRef(this._tokenResolverCtx(), ref);
   }
 
   private async storeSecret(key: string, value: string): Promise<void> {
