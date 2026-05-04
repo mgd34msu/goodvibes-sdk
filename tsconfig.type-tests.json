@@ -11,9 +11,9 @@
   "include": [
     "test/types/**/*.ts"
   ],
-  "references": [
-    {
-      "path": "./packages/sdk"
-    }
-  ]
+  // references omitted intentionally: this config is invoked standalone via
+  // `tsc --project tsconfig.type-tests.json`, not via `tsc -b`. Under a
+  // standalone invocation the references array is silently ignored; type
+  // discovery is driven by the import statements in test/types/**/*.ts.
+  // To use project references here, switch to `tsc -b` and re-enable composite.
 }

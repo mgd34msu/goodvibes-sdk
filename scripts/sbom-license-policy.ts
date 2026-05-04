@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 
 const sbomPath = process.argv[2] ?? 'sbom.cdx.json';
+// License policy scope: AGPL, GPL, LGPL, and SSPL are blocked because they impose
+// copyleft obligations incompatible with closed-source SDK consumers. CDDL, EPL,
+// and MPL-2.0 are accepted: they apply file-level copyleft only and do not affect
+// the proprietary SDK wrapper. Extend this list if redistribution model changes.
 const blockedLicensePattern = /^(?:AGPL|GPL|LGPL|SSPL)(?:-|$)/i;
 
 type SbomLicenseEntry = {

@@ -73,7 +73,7 @@ function findSystemNpmCli(): string {
 
 const cyclonedxBin = resolve(SDK_ROOT, 'node_modules/.bin/cyclonedx-npm');
 if (!existsSync(cyclonedxBin)) {
-  console.error('[sbom:generate] ERROR: node_modules/.bin/cyclonedx-npm not found. Run `bun install` from the repo root first.');
+  console.error('[sbom:generate] ERROR: node_modules/.bin/cyclonedx-npm not found. Run `bun install` from the repo root first. If you already ran `bun install`, the install was incomplete — try `rm -rf node_modules && bun install`.');
   process.exit(1);
 }
 

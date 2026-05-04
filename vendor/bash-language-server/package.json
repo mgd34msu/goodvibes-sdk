@@ -38,7 +38,8 @@
   "goodvibesPatch": {
     "source": "bash-language-server@5.6.0",
     "sourceIntegrity": "sha512-DCuV+/BZAAozsp5blvi6jDnU/ZDaTpJpWM0zqwGjnirfqv7iBsMK32xOze/jipxU0PUZ6CBUKgRUMKI7Kk70Lg==",
-    "reason": "Keep bundled Bash LSP while replacing editorconfig@2.0.1 -> minimatch@10.0.1 with editorconfig@3.0.2 -> minimatch@~10.2.4."
+    "reason": "Keep bundled Bash LSP while replacing editorconfig@2.0.1 -> minimatch@10.0.1 with editorconfig@3.0.2 -> minimatch@~10.2.4.",
+    "refreshPolicy": "Re-pull from upstream when a CVE advisory affects bash-language-server or its dependencies; otherwise refresh quarterly by re-running the vendor patch script against the latest upstream tag."
   },
   "devDependencies": {
     "@types/fuzzy-search": "2.1.5",

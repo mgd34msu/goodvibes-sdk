@@ -67,8 +67,12 @@
         "logLevel": "warning",
         "addToApiReportFile": false
       },
+      // ae-missing-release-tag: bundled packages (transport-http, transport-realtime,
+      // operator-sdk, peer-sdk, daemon-sdk, contracts) carry many internal helpers
+      // that intentionally omit @public/@internal tags. Suppressed at the bundler
+      // level; consumers rely on the api.md report for the authoritative surface.
       "ae-missing-release-tag": {
-        "logLevel": "warning"
+        "logLevel": "none"
       },
       "ae-unresolved-inheritdoc-reference": {
         "logLevel": "none"
