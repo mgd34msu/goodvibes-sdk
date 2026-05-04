@@ -255,20 +255,17 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          RELEASE_DOC="docs/releases/${VERSION}.md"
-          if [ -f "$RELEASE_DOC" ]; then
-            cp "$RELEASE_DOC" /tmp/release_notes.md
-          else
-            EXCERPT=$(awk -v version="$VERSION" '
-              $0 ~ "^## \\[" version "\\]([[:space:]]|-|$)" { in_section = 1; next }
-              in_section && /^## / { exit }
-              in_section { print }
-            ' CHANGELOG.md)
-            if [ -z "$EXCERPT" ]; then
-              EXCERPT="Release ${VERSION}"
-            fi
-            printf '%s\n' "$EXCERPT" > /tmp/release_notes.md
+          # Release notes are extracted directly from CHANGELOG.md.
+          # docs/releases/<version>.md is not used; CHANGELOG is the single source of truth.
+          EXCERPT=$(awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]([[:space:]]|-|$)" { in_section = 1; next }
+            in_section && /^## / { exit }
+            in_section { print }
+          ' CHANGELOG.md)
+          if [ -z "$EXCERPT" ]; then
+            EXCERPT="Release ${VERSION}"
           fi
+          printf '%s\n' "$EXCERPT" > /tmp/release_notes.md
           echo "body=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
       - name: Create GitHub release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0

@@ -34,6 +34,7 @@ run('bun', ['run', 'any:check'], 'any:check');
 // from validate eliminates the duplicate test run that used to execute on
 // every push. Local callers can still run `bun run test` explicitly.
 run('bun', ['run', 'pack:check'], 'pack:check');
+run('bun', ['run', 'publint:check'], 'publint:check');
 run('bun', ['run', 'install:smoke'], 'install:smoke');
 run('bun', ['run', 'contracts:check'], 'contracts:check');
 run('bun', ['run', 'bundle:check'], 'bundle:check');

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Pre-commit hook: enforces api-extractor snapshot is in sync with source.
+#
+# When a commit touches any TypeScript source under packages/*/src/, this hook
+# rebuilds the SDK and runs api:check. If etc/goodvibes-sdk.api.md drifts from
+# what the current source produces, the commit is REJECTED with instructions.
+#
+# Activated by `git config core.hooksPath .githooks` (run by the `prepare`
+# script in package.json after `bun install`).
+#
+# To bypass in genuinely emergency situations: `git commit --no-verify`.
+# Don't make a habit of it.
+set -euo pipefail
+
+STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^packages/[^/]+/src/.*\.ts$' || true)
+if [ -z "$STAGED_SRC" ]; then
+  exit 0
+fi
+
+echo "[pre-commit] $(echo "$STAGED_SRC" | wc -l | tr -d ' ') source files staged — running api:check to catch public-surface drift"
+
+if ! bun run build >/dev/null 2>&1; then
+  echo "" >&2
+  echo "[pre-commit] BLOCKED: \`bun run build\` failed. Fix build errors before committing." >&2
+  exit 1
+fi
+
+if ! bun run api:check; then
+  echo "" >&2
+  echo "[pre-commit] BLOCKED: etc/goodvibes-sdk.api.md is out of sync with current source." >&2
+  echo "" >&2
+  echo "  Source files changed but the public API report wasn't regenerated. To fix:" >&2
+  echo "" >&2
+  echo "    bunx api-extractor run --local" >&2
+  echo "    git add etc/goodvibes-sdk.api.md" >&2
+  echo "    git commit --amend --no-edit   # OR re-run your original git commit" >&2
+  echo "" >&2
+  echo "  If the diff looks wrong, your source change may have unintentionally altered" >&2
+  echo "  the public surface. Review the diff before committing." >&2
+  echo "" >&2
+  echo "  Bypass (emergency only): git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0
