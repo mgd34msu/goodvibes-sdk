@@ -5,10 +5,6 @@ import { describe, expect, test } from 'bun:test';
  * Bearer tokens and API keys from error strings before they appear in logs.
  */
 describe('obs-24 bearer redaction', () => {
-  test('redactSensitiveData is exported from redaction utils', async () => {
-    const mod = await import('../packages/sdk/src/platform/utils/redaction.js');
-  });
-
   test('redactSensitiveData removes Bearer tokens', async () => {
     const { redactSensitiveData } = await import('../packages/sdk/src/platform/utils/redaction.js');
     const input = 'Authorization: Bearer sk-ant-abc123def456';

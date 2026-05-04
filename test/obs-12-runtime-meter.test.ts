@@ -79,7 +79,7 @@ describe('obs-12 runtime meter', () => {
     expect(typeof hSnap.mean).toBe('number');
   });
 
-  // Integration: httpRequestsTotal is wired to real HTTP path (direct metric increment then verify endpoint)
+  // Verifies that direct counter increments are reflected in snapshotMetrics output.
   test('httpRequestsTotal increments are observable via snapshotMetrics', async () => {
     const { httpRequestsTotal, snapshotMetrics } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = httpRequestsTotal.value({ status_class: '2xx', method: 'GET' });

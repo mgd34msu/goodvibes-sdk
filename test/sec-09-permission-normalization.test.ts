@@ -20,7 +20,7 @@ describe('platform/runtime/permissions/normalization — smoke', () => {
     const result = normalizeCommand('ls -la /tmp');
     expect(result.original).toBe('ls -la /tmp');
     expect(result.segments.length).toBeGreaterThan(0);
-    expect(result.segments[0]).toBe('ls');
+    expect(result.segments[0].command).toBe('ls');
   });
 
   test('normalizeCommand trims whitespace consistently', () => {

@@ -6,6 +6,7 @@ import { afterEach } from 'bun:test';
 import { ArtifactStore } from '../../packages/sdk/src/platform/artifacts/index.js';
 import { HomeGraphService } from '../../packages/sdk/src/platform/knowledge/index.js';
 import { KnowledgeStore } from '../../packages/sdk/src/platform/knowledge/store.js';
+import { waitFor as _canonicalWaitFor } from './test-timeout.js';
 
 const tmpRoots: string[] = [];
 
@@ -36,13 +37,12 @@ export function readHomeAssistantEntityId(metadata: Record<string, unknown>): st
     : undefined;
 }
 
+/**
+ * Delegates to the canonical waitFor from test/_helpers/test-timeout.ts.
+ * The canonical version uses timer.unref() to avoid hanging the process.
+ */
 export async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void> {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  if (!predicate()) throw new Error('Timed out waiting for condition');
+  return _canonicalWaitFor(predicate, { timeoutMs, intervalMs: 10 });
 }
 
 export function createCompressedPdfBuffer(text: string): Buffer {

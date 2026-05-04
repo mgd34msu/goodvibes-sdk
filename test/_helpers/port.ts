@@ -7,6 +7,18 @@ import { createServer } from 'node:net';
  *
  * NOTE: There is a TOCTOU window between close() and the test listener
  * binding. In practice this is not a problem for sequential bun:test runs.
+ * For tests that only build mock URLs (never bind a real socket), continue
+ * to use a hardcoded port — this helper is only needed for real listeners.
+ *
+ * Example:
+ * ```ts
+ * import { ephemeralPort } from './_helpers/port.js';
+ *
+ * const port = await ephemeralPort();
+ * const server = Bun.serve({ port, fetch: handler });
+ * // ... test ...
+ * server.stop();
+ * ```
  */
 export async function ephemeralPort(): Promise<number> {
   return new Promise<number>((resolve, reject) => {
