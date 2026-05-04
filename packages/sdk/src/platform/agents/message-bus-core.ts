@@ -179,7 +179,7 @@ export class AgentMessageBus {
     if (!this.subscriptions.has(agentId)) {
       this.subscriptions.set(agentId, new Set());
     }
-    this.subscriptions.get(agentId)!.add(callback);
+    this.subscriptions.get(agentId)?.add(callback);
 
     return () => {
       const callbacks = this.subscriptions.get(agentId);
@@ -293,7 +293,7 @@ export class AgentMessageBus {
     if (!this.messages.has(recipientId)) {
       this.messages.set(recipientId, []);
     }
-    this.messages.get(recipientId)!.push(message);
+    this.messages.get(recipientId)?.push(message);
   }
 
   private deliver(agentId: string, message: AgentMessage): void {

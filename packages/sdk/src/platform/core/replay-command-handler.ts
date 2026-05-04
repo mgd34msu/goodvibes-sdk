@@ -93,7 +93,7 @@ export function handleReplayCommand(
       // Here we use an empty-domain snapshot as the baseline; domain state will be
       // populated incrementally as events are replayed.
       const syntheticSnapshot: import('../runtime/diagnostics/types.js').RuntimeStateSnapshot = {
-        capturedAt: entries[0]!.ts,
+        capturedAt: entries[0]?.ts ?? Date.now(),
         domains: [],
       };
 
@@ -105,8 +105,8 @@ export function handleReplayCommand(
         output: [
           `Run "${runId}" loaded.`,
           `  Events: ${entries.length}`,
-          `  First: ${new Date(entries[0]!.ts).toISOString()}`,
-          `  Last:  ${new Date(entries[entries.length - 1]!.ts).toISOString()}`,
+          `  First: ${new Date(entries[0]?.ts ?? Date.now()).toISOString()}`,
+          `  Last:  ${new Date(entries[entries.length - 1]?.ts ?? Date.now()).toISOString()}`,
           '',
           'Use /replay step to advance, /replay seek <rev> to jump, /replay diff to compare.',
         ].join('\n'),

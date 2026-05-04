@@ -87,7 +87,7 @@ export class WrfcWorkmap {
         .filter((f: string) => f.endsWith('_workmap.jsonl'))
         .map((f: string) => ({ name: f, mtime: statSync(join(dir, f)).mtimeMs }))
         .sort((a: { mtime: number }, b: { mtime: number }) => b.mtime - a.mtime);
-      return files.length > 0 ? join(dir, files[0]!.name) : null;
+      return files.length > 0 ? join(dir, files[0]?.name ?? '') : null;
     } catch (error) {
       logger.debug('WrfcWorkmap: latest file discovery failed', { error: summarizeError(error) });
       return null;

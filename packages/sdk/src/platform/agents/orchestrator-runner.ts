@@ -450,7 +450,7 @@ export async function runAgentTask(
       session.appendMessage({ type: 'llm_request', turn, messageCount: conversation.getMessagesForLLM().length, timestamp: new Date().toISOString() });
       const pending = context.messageBus.getMessages(record.id);
       for (const msg of pending) {
-        const kindLabel = msg.kind[0]!.toUpperCase() + msg.kind.slice(1);
+        const kindLabel = (msg.kind[0] ?? '').toUpperCase() + msg.kind.slice(1);
         conversation.addUserMessage(`[${kindLabel} from ${msg.from}]: ${msg.content}`);
       }
 

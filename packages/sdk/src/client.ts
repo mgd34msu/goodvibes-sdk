@@ -327,7 +327,7 @@ function createClientOptions<T extends OperatorSdkOptions | PeerSdkOptions>(
   options: GoodVibesSdkOptions,
 ): T {
   const getAuthToken = options.tokenStore
-    ? () => options.tokenStore!.getToken()
+    ? () => options.tokenStore?.getToken()!
     : options.getAuthToken;
   return {
     baseUrl: requireBaseUrl(options.baseUrl),

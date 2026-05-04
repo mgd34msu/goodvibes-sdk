@@ -165,7 +165,7 @@ export class HookWorkbench {
     const config = cloneConfig(this.managedConfig);
     config.hooks ??= {};
     config.hooks[match] ??= [];
-    config.hooks[match]!.push(hook);
+    config.hooks[match]?.push(hook);
     this.managedConfig = config;
     this.recordAction({ kind: 'scaffold-hook', target: name, timestamp: Date.now(), detail: `${type} ${match}` });
     return hook;

@@ -341,7 +341,7 @@ export function buildMediaRouteContext(input: {
     configManager: input.configManager,
     mediaProviders: {
       status: () => input.mediaProviders.status(),
-      findProvider: (capability, providerId) => input!.mediaProviders.findProvider(
+      findProvider: (capability, providerId) => input.mediaProviders.findProvider(
         capability,
         providerId,
       ) as unknown as DaemonMediaRouteContext['mediaProviders']['findProvider'] extends (...args: never[]) => infer R ? R : never,

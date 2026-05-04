@@ -425,7 +425,7 @@ export class OpenAICompatProvider implements LLMProvider {
             reasoning_summary?: string | undefined;
           };
 
-          const delta = raw.choices[0]!?.delta;
+          const delta = raw.choices[0]?.delta;
           const textDelta = extractOpenAIStreamTextDelta(raw, { allowReasoning: allowReasoningStream });
           for (const contentDelta of textDelta.content) {
             responseText += contentDelta;
@@ -457,7 +457,7 @@ export class OpenAICompatProvider implements LLMProvider {
             }
           }
 
-          const finishReason = raw.choices[0]!?.finish_reason;
+          const finishReason = raw.choices[0]?.finish_reason;
           if (finishReason) {
             rawStopReason = finishReason;
             stopReason = mapOpenAIStopReason(finishReason);
@@ -570,7 +570,7 @@ export class OpenAICompatProvider implements LLMProvider {
         phase: 'request',
       });
     }
-    const embedding = response.data[0]!?.embedding ?? [];
+    const embedding = response.data[0]?.embedding ?? [];
     return {
       vector: Float32Array.from(embedding),
       dimensions: embedding.length,

@@ -90,11 +90,11 @@ export function isRecurringTopOfHourCronExpression(expression: string): boolean 
   const fields = parseCronFields(expression);
   if (fields.length === 5) {
     const [minuteField, hourField] = fields;
-    return minuteField === '0' && hourField!.includes('*');
+    return minuteField === '0' && (hourField ?? '').includes('*');
   }
   if (fields.length === 6) {
     const [secondField, minuteField, hourField] = fields;
-    return secondField === '0' && minuteField === '0' && hourField!.includes('*');
+    return secondField === '0' && minuteField === '0' && (hourField ?? '').includes('*');
   }
   return false;
 }

@@ -482,7 +482,7 @@ function answerRefinementFromRepair(
 ): KnowledgeSemanticAnswerRefinement {
   const acceptedSourceIds = repair.acceptedSourceIds ?? [];
   const promotedFactCount = repair.promotedFactCount ?? 0;
-  const reason = repair.errors[0]!?.error
+  const reason = repair.errors[0]?.error
     ?? (repair.budgetExhausted ? 'Repair did not finish within the current run budget.' : undefined);
   return {
     status,

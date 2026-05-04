@@ -119,16 +119,16 @@ export function buildLocalReturnContextSummary(
     lines.push(`Remote contracts: ${hints?.remoteContracts}`);
   }
   if ((hints?.remoteRunners?.length ?? 0) > 0) {
-    lines.push(`Remote runners: ${hints!.remoteRunners!.slice(0, 3).join(', ')}`);
+    lines.push(`Remote runners: ${hints?.remoteRunners?.slice(0, 3).join(', ') ?? ''}`);
   }
   if ((hints?.worktreeCount ?? 0) > 0) {
     lines.push(`Worktrees tracked: ${hints?.worktreeCount}`);
   }
   if ((hints?.worktreePaths?.length ?? 0) > 0) {
-    lines.push(`Worktree paths: ${hints!.worktreePaths!.slice(0, 2).join(', ')}`);
+    lines.push(`Worktree paths: ${hints?.worktreePaths?.slice(0, 2).join(', ') ?? ''}`);
   }
   if ((hints?.openPanels?.length ?? 0) > 0) {
-    lines.push(`Open panels: ${hints!.openPanels!.slice(0, 4).join(', ')}`);
+    lines.push(`Open panels: ${hints?.openPanels?.slice(0, 4).join(', ') ?? ''}`);
   }
 
   return {

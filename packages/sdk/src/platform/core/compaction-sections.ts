@@ -436,11 +436,11 @@ export function buildPlanProgress(
       byPhase.set(item.phase, []);
       phaseOrder.push(item.phase);
     }
-    byPhase.get(item.phase)!.push(item);
+    byPhase.get(item.phase)?.push(item);
   }
 
   for (const phase of phaseOrder) {
-    const items = byPhase.get(phase)!;
+    const items = byPhase.get(phase) ?? [];
     const done = items.filter(
       (i) => i.status === 'complete' || i.status === 'skipped',
     ).length;

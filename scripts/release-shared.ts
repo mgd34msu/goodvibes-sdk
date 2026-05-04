@@ -139,7 +139,7 @@ function addUniqueFiles(files: unknown, entries: readonly string[]): readonly st
   return next;
 }
 
-function addSdkSecurityMitigationManifestFields(manifest: PackageManifest): PackageManifest {
+function applySdkVendorMitigations(manifest: PackageManifest): PackageManifest {
   return {
     ...manifest,
     dependencies: omitPackageName(manifest.dependencies, 'bash-language-server'),
@@ -206,7 +206,7 @@ export async function stagePackages(): Promise<{ readonly tempRoot: string; read
         manifest.name = publicPackageNameOverride;
       }
       if (dir === 'packages/sdk') {
-        Object.assign(manifest, addSdkSecurityMitigationManifestFields(manifest));
+        Object.assign(manifest, applySdkVendorMitigations(manifest));
       }
       writeFileSync(resolve(stageDir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
       stages.push({ dir, sourceDir, stageDir, manifest });

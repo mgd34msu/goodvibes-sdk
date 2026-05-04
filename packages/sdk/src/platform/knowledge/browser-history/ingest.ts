@@ -64,7 +64,7 @@ function sourceTypeForAggregate(aggregate: BrowserKnowledgeAggregate): Knowledge
 
 function titleForAggregate(aggregate: BrowserKnowledgeAggregate): string {
   return aggregate.entries.find((entry) => entry.title)?.title
-    ?? aggregate.entries[0]!?.url
+    ?? aggregate.entries[0]?.url
     ?? aggregate.canonicalUri;
 }
 

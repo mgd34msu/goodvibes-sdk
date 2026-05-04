@@ -67,7 +67,7 @@ export class LspClient {
       });
 
       try {
-        (this.proc!.stdin as import('bun').FileSink).write(frame);
+        (this.proc?.stdin as import('bun').FileSink | undefined)?.write(frame);
       } catch (err) {
         clearTimeout(timer);
         this.pendingRequests.delete(id);

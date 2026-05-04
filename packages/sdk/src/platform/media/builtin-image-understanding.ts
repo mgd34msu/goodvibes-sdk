@@ -69,7 +69,7 @@ async function modelMatchesScope(
   scope: ImageUnderstandingScope,
 ): Promise<boolean> {
   const providerId = typeof model.provider === 'string' ? model.provider : '';
-  if ((scope.allowProviderIds?.length ?? 0) > 0 && !scope.allowProviderIds!.includes(providerId)) {
+  if ((scope.allowProviderIds?.length ?? 0) > 0 && !scope.allowProviderIds?.includes(providerId)) {
     return false;
   }
   if (!scope.requireLocal) return true;
