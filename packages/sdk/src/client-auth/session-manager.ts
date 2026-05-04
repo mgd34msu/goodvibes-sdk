@@ -14,7 +14,6 @@ import type {
 } from './types.js';
 import { TokenStore } from './token-store.js';
 import type { SDKObserver } from '../observer/index.js';
-import { invokeObserver } from '../observer/index.js';
 
 export class SessionManager {
   readonly #operator: OperatorSdk;
@@ -45,7 +44,6 @@ export class SessionManager {
     input: GoodVibesLoginInput,
     options: GoodVibesAuthLoginOptions = {},
   ): Promise<GoodVibesLoginOutput> {
-    const priorToken = await this.#tokenStore?.getToken();
     const result = await this.#operator.control.auth.login(input);
     if ((options.persistToken ?? true) && this.#tokenStore) {
       // Prefer setTokenEntry to persist expiry alongside the token.
@@ -55,14 +53,6 @@ export class SessionManager {
         await this.#tokenStore.setToken(result.token);
       }
     }
-    // Notify observer of the auth state transition.
-    invokeObserver(() =>
-      this.#observer?.onAuthTransition?.({
-        from: priorToken ? 'token' : 'anonymous',
-        to: 'token',
-        reason: 'login',
-      }),
-    );
     return result;
   }
 

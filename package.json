@@ -39,6 +39,7 @@
     "api:extract": "bunx api-extractor run --local",
     "sbom:generate": "bun scripts/sbom-generate.ts",
     "_comment-test": "Test runners ↓",
+    "pretest": "tsc --build",
     "test": "bun scripts/test.ts",
     "test:rn": "bun scripts/test.ts test/rn-bundle-node-imports.test.ts",
     "test:workers": "bun scripts/test.ts test/workers/workers.test.ts",

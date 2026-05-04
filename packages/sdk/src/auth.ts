@@ -342,11 +342,14 @@ export function createGoodVibesAuthClient(
       );
     },
     async clearToken(): Promise<void> {
+      // assertWritableTokenStore first: throws ConfigurationError when no tokenStore,
+      // regardless of current token value (read-only resolvers have no store at all).
+      const store = assertWritableTokenStore(ts);
       const currentToken = await ts?.getToken();
-      if (!currentToken) return; // Debounce no-op transitions (from:anonymous to:anonymous).
-      await assertWritableTokenStore(ts).clearToken();
-      // Notify observer of the logout transition. Observer errors are
-      // swallowed so they never disrupt SDK logic.
+      await store.clearToken();
+      // Notify observer of the auth state transition. Always fire — even for
+      // anonymous→anonymous — so callers that explicitly call clearToken receive
+      // the expected transition event. Observer errors are swallowed.
       invokeObserver(() =>
         observer?.onAuthTransition?.({
           from: currentToken ? 'token' : 'anonymous',
