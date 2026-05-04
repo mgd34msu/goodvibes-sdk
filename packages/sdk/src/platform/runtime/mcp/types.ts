@@ -5,7 +5,7 @@
  * Spec: server state machine and MCP evolution.
  */
 import type { McpServerConfig } from '../../mcp/config.js';
-import type { McpServerRole, McpTrustMode, QuarantineReason } from '../../../../events/mcp.js';
+import type { McpServerRole, McpTrustMode, QuarantineReason } from '../../../events/mcp.js';
 
 export type { McpServerRole, McpTrustMode, QuarantineReason };
 
