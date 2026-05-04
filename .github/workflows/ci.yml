@@ -8,6 +8,14 @@ on:
   schedule:
     - cron: '0 6 * * *' # nightly — flake-check only
 
+# Default to read-only permissions. Individual jobs elevate as needed.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # ---------------------------------------------------------------------------
   # Kitchen-sink gate: docs check, typecheck, browser compat, metadata,
@@ -55,9 +63,18 @@ jobs:
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
       - name: Run flake detector
+        id: flake-detector
         env:
           FLAKE_RUNS: "3"
         run: bun run flake:check
+      - name: Upload flake detector output
+        if: always() && steps.flake-detector.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: flake-output-${{ github.run_id }}
+          path: flake-output.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   # ---------------------------------------------------------------------------
   # Single build job. Uploads packages/sdk/dist as an artifact so downstream

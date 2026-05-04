@@ -1,5 +1,13 @@
 name: Release
 
+# Default to read-only permissions. Individual jobs elevate as needed.
+# The `production` environment (referenced by publish-npm and publish-github-packages)
+# must be configured in GitHub repo settings with required reviewers and deployment
+# branch restrictions (tags only). This YAML alone cannot enforce manual approval;
+# the gate lives in the GitHub UI at Settings > Environments > production.
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:

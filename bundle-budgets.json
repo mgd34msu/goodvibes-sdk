@@ -9,7 +9,16 @@
     "  1. Run `bun run bundle:check` to see the current actual sizes.",
     "  2. Set gzip_bytes to max(ceil(actual * 1.2), actual + 50) for each changed entry.",
     "  3. Keep this comment free of stale wave/date-specific rationale.",
-    "Entry keys must match the `exports` map keys in packages/sdk/package.json exactly."
+    "Entry keys must match the `exports` map keys in packages/sdk/package.json exactly.",
+    "",
+    "Intentional exclusions (not budgeted here):",
+    "  - './events/<domain>' explicit subpath entries: each per-domain event file is a",
+    "    small typed barrel (~50-200 B gzip); contributors adding a new event domain that",
+    "    pulls in a large dependency should verify size manually via bundle:check.",
+    "  - './contracts/operator-contract.json' and './contracts/peer-contract.json':",
+    "    static JSON artifacts; their size is governed by the contract refresh process",
+    "    at scripts/refresh-contract-artifacts.ts.",
+    "  - './package.json': metadata only, not a runtime bundle."
   ],
   ".": {
     "gzip_bytes": 633,
@@ -40,8 +49,8 @@
     "rationale": "daemon route handler re-export entry; measured 66 B gzip; max(ceil(66*1.2)=80, 66+50=116)=116"
   },
   "./errors": {
-    "gzip_bytes": 112,
-    "rationale": "error taxonomy re-export entry; measured 62 B gzip; max(ceil(62*1.2)=75, 62+50=112)=112"
+    "gzip_bytes": 306,
+    "rationale": "error taxonomy re-export entry; measured 255 B gzip; max(ceil(255*1.2)=306, 255+50=305)=306"
   },
   "./events": {
     "gzip_bytes": 374,

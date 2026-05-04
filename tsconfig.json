@@ -6,7 +6,7 @@
     // child packages can reference this root without an error.
     "composite": true,
     "incremental": true,
-    "tsBuildInfoFile": "node_modules/.cache/tsc/tsconfig.tsbuildinfo",
+    "tsBuildInfoFile": ".tmp/tsbuildinfo/tsconfig.tsbuildinfo",
     "types": []
   },
   // tsconfig.type-tests.json is intentionally excluded from this composite root.

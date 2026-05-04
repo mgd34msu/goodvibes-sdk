@@ -12,7 +12,7 @@ Consumers should switch on `err.kind` rather than `instanceof` chains or message
 import { GoodVibesSdkError } from '@pellux/goodvibes-sdk/errors';
 
 try {
-  await sdk.operator.accounts.snapshot();
+  await sdk.operator.control.snapshot();
 } catch (err) {
   if (err instanceof GoodVibesSdkError) {
     switch (err.kind) {

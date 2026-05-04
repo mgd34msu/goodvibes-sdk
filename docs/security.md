@@ -133,7 +133,7 @@ On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to 
 
 ## Companion App Pairing
 
-**Source:** `packages/sdk/src/platform/pairing/`
+**Public subpath:** `@pellux/goodvibes-sdk/platform/pairing` (daemon embedders).
 
 The QR pairing flow connects a companion app to the daemon without requiring the user to manually enter credentials.
 
@@ -294,7 +294,7 @@ Slack setup uses this same URI mechanism. Direct setup writes Slack token values
 
 ## Permission System
 
-**Source:** `packages/sdk/src/platform/permissions/`
+**Public subpath:** `@pellux/goodvibes-sdk/platform/permissions` (daemon embedders).
 
 Every tool call goes through the `PermissionManager` before execution.
 
