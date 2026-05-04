@@ -205,17 +205,13 @@ function addQueryValue(url: URL, key: string, value: unknown): void {
     return;
   }
   if (typeof value === 'object') {
-    // Contract query parameters are primitive or repeated primitive values.
-    // Object values are preserved as JSON strings so callers do not silently
-    // lose structured filters when a route explicitly accepts them.
-    // MIN-12: JSON.stringify does not guarantee canonical key order. Object
-    // query values whose keys are not insertion-ordered across environments
-    // may produce non-deterministic cache keys or signed-URL mismatches.
-    // Callers that need stable cache keys should pre-sort or serialize their
-    // objects before passing them as query parameters. The SDK intentionally
-    // preserves insertion order so the serialized form is caller-controlled.
-    url.searchParams.append(key, JSON.stringify(value));
-    return;
+    // MIN-5: object query values cannot be reliably round-tripped through URL
+    // query strings (no daemon route parses JSON-stringified query params).
+    // Throw a ContractError instead of silently serialising — callers must
+    // decompose objects into primitive fields before passing as query parameters.
+    throw new ContractError(
+      `Contract query parameter "${key}" is an object, which cannot be safely serialised as a URL query value. Decompose it into primitive fields.`,
+    );
   }
   url.searchParams.append(key, String(value));
 }
@@ -230,7 +226,9 @@ function splitContractInput(path: string, input: Record<string, unknown> = {}): 
   readonly remaining: Record<string, unknown>;
 } {
   const remaining = { ...input };
-  const interpolatedPath = path.replace(/\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g, (_match, key: string) => {
+  // MIN-7: forbid '.' in path-param names to prevent ambiguous flat-key lookup.
+  // Contract generators must not emit dotted param names like {foo.bar}.
+  const interpolatedPath = path.replace(/\{([A-Za-z_][A-Za-z0-9_-]*)\}/g, (_match, key: string) => {
     const value = toStringValue(remaining[key], key);
     delete remaining[key];
     // MIN-15: encodeURIComponent leaves RFC 3986 sub-delimiters (!'()*~) unencoded.
@@ -516,7 +514,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         if (!shouldRetry) {
           throw wrappedError;
         }
-        await sleepWithSignal(getHttpRetryDelay(attempt + 1, resolvedRetry), requestOptions.signal);
+        await sleepWithSignal(getHttpRetryDelay(attempt, resolvedRetry), requestOptions.signal);
       }
     }
   };

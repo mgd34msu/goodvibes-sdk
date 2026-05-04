@@ -21,6 +21,11 @@ export type SerializedEventEnvelopeShape = z.infer<typeof SerializedEventEnvelop
  * Schema for a typed SSE / WS event envelope where the payload is a known
  * runtime event record (has a `type` discriminant string).
  */
+// NIT-5: `type: z.string()` is permissive — any object with a string `type` field
+// will validate. For stricter inbound validation (e.g. guard against unknown
+// event domains arriving over WS), the caller can intersect this schema with a
+// z.enum([...knownEventTypes]) discriminant. The permissive form is intentional
+// here to avoid breaking forwards-compatibility as new event types are added.
 export const RuntimeEventRecordSchema = z.object({
   type: z.string(),
 }).catchall(z.unknown());

@@ -32,8 +32,9 @@ export async function dispatchDaemonApiRoutes(
   if (result !== null) return result;
   if (extensions) {
     for (const extension of extensions) {
-      const result = await extension(req);
-      if (result !== null) return result;
+      // NIT-2: use extResult (not the outer `result`) to avoid shadowing confusion.
+      const extResult = await extension(req);
+      if (extResult !== null) return extResult;
     }
   }
   return null;

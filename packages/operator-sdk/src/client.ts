@@ -66,7 +66,18 @@ function _methodIdToSchemaName(methodId: string): string {
   const pascal = methodId
     .split('.')
     .flatMap((segment) => segment.split('_'))
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => {
+      // MIN-9: contract IDs must not contain consecutive underscores or
+      // leading/trailing underscores — those produce empty segments that
+      // collapse silently and can cause two distinct IDs to map to the same
+      // schema name.
+      if (word.length === 0) {
+        throw new Error(
+          `Invalid contract method id "${methodId}": segments must not be empty (avoid consecutive or trailing underscores/dots).`,
+        );
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
     .join('');
   return `${pascal}ResponseSchema`;
 }

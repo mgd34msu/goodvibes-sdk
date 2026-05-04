@@ -200,6 +200,12 @@ export function createOperatorRemoteClient(
       input,
       schema ? { ...options, responseSchema: schema } : options,
     ).then((body) => {
+      // MIN-8: truth table for validation decision:
+      // | schema (Zod) | validateResponses | getResponseSchema | action                |
+      // |    present   |       any         |      any          | Zod only (no overlap) |
+      // |    absent    |      false        |      any          | skip                  |
+      // |    absent    |      true (def)   |    absent         | JSON-schema           |
+      // |    absent    |      true (def)   |    present        | JSON-schema (from fn) |
       if (!schema && clientOptions.validateResponses !== false) validateJsonSchemaResponse(method, body);
       return body;
     });

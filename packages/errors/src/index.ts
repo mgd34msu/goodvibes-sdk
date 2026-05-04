@@ -323,6 +323,13 @@ function omitUndefined(record: Record<string, unknown>): Record<string, unknown>
  * }
  */
 export class ConfigurationError extends GoodVibesSdkError {
+  /**
+   * NIT-3: Brand contract — `code` is the source of truth, not the prototype chain.
+   * A `GoodVibesSdkError` constructed directly with `code: 'SDK_CONFIGURATION_ERROR'`
+   * will pass `instanceof ConfigurationError` even if its prototype is only
+   * `GoodVibesSdkError`. Callers that need strict prototype checking should use
+   * `Object.getPrototypeOf(err) === ConfigurationError.prototype` instead.
+   */
   static override [Symbol.hasInstance](value: unknown): boolean {
     if (this !== ConfigurationError) {
       return typeof value === 'object'

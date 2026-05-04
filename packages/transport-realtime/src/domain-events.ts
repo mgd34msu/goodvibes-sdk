@@ -118,7 +118,19 @@ function createRemoteDomainEventFeed<
         listener(typedEnvelope);
       }
     })).then((cleanup) => {
-      if (typeof cleanup !== 'function') return;
+      // MAJ-4: when connect() returns a non-function cleanup (void), we have no
+      // way to honour a pending disconnect request. Log the gap and bail. Callers
+      // must return a cleanup function whenever they establish a real connection.
+      if (typeof cleanup !== 'function') {
+        if (disconnectPending) {
+          reportUnexpectedConnectionError(
+            new Error('Domain event connector resolved without a cleanup function while a disconnect was pending. The connection cannot be closed.'),
+            domain,
+            options,
+          );
+        }
+        return;
+      }
       if (disconnectPending && !hasListeners()) {
         cleanup();
         return;
