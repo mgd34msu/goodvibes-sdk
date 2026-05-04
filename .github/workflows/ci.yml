@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
+        uses: ./.github/actions/setup # composite, no SHA needed
       - name: Validate workspace
         run: bun run validate
 
@@ -36,7 +36,7 @@ jobs:
       - name: Dependency audit
         run: bun audit --audit-level high
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

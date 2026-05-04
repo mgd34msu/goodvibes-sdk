@@ -162,10 +162,12 @@ drifted = writeIfChanged(
   }, null, 2)} as const;\n`,
 ) || drifted;
 
-console.log(`[refresh:contracts] product version: ${operatorContract.product.version}`);
-console.log(`[refresh:contracts] operator methods: ${operatorMethodIds.length}`);
-console.log(`[refresh:contracts] operator events:  ${operatorContract.operator.events.length}`);
-console.log(`[refresh:contracts] peer endpoints:   ${peerEndpointIds.length}`);
+if (!CHECK_ONLY) {
+  console.log(`[refresh:contracts] product version: ${operatorContract.product.version}`);
+  console.log(`[refresh:contracts] operator methods: ${operatorMethodIds.length}`);
+  console.log(`[refresh:contracts] operator events:  ${operatorContract.operator.events.length}`);
+  console.log(`[refresh:contracts] peer endpoints:   ${peerEndpointIds.length}`);
+}
 
 if (CHECK_ONLY && drifted) {
   console.error('[refresh:contracts] drift detected \u2014 run `bun run refresh:contracts`');

@@ -6,7 +6,11 @@ package.
 Upstream package:
 
 - npm: `bash-language-server@5.6.0`
-- integrity: copy from `bun.lock` when refreshing this vendor directory
+- npm tarball: `https://registry.npmjs.org/bash-language-server/-/bash-language-server-5.6.0.tgz`
+- integrity (sha512): copy the `bash-language-server@5.6.0` entry from `bun.lock` when verifying
+- upstream git tag: `v5.6.0` in https://github.com/bash-lsp/bash-language-server
+  (run `git ls-remote https://github.com/bash-lsp/bash-language-server refs/tags/v5.6.0`
+  to resolve the commit SHA at refresh time)
 
 Refresh procedure:
 
@@ -19,6 +23,13 @@ node -e "const p=require('./vendor/bash-language-server/package.json'); p.depend
 find vendor/bash-language-server/out -name '*.js.map' -delete
 rm -rf "$TMPDIR"
 ```
+
+`.js.map` files:
+
+- All `out/**/*.js.map` source map files have been deleted from this vendor copy
+  (the refresh snippet above already includes `find vendor/bash-language-server/out -name '*.js.map' -delete`).
+- Source maps are not loaded by the runtime language server and are not needed at install time.
+- They are intentionally omitted to reduce package size.
 
 Patch:
 

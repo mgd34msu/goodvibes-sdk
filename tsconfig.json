@@ -4,6 +4,10 @@
     "incremental": true,
     "types": []
   },
+  // tsconfig.type-tests.json is intentionally excluded from this composite root.
+  // It is not a project reference because it uses `paths` remapping and does not
+  // emit declarations — including it here would break the composite build chain.
+  // It is invoked independently via `bun run types:check` (api-extractor + attw).
   "files": [],
   "references": [
     {

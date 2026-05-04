@@ -5,6 +5,9 @@
     "moduleResolution": "NodeNext",
     "lib": [
       "ES2024",
+      // ESNext.Disposable adds Symbol.dispose / Symbol.asyncDispose type definitions.
+      // Although target is ES2024, the Disposables proposal shipped in ES2025 —
+      // this lib entry provides the type stubs without changing emit target.
       "ESNext.Disposable"
     ],
     "strict": true,
