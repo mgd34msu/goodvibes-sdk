@@ -186,29 +186,70 @@ export function createRemoteDomainEvents<
  *
  * Unsubscribe handles returned by `on` / `onEnvelope` on the filtered feed
  * correctly remove the underlying listener from the original feed.
+ *
+ * MIN-16: Uses a single shared envelope listener per event type so that N
+ * subscribers for the same (feed, sessionId, type) triple consume only one
+ * envelope-listener slot on the underlying feed instead of N.
  */
 function createFilteredFeed<TEvent extends EventLike>(
   feed: RuntimeEventFeed<TEvent>,
   sessionId: string,
 ): RuntimeEventFeed<TEvent> {
+  // Shared listeners: one envelope-level subscription per event type.
+  const sharedByType = new Map<string, {
+    readonly unsub: () => void;
+    readonly payloadListeners: Set<(payload: TEvent) => void>;
+    readonly envelopeListeners: Set<(envelope: EventEnvelope<string, TEvent>) => void>;
+  }>();
+
+  function getOrCreateShared(type: string) {
+    const existing = sharedByType.get(type);
+    if (existing) return existing;
+    const payloadListeners = new Set<(payload: TEvent) => void>();
+    const envelopeListeners = new Set<(envelope: EventEnvelope<string, TEvent>) => void>();
+    const unsub = feed.onEnvelope(type as TEvent['type'], (envelope) => {
+      if (envelope.sessionId !== sessionId) return;
+      for (const pl of payloadListeners) pl(envelope.payload as TEvent);
+      for (const el of envelopeListeners) el(envelope as EventEnvelope<string, TEvent>);
+    });
+    const shared = { unsub, payloadListeners, envelopeListeners };
+    sharedByType.set(type, shared);
+    return shared;
+  }
+
+  function removeSharedIfEmpty(type: string) {
+    const shared = sharedByType.get(type);
+    if (!shared) return;
+    if (shared.payloadListeners.size === 0 && shared.envelopeListeners.size === 0) {
+      shared.unsub();
+      sharedByType.delete(type);
+    }
+  }
+
   return {
     on<TType extends TEvent['type']>(
       type: TType,
       listener: (payload: Extract<TEvent, { type: TType }>) => void,
     ): () => void {
-      return feed.onEnvelope(type, (envelope) => {
-        if (envelope.sessionId !== sessionId) return;
-        listener(envelope.payload as Extract<TEvent, { type: TType }>);
-      });
+      const shared = getOrCreateShared(type);
+      const typedListener = listener as (payload: TEvent) => void;
+      shared.payloadListeners.add(typedListener);
+      return () => {
+        shared.payloadListeners.delete(typedListener);
+        removeSharedIfEmpty(type);
+      };
     },
     onEnvelope<TType extends TEvent['type']>(
       type: TType,
       listener: (envelope: EventEnvelope<TType, Extract<TEvent, { type: TType }>>) => void,
     ): () => void {
-      return feed.onEnvelope(type, (envelope) => {
-        if (envelope.sessionId !== sessionId) return;
-        listener(envelope as EventEnvelope<TType, Extract<TEvent, { type: TType }>>);
-      });
+      const shared = getOrCreateShared(type);
+      const typedListener = listener as (envelope: EventEnvelope<string, TEvent>) => void;
+      shared.envelopeListeners.add(typedListener);
+      return () => {
+        shared.envelopeListeners.delete(typedListener);
+        removeSharedIfEmpty(type);
+      };
     },
   };
 }

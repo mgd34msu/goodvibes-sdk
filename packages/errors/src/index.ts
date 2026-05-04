@@ -396,6 +396,14 @@ export class ContractError extends GoodVibesSdkError {
  * - `401` → `'authentication'`  `402` → `'billing'`  `403` → `'authorization'`
  * - `404` → `'not_found'`  `408` → `'timeout'`  `429` → `'rate_limit'`
  * - `5xx` → `'service'`
+ * - Any other status (or when constructed without a `status`) → `'unknown'`
+ *
+ * MIN-6: When constructed without a `status` argument (e.g. as a typed
+ * wrapper around a structured daemon error that provides its own `category`),
+ * the category defaults to `'unknown'`. Callers relying on category-based
+ * routing should always prefer the structured-body factory
+ * (`createHttpStatusError`) or check `err.category` directly rather than
+ * assuming a specific category from constructor arguments alone.
  *
  * Use `recoverable` to decide whether to retry, and `retryAfterMs` for
  * the backoff hint on rate-limit responses.

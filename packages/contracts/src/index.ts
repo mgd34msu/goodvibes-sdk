@@ -59,15 +59,49 @@ export function getPeerContract(): PeerContractManifest {
   return PEER_CONTRACT;
 }
 
-const OPERATOR_METHODS_BY_ID = new Map(OPERATOR_CONTRACT.operator.methods.map((method) => [method.id, method]));
-const PEER_ENDPOINTS_BY_ID = new Map(PEER_CONTRACT.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+// MIN-1: Lazy-init maps so tree-shake-conscious bundles that only need
+// OPERATOR_METHOD_IDS / PEER_ENDPOINT_IDS don't pay the map-construction cost.
+let _operatorMethodsById: Map<string, OperatorMethodContract> | undefined;
+let _peerEndpointsById: Map<string, PeerEndpointContract> | undefined;
+
+function getOperatorMethodsById(): Map<string, OperatorMethodContract> {
+  if (!_operatorMethodsById) {
+    _operatorMethodsById = new Map(OPERATOR_CONTRACT.operator.methods.map((method) => [method.id, method]));
+  }
+  return _operatorMethodsById;
+}
+
+function getPeerEndpointsById(): Map<string, PeerEndpointContract> {
+  if (!_peerEndpointsById) {
+    _peerEndpointsById = new Map(PEER_CONTRACT.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+  }
+  return _peerEndpointsById;
+}
+
+// MIN-2: Precomputed Sets for O(1) membership tests. Also lazy.
+let _operatorMethodIdSet: Set<string> | undefined;
+let _peerEndpointIdSet: Set<string> | undefined;
+
+function getOperatorMethodIdSet(): Set<string> {
+  if (!_operatorMethodIdSet) {
+    _operatorMethodIdSet = new Set(OPERATOR_METHOD_IDS as readonly string[]);
+  }
+  return _operatorMethodIdSet;
+}
+
+function getPeerEndpointIdSet(): Set<string> {
+  if (!_peerEndpointIdSet) {
+    _peerEndpointIdSet = new Set(PEER_ENDPOINT_IDS as readonly string[]);
+  }
+  return _peerEndpointIdSet;
+}
 
 export function getOperatorMethod(methodId: string): OperatorMethodContract | undefined {
-  return OPERATOR_METHODS_BY_ID.get(methodId);
+  return getOperatorMethodsById().get(methodId);
 }
 
 export function getPeerEndpoint(endpointId: string): PeerEndpointContract | undefined {
-  return PEER_ENDPOINTS_BY_ID.get(endpointId);
+  return getPeerEndpointsById().get(endpointId);
 }
 
 export function listOperatorMethods(): readonly OperatorMethodContract[] {
@@ -79,11 +113,13 @@ export function listPeerEndpoints(): readonly PeerEndpointContract[] {
 }
 
 export function isOperatorMethodId(value: string): value is (typeof OPERATOR_METHOD_IDS)[number] {
-  return (OPERATOR_METHOD_IDS as readonly string[]).includes(value);
+  // MIN-2: O(1) Set lookup instead of O(n) linear .includes over the readonly tuple.
+  return getOperatorMethodIdSet().has(value);
 }
 
 export function isPeerEndpointId(value: string): value is (typeof PEER_ENDPOINT_IDS)[number] {
-  return (PEER_ENDPOINT_IDS as readonly string[]).includes(value);
+  // MIN-2: O(1) Set lookup instead of O(n) linear .includes over the readonly tuple.
+  return getPeerEndpointIdSet().has(value);
 }
 
 // Re-export Zod schemas + inferred shapes for runtime validation.
