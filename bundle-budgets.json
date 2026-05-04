@@ -32,8 +32,8 @@
     "rationale": "full SDK re-export entry — re-exports all sub-entries; measured 527 B gzip @ commit 4e5a5e2; headroom max(ceil(527*1.2)=633, 527+50=577) → 633 (1.2x dominates by 56 B)"
   },
   "./auth": {
-    "gzip_bytes": 3214,
-    "rationale": "auth surface; measured 2678 B gzip @ commit 4e5a5e2; headroom max(ceil(2678*1.2)=3214, 2678+50=2728) → 3214 (1.2x dominates by 486 B); dominated by createGoodVibesAuthClient (~1100 B), SessionManager (~600 B), AutoRefreshCoordinator + createAutoRefreshMiddleware (~400 B), createBrowserTokenStore (~200 B)"
+    "gzip_bytes": 3459,
+    "rationale": "auth surface; measured 2882 B gzip @ commit c0e5910; headroom max(ceil(2882*1.2)=3459, 2882+50=2932) → 3459 (1.2x dominates by 527 B); dominated by createGoodVibesAuthClient (~1100 B), SessionManager (~600 B), AutoRefreshCoordinator + createAutoRefreshMiddleware (~400 B), createBrowserTokenStore (~200 B)"
   },
   "./browser": {
     "gzip_bytes": 1102,
@@ -56,8 +56,8 @@
     "rationale": "daemon route handler re-export entry; measured 66 B gzip @ commit 4e5a5e2; headroom max(ceil(66*1.2)=80, 66+50=116) → 116 (+50 B floor dominates by 36 B)"
   },
   "./errors": {
-    "gzip_bytes": 306,
-    "rationale": "error taxonomy re-export entry; measured 255 B gzip @ commit 4e5a5e2; headroom max(ceil(255*1.2)=306, 255+50=305) → 306 (1.2x dominates by 1 B)"
+    "gzip_bytes": 112,
+    "rationale": "error taxonomy re-export entry; measured 62 B gzip @ commit c0e5910; headroom max(ceil(62*1.2)=75, 62+50=112) → 112 (+50 B floor dominates by 37 B)"
   },
   "./events": {
     "gzip_bytes": 374,
@@ -76,8 +76,8 @@
     "rationale": "Expo with SecureStore helper; measured 236 B gzip @ commit 4e5a5e2; headroom max(ceil(236*1.2)=284, 236+50=286) → 286 (+50 B floor dominates by 2 B)"
   },
   "./observer": {
-    "gzip_bytes": 2189,
-    "rationale": "observer surface; measured 1824 B gzip @ commit 4e5a5e2; headroom max(ceil(1824*1.2)=2189, 1824+50=1874) → 2189 (1.2x dominates by 315 B); dominated by createOpenTelemetryObserver (~700 B), SDKObserver interface + createConsoleObserver (~500 B), OtelTracer/OtelSpan/OtelMeter/OtelCounter/OtelHistogram types (~300 B)"
+    "gzip_bytes": 2231,
+    "rationale": "observer surface; measured 1859 B gzip @ commit c0e5910; headroom max(ceil(1859*1.2)=2231, 1859+50=1909) → 2231 (1.2x dominates by 322 B); dominated by createOpenTelemetryObserver (~700 B), SDKObserver interface + createConsoleObserver (~500 B), OtelTracer/OtelSpan/OtelMeter/OtelCounter/OtelHistogram types (~300 B)"
   },
   "./operator": {
     "gzip_bytes": 118,
@@ -88,8 +88,8 @@
     "rationale": "peer SDK client re-export entry; measured 64 B gzip @ commit 4e5a5e2; headroom max(ceil(64*1.2)=77, 64+50=114) → 114 (+50 B floor dominates by 37 B)"
   },
   "./platform": {
-    "gzip_bytes": 537,
-    "rationale": "platform namespace facade; measured 447 B gzip @ commit 4e5a5e2; headroom max(ceil(447*1.2)=537, 447+50=497) → 537 (1.2x dominates by 40 B)"
+    "gzip_bytes": 638,
+    "rationale": "platform namespace facade; measured 531 B gzip @ commit c0e5910; headroom max(ceil(531*1.2)=638, 531+50=581) → 638 (1.2x dominates by 57 B)"
   },
   "./platform/config": {
     "gzip_bytes": 992,
@@ -136,8 +136,8 @@
     "rationale": "public facade; measured 285 B gzip @ commit 4e5a5e2; headroom max(ceil(285*1.2)=342, 285+50=335) → 342 (1.2x dominates by 7 B)"
   },
   "./platform/node/runtime-boundary": {
-    "gzip_bytes": 696,
-    "rationale": "public facade; measured 580 B gzip @ commit 4e5a5e2; headroom max(ceil(580*1.2)=696, 580+50=630) → 696 (1.2x dominates by 66 B)"
+    "gzip_bytes": 760,
+    "rationale": "public facade; measured 633 B gzip @ commit c0e5910; headroom max(ceil(633*1.2)=760, 633+50=683) → 760 (1.2x dominates by 77 B)"
   },
   "./platform/pairing": {
     "gzip_bytes": 238,
@@ -164,8 +164,8 @@
     "rationale": "public runtime seam; measured 1142 B gzip @ commit 4e5a5e2; headroom max(ceil(1142*1.2)=1371, 1142+50=1192) → 1371 (1.2x dominates by 179 B)"
   },
   "./platform/runtime/ui": {
-    "gzip_bytes": 916,
-    "rationale": "public runtime seam; measured 763 B gzip @ commit 4e5a5e2; headroom max(ceil(763*1.2)=916, 763+50=813) → 916 (1.2x dominates by 103 B)"
+    "gzip_bytes": 834,
+    "rationale": "public runtime seam; measured 695 B gzip @ commit c0e5910; headroom max(ceil(695*1.2)=834, 695+50=745) → 834 (1.2x dominates by 89 B)"
   },
   "./platform/tools": {
     "gzip_bytes": 2766,
@@ -180,8 +180,8 @@
     "rationale": "public facade; measured 118 B gzip @ commit 4e5a5e2; headroom max(ceil(118*1.2)=142, 118+50=168) → 168 (+50 B floor dominates by 26 B)"
   },
   "./react-native": {
-    "gzip_bytes": 1475,
-    "rationale": "RN/Hermes companion surface; measured 1229 B gzip @ commit 4e5a5e2; headroom max(ceil(1229*1.2)=1475, 1229+50=1279) → 1475 (1.2x dominates by 196 B)"
+    "gzip_bytes": 1601,
+    "rationale": "RN/Hermes companion surface; measured 1334 B gzip @ commit c0e5910; headroom max(ceil(1334*1.2)=1601, 1334+50=1384) → 1601 (1.2x dominates by 217 B)"
   },
   "./transport-core": {
     "gzip_bytes": 118,
@@ -204,7 +204,7 @@
     "rationale": "Workers-compat companion surface; measured 199 B gzip @ commit 4e5a5e2; headroom max(ceil(199*1.2)=239, 199+50=249) → 249 (+50 B floor dominates by 10 B)"
   },
   "./workers": {
-    "gzip_bytes": 3095,
-    "rationale": "Cloudflare Workers surface; measured 2579 B gzip @ commit 4e5a5e2; headroom max(ceil(2579*1.2)=3095, 2579+50=2629) → 3095 (1.2x dominates by 466 B); dominated by createGoodVibesCloudflareWorker (~1200 B), readTextBodyWithinLimit + proxyDaemonBatch + proxyDaemonJson (~600 B), GoodVibesCloudflareWorkerEnv/Options/Worker interfaces + requireWorkerAuth (~400 B)"
+    "gzip_bytes": 3681,
+    "rationale": "Cloudflare Workers surface; measured 3067 B gzip @ commit c0e5910; headroom max(ceil(3067*1.2)=3681, 3067+50=3117) → 3681 (1.2x dominates by 564 B); budget bumped from 3095 (only 28 B headroom) to 3681 per re-anchor; dominated by createGoodVibesCloudflareWorker (~1200 B), readTextBodyWithinLimit + proxyDaemonBatch + proxyDaemonJson (~600 B), GoodVibesCloudflareWorkerEnv/Options/Worker interfaces + requireWorkerAuth (~400 B)"
   }
 }

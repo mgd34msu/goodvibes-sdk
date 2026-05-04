@@ -111,10 +111,12 @@ function createRemoteDomainEventFeed<
       if (!eventType) return;
       const payload = envelope.payload;
       const typedEnvelope = toEventEnvelope(envelope);
-      for (const listener of payloadListeners.get(eventType) ?? []) {
+      // MAJ-06: snapshot Sets before iterating to prevent skipped listeners
+      // from concurrent subscribe/unsubscribe during dispatch (project pattern: event-bus-snapshot).
+      for (const listener of [...(payloadListeners.get(eventType) ?? [])]) {
         listener(payload);
       }
-      for (const listener of envelopeListeners.get(eventType) ?? []) {
+      for (const listener of [...(envelopeListeners.get(eventType) ?? [])]) {
         listener(typedEnvelope);
       }
     })).then((cleanup) => {

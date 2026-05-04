@@ -264,7 +264,7 @@ function isErrorPropertyLike(error: unknown): error is ErrorPropertyLike {
 }
 
 function readNumberProperty(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
 function readStringProperty(value: unknown): string | undefined {

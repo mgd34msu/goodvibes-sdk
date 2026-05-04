@@ -1,5 +1,5 @@
 import type { DaemonControlRouteHandlers } from './context.js';
-import type { RuntimeEventDomain } from '@pellux/goodvibes-contracts';
+import { isRuntimeEventDomain, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import { jsonErrorResponse } from './error-response.js';
 import type { AuthenticatedPrincipal } from './http-policy.js';
 import {
@@ -196,7 +196,9 @@ export function createDaemonControlRouteHandlers(
     createControlPlaneEventStream: (req) => {
       const url = new URL(req.url);
       const rawDomains = url.searchParams.get('domains');
-      const domains = (rawDomains ? rawDomains.split(',').map((value) => value.trim()).filter(Boolean) : []) as RuntimeEventDomain[];
+      // MIN-04: filter unknown domains at the SDK boundary instead of casting unchecked input.
+      const domains = (rawDomains ? rawDomains.split(',').map((v) => v.trim()).filter(Boolean) : [])
+        .filter(isRuntimeEventDomain) as RuntimeEventDomain[];
       const principal = context.resolveAuthenticatedPrincipal(req);
       if (!principal) return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
       return context.controlPlaneGateway.createEventStream(req, {

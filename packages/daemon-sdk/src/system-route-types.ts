@@ -18,6 +18,7 @@ export type DaemonApiClientKind =
   | 'daemon';
 
 export type AutomationRouteBindingKind = string;
+/** @internal Structural alias for cross-package compatibility; canonical type lives in platform/automation/types.ts. */
 export type AutomationSurfaceKind = string;
 export type AutomationSessionPolicy = string;
 export type AutomationThreadPolicy = string;

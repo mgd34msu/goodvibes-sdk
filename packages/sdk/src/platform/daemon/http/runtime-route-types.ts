@@ -5,7 +5,7 @@ import type { ExecutionIntent } from '../../runtime/execution-intents.js';
 // accepted by daemon-sdk handlers. They stay narrow so callers can provide
 // lightweight records instead of full runtime objects.
 
-export type AutomationSurfaceKind = string;
+type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
   readonly modelId?: string | undefined;
   readonly providerId?: string | undefined;

@@ -352,12 +352,14 @@ function estimateJsonByteLengthWithinLimit(
   maxBytes: number,
 ): { readonly kind: 'ok'; readonly byteLength: number } | { readonly kind: 'invalid' } {
   try {
+    // MAJ-08: avoid holding the full encoded string when we only need to know
+    // whether it exceeds the limit. Stringify once, let GC collect it.
     const encoded = JSON.stringify(value);
     if (encoded === undefined) return { kind: 'ok', byteLength: 4 };
     const byteLength = Buffer.byteLength(encoded, 'utf8');
+    // Clamp to maxBytes+1 so callers can tell "over limit" without retaining the string.
     return { kind: 'ok', byteLength: Math.min(byteLength, maxBytes + 1) };
-  } catch (error) {
-    void error;
+  } catch {
     return { kind: 'invalid' };
   }
 }

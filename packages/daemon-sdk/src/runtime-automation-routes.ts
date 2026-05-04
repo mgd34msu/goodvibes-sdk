@@ -227,5 +227,6 @@ function handleGetAutomationRun(context: DaemonRuntimeRouteContext, runId: strin
 }
 
 function findAutomationJob(context: DaemonRuntimeRouteContext, id: string) {
-  return context.automationManager.listJobs().find((entry) => entry.id === id || entry.id.startsWith(id));
+  // MAJ-01: exact-match only — prefix match was non-deterministic when multiple ids share a prefix.
+  return context.automationManager.listJobs().find((entry) => entry.id === id);
 }

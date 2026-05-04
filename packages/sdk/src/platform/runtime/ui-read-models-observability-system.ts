@@ -163,7 +163,7 @@ export function createSystemObservabilityReadModels(
           tokenScopeViolationCount: audit.scopeViolations.length,
           tokenRotationWarningCount: audit.rotationWarnings.length,
           incidentCount: incidents.length,
-          latestIncident: options.forensicsRegistry?.latest(),
+          latestIncident: options.forensicsRegistry?.latest() ?? null,
           elevatedMcp,
           unhealthyMcp,
           erroredPlugins: plugins.filter((plugin) => plugin.quarantined || !plugin.active).length,

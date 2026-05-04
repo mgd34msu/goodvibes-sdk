@@ -174,6 +174,18 @@ async function parseOtlpBody(
     );
   }
 
+  // CRIT-03: reject oversized requests before buffering the body into memory.
+  const contentLength = Number(req.headers.get('content-length'));
+  if (!Number.isNaN(contentLength) && contentLength > OTLP_INGEST_MAX_BODY_BYTES) {
+    return jsonErrorResponse(
+      {
+        error: `OTLP ingest payload too large (Content-Length: ${contentLength} > ${OTLP_INGEST_MAX_BODY_BYTES} bytes)`,
+        code: 'PAYLOAD_TOO_LARGE',
+        category: DaemonErrorCategory.BAD_REQUEST,
+      },
+      { status: 413 },
+    );
+  }
   const raw = await req.arrayBuffer();
   if (raw.byteLength > OTLP_INGEST_MAX_BODY_BYTES) {
     return jsonErrorResponse(

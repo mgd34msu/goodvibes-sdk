@@ -47,7 +47,8 @@ export function splitClientArgs<TInput, TOptions>(
   if (args.length > 2) {
     throw new ContractError(`Contract client helper expected at most 2 arguments but received ${args.length}.`);
   }
-  return [args[0]! as TInput | undefined, args[1]! as TOptions | undefined];
+  // MAJ-11: drop misleading non-null assertions — args[0]/args[1] may be undefined.
+  return [args[0] as TInput | undefined, args[1] as TOptions | undefined];
 }
 
 /** Convert a typed client input object into the record shape required by contract route helpers. */
