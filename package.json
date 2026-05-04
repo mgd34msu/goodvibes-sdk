@@ -71,7 +71,8 @@
     "api:check": "bunx api-extractor run",
     "test:workers:wrangler": "bun run build && bun scripts/test.ts test/workers-wrangler/wrangler.test.ts",
     "any:check": "bun scripts/no-any-types.ts",
-    "platform-console:check": "bun scripts/no-platform-console.ts"
+    "platform-console:check": "bun scripts/no-platform-console.ts",
+    "dist:check": "bun scripts/check-dist-freshness.ts"
   },
   "dependencies": {
     "@pellux/goodvibes-contracts": "workspace:*",
