@@ -17,7 +17,7 @@
   },
   "./auth": {
     "gzip_bytes": 3200,
-    "rationale": "auth surface with TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator + createAutoRefreshMiddleware ; measured 2747 B gzip * 1.15"
+    "rationale": "auth surface with TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator + createAutoRefreshMiddleware; measured 2747 B gzip * 1.2"
   },
   "./browser": {
     "gzip_bytes": 1197,

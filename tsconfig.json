@@ -1,7 +1,12 @@
 {
   "compilerOptions": {
+    // composite: true is nominally required for project references but has no
+    // build effect here because files: [] means no source is compiled at this
+    // root. It satisfies the TypeScript composite constraint checker so that
+    // child packages can reference this root without an error.
     "composite": true,
     "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsc/tsconfig.tsbuildinfo",
     "types": []
   },
   // tsconfig.type-tests.json is intentionally excluded from this composite root.

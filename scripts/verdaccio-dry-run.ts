@@ -127,7 +127,13 @@ async function startVerdaccio(): Promise<VerdaccioHandle> {
       'verdaccio is not installed. Run `bun install --frozen-lockfile` or set VERDACCIO_BIN to an audited Verdaccio binary.',
     );
   }
+  if (configuredVerdaccioBin && !existsSync(configuredVerdaccioBin)) {
+    throw new Error(
+      `VERDACCIO_BIN path does not exist: ${configuredVerdaccioBin}. Check the path or unset VERDACCIO_BIN to use the local install.`,
+    );
+  }
   const verdaccioCommand = configuredVerdaccioBin ?? localVerdaccioBin;
+  console.log(`[verdaccio] using binary: ${verdaccioCommand}`);
   const verdaccioArgs = ['--config', configPath, '--listen', `127.0.0.1:${port}`];
 
   const registryUrl = `http://127.0.0.1:${port}`;
@@ -426,6 +432,9 @@ async function main(): Promise<void> {
   console.log(`  elapsed : ${elapsed}s`);
 }
 
+// main().catch() duplicates some cleanup from main()'s finally block intentionally:
+// if main() throws before the finally block runs (e.g., during startVerdaccio),
+// this handler ensures the process always exits cleanly without leaked processes.
 main().catch((err) => {
   cleanup();
   const handle = verdaccioHandle;

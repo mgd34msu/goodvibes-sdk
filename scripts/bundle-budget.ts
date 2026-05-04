@@ -32,6 +32,8 @@ const SDK_PKG_JSON_PATH = resolve(SDK_PKG, 'package.json');
 const BUDGETS_PATH = resolve(REPO_ROOT, 'bundle-budgets.json');
 
 const FORCE_BUILD = process.argv.includes('--build');
+// --no-build: error instead of rebuilding when dist/ is missing (for CI use).
+const NO_BUILD = process.argv.includes('--no-build');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -142,6 +144,10 @@ function loadExports(): Record<string, ExportValue> {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 if (!distExists()) {
+  if (NO_BUILD) {
+    console.error('ERROR: dist/ is missing and --no-build was passed. Run `bun run build` first.');
+    process.exit(1);
+  }
   console.log('dist/ is missing — running bun run build …');
   runBuild();
 } else if (FORCE_BUILD && isStale()) {
@@ -149,7 +155,7 @@ if (!distExists()) {
   runBuild();
 } else if (isStale()) {
   console.warn(
-    'WARN: dist/ may be stale (src/ has newer files). ' +
+    'WARN: dist/ is stale (src/ has newer files). ' +
       'Pass --build to force a rebuild, or run `bun run build` first.',
   );
 }
