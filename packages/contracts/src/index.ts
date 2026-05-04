@@ -49,7 +49,7 @@ export { PEER_CONTRACT } from './generated/peer-contract.js';
 export { PEER_ENDPOINT_IDS } from './generated/peer-endpoint-ids.js';
 export type { PeerEndpointId } from './generated/peer-endpoint-ids.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from './generated/runtime-event-domains.js';
-export type { RuntimeEventDomain } from './generated/runtime-event-domains.js';
+export type { RuntimeEventDomain, RuntimeEventRecord } from './generated/runtime-event-domains.js';
 
 export function getOperatorContract(): OperatorContractManifest {
   return OPERATOR_CONTRACT;
@@ -124,3 +124,4 @@ export function isPeerEndpointId(value: string): value is (typeof PEER_ENDPOINT_
 
 // Re-export Zod schemas + inferred shapes for runtime validation.
 export * from './zod-schemas/index.js';
+
