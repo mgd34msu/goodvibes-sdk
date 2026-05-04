@@ -18,7 +18,7 @@ const stopAgentCompleted = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', as
   await refreshApprovals();
 });
 
-// companion-approvals-feed runs in a browser context
+// browser-only example; window is guaranteed by the surrounding HTML host
 window.addEventListener('beforeunload', () => {
   stopAgentCompleted();
 });
