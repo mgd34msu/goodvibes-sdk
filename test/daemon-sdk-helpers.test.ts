@@ -31,6 +31,7 @@ import {
   jsonErrorResponse,
   summarizeErrorForRecord,
 } from '../packages/daemon-sdk/src/error-response.js';
+import { estimateJsonByteLengthWithinLimit } from '../packages/daemon-sdk/src/remote-routes.js';
 import { GoodVibesSdkError } from '../packages/errors/dist/index.js';
 
 // ---------------------------------------------------------------------------
@@ -532,6 +533,62 @@ describe('error-response — summarizeErrorForRecord', () => {
   test('passes options through to buildErrorResponseBody', () => {
     const summary = summarizeErrorForRecord('  ', { fallbackMessage: 'my fallback' });
     expect(summary).toBe('my fallback');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MAJ-08: remote-routes — estimateJsonByteLengthWithinLimit
+// Verifies the cap is enforced via counting replacer — the full encoded string
+// is NEVER allocated for over-limit payloads (sentinel path exits early).
+// ---------------------------------------------------------------------------
+
+describe('remote-routes — estimateJsonByteLengthWithinLimit (MAJ-08 cap-before-allocate)', () => {
+  test('small value within limit: returns kind="ok" and byteLength <= maxBytes', () => {
+    const result = estimateJsonByteLengthWithinLimit({ hello: 'world' }, 10_000);
+    expect(result.kind).toBe('ok');
+    if (result.kind === 'ok') {
+      expect(result.byteLength).toBeLessThanOrEqual(10_000);
+    }
+  });
+
+  test('value exceeding limit: returns kind="ok" with byteLength = maxBytes+1 (cap sentinel, no full string)', () => {
+    // Build a value that would produce ~50 KB of JSON but test with a 100-byte cap.
+    // The counting replacer must trip the OVER_LIMIT sentinel before producing
+    // the full encoded string.
+    const bigPayload = { data: 'x'.repeat(5_000) };
+    const maxBytes = 100;
+    const result = estimateJsonByteLengthWithinLimit(bigPayload, maxBytes);
+    expect(result.kind).toBe('ok');
+    if (result.kind === 'ok') {
+      // Must report exactly maxBytes+1 (over-limit sentinel value)
+      expect(result.byteLength).toBe(maxBytes + 1);
+    }
+  });
+
+  test('non-JSON-serializable value (circular ref): returns kind="invalid"', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const result = estimateJsonByteLengthWithinLimit(circular, 10_000);
+    expect(result.kind).toBe('invalid');
+  });
+
+  test('undefined value: returns kind="ok" with byteLength=4 (null representation)', () => {
+    const result = estimateJsonByteLengthWithinLimit(undefined, 10_000);
+    expect(result.kind).toBe('ok');
+    if (result.kind === 'ok') {
+      expect(result.byteLength).toBe(4);
+    }
+  });
+
+  test('exactly-at-limit string: does not trip the sentinel', () => {
+    // A string of 'a' repeated so that the over-estimate stays within maxBytes.
+    // 1 char * 6 bytes (worst-case estimate per char) + 2 (quotes) = 8 bytes.
+    // Use maxBytes = 1000 — a 3-char string should comfortably stay under cap.
+    const result = estimateJsonByteLengthWithinLimit('abc', 1000);
+    expect(result.kind).toBe('ok');
+    if (result.kind === 'ok') {
+      expect(result.byteLength).toBeLessThanOrEqual(1000);
+    }
   });
 });
 

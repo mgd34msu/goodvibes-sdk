@@ -10,11 +10,11 @@ import { isAbortError } from '@pellux/goodvibes-transport-core';
 import type { TransportJsonError } from './http-core.js';
 
 export interface ServerSentEventHandlers {
-  readonly onEvent?: ((eventName: string, payload: unknown) => void) | undefined | undefined;
-  readonly onReady?: ((payload: unknown) => void) | undefined | undefined;
-  readonly onError?: ((error: unknown) => void) | undefined | undefined;
+  readonly onEvent?: ((eventName: string, payload: unknown) => void) | undefined;
+  readonly onReady?: ((payload: unknown) => void) | undefined;
+  readonly onError?: ((error: unknown) => void) | undefined;
   readonly onReconnect?: (input: { readonly attempt: number; readonly delayMs: number }) => void;
-  readonly onClose?: (() => void) | undefined | undefined;
+  readonly onClose?: (() => void) | undefined;
   readonly onTerminate?: (input: { readonly error: unknown; readonly reconnectAttempts: number }) => void;
 }
 
@@ -182,18 +182,18 @@ export async function openRawServerSentEventStream(
         }
         if (line.startsWith(':')) return;
         if (line.startsWith('id:')) {
-          const candidate = line.slice(3).trim();
+          const candidate = line.slice(3).replace(/^ /, '');
           if (candidate) {
             lastEventId = candidate;
           }
           return;
         }
         if (line.startsWith('event:')) {
-          eventName = line.slice(6).trim();
+          eventName = line.slice(6).replace(/^ /, '');
           return;
         }
         if (line.startsWith('data:')) {
-          data += `${data ? '\n' : ''}${line.slice(5).trim()}`;
+          data += `${data ? '\n' : ''}${line.slice(5).replace(/^ /, '')}`;
         }
       };
 

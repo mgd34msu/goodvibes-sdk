@@ -3,11 +3,10 @@ import {
   createRuntimeEventFeeds,
   isAbortError,
   transportErrorFromUnknown,
+  type EventLike,
   type RuntimeEventFeed,
   type RuntimeEventFeeds,
 } from '@pellux/goodvibes-transport-core';
-
-type EventLike = { readonly type: string };
 
 export interface SerializedEventEnvelope<TEvent extends EventLike = EventLike> {
   readonly type: string;

@@ -1,11 +1,9 @@
 import type { DaemonRuntimeRouteHandlers } from '../../control-plane/routes/context.js';
-import type { DaemonRuntimeRouteContext as SdkDaemonRuntimeRouteContext, JsonBody } from '@pellux/goodvibes-daemon-sdk';
+import type { DaemonRuntimeRouteContext as SdkDaemonRuntimeRouteContext, AutomationSurfaceKind, JsonBody } from '@pellux/goodvibes-daemon-sdk';
 import type { ExecutionIntent } from '../../runtime/execution-intents.js';
 // The local Like-view types below describe the minimal route handler inputs
 // accepted by daemon-sdk handlers. They stay narrow so callers can provide
 // lightweight records instead of full runtime objects.
-
-type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
   readonly modelId?: string | undefined;
   readonly providerId?: string | undefined;

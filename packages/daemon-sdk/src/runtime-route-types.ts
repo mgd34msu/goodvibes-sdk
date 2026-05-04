@@ -16,9 +16,9 @@ export interface ConversationMessageEnvelope {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
 }
 
-// AutomationSurfaceKind: widened to string here because daemon-sdk cannot import the
-// full union from the SDK platform layer (would create a circular dependency).
-// Consumers who need the narrowed union should import from @pellux/goodvibes-sdk/daemon.
+// AutomationSurfaceKind: daemon-sdk cannot import the full union from the SDK platform layer
+// (circular dep). Kept as a string alias for backward compat with runtime-session-routes.ts
+// and system-routes.ts imports. The _2 rename in api-extractor is suppressed via ae-internal.
 /** @internal */
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
@@ -74,7 +74,7 @@ export interface DaemonRuntimeRouteContext {
     submitMessage(input: {
       sessionId?: string | undefined;
       routeId?: string | undefined;
-      surfaceKind: AutomationSurfaceKind;
+      surfaceKind: string;
       surfaceId: string;
       externalId?: string | undefined;
       threadId?: string | undefined;
@@ -96,7 +96,7 @@ export interface DaemonRuntimeRouteContext {
     steerMessage(input: {
       sessionId?: string | undefined;
       routeId?: string | undefined;
-      surfaceKind: AutomationSurfaceKind;
+      surfaceKind: string;
       surfaceId: string;
       externalId?: string | undefined;
       threadId?: string | undefined;
@@ -119,7 +119,7 @@ export interface DaemonRuntimeRouteContext {
     followUpMessage(input: {
       sessionId?: string | undefined;
       routeId?: string | undefined;
-      surfaceKind: AutomationSurfaceKind;
+      surfaceKind: string;
       surfaceId: string;
       externalId?: string | undefined;
       threadId?: string | undefined;
@@ -145,7 +145,7 @@ export interface DaemonRuntimeRouteContext {
       metadata?: Record<string, unknown> | undefined;
       routeBinding?: AutomationRouteBinding | undefined;
       participant?: {
-        surfaceKind: AutomationSurfaceKind;
+        surfaceKind: string;
         surfaceId: string;
         externalId?: string | undefined;
         userId?: string | undefined;

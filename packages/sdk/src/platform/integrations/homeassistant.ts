@@ -182,6 +182,9 @@ export class HomeAssistantIntegration {
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       ...(options.auth && this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
     };
+    if (/^[a-z][a-z0-9+\-.]*:/i.test(path)) {
+      throw new Error(`Absolute path not allowed in Home Assistant request: ${path}`);
+    }
     return instrumentedFetch(new URL(path, `${this.baseUrl}/`).toString(), {
       method: options.method ?? 'GET',
       headers,

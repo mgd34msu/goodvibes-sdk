@@ -1,8 +1,12 @@
 import type { EventEnvelope } from './event-envelope.js';
 
-// EventLike: private structural constraint. Matches AnyRuntimeEvent from contracts.
-// Internal-only: not exported. Kept local to avoid a contracts dep on transport-core.
-type EventLike = { readonly type: string };
+/**
+ * Minimal structural constraint for runtime events. Matches the `{ type: string }` shape
+ * of `AnyRuntimeEvent` from `@pellux/goodvibes-contracts` without taking on that dependency.
+ * Re-exported so downstream packages (`transport-realtime`) can share the same identity
+ * and prevent api-extractor `_2`-suffix collisions in the bundled public d.ts.
+ */
+export type EventLike = { readonly type: string };
 
 type EventForType<
   TEvent extends EventLike,

@@ -73,7 +73,14 @@ export function normalizeBaseUrl(baseUrl: string): string {
 
 export function buildUrl(baseUrl: string, path: string): string {
   const normalized = normalizeBaseUrl(baseUrl);
-  return new URL(path, `${normalized}/`).toString();
+  if (/^[a-z][a-z0-9+\-.]*:/i.test(path)) {
+    throw new ConfigurationError(`Absolute path not allowed: ${path}`, { code: 'SDK_TRANSPORT_PATH_ABSOLUTE' });
+  }
+  try {
+    return new URL(path, `${normalized}/`).toString();
+  } catch (cause) {
+    throw new ConfigurationError(`Invalid transport path: ${path}`, { code: 'SDK_TRANSPORT_PATH_INVALID', cause });
+  }
 }
 
 export function createTransportPaths(baseUrl: string): TransportPaths {

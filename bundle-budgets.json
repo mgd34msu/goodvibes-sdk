@@ -25,7 +25,20 @@
     "  - './contracts/operator-contract.json' and './contracts/peer-contract.json':",
     "    static JSON artifacts; their size is governed by the contract refresh process",
     "    at scripts/refresh-contract-artifacts.ts.",
-    "  - './package.json': metadata only, not a runtime bundle."
+    "  - './package.json': metadata only, not a runtime bundle.",
+    "  - Subsystems available only as namespaces under './platform' (acp, adapters, artifacts,",
+    "    automation, batch, bookmarks, channels, cloudflare, companion, control-plane, discovery,",
+    "    export, hooks, mcp, media, permissions, plugins, profiles, scheduler, security, sessions,",
+    "    state, templates, types, watchers, web-search, workflow, workspace) are budgeted only",
+    "    via the './platform' aggregate. A 10x expansion of any individual subsystem will fail",
+    "    that single budget; promote the subsystem to a dedicated subpath entry if it grows",
+    "    past ~200 B individually.",
+    "",
+    "Validation: scripts/bundle-budget.ts compares bundle-budgets.json keys to package.json",
+    "exports. CI fails on missing or unknown entries. To add a new export, add it to",
+    "package.json/exports AND bundle-budgets.json/<key> in the same PR. Run via:",
+    "  bun run bundle:check     (includes build step)",
+    "  bun run bundle:check:strict  (skips build, uses existing dist/)"
   ],
   ".": {
     "gzip_bytes": 633,
@@ -33,7 +46,7 @@
   },
   "./auth": {
     "gzip_bytes": 3459,
-    "rationale": "auth surface; measured 2882 B gzip @ commit c0e5910; headroom max(ceil(2882*1.2)=3459, 2882+50=2932) → 3459 (1.2x dominates by 527 B); dominated by createGoodVibesAuthClient (~1100 B), SessionManager (~600 B), AutoRefreshCoordinator + createAutoRefreshMiddleware (~400 B), createBrowserTokenStore (~200 B)"
+    "rationale": "auth surface — SessionManager, TokenStore, PermissionResolver, GoodVibesAuthClient (createMemoryTokenStore, createBrowserTokenStore, createGoodVibesAuthClient); AutoRefreshOptions/AutoRefreshCoordinatorOptions types only (the AutoRefreshCoordinator class and createAutoRefreshMiddleware live in ./client-auth and are NOT re-exported from ./auth). Measured 2882 B gzip @ commit c0e5910; headroom max(ceil(2882*1.2)=3459, 2882+50=2932) → 3459 (1.2x dominates by 527 B)."
   },
   "./browser": {
     "gzip_bytes": 1102,

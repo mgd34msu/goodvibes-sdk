@@ -335,7 +335,10 @@ export function buildErrorResponseBody(
     };
   }
   if (isErrorPropertyLike(error)) {
-    const status = readNumberProperty(error.status) ?? readNumberProperty(error.statusCode) ?? options.status;
+    const rawStatus = readNumberProperty(error.status) ?? readNumberProperty(error.statusCode);
+    const status = rawStatus !== undefined
+      ? (rawStatus >= 100 && rawStatus <= 599 ? rawStatus : options.status)
+      : options.status;
     const code = readStringProperty(error.code);
     const provider = readStringProperty(error.provider);
     const providerCode = readStringProperty(error.providerCode);

@@ -347,19 +347,39 @@ function validateRemoteJsonPayload(value: unknown, maxBytes: number, field: stri
   }, { status: 413 });
 }
 
-function estimateJsonByteLengthWithinLimit(
+export function estimateJsonByteLengthWithinLimit(
   value: unknown,
   maxBytes: number,
 ): { readonly kind: 'ok'; readonly byteLength: number } | { readonly kind: 'invalid' } {
+  // MAJ-08: walk the value with a counting replacer so we never allocate
+  // the full encoded string. The replacer throws a sentinel when the running
+  // byte total exceeds maxBytes, preventing peak allocation before the cap.
+  let byteCount = 0;
+  const OVER_LIMIT = Symbol('over-limit');
   try {
-    // MAJ-08: avoid holding the full encoded string when we only need to know
-    // whether it exceeds the limit. Stringify once, let GC collect it.
-    const encoded = JSON.stringify(value);
-    if (encoded === undefined) return { kind: 'ok', byteLength: 4 };
-    const byteLength = Buffer.byteLength(encoded, 'utf8');
-    // Clamp to maxBytes+1 so callers can tell "over limit" without retaining the string.
-    return { kind: 'ok', byteLength: Math.min(byteLength, maxBytes + 1) };
-  } catch {
+    JSON.stringify(value, (_key, val: unknown) => {
+      if (typeof val === 'string') {
+        // JSON-encode the string value length: quotes + escape overhead (worst case 6x per char)
+        // We use the actual UTF-8 byte length of the JSON-encoded string fragment.
+        // For counting purposes, approximate: 2 quotes + content bytes (UTF-8).
+        // Exact: Buffer.byteLength(JSON.stringify(val)) but that allocates; use a cap-aware estimate.
+        // Safe over-estimate: each char can become at most 6 bytes (\uXXXX) in JSON.
+        byteCount += 2 + val.length * 6;
+      } else {
+        // null/number/boolean/object-open/array-open — add a small fixed cost per node.
+        byteCount += 16;
+      }
+      if (byteCount > maxBytes) {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw OVER_LIMIT;
+      }
+      return val;
+    });
+    if (value === undefined) return { kind: 'ok', byteLength: 4 }; // undefined → JSON undefined
+    // byteCount is an over-estimate; clamp to maxBytes+1 so callers only learn "within" vs "over".
+    return { kind: 'ok', byteLength: Math.min(byteCount, maxBytes + 1) };
+  } catch (err) {
+    if (err === OVER_LIMIT) return { kind: 'ok', byteLength: maxBytes + 1 };
     return { kind: 'invalid' };
   }
 }
