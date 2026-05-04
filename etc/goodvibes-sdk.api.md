@@ -4,6 +4,7 @@
 
 ```ts
 
+import { JsonValue } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
 import { z } from 'zod/v4';
 import type { ZodType } from 'zod/v4';
 
@@ -396,7 +397,9 @@ export type AutomationScheduleKind = (typeof AUTOMATION_SCHEDULE_KINDS)[number];
 // @public (undocumented)
 export type AutomationSessionPolicy = string;
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "AutomationSurfaceKind" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export type AutomationSurfaceKind = string;
 
 // @public (undocumented)
@@ -455,7 +458,7 @@ export interface BrowserTokenStoreOptions {
 export function buildErrorResponseBody(error: unknown, options?: JsonErrorResponseOptions): StructuredDaemonErrorBody;
 
 // @public (undocumented)
-export function buildEventSourceUrl(baseUrl: string, domain: DaemonRuntimeEventDomain): string;
+export function buildEventSourceUrl(baseUrl: string, domain: RuntimeEventDomain): string;
 
 // @public (undocumented)
 export function buildMissingScopeBody(target: string, requiredScopes: readonly string[], grantedScopes: readonly string[] | undefined): {
@@ -469,7 +472,7 @@ export function buildMissingScopeBody(target: string, requiredScopes: readonly s
 export function buildUrl(baseUrl: string, path: string): string;
 
 // @public (undocumented)
-export function buildWebSocketUrl(baseUrl: string, domains: readonly DaemonRuntimeEventDomain[]): string;
+export function buildWebSocketUrl(baseUrl: string, domains: readonly RuntimeEventDomain[]): string;
 
 // @public (undocumented)
 export interface ChannelAccountRegistryLike {
@@ -1039,11 +1042,10 @@ export function createDirectClientTransport<TOperator, TPeer>(operator: TOperato
 // @public (undocumented)
 export function createEventEnvelope<TType extends string, TPayload>(type: TType, payload: TPayload, context: EventEnvelopeContext): EventEnvelope<TType, TPayload>;
 
-// Warning: (ae-forgotten-export) The symbol "RuntimeEventRecord_2" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "AuthTokenSource" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function createEventSourceConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, fetchImpl: typeof fetch, options?: RuntimeEventConnectorOptions): DomainEventConnector<DaemonRuntimeEventDomain, TEvent>;
+export function createEventSourceConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(baseUrl: string, token: AuthTokenSource, fetchImpl: typeof fetch, options?: RuntimeEventConnectorOptions): DomainEventConnector<RuntimeEventDomain, TEvent>;
 
 // @public
 export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactNativeGoodVibesSdk;
@@ -1102,7 +1104,7 @@ export function createReactNativeGoodVibesSdk(options: ReactNativeGoodVibesSdkOp
 export function createRemoteDomainEvents<TDomain extends string, TEvent extends EventLike = EventLike>(domains: readonly TDomain[], connect: DomainEventConnector<TDomain, TEvent>, options?: RemoteDomainEventsOptions<TDomain>): DomainEvents<TDomain, TEvent>;
 
 // @public (undocumented)
-export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(connect: DomainEventConnector<DaemonRuntimeEventDomain, TEvent>, options?: RemoteRuntimeEventsOptions): RemoteRuntimeEvents<TEvent>;
+export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(connect: DomainEventConnector<RuntimeEventDomain, TEvent>, options?: RemoteRuntimeEventsOptions): RemoteRuntimeEvents<TEvent>;
 
 // @public (undocumented)
 export function createRouteBodySchema<T>(routeId: string, parse: (body: JsonRecord) => T | Response): RouteBodySchema<T>;
@@ -1128,7 +1130,7 @@ export function createUuidV4(): string;
 export function createWebGoodVibesSdk(options?: WebGoodVibesSdkOptions): GoodVibesSdk;
 
 // @public (undocumented)
-export function createWebSocketConnector<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2>(baseUrl: string, token: AuthTokenSource, WebSocketImpl: typeof WebSocket, options?: RuntimeEventConnectorOptions): DomainEventConnector<DaemonRuntimeEventDomain, TEvent>;
+export function createWebSocketConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(baseUrl: string, token: AuthTokenSource, WebSocketImpl: typeof WebSocket, options?: RuntimeEventConnectorOptions): DomainEventConnector<RuntimeEventDomain, TEvent>;
 
 // @public (undocumented)
 export type CurrentModelResponse = z.infer<typeof CurrentModelResponseSchema>;
@@ -1599,11 +1601,6 @@ export interface DaemonRuntimeAutomationRouteHandlers {
     // (undocumented)
     setScheduleEnabled(scheduleId: string, enabled: boolean, req: Request): MaybeResponse;
 }
-
-// Warning: (ae-forgotten-export) The symbol "RUNTIME_EVENT_DOMAINS_2" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export type DaemonRuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS_2[number];
 
 // @public (undocumented)
 export interface DaemonRuntimeRouteContext {
@@ -2400,9 +2397,9 @@ export type GoodVibesLoginOutput = OperatorMethodOutput<'control.auth.login'>;
 // @public
 export interface GoodVibesRealtime {
     // (undocumented)
-    viaSse(): RemoteRuntimeEvents<RuntimeEventRecord>;
+    viaSse(): RemoteRuntimeEvents<AnyRuntimeEvent>;
     // (undocumented)
-    viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<RuntimeEventRecord>;
+    viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<AnyRuntimeEvent>;
 }
 
 // @public
@@ -2708,7 +2705,7 @@ export interface IntegrationHelperServiceLike {
     // (undocumented)
     buildReview(): unknown;
     // (undocumented)
-    createEventStream(req: Request, domains: readonly DaemonRuntimeEventDomain[]): Response | Promise<Response>;
+    createEventStream(req: Request, domains: readonly RuntimeEventDomain[]): Response | Promise<Response>;
     // (undocumented)
     getAccountsSnapshot(): Promise<Record<string, unknown>>;
     // (undocumented)
@@ -2837,10 +2834,7 @@ export interface JsonSchemaValidationFailure {
     readonly received: string;
 }
 
-// @public (undocumented)
-export type JsonValue = string | number | boolean | null | {
-    readonly [key: string]: JsonValue;
-} | readonly JsonValue[];
+export { JsonValue }
 
 // @public
 export type KnowledgeEvent = {
@@ -3446,7 +3440,7 @@ export interface OperatorEventContract {
     // (undocumented)
     readonly description: string;
     // (undocumented)
-    readonly domains?: readonly DaemonRuntimeEventDomain[] | undefined;
+    readonly domains?: readonly RuntimeEventDomain[] | undefined;
     // (undocumented)
     readonly id: string;
     // (undocumented)
@@ -16125,14 +16119,14 @@ export interface RemoteDomainEventsOptions<TDomain extends string = string> {
 }
 
 // @public (undocumented)
-export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2> = DomainEvents<DaemonRuntimeEventDomain, TEvent>;
+export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord> = DomainEvents<RuntimeEventDomain, TEvent>;
 
 // @public (undocumented)
 export interface RemoteRuntimeEventsOptions {
     // (undocumented)
     readonly observer?: TransportObserver | undefined;
     // (undocumented)
-    readonly onError?: ((error: Error, domain: DaemonRuntimeEventDomain) => void) | undefined | undefined;
+    readonly onError?: ((error: Error, domain: RuntimeEventDomain) => void) | undefined | undefined;
 }
 
 // @public
@@ -16274,6 +16268,8 @@ export interface RouteBindingRecordInput {
     readonly sessionPolicy?: AutomationSessionPolicy | undefined;
     // (undocumented)
     readonly surfaceId: string;
+    // Warning: (ae-incompatible-release-tags) The symbol "surfaceKind" is marked as @public, but its signature references "AutomationSurfaceKind" which is marked as @internal
+    //
     // (undocumented)
     readonly surfaceKind: AutomationSurfaceKind;
     // (undocumented)
@@ -16339,7 +16335,7 @@ export type RouteSurfaceKind = (typeof ROUTE_SURFACE_KINDS)[number];
 // @public (undocumented)
 export type RouteTargetKind = (typeof ROUTE_TARGET_KINDS)[number];
 
-// @public
+// @public (undocumented)
 export const RUNTIME_EVENT_DOMAINS: readonly ["session", "turn", "providers", "tools", "tasks", "agents", "workflows", "orchestration", "communication", "planner", "permissions", "plugins", "mcp", "transport", "compaction", "ui", "ops", "forensics", "security", "automation", "routes", "control-plane", "deliveries", "watchers", "surfaces", "knowledge", "workspace"];
 
 // @public (undocumented)
@@ -16523,8 +16519,10 @@ export interface RuntimeEventConnectorOptions {
     readonly reconnect?: StreamReconnectPolicy | undefined;
 }
 
-// @public
-export type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
+// @public (undocumented)
+type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
+export { RuntimeEventDomain as DaemonRuntimeEventDomain }
+export { RuntimeEventDomain }
 
 // @public (undocumented)
 export interface RuntimeEventFeed<TEvent extends EventLike_2 = EventLike_2> {
@@ -16681,7 +16679,7 @@ export const SerializedEventEnvelopeSchema: z.ZodObject<{
 export type SerializedEventEnvelopeShape = z.infer<typeof SerializedEventEnvelopeSchema>;
 
 // @public (undocumented)
-export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord_2 = RuntimeEventRecord_2> = SerializedEventEnvelope<TEvent>;
+export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = RuntimeEventRecord> = SerializedEventEnvelope<TEvent>;
 
 // @public (undocumented)
 interface ServerSentEventHandlers {
@@ -17239,6 +17237,7 @@ export interface TransportPaths {
     readonly controlPlaneMethodsUrl: string;
     // (undocumented)
     readonly controlPlaneUrl: string;
+    readonly controlUrl: string;
     // (undocumented)
     readonly localAuthUrl: string;
     // (undocumented)

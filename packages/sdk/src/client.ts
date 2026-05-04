@@ -240,8 +240,8 @@ export interface GoodVibesRealtimeOptions {
  * });
  */
 export interface GoodVibesRealtime {
-  viaSse(): RemoteRuntimeEvents<RuntimeEventRecord>;
-  viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<RuntimeEventRecord>;
+  viaSse(): RemoteRuntimeEvents<AnyRuntimeEvent>;
+  viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<AnyRuntimeEvent>;
 }
 
 /**
@@ -459,7 +459,7 @@ export function createGoodVibesSdk(
       peer.transport.use(middleware);
     },
     realtime: {
-      viaSse(): RemoteRuntimeEvents<RuntimeEventRecord> {
+      viaSse(): RemoteRuntimeEvents<AnyRuntimeEvent> {
         return createRemoteRuntimeEvents(
           createEventSourceConnector<AnyRuntimeEvent>(baseUrl, tokenResolver, fetchImpl(), {
             reconnect: options.realtime?.sseReconnect,
@@ -471,7 +471,7 @@ export function createGoodVibesSdk(
           },
         );
       },
-      viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<RuntimeEventRecord> {
+      viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<AnyRuntimeEvent> {
         return createRemoteRuntimeEvents(
           createWebSocketConnector<AnyRuntimeEvent>(
             baseUrl,
