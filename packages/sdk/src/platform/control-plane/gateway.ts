@@ -10,6 +10,8 @@ import {
   emitControlPlaneClientDisconnected,
   emitControlPlaneSubscriptionCreated,
   emitControlPlaneSubscriptionDropped,
+  emitStreamSubscriberConnected,
+  emitStreamSubscriberDisconnected,
 } from '../runtime/emitters/index.js';
 import { renderControlPlaneGatewayWebUi } from './gateway-web-ui.js';
 import type {
@@ -689,6 +691,16 @@ export class ControlPlaneGateway {
           routeId: options.routeId,
           send,
         });
+        // COV-05/06: emit STREAM_SUBSCRIBER_CONNECTED when the SSE client is registered.
+        emitStreamSubscriberConnected(this.runtimeBus!, {
+          sessionId: options.sessionId ?? 'control-plane',
+          source: 'control-plane.gateway',
+          traceId,
+        }, {
+          streamId: clientId,
+          subscriberId: clientId,
+          streamType: transport,
+        });
         const heartbeat = setInterval(() => {
           send('heartbeat', { clientId, ts: Date.now() });
         }, 15_000);
@@ -728,6 +740,17 @@ export class ControlPlaneGateway {
               traceId,
             }, {
               clientId,
+              reason: 'stream-closed',
+            });
+            // COV-05/06: emit STREAM_SUBSCRIBER_DISCONNECTED when the SSE client tears down.
+            emitStreamSubscriberDisconnected(this.runtimeBus!, {
+              sessionId: options.sessionId ?? 'control-plane',
+              source: 'control-plane.gateway',
+              traceId,
+            }, {
+              streamId: clientId,
+              subscriberId: clientId,
+              streamType: transport,
               reason: 'stream-closed',
             });
           }
