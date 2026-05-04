@@ -435,7 +435,7 @@ export interface BoundedIntegerOptions {
     readonly min?: number | undefined;
 }
 
-// @public (undocumented)
+// @public
 export interface BrowserGoodVibesSdkOptions extends Omit<GoodVibesSdkOptions, 'baseUrl' | 'fetch' | 'WebSocketImpl'> {
     // (undocumented)
     readonly baseUrl?: string | undefined;
@@ -17583,7 +17583,7 @@ export interface WatcherRegistryLike {
 // @public (undocumented)
 export type WatcherSourceKind = (typeof WATCHER_SOURCE_KINDS)[number];
 
-// @public (undocumented)
+// @public
 export type WebGoodVibesSdkOptions = BrowserGoodVibesSdkOptions;
 
 // @public (undocumented)
