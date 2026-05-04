@@ -109,7 +109,7 @@ async function executeContentQuery(
       for (let i = 0; i < lines.length; i++) {
         if (fileMatches.length >= maxPerFile) break;
         if (totalMatches >= maxTotal) break outer;
-        if (lines[i]!.length > 50_000) continue;
+        if ((lines[i]?.length ?? 0) > 50_000) continue;
 
         if (safeRegExpTest(regex, lines[i]!, { operation: 'find content line' })) {
           const match: ContentMatch = { file, line: i + 1, text: lines[i]! };

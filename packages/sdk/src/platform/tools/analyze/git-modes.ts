@@ -157,16 +157,16 @@ function extractSignaturesFromDiff(diff: string): {
     /^([+-])\s*export\s+(?:(?:async|default|declare)\s+)*(?:function\*?|class|const|let|var|type|interface|enum)\s+(\w+)(.*)/;
 
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i]!.match(exportLinePattern);
+    const m = (lines[i] ?? '').match(exportLinePattern);
     if (!m) continue;
 
-    const marker = m[1]! as '-' | '+';
-    const name = m[2]!;
+    const marker = (m[1] ?? '+') as '-' | '+'; // regex group 1 is always present when m matches
+    const name = m[2] ?? '';
     let rest = m[3];
 
-    if (!rest!.includes('{') && !rest!.includes(';')) {
+    if (!rest?.includes('{') && !rest?.includes(';')) {
       for (let j = i + 1; j < lines.length; j++) {
-        const contLine = lines[j]!;
+        const contLine = lines[j] ?? '';
         if (!contLine.startsWith(marker) && !contLine.startsWith(' ')) break;
         const stripped = contLine.startsWith(marker)
           ? contLine.slice(1)
@@ -176,8 +176,8 @@ function extractSignaturesFromDiff(diff: string): {
       }
     }
 
-    const braceIdx = rest!.indexOf('{');
-    const sig = `${name}${braceIdx >= 0 ? rest!.slice(0, braceIdx).trimEnd() : rest!.replace(/;.*$/, '').trimEnd()}`;
+    const braceIdx = rest?.indexOf('{') ?? -1;
+    const sig = `${name}${braceIdx >= 0 ? (rest ?? '').slice(0, braceIdx).trimEnd() : (rest ?? '').replace(/;.*$/, '').trimEnd()}`;
 
     if (marker === '-') {
       before.set(name, sig);

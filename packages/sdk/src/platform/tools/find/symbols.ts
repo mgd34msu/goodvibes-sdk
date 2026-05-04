@@ -92,12 +92,12 @@ export async function executeSymbolsQuery(
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (symbols.length >= maxResults) break;
-      const line = lines[i]!.trimStart();
+      const line = (lines[i] ?? '').trimStart();
       for (const { kind, regex, exported } of activePatterns) {
         if (query.exported_only && !query.include_private && !exported) continue;
         const match = line.match(regex);
         if (match) {
-          const name = match[1]!;
+          const name = match[1] ?? '';
           if (!name) continue;
           if (!matchesSymbolQuery(name, queryRegex)) continue;
           symbols.push({ name, kind, file, line: i + 1, exported });
@@ -143,7 +143,7 @@ export async function executeSymbolsQuery(
         let j = sym.line - 2;
         if (j >= 0 && fileLines[j]?.trimStart().startsWith('*/')) {
           const docLines: string[] = [];
-          while (j >= 0 && !fileLines[j]!.trimStart().startsWith('/**')) {
+          while (j >= 0 && !(fileLines[j] ?? '').trimStart().startsWith('/**')) {
             docLines.unshift(fileLines[j]!);
             j--;
           }
@@ -153,7 +153,7 @@ export async function executeSymbolsQuery(
         if (jsdoc) entry.jsdoc = jsdoc;
         let container = '';
         for (let k = sym.line - 2; k >= Math.max(0, sym.line - 50); k--) {
-          const cl = fileLines[k]!?.trimStart() ?? '';
+          const cl = fileLines[k]?.trimStart() ?? '';
           if (/^(?:export\s+)?(?:abstract\s+)?class\s+(\w+)/.test(cl)) {
             const m = cl.match(/class\s+(\w+)/);
             if (m) { container = m[1]!; break; }

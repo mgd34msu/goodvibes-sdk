@@ -252,17 +252,17 @@ export function inspectHooks(content: string, file: string): HooksInfo {
     const line = lines[i]!;
     const hm = hookRe.exec(line);
     if (!hm) continue;
-    const hookKind = hm[1]! as 'useEffect' | 'useMemo' | 'useCallback';
+    const hookKind = (hm[1] ?? 'useEffect') as 'useEffect' | 'useMemo' | 'useCallback';
     const ln = i + 1;
     const body = lines.slice(i, Math.min(i + 30, lines.length)).join('\n');
     const dm = inlineDepsRe.exec(body);
-    const deps = dm ? dm[1]!.split(',').map((d) => d.trim()).filter(Boolean) : [];
+    const deps = dm ? (dm[1] ?? '').split(',').map((d) => d.trim()).filter(Boolean) : [];
     const callbackBody = body.slice(0, body.lastIndexOf(']'));
     const usedVarsRe = /\b([a-zA-Z_$][\w$]*)\b/g;
     const usedVars = new Set<string>();
     let vm: RegExpExecArray | null;
     while ((vm = usedVarsRe.exec(callbackBody)) !== null) {
-      if (!skipKeywords.has(vm[1]!) && vm[1]!.length > 1) usedVars.add(vm[1]!);
+      if (vm[1] && !skipKeywords.has(vm[1]) && vm[1].length > 1) usedVars.add(vm[1]);
     }
     const missing = [...usedVars].filter((v) => !deps.includes(v) && /^[a-z]/.test(v)).slice(0, 5);
     if (missing.length) missingDepsCount++;
@@ -474,7 +474,8 @@ export function inspectClientBoundary(content: string, file: string): ClientBoun
   const importRe = /import\s+[\s\S]*?from\s+['"]([^'"]+)['"]/g;
   let im: RegExpExecArray | null;
   while ((im = importRe.exec(content)) !== null) {
-    if (serverOnlyModules.some((mod) => im![1]! === mod || im![1]!.startsWith(mod + '/'))) serverOnlyImports.push(im[1]!);
+    const imGroup = im[1];
+    if (imGroup && serverOnlyModules.some((mod) => imGroup === mod || imGroup.startsWith(mod + '/'))) serverOnlyImports.push(imGroup);
   }
   return { file, directive, importsServerOnly: serverOnlyImports.length > 0, serverOnlyImports };
 }

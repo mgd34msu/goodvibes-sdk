@@ -43,7 +43,7 @@ export interface KnowledgeStoreSnapshot {
 function loadRows<T>(sqlite: SQLiteStore, sql: string, mapRow: (columns: string[], values: unknown[]) => T): T[] {
   const rows = sqlite.exec(sql);
   if (!rows.length) return [];
-  return rows[0]!.values.map((row) => mapRow(rows[0]!.columns, row));
+  return (rows[0]?.values ?? []).map((row) => mapRow(rows[0]?.columns ?? [], row));
 }
 
 export function loadKnowledgeStoreSnapshot(sqlite: SQLiteStore): KnowledgeStoreSnapshot {

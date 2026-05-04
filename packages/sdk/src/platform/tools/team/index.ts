@@ -147,7 +147,7 @@ export function createTeamTool(options?: { readonly surfaceRoot?: string }): Too
         const next: TeamRecord = {
           ...current!,
           members: [
-            ...current!.members.filter((member) => member.id !== input.memberId),
+            ...(current?.members ?? []).filter((member) => member.id !== input.memberId),
             { id: input.memberId, role: input.role, lanes: input.lanes ?? [] },
           ],
           updatedAt: Date.now(),
@@ -161,7 +161,7 @@ export function createTeamTool(options?: { readonly surfaceRoot?: string }): Too
         if (!input.memberId) return { success: false, error: 'remove-member requires memberId.' };
         const next: TeamRecord = {
           ...current!,
-          members: current!.members.filter((member) => member.id !== input.memberId),
+          members: (current?.members ?? []).filter((member) => member.id !== input.memberId),
           updatedAt: Date.now(),
         };
         teams[index] = next;
@@ -171,7 +171,7 @@ export function createTeamTool(options?: { readonly surfaceRoot?: string }): Too
 
       if (input.mode === 'set-lanes') {
         if (!input.memberId) return { success: false, error: 'set-lanes requires memberId.' };
-        const members = current!.members.map((member) => (
+        const members = (current?.members ?? []).map((member) => (
           member.id === input.memberId
             ? { ...member, lanes: input.lanes ?? [] }
             : member

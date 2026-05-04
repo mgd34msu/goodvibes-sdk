@@ -158,7 +158,7 @@ async function parseOtlpBody(
   req: Request,
   kind: OtlpIngestKind,
 ): Promise<JsonRecord | Response> {
-  const contentType = (req.headers.get('content-type') ?? '').toLowerCase().split(';')[0]!.trim();
+  const contentType = ((req.headers.get('content-type') ?? '').toLowerCase().split(';')[0] ?? '').trim();
 
   const acceptsJson = contentType === OTLP_JSON_CONTENT_TYPE;
   const acceptsProtobuf = OTLP_PROTOBUF_CONTENT_TYPES.has(contentType);

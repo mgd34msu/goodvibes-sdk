@@ -219,7 +219,7 @@ export class SqliteVecMemoryIndex {
     const tx = this.db.transaction((entries: readonly MemoryRecord[]) => {
       for (const record of entries) {
         seen.add(record.id);
-        const row = this.db!.query<{ source_hash: string }, [string]>(
+        const row = this.db?.query<{ source_hash: string }, [string]>(
           'SELECT source_hash FROM memory_vector_ids WHERE record_id = ? LIMIT 1',
         ).get(record.id);
         const sourceHash = memoryVectorSourceHash(record);
@@ -227,9 +227,9 @@ export class SqliteVecMemoryIndex {
         this.upsert(record);
       }
 
-      const staleRows = this.db!.query<{ record_id: string }, []>(
+      const staleRows = this.db?.query<{ record_id: string }, []>(
         'SELECT record_id FROM memory_vector_ids',
-      ).all();
+      ).all() ?? [];
       for (const stale of staleRows) {
         if (!seen.has(stale.record_id)) this.delete(stale.record_id);
       }

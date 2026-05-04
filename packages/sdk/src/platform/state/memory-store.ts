@@ -282,8 +282,8 @@ export class MemoryStore {
       [id],
     );
 
-    if (!rows.length || !rows[0]!.values.length) return null;
-    return rowToRecord(rows[0]!.columns, rows[0]!.values[0]!);
+    if (!rows.length || !(rows[0]?.values.length)) return null;
+    return rowToRecord(rows[0]?.columns ?? [], rows[0]?.values[0] ?? []);
   }
 
   /** Search records with an optional filter. */
@@ -345,7 +345,7 @@ export class MemoryStore {
 
     if (!rows.length) return [];
 
-    let records = rows[0]!.values.map(v => rowToRecord(rows[0]!.columns, v));
+    let records = (rows[0]?.values ?? []).map(v => rowToRecord(rows[0]?.columns ?? [], v));
 
     if (filter.minConfidence !== undefined) {
       records = records.filter((record) => record.confidence >= filter.minConfidence!);
@@ -551,8 +551,8 @@ export class MemoryStore {
 
     if (!rows.length) return [];
 
-    return rows[0]!.values.map(v => {
-      const col = rows[0]!.columns;
+    return (rows[0]?.values ?? []).map(v => {
+      const col = rows[0]?.columns ?? [];
       return {
         fromId:    String(v[col.indexOf('from_id')]),
         toId:      String(v[col.indexOf('to_id')]),
@@ -656,7 +656,7 @@ export class MemoryStore {
          FROM memory_records
          ORDER BY updated_at DESC, created_at DESC`,
     );
-    const records = rows.length ? rows[0]!.values.map((value) => rowToRecord(rows[0]!.columns, value)) : [];
+    const records = rows.length ? (rows[0]?.values ?? []).map((value) => rowToRecord(rows[0]?.columns ?? [], value)) : [];
     this.vectorIndex?.sync(records);
     return this.vectorStats();
   }
@@ -671,7 +671,7 @@ export class MemoryStore {
                FROM memory_records
                ORDER BY updated_at DESC, created_at DESC`,
           );
-          const records = rows.length ? rows[0]!.values.map((value) => rowToRecord(rows[0]!.columns, value)) : [];
+          const records = rows.length ? (rows[0]?.values ?? []).map((value) => rowToRecord(rows[0]?.columns ?? [], value)) : [];
           if (this.vectorIndex?.syncAsync) {
             await this.vectorIndex.syncAsync(records, { force: true });
           } else {

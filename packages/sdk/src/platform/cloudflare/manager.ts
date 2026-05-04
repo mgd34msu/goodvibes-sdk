@@ -237,7 +237,7 @@ export class CloudflareControlPlaneManager {
       queues = await tryDiscover('queues', warnings, async () => collectAsync(client.queues.list({ account_id: selectedAccount.id })));
       if (client.kv) kvNamespaces = await tryDiscover('kv-namespaces', warnings, async () => collectAsync(client.kv!.namespaces.list({ account_id: selectedAccount.id })));
       if (client.durableObjects) durableObjectNamespaces = await tryDiscover('durable-object-namespaces', warnings, async () => collectAsync(client.durableObjects!.namespaces.list({ account_id: selectedAccount.id })));
-      if (client.r2) r2Buckets = await tryDiscover('r2-buckets', warnings, async () => (await client.r2!.buckets.list({ account_id: selectedAccount.id })).buckets ?? []);
+      if (client.r2) r2Buckets = await tryDiscover('r2-buckets', warnings, async () => (await client.r2?.buckets.list({ account_id: selectedAccount.id }))?.buckets ?? []);
       if (client.secretsStore) secretsStores = await tryDiscover('secrets-stores', warnings, async () => collectAsync(client.secretsStore!.stores.list({ account_id: selectedAccount.id })));
       if (client.zeroTrust?.tunnels) tunnels = await tryDiscover('zero-trust-tunnels', warnings, async () => collectAsync(client.zeroTrust!.tunnels!.cloudflared.list({ account_id: selectedAccount.id, is_deleted: false })));
       if (client.zeroTrust?.access) accessApplications = await tryDiscover('access-applications', warnings, async () => collectAsync(client.zeroTrust!.access!.applications.list({ account_id: selectedAccount.id })));

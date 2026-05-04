@@ -266,9 +266,9 @@ export function parseDiffStats(statOutput: string): DiffStatFile[] {
   for (const line of statOutput.trim().split('\n')) {
     const m = line.match(/^\s*(.+?)\s+\|\s+(\d+)\s+([+\-]+)?/);
     if (!m) continue;
-    const plusMinus = m[3]! ?? '';
+    const plusMinus = m[3] ?? '';
     files.push({
-      file: m[1]!.trim(),
+      file: (m[1] ?? '').trim(),
       insertions: (plusMinus.match(/\+/g) ?? []).length,
       deletions: (plusMinus.match(/-/g) ?? []).length,
     });

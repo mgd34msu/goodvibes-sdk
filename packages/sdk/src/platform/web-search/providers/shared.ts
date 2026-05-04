@@ -117,7 +117,7 @@ export function hasConfiguredCredential(
   envKeys: readonly string[] | undefined,
   serviceName?: string,
 ): boolean {
-  const envConfigured = (envKeys ?? []).some((key) => typeof env[key] === 'string' && env[key]!.trim().length > 0);
+  const envConfigured = (envKeys ?? []).some((key) => typeof env[key] === 'string' && (env[key] as string).trim().length > 0);
   if (envConfigured) return true;
   return Boolean(serviceName && serviceRegistry.get(serviceName));
 }

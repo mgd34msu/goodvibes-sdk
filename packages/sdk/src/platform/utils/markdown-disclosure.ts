@@ -66,7 +66,7 @@ function parseSimpleYamlFrontmatter(frontmatter: string): MarkdownFrontmatter {
 
     const listItem = line.match(/^\s+-\s+(.+)$/);
     if (collectingList && listItem) {
-      listBuffer.push(stripWrappingQuotes(listItem[1]!.trim()));
+      listBuffer.push(stripWrappingQuotes((listItem[1] ?? '').trim()));
       continue;
     }
 
@@ -75,8 +75,8 @@ function parseSimpleYamlFrontmatter(frontmatter: string): MarkdownFrontmatter {
 
     if (collectingList) flushList();
 
-    currentKey = kv[1]!;
-    const rawValue = kv[2]!.trim();
+    currentKey = kv[1] ?? '';
+    const rawValue = (kv[2] ?? '').trim();
 
     if (!rawValue) {
       collectingList = true;
@@ -127,7 +127,7 @@ export function extractMarkdownSections(body: string): string[] {
   const headingRegex = /^\s{0,3}(#{1,6})\s+(.+?)\s*$/gm;
   let match: RegExpExecArray | null;
   while ((match = headingRegex.exec(body)) !== null) {
-    sections.push(match[2]!.trim());
+    sections.push((match[2] ?? '').trim());
   }
   return sections;
 }

@@ -164,7 +164,7 @@ function walkChromiumBookmarkNode(
     return;
   }
   if (node.type === 'folder') {
-    const nextFolders = cleanOptionalText(node.name) ? [...folders, node.name!.trim()] : [...folders];
+    const nextFolders = cleanOptionalText(node.name) ? [...folders, (node.name ?? '').trim()] : [...folders];
     for (const child of node.children ?? []) {
       walkChromiumBookmarkNode(profile, child, nextFolders, out, limit);
       if (out.length >= limit) return;
@@ -396,7 +396,7 @@ function walkWebKitBookmarkNode(
     return;
   }
   if (node.WebBookmarkType === 'WebBookmarkTypeList') {
-    const next = cleanOptionalText(node.Title) ? `${folderPath}/${node.Title!.trim()}` : folderPath;
+    const next = cleanOptionalText(node.Title) ? `${folderPath}/${(node.Title ?? '').trim()}` : folderPath;
     for (const child of node.Children ?? []) {
       walkWebKitBookmarkNode(profile, child, next, out, limit);
       if (out.length >= limit) return;
@@ -408,7 +408,7 @@ async function readWebKitBookmarks(profile: BrowserKnowledgeProfile, options: Br
   if (!profile.bookmarksPath || profile.browser === 'epiphany') return [];
   const [root] = bplistParser.parseFileSync<WebKitBookmarkNode>(profile.bookmarksPath);
   const out: BrowserBookmarkEntry[] = [];
-  for (const child of root!.Children ?? []) {
+  for (const child of root?.Children ?? []) {
     walkWebKitBookmarkNode(profile, child, '', out, normalizeLimit(options.limit));
     if (out.length >= normalizeLimit(options.limit)) break;
   }
