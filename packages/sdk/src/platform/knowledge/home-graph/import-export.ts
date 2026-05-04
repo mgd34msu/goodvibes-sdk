@@ -34,25 +34,27 @@ export async function importHomeGraphSpace(
   let edges = 0;
   let issues = 0;
   let extractions = 0;
-  for (const source of input.data.sources ?? []) {
-    await store.upsertSource({ ...source, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, source.metadata) });
-    sources += 1;
-  }
-  for (const node of input.data.nodes ?? []) {
-    await store.upsertNode({ ...node, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, node.metadata) });
-    nodes += 1;
-  }
-  for (const edge of input.data.edges ?? []) {
-    await store.upsertEdge({ ...edge, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, edge.metadata) });
-    edges += 1;
-  }
-  for (const issue of input.data.issues ?? []) {
-    await store.upsertIssue({ ...issue, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, issue.metadata) });
-    issues += 1;
-  }
-  for (const extraction of input.data.extractions ?? []) {
-    await store.upsertExtraction({ ...extraction, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, extraction.metadata) });
-    extractions += 1;
-  }
+  await store.batch(async () => {
+    for (const source of input.data.sources ?? []) {
+      await store.upsertSource({ ...source, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, source.metadata) });
+      sources += 1;
+    }
+    for (const node of input.data.nodes ?? []) {
+      await store.upsertNode({ ...node, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, node.metadata) });
+      nodes += 1;
+    }
+    for (const edge of input.data.edges ?? []) {
+      await store.upsertEdge({ ...edge, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, edge.metadata) });
+      edges += 1;
+    }
+    for (const issue of input.data.issues ?? []) {
+      await store.upsertIssue({ ...issue, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, issue.metadata) });
+      issues += 1;
+    }
+    for (const extraction of input.data.extractions ?? []) {
+      await store.upsertExtraction({ ...extraction, metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, extraction.metadata) });
+      extractions += 1;
+    }
+  });
   return { ok: true, spaceId: input.spaceId, imported: { sources, nodes, edges, issues, extractions } };
 }

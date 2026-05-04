@@ -130,34 +130,36 @@ export async function linkRepairSources(
   const linkedObjectIds = repairSubjectIdsForGap(store, spaceId, gap, objectProfiles);
   for (const sourceId of sourceIds) {
     if (!store.getSource(sourceId)) continue;
-    await store.upsertEdge({
-      fromKind: 'source',
-      fromId: sourceId,
-      toKind: 'node',
-      toId: gap.id,
-      relation: 'repairs_gap',
-      weight: 0.8,
-      metadata: semanticMetadata(spaceId, {
-        query,
-        repairedAt: Date.now(),
-      }),
-    });
-    linked += 1;
-    for (const nodeId of linkedObjectIds) {
+    await store.batch(async () => {
       await store.upsertEdge({
         fromKind: 'source',
         fromId: sourceId,
         toKind: 'node',
-        toId: nodeId,
-        relation: 'source_for',
-        weight: 0.78,
+        toId: gap.id,
+        relation: 'repairs_gap',
+        weight: 0.8,
         metadata: semanticMetadata(spaceId, {
           query,
-          linkedBy: 'semantic-gap-repair',
           repairedAt: Date.now(),
         }),
       });
-    }
+      for (const nodeId of linkedObjectIds) {
+        await store.upsertEdge({
+          fromKind: 'source',
+          fromId: sourceId,
+          toKind: 'node',
+          toId: nodeId,
+          relation: 'source_for',
+          weight: 0.78,
+          metadata: semanticMetadata(spaceId, {
+            query,
+            linkedBy: 'semantic-gap-repair',
+            repairedAt: Date.now(),
+          }),
+        });
+      }
+    });
+    linked += 1;
   }
   return linked;
 }

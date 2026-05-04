@@ -98,61 +98,63 @@ async function upsertIntrinsicFeatureGap(
 
   const title = `What are the complete features and specifications for ${subjectTitle(subject)}?`;
   const primarySource = sources[0];
-  const gap = await store.upsertNode({
-    id,
-    kind: 'knowledge_gap',
-    slug: semanticSlug(`${spaceId}-intrinsic-gap-${subject.title}`),
-    title,
-    summary: `The current source-backed facts for ${subjectTitle(subject)} do not yet cover the full feature/specification profile.`,
-    aliases: [subject.title, ...subject.aliases].slice(0, 8),
-    confidence: 75,
-    ...(primarySource ? { sourceId: primarySource.id } : {}),
-    metadata: semanticMetadata(spaceId, {
-      semanticKind: 'gap',
-      gapKind: 'intrinsic_features',
-      subject: subject.title,
-      sourceIds: sources.map((source) => source.id),
-      linkedObjectIds: [subject.id],
-      repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
-      ...((readStringArray(existing?.metadata.acceptedSourceIds).length > 0) ? { acceptedSourceIds: readStringArray(existing?.metadata.acceptedSourceIds) } : {}),
-      ...(typeof existing?.metadata.promotedFactCount === 'number' ? { promotedFactCount: existing.metadata.promotedFactCount } : {}),
-      ...(typeof existing?.metadata.nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt: existing.metadata.nextRepairAttemptAt } : {}),
-      createdBy: 'semantic-self-improvement',
-    }),
-  });
-  for (const source of sources) {
+  return store.batch(async () => {
+    const gap = await store.upsertNode({
+      id,
+      kind: 'knowledge_gap',
+      slug: semanticSlug(`${spaceId}-intrinsic-gap-${subject.title}`),
+      title,
+      summary: `The current source-backed facts for ${subjectTitle(subject)} do not yet cover the full feature/specification profile.`,
+      aliases: [subject.title, ...subject.aliases].slice(0, 8),
+      confidence: 75,
+      ...(primarySource ? { sourceId: primarySource.id } : {}),
+      metadata: semanticMetadata(spaceId, {
+        semanticKind: 'gap',
+        gapKind: 'intrinsic_features',
+        subject: subject.title,
+        sourceIds: sources.map((source) => source.id),
+        linkedObjectIds: [subject.id],
+        repairStatus: readString(existing?.metadata.repairStatus) ?? 'open',
+        ...((readStringArray(existing?.metadata.acceptedSourceIds).length > 0) ? { acceptedSourceIds: readStringArray(existing?.metadata.acceptedSourceIds) } : {}),
+        ...(typeof existing?.metadata.promotedFactCount === 'number' ? { promotedFactCount: existing.metadata.promotedFactCount } : {}),
+        ...(typeof existing?.metadata.nextRepairAttemptAt === 'number' ? { nextRepairAttemptAt: existing.metadata.nextRepairAttemptAt } : {}),
+        createdBy: 'semantic-self-improvement',
+      }),
+    });
+    for (const source of sources) {
+      await store.upsertEdge({
+        fromKind: 'source',
+        fromId: source.id,
+        toKind: 'node',
+        toId: gap.id,
+        relation: 'has_gap',
+        metadata: semanticMetadata(spaceId, { intrinsic: true }),
+      });
+    }
     await store.upsertEdge({
-      fromKind: 'source',
-      fromId: source.id,
+      fromKind: 'node',
+      fromId: subject.id,
       toKind: 'node',
       toId: gap.id,
       relation: 'has_gap',
       metadata: semanticMetadata(spaceId, { intrinsic: true }),
     });
-  }
-  await store.upsertEdge({
-    fromKind: 'node',
-    fromId: subject.id,
-    toKind: 'node',
-    toId: gap.id,
-    relation: 'has_gap',
-    metadata: semanticMetadata(spaceId, { intrinsic: true }),
+    await store.upsertIssue({
+      id: `sem-intrinsic-gap-issue-${semanticHash(spaceId, subject.id, 'features-specifications')}`,
+      severity: 'info',
+      code: 'knowledge.intrinsic_gap',
+      message: title,
+      status: 'open',
+      ...(primarySource ? { sourceId: primarySource.id } : {}),
+      nodeId: gap.id,
+      metadata: semanticMetadata(spaceId, {
+        namespace: `knowledge:${spaceId}:semantic`,
+        subjectId: subject.id,
+        gapKind: 'intrinsic_features',
+      }),
+    });
+    return !existing;
   });
-  await store.upsertIssue({
-    id: `sem-intrinsic-gap-issue-${semanticHash(spaceId, subject.id, 'features-specifications')}`,
-    severity: 'info',
-    code: 'knowledge.intrinsic_gap',
-    message: title,
-    status: 'open',
-    ...(primarySource ? { sourceId: primarySource.id } : {}),
-    nodeId: gap.id,
-    metadata: semanticMetadata(spaceId, {
-      namespace: `knowledge:${spaceId}:semantic`,
-      subjectId: subject.id,
-      gapKind: 'intrinsic_features',
-    }),
-  });
-  return !existing;
 }
 
 function shouldCreateIntrinsicFeatureGap(

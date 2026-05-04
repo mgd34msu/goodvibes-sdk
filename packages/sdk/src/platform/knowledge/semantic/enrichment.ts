@@ -468,24 +468,26 @@ async function markPreviousSemanticNodesStale(
     && node.status !== 'stale'
     && !activeIds.has(node.id)
   ));
-  for (const node of semanticNodes) {
-    await store.upsertNode({
-      id: node.id,
-      kind: node.kind,
-      slug: node.slug,
-      title: node.title,
-      summary: node.summary,
-      aliases: node.aliases,
-      status: 'stale',
-      confidence: node.confidence,
-      ...(node.sourceId ? { sourceId: node.sourceId } : {}),
-      metadata: {
-        ...node.metadata,
-        supersededAt,
-        supersededInSpaceId: spaceId,
-      },
-    });
-  }
+  await store.batch(async () => {
+    for (const node of semanticNodes) {
+      await store.upsertNode({
+        id: node.id,
+        kind: node.kind,
+        slug: node.slug,
+        title: node.title,
+        summary: node.summary,
+        aliases: node.aliases,
+        status: 'stale',
+        confidence: node.confidence,
+        ...(node.sourceId ? { sourceId: node.sourceId } : {}),
+        metadata: {
+          ...node.metadata,
+          supersededAt,
+          supersededInSpaceId: spaceId,
+        },
+      });
+    }
+  });
 }
 
 async function persistWikiPage(
