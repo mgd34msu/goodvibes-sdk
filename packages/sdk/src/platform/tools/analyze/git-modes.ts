@@ -1,4 +1,7 @@
 import { existsSync } from 'node:fs';
+
+// 1.2 s — warm `git status` cache response budget; keeps semantic-diff LLM probe non-blocking
+const GIT_PROBE_TIMEOUT_MS = 1200;
 import { join, relative } from 'node:path';
 import { GitService } from '../../git/service.js';
 import type { ToolLLM } from '../../config/tool-llm.js';
@@ -98,7 +101,7 @@ async function trySemanticDiffLlm(
     return await Promise.race([
       toolLLM.chat(prompt, { maxTokens: 512 }),
       new Promise<string>((resolve) => {
-        const timer = setTimeout(() => resolve(''), 1200);
+        const timer = setTimeout(() => resolve(''), GIT_PROBE_TIMEOUT_MS);
         timer.unref?.();
       }),
     ]);

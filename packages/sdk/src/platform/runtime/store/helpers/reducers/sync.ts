@@ -1,7 +1,4 @@
-import type { CommunicationEvent } from '../../../../../events/communication.js';
-import type { PluginEvent } from '../../../../../events/plugins.js';
-import type { McpEvent } from '../../../../../events/mcp.js';
-import type { TransportEvent } from '../../../../../events/transport.js';
+import type { CommunicationEvent, PluginEvent, McpEvent, TransportEvent } from '../events.js';
 import type { IntegrationDomainState, IntegrationRecord, IntegrationStatus } from '../../domains/integrations.js';
 import type { AutomationDomainState } from '../../domains/automation.js';
 import type { RoutesDomainState } from '../../domains/routes.js';
