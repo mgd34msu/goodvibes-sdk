@@ -45,7 +45,7 @@ The `AdaptivePlanner` selects an execution strategy each turn based on risk, lat
 | `auto` | Planner evaluates all strategies and picks the highest scorer |
 
 ```ts
-import { AdaptivePlanner } from '@pellux/goodvibes-sdk/platform/core/adaptive-planner';
+import { AdaptivePlanner } from '@pellux/goodvibes-sdk/platform/core';
 
 const planner = new AdaptivePlanner();
 
@@ -76,7 +76,7 @@ planner.clearOverride();      // return to automatic selection
 `ConsecutiveErrorBreaker` guards against runaway error loops. It tracks consecutive all-failed turns and returns graduated signals:
 
 ```ts
-import { ConsecutiveErrorBreaker } from '@pellux/goodvibes-sdk/platform/core/circuit-breaker';
+import { ConsecutiveErrorBreaker } from '@pellux/goodvibes-sdk/platform/core';
 
 const breaker = new ConsecutiveErrorBreaker();
 
@@ -186,7 +186,7 @@ Compaction collapses conversation history into a structured return-context docum
 **Automatic compaction** fires when token usage crosses the buffer threshold:
 
 ```ts
-import { checkAndCompact } from '@pellux/goodvibes-sdk/platform/core/context-compaction';
+import { checkAndCompact } from '@pellux/goodvibes-sdk/platform/core';
 
 const result = await checkAndCompact(
   { currentTokens, contextWindow, isCompacting: false },
@@ -204,7 +204,7 @@ if (result) {
 **Manual compaction** bypasses the threshold check:
 
 ```ts
-import { compactMessages } from '@pellux/goodvibes-sdk/platform/core/context-compaction';
+import { compactMessages } from '@pellux/goodvibes-sdk/platform/core';
 
 const result = await compactMessages(ctx, providerRegistry);
 ```
@@ -245,7 +245,7 @@ const ctx: CompactionContext = {
 `estimateConversationTokens` scans the current message list and uses a 4-chars-per-token heuristic. It is fast and non-blocking, designed to be called every turn.
 
 ```ts
-import { estimateConversationTokens } from '@pellux/goodvibes-sdk/platform/core/context-compaction';
+import { estimateConversationTokens } from '@pellux/goodvibes-sdk/platform/core';
 
 const estimate = estimateConversationTokens(messages); // number
 ```
@@ -308,7 +308,7 @@ import {
   selectSystemHealth,
   selectRunningTasks,
   selectProviderHealth,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/selectors';
+} from '@pellux/goodvibes-sdk/platform/runtime/state';
 
 // Read a single domain
 const session = selectSession(state);
@@ -329,7 +329,7 @@ Health domains tracked by `selectSystemHealth`: `providerHealth`, `mcp`, `daemon
 Use read models for derived UI state rather than subscribing to raw domain state. Read models are pre-computed projections that compose multiple selectors and expose stable surface contracts:
 
 ```ts
-import { createObservabilityReadModels } from '@pellux/goodvibes-sdk/platform/runtime';
+import { createObservabilityReadModels } from '@pellux/goodvibes-sdk/platform/runtime/ui';
 
 const models = createObservabilityReadModels(runtimeServices);
 // models.system   — system-level health and status
@@ -349,7 +349,7 @@ The `ComponentHealthMonitor` enforces per-component resource contracts at render
 **Registration and render gating:**
 
 ```ts
-import { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/perf/component-health-monitor';
+import { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/observability';
 
 const monitor = new ComponentHealthMonitor();
 

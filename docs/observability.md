@@ -9,7 +9,7 @@ This guide covers the SDK's observability stack: structured logging, runtime eve
 The SDK ships a persistent, buffered activity logger that writes structured entries to `.goodvibes/logs/activity.md`. It is the primary debug trail for production diagnosis.
 
 ```ts
-import { configureActivityLogger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { configureActivityLogger } from '@pellux/goodvibes-sdk/platform/utils';
 
 // Call once at startup with the log directory path
 configureActivityLogger('/home/user/.goodvibes/logs');
@@ -18,7 +18,7 @@ configureActivityLogger('/home/user/.goodvibes/logs');
 The logger is a singleton (`logger`) used throughout the platform. It exposes four levels:
 
 ```ts
-import { logger } from '@pellux/goodvibes-sdk/platform/utils/logger';
+import { logger } from '@pellux/goodvibes-sdk/platform/utils';
 
 logger.info('session started', { sessionId });
 logger.warn('retry triggered', { attempt, delayMs });
@@ -216,7 +216,7 @@ interface RuntimeEventFeeds<TDomain, TEvent> {
 The `telemetry` store domain accumulates session-level metrics, correlation IDs, and a recent-event ring buffer. Access it via the selector:
 
 ```ts
-import { selectTelemetry } from '@pellux/goodvibes-sdk/platform/runtime/store/selectors';
+import { selectTelemetry } from '@pellux/goodvibes-sdk/platform/runtime/state';
 
 const telemetry = selectTelemetry(state);
 
@@ -305,7 +305,7 @@ import {
   selectSystemHealth,
   selectDomainHealth,
   selectProviderHealth,
-} from '@pellux/goodvibes-sdk/platform/runtime/store/selectors';
+} from '@pellux/goodvibes-sdk/platform/runtime/state';
 
 // Aggregate across all health domains
 const systemHealth = selectSystemHealth(state);
@@ -437,7 +437,7 @@ interface FailureReport {
 `ForensicsRegistry` stores and indexes failure reports. It holds at most 100 reports by default (configurable). Oldest reports are evicted when the limit is reached.
 
 ```ts
-import { ForensicsRegistry } from '@pellux/goodvibes-sdk/platform/runtime/forensics/registry';
+import { ForensicsRegistry } from '@pellux/goodvibes-sdk/platform/runtime/observability';
 
 const registry = new ForensicsRegistry(200); // custom limit
 
@@ -510,9 +510,12 @@ for (const link of report.jumpLinks) {
 `ForensicsDataPanel` bridges `ForensicsRegistry` into the diagnostics panel subscription model:
 
 ```ts
-import { ForensicsDataPanel } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics/panels/forensics';
+import { createDiagnosticsProvider } from '@pellux/goodvibes-sdk/platform/runtime/observability';
 
-const panel = new ForensicsDataPanel(registry);
+// createDiagnosticsProvider assembles all panels from runtimeServices;
+// the forensics panel is available as diag.forensics
+const diag = createDiagnosticsProvider(runtimeServices);
+const panel = diag.forensics;
 
 const all = panel.getAll();               // capped at bufferLimit
 const latest = panel.latest();            // most recent report
@@ -554,7 +557,7 @@ All panel providers follow the same pattern: construct with data sources, call `
 Provider health is tracked in the `providerHealth` store domain. Read it via selector:
 
 ```ts
-import { selectProviderHealth } from '@pellux/goodvibes-sdk/platform/runtime/store/selectors';
+import { selectProviderHealth } from '@pellux/goodvibes-sdk/platform/runtime/state';
 
 const ph = selectProviderHealth(state);
 // ph.status: provider health status
@@ -564,7 +567,7 @@ const ph = selectProviderHealth(state);
 ### Accessing Diagnostics
 
 ```ts
-import { createDiagnosticsProvider } from '@pellux/goodvibes-sdk/platform/runtime/diagnostics';
+import { createDiagnosticsProvider } from '@pellux/goodvibes-sdk/platform/runtime/observability';
 
 const diag = createDiagnosticsProvider(runtimeServices);
 
