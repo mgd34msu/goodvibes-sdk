@@ -5,7 +5,7 @@
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
-import type { UIEvent } from '../../../events/ui.js';
+import type { GoodVibesUIEvent as UIEvent } from '../../../events/ui.js';
 import type { EmitterContext } from './index.js';
 
 function uiEvent<T extends UIEvent['type']>(

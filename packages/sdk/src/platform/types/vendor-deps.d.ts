@@ -131,8 +131,17 @@ declare module 'simple-git' {
     detached: boolean;
     isClean(): boolean;
   }
+  export interface CommitResult {
+    commit: string;
+    summary: Record<string, unknown>;
+  }
   export interface SimpleGit {
     status(): Promise<StatusResult>;
+    commit(
+      message: string,
+      files: undefined,
+      options: string[],
+    ): Promise<CommitResult>;
     log(options?: Record<string, unknown>): Promise<{
       all: ReadonlyArray<{
         hash: string;

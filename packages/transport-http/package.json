@@ -81,6 +81,7 @@
     "transport"
   ],
   "dependencies": {
+    "@pellux/goodvibes-contracts": "workspace:*",
     "@pellux/goodvibes-errors": "workspace:*",
     "@pellux/goodvibes-transport-core": "workspace:*",
     "zod": "^4.3.6"
