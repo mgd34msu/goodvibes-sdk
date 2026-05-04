@@ -189,14 +189,14 @@ async function buildTarballSpecs() {
 
 if (REGISTRY_MODE) {
   const specs = buildRegistrySpecs();
-  installWithNpm(specs);
-  installWithBun(specs);
+  await installWithNpm(specs);
+  await installWithBun(specs);
   console.log('registry install smoke passed');
 } else {
   const { tempRoot, specs } = await buildTarballSpecs();
   const packDir = specs.length > 0 ? resolve(specs[0], '..') : null;
   try {
-    installWithNpm(specs);
+    await installWithNpm(specs);
     console.log('tarball install smoke passed');
   } finally {
     cleanupStage(tempRoot);

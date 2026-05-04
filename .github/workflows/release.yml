@@ -46,6 +46,13 @@ jobs:
       - name: Verify git tag matches package.json version
         run: bun scripts/verify-release-tag-version.ts
 
+  # Note: each release job runs its own `bun install --frozen-lockfile` (~30 s each)
+  # rather than using the .github/actions/setup composite action. The install is
+  # repeated across generate-sbom, validate-release, publish-npm, and
+  # publish-github-packages to keep each job self-contained (the release pipeline
+  # does not use caching to guarantee a pristine install before publish).
+  # Future improvement: migrate to .github/actions/setup with cache + install
+  # consistency to eliminate the 3-4x duplicated installs.
   generate-sbom:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -226,7 +233,9 @@ jobs:
     # artifact — the SBOM must attach whenever the package is published.
     if: always() && github.event_name == 'push' && needs.publish-npm.result == 'success' && needs.generate-sbom.result == 'success'
     needs: [publish-npm, publish-github-packages, generate-sbom]
-    runs-on: ubuntu-latest
+    # Pinned to ubuntu-24.04 (not ubuntu-latest) to prevent BSD awk semantics from
+    # silently breaking the changelog extraction step if the runner image changes.
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

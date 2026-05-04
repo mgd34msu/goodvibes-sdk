@@ -21,6 +21,13 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "google-auth-library"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Vendored packages (file:vendor/*): Dependabot cannot propose semver bumps
+      # for file: overrides, but these entries document intent and prevent any future
+      # npm-registry resolution from silently replacing the vendored copy.
+      - dependency-name: "bash-language-server"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "uuid"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
     groups:
       production-patches:
         dependency-type: production
@@ -37,6 +44,7 @@ updates:
   - package-ecosystem: "github-actions"
     # github-actions updates: 2 open PRs because they require triage and SHA re-pinning;
     # lower limit keeps the review queue manageable (vs 5 for npm patches).
+    # Note: npm block above uses 5 — different cadence and triage cost than github-actions.
     directory: "/"
     schedule:
       interval: "weekly"

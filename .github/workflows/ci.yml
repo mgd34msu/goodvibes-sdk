@@ -125,6 +125,9 @@ jobs:
           - workers
           - workers-wrangler
         include:
+          # Matrix policy: single Node version (22) per run. Add a second
+          # `include` row targeting Node 24 LTS once it is released to expand
+          # the compatibility surface without multiplying CI time unnecessarily.
           - platform: bun
             node-version: "22"
             test-cmd: bun run build && bun run test

@@ -8,5 +8,10 @@
   "private": true,
   "engines": {
     "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgd34msu/goodvibes-sdk.git",
+    "directory": "vendor/uuid-cjs"
   }
 }

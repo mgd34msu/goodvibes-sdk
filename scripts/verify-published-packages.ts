@@ -15,21 +15,21 @@ if (!import.meta.main) {
 
 const version = process.argv[2] || getRootVersion();
 const registry = getPublishRegistryOverride() || 'https://registry.npmjs.org';
-const _rawAttempts = process.env.GOODVIBES_VERIFY_ATTEMPTS || '48';
-const _rawDelay = process.env.GOODVIBES_VERIFY_DELAY_MS || '5000';
-if (!/^\d+$/.test(_rawAttempts.trim())) {
-  throw new Error(`GOODVIBES_VERIFY_ATTEMPTS must be a positive integer, got: ${_rawAttempts}`);
+const rawAttempts = process.env.GOODVIBES_VERIFY_ATTEMPTS || '48';
+const rawDelay = process.env.GOODVIBES_VERIFY_DELAY_MS || '5000';
+if (!/^\d+$/.test(rawAttempts.trim())) {
+  throw new Error(`GOODVIBES_VERIFY_ATTEMPTS must be a positive integer, got: ${rawAttempts}`);
 }
-if (!/^\d+$/.test(_rawDelay.trim())) {
-  throw new Error(`GOODVIBES_VERIFY_DELAY_MS must be a positive integer, got: ${_rawDelay}`);
+if (!/^\d+$/.test(rawDelay.trim())) {
+  throw new Error(`GOODVIBES_VERIFY_DELAY_MS must be a positive integer, got: ${rawDelay}`);
 }
-const MAX_ATTEMPTS = Number.parseInt(_rawAttempts, 10);
-const RETRY_DELAY_MS = Number.parseInt(_rawDelay, 10);
+const MAX_ATTEMPTS = Number.parseInt(rawAttempts, 10);
+const RETRY_DELAY_MS = Number.parseInt(rawDelay, 10);
 if (!Number.isInteger(MAX_ATTEMPTS) || MAX_ATTEMPTS <= 0) {
-  throw new Error(`GOODVIBES_VERIFY_ATTEMPTS must be a positive integer, got: ${_rawAttempts}`);
+  throw new Error(`GOODVIBES_VERIFY_ATTEMPTS must be a positive integer, got: ${rawAttempts}`);
 }
 if (!Number.isInteger(RETRY_DELAY_MS) || RETRY_DELAY_MS <= 0) {
-  throw new Error(`GOODVIBES_VERIFY_DELAY_MS must be a positive integer, got: ${_rawDelay}`);
+  throw new Error(`GOODVIBES_VERIFY_DELAY_MS must be a positive integer, got: ${rawDelay}`);
 }
 
 function packageNameForDir(dir: string): string {

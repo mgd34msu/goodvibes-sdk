@@ -75,6 +75,10 @@ function isStale(): boolean {
   return newestMtime(srcDir) > distMtime;
 }
 
+// Note: runBuild() uses execFileSync directly rather than the run() helper from
+// release-shared.ts because bundle-budget.ts is a standalone script that must
+// not import release pipeline code. A shared lightweight exec helper could be
+// extracted to scripts/_runtime.ts in a future cleanup pass.
 function runBuild(): void {
   console.log('Running bun run build …');
   execFileSync('bun', ['run', 'build'], {
