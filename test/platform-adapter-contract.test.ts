@@ -17,6 +17,7 @@
  * TypeScript transpilation — no build step required.
  */
 
+import { createHmac } from 'node:crypto';
 import { describe, expect, test } from 'bun:test';
 import {
   constantTimeEquals,
@@ -135,7 +136,6 @@ describe('verifySha256HmacSignature', () => {
 
   function sign(b: string, s: string, prefix = 'sha256='): string {
     // Reproduce the HMAC inline so tests do not depend on each other.
-    const { createHmac } = require('node:crypto');
     return `${prefix}${createHmac('sha256', s).update(b).digest('hex')}`;
   }
 
@@ -266,51 +266,23 @@ describe('constantTimeEquals', () => {
 describe('handleNtfySurfacePayload — delivery echo', () => {
   test('acknowledges a GoodVibes self-echo without queuing', async () => {
     const ctx = makePassingContext();
-    // A delivery echo carries the GOODVIBES_NTFY_OUTBOUND_TAG field
-    const echoBody = {
+    // isGoodVibesNtfyDeliveryEcho checks for headers['X-Goodvibes-Origin'] === 'goodvibes-sdk'
+    // or tags.includes('goodvibes-sdk-outbound'). Use the header path to stay
+    // independent of the outbound-tag constant value.
+    const echoMessage: Record<string, unknown> = {
+      event: 'message',
       topic: 'goodvibes',
-      message: 'test',
-      tags: ['goodvibes-delivery-echo'],
+      message: 'echo-test',
+      headers: { 'X-Goodvibes-Origin': 'goodvibes-sdk' },
     };
-    // isGoodVibesNtfyDeliveryEcho matches on the tag; pass a body that the
-    // integration identifies as a self-delivery-echo.
-    const body = {
-      topic: 'goodvibes',
-      message: 'test',
-      // The real tag constant from the integration:
-      tags: ['gv-echo'],
-    };
-    // Use the actual constant from the module to stay in sync.
-    const { isGoodVibesNtfyDeliveryEcho } = await import(
-      '../packages/sdk/src/platform/integrations/ntfy.js'
-    );
-    // Build a body that isGoodVibesNtfyDeliveryEcho returns true for
-    const trueEchoBody = buildEchoBody();
-    if (isGoodVibesNtfyDeliveryEcho(trueEchoBody)) {
-      const res = await handleNtfySurfacePayload(trueEchoBody, ctx);
-      expect(res.status).toBe(200);
-      const json = await res.json() as Record<string, unknown>;
-      expect(json.acknowledged).toBe(true);
-      expect(json.ignored).toBe('goodvibes-self-echo');
-    } else {
-      // If we cannot construct a valid echo body, skip with a pass to avoid
-      // brittle dependence on the echo tag constant.
-      expect(true).toBe(true);
-    }
+    const res = await handleNtfySurfacePayload(echoMessage, ctx);
+    expect(res.status).toBe(200);
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.acknowledged).toBe(true);
+    expect(json.ignored).toBe('goodvibes-self-echo');
   });
 });
 
-function buildEchoBody(): Record<string, unknown> {
-  // The delivery echo check in ntfy/index.ts delegates to isGoodVibesNtfyDeliveryEcho.
-  // That function checks for a specific origin header tag. We replicate the
-  // exact shape it expects so the test stays aligned with the implementation.
-  return {
-    topic: 'goodvibes',
-    message: 'echo-test',
-    // The real GOODVIBES_NTFY_ORIGIN value is used as the origin field
-    origin: 'goodvibes',
-  };
-}
 
 // ---------------------------------------------------------------------------
 // handleNtfySurfacePayload — missing topic guard
