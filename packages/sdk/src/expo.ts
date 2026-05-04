@@ -4,13 +4,16 @@ import {
   type ReactNativeGoodVibesSdkOptions,
 } from './react-native.js';
 
-export interface ExpoGoodVibesSdkOptions extends ReactNativeGoodVibesSdkOptions {}
+// ExpoGoodVibesSdkOptions is intentionally identical to ReactNativeGoodVibesSdkOptions.
+// A type alias avoids the empty-interface lint warning while preserving a
+// distinct public name in the Expo entrypoint.
+export type ExpoGoodVibesSdkOptions = ReactNativeGoodVibesSdkOptions;
+
+export { forSession } from './transport-realtime.js';
 
 /**
  * Create a GoodVibes SDK instance from the Expo-specific entrypoint.
  */
-export { forSession } from './transport-realtime.js';
-
 export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactNativeGoodVibesSdk {
   return createReactNativeGoodVibesSdk(options);
 }

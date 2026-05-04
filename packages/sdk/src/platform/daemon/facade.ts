@@ -359,11 +359,16 @@ export class DaemonServer {
       // daemon restarts. Must run after providers are configured.
       await this.companionChatManager.init();
       if (this.replyPoller === null) {
+        // Poll every 2 s for surface replies that have resolved asynchronously.
+        // The interval is intentionally short to keep companion response latency
+        // below a perceptible threshold while still batching concurrent replies.
         this.replyPoller = setInterval(() => {
           void this.pollPendingSurfaceReplies().catch((error: unknown) => {
             logger.warn('DaemonServer: surface reply poll failed', { error: summarizeError(error) });
           });
         }, 2_000);
+        // unref() prevents this timer from keeping the Node.js/Bun event loop
+        // alive if all other async work has completed — same pattern as animInterval.
         (this.replyPoller as unknown as { unref?: () => void }).unref?.();
       }
       this.surfaceRegistry.syncConfiguredSurfaces();

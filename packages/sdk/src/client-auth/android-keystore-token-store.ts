@@ -207,6 +207,10 @@ export function createAndroidKeystoreTokenStore(
     if (accessibleValue !== undefined) {
       opts['accessible'] = accessibleValue;
     } else if (options.accessible !== undefined) {
+      // console.warn is used here because this module runs in a React Native
+      // context where a structured logger is not available. The warning surfaces
+      // a keychain capability mismatch that the developer needs to address
+      // (e.g. upgrading react-native-keychain or choosing a supported constant).
       console.warn(
         `[pellux/goodvibes-sdk] react-native-keychain does not expose ACCESSIBLE.${accessible}; falling back to default`,
       );
@@ -216,6 +220,9 @@ export function createAndroidKeystoreTokenStore(
       if (acValue !== undefined) {
         opts['accessControl'] = acValue;
       } else {
+        // Same rationale as ACCESSIBLE warn above: capability mismatch on the
+        // ACCESS_CONTROL enum is a developer-facing configuration error, not a
+        // runtime error, so console.warn is the appropriate escalation path.
         console.warn(
           `[pellux/goodvibes-sdk] react-native-keychain does not expose ACCESS_CONTROL.${accessControl}; falling back to default`,
         );

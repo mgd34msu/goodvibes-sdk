@@ -178,6 +178,10 @@ export function createIOSKeychainTokenStore(
     if (accessibleValue !== undefined) {
       opts['accessible'] = accessibleValue;
     } else if (options.accessible !== undefined) {
+      // console.warn is used here because this module runs in a React Native
+      // context where a structured logger is not available. The warning surfaces
+      // a keychain capability mismatch that the developer needs to address
+      // (e.g. upgrading react-native-keychain or choosing a supported constant).
       console.warn(
         `[pellux/goodvibes-sdk] react-native-keychain does not expose ACCESSIBLE.${accessible}; falling back to default`,
       );

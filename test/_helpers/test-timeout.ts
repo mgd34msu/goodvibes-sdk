@@ -1,4 +1,4 @@
-export const EVENT_SETTLE_MS = 50;
+export const EVENT_SETTLE_MS = Number(process.env['SETTLE_MS'] ?? 50);
 
 export async function waitFor(
   predicate: () => boolean | Promise<boolean>,

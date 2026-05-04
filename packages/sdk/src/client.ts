@@ -296,7 +296,9 @@ export interface GoodVibesSdk {
 function requireBaseUrl(baseUrl: string): string {
   const normalized = baseUrl.trim();
   if (!normalized) {
-    throw new ConfigurationError('GoodVibes baseUrl is required. Pass a non-empty baseUrl in your createGoodVibesSdk options (e.g. "https://my-daemon.example.com").');
+    throw new ConfigurationError(
+      'GoodVibes baseUrl is required. Pass a non-empty string in your createGoodVibesSdk options.',
+    );
   }
   return normalized;
 }
@@ -336,6 +338,9 @@ function createClientOptions<T extends OperatorSdkOptions | PeerSdkOptions>(
     ...(options.getHeaders ? { getHeaders: options.getHeaders } : {}),
     ...(options.retry ? { retry: options.retry } : {}),
     ...(options.middleware ? { middleware: options.middleware } : {}),
+  // The `as T` cast is necessary because the return type is generic (T extends
+  // a union of ClientOptions subtypes). The object literal satisfies all members
+  // of GoodVibesSdkOptions; T is always a structural subset of that shape.
   } as T;
 }
 
@@ -392,14 +397,11 @@ export function createGoodVibesSdk(
   // before any consumer middleware sees ctx.headers.Authorization, and that the
   // reactive 401 retry is transparent to consumer middleware.
   //
-  // The transport reference for the retry callback is resolved lazily: we pass
-  // a proxy object whose `requestJson` property is populated immediately after
-  // createOperatorSdk / createPeerSdk returns. Because the middleware only calls
-  // `transport.requestJson` on a reactive 401 (not at construction time), the
-  // holder is always populated before it is accessed.
-  // Lazy transport proxy: populated after createOperatorSdk / createPeerSdk.
-  // The middleware only invokes requestJson on a reactive 401 — never at
-  // construction time — so the proxy is always populated before first use.
+  // Lazy transport proxy: populated immediately after createOperatorSdk /
+  // createPeerSdk returns. The middleware only invokes requestJson on a reactive
+  // 401 — never at construction time — so the holder is always populated before
+  // it is accessed. `let` is required here because the reference is reassigned
+  // after the SDK instance is created (not const-initializable at declaration).
   let operatorRequestJson: ((url: string, opts?: unknown) => Promise<unknown>) | null = null;
   let peerRequestJson: ((url: string, opts?: unknown) => Promise<unknown>) | null = null;
 

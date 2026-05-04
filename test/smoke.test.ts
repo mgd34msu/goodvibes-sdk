@@ -12,7 +12,7 @@ import {
 describe('sdk umbrella package', () => {
   test('re-exports contracts, transport, and clients', () => {
     const { productVersion } = FOUNDATION_METADATA;
-    expect(productVersion).toMatch(/^0\.\d+\.\d+$/);
+    expect(productVersion).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
     expect(typeof createDaemonControlRouteHandlers).toBe('function');
     expect(typeof createDaemonKnowledgeRouteHandlers).toBe('function');
     expect(typeof createOperatorSdk).toBe('function');

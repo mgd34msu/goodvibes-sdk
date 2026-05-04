@@ -60,6 +60,9 @@ export interface AuthTransitionInfo {
  * Every call site should go through `invokeObserver` so observer errors are
  * isolated from SDK control flow.
  */
+// SDKObserver extends TransportObserver which contributes:
+//   onTransportActivity?(info: TransportActivityInfo): void
+// See @pellux/goodvibes-transport-core for the inherited member definition.
 export interface SDKObserver extends TransportObserver {
   /**
    * Called for every event dispatched through the realtime transport
@@ -138,14 +141,13 @@ export function createConsoleObserver(
   const level = options.level ?? 'info';
 
   return {
+    /* eslint-disable no-console */
     onAuthTransition(transition) {
-      // eslint-disable-next-line no-console
       console.log(
         `[sdk:observer] auth transition ${transition.from} → ${transition.to} (${transition.reason})`,
       );
     },
     onError(err) {
-      // eslint-disable-next-line no-console
       console.error(
         `[sdk:observer] error kind=${err.kind} category=${err.category}`,
         err.message,
@@ -155,16 +157,15 @@ export function createConsoleObserver(
       if (level !== 'debug') return;
       const status = activity.status !== undefined ? ` status=${activity.status}` : '';
       const dur = activity.durationMs !== undefined ? ` ${activity.durationMs}ms` : '';
-      // eslint-disable-next-line no-console
       console.debug(
         `[sdk:observer] transport ${activity.direction} ${activity.kind ?? 'http'} ${activity.url}${status}${dur}`,
       );
     },
     onEvent(event) {
       if (level !== 'debug') return;
-      // eslint-disable-next-line no-console
       console.debug(`[sdk:observer] event ${event.type}`);
     },
+    /* eslint-enable no-console */
   };
 }
 

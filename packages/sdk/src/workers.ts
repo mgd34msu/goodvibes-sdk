@@ -115,6 +115,8 @@ export function createGoodVibesCloudflareWorker(
             message.retry?.();
           }
         } catch (error) {
+          // Warn rather than re-throw: a thrown error here would surface as an
+          // unhandled rejection. Calling retry() signals Cloudflare to re-deliver.
           console.warn('GoodVibes worker queue message failed', { error });
           message.retry?.();
         }
@@ -209,6 +211,8 @@ function requireWorkerAuth(
   options: GoodVibesCloudflareWorkerOptions,
 ): Response | null {
   const expected = options.workerAuthToken ?? env.GOODVIBES_WORKER_TOKEN ?? '';
+  // allowUnauthenticated bypasses token checks for the entire worker — use only
+  // when the worker sits behind a trusted network perimeter (e.g. private VPC).
   if (!expected && options.allowUnauthenticated === true) return null;
   if (!expected) {
     return json({
@@ -236,6 +240,9 @@ async function optionalJson(request: Request): Promise<unknown | Response> {
   try {
     return JSON.parse(text) as unknown;
   } catch {
+    // Silently fall back to empty object: malformed JSON from an external
+    // caller should not crash the worker. The handler will see {} and return
+    // a well-formed error response.
     return {};
   }
 }

@@ -217,7 +217,7 @@ describe('Workers wrangler: transport-http round-trip', () => {
     expect(b.ctor).toBeNull();
   }, 10_000);
 
-  test('error path — mock returns 5xx, errorKind is typed \'server\'', async () => {
+  test('error path — mock returns 5xx, errorKind is typed \'service\'', async () => {
     const { status, body } = await get('/transport-error');
     expect(status).toBe(200);
 

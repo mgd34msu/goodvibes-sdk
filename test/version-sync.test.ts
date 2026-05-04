@@ -10,7 +10,7 @@ test('SDK baked version fallback stays aligned with the root package version', (
     resolve(ROOT, 'packages', 'sdk', 'src', 'platform', 'version.ts'),
     'utf8',
   );
-  const match = versionSource.match(/let version = '([^']+)'/);
+  const match = versionSource.match(/\bversion\s*=\s*['"](\d+\.\d+\.\d+[^'"]*)['"]/);
 
   expect(match).not.toBeNull();
   expect(match?.[1]).toBe(rootPackage.version);

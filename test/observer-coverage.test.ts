@@ -97,7 +97,7 @@ describe('createConsoleObserver — debug level', () => {
       const err = new GoodVibesSdkError('test error', { category: 'rate_limit' });
       obs.onError?.(err);
       expect(capture.messages).toHaveLength(1);
-      expect(String(capture.messages[0][0])).toMatch(/rate-limit/);
+      expect(capture.messages[0]?.join(' ')).toMatch(/rate-limit/);
     } finally {
       capture.restore();
     }

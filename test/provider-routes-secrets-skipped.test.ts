@@ -133,36 +133,49 @@ describe('F-PROV-009 — DaemonHttpRouter: secretsResolutionSkipped E2E (router-
     const configManager = makeConfigManager();
 
     // Minimal stub context for DaemonHttpRouter.
-    // All fields not exercised by the /api/providers code path are stubbed.
+    // CRIT-05 (eighth-review): replaced `as never` stubs with typed spies that fail
+    // loudly if any field unexpectedly accessed by the /api/providers code path.
+    //
+    // The guard used for all service stubs: accessing them means the route under
+    // test has been refactored to reach them — that is a regression that should
+    // surface immediately rather than silently returning undefined.
+    function unexpectedAccess(field: string): never {
+      throw new Error(`[provider-routes test] Unexpected access to stub field '${field}' — the /api/providers path should not need this`);
+    }
+    const makeUnexpectedService = (name: string) =>
+      new Proxy({} as never, {
+        get(_: never, prop: string) {
+          unexpectedAccess(`${name}.${prop}`);
+        },
+      });
+
     const routerContext = {
       configManager,
-      serviceRegistry: {} as never,
-      userAuth: {} as never,
-      agentManager: {} as never,
-      automationManager: {} as never,
-      approvalBroker: {} as never,
-      controlPlaneGateway: {
-        createEventStream: () => { throw new Error('not expected'); },
-      } as never,
-      gatewayMethods: {} as never,
+      serviceRegistry: makeUnexpectedService('serviceRegistry'),
+      userAuth: makeUnexpectedService('userAuth'),
+      agentManager: makeUnexpectedService('agentManager'),
+      automationManager: makeUnexpectedService('automationManager'),
+      approvalBroker: makeUnexpectedService('approvalBroker'),
+      controlPlaneGateway: makeUnexpectedService('controlPlaneGateway'),
+      gatewayMethods: makeUnexpectedService('gatewayMethods'),
       providerRegistry: registry,
-      sessionBroker: {} as never,
-      routeBindings: {} as never,
-      channelPolicy: {} as never,
-      channelPlugins: {} as never,
-      surfaceRegistry: {} as never,
-      distributedRuntime: {} as never,
-      watcherRegistry: {} as never,
-      voiceService: {} as never,
-      webSearchService: {} as never,
-      knowledgeService: {} as never,
-      knowledgeGraphqlService: {} as never,
-      mediaProviders: {} as never,
-      multimodalService: {} as never,
-      artifactStore: {} as never,
-      memoryRegistry: {} as never,
-      memoryEmbeddingRegistry: {} as never,
-      platformServiceManager: {} as never,
+      sessionBroker: makeUnexpectedService('sessionBroker'),
+      routeBindings: makeUnexpectedService('routeBindings'),
+      channelPolicy: makeUnexpectedService('channelPolicy'),
+      channelPlugins: makeUnexpectedService('channelPlugins'),
+      surfaceRegistry: makeUnexpectedService('surfaceRegistry'),
+      distributedRuntime: makeUnexpectedService('distributedRuntime'),
+      watcherRegistry: makeUnexpectedService('watcherRegistry'),
+      voiceService: makeUnexpectedService('voiceService'),
+      webSearchService: makeUnexpectedService('webSearchService'),
+      knowledgeService: makeUnexpectedService('knowledgeService'),
+      knowledgeGraphqlService: makeUnexpectedService('knowledgeGraphqlService'),
+      mediaProviders: makeUnexpectedService('mediaProviders'),
+      multimodalService: makeUnexpectedService('multimodalService'),
+      artifactStore: makeUnexpectedService('artifactStore'),
+      memoryRegistry: makeUnexpectedService('memoryRegistry'),
+      memoryEmbeddingRegistry: makeUnexpectedService('memoryEmbeddingRegistry'),
+      platformServiceManager: makeUnexpectedService('platformServiceManager'),
       integrationHelpers: null,
       runtimeBus: bus,
       runtimeStore: null,
@@ -186,9 +199,9 @@ describe('F-PROV-009 — DaemonHttpRouter: secretsResolutionSkipped E2E (router-
       companionChatManager: null,
       // THE CRITICAL FIELD UNDER TEST: secretsManager null causes secretsResolutionSkipped
       secretsManager: null,
-    };
+    } as never;
 
-    const router = new DaemonHttpRouter(routerContext as never);
+    const router = new DaemonHttpRouter(routerContext);
     const req = new Request('http://localhost/api/providers', { method: 'GET' });
     const res = await router.dispatchApiRoutes(req);
     expect(res).not.toBeNull();

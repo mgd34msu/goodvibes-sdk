@@ -26,8 +26,15 @@ function findSetIntervalLines(content: string): string[] {
 }
 
 /**
+ * Number of lines to look ahead when searching for a `.unref?.()` call
+ * following a `setInterval` assignment. Configurable for test environments
+ * with unusual formatting conventions.
+ */
+const UNREF_LOOK_AHEAD_LINES = Number(process.env['UNREF_LOOK_AHEAD_LINES'] ?? 20);
+
+/**
  * For a given setInterval call, check if the result is assigned to a variable
- * that has `.unref?.()` called on it within a reasonable window (20 lines).
+ * that has `.unref?.()` called on it within a reasonable window.
  *
  * Patterns accepted:
  *   const timer = setInterval(...);
@@ -49,15 +56,15 @@ function hasUnrefInWindow(lines: string[], lineIndex: number): boolean {
     const varMatch = line.match(/(?:const|let|var)\s+([\w.]+)\s*=|([\w.]+)\s*=\s*setInterval/);
     const varName = varMatch?.[1] ?? varMatch?.[2];
     if (varName) {
-      // Scan next 20 lines for varName.unref
-      const window = lines.slice(lineIndex + 1, lineIndex + 21);
+      // Scan next UNREF_LOOK_AHEAD_LINES lines for varName.unref
+      const window = lines.slice(lineIndex + 1, lineIndex + UNREF_LOOK_AHEAD_LINES + 1);
       const unrefPattern = new RegExp(`${varName.replace('.', '\\.')}\\s*\.\\s*unref\\??\\.\\(\\)`);
       if (window.some((l) => unrefPattern.test(l))) return true;
     }
   }
 
   // Class field or complex pattern: scan window for any .unref call
-  const window = lines.slice(lineIndex, lineIndex + 25);
+  const window = lines.slice(lineIndex, lineIndex + UNREF_LOOK_AHEAD_LINES + 5);
   return window.some((l) => /\.unref\??\.\(\)/.test(l));
 }
 

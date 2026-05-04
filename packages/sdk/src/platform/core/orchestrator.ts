@@ -479,12 +479,17 @@ export class Orchestrator {
     this.streamingInputTokens = estimatedInputTokens ?? this.lastRequestInputTokens;
     this.streamingOutputTokens = 0;
     this.abortController = new AbortController();
+    // animInterval is always (re)started on every think call to reset the frame
+    // counter and ensure a fresh animation cycle — even if already running.
     if (this.animInterval) clearInterval(this.animInterval);
     this.animInterval = setInterval(() => {
       this.thinkingFrame++;
       this.requestRender();
     }, 80);
-    // Don't block clean process exit (PERF-07).
+    // unref() prevents this timer from holding the event loop open after the
+    // process has otherwise completed all work (PERF-07). The cast is required
+    // because the TypeScript setInterval return type does not expose unref();
+    // Bun and Node.js both implement it on their timer handle objects.
     (this.animInterval as unknown as { unref?: () => void }).unref?.();
     this.requestRender();
   }
