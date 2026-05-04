@@ -108,7 +108,7 @@
     "bash-language-server": "Vendored to keep shell language support while preserving a clean high-severity audit surface for the Verdaccio dry-run dependency graph.",
     "fast-xml-parser": "Pinned to the audited 5.x parser release used by transitive Google/Cloud tooling.",
     "google-auth-library": "Pinned to an audited release for Cloudflare/Wrangler transitive auth tooling.",
-    "lodash": "Pinned away from vulnerable transitive ranges in release-tool dependencies that have not moved off lodash.",
+    "lodash": "Pinned to 4.18.1 (latest stable; outside the >=4.0.0 <=4.17.23 vulnerable range from GHSA-r5fr-rjxr-66jc — Code Injection via _.template). Bumped from 4.17.21 to escape the audit advisory.",
     "minimatch": "Pinned to a patched glob matcher across build and release transitive dependencies.",
     "uuid": "Vendored CommonJS uuid v4 package for Verdaccio @cypress/request, which still requires a CommonJS uuid entry."
   },
@@ -117,7 +117,7 @@
     "fast-xml-parser": "5.7.1",
     "google-auth-library": "10.6.2",
     "bash-language-server": "file:vendor/bash-language-server",
-    "lodash": "4.17.21",
+    "lodash": "4.18.1",
     "minimatch": "^10.2.5",
     "uuid": "file:vendor/uuid-cjs"
   }
