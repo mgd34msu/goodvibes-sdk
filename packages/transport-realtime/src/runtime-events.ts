@@ -114,10 +114,35 @@ export class WebSocketTransportError extends GoodVibesSdkError {
    * Canonical internal codes are `WS_CLOSE_ABNORMAL`,
    * `WS_EVENT_ERROR`, `WS_QUEUE_OVERFLOW`, `WS_REMOTE_ERROR`, and
    * `WS_FRAME_TOO_LARGE`.
+   *
+   * MAJ-4: override Symbol.hasInstance to enable cross-realm instanceof checks.
+   * Without this, `instanceof WebSocketTransportError` in a different realm
+   * (e.g. a Cloudflare Worker or cross-frame context) falls through to the base
+   * GoodVibesSdkError brand only and cannot distinguish WS errors from other
+   * SDK errors. The brand check here also guards against plain objects with a
+   * matching `code`.
    */
-  constructor(message: string, options: { readonly cause?: unknown; readonly hint?: string; readonly code?: string } = {}) {
+  static override [Symbol.hasInstance](value: unknown): boolean {
+    if (this !== WebSocketTransportError) {
+      return typeof value === 'object'
+        && value !== null
+        && this.prototype.isPrototypeOf(value);
+    }
+    // Require the base SDK brand AND a WS-specific code prefix to prevent plain
+    // objects like { code: 'WEBSOCKET_TRANSPORT_ERROR' } from passing.
+    return GoodVibesSdkError[Symbol.hasInstance](value)
+      && typeof (value as Record<PropertyKey, unknown>).code === 'string'
+      && (
+        (value as Record<PropertyKey, unknown>).code === 'WEBSOCKET_TRANSPORT_ERROR'
+        || String((value as Record<PropertyKey, unknown>).code).startsWith('WS_')
+      );
+  }
+
+  // NIT-9: code is required — all call sites pass an explicit sub-code.
+  // Use one of: WS_CLOSE_ABNORMAL, WS_EVENT_ERROR, WS_QUEUE_OVERFLOW, WS_REMOTE_ERROR, WS_FRAME_TOO_LARGE.
+  constructor(message: string, options: { readonly cause?: unknown; readonly hint?: string; readonly code: string }) {
     super(message, {
-      code: options.code ?? 'WEBSOCKET_TRANSPORT_ERROR',
+      code: options.code,
       category: 'network',
       source: 'transport',
       recoverable: true,
@@ -534,6 +559,13 @@ function webSocketCloseError(event: CloseEvent): Error {
 }
 
 function webSocketEventError(event: Event, socket: WebSocket | null, url: string): Error {
+  // MIN-20: We cast to ErrorEvent to access `error`/`message` fields.
+  // Per the WHATWG spec, WebSocket `error` events are plain Events — not ErrorEvents
+  // — so `candidate.error` and `candidate.message` may be undefined in compliant
+  // browsers. The safe-extract path below handles both cases: if `candidate.error`
+  // is defined we treat it as an ErrorEvent (V8/Bun do populate it on some failures);
+  // if not, we fall through to the generic `describeUnknownTransportError` branch.
+  // Using `socket.onerror` directly instead would lose the envelope-unwrap logic here.
   const candidate = event as ErrorEvent;
   // MIN-19: avoid retaining the raw event.error (which may hold currentTarget/target
   // back-references to the WebSocket, creating retention chains over many reconnects).

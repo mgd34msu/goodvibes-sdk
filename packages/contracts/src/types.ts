@@ -39,6 +39,12 @@ export interface OperatorMethodContract {
   readonly invokable?: boolean;
   /** Whether this method is idempotent. When true, safe to retry on 5xx + network errors. */
   readonly idempotent?: boolean;
+  /**
+   * MIN-3: Intentionally open bag for generator-supplied extension fields (e.g.
+   * plugin manifests, analytics tags, UI hints). Consumers must not rely on any
+   * specific key being present — treat as advisory display metadata only.
+   * Narrowing this type would require a versioned generator ABI bump.
+   */
   readonly metadata?: Record<string, unknown>;
 }
 
