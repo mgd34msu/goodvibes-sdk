@@ -140,7 +140,7 @@ Supported routes:
 - `POST /v1/chat/completions`
 
 Set the client base URL to the daemon prefix, for example
-`http://127.0.0.1:3421/v1`, and use the daemon bearer token as the API key.
+`http://127.0.0.1:3210/v1`, and use the daemon bearer token as the API key.
 The route accepts `goodvibes/current`, `goodvibes/default`, registry keys such
 as `openai:gpt-5.5`, and unambiguous plain model ids. Streaming responses use
 OpenAI-style `text/event-stream` chunks ending with `data: [DONE]`.

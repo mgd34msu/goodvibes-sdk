@@ -1,4 +1,4 @@
-# Runtime Surfaces
+# Published Surface Matrix
 
 > Consumer surface map. For internal runtime boundary details see [Runtime Boundary Model](./runtime-surfaces.md).
 

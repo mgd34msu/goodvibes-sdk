@@ -81,7 +81,7 @@ export function createBrowserGoodVibesSdk(/* ... */) { /* ... */ }
 
 ## TypeScript support
 
-The minimum supported TypeScript version is **5.5**. This is the lowest version against which the SDK's type signatures are tested.
+The minimum supported TypeScript version is **6.0**. This is the lowest version against which the SDK's type signatures are tested. The repository ships `typescript: ^6.0.3`; CI validates types against that range.
 
 Bumping the minimum supported TypeScript version is treated as a **minor bump**, not a major bump. This follows common practice in the TypeScript ecosystem (see e.g. the DefinitelyTyped policy) — most consumers upgrade TypeScript frequently and a minimum TypeScript bump rarely requires application code changes.
 
