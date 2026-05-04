@@ -100,14 +100,10 @@ describe('L2: closed sessions reject further messages', () => {
     const session = manager.createSession();
     manager.closeSession(session.id);
 
-    try {
-      await manager.postMessage(session.id, 'should fail');
-      expect(false).toBe(true); // should not reach here
-    } catch (err: unknown) {
-      const e = err as { status?: number; code?: string };
-      expect(e.status).toBe(409);
-      expect(e.code).toBe('SESSION_CLOSED');
-    }
+    await expect(manager.postMessage(session.id, 'should fail')).rejects.toMatchObject({
+      status: 409,
+      code: 'SESSION_CLOSED',
+    });
   });
 
   test('closing an already-closed session is idempotent (returns session, status still closed)', () => {
@@ -132,14 +128,10 @@ describe('L3: non-existent sessions', () => {
 
   test('postMessage on unknown session throws with status 404', async () => {
     const manager = makeManager();
-    try {
-      await manager.postMessage('no-such-id', 'hello');
-      expect(false).toBe(true);
-    } catch (err: unknown) {
-      const e = err as { status?: number; code?: string };
-      expect(e.status).toBe(404);
-      expect(e.code).toBe('SESSION_NOT_FOUND');
-    }
+    await expect(manager.postMessage('no-such-id', 'hello')).rejects.toMatchObject({
+      status: 404,
+      code: 'SESSION_NOT_FOUND',
+    });
   });
 
   test('closeSession returns null for unknown id', () => {

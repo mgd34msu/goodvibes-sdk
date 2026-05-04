@@ -1,7 +1,12 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    // Disable composite/incremental inherited from tsconfig.base.json:
+    // tsconfig.type-tests.json is invoked standalone (not via project references)
+    // and does not emit declarations, so composite mode is inappropriate.
+    "composite": false,
+    "incremental": false
   },
   "include": [
     "test/types/**/*.ts"

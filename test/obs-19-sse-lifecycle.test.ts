@@ -52,9 +52,11 @@ describe('obs-19 sse lifecycle', () => {
 
   test('sseSubscribers gauge can be set to track connected/disconnected', async () => {
     const { sseSubscribers } = await import('../packages/sdk/src/platform/runtime/metrics.js');
+    const before = sseSubscribers.value();
     sseSubscribers.set(3);
     expect(sseSubscribers.value()).toBe(3);
     sseSubscribers.set(2);
     expect(sseSubscribers.value()).toBe(2);
+    sseSubscribers.set(before); // restore to avoid polluting subsequent tests
   });
 });

@@ -63,7 +63,7 @@ import {
 } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   tokenStore: createMemoryTokenStore(),
 });
 
@@ -124,7 +124,7 @@ import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   tokenStore: createMemoryTokenStore(),
   autoRefresh: {
     autoRefresh: true,         // default; set { autoRefresh: false } to disable

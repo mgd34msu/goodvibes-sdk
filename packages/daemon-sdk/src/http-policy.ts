@@ -10,18 +10,18 @@ export interface AuthenticatedPrincipal {
   readonly scopes: readonly string[];
 }
 
-interface AuthenticatedPrincipalResolver {
+export interface AuthenticatedPrincipalResolver {
   readonly extractAuthToken: (req: Request) => string;
   readonly describeAuthenticatedPrincipal: (token: string) => AuthenticatedPrincipal | null;
 }
 
-interface PrivateHostFetchConfig {
+export interface PrivateHostFetchConfig {
   readonly configManager: {
     get(key: string): unknown;
   };
 }
 
-interface ElevatedPrivateHostFetchConfig extends PrivateHostFetchConfig {
+export interface ElevatedPrivateHostFetchConfig extends PrivateHostFetchConfig {
   readonly req: Request;
   readonly requireElevatedAccess: (req: Request) => Response | null;
 }

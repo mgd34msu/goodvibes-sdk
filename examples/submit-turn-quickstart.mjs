@@ -3,7 +3,7 @@
  *
  * Demonstrates: create session → subscribe SSE → submit message → stream tokens → exit.
  *
- * Prerequisites: GoodVibes daemon at GOODVIBES_BASE_URL (default http://127.0.0.1:3210).
+ * Prerequisites: GoodVibes daemon at GOODVIBES_BASE_URL (default http://127.0.0.1:3421).
  *   Set GOODVIBES_TOKEN if your daemon requires auth.
  *
  * Run: bun examples/submit-turn-quickstart.mjs
@@ -13,7 +13,7 @@ import { createGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
 
 // 1. Construct the SDK.
 const sdk = createGoodVibesSdk({
-  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
+  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN ?? null,
 });
 

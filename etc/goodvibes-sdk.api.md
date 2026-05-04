@@ -192,6 +192,24 @@ export interface ApprovalBrokerLike {
 export type ArtifactKind = string;
 
 // @public (undocumented)
+export interface ArtifactStoreLike {
+    // (undocumented)
+    create(input: Record<string, unknown>): Promise<unknown>;
+    // (undocumented)
+    get(artifactId: string): unknown | null;
+    // (undocumented)
+    list(): readonly unknown[];
+    // (undocumented)
+    readContent(artifactId: string): Promise<{
+        readonly record: {
+            readonly mimeType: string;
+            readonly filename?: string;
+        };
+        readonly buffer: ArrayBuffer | Uint8Array;
+    }>;
+}
+
+// @public (undocumented)
 export interface ArtifactStoreUploadLike {
     // (undocumented)
     create(input: Record<string, unknown>): Promise<unknown>;
@@ -250,6 +268,14 @@ export interface AuthenticatedPrincipalLike {
     readonly principalKind: string;
     // (undocumented)
     readonly scopes: readonly string[];
+}
+
+// @public (undocumented)
+export interface AuthenticatedPrincipalResolver {
+    // (undocumented)
+    readonly describeAuthenticatedPrincipal: (token: string) => AuthenticatedPrincipal | null;
+    // (undocumented)
+    readonly extractAuthToken: (req: Request) => string;
 }
 
 // @public
@@ -425,8 +451,6 @@ export interface BrowserTokenStoreOptions {
     readonly storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | undefined;
 }
 
-// Warning: (ae-forgotten-export) The symbol "JsonErrorResponseOptions" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function buildErrorResponseBody(error: unknown, options?: JsonErrorResponseOptions): StructuredDaemonErrorBody;
 
@@ -454,6 +478,44 @@ export interface ChannelAccountRegistryLike {
 }
 
 // @public (undocumented)
+export interface ChannelAgentToolDefinitionLike {
+    // (undocumented)
+    readonly definition: unknown;
+}
+
+// @public (undocumented)
+export interface ChannelAllowlistInput {
+    // (undocumented)
+    readonly add?: readonly string[] | undefined;
+    // (undocumented)
+    readonly channelId?: string | undefined;
+    // (undocumented)
+    readonly groupId?: string | undefined;
+    // (undocumented)
+    readonly kind?: 'user' | 'channel' | 'group' | undefined;
+    // (undocumented)
+    readonly metadata?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly remove?: readonly string[] | undefined;
+    // (undocumented)
+    readonly workspaceId?: string | undefined;
+}
+
+// @public (undocumented)
+export interface ChannelAuthorizeActionInput {
+    // (undocumented)
+    readonly accountId?: string | undefined;
+    // (undocumented)
+    readonly actionId: string;
+    // (undocumented)
+    readonly actorId?: string | undefined;
+    // (undocumented)
+    readonly metadata?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly target?: unknown | undefined;
+}
+
+// @public (undocumented)
 export type ChannelConversationKind = 'direct' | 'group' | 'channel' | 'thread' | 'service';
 
 // @public (undocumented)
@@ -478,8 +540,6 @@ export type ChannelLifecycleAction = 'inspect' | 'setup' | 'retest' | 'connect' 
 
 // @public (undocumented)
 export interface ChannelPluginServiceLike {
-    // Warning: (ae-forgotten-export) The symbol "ChannelAuthorizeActionInput" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     authorizeActorAction(surface: ChannelSurface, input: ChannelAuthorizeActionInput): Promise<unknown | null>;
     // (undocumented)
@@ -494,8 +554,6 @@ export interface ChannelPluginServiceLike {
     getSetupSchema(surface: ChannelSurface, accountId?: string): Promise<unknown | null>;
     // (undocumented)
     listAccounts(surface?: ChannelSurface): Promise<readonly unknown[]>;
-    // Warning: (ae-forgotten-export) The symbol "ChannelAgentToolDefinitionLike" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     listAgentTools(surface?: ChannelSurface): readonly ChannelAgentToolDefinitionLike[];
     // (undocumented)
@@ -510,12 +568,8 @@ export interface ChannelPluginServiceLike {
     listTools(surface?: ChannelSurface): Promise<readonly unknown[]>;
     // (undocumented)
     queryDirectory(surface: ChannelSurface, query: ChannelDirectoryQuery): Promise<readonly unknown[]>;
-    // Warning: (ae-forgotten-export) The symbol "ChannelAllowlistInput" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     resolveAllowlist(surface: ChannelSurface, input: ChannelAllowlistInput): Promise<unknown | null>;
-    // Warning: (ae-forgotten-export) The symbol "ChannelTargetResolutionInput" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     resolveTarget(surface: ChannelSurface, input: ChannelTargetResolutionInput): Promise<unknown | null>;
     // (undocumented)
@@ -538,6 +592,26 @@ export interface ChannelPolicyServiceLike {
 
 // @public (undocumented)
 export type ChannelSurface = string;
+
+// @public (undocumented)
+export interface ChannelTargetResolutionInput {
+    // (undocumented)
+    readonly accountId?: string | undefined;
+    // (undocumented)
+    readonly createIfMissing?: boolean | undefined;
+    // (undocumented)
+    readonly input: string;
+    // (undocumented)
+    readonly live?: boolean | undefined;
+    // (undocumented)
+    readonly metadata?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly preferredKind?: ChannelConversationKind | undefined;
+    // (undocumented)
+    readonly sessionId?: string | undefined;
+    // (undocumented)
+    readonly threadId?: string | undefined;
+}
 
 // @public
 export function clientInputRecord<TInput>(input: TInput | undefined): Record<string, unknown> | undefined;
@@ -887,6 +961,19 @@ export const ControlStatusResponseSchema: z.ZodObject<{
     version: z.ZodString;
 }, z.core.$strip>;
 
+// @public
+export interface ConversationMessageEnvelope {
+    // (undocumented)
+    readonly body: string;
+    // (undocumented)
+    readonly messageId: string;
+    readonly metadata?: Readonly<Record<string, unknown>> | undefined;
+    // (undocumented)
+    readonly source: string;
+    // (undocumented)
+    readonly timestamp: number;
+}
+
 // @public (undocumented)
 export function createArtifactFromUploadRequest(artifactStore: ArtifactStoreUploadLike, req: Request): Promise<ArtifactUploadResult | Response>;
 
@@ -994,16 +1081,12 @@ export function createMemoryTokenStore(initialToken?: string | null, initialExpi
 // @public
 export function createOpenTelemetryObserver(tracer: OtelTracer, meter: OtelMeter): SDKObserver;
 
-// Warning: (ae-forgotten-export) The symbol "OperatorRemoteClientOptions" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function createOperatorRemoteClient(transport: HttpTransport, contract: OperatorContractManifest, clientOptions?: OperatorRemoteClientOptions): OperatorRemoteClient;
 
 // @public (undocumented)
 export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk;
 
-// Warning: (ae-forgotten-export) The symbol "PeerRemoteClientOptions" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function createPeerRemoteClient(transport: HttpTransport, contract: PeerContractManifest, clientOptions?: PeerRemoteClientOptions): PeerRemoteClient;
 
@@ -1413,8 +1496,6 @@ export interface DaemonKnowledgeRouteHandlers extends DaemonKnowledgeRefinementR
 
 // @public (undocumented)
 export interface DaemonMediaRouteContext {
-    // Warning: (ae-forgotten-export) The symbol "ArtifactStoreLike" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly artifactStore: ArtifactStoreLike;
     // Warning: (ae-forgotten-export) The symbol "ConfigManagerLike" needs to be exported by the entry point index.d.ts
@@ -1572,7 +1653,6 @@ export interface DaemonRuntimeRouteContext {
     readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
     // (undocumented)
     readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
-    // Warning: (ae-forgotten-export) The symbol "ConversationMessageEnvelope" needs to be exported by the entry point index.d.ts
     readonly publishConversationFollowup: (sessionId: string, envelope: Omit<ConversationMessageEnvelope, 'sessionId'>) => void;
     // (undocumented)
     readonly queueSurfaceReplyFromBinding: (binding: AutomationRouteBinding | undefined, input: {
@@ -1815,8 +1895,6 @@ export interface DaemonSystemRouteContext {
     readonly inspectInboundTls: (surface: 'controlPlane' | 'httpListener') => unknown;
     // (undocumented)
     readonly inspectOutboundTls: () => unknown;
-    // Warning: (ae-forgotten-export) The symbol "IntegrationApprovalSnapshotSourceLike" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly integrationHelpers: IntegrationApprovalSnapshotSourceLike | null;
     // (undocumented)
@@ -2045,6 +2123,14 @@ export type DomainEventMap = {
 
 // @public (undocumented)
 export type DomainEvents<TDomain extends string, TEvent extends EventLike = EventLike> = RuntimeEventFeeds<TDomain, TEvent>;
+
+// @public (undocumented)
+export interface ElevatedPrivateHostFetchConfig extends PrivateHostFetchConfig {
+    // (undocumented)
+    readonly req: Request;
+    // (undocumented)
+    readonly requireElevatedAccess: (req: Request) => Response | null;
+}
 
 // Warning: (ae-forgotten-export) The symbol "EventForType" needs to be exported by the entry point index.d.ts
 //
@@ -2479,6 +2565,50 @@ export interface HttpJsonRequestOptions {
 }
 
 // @public (undocumented)
+export interface HttpJsonTransport {
+    // (undocumented)
+    readonly authToken?: string | null | undefined;
+    // (undocumented)
+    readonly baseUrl: string;
+    // (undocumented)
+    buildUrl(path: string): string;
+    // (undocumented)
+    readonly fetchImpl: typeof fetch;
+    // (undocumented)
+    getAuthToken(): Promise<string | null>;
+    // (undocumented)
+    readonly paths: TransportPaths;
+    // (undocumented)
+    requestJson<T>(pathOrUrl: string, options?: HttpJsonRequestOptions): Promise<T>;
+    // (undocumented)
+    resolveContractRequest(method: string, path: string, input?: Record<string, unknown>): ResolvedContractRequest;
+    use(middleware: TransportMiddleware): void;
+}
+
+// @public (undocumented)
+export interface HttpJsonTransportOptions {
+    // (undocumented)
+    readonly authToken?: string | null | undefined;
+    // (undocumented)
+    readonly baseUrl: string;
+    // (undocumented)
+    readonly fetch?: typeof fetch | undefined;
+    // (undocumented)
+    readonly fetchImpl?: typeof fetch | undefined;
+    // (undocumented)
+    readonly getAuthToken?: AuthTokenResolver | undefined;
+    // (undocumented)
+    readonly getHeaders?: HeaderResolver | undefined;
+    // (undocumented)
+    readonly headers?: HeadersInit | undefined;
+    readonly middleware?: readonly TransportMiddleware[] | undefined;
+    // (undocumented)
+    readonly observer?: TransportObserver | undefined;
+    // (undocumented)
+    readonly retry?: HttpRetryPolicy | undefined;
+}
+
+// @public (undocumented)
 export interface HttpRetryPolicy extends BackoffPolicy {
     readonly perMethodPolicy?: Readonly<Record<string, PerMethodRetryPolicy>> | undefined;
     // (undocumented)
@@ -2495,13 +2625,9 @@ export class HttpStatusError extends GoodVibesSdkError {
     constructor(message: string, options?: GoodVibesSdkErrorOptions);
 }
 
-// Warning: (ae-forgotten-export) The symbol "HttpJsonTransport" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export type HttpTransport = HttpJsonTransport;
 
-// Warning: (ae-forgotten-export) The symbol "HttpJsonTransportOptions" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export type HttpTransportOptions = HttpJsonTransportOptions;
 
@@ -2510,6 +2636,12 @@ export function injectTraceparent(headers: Record<string, string>): void;
 
 // @public
 export function injectTraceparentAsync(headers: Record<string, string>): Promise<void>;
+
+// @public (undocumented)
+export interface IntegrationApprovalSnapshotSourceLike {
+    // (undocumented)
+    getApprovalSnapshot(): unknown;
+}
 
 // @public (undocumented)
 export interface IntegrationHelperServiceLike {
@@ -2535,8 +2667,6 @@ export interface IntegrationHelperServiceLike {
     getRemoteSnapshot(): unknown;
     // (undocumented)
     getRouteSnapshot(): unknown;
-    // Warning: (ae-forgotten-export) The symbol "IntegrationRuntimeStoreLike" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     getRuntimeStore(): IntegrationRuntimeStoreLike | null;
     // (undocumented)
@@ -2555,6 +2685,16 @@ export interface IntegrationHelperServiceLike {
     listPanels(): readonly unknown[];
     // (undocumented)
     openPanel(panelId: string, pane: 'top' | 'bottom'): boolean;
+}
+
+// @public (undocumented)
+export interface IntegrationRuntimeStoreLike {
+    // (undocumented)
+    getState(): {
+        readonly deliveries: {
+            readonly deliveryAttempts: Map<string, unknown>;
+        };
+    };
 }
 
 // @public (undocumented)
@@ -2604,6 +2744,17 @@ export type JsonBody = JsonRecord;
 
 // @public (undocumented)
 export function jsonErrorResponse(error: unknown, options?: JsonErrorResponseOptions): Response;
+
+// @public (undocumented)
+export interface JsonErrorResponseOptions {
+    // (undocumented)
+    readonly fallbackMessage?: string | undefined;
+    readonly isPrivileged?: boolean | undefined;
+    // (undocumented)
+    readonly source?: DaemonErrorSource | undefined;
+    // (undocumented)
+    readonly status?: number | undefined;
+}
 
 // @public (undocumented)
 export type JsonObject = {
@@ -3036,9 +3187,17 @@ export type McpEventType = McpEvent['type'];
 export type MediaArtifact = Record<string, unknown>;
 
 // @public (undocumented)
+export interface MediaProviderLike {
+    // (undocumented)
+    analyze?(input: Record<string, unknown>): Promise<unknown>;
+    // (undocumented)
+    generate?(input: Record<string, unknown>): Promise<unknown>;
+    // (undocumented)
+    transform?(input: Record<string, unknown>): Promise<unknown>;
+}
+
+// @public (undocumented)
 export interface MediaProviderRegistryLike {
-    // Warning: (ae-forgotten-export) The symbol "MediaProviderLike" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     findProvider(capability: 'understand' | 'transform' | 'generate', providerId?: string): MediaProviderLike | null;
     // (undocumented)
@@ -14468,6 +14627,13 @@ export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions
 }
 
 // @public (undocumented)
+export interface OperatorRemoteClientOptions {
+    // (undocumented)
+    readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined | undefined;
+    readonly validateResponses?: boolean | undefined;
+}
+
+// @public (undocumented)
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {
 }
 
@@ -15475,6 +15641,12 @@ export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {
 }
 
 // @public (undocumented)
+export interface PeerRemoteClientOptions {
+    // (undocumented)
+    readonly validateResponses?: boolean | undefined;
+}
+
+// @public (undocumented)
 export type PeerSdk = Omit<PeerRemoteClient, 'getOperation'> & {
     readonly transport: HttpTransport;
     getOperation(endpointId: PeerEndpointId): PeerEndpointContract;
@@ -15705,6 +15877,14 @@ export type PluginEvent =
 export type PluginEventType = PluginEvent['type'];
 
 // @public (undocumented)
+export interface PrivateHostFetchConfig {
+    // (undocumented)
+    readonly configManager: {
+        get(key: string): unknown;
+    };
+}
+
+// @public (undocumented)
 export type ProviderEntry = z.infer<typeof ProviderEntrySchema>;
 
 // @public (undocumented)
@@ -15906,8 +16086,6 @@ export type RequiredKeys<T extends object> = {
     [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
 }[keyof T];
 
-// Warning: (ae-forgotten-export) The symbol "AuthenticatedPrincipalResolver" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function resolveAuthenticatedPrincipal(req: Request, resolver: AuthenticatedPrincipalResolver): AuthenticatedPrincipal | null;
 
@@ -15959,9 +16137,6 @@ export function resolveHeaders(headers: HeadersInit | undefined, getHeaders?: He
 // @public (undocumented)
 export function resolveHttpRetryPolicy(defaultPolicy?: HttpRetryPolicy, override?: false | HttpRetryPolicy): ResolvedHttpRetryPolicy;
 
-// Warning: (ae-forgotten-export) The symbol "PrivateHostFetchConfig" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "ElevatedPrivateHostFetchConfig" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function resolvePrivateHostFetchOptions(requested: unknown, context: PrivateHostFetchConfig | ElevatedPrivateHostFetchConfig): {
     allowPrivateHosts: true;
@@ -15983,16 +16158,70 @@ export const ROUTE_TARGET_KINDS: readonly ["session", "run", "job", "task", "mes
 export interface RouteBindingManagerLike {
     // (undocumented)
     listBindings(): readonly unknown[];
-    // Warning: (ae-forgotten-export) The symbol "RouteBindingPatchInput" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     patchBinding(bindingId: string, input: RouteBindingPatchInput): Promise<unknown | null>;
     // (undocumented)
     removeBinding(bindingId: string): Promise<boolean>;
-    // Warning: (ae-forgotten-export) The symbol "RouteBindingRecordInput" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     upsertBinding(input: RouteBindingRecordInput): Promise<unknown>;
+}
+
+// @public (undocumented)
+export interface RouteBindingPatchInput {
+    // (undocumented)
+    readonly channelId?: string | undefined;
+    // (undocumented)
+    readonly deliveryGuarantee?: AutomationDeliveryGuarantee | undefined;
+    // (undocumented)
+    readonly jobId?: string | null | undefined;
+    // (undocumented)
+    readonly metadata?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly runId?: string | null | undefined;
+    // (undocumented)
+    readonly sessionId?: string | null | undefined;
+    // (undocumented)
+    readonly sessionPolicy?: AutomationSessionPolicy | undefined;
+    // (undocumented)
+    readonly threadId?: string | undefined;
+    // (undocumented)
+    readonly threadPolicy?: AutomationThreadPolicy | undefined;
+    // (undocumented)
+    readonly title?: string | undefined;
+}
+
+// @public (undocumented)
+export interface RouteBindingRecordInput {
+    // (undocumented)
+    readonly channelId?: string | undefined;
+    // (undocumented)
+    readonly deliveryGuarantee?: AutomationDeliveryGuarantee | undefined;
+    // (undocumented)
+    readonly externalId: string;
+    // (undocumented)
+    readonly id?: string | undefined;
+    // (undocumented)
+    readonly jobId?: string | null | undefined;
+    // (undocumented)
+    readonly kind: AutomationRouteBindingKind;
+    // (undocumented)
+    readonly metadata: Record<string, unknown>;
+    // (undocumented)
+    readonly runId?: string | null | undefined;
+    // (undocumented)
+    readonly sessionId?: string | null | undefined;
+    // (undocumented)
+    readonly sessionPolicy?: AutomationSessionPolicy | undefined;
+    // (undocumented)
+    readonly surfaceId: string;
+    // (undocumented)
+    readonly surfaceKind: AutomationSurfaceKind;
+    // (undocumented)
+    readonly threadId?: string | undefined;
+    // (undocumented)
+    readonly threadPolicy?: AutomationThreadPolicy | undefined;
+    // (undocumented)
+    readonly title?: string | undefined;
 }
 
 // @public (undocumented)
@@ -17141,62 +17370,16 @@ export const TypedSerializedEventEnvelopeSchema: z.ZodObject<{
 // @public (undocumented)
 export type TypedSerializedEventEnvelopeShape = z.infer<typeof TypedSerializedEventEnvelopeSchema>;
 
-// @public
-type UIEvent_2 =
-/** A full re-render has been requested. */
-    {
-    type: 'UI_RENDER_REQUEST';
-}
-/** Scroll by a relative delta (positive = down, negative = up). */
-| {
-    type: 'UI_SCROLL_DELTA';
-    delta: number;
-}
-/** Scroll to an absolute line number. */
-| {
-    type: 'UI_SCROLL_TO';
-    line: number;
-}
-/** A collapsible block's collapsed state was toggled. */
-| {
-    type: 'UI_BLOCK_TOGGLE_COLLAPSE';
-    blockIndex: number;
-}
-/** A block was requested to re-run. */
-| {
-    type: 'UI_BLOCK_RERUN';
-    blockIndex: number;
-    content: string;
-}
-/** The screen was cleared. */
-| {
-    type: 'UI_CLEAR_SCREEN';
-}
-/** A panel was opened. */
-| {
-    type: 'UI_PANEL_OPEN';
-    panelId: string;
-}
-/** A panel was closed. */
-| {
-    type: 'UI_PANEL_CLOSE';
-    panelId: string;
-}
-/** A panel was focused. */
-| {
-    type: 'UI_PANEL_FOCUS';
-    panelId: string;
-}
-/** The active view changed (e.g. chat -> search -> help). */
-| {
-    type: 'UI_VIEW_CHANGED';
-    from: string;
-    to: string;
-};
+// Warning: (ae-forgotten-export) The symbol "GoodVibesUIEvent" needs to be exported by the entry point index.d.ts
+//
+// @public @deprecated (undocumented)
+type UIEvent_2 = GoodVibesUIEvent;
 export { UIEvent_2 as UIEvent }
 
-// @public
-export type UIEventType = UIEvent_2['type'];
+// Warning: (ae-forgotten-export) The symbol "GoodVibesUIEventType" needs to be exported by the entry point index.d.ts
+//
+// @public @deprecated (undocumented)
+export type UIEventType = GoodVibesUIEventType;
 
 // @public (undocumented)
 export interface UserAuthManagerLike {
@@ -17230,12 +17413,26 @@ export interface VoiceServiceLike {
     openRealtimeSession(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
     // (undocumented)
     synthesize(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
-    // Warning: (ae-forgotten-export) The symbol "VoiceSynthesisStreamLike" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     synthesizeStream(providerId: string | undefined, input: Record<string, unknown>): Promise<VoiceSynthesisStreamLike>;
     // (undocumented)
     transcribe(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
+}
+
+// @public (undocumented)
+export interface VoiceSynthesisStreamLike {
+    // (undocumented)
+    readonly chunks: AsyncIterable<{
+        readonly data: Uint8Array;
+    }>;
+    // (undocumented)
+    readonly format: string;
+    // (undocumented)
+    readonly metadata: Record<string, unknown>;
+    // (undocumented)
+    readonly mimeType: string;
+    // (undocumented)
+    readonly providerId: string;
 }
 
 // @public
@@ -17278,13 +17475,29 @@ export type WatcherEventType = WatcherEvent['type'];
 export type WatcherKind = string;
 
 // @public (undocumented)
+export interface WatcherRecord {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly intervalMs?: number | undefined;
+    // (undocumented)
+    readonly kind: WatcherKind;
+    // (undocumented)
+    readonly label: string;
+    // (undocumented)
+    readonly metadata: Record<string, unknown>;
+    // Warning: (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly source: WatcherSourceRecord;
+}
+
+// @public (undocumented)
 export interface WatcherRegistryLike {
     // (undocumented)
     getWatcher(watcherId: string): WatcherRecord | null;
     // (undocumented)
     list(): readonly unknown[];
-    // Warning: (ae-forgotten-export) The symbol "WatcherRecord" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     registerWatcher(input: {
         readonly id: string;
@@ -17474,7 +17687,6 @@ export type WrfcState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'aw
 // packages/daemon-sdk/src/runtime-route-types.ts:173:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/runtime-route-types.ts:199:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
 // packages/daemon-sdk/src/runtime-route-types.ts:215:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/system-route-types.ts:110:5 - (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
 // packages/operator-sdk/src/client-core.ts:77:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
 // packages/peer-sdk/src/client-core.ts:64:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
 // packages/sdk/src/events/mcp.ts:15:82 - (ae-forgotten-export) The symbol "McpServerRole" needs to be exported by the entry point index.d.ts

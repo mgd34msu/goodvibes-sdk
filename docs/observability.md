@@ -6,6 +6,8 @@ This guide covers the SDK's observability stack: structured logging, runtime eve
 
 ## Logging
 
+> **Daemon embedders only:** The `configureActivityLogger` API and `logger` singleton are intended for daemon-embedder use. Consumer apps should subscribe to runtime events via `sdk.observer` or inject a logger through an observer callback instead of writing to the activity log directly.
+
 ### ActivityLogger
 
 The SDK ships a persistent, buffered activity logger that writes structured entries to `.goodvibes/logs/activity.md`. It is the primary debug trail for production diagnosis.
@@ -43,8 +45,8 @@ Each call produces a structured Markdown entry:
 
 Log entries are buffered in memory and written asynchronously to avoid blocking the event loop:
 
-- Entries flush automatically after **100 ms** (configurable via `LOG_FLUSH_INTERVAL_MS`).
-- Buffer flushes immediately when it reaches **10 entries** (`LOG_BUFFER_MAX`).
+- Entries flush automatically after **100 ms** (hardcoded; `LOG_FLUSH_INTERVAL_MS` is an internal constant, not a public configurable).
+- Buffer flushes immediately when it reaches **10 entries** (hardcoded; `LOG_BUFFER_MAX` is an internal constant, not a public configurable).
 - If `configure()` has not been called, entries are buffered until a log directory is set.
 
 The logger is best-effort: filesystem errors are reported to `stderr` but do not propagate to the caller. Never put secrets or PII in log data.
@@ -114,7 +116,7 @@ Available runtime domains:
 | `tasks` | Task lifecycle |
 | `tools` | Tool call dispatch and results |
 | `transport` | Connection state (connect, reconnect, disconnect) |
-| `turn` | Turn lifecycle (submitted, streaming, completed, cancelled) |
+| `turn` | Turn lifecycle (submitted, streaming, completed, cancelled, `STREAM_DELTA` deltas) |
 | `ui` | UI interaction events |
 | `watchers` | File/resource watcher state |
 | `workflows` | WRFC workflow lifecycle: chain created/passed/failed, state transitions, review completed, fix attempted, constraints enumerated |
@@ -627,7 +629,7 @@ import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 import { createGoodVibesSdk, createConsoleObserver } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   tokenStore: createMemoryTokenStore(),
   observer: createConsoleObserver({ level: 'debug' }),
 });
@@ -696,6 +698,8 @@ Spans emitted:
 | `sdk.error` | On each `GoodVibesSdkError` |
 
 ### Wire-up status
+
+The following table shows which `SDKObserver` callbacks each transport seam calls. "Wired" means the seam actively invokes the callback; "Not wired" means that seam is not observed.
 
 | Seam | Status |
 |---|---|

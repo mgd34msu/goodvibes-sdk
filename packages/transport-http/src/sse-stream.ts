@@ -28,7 +28,7 @@ export interface ServerSentEventOptions {
 }
 
 function readEventPayload(data: string): unknown {
-  if (!data.trim()) return null;
+  if (!data.trimEnd()) return null;
   try {
     return JSON.parse(data) as unknown;
   } catch (error) {

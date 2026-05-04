@@ -78,7 +78,7 @@ export function createDaemonSystemRouteHandlers(
     watcherAction: (watcherId, action, req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;
-      return handleWatcherAction(context, watcherId, action);
+      return handleWatcherAction(context, watcherId, action, req);
     },
     deleteWatcher: (watcherId, req) => {
       const admin = context.requireAdmin(req);
@@ -225,7 +225,11 @@ async function handleRegisterWatcher(context: DaemonSystemRouteContext, req: Req
   const id = typeof body.id === 'string' && body.id.trim().length > 0
     ? body.id.trim()
     : label
-      ? `watcher-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`
+      ? ((): string => {
+          const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          // NIT-10: if the label consists entirely of special chars the slug will be empty.
+          return slug ? `watcher-${slug}` : `watcher-${Date.now()}`;
+        })()
       : `watcher-${Date.now()}`;
   const kind = readWatcherKind(body.kind, body.sourceKind, 'polling');
   const intervalMs = readWatcherIntervalMs(body.intervalMs, context.configManager.get('watchers.pollIntervalMs'));
@@ -350,6 +354,7 @@ async function handleWatcherAction(
   context: DaemonSystemRouteContext,
   watcherId: string,
   action: 'start' | 'stop' | 'run',
+  _req: Request,
 ): Promise<Response> {
   if (action === 'start') {
     const watcher = context.watcherRegistry.startWatcher(watcherId);

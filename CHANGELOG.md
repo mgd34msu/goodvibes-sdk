@@ -10,6 +10,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
+- none
+
+### Fixed
+- none
+
+### Migration
+- none
+
+---
+
+## [0.30.4] - 2026-05-04
+
+### Breaking
+- none
+
+### Added
+- Closed tenth-review docs+examples findings (8 CRITICAL, 8 MAJOR, 28 MINOR, 15 NITPICK) across `docs/`, `examples/`, `README.md`, `CHANGELOG.md`, `SECURITY.md`, and package READMEs.
+- Corrected default daemon control-plane port from `3210` to `3421` across all quickstarts, docs, examples, and package READMEs.
+- Fixed sealed-path imports: `docs/automation.md` (`platform/automation` → `platform`), `docs/security.md` (`platform/permissions` → `platform` namespace), `docs/media-and-search.md` (removed non-existent `platform/media` subpath), `packages/contracts/src/zod-schemas/README.md` (`zod-schemas` → `zod-schemas/index`).
+- Corrected `docs/wrfc-constraint-propagation.md`: `ConstraintFinding` is not exported from the SDK root; corrected to reflect `platform` namespace access.
+- Fixed broken doc anchor in `examples/expo-quickstart.tsx`: `#websocket-not-available` → `#websocket-implementation-is-required`.
+- Updated `SECURITY.md` lodash override version from `4.17.21` to `4.18.1` to match the pinned override in `package.json`.
+- Corrected `docs/architecture.md`: `platform/pairing` is a public subpath, not an internal module.
+- Refactored `examples/auth-login-and-token-store.ts`: replaced unidiomatic IIFE-throw pattern with explicit guard block.
+- Added session TTL and rate-limit defaults to `docs/defaults.md`.
+- Clarified `docs/observability.md`: `LOG_FLUSH_INTERVAL_MS` and `LOG_BUFFER_MAX` are internal constants, not exported configurables; added daemon-embedder note before `configureActivityLogger` example; added `STREAM_DELTA` to turn events table; added wire-up status table caption.
+- Disambiguated `docs/companion-app-patterns.md` `POST`/`PATCH` guidance for companion chat sessions.
+- Added public-surface cross-reference note to `docs/runtime-orchestration.md`.
+- Clarified `docs/troubleshooting.md`: SSE mobile reconnection issues described precisely; added Next Reads section.
+- Clarified `docs/feature-flags.md` `killed` state description.
+- Marked internal functions in `docs/auth.md` scope flow list; aligned `client-auth` phrasing.
+- Added clarifying note to `docs/error-kinds.md` WRFC synthetic critical issues section.
+- Added Next Reads sections to `docs/automation.md`, `docs/voice.md`, `docs/troubleshooting.md`.
+- Added `examples/README.md` note about `daemon-fetch-handler-quickstart.ts` placeholder.
+- Added usage hint comment to `docs/getting-started.md` daemon embed snippet.
+- Added `peer-http-quickstart.mjs` operator.snapshot clarification comment.
 - Closed eighth-review docs+examples findings (8 CRITICAL, 12 MAJOR, 20 MINOR, 13 NITPICK) across `docs/`, `examples/`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`.
 - Reconciled `docs/public-surface.md` platform table with actual `packages/sdk/package.json` exports map; added `./client-auth` and `./observer` entries.
 - Corrected `docs/authentication.md`: `autoRefresh: false` → `autoRefresh: { autoRefresh: false }`, `AutoRefreshCoordinator` import path corrected to `./client-auth`.

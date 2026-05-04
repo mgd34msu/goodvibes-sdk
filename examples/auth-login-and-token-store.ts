@@ -7,14 +7,17 @@ import { createMemoryTokenStore } from '@pellux/goodvibes-sdk/auth';
 const tokenStore = createMemoryTokenStore();
 
 const sdk = createGoodVibesSdk({
-  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
+  baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3421',
   tokenStore,
 });
 
-const login = await sdk.auth.login({
-  username: (process.env.GOODVIBES_USERNAME ?? (() => { throw new Error('GOODVIBES_USERNAME env var is required'); })()) as string,
-  password: (process.env.GOODVIBES_PASSWORD ?? (() => { throw new Error('GOODVIBES_PASSWORD env var is required'); })()) as string,
-});
+const username = process.env.GOODVIBES_USERNAME;
+const password = process.env.GOODVIBES_PASSWORD;
+if (!username || !password) {
+  throw new Error('GOODVIBES_USERNAME and GOODVIBES_PASSWORD env vars are required');
+}
+
+const login = await sdk.auth.login({ username, password });
 
 console.log('login succeeded', login.authenticated);
 console.log('persisted token present', Boolean(await sdk.auth.getToken()));

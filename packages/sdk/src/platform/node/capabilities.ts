@@ -28,11 +28,23 @@ export interface GoodVibesRuntimeCapability {
 
 export const GOODVIBES_CLIENT_SAFE_ENTRYPOINTS = [
   '@pellux/goodvibes-sdk',
+  '@pellux/goodvibes-sdk/auth',
   '@pellux/goodvibes-sdk/browser',
+  '@pellux/goodvibes-sdk/client-auth',
+  '@pellux/goodvibes-sdk/contracts',
+  '@pellux/goodvibes-sdk/errors',
+  '@pellux/goodvibes-sdk/events',
+  '@pellux/goodvibes-sdk/expo',
+  '@pellux/goodvibes-sdk/observer',
+  '@pellux/goodvibes-sdk/operator',
+  '@pellux/goodvibes-sdk/peer',
+  '@pellux/goodvibes-sdk/react-native',
+  '@pellux/goodvibes-sdk/transport-core',
+  '@pellux/goodvibes-sdk/transport-direct',
+  '@pellux/goodvibes-sdk/transport-http',
+  '@pellux/goodvibes-sdk/transport-realtime',
   '@pellux/goodvibes-sdk/web',
   '@pellux/goodvibes-sdk/workers',
-  '@pellux/goodvibes-sdk/react-native',
-  '@pellux/goodvibes-sdk/expo',
 ] as const;
 
 export const GOODVIBES_NODE_RUNTIME_ENTRYPOINTS = [
@@ -56,6 +68,7 @@ export const GOODVIBES_NODE_RUNTIME_ENTRYPOINTS = [
   '@pellux/goodvibes-sdk/platform/runtime/state',
   '@pellux/goodvibes-sdk/platform/runtime/store',
   '@pellux/goodvibes-sdk/platform/runtime/ui',
+  '@pellux/goodvibes-sdk/contracts/node',
   '@pellux/goodvibes-sdk/platform/tools',
   '@pellux/goodvibes-sdk/platform/utils',
   '@pellux/goodvibes-sdk/platform/voice',

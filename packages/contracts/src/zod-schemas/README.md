@@ -26,7 +26,7 @@ The following surfaces are deferred pending type stabilization:
 ## Import Path
 
 ```ts
-import { ControlAuthLoginResponseSchema } from '@pellux/goodvibes-contracts/zod-schemas';
+import { ControlAuthLoginResponseSchema } from '@pellux/goodvibes-contracts/zod-schemas/index';
 // or
 import { ControlAuthLoginResponseSchema } from '@pellux/goodvibes-contracts';
 ```

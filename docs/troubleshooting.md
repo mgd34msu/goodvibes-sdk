@@ -36,9 +36,9 @@ Structured errors expose:
 - `source`
 - `hint`
 
-## SSE works poorly on mobile
+## SSE may have intermittent reconnection issues on mobile
 
-That is expected on some mobile stacks. Prefer WebSocket for React Native, Expo, Android, and iOS clients.
+SSE connections may not be reliably delivered through some mobile network proxies and may have intermittent reconnection issues on mobile stacks. Prefer WebSocket for React Native, Expo, Android, and iOS clients.
 
 ## Browser CORS or cookie issues
 
@@ -75,3 +75,9 @@ If the client is mobile, prefer WebSocket over SSE.
 If `sdk.auth.setToken(...)` throws a configuration error, you created the SDK with `getAuthToken` only.
 
 Pass `tokenStore` if the SDK needs to mutate token state.
+
+## Next Reads
+
+- [Error Handling](./error-handling.md)
+- [Error Kinds](./error-kinds.md)
+- [Getting Started](./getting-started.md)

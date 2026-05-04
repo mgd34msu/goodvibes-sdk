@@ -1,0 +1,7 @@
+# MIN-07: Normalize line endings in api-extractor API report files.
+# api-extractor on Windows writes \r\n (CRLF) line endings, which trips
+# line-based diff tools when contributors edit on POSIX systems.
+# This rule converts the files to LF on checkout on all platforms.
+* text=auto
+etc/*.api.md text eol=lf
+temp/*.api.md text eol=lf

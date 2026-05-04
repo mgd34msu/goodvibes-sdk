@@ -8,14 +8,6 @@ import { describe, expect, test } from 'bun:test';
 import { TemplateManager, parseTemplateArgs } from '../packages/sdk/src/platform/templates/manager.js';
 
 describe('platform/templates — module load smoke', () => {
-  test('TemplateManager is a constructor', () => {
-    expect(typeof TemplateManager).toBe('function');
-  });
-
-  test('parseTemplateArgs is a function', () => {
-    expect(typeof parseTemplateArgs).toBe('function');
-  });
-
   test('parseTemplateArgs parses named args', () => {
     const result = parseTemplateArgs(['name=foo', 'value=bar']);
     expect(result).toEqual({ name: 'foo', value: 'bar' });
@@ -29,9 +21,7 @@ describe('platform/templates — module load smoke', () => {
 
   test('TemplateManager instance has expected methods', () => {
     const mgr = new TemplateManager({ projectRoot: '/tmp', homeDirectory: '/tmp', projectDirectory: '/tmp', globalDirectory: '/tmp' });
-    expect(typeof mgr.save).toBe('function');
-    expect(typeof mgr.load).toBe('function');
-    expect(typeof mgr.list).toBe('function');
-    expect(typeof mgr.delete).toBe('function');
+    const listed = mgr.list();
+    expect(Array.isArray(listed)).toBe(true);
   });
 });

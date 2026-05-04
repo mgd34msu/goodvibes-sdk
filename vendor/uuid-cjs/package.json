@@ -4,5 +4,9 @@
   "description": "GoodVibes vendored CommonJS uuid v4 adapter for Verdaccio @cypress/request.",
   "main": "index.js",
   "type": "commonjs",
-  "license": "MIT"
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  }
 }

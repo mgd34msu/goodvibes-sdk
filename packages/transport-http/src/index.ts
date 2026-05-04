@@ -29,7 +29,7 @@ export {
   readJsonBody,
   requestJsonRaw,
 } from './http.js';
-export type { TransportContext, TransportMiddleware } from './http-core.js';
+export type { HttpJsonTransport, HttpJsonTransportOptions, TransportContext, TransportMiddleware } from './http-core.js';
 export { generateIdempotencyKey } from './http-core.js';
 export type { ServerSentEventHandlers, ServerSentEventOptions } from './sse.js';
 export { openServerSentEventStream } from './sse.js';

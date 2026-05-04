@@ -3,6 +3,9 @@ export * from './eval/index.js';
 export * from './forensics/index.js';
 export * from './idempotency/index.js';
 export * from './perf/index.js';
+// PanelHealthMonitor is an alias for ComponentHealthMonitor, preserved for backwards-compat.
+// The 'Component' prefix was renamed to 'Panel' at the public surface to better reflect its
+// role as a runtime panel health tracker. Both names resolve to the same implementation.
 export { ComponentHealthMonitor as PanelHealthMonitor } from './perf/index.js';
 export { createDiagnosticsProvider, DiagnosticsProvider } from './diagnostics/index.js';
 export type { DiagnosticsProviderConfig, DiagnosticPanelName } from './diagnostics/provider.js';

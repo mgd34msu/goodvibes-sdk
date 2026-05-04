@@ -10,6 +10,8 @@ Public API surfaces:
 - `@pellux/goodvibes-sdk/platform/runtime`
 - `@pellux/goodvibes-sdk/platform` (full platform hub)
 
+> See [Public surface reference](./public-surface.md) for stability status and the full list of exported platform subpaths.
+
 ## Turn Loop
 
 The core orchestrator owns normal chat/task turns. It resolves the active

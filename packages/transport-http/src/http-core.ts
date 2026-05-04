@@ -413,6 +413,9 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         signal: requestOptions.signal,
       };
 
+      // MAJ-03: stash parsed body here so the no-middleware fast path avoids re-parsing.
+      let _parsedBodyCache: unknown = undefined;
+
       // Build the inner fetch that middleware wraps (and also used directly without middleware).
       const innerFetch = async (c: TransportContext): Promise<Response> => {
         const init: RequestInit = {
@@ -433,8 +436,10 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           const retryAfterMs = parseRetryAfterMs(response.headers);
           throw createTransportError(response.status, c.url, c.method, body, retryAfterMs);
         }
-        // Return synthetic Response carrying parsed body so callers can .json()
-        // it, while preserving HTTP metadata visible to middleware.
+        // MAJ-03: stash the already-parsed body so the no-middleware fast path can
+        // read it directly without a JSON.stringify → JSON.parse round-trip.
+        _parsedBodyCache = body;
+        // Return synthetic Response carrying parsed body so callers (middleware) can .json().
         return new Response(JSON.stringify(body), {
           status: response.status,
           statusText: response.statusText,
@@ -468,8 +473,9 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         }
 
         // No-middleware fast path — directly invoke innerFetch with ctx.
-        const rawResponse = await innerFetch(ctx);
-        const result = await rawResponse.json() as T;
+        await innerFetch(ctx);
+        // MAJ-03: use the cached parsed body (set by innerFetch) to avoid JSON round-trip.
+        const result = _parsedBodyCache as T;
         // Notify observer after a successful response.
         invokeTransportObserver(() => observer?.onTransportActivity?.({
           direction: 'recv',

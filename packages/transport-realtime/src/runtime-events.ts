@@ -572,7 +572,9 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 }
 
 function webSocketCloseError(event: CloseEvent): Error {
-  const reason = typeof event.reason === 'string' ? event.reason.trim() : '';
+  // NIT-03: cap reason length to prevent oversized error messages.
+  const rawReason = typeof event.reason === 'string' ? event.reason.trim() : '';
+  const reason = rawReason.length > 256 ? `${rawReason.slice(0, 256)}…` : rawReason;
   const code = typeof event.code === 'number' ? event.code : 1005;
   const wasClean = typeof event.wasClean === 'boolean' ? event.wasClean : false;
   const detail = [

@@ -73,12 +73,7 @@ describe('transport-http structured throws', () => {
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async () => new Response('service unavailable', { status: 503 }),
     });
-    let caught: unknown;
-    try {
-      await openServerSentEventStream(transport, '/api/stream', {});
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await openServerSentEventStream(transport, '/api/stream', {}).catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(GoodVibesSdkError);
     const err = caught as GoodVibesSdkError;
     expect(err.kind).toBe('network');
@@ -218,13 +213,7 @@ describe('transport-http', () => {
       fetch: createFetchStub(async () => { throw originalError; }),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
-
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
     expect(err.category).toBe('network');
@@ -249,13 +238,7 @@ describe('transport-http', () => {
       )),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
-
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
     expect(err.category).toBe('rate_limit');
@@ -278,13 +261,7 @@ describe('transport-http', () => {
       )),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
-
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
     expect(err.category).toBe('rate_limit');
@@ -299,13 +276,7 @@ describe('transport-http', () => {
       fetch: createFetchStub(async () => createJsonResponse({ error: 'too many requests' }, 429)),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
-
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
     expect(err.category).toBe('rate_limit');
@@ -319,13 +290,7 @@ describe('transport-http', () => {
       fetch: createFetchStub(async () => createJsonResponse({ error: 'unauthorized' }, 401)),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
-
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
     expect(err.category).toBe('authentication');
@@ -339,13 +304,7 @@ describe('transport-http', () => {
       fetch: createFetchStub(async () => createJsonResponse({ error: 'service unavailable' }, 503)),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
-
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
     expect(err.category).toBe('service');
@@ -363,13 +322,7 @@ describe('transport-http', () => {
       }, 401)),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
-
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
     expect(err.hint).toBe('Use the pairing token from the dashboard');

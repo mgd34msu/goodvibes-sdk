@@ -9,7 +9,7 @@ import {
 // distinct public name in the Expo entrypoint.
 export type ExpoGoodVibesSdkOptions = ReactNativeGoodVibesSdkOptions;
 
-export { forSession } from './transport-realtime.js';
+export { forSession } from './_companion-realtime.js';
 
 /**
  * Create a GoodVibes SDK instance from the Expo-specific entrypoint.

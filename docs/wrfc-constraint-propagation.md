@@ -34,7 +34,7 @@ interface ConstraintFinding {
 }
 ```
 
-Both types are exported from `@pellux/goodvibes-sdk` for full SDK users; they are not part of the public companion surface.
+Only `Constraint` is exported from `@pellux/goodvibes-sdk` root (via `events/index` → root `index.ts`). `ConstraintFinding` is accessible through `@pellux/goodvibes-sdk/platform` (as `platform.agents.ConstraintFinding`) but is not re-exported from the root SDK entry. Neither type is part of the public companion surface.
 
 ---
 

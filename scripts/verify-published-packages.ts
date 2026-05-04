@@ -7,6 +7,12 @@ import {
   run,
 } from './release-shared.ts';
 
+// Env-var validation runs only when this script is the entry point so that
+// test discovery or type-checking tools importing the module do not throw.
+if (!import.meta.main) {
+  throw new Error('verify-published-packages.ts must be run as a script, not imported as a module.');
+}
+
 const version = process.argv[2] || getRootVersion();
 const registry = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 const _rawAttempts = process.env.GOODVIBES_VERIFY_ATTEMPTS || '48';

@@ -10,7 +10,7 @@ Use realtime feeds for live UI updates and operator monitoring.
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
-  baseUrl: 'http://127.0.0.1:3210',
+  baseUrl: 'http://127.0.0.1:3421',
   authToken: process.env.GOODVIBES_TOKEN,
 });
 

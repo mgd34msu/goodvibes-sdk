@@ -4,7 +4,7 @@
  * These events drive terminal and web surface rendering without coupling it to business logic.
  */
 
-export type UIEvent =
+export type GoodVibesUIEvent =
   /** A full re-render has been requested. */
   | { type: 'UI_RENDER_REQUEST' }
   /** Scroll by a relative delta (positive = down, negative = up). */
@@ -26,5 +26,14 @@ export type UIEvent =
   /** The active view changed (e.g. chat -> search -> help). */
   | { type: 'UI_VIEW_CHANGED'; from: string; to: string };
 
-/** All UI event type literals as a union. */
-export type UIEventType = UIEvent['type'];
+/** All GoodVibes UI event type literals as a union. */
+export type GoodVibesUIEventType = GoodVibesUIEvent['type'];
+
+/**
+ * @deprecated Use `GoodVibesUIEvent` instead. This alias exists to avoid collision
+ * with the DOM global `UIEvent`.
+ */
+export type UIEvent = GoodVibesUIEvent;
+
+/** @deprecated Use `GoodVibesUIEventType` instead. */
+export type UIEventType = GoodVibesUIEventType;

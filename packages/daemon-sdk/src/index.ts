@@ -31,7 +31,7 @@ export {
   resolveAuthenticatedPrincipal,
   resolvePrivateHostFetchOptions,
 } from './http-policy.js';
-export type { AuthenticatedPrincipal, AuthenticatedPrincipalKind } from './http-policy.js';
+export type { AuthenticatedPrincipal, AuthenticatedPrincipalKind, AuthenticatedPrincipalResolver, ElevatedPrivateHostFetchConfig, PrivateHostFetchConfig } from './http-policy.js';
 export {
   createRouteBodySchema,
   createRouteBodySchemaRegistry,
@@ -56,11 +56,15 @@ export type {
   RouteBodySchema,
 } from './route-helpers.js';
 export type {
+  ChannelAgentToolDefinitionLike,
+  ChannelAllowlistInput,
+  ChannelAuthorizeActionInput,
   ChannelDirectoryQuery,
   ChannelDirectoryScope,
   ChannelPluginServiceLike,
   ChannelPolicyServiceLike,
   ChannelSurface,
+  ChannelTargetResolutionInput,
   DaemonChannelRouteContext,
   SurfaceRegistryLike,
 } from './channel-route-types.js';
@@ -68,6 +72,7 @@ export type {
   ChannelAccountRegistryLike,
   DaemonIntegrationRouteContext,
   IntegrationHelperServiceLike,
+  IntegrationRuntimeStoreLike,
   MemoryEmbeddingRegistryLike,
   MemoryRegistryLike,
   ProviderRuntimeSnapshotServiceLike,
@@ -84,9 +89,13 @@ export type {
   ConfigManagerLike as DaemonSystemConfigManagerLike,
   DaemonApiClientKind,
   DaemonSystemRouteContext,
+  IntegrationApprovalSnapshotSourceLike,
   PlatformServiceManagerLike,
   RouteBindingManagerLike,
+  RouteBindingPatchInput,
+  RouteBindingRecordInput,
   WatcherKind,
+  WatcherRecord,
   WatcherRegistryLike,
   WorkspaceSwapManagerLike,
 } from './system-route-types.js';
@@ -103,15 +112,18 @@ export type {
 } from './knowledge-route-types.js';
 export type {
   ArtifactKind,
+  ArtifactStoreLike,
   DaemonMediaRouteContext,
   FetchExtractMode,
   MediaArtifact,
+  MediaProviderLike,
   MediaProviderRegistryLike,
   MultimodalAnalysisResult,
   MultimodalDetail,
   MultimodalServiceLike,
   VoiceAudioArtifact,
   VoiceServiceLike,
+  VoiceSynthesisStreamLike,
   WebSearchSafeSearch,
   WebSearchServiceLike,
   WebSearchTimeRange,
@@ -135,7 +147,7 @@ export { createDaemonSystemRouteHandlers } from './system-routes.js';
 export { createDaemonKnowledgeRouteHandlers } from './knowledge-routes.js';
 export { createDaemonKnowledgeRefinementRouteHandlers } from './knowledge-refinement-routes.js';
 export { createDaemonMediaRouteHandlers } from './media-routes.js';
-export type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
+export type { ConversationMessageEnvelope, DaemonRuntimeRouteContext } from './runtime-route-types.js';
 export { createDaemonRuntimeAutomationRouteHandlers } from './runtime-automation-routes.js';
 export { createDaemonRuntimeSessionRouteHandlers } from './runtime-session-routes.js';
 export { createDaemonRuntimeRouteHandlers } from './runtime-routes.js';
@@ -148,3 +160,4 @@ export {
   handleRemotePeerWorkComplete,
 } from './remote-routes.js';
 export { buildErrorResponseBody, jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
+export type { JsonErrorResponseOptions } from './error-response.js';

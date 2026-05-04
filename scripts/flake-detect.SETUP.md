@@ -36,3 +36,7 @@ Job timeout is 15 minutes. N=3 repetitions in CI (versus N=5 local default).
 - Fails if any test flips between pass and fail (flaky), OR if all runs fail (deterministic failure)
 - Build step required before flake check to ensure `dist/` is present
 - Do NOT run locally without `FLAKE_RUNS=3` unless you have time for 5 full test suite runs
+- CI runs flake-check **only on `schedule`** (nightly cron at 06:00 UTC). PRs and push-to-main
+  do NOT run flake detection. This is an intentional trade-off: running N=3 full test suites on
+  every PR would add ~20 minutes to the CI clock. If you introduce a flaky test, it will surface
+  in the nightly run but not in PR CI. Document any known flaky tests in this file.

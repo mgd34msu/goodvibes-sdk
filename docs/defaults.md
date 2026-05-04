@@ -136,6 +136,21 @@ See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming ro
 **Rationale:** Auth calls go through the HTTP transport layer which applies `DEFAULT_HTTP_RETRY_POLICY`.
 There is no separate auth-specific timeout; callers should pass an `AbortSignal` for bounded waits.
 
+## Session Auth (`@pellux/goodvibes-sdk/daemon` — daemon embedders)
+
+| Constant | Default | Notes |
+|----------|---------|-------|
+| `DEFAULT_SESSION_TTL_MS` | `3 600 000` (1 hour) | Session tokens expire after 1 hour of creation; expired sessions are rejected and pruned on access |
+
+**Source:** `packages/sdk/src/platform/auth/user-auth-manager.ts`. Not a public configurable — set via daemon config `auth.sessionTtlMs` if your embedding exposes it.
+
+## Rate Limits (daemon built-in)
+
+| Limiter | Default | Notes |
+|---------|---------|-------|
+| General rate limiter | 60 requests / minute / IP | Applied to all routes except login; configurable via `rateLimit` daemon option |
+| Login rate limiter | 5 requests / minute / IP | Applied to `POST /login` only; configurable via `loginRateLimit` daemon option |
+
 ## Outbound Producer Queue (`@pellux/goodvibes-sdk/transport-realtime` — `runtime-events.ts`)
 
 | Field | Value | Notes |

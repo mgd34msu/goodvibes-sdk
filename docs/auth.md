@@ -6,7 +6,7 @@ Auth is split between client token handling and daemon route enforcement.
 
 Client-facing code uses token stores and transport middleware. Two public subpaths are available:
 - `@pellux/goodvibes-sdk/auth` — token storage helpers, auth flows, and the `GoodVibesTokenStore` interface. Use this for most application code.
-- `@pellux/goodvibes-sdk/client-auth` — low-level primitives (`AutoRefreshCoordinator`, platform-specific token stores, auto-refresh options). Use this only when you need fine-grained control over refresh timing or platform-specific store implementations.
+- `@pellux/goodvibes-sdk/client-auth` — low-level authentication primitives (`AutoRefreshCoordinator`, platform-specific token stores, auto-refresh options). Use this only when you need fine-grained control over refresh timing or platform-specific store implementations.
 
 Daemon-facing code resolves principals, scopes, sessions, and admin requirements. Transport
 helpers do not read process-wide config or environment state implicitly; callers
@@ -51,9 +51,9 @@ at daemon startup and share no file path.
 Every route handler receives a resolved principal. Scopes are checked at the
 handler boundary, not inside business logic. The three scope checks are:
 
-1. `resolveAuthenticatedPrincipal` — authentication gate (unauthenticated → 401)
-2. `requireAuthenticatedSession` — session existence gate (no active session → 401)
-3. `requireAdmin` — elevation gate (insufficient rights → 403)
+1. `resolveAuthenticatedPrincipal` — authentication gate (unauthenticated → 401) *(public via `@pellux/goodvibes-sdk/daemon`)*
+2. `requireAuthenticatedSession` — session existence gate (no active session → 401) *(internal)*
+3. `requireAdmin` — elevation gate (insufficient rights → 403) *(internal)*
 
 Examples must not print tokens or hardcode real credentials. Test credentials
 should be local placeholders or environment-driven.

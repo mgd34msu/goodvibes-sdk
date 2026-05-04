@@ -196,6 +196,16 @@ if (staleBudgetEntries.length > 0) anyFail = true;
 for (const { entry, distRel } of entries) {
   const filePath = resolve(SDK_PKG, distRel);
   if (!existsSync(filePath)) {
+    if (isStale()) {
+      // File is absent because dist/ is stale — the entry exists in package.json
+      // exports but has no corresponding built file yet. Fail fast with an
+      // actionable message instead of blaming bundle-budgets.json.
+      console.error(
+        `ERROR: dist/ is stale and built file is missing for entry ${entry}.\n` +
+          'Run `bun run build` first, or pass --build to force a rebuild.',
+      );
+      process.exit(1);
+    }
     console.warn(`WARN: built file not found for entry ${entry}: ${filePath}`);
     rows.push({ entry, actual: 0, budget: null, delta: null, status: 'NO BUDGET' });
     anyFail = true;

@@ -18,11 +18,26 @@ import { resolve } from 'node:path';
 const ROOT = resolve(import.meta.dir, '..');
 const TEST_DIR = resolve(ROOT, 'test');
 
+// Root-level test files
 const files: string[] = [];
 for await (const entry of glob('*.test.ts', { cwd: TEST_DIR })) {
   files.push(entry);
 }
 files.sort();
+
+// Integration test files
+const integrationFiles: string[] = [];
+for await (const entry of glob('integration/**/*.test.ts', { cwd: TEST_DIR })) {
+  integrationFiles.push(entry);
+}
+integrationFiles.sort();
+
+// Workers / sub-runner test files
+const workersFiles: string[] = [];
+for await (const entry of glob('workers*/**/*.test.ts', { cwd: TEST_DIR })) {
+  workersFiles.push(entry);
+}
+workersFiles.sort();
 
 const header = `# Test Coverage Map
 
@@ -41,4 +56,30 @@ const rows = files
   .map((file, i) => `| T${String(i + 1).padStart(3, '0')} | \`test/${file}\` |`)
   .join('\n');
 
+const integrationHeader = `
+## Integration tests (\`test/integration/**/*.test.ts\`)
+
+| # | File |
+|---|------|`;
+
+const integrationRows = integrationFiles
+  .map((file, i) => `| I${String(i + 1).padStart(3, '0')} | \`test/${file}\` |`)
+  .join('\n');
+
+const workersHeader = `
+## Sub-runner tests (\`test/workers*/**/*.test.ts\`)
+
+| # | File |
+|---|------|`;
+
+const workersRows = workersFiles
+  .map((file, i) => `| W${String(i + 1).padStart(3, '0')} | \`test/${file}\` |`)
+  .join('\n');
+
 console.log(`${header}\n${rows}\n`);
+if (integrationFiles.length > 0) {
+  console.log(`${integrationHeader}\n${integrationRows}\n`);
+}
+if (workersFiles.length > 0) {
+  console.log(`${workersHeader}\n${workersRows}\n`);
+}

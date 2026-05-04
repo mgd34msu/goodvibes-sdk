@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
+    # 06:00 UTC = 23:00 US-Pacific / 08:00 CET — least-busy global window
     - cron: '0 6 * * *' # nightly — flake-check only
 
 # Default to read-only permissions. Individual jobs elevate as needed.
@@ -40,6 +41,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name != 'schedule'
+    # contents: read (inherited from workflow default) is sufficient for gitleaks.
+    # Add pull-requests: write here if you want gitleaks to comment on PRs.
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

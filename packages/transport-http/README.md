@@ -19,7 +19,7 @@ import { createJsonRequestInit, requestJsonRaw } from '@pellux/goodvibes-sdk/tra
 
 const body = await requestJsonRaw(
   fetch,
-  'http://127.0.0.1:3210/api/control-plane/auth',
+  'http://127.0.0.1:3421/api/control-plane/auth',
   createJsonRequestInit(process.env.GOODVIBES_TOKEN ?? null),
 );
 ```

@@ -294,7 +294,7 @@ Slack setup uses this same URI mechanism. Direct setup writes Slack token values
 
 ## Permission System
 
-**Public subpath:** `@pellux/goodvibes-sdk/platform/permissions` (daemon embedders).
+**Public namespace:** `@pellux/goodvibes-sdk/platform` — use the `platform.permissions.*` namespace (daemon embedders). There is no dedicated `./platform/permissions` subpath; access permissions APIs through the aggregate `./platform` entry.
 
 Every tool call goes through the `PermissionManager` before execution.
 

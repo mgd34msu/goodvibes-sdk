@@ -109,7 +109,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.sessions.get('session-1');
     expect(calls[0]).toContain('/sessions/session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'session-1' });
   });
 
   test('sessions.messages.create builds path from sessionId', async () => {
@@ -124,7 +124,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.sessions.messages.create('session-1', { role: 'user', content: 'hello' });
     expect(calls[0]).toContain('/sessions/session-1/messages');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ id: 'msg-1' });
   });
 
   test('sessions.inputs.cancel builds path from sessionId + inputId', async () => {
@@ -140,7 +140,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const result = await sdk.sessions.inputs.cancel('session-1', 'input-1');
     expect(calls[0]).toContain('session-1');
     expect(calls[0]).toContain('input-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ cancelled: true });
   });
 
   test('sessions.close builds path from sessionId', async () => {
@@ -155,7 +155,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.sessions.close('session-1');
     expect(calls[0]).toContain('session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ closed: true });
   });
 
   test('sessions.reopen builds path from sessionId', async () => {
@@ -170,7 +170,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     });
     const result = await sdk.sessions.reopen('session-1');
     expect(calls[0]).toContain('session-1');
-    expect(result).toBeDefined();
+    expect(result).toMatchObject({ reopened: true });
   });
 
   test('tasks.get builds path from taskId', async () => {
