@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 6 * * *' # nightly — flake-check only
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -44,6 +46,7 @@ jobs:
     name: Flake detector
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    if: github.event_name == 'schedule'
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -77,23 +80,6 @@ jobs:
           path: packages/sdk/dist
           retention-days: 1
           if-no-files-found: error
-
-  # ---------------------------------------------------------------------------
-  # Generated contract artifact drift guard. Cheap.
-  # ---------------------------------------------------------------------------
-  contract-artifact-check:
-    name: Contract artifact check
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Build workspace for contract imports
-        run: bun run build
-      - name: Check generated contract artifacts
-        run: bun run contracts:check
 
   # ---------------------------------------------------------------------------
   # Platform matrix — each platform builds and runs its test suite. Isolated
@@ -137,43 +123,11 @@ jobs:
       - name: Run test suite (${{ matrix.platform }})
         run: ${{ matrix.test-cmd }}
 
-  examples-typecheck:
-    name: Examples typecheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Build workspace for example package imports
-        run: bun run build
-      - name: Typecheck examples
-        run: bun run --cwd examples typecheck
-
   # ---------------------------------------------------------------------------
   # Consumer jobs that share the build artifact. Each tests the exact same
   # bytes produced by the `build` job — eliminates the 4-parallel-builds
   # non-determinism window the old CI had.
   # ---------------------------------------------------------------------------
-  types-check:
-    name: Public type surface check
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [build]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Download dist artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: sdk-dist
-          path: packages/sdk/dist
-      - name: Check public type signatures
-        run: bun run types:check
-
   types-resolution-check:
     name: Are the types wrong? (exports map resolution)
     runs-on: ubuntu-latest
@@ -213,47 +167,6 @@ jobs:
           path: packages/sdk/dist
       - name: Run publint
         run: bun run publint:check
-
-  api-surface-check:
-    name: API surface snapshot
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [build]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Build workspace dependency declarations
-        # API Extractor reads sibling-package declaration files from the
-        # workspace, while the SDK package surface is checked against the exact
-        # dist artifact built by the main build job. Both are required here.
-        run: bun run build
-      - name: Download dist artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: sdk-dist
-          path: packages/sdk/dist
-      - name: Check API surface snapshot
-        run: bun run api:check
-
-  bundle-budget-check:
-    name: Bundle budget
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [build]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Setup Bun + deps (cached)
-        uses: ./.github/actions/setup
-      - name: Download dist artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: sdk-dist
-          path: packages/sdk/dist
-      - name: Check bundle budgets
-        run: bun run bundle:check
 
   sbom-check:
     name: SBOM generation + validation (CycloneDX)

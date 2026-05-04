@@ -23,10 +23,9 @@ run('bun', ['run', 'test-skip:check'], 'test-skip:check');
 run('bun', ['run', 'platform-console:check'], 'platform-console:check');
 run('bun', ['run', 'build'], 'build');
 run('bun', ['run', 'types:check'], 'types:check');
-// examples typecheck runs in CI as a dedicated job (examples-typecheck); it
-// also runs here so that `bun run validate` catches type errors locally
-// without requiring a separate CI step. Both are intentional: the CI job
-// runs in parallel, the local call runs in sequence.
+run('bun', ['run', 'api:check'], 'api:check');
+// examples typecheck also runs locally so `bun run validate` catches type
+// errors without a separate CI step.
 run('bun', ['run', '--cwd', 'examples', 'typecheck'], 'examples:typecheck');
 run('bun', ['scripts/browser-compat-check.ts'], 'browser-compat:check');
 run('bun', ['scripts/package-metadata-check.ts'], 'package-metadata:check');
