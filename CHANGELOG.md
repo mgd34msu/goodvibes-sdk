@@ -244,8 +244,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - Replace old deep imports into SDK mirror or platform wildcard paths with
   explicit v0.30.0 exports.
 
----
-
-## Archived history
-
-Releases before v0.30.0 are unsupported and live in [CHANGELOG.archive.md](./CHANGELOG.archive.md).
