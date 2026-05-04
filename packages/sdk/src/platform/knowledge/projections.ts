@@ -756,7 +756,7 @@ export class KnowledgeProjectionService {
 
   private combineBundleMarkdown(bundle: KnowledgeProjectionBundle): string {
     if (bundle.pages.length === 1) {
-      return bundle.pages[0]!.content;
+      return bundle.pages[0]?.content ?? '';
     }
     const index = [
       `# ${bundle.target.title}`,

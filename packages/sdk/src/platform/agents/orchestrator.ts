@@ -452,8 +452,8 @@ export class AgentOrchestrator {
 
   private createRunContext(): AgentOrchestratorRunContext {
     return {
-      workingDirectory: this.toolDeps!.workingDirectory,
-      surfaceRoot: this.toolDeps!.surfaceRoot,
+      workingDirectory: this.toolDeps?.workingDirectory ?? '',
+      surfaceRoot: this.toolDeps?.surfaceRoot ?? '',
       runtimeBus: this.runtimeBus,
       featureFlagManager: this.featureFlagManager,
       emitterContext: (agentId) => this.emitterContext(agentId),

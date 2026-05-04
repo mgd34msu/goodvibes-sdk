@@ -126,15 +126,15 @@ export function findAllPositions(
     for (let i = 0; i <= tokens.length - findTokens.length; i++) {
       let match = true;
       for (let j = 0; j < findTokens.length; j++) {
-        if (tokens[i + j]!.norm !== findTokens[j]) {
+        if ((tokens[i + j]?.norm ?? '') !== findTokens[j]) {
           match = false;
           break;
         }
       }
       if (match) {
         positions.push({
-          start: tokens[i]!.origStart,
-          end: tokens[i + findTokens.length - 1]!.origEnd,
+          start: tokens[i]?.origStart ?? 0,
+          end: tokens[i + findTokens.length - 1]?.origEnd ?? 0,
         });
       }
     }
@@ -378,7 +378,7 @@ export function computeAstEdit(
       if (sig.includes(normalizedFind) || normalizedFind.includes(sig)) {
         let lineOffset = 0;
         for (let i = 0; i < symbol.line - 1 && i < lines.length; i++) {
-          lineOffset += lines[i]!.length + 1;
+          lineOffset += (lines[i]?.length ?? 0) + 1;
         }
         const lineText = lines[symbol.line - 1] ?? '';
         const col = lineText.indexOf(findStr);

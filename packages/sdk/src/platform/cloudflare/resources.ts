@@ -493,7 +493,7 @@ async function ensureCnameRecord(
   steps: CloudflareProvisionStep[],
   stepName: string,
 ): Promise<CloudflareDnsRecordLike> {
-  const existing = await collectAsync(client.dns!.records.list({ zone_id: zoneId, type: 'CNAME', name: { exact: hostname } }));
+  const existing = await collectAsync(client.dns!.records.list({ zone_id: zoneId, type: 'CNAME', name: { exact: hostname } }) ?? []);
   const match = existing.find((record) => record.name === hostname && record.type === 'CNAME');
   const params = {
     zone_id: zoneId,
@@ -539,7 +539,7 @@ async function findKvNamespace(
   namespaceName: string,
   namespaceId: string,
 ): Promise<CloudflareKvNamespaceLike | undefined> {
-  for await (const namespace of client.kv!.namespaces.list({ account_id: accountId })) {
+  for await (const namespace of (client.kv?.namespaces.list({ account_id: accountId }) ?? [])) {
     if (namespace.title === namespaceName || (namespaceId && namespace.id === namespaceId)) return namespace;
   }
   return undefined;
@@ -560,11 +560,11 @@ async function findR2BucketByName(
   accountId: string,
   bucketName: string,
 ): Promise<CloudflareR2BucketLike | undefined> {
-  const listed = (await client.r2!.buckets.list({ account_id: accountId })).buckets?.find((bucket) => bucket.name === bucketName);
+  const listed = (await client.r2?.buckets.list({ account_id: accountId }))?.buckets?.find((bucket) => bucket.name === bucketName);
   if (listed) return listed;
-  if (!client.r2!.buckets.get) return undefined;
+  if (!client.r2?.buckets.get) return undefined;
   try {
-    const bucket = await client.r2!.buckets.get(bucketName, { account_id: accountId });
+    const bucket = await client.r2?.buckets.get?.(bucketName, { account_id: accountId });
     return bucket.name ? bucket : { ...bucket, name: bucketName };
   } catch {
     return undefined;
@@ -577,7 +577,7 @@ async function findSecretsStore(
   storeName: string,
   storeId: string,
 ): Promise<CloudflareSecretsStoreLike | undefined> {
-  for await (const store of client.secretsStore!.stores.list({ account_id: accountId })) {
+  for await (const store of (client.secretsStore?.stores.list({ account_id: accountId }) ?? [])) {
     if (store.name === storeName || (storeId && store.id === storeId)) return store;
   }
   return undefined;
@@ -590,7 +590,7 @@ async function findRecoverableSecretsStore(
   storeId: string,
   error: unknown,
 ): Promise<CloudflareSecretsStoreLike | undefined> {
-  const stores = await collectAsync(client.secretsStore!.stores.list({ account_id: accountId }));
+  const stores = await collectAsync(client.secretsStore!.stores.list({ account_id: accountId }) ?? []);
   const exact = stores.find((store) => store.name === storeName || (storeId && store.id === storeId));
   if (exact) return exact;
   if (isMaximumStoresExceeded(error) && stores.length === 1) return stores[0];
@@ -615,7 +615,8 @@ async function findTunnelByName(
   accountId: string,
   tunnelName: string,
 ): Promise<CloudflareTunnelLike | undefined> {
-  const api = client.zeroTrust!.tunnels!.cloudflared;
+  const api = client.zeroTrust?.tunnels?.cloudflared;
+  if (!api) return undefined;
   for await (const tunnel of api.list({ account_id: accountId, name: tunnelName, is_deleted: false })) {
     if (tunnel.name === tunnelName) return tunnel;
   }
@@ -663,6 +664,6 @@ async function findCnameRecord(
   zoneId: string,
   hostname: string,
 ): Promise<CloudflareDnsRecordLike | undefined> {
-  const existing = await collectAsync(client.dns!.records.list({ zone_id: zoneId, type: 'CNAME', name: { exact: hostname } }));
+  const existing = await collectAsync(client.dns!.records.list({ zone_id: zoneId, type: 'CNAME', name: { exact: hostname } }) ?? []);
   return existing.find((record) => record.name === hostname && record.type === 'CNAME');
 }

@@ -476,7 +476,7 @@ export function paginateFiles(files: ReadFileInput[], tokenBudget: number, proje
   for (let i = 0; i < files.length; i++) {
     let est = 0;
     try {
-      const resolved = resolveAndValidatePath(files[i]!.path, projectRoot);
+      const resolved = resolveAndValidatePath((files[i]?.path ?? ''), projectRoot);
       est = Math.ceil(statSync(resolved).size / 4);
     } catch {
       est = 0;

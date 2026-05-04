@@ -33,7 +33,7 @@ function extractExportedSymbols(content: string): Array<{ name: string; kind: st
   ];
 
   for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i]!.trimStart();
+    const trimmed = (lines[i] ?? '').trimStart();
     for (const { kind, regex } of patterns) {
       const m = trimmed.match(regex);
       if (m?.[1]) {
@@ -336,7 +336,7 @@ export async function runSecurity(
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         for (const { name, regex } of SECRET_PATTERNS) {
-          const m = lines[i]!.match(regex);
+          const m = (lines[i] ?? '').match(regex);
           if (m) {
             findings.push({
               file: relative(projectRoot, file),
@@ -633,14 +633,14 @@ export async function runPermissions(
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
       for (const { name, regex, severity } of DANGEROUS_PATTERNS) {
-        const m = lines[i]!.match(regex);
+        const m = (lines[i] ?? '').match(regex);
         if (m) {
           findings.push({
             file: relative(projectRoot, file),
             line: i + 1,
             pattern: name,
             severity,
-            match: lines[i]!.trim().slice(0, 100),
+            match: (lines[i] ?? '').trim().slice(0, 100),
           });
         }
       }
@@ -688,12 +688,12 @@ export async function runEnvAudit(
   }
 
   const reference = found.find((f) => f.name === '.env.example') ?? found[0];
-  const referenceKeys = new Set(reference!.keys);
+  const referenceKeys = new Set(reference?.keys ?? []);
   const missing: Array<{ key: string; present_in: string; missing_from: string[] }> = [];
   const extra: Array<{ key: string; only_in: string }> = [];
 
   for (const file of found) {
-    if (file.name === reference!.name) continue;
+    if (file.name === reference?.name) continue;
     const fileKeys = new Set(file.keys);
 
     for (const key of referenceKeys) {
@@ -702,7 +702,7 @@ export async function runEnvAudit(
         if (existing) {
           existing.missing_from.push(file.name);
         } else {
-          missing.push({ key, present_in: reference!.name, missing_from: [file.name] });
+          missing.push({ key, present_in: reference?.name ?? '', missing_from: [file.name] });
         }
       }
     }
@@ -716,7 +716,7 @@ export async function runEnvAudit(
 
   return {
     files: found.map((f) => ({ name: f.name, key_count: f.keys.length })),
-    reference: reference!.name,
+    reference: reference?.name ?? '',
     missing,
     extra,
   };

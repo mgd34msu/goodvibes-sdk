@@ -50,8 +50,8 @@ export function ensureColumn(
   const rows = db.exec(`PRAGMA table_info(${table})`);
   const existing = new Set<string>();
   if (rows[0]!) {
-    const nameIndex = rows[0]!.columns.indexOf('name');
-    for (const value of rows[0]!.values) {
+    const nameIndex = rows[0]?.columns.indexOf('name') ?? -1;
+    for (const value of (rows[0]?.values ?? [])) {
       if (nameIndex >= 0) {
         existing.add(String(value[nameIndex]));
       }
@@ -132,7 +132,7 @@ export function scoreRecord(record: MemoryRecord, filter: MemorySearchFilter): n
 
 export function recordMatchesPostSqlFilter(record: MemoryRecord, filter: MemorySearchFilter): boolean {
   if (filter.provenanceKinds?.length) {
-    if (!record.provenance.some((entry) => filter.provenanceKinds!.includes(entry.kind))) return false;
+    if (!record.provenance.some((entry) => filter.provenanceKinds?.includes(entry.kind))) return false;
   }
   if (filter.reviewState) {
     const states = Array.isArray(filter.reviewState) ? filter.reviewState : [filter.reviewState];

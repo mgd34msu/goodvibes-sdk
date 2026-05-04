@@ -300,7 +300,7 @@ function computeHunks(oldLines: string[], newLines: string[], CONTEXT = 3): stri
   let i = 0;
   while (i < edits.length) {
     // Find next non-context edit
-    while (i < edits.length && edits[i]!.type === 'context') i++;
+    while (i < edits.length && edits[i]?.type === 'context') i++;
     if (i >= edits.length) break;
 
     // Collect hunk starting CONTEXT lines before
@@ -308,12 +308,12 @@ function computeHunks(oldLines: string[], newLines: string[], CONTEXT = 3): stri
     let hunkEnd = i;
     // Extend to next gap
     while (hunkEnd < edits.length) {
-      if (edits[hunkEnd]!.type !== 'context') {
+      if (edits[hunkEnd]?.type !== 'context') {
         hunkEnd++;
       } else {
         // Check if there's another non-context within CONTEXT distance
         let next = hunkEnd + 1;
-        while (next < edits.length && edits[next]!.type === 'context') next++;
+        while (next < edits.length && edits[next]?.type === 'context') next++;
         if (next < edits.length && next - hunkEnd <= CONTEXT * 2) {
           hunkEnd = next;
         } else {
@@ -329,8 +329,8 @@ function computeHunks(oldLines: string[], newLines: string[], CONTEXT = 3): stri
     let oldLine = 1;
     let newLine = 1;
     for (let j = 0; j < hunkStart; j++) {
-      if (edits[j]!.type !== 'added') oldLine++;
-      if (edits[j]!.type !== 'removed') newLine++;
+      if (edits[j]?.type !== 'added') oldLine++;
+      if (edits[j]?.type !== 'removed') newLine++;
     }
     oldStart = oldLine;
     newStart = newLine;

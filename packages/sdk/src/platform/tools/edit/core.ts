@@ -81,7 +81,7 @@ function prepareTextEditInput(
     }
   }
 
-  const uniquePaths = new Set(input.edits!.map((e) => resolvedPaths.get(e.path) ?? e.path));
+  const uniquePaths = new Set((input.edits ?? []).map((e) => resolvedPaths.get(e.path) ?? e.path));
   const fileContents: Map<string, string> = new Map();
   const fileReadErrors: Map<string, string> = new Map();
 
@@ -455,7 +455,7 @@ async function executeTextEdits(
   }
 
   if (transactionMode === 'atomic' && atomicFailed) {
-    const atomicResults: EditResult[] = input.edits!.map((item, idx) => {
+    const atomicResults: EditResult[] = (input.edits ?? []).map((item, idx) => {
       const r = results[idx]!;
       if (r && !r.success) return r;
       return {

@@ -117,8 +117,8 @@ export function buildSyntheticCanonicalModels(models: readonly CatalogModel[]): 
     if (distinctProviders < 2) continue;
 
     const tierPriority: Record<SyntheticTier, number> = { free: 2, subscription: 1, paid: 0 };
-    const tier = group.reduce((best, model) =>
-      (tierPriority[model.tier] ?? 0) > (tierPriority[best] ?? 0) ? model.tier : best, group[0]!.tier);
+    const tier = group.length > 0 ? group.reduce((best, model) =>
+      (tierPriority[model.tier] ?? 0) > (tierPriority[best] ?? 0) ? model.tier : best, group[0]?.tier ?? 'paid') : 'paid';
 
     canonical.push({
       id: canonicalId,

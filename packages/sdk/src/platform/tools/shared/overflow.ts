@@ -188,7 +188,7 @@ export class FileBackend implements SpillBackend {
     const rem = entries.filter((e) => !toDelete.has(e.path));
     if (cfg.maxCount! !== Infinity && rem.length > cfg.maxCount!) {
       const excess = rem.length - cfg.maxCount!;
-      for (let i = 0; i < excess; i++) toDelete.add(rem[i]!.path);
+      for (let i = 0; i < excess; i++) { const r = rem[i]; if (r) toDelete.add(r.path); }
     }
     const ac = entries.filter((e) => !toDelete.has(e.path));
     if (cfg.maxSizeBytes !== Infinity) {
@@ -277,7 +277,7 @@ export class LedgerBackend implements SpillBackend {
     const rem = sorted.filter((e) => !toDelete.has(e.id));
     if (cfg.maxCount! !== Infinity && rem.length > cfg.maxCount!) {
       const excess = rem.length - cfg.maxCount!;
-      for (let i = 0; i < excess; i++) toDelete.add(rem[i]!.id);
+      for (let i = 0; i < excess; i++) { const r = rem[i]; if (r) toDelete.add(r.id); }
     }
     const ac = sorted.filter((e) => !toDelete.has(e.id));
     if (cfg.maxSizeBytes !== Infinity) {
@@ -319,7 +319,7 @@ export class DiagnosticsBackend implements SpillBackend {
     const rem = sorted.filter((e) => !toDelete.has(e.id));
     if (cfg.maxCount! !== Infinity && rem.length > cfg.maxCount!) {
       const excess = rem.length - cfg.maxCount!;
-      for (let i = 0; i < excess; i++) toDelete.add(rem[i]!.id);
+      for (let i = 0; i < excess; i++) { const r = rem[i]; if (r) toDelete.add(r.id); }
     }
     const ac = sorted.filter((e) => !toDelete.has(e.id));
     if (cfg.maxSizeBytes !== Infinity) {
@@ -327,7 +327,8 @@ export class DiagnosticsBackend implements SpillBackend {
       for (const e of ac) { if (total <= cfg.maxSizeBytes!) break; toDelete.add(e.id); total -= e.sizeBytes; }
     }
     for (let i = this.log.length - 1; i >= 0; i--) {
-      if (toDelete.has(this.log[i]!.id)) this.log.splice(i, 1);
+      const logEntry = this.log[i];
+      if (logEntry && toDelete.has(logEntry.id)) this.log.splice(i, 1);
     }
   }
 

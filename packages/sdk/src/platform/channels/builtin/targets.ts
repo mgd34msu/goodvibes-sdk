@@ -83,8 +83,8 @@ export function parseBuiltinExplicitTarget(
   let display: string | undefined;
 
   if (typedMatch) {
-    const prefix = typedMatch[1]!.toLowerCase();
-    const value = typedMatch[2]!.trim();
+    const prefix = (typedMatch[1] ?? '').toLowerCase();
+    const value = (typedMatch[2] ?? '').trim();
     if (!value) return null;
     to = value;
     kind = prefix === 'direct' || prefix === 'dm' || prefix === 'user'
@@ -97,13 +97,13 @@ export function parseBuiltinExplicitTarget(
             ? 'thread'
             : 'service';
   } else if (hashMatch) {
-    to = hashMatch[1]!.trim();
+    to = (hashMatch[1] ?? '').trim();
     display = `#${to}`;
-    if (hashMatch[2]!?.trim()) {
+    if (hashMatch[2]?.trim()) {
       kind = 'thread';
       channelId = to;
       groupId = to;
-      threadId = hashMatch[2]!.trim();
+      threadId = (hashMatch[2] ?? '').trim();
       to = threadId;
     } else {
       kind = 'channel';
@@ -111,7 +111,7 @@ export function parseBuiltinExplicitTarget(
       groupId = to;
     }
   } else if (atMatch) {
-    to = atMatch[1]!.trim();
+    to = (atMatch[1] ?? '').trim();
     display = `@${to}`;
     kind = 'direct';
   } else if (urlMatch) {

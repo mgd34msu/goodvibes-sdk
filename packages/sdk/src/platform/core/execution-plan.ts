@@ -268,11 +268,11 @@ export class ExecutionPlanManager {
         byPhase.set(item.phase, []);
         phaseOrder.push(item.phase);
       }
-      byPhase.get(item.phase)!.push(item);
+      byPhase.get(item.phase)?.push(item);
     }
 
     for (const phase of phaseOrder) {
-      const items = byPhase.get(phase)!;
+      const items = byPhase.get(phase) ?? [];
       const ps = phaseStatus(items);
       lines.push(`## ${phase} [${ps}]`);
       for (const item of items) {
@@ -325,7 +325,7 @@ export class ExecutionPlanManager {
       // Phase heading
       const phaseMatch = phaseRe.exec(trimmed);
       if (phaseMatch && trimmed.startsWith('## ')) {
-        currentPhase = phaseMatch[1]!.trim();
+        currentPhase = phaseMatch[1]?.trim() ?? '';
         continue;
       }
 
@@ -338,15 +338,16 @@ export class ExecutionPlanManager {
           // Split from the RIGHT on a dash separator to separate description from metadata.
           // Accepts em-dash (—), en-dash (–), or double-hyphen (--) for model output variants.
           // Only the last occurrence splits, so em-dashes in descriptions are preserved.
-          const { index: sepIdx, sepLen } = findLastSeparator(rest!);
+          const restStr = rest ?? '';
+          const { index: sepIdx, sepLen } = findLastSeparator(restStr);
           let description: string;
           let metaPart: string | undefined;
 
           if (sepIdx !== -1) {
-            description = rest!.slice(0, sepIdx).trim();
-            metaPart = rest!.slice(sepIdx + sepLen).trim();
+            description = restStr.slice(0, sepIdx).trim();
+            metaPart = restStr.slice(sepIdx + sepLen).trim();
           } else {
-            description = rest!.trim();
+            description = restStr.trim();
           }
 
           let statusLabel: string | undefined;
@@ -357,14 +358,14 @@ export class ExecutionPlanManager {
             // Extract trailing (depends: ...) first
             const depsMatch = /\(depends:\s*([^)]+)\)\s*$/.exec(metaPart);
             if (depsMatch) {
-              rawDeps = depsMatch[1]!;
+              rawDeps = depsMatch[1] ?? '';
               metaPart = metaPart.slice(0, depsMatch.index).trim();
             }
 
             // Extract trailing (agent-id)
             const agentMatch = /\(([^)]+)\)\s*$/.exec(metaPart);
             if (agentMatch) {
-              const candidate = agentMatch[1]!.trim();
+              const candidate = agentMatch[1]?.trim() ?? '';
               if (/^depends:/i.test(candidate)) {
                 rawDeps = rawDeps ?? candidate.replace(/^depends:\s*/i, '');
               } else {
@@ -396,7 +397,7 @@ export class ExecutionPlanManager {
             items.push({
               id: randomUUID(),
               phase: currentPhase,
-              description: descMatch[1]!.trim(),
+              description: descMatch[1]?.trim() ?? '',
               status: 'pending',
             });
           }
@@ -427,7 +428,7 @@ export class ExecutionPlanManager {
         byPhase.set(item.phase, []);
         phaseOrder.push(item.phase);
       }
-      byPhase.get(item.phase)!.push(item);
+      byPhase.get(item.phase)?.push(item);
     }
 
     // Find the first non-complete phase
@@ -470,12 +471,14 @@ export class ExecutionPlanManager {
     // Build description → id map for dependency resolution
     const descToId = new Map<string, string>();
     for (let i = 0; i < newItems.length; i++) {
-      descToId.set(items[i]!.description.toLowerCase().trim(), newItems[i]!.id);
+      const oldItem = items[i];
+      const newItem = newItems[i];
+      if (oldItem && newItem) descToId.set(oldItem.description.toLowerCase().trim(), newItem.id);
     }
 
     // Second pass: resolve description-based dependencies to IDs
     for (let i = 0; i < newItems.length; i++) {
-      const rawDeps = items[i]!.dependencies;
+      const rawDeps = items[i]?.dependencies;
       if (rawDeps && rawDeps.length > 0) {
         const resolvedIds = rawDeps
           .map((dep) => {
@@ -487,8 +490,9 @@ export class ExecutionPlanManager {
             return descToId.get(dep.toLowerCase().trim()) ?? null;
           })
           .filter((id): id is string => id !== null);
-        if (resolvedIds.length > 0) {
-          newItems[i]!.dependencies = resolvedIds;
+        const target = newItems[i];
+        if (resolvedIds.length > 0 && target) {
+          target.dependencies = resolvedIds;
         }
       }
     }

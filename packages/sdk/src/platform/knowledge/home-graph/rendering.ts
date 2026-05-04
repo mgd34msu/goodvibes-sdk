@@ -219,7 +219,7 @@ function normalizeHomeGraphMapFilters(input: HomeGraphMapHaFilterInput | undefin
 }
 
 function hasHomeGraphFilters(filters: Required<HomeGraphMapHaFilterInput>): boolean {
-  return Object.values(filters).some((value) => value!.length > 0);
+  return Object.values(filters).some((value) => (value as string[]).length > 0);
 }
 
 function matchesHomeGraphNode(

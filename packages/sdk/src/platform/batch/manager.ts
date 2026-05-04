@@ -322,7 +322,8 @@ export class DaemonBatchManager {
       try {
         const provider = this.getBatchProvider(first.model, first.provider);
         this.requireProviderBatchSupport(provider, first.provider);
-        const polled = await provider.batch!.retrieveBatch(first.providerBatchId);
+        const polled = await provider.batch?.retrieveBatch(first.providerBatchId);
+        if (!polled) continue;
         result.polledProviderBatches += 1;
         const timestamp = now();
         for (const job of jobs) {
@@ -334,17 +335,18 @@ export class DaemonBatchManager {
           };
         }
         if (polled.resultAvailable || polled.status === 'completed') {
-          const providerResults = await provider.batch!.getResults(first.providerBatchId);
+          const providerResults = await provider.batch?.getResults(first.providerBatchId);
+          if (!providerResults) continue;
           this.applyProviderResults(data, providerResults, result);
         } else if (polled.status === 'failed' || polled.status === 'cancelled' || polled.status === 'expired') {
           for (const job of jobs) {
             const status = polled.status === 'cancelled' ? 'cancelled' : polled.status === 'expired' ? 'expired' : 'failed';
             data.jobs[job.id] = {
-              ...data.jobs[job.id]!,
+              ...(data.jobs[job.id] ?? {}),
               status,
               updatedAt: timestamp,
               completedAt: timestamp,
-              error: status === 'failed' ? { message: 'Provider batch failed.', raw: polled.raw } : data.jobs[job.id]!.error,
+              error: status === 'failed' ? { message: 'Provider batch failed.', raw: polled.raw } : data.jobs[job.id]?.error,
             } as DaemonBatchJob;
             if (status === 'failed') result.failedJobs += 1;
           }
