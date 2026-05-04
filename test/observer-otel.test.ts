@@ -114,7 +114,7 @@ describe('createOpenTelemetryObserver — onAuthTransition', () => {
     obs.onAuthTransition?.({ from: 'anonymous', to: 'token', reason: 'login' });
 
     const counter = col.counters.find((c) => c.name === 'sdk.auth.transitions');
-    expect(counter).toBeDefined();
+    expect(counter?.name).toBe('sdk.auth.transitions');
     expect(counter!.value).toBe(1);
     expect(counter!.attributes.from).toBe('anonymous');
     expect(counter!.attributes.to).toBe('token');
@@ -128,7 +128,7 @@ describe('createOpenTelemetryObserver — onAuthTransition', () => {
     obs.onAuthTransition?.({ from: 'token', to: 'anonymous', reason: 'logout' });
 
     const span = col.spans.find((s) => s.name === 'sdk.auth.transition');
-    expect(span).toBeDefined();
+    expect(span?.name).toBe('sdk.auth.transition');
     expect(span!.ended).toBe(true);
     expect(span!.attributes['sdk.auth.from']).toBe('token');
     expect(span!.attributes['sdk.auth.to']).toBe('anonymous');
@@ -164,7 +164,7 @@ describe('createOpenTelemetryObserver — onError', () => {
     obs.onError?.(makeSdkError('network', 'transport'));
 
     const counter = col.counters.find((c) => c.name === 'sdk.errors');
-    expect(counter).toBeDefined();
+    expect(counter?.name).toBe('sdk.errors');
     expect(counter!.value).toBe(1);
     expect(counter!.attributes.kind).toBe('network');
     expect(counter!.attributes.category).toBe('transport');
@@ -177,7 +177,7 @@ describe('createOpenTelemetryObserver — onError', () => {
     obs.onError?.(makeSdkError('auth', 'security'));
 
     const span = col.spans.find((s) => s.name === 'sdk.error');
-    expect(span).toBeDefined();
+    expect(span?.name).toBe('sdk.error');
     expect(span!.ended).toBe(true);
     expect(span!.attributes['sdk.error.kind']).toBe('auth');
     expect(span!.attributes['sdk.error.category']).toBe('security');
@@ -195,7 +195,7 @@ describe('createOpenTelemetryObserver — onTransportActivity', () => {
     obs.onTransportActivity?.(activity);
 
     const hist = col.histograms.find((h) => h.name === 'sdk.transport.duration_ms');
-    expect(hist).toBeDefined();
+    expect(hist?.name).toBe('sdk.transport.duration_ms');
     expect(hist!.value).toBe(123);
     expect(hist!.attributes.kind).toBe('http');
   });
@@ -225,7 +225,7 @@ describe('createOpenTelemetryObserver — onTransportActivity', () => {
     obs.onTransportActivity?.({ direction: 'recv', url: 'http://x', kind: 'http', durationMs: 55, status: 200 });
 
     const hist = col.histograms.find((h) => h.name === 'sdk.transport.duration_ms');
-    expect(hist).toBeDefined();
+    expect(hist?.name).toBe('sdk.transport.duration_ms');
     expect(hist!.attributes.status).toBe(200);
   });
 });

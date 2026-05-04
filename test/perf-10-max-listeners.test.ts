@@ -139,12 +139,7 @@ describe('PERF-10: overflow in development mode — throw RangeError', () => {
   test('thrown RangeError message references the event type and cap', () => {
     const bus = new RuntimeEventBus();
     registerN(bus, 'SESSION_CREATED', MAX_LISTENERS);
-    let caught: unknown;
-    try {
-      bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]);
-    } catch (e) {
-      caught = e;
-    }
+    const caught = (() => { try { bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]); } catch (e) { return e; } })();
     expect(caught).toBeInstanceOf(RangeError);
     const msg = (caught as RangeError).message;
     expect(msg).toContain('SESSION_CREATED');

@@ -27,7 +27,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
 
   test('getSandboxConfigSnapshot returns a frozen object with expected keys', () => {
     const config = getSandboxConfigSnapshot(makeConfigManager());
-    expect(config).toBeDefined();
+    expect(config).toHaveProperty('sandboxed'); // presence-only refined: check key field
     // Must be frozen (Object.isFrozen)
     expect(Object.isFrozen(config)).toBe(true);
     // Must include replIsolation key
@@ -36,7 +36,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
 
   test('detectSandboxHostStatus returns a frozen object with platform key', () => {
     const status = detectSandboxHostStatus(makeConfigManager());
-    expect(status).toBeDefined();
+    expect(status).toHaveProperty('platform'); // presence-only refined: check key field
     expect(Object.isFrozen(status)).toBe(true);
     expect('platform' in status).toBe(true);
     expect(typeof (status as Record<string, unknown>).platform).toBe('string');

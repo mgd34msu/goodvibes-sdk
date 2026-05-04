@@ -262,7 +262,7 @@ describe('A1: Engineer → review propagation', () => {
 
     // WORKFLOW_CONSTRAINTS_ENUMERATED should have been emitted
     const enumerated = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CONSTRAINTS_ENUMERATED');
-    expect(enumerated).toBeDefined();
+    expect(enumerated?.type).toBe('WORKFLOW_CONSTRAINTS_ENUMERATED');
     const data = eventData(enumerated!);
     const emittedConstraints = data['constraints'] as Constraint[];
     expect(emittedConstraints).toHaveLength(2);
@@ -308,12 +308,12 @@ describe('A2: Review → fix propagation with markers', () => {
 
     // The WORKFLOW_REVIEW_COMPLETED event should show passed: false
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     expect(eventData(reviewEvent!)['passed']).toBe(false);
 
     // The fixer agent task should contain SATISFIED and UNSATISFIED markers
     const fixerRecord = h.spawnedRecords[1]; // [0] = reviewer, [1] = fixer
-    expect(fixerRecord).toBeDefined();
+    expect(fixerRecord).not.toBeUndefined(); // presence-only: fixer agent was spawned
     const fixerTask = fixerRecord!.task;
     expect(fixerTask).toContain('c1 [SATISFIED]');
     expect(fixerTask).toContain('c2 [UNSATISFIED]');
@@ -390,7 +390,7 @@ describe('A4: Fixer continuity — id missing', () => {
     // syntheticIssues is cleared into the reviewer2 task during startReview;
     // verify it was injected by checking the reviewer2 task content.
     const reviewer2Record = h.spawnedRecords[2];
-    expect(reviewer2Record).toBeDefined();
+    expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
     const reviewer2Task = reviewer2Record!.task;
     expect(reviewer2Task).toContain('## Synthetic issues from controller');
     expect(reviewer2Task).toContain('c2');
@@ -434,7 +434,7 @@ describe('A5: Fixer continuity — id extra', () => {
     // syntheticIssues is cleared into the reviewer2 task during startReview;
     // verify it was injected by checking the reviewer2 task content.
     const reviewer2Record = h.spawnedRecords[2];
-    expect(reviewer2Record).toBeDefined();
+    expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
     const reviewer2Task = reviewer2Record!.task;
     expect(reviewer2Task).toContain('## Synthetic issues from controller');
     expect(reviewer2Task).toContain('c99');
@@ -472,7 +472,7 @@ describe('A6: Synthetic issue consumption', () => {
 
     // The second reviewer's task should be prepended with synthetic issue block
     const reviewer2Record = h.spawnedRecords[2];
-    expect(reviewer2Record).toBeDefined();
+    expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
     const reviewer2Task = reviewer2Record!.task;
     expect(reviewer2Task).toContain('## Synthetic issues from controller');
     expect(reviewer2Task).toContain('[CRITICAL]');
@@ -640,7 +640,7 @@ describe('A9: Gate-retry inheritance — immediate (followUpChain)', () => {
     // The gate fail spawned a follow-up agent; register it as a chain so we can inspect it.
     // (The controller spawns the agent but only registers a chain when createChain is called externally.)
     const followUpRecord = spawnedRecords[1];
-    expect(followUpRecord).toBeDefined();
+    expect(followUpRecord).not.toBeUndefined(); // presence-only: array element existence
     const followUpChain = controller.createChain(followUpRecord!);
     await flushMicrotasks(20);
 
@@ -695,7 +695,7 @@ describe('A10: Gate-retry inheritance — pending path', () => {
     // The gate fail spawned a follow-up agent via the pending path; register it as a chain.
     // (The controller queues parentChainId + constraints for the agent, applied on createChain.)
     const followUpRecord = spawnedRecords[1];
-    expect(followUpRecord).toBeDefined();
+    expect(followUpRecord).not.toBeUndefined(); // presence-only: array element existence
     const childChain = controller.createChain(followUpRecord!);
     await flushMicrotasks(20);
 
@@ -737,7 +737,7 @@ describe('A11: Zero-constraint gate-retry', () => {
 
     // Register the follow-up agent as a chain to inspect constraint inheritance.
     const followUpRecord = spawnedRecords[1];
-    expect(followUpRecord).toBeDefined();
+    expect(followUpRecord).not.toBeUndefined(); // presence-only: array element existence
     const childChain = controller.createChain(followUpRecord!);
     await flushMicrotasks(20);
 
@@ -766,7 +766,7 @@ describe('A12: Score-vs-constraint conflict matrix', () => {
     await flushMicrotasks(20);
 
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     expect(eventData(reviewEvent!)['passed']).toBe(true);
     // No gates configured → chain transitions awaiting_gates → gating → passed immediately
     expect(chain.state).toBe('passed');
@@ -784,7 +784,7 @@ describe('A12: Score-vs-constraint conflict matrix', () => {
     await flushMicrotasks(20);
 
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     expect(eventData(reviewEvent!)['passed']).toBe(false);
     expect(chain.state).toBe('fixing');
     h.controller.dispose();
@@ -801,7 +801,7 @@ describe('A12: Score-vs-constraint conflict matrix', () => {
     await flushMicrotasks(20);
 
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     expect(eventData(reviewEvent!)['passed']).toBe(false);
     expect(chain.state).toBe('fixing');
     h.controller.dispose();
@@ -818,7 +818,7 @@ describe('A12: Score-vs-constraint conflict matrix', () => {
     await flushMicrotasks(20);
 
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     expect(eventData(reviewEvent!)['passed']).toBe(false);
     expect(chain.state).toBe('fixing');
     h.controller.dispose();
@@ -843,7 +843,7 @@ describe('A13: WORKFLOW_REVIEW_COMPLETED event payload', () => {
     await flushMicrotasks(20);
 
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     const p = eventData(reviewEvent!);
     expect(p['constraintsSatisfied']).toBe(1);
     expect(p['constraintsTotal']).toBe(2);
@@ -859,7 +859,7 @@ describe('A13: WORKFLOW_REVIEW_COMPLETED event payload', () => {
     await flushMicrotasks(20);
 
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
-    expect(reviewEvent).toBeDefined();
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     const p = eventData(reviewEvent!);
     expect(p['constraintsSatisfied']).toBeUndefined();
     expect(p['constraintsTotal']).toBeUndefined();

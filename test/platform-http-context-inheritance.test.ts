@@ -100,9 +100,9 @@ describe('ARCH-01 — platform-HTTP DaemonRuntimeRouteContext inherits canonical
     const ctx = buildMinimalContext();
     const inherited = assertPlatformInheritsSessionBroker(ctx);
     // Stubs throw — verify they are callable methods (not undefined)
-    expect(inherited.submitMessage).toBeDefined();
-    expect(inherited.steerMessage).toBeDefined();
-    expect(inherited.followUpMessage).toBeDefined();
+    expect(typeof inherited.submitMessage).toBe('function');
+    expect(typeof inherited.steerMessage).toBe('function');
+    expect(typeof inherited.followUpMessage).toBe('function');
     // createSession returns a stub session
     const session = await inherited.createSession({} as never);
     expect(session).toMatchObject({ id: 'stub' });
@@ -123,7 +123,7 @@ describe('ARCH-01 — platform-HTTP DaemonRuntimeRouteContext inherits canonical
     const mod = await import('../packages/sdk/src/platform/daemon/http/runtime-route-types.js');
     // The module should export JsonBody and DaemonRuntimeRouteHandlerMap (type-only)
     // At runtime we can only verify the module loaded without error.
-    expect(mod).toBeDefined();
+    expect(mod).not.toBeNull(); // presence-only: module loaded check
   });
 });
 

@@ -330,7 +330,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     const before = Date.now();
     await handlers.postSharedSessionMessage(sessionId, req);
     const event = followupEvents[0];
-    expect(event).toBeDefined();
+    expect(event).not.toBeUndefined(); // presence-only: array element existence
     // Structural check: all required fields of ConversationMessageEnvelope are present
     const envelope = event.envelope as ConversationMessageEnvelope;
     expect(typeof envelope.messageId).toBe('string');
@@ -588,7 +588,7 @@ describe('envelope shape consistency: chat-mode vs Problem-2', () => {
       envelope,
     };
 
-    expect(turnStartedPayload.envelope).toBeDefined();
+    expect(turnStartedPayload.envelope).not.toBeUndefined(); // presence-only: envelope field
     expect(turnStartedPayload.envelope.sessionId).toBe(envelope.sessionId);
     expect(turnStartedPayload.envelope.messageId).toBe(envelope.messageId);
     expect(turnStartedPayload.envelope.body).toBe(envelope.body);
@@ -613,7 +613,7 @@ describe('envelope shape consistency: chat-mode vs Problem-2', () => {
       envelope,
     };
 
-    expect(turnCompletedPayload.envelope).toBeDefined();
+    expect(turnCompletedPayload.envelope).not.toBeUndefined(); // presence-only: envelope field
     expect(turnCompletedPayload.envelope.source).toBe('companion-chat-assistant');
     expect(turnCompletedPayload.envelope.body).toBe('Hello from assistant');
   });

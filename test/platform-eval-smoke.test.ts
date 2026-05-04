@@ -17,6 +17,6 @@ describe('platform/runtime/eval — eval runner behavior', () => {
 
   test('EvalRunner accepts regressionThreshold option', () => {
     const runner = new EvalRunner({ regressionThreshold: 0.1 });
-    expect(runner).toBeDefined();
+    expect(runner).toBeInstanceOf(EvalRunner); // instance check is stronger than toBeDefined
   });
 });

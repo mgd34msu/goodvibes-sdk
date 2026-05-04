@@ -60,6 +60,6 @@ describe('obs-01 http access log', () => {
     const caught = await fetchWithTimeout('http://example.com/slow', { signal: controller.signal }, 5_000).catch(
       (e: unknown) => e,
     );
-    expect(caught).toBeDefined();
+    expect(caught).not.toBeUndefined(); // presence-only: error captured
   });
 });

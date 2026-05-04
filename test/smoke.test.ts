@@ -17,7 +17,7 @@ describe('sdk umbrella package', () => {
     // exercises the real public API surface.
     const paths = createTransportPaths('http://127.0.0.1:3210');
     expect(paths.tasksUrl).toBe('http://127.0.0.1:3210/api/tasks');
-    expect(paths.controlUrl).toBeDefined();
+    expect(typeof paths.controlUrl).toBe('string'); // controlUrl is a string URL
     // Confirm all factory exports resolve (import-time check is sufficient;
     // calling them requires runtime config that is not available in smoke tests).
     expect([createDaemonControlRouteHandlers, createDaemonKnowledgeRouteHandlers, createOperatorSdk, createPeerSdk, createRemoteRuntimeEvents].every(f => typeof f === 'function')).toBe(true);

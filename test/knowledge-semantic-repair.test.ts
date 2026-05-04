@@ -110,7 +110,7 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
     expect(result?.ingestedSourceIds).toEqual(['source-1', 'source-2']);
     expect(result?.sourceAssessments?.[0]?.confidence).toBeGreaterThanOrEqual(70);
     expect(ingested).toHaveLength(2);
-    expect(ingested[0]?.metadata?.sourceDiscovery).toBeDefined();
+    expect(ingested[0]?.metadata?.sourceDiscovery).not.toBeUndefined(); // presence-only: sourceDiscovery field
     expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).confidence).toBeGreaterThanOrEqual(70);
     expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).confidenceReasons).toContain('model:86NANO90UNA');
     expect(ingested[0]?.tags).toContain('semantic-gap-repair');
@@ -543,7 +543,7 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
     });
     const returnedFact = answer.answer.facts.find((entry) => entry.id === fact.id);
 
-    expect(returnedFact).toBeDefined();
+    expect(returnedFact?.id).toBe(fact.id);
     expect(returnedFact?.linkedObjectIds).toBeUndefined();
     expect(returnedFact?.subjectIds).toBeUndefined();
     expect(returnedFact?.metadata.linkedObjectIds).toBeUndefined();

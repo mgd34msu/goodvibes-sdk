@@ -217,7 +217,7 @@ describe('Cloudflare Worker settings provisioning', () => {
 
     expect(result.durableObjectMigration).toBe('recovered-existing-class');
     expect(metadata).toHaveLength(2);
-    expect(metadata[0]?.['migrations']).toBeDefined();
+    expect(metadata[0]?.['migrations']).not.toBeUndefined(); // presence-only: migrations field
     expect(metadata[1]?.['migrations']).toBeUndefined();
   });
 });

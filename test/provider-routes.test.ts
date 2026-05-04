@@ -169,12 +169,12 @@ describe('GET /api/providers', () => {
     expect(body.providers).toBeInstanceOf(Array);
     const providers = body.providers as Array<Record<string, unknown>>;
 
-    const inceptionProv = providers.find((p) => p['id'] === 'inception');
-    expect(inceptionProv).toBeDefined();
+    const inceptionProv = providers.find((p) => p['id'] === 'inception';
+    expect(inceptionProv?.['id']).toBe('inception');
     expect(inceptionProv!['configured']).toBe(true);
 
-    const veniceProv = providers.find((p) => p['id'] === 'venice');
-    expect(veniceProv).toBeDefined();
+    const veniceProv = providers.find((p) => p['id'] === 'venice';
+    expect(veniceProv?.['id']).toBe('venice');
     expect(veniceProv!['configured']).toBe(false);
 
     const currentModel = body.currentModel as Record<string, unknown> | null;
@@ -244,7 +244,7 @@ describe('GET /api/providers', () => {
       const body = await res!.json() as Record<string, unknown>;
       const providers = body.providers as Array<Record<string, unknown>>;
       const openaiProv = providers.find((p) => p['id'] === 'openai');
-      expect(openaiProv).toBeDefined();
+      expect(openaiProv?.['id']).toBe('openai');
       expect(openaiProv!['configured']).toBe(true);
       expect(openaiProv!['configuredVia']).toBe('secrets');
     } finally {
@@ -272,7 +272,7 @@ describe('GET /api/providers', () => {
       const body = await res!.json() as Record<string, unknown>;
       const providers = body.providers as Array<Record<string, unknown>>;
       const openaiProv = providers.find((p) => p['id'] === 'openai');
-      expect(openaiProv).toBeDefined();
+      expect(openaiProv?.['id']).toBe('openai');
       expect(openaiProv!['configured']).toBe(true);
       expect(openaiProv!['configuredVia']).toBe('subscription');
       expect(openaiProv!['routes']).toBeInstanceOf(Array);
@@ -687,8 +687,8 @@ describe('DaemonHttpRouter: secretsManager wiring (regression guard)', () => {
     expect(res).not.toBeNull();
     const body = await res!.json() as Record<string, unknown>;
     const providers = body.providers as Array<Record<string, unknown>>;
-    const openaiProv = providers.find((p) => p['id'] === 'openai');
-    expect(openaiProv).toBeDefined();
+    const openaiProv = providers.find((p) => p['id'] === 'openai';
+    expect(openaiProv?.['id']).toBe('openai');
     // Without the secretsManager wiring, this would be false and configuredVia undefined
     expect(openaiProv!['configured']).toBe(true);
     expect(openaiProv!['configuredVia']).toBe('secrets');

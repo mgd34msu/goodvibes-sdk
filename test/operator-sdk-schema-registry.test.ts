@@ -41,7 +41,7 @@ describe('operator-sdk schema registry', () => {
     for (const methodId of EXPECTED_METHODS) {
       test(`resolves schema for "${methodId}"`, () => {
         const schema = registry[methodId];
-        expect(schema).toBeDefined();
+        expect(schema).not.toBeUndefined(); // presence-only: schema registered for method
         // Confirm it is a real Zod schema by checking the safeParse surface
         expect(typeof (schema as { safeParse?: unknown })?.safeParse).toBe('function');
       });

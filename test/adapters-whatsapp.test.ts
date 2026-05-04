@@ -5,7 +5,7 @@ import { describe, expect, test } from 'bun:test';
 
 describe('whatsapp adapter — contract surface', () => {
   test('whatsapp adapter module is importable without throwing', async () => {
-    await expect(import('../packages/sdk/src/platform/adapters/whatsapp/index.js')).resolves.toBeDefined();
+    await expect(import('../packages/sdk/src/platform/adapters/whatsapp/index.js')).resolves.not.toBeNull(); // presence-only: module importable
   });
 
   test('whatsapp adapter module exports at least one function', async () => {

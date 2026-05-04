@@ -38,12 +38,7 @@ describe('transport-http structured throws', () => {
       baseUrl: 'http://127.0.0.1:3210',
       fetch: async () => new Response('service unavailable', { status: 503 }),
     });
-    let caught: unknown;
-    try {
-      await openServerSentEventStream(transport.fetchImpl, transport.buildUrl('/api/stream'), {});
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await openServerSentEventStream(transport.fetchImpl, transport.buildUrl('/api/stream'), {}).catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(GoodVibesSdkError);
     const err = caught as GoodVibesSdkError;
     expect(err.kind).toBe('network');
@@ -60,12 +55,7 @@ describe('transport-http', () => {
       fetch: createFetchStub(async () => { throw originalError; }),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
 
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
@@ -91,12 +81,7 @@ describe('transport-http', () => {
       )),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
 
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;
@@ -121,12 +106,7 @@ describe('transport-http', () => {
       )),
     });
 
-    let caught: unknown;
-    try {
-      await transport.requestJson('/api/accounts');
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await transport.requestJson('/api/accounts').catch((e: unknown) => e);
 
     expect(caught).toBeInstanceOf(HttpStatusError);
     const err = caught as HttpStatusError;

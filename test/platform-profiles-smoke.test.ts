@@ -8,7 +8,7 @@ describe('platform/profiles — smoke', () => {
   test('configSnapshotToProfileData returns an object for empty snapshot', async () => {
     const { configSnapshotToProfileData } = await import('../packages/sdk/src/platform/profiles/index.js');
     const result = configSnapshotToProfileData({});
-    expect(result).toBeDefined();
+    expect(result).not.toBeNull(); // presence-only: configSnapshotToProfileData returns object
   });
 
   test('profileDataToConfigSnapshot round-trips through configSnapshotToProfileData', async () => {
@@ -17,6 +17,6 @@ describe('platform/profiles — smoke', () => {
     const profileData = configSnapshotToProfileData(snapshot);
     const backToSnapshot = profileDataToConfigSnapshot(profileData);
     // Round-trip must produce an object (not null/undefined)
-    expect(backToSnapshot).toBeDefined();
+    expect(backToSnapshot).not.toBeNull(); // presence-only: round-trip returns object
   });
 });

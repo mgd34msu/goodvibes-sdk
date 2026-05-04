@@ -56,7 +56,7 @@ describe('runSecurity — security mode', () => {
     );
 
     const secrets = result.secrets as { findings: Array<{ file: string; line: number; pattern: string; match: string }>; count: number };
-    expect(secrets).toBeDefined();
+    expect(secrets).not.toBeNull(); // presence-only: secrets field present
     expect(secrets.count).toBe(1);
     expect(secrets.findings).toHaveLength(1);
     // The finding should point to the fixture file
@@ -79,7 +79,7 @@ describe('runSecurity — security mode', () => {
     );
 
     const secrets = result.secrets as { findings: unknown[]; count: number };
-    expect(secrets).toBeDefined();
+    expect(secrets).not.toBeNull(); // presence-only: secrets field present
     expect(secrets.count).toBe(0);
     expect(secrets.findings).toHaveLength(0);
   });

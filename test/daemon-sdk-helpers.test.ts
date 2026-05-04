@@ -293,7 +293,7 @@ describe('error-response — buildErrorResponseBody — string error', () => {
   test('plain string error becomes error field', () => {
     const body = buildErrorResponseBody('something went wrong');
     expect(body.error).toBe('something went wrong');
-    expect(body.category).toBeDefined();
+    expect(typeof body.category).toBe('string'); // category is always a string
   });
 
   test('empty string falls back to fallbackMessage', () => {

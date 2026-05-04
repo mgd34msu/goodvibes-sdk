@@ -24,7 +24,7 @@ describe('error-kind: packages/errors', () => {
   describe('GoodVibesSdkError base class', () => {
     test('has kind field', () => {
       const err = new GoodVibesSdkError('base');
-      expect(err.kind).toBeDefined();
+      expect(typeof err.kind).toBe('string'); // kind is always a string
       expect(typeof err.kind).toBe('string');
     });
 

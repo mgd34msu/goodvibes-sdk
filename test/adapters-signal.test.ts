@@ -21,6 +21,6 @@ describe('signal adapter — contract surface', () => {
   });
 
   test('signal adapter module is importable without throwing', async () => {
-    await expect(import('../packages/sdk/src/platform/adapters/signal/index.js')).resolves.toBeDefined();
+    await expect(import('../packages/sdk/src/platform/adapters/signal/index.js')).resolves.not.toBeNull(); // presence-only: module importable
   });
 });

@@ -130,12 +130,7 @@ describe('transport integration: failed refresh produces terminal auth error', (
       },
     });
 
-    let caught: unknown;
-    try {
-      await sdk.operator.accounts.snapshot();
-    } catch (err) {
-      caught = err;
-    }
+    const caught = await sdk.operator.accounts.snapshot().catch((err: unknown) => err);
 
     expect(caught).toBeInstanceOf(GoodVibesSdkError);
     const sdkErr = caught as GoodVibesSdkError;

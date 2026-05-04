@@ -98,7 +98,7 @@ describe('semantic knowledge/wiki enrichment: runtime bounds', () => {
     expect(result.createdGaps).toBe(1);
     expect(result.repairableGaps).toBe(1);
     expect(result.searched).toBe(1);
-    expect(task).toBeDefined();
+    expect(task).not.toBeUndefined(); // presence-only: task was created
     expect(result.taskIds).toContain(task?.id);
     expect(calls).toHaveLength(1);
     expect(gap?.title).toContain('complete features and specifications');

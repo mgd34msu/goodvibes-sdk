@@ -152,13 +152,9 @@ describe('Retry policy: non-idempotent mutations', () => {
       fetch,
       retry: { maxAttempts: 3, retryOnStatuses: [500, 502, 503], retryOnMethods: ['GET', 'POST'] },
     });
-    let caught: unknown;
-    try {
-      await transport.requestJson('/v1/sessions', { method: 'POST', body: { title: 'test' } });
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeDefined();
+    await expect(
+      transport.requestJson('/v1/sessions', { method: 'POST', body: { title: 'test' } }),
+    ).rejects.toThrow();
     // Non-idempotent POST must NOT retry — exactly 1 attempt.
     expect(callCount).toBe(1);
   });
@@ -174,13 +170,9 @@ describe('Retry policy: non-idempotent mutations', () => {
       fetch,
       retry: { maxAttempts: 3, retryOnStatuses: [500, 503], retryOnMethods: ['GET', 'DELETE'] },
     });
-    let caught: unknown;
-    try {
-      await transport.requestJson('/v1/sessions/abc', { method: 'DELETE' });
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeDefined();
+    await expect(
+      transport.requestJson('/v1/sessions/abc', { method: 'DELETE' }),
+    ).rejects.toThrow();
     expect(callCount).toBe(1);
   });
 });
@@ -308,14 +300,10 @@ describe('perMethodPolicy end-to-end via contract route', () => {
         },
       },
     });
-    let caught: unknown;
-    try {
+    await expect(
       // No methodId passed — default mutation safety applies
-      await transport.requestJson('/v1/action', { method: 'POST', body: {} });
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeDefined();
+      transport.requestJson('/v1/action', { method: 'POST', body: {} }),
+    ).rejects.toThrow();
     expect(callCount).toBe(1);
   });
 });
@@ -369,13 +357,9 @@ describe('contract.idempotent flag enables retry for mutating methods', () => {
         retryOnMethods: ['GET', 'POST'],
       },
     });
-    let caught: unknown;
-    try {
-      await transport.requestJson('/v1/non-idempotent', { method: 'POST', body: {}, idempotent: false });
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeDefined();
+    await expect(
+      transport.requestJson('/v1/non-idempotent', { method: 'POST', body: {}, idempotent: false }),
+    ).rejects.toThrow();
     expect(callCount).toBe(1);
   });
 
@@ -400,18 +384,14 @@ describe('contract.idempotent flag enables retry for mutating methods', () => {
         },
       },
     });
-    let caught: unknown;
-    try {
-      await transport.requestJson('/v1/action', {
+    await expect(
+      transport.requestJson('/v1/action', {
         method: 'POST',
         body: {},
         methodId: 'my.method',
         idempotent: true,
-      });
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeDefined();
+      }),
+    ).rejects.toThrow();
     expect(callCount).toBe(2); // perMethodPolicy maxAttempts=2 wins
   });
 });

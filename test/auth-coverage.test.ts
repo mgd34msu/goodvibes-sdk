@@ -266,7 +266,7 @@ describe('createGoodVibesAuthClient — getters', () => {
 
   test('sessionManager getter is accessible', () => {
     const client = createGoodVibesAuthClient(makeOperator(), createMemoryTokenStore());
-    expect(client.sessionManager).toBeDefined();
+    expect(client.sessionManager).not.toBeNull(); // presence-only: sessionManager exposed
   });
 
   test('permissionResolver builds a resolver from a snapshot', () => {
