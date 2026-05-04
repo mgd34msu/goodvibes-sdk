@@ -78,14 +78,17 @@ For non-GET mutations, the SDK automatically injects an `Idempotency-Key` header
 
 When an idempotent call is retried, the same `Idempotency-Key` UUID is used on each attempt. This lets the daemon detect and deduplicate retried requests.
 
-For application-level idempotency on mutations not covered by the contract, generate and store your own key and pass it as a request option:
+For application-level idempotency on mutations not covered by the contract, generate and manage your own key (any UUID v4 string) and pass it as a request option:
 
 ```ts
-import { generateIdempotencyKey } from '@pellux/goodvibes-sdk/transport-http';
+import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
-const key = generateIdempotencyKey(); // UUID v4
-const result = await transport.requestJson(route, payload, { idempotencyKey: key });
+// Generate a stable key for the operation (e.g. using the Web Crypto API or a UUID library).
+const key = crypto.randomUUID();
+
+// Pass the key in the per-call options accepted by the transport layer.
 // On retry with the same key, the daemon returns the cached result.
+const result = await sdk.operator.requestJson(route, payload, { idempotencyKey: key });
 ```
 
 Never retry unsafe mutations blindly. Only operations with application-level or contract-level idempotency guarantees are safe to retry.

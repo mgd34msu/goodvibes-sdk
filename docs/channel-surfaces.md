@@ -4,12 +4,11 @@ Channel surfaces connect external messaging systems and automation sources to
 the daemon. They provide ingress, delivery, policy, account lifecycle, directory
 lookup, route binding, and surface-specific tools.
 
-Sources:
+Public API surfaces:
 
-- `packages/sdk/src/platform/channels/`
-- `packages/sdk/src/platform/adapters/`
-- `packages/sdk/src/platform/daemon/http/channel-routes.ts`
-- `packages/sdk/src/platform/control-plane/method-catalog-channels.ts`
+- `@pellux/goodvibes-sdk/platform` (full platform hub, includes channel and adapter namespaces)
+- `@pellux/goodvibes-sdk/platform/daemon` (daemon HTTP routes)
+- `@pellux/goodvibes-sdk/platform/integrations` (notifier integrations)
 
 ## Supported Surfaces
 

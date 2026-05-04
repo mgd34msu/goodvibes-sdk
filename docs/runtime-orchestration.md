@@ -4,16 +4,11 @@ GoodVibes runtime orchestration is the daemon-side loop that turns user input
 into provider calls, tool execution, agent work, workflow events, and persisted
 session state.
 
-Sources:
+Public API surfaces:
 
-- `packages/sdk/src/platform/core/`
-- `packages/sdk/src/platform/agents/`
-- `packages/sdk/src/platform/runtime/`
-- `packages/sdk/src/platform/sessions/`
-- `packages/sdk/src/platform/workflow/`
-- `packages/sdk/src/platform/hooks/`
-- `packages/sdk/src/platform/profiles/`
-- `packages/sdk/src/platform/templates/`
+- `@pellux/goodvibes-sdk/platform/core`
+- `@pellux/goodvibes-sdk/platform/runtime`
+- `@pellux/goodvibes-sdk/platform` (full platform hub)
 
 ## Turn Loop
 

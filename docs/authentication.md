@@ -127,7 +127,7 @@ const sdk = createGoodVibesSdk({
   baseUrl: 'http://127.0.0.1:3210',
   tokenStore: createMemoryTokenStore(),
   autoRefresh: {
-    autoRefresh: true,         // default; set false to disable
+    autoRefresh: true,         // default; set { autoRefresh: false } to disable
     refreshLeewayMs: 60_000,   // refresh this many ms before expiry (default: 60s)
     refresh: async (store) => {
       // Call your token refresh endpoint and update the store.
@@ -138,9 +138,9 @@ const sdk = createGoodVibesSdk({
 });
 ```
 
-Auto-refresh is enabled by default when `tokenStore` is present. Set `autoRefresh: false` to disable it entirely. The `refresh` callback is required for proactive refresh to work; without it, only the reactive 401 retry path is active.
+Auto-refresh is enabled by default when `tokenStore` is present. Set `autoRefresh: { autoRefresh: false }` to disable it entirely. The `refresh` callback is required for proactive refresh to work; without it, only the reactive 401 retry path is active.
 
-The `AutoRefreshCoordinator` class is also available directly from `@pellux/goodvibes-sdk/auth` for advanced use cases where you need to manage the coordinator lifecycle yourself.
+The `AutoRefreshCoordinator` class is also available directly from `@pellux/goodvibes-sdk/client-auth` for advanced use cases where you need to manage the coordinator lifecycle yourself.
 
 ## Read-only token resolvers
 

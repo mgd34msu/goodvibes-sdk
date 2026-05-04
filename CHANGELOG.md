@@ -10,7 +10,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
-- none
+- Closed eighth-review docs+examples findings (8 CRITICAL, 12 MAJOR, 20 MINOR, 13 NITPICK) across `docs/`, `examples/`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`.
+- Reconciled `docs/public-surface.md` platform table with actual `packages/sdk/package.json` exports map; added `./client-auth` and `./observer` entries.
+- Corrected `docs/authentication.md`: `autoRefresh: false` → `autoRefresh: { autoRefresh: false }`, `AutoRefreshCoordinator` import path corrected to `./client-auth`.
+- Corrected `docs/retries-and-reconnect.md`: removed non-existent `generateIdempotencyKey` import from `transport-http`.
+- Corrected `docs/error-handling.md`: `OperatorSdk`/`ControlSnapshot` replaced with `GoodVibesSdk`/`OperatorMethodOutput<'control.snapshot'>`.
+- Fixed `docs/daemon-embedding.md` route-group list to reflect actual exported dispatchers.
+- Replaced internal source file paths in `docs/secrets.md`, `docs/auth.md`, `docs/runtime-orchestration.md`, `docs/channel-surfaces.md` with public API references.
+- Added PLACEHOLDER comment to `examples/daemon-fetch-handler-quickstart.ts` for `getOperatorContract` stub.
 
 ### Fixed
 - none

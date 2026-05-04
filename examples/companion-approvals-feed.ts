@@ -1,5 +1,9 @@
 /**
  * Subscribe to approval updates from a browser companion surface.
+ *
+ * Both `@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web` are valid
+ * for browser companion code. This example uses `/browser` for explicit browser
+ * context; use `/web` when you want web + service-worker defaults.
  */
 import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 
@@ -18,7 +22,8 @@ const stopAgentCompleted = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', as
   await refreshApprovals();
 });
 
-// browser-only example; window is guaranteed by the surrounding HTML host
+// window is typed because tsconfig includes lib: 'DOM'; in a browser this works at runtime.
+// In a non-browser environment (test, SSR), guard with typeof window !== 'undefined'.
 window.addEventListener('beforeunload', () => {
   stopAgentCompleted();
 });

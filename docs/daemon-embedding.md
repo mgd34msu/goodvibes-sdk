@@ -36,17 +36,23 @@ import {
 import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
 ```
 
-## Other route groups
+## Other exported dispatchers
 
-The daemon package also exports reusable route builders for:
-- channel routes
-- integration routes
-- system routes
-- knowledge routes
-- media routes
-- runtime automation routes
-- runtime session routes
-- remote/peer routes
+The daemon package (`@pellux/goodvibes-sdk/daemon`) also exports:
+
+```ts
+import {
+  dispatchAutomationRoutes,
+  dispatchSessionRoutes,
+  dispatchTaskRoutes,
+  dispatchOperatorRoutes,
+  dispatchRemoteRoutes,
+} from '@pellux/goodvibes-sdk/daemon';
+```
+
+Other route categories (channel, integration, system, knowledge, media) are available
+internally via the full platform hub (`@pellux/goodvibes-sdk/platform`) but do not
+have separate public dispatcher exports at this time.
 
 ## Host responsibility
 

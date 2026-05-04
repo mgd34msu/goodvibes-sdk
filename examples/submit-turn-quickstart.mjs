@@ -14,12 +14,13 @@ import { createGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk';
 // 1. Construct the SDK.
 const sdk = createGoodVibesSdk({
   baseUrl: process.env.GOODVIBES_BASE_URL ?? 'http://127.0.0.1:3210',
-  authToken: process.env.GOODVIBES_TOKEN ?? undefined,
+  authToken: process.env.GOODVIBES_TOKEN ?? null,
 });
 
 // 2. Create a session. All fields optional; title is a human-readable label.
 const session = await sdk.operator.sessions.create({ title: 'quickstart demo' });
-const sessionId = session.session.id; // response is { session: { id, ... } }
+// sessions.create() returns { session: { id, ... } }; session.session.id is the session ID.
+const sessionId = session.session.id;
 console.log(`[session] created: ${sessionId}`);
 
 // 3. Subscribe to turn events BEFORE submitting so no deltas are missed.

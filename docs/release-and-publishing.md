@@ -3,6 +3,14 @@
 This document describes the current release process for the GoodVibes SDK
 workspace. Historical release narratives live in `CHANGELOG.md`.
 
+## Platform Support
+
+The release tooling is supported on **macOS** and **Linux** only. Windows is
+not supported: the release scripts rely on POSIX process management (`SIGTERM`,
+`SIGKILL`), `mkdtemp`, Unix paths, and shell invocations that do not translate
+to Windows. If you need to run the release pipeline on Windows, use WSL2 or a
+Linux CI runner.
+
 ## Release Rules
 
 - Do not publish from a dirty worktree.

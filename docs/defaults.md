@@ -119,7 +119,7 @@ See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming ro
 
 | Path | Default | Notes |
 |------|---------|-------|
-| `DEFAULT_WS_MAX_ATTEMPTS` | 10 | Shared constant; passed to `normalizeStreamReconnectPolicy` |
+| `DEFAULT_WS_MAX_ATTEMPTS` | 10 | Shared constant in `@pellux/goodvibes-sdk/transport-realtime`; passed to `normalizeStreamReconnectPolicy` |
 | `reconnect.baseDelayMs` | 500 (inherited from SSE policy) | |
 | `reconnect.maxDelayMs` | 30 000 (inherited from SSE policy) | |
 | `reconnect.backoffFactor` | 2 | |

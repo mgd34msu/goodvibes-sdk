@@ -12,8 +12,8 @@ const sdk = createGoodVibesSdk({
 });
 
 const login = await sdk.auth.login({
-  username: process.env.GOODVIBES_USERNAME ?? 'local-user',
-  password: process.env.GOODVIBES_PASSWORD ?? 'local-password',
+  username: process.env.GOODVIBES_USERNAME ?? '<set GOODVIBES_USERNAME>',
+  password: process.env.GOODVIBES_PASSWORD ?? '<set GOODVIBES_PASSWORD>',
 });
 
 console.log('login succeeded', login.authenticated);

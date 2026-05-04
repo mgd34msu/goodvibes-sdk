@@ -6,7 +6,7 @@
  * from silent token refresh — not only auth.current().
  *
  * Wave 6/8 discipline: exact literal assertions, no regex unions, no auto-pass,
- * no `.catch(() => {})`, no `test.skip`, no `test.todo`.
+ * no `.catch(() => {})`, no skipped tests, no todo tests.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';

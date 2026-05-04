@@ -20,6 +20,7 @@ const controlHandlers = createDaemonControlRouteHandlers({
     listRecentEvents: () => [],
     listSurfaceMessages: () => [],
     listClients: () => [],
+    // PLACEHOLDER: returns a one-shot SSE event. Replace with a real persistent stream.
     createEventStream: () => new Response('event: ready\ndata: {"ok":true}\n\n', {
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     }),
@@ -31,8 +32,11 @@ const controlHandlers = createDaemonControlRouteHandlers({
     listEvents: () => [],
     get: () => null,
   },
-  getOperatorContract: () => ({ version: 1 }), // minimal example contract; real contracts come from buildOperatorContract().
+  // PLACEHOLDER: { version: 1 } does not satisfy the full OperatorContract shape.
   // In production: import { buildOperatorContract } from '@pellux/goodvibes-sdk/operator';
+  // and replace this with: getOperatorContract: () => buildOperatorContract({ ... }),
+  // PLACEHOLDER: cast to Record<string,unknown>; in production supply a real OperatorContract.
+  getOperatorContract: () => ({ version: 1 }) as unknown as Record<string, unknown>,
   inspectInboundTls: () => ({ mode: 'off' }),
   inspectOutboundTls: () => ({ mode: 'system' }),
   invokeGatewayMethodCall: async () => ({
