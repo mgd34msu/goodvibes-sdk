@@ -323,11 +323,11 @@ export function createGoodVibesAuthClient(
       return await readToken(null, getAuthToken);
     },
     async setToken(token: string | null): Promise<void> {
-      await assertWritableTokenStore(tokenStore).setToken(token);
+      await assertWritableTokenStore(ts).setToken(token);
     },
     async clearToken(): Promise<void> {
       const currentToken = await ts?.getToken();
-      await assertWritableTokenStore(tokenStore).clearToken();
+      await assertWritableTokenStore(ts).clearToken();
       // Notify observer of the logout transition. Observer errors are
       // swallowed so they never disrupt SDK logic.
       invokeObserver(() =>

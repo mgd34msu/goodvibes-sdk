@@ -1,6 +1,8 @@
 import type { Tool, ToolCall } from '../../../types/tools.js';
 import type { ToolRuntimeContext } from '../context.js';
 import type { PhaseResult, ToolExecutionRecord } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * prehook — Phase 2 of the tool execution pipeline.
@@ -57,8 +59,9 @@ export async function prehookPhase(
       success: true,
       durationMs: performance.now() - start,
     };
-  } catch (_err) {
+  } catch (err) {
     // Hook infrastructure failure — allow execution to proceed
+    logger.debug('prehook infrastructure failure', { error: summarizeError(err) });
     return {
       phase: 'prehooked',
       success: true,

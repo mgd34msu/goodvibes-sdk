@@ -75,13 +75,13 @@ export function createReactNativeGoodVibesSdk(
       maxDelayMs: 2_000,
     },
     realtime: {
+      ...(options.realtime ?? {}),
       webSocketReconnect: {
         enabled: true,
         baseDelayMs: 500,
         maxDelayMs: 5_000,
         ...(options.realtime?.webSocketReconnect ?? {}),
       },
-      ...(options.realtime ?? {}),
     },
     WebSocketImpl: options.WebSocketImpl ?? globalThis.WebSocket,
   });

@@ -16,6 +16,7 @@
  *
  * Wave 6 three-part error messages: [what happened] · [why] · [what to do]
  */
+import { logger } from '../platform/utils/logger.js';
 
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { GoodVibesTokenStore } from './types.js';
@@ -183,7 +184,8 @@ export function createExpoSecureTokenStore(
     if (raw === null || raw === '') return null;
     try {
       return JSON.parse(raw) as StoredPayload;
-    } catch {
+    } catch (err) {
+      logger.debug('ExpoSecureTokenStore: failed to parse stored payload (clearing corrupt entry)', { error: String(err) });
       return null;
     }
   }

@@ -59,6 +59,7 @@ export function createBrowserGoodVibesSdk(
       },
     }),
     realtime: {
+      ...(options.realtime ?? {}),
       sseReconnect: {
         enabled: true,
         baseDelayMs: 500,
@@ -71,7 +72,6 @@ export function createBrowserGoodVibesSdk(
         maxDelayMs: 5_000,
         ...(options.realtime?.webSocketReconnect ?? {}),
       },
-      ...(options.realtime ?? {}),
     },
     ...(options.getAuthToken ? { getAuthToken: options.getAuthToken } : {}),
     ...(options.tokenStore ? { tokenStore: options.tokenStore } : {}),

@@ -1,4 +1,5 @@
 import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 import { DEFAULT_DO_NAMESPACE_NAME } from './constants.js';
 import type {
   CloudflareApiClient,
@@ -158,8 +159,8 @@ async function readWorkerMigrationTag(
     const script = await client.workers.scripts.get?.(workerName, { account_id: accountId });
     const tag = clean(script?.migration_tag);
     if (tag) return tag;
-  } catch {
-    // Some tokens can deploy Workers but not read script metadata; fall back below.
+  } catch (err) {
+    logger.debug('worker-settings: failed to read migration tag via script get (falling back to list)', { error: summarizeError(err) });
   }
 
   const list = client.workers.scripts.list;
@@ -168,7 +169,8 @@ async function readWorkerMigrationTag(
     const scripts = await collectAsync(list({ account_id: accountId }));
     const script = scripts.find((entry) => isMatchingWorkerScript(entry, workerName));
     return clean(script?.migration_tag);
-  } catch {
+  } catch (err) {
+    logger.debug('worker-settings: failed to read migration tag via script list', { error: summarizeError(err) });
     return '';
   }
 }
@@ -187,7 +189,8 @@ async function findExistingDurableObjectNamespace(
         return namespace;
       }
     }
-  } catch {
+  } catch (err) {
+    logger.debug('worker-settings: failed to list durable object namespaces', { error: summarizeError(err) });
     return undefined;
   }
   return undefined;
@@ -210,7 +213,8 @@ function isDurableObjectAlreadyMigratedError(error: unknown): boolean {
 function stringifyError(error: unknown): string {
   try {
     return JSON.stringify(error) ?? '';
-  } catch {
+  } catch (err) {
+    logger.debug('worker-settings: failed to stringify error object', { error: String(err) });
     return '';
   }
 }
@@ -270,8 +274,8 @@ export async function configureWorkerSubdomain(
       input.steps.push({ name: 'worker-subdomain', status: 'ok', message: `Using existing workers.dev route for ${input.workerName}.` });
       return accountSubdomain;
     }
-  } catch {
-    // Older accounts may not return script-level subdomain state before it is enabled.
+  } catch (err) {
+    logger.debug('worker-settings: failed to check existing worker subdomain state (expected on new accounts)', { error: summarizeError(err) });
   }
   try {
     await client.workers.scripts.subdomain.create(input.workerName, {
@@ -304,8 +308,8 @@ export async function configureWorkerSchedule(
       input.steps.push({ name: 'configure-cron', status: 'ok', message: `Using existing Worker cron ${input.workerCron}.` });
       return;
     }
-  } catch {
-    // Some accounts return 404 until the script has its first schedule.
+  } catch (err) {
+    logger.debug('worker-settings: failed to read existing cron schedule (expected on first deploy)', { error: summarizeError(err) });
   }
   await client.workers.scripts.schedules.update(input.workerName, { account_id: input.accountId, body });
   input.steps.push({ name: 'configure-cron', status: 'ok', message: `Configured Worker cron ${input.workerCron}.` });
@@ -323,8 +327,8 @@ export async function disableWorkerSchedule(
       steps.push({ name: 'disable-cron', status: 'skipped', message: `No Worker cron schedules were configured for ${workerName}.` });
       return;
     }
-  } catch {
-    // Keep disable best-effort: if state cannot be read, clear schedules anyway.
+  } catch (err) {
+    logger.debug('worker-settings: failed to read cron schedule before disable (clearing anyway)', { error: summarizeError(err) });
   }
   await client.workers.scripts.schedules.update(workerName, { account_id: accountId, body: [] });
   steps.push({ name: 'disable-cron', status: 'ok', message: `Removed Worker cron schedules from ${workerName}.` });
@@ -342,8 +346,9 @@ export async function disableWorkerSubdomain(
       steps.push({ name: 'disable-worker-subdomain', status: 'skipped', message: `workers.dev route was already disabled for ${workerName}.` });
       return;
     }
-  } catch {
+  } catch (err) {
     // Keep disable best-effort: if state cannot be read, attempt deletion.
+    logger.debug('disableWorkerSubdomain: failed to read existing subdomain state, attempting delete anyway', { workerName, error: summarizeError(err) });
   }
   await client.workers.scripts.subdomain.delete(workerName, { account_id: accountId });
   steps.push({ name: 'disable-worker-subdomain', status: 'ok', message: `Disabled workers.dev route for ${workerName}.` });
@@ -355,7 +360,8 @@ async function readAccountWorkerSubdomain(
 ): Promise<string> {
   try {
     return clean((await client.workers.subdomains.get({ account_id: accountId })).subdomain);
-  } catch {
+  } catch (err) {
+    logger.debug('readAccountWorkerSubdomain: failed to read account worker subdomain', { accountId, error: summarizeError(err) });
     return '';
   }
 }
