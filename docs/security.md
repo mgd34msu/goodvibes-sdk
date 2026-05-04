@@ -102,6 +102,8 @@ Tokens can be revoked by signature via `revoke(tokenSignature)`. Revoked tokens 
 | `managed: true` | Tokens with scope violations or overdue rotation are **blocked** from use |
 | `managed: false` | Violations are reported via `SecurityEvent` emissions but tokens remain usable |
 
+> **Feature-flag gate:** managed-mode blocking only takes effect when the `token-scope-rotation-audit` feature flag is enabled. With the flag off, even `managed: true` instances behave as advisory. See [Feature flags](./feature-flags.md) for flag-management details.
+
 ```ts
 const auditor = new ApiTokenAuditor({ managed: true });
 auditor.registerPolicy({

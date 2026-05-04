@@ -53,6 +53,11 @@ export class SessionManager {
         await this.#tokenStore.setToken(result.token);
       }
     }
+    // Note: observer notification is intentionally NOT emitted here. The
+    // `createGoodVibesAuthClient` facade in `../auth.ts` owns the observer
+    // wiring with full priorToken awareness (anonymous→token vs token→token);
+    // emitting here would produce duplicate transitions. The `#observer` field
+    // is retained for future use cases that bypass the facade.
     return result;
   }
 

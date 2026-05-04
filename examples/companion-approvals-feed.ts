@@ -25,7 +25,9 @@ const stopAgentCompleted = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', as
 });
 
 // window is typed because tsconfig includes lib: 'DOM'; in a browser this works at runtime.
-// In a non-browser environment (test, SSR), guard with typeof window !== 'undefined'.
-window.addEventListener('beforeunload', () => {
-  stopAgentCompleted();
-});
+// In a non-browser environment (test, SSR), the guard below skips registration.
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    stopAgentCompleted();
+  });
+}

@@ -234,6 +234,44 @@ for (const { entry, distRel } of entries) {
 
 // ─── Table output ─────────────────────────────────────────────────────────────
 
+// NIT-04 + NIT-12: drift check for the `./events` aggregate `domains` array.
+// The aggregate `./events` budget entry carries a `domains` array enumerating
+// the in-scope event-domain identifiers. The list is documentation-only for
+// human readers, but stale entries (a domain was removed but the list wasn't
+// updated, or a new domain was added without listing it) silently skew
+// expectations. This check asserts the list matches dist/events/<domain>.js
+// exactly. Single source of truth for the domain inventory remains the dist
+// filesystem; this gate just keeps the readable list in lockstep.
+const eventsBudget = (budgets as Record<string, { gzip_bytes: number; domains?: readonly string[] } | undefined>)['./events'];
+if (eventsBudget?.domains) {
+  const distEventsDir = resolve(SDK_PKG, 'dist', 'events');
+  if (existsSync(distEventsDir)) {
+    const declared = new Set<string>(eventsBudget.domains);
+    const SKIP_NON_DOMAIN_FILES = new Set(['index']);
+    const distDomains = new Set<string>(
+      readdirSync(distEventsDir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+        .map((entry) => entry.name.replace(/\.js$/, ''))
+        .filter((name) => !SKIP_NON_DOMAIN_FILES.has(name)),
+    );
+    const missingFromDist = [...declared].filter((d) => !distDomains.has(d)).sort();
+    const missingFromList = [...distDomains].filter((d) => !declared.has(d)).sort();
+    if (missingFromDist.length > 0 || missingFromList.length > 0) {
+      const lines = ['ERROR: bundle-budgets.json `./events.domains` drift detected:'];
+      if (missingFromDist.length > 0) {
+        lines.push(`  Listed in domains but no matching dist/events/<name>.js: ${missingFromDist.join(', ')}`);
+      }
+      if (missingFromList.length > 0) {
+        lines.push(`  Present in dist/events/ but not listed in domains: ${missingFromList.join(', ')}`);
+      }
+      lines.push('Update bundle-budgets.json#events.domains to match dist/events/, then update');
+      lines.push('the parallel domain lists in bundle-budgets.README.md and docs/public-surface.md.');
+      console.error(lines.join('\n'));
+      process.exit(1);
+    }
+  }
+}
+
 const COL = {
   entry: Math.max(7, ...rows.map((r) => r.entry.length)),
   actual: 10,

@@ -15,6 +15,8 @@ Most examples read environment variables at startup:
 | --- | --- |
 | `GOODVIBES_BASE_URL` | HTTP base URL of the running GoodVibes daemon (defaults to `http://127.0.0.1:3421`). |
 | `GOODVIBES_TOKEN` | Operator bearer token issued by the daemon. Copy from the TUI settings or daemon log on first boot. |
+| `GOODVIBES_USERNAME` | Operator account username. Required only by `auth-login-and-token-store.ts`. |
+| `GOODVIBES_PASSWORD` | Operator account password. Required only by `auth-login-and-token-store.ts`. |
 
 Keep example tokens local and never commit real credentials,
 tokens, cookies, or screenshots containing them.
@@ -25,7 +27,7 @@ that handle credentials, pairing tokens, or daemon URLs.
 
 | File | Runner | Purpose |
 | --- | --- | --- |
-| `auth-login-and-token-store.ts` | `bun examples/auth-login-and-token-store.ts` | Login and token-store lifecycle. |
+| `auth-login-and-token-store.ts` | `bun examples/auth-login-and-token-store.ts` | Login and token-store lifecycle. Requires `GOODVIBES_USERNAME` + `GOODVIBES_PASSWORD` (in addition to `GOODVIBES_BASE_URL`). |
 | `browser-web-ui-quickstart.ts` | typecheck only | Browser/web UI client setup. |
 | `companion-approvals-feed.ts` | `bun examples/companion-approvals-feed.ts` | Approval feed via realtime events. |
 | `daemon-fetch-handler-quickstart.ts` | `bun examples/daemon-fetch-handler-quickstart.ts` | Daemon route handler composition skeleton. Demonstrates the wiring shape with ~14 placeholder callbacks; `getStatus()` is the only end-to-end route. To run a real daemon host, replace placeholders with `buildOperatorContract()`, gateway-method invocations, principal resolution, and a real session manager. See [Daemon embedding](../docs/daemon-embedding.md). |

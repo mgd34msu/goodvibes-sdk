@@ -125,8 +125,7 @@ The SDK accepts two auth options, with the following precedence (highest first):
 2. **`getAuthToken`** — an async resolver with signature `() => Promise<string | null>`.
    Use for dynamic token resolution without the full store interface.
 
-3. **`authToken`** — a static `string | null`.
-   Lowest precedence. Use only for short-lived scripts or when the token is static.
+3. **`authToken`** — a static value. The TypeScript type is `string | null | undefined`; setting it to `null` or omitting it both mean "unauthenticated". Lowest precedence. Use only for short-lived scripts or when the token is static. See [client.ts JSDoc](../packages/sdk/src/client.ts) `Auth token precedence` block for the canonical type definition.
 
 When `tokenStore` is present, `auth.login()` and `auth.clearToken()` automatically persist changes through the store.
 
@@ -215,7 +214,7 @@ See [Observability](./observability.md) for the `SDKObserver` interface and avai
 - `@pellux/goodvibes-sdk/react-native` — React Native (Hermes) companion apps.
 - `@pellux/goodvibes-sdk/expo` — Expo companion defaults and Expo secure token stores.
 - `@pellux/goodvibes-sdk/browser` — browser and web apps (canonical browser entrypoint).
-- `@pellux/goodvibes-sdk/web` — alias for `/browser`; prefer `/browser` for new projects (see [Web UI integration](./web-ui-integration.md)).
+- `@pellux/goodvibes-sdk/web` — browser + service-worker defaults; use this when targeting web UI hosts that need service-worker registration. Prefer `/browser` for vanilla browser apps. See [Web UI integration](./web-ui-integration.md).
 - `@pellux/goodvibes-sdk/operator` — operator/control-plane client only.
 - `@pellux/goodvibes-sdk/peer` — peer/distributed-runtime client only.
 - `@pellux/goodvibes-sdk/auth` — token storage helpers and auth flows.
@@ -224,7 +223,7 @@ See [Observability](./observability.md) for the `SDKObserver` interface and avai
 
 See [Package guide](./packages.md) for a full decision matrix.
 
-## Next reads
+## Next Reads
 
 - [Runtime surfaces](./surfaces.md)
 - [Authentication](./authentication.md)

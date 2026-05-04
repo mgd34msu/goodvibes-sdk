@@ -10,7 +10,7 @@ import {
   type HttpRetryPolicy,
   type PerMethodRetryPolicy,
 } from './retry.js';
-import { buildUrl, createTransportPaths, type TransportPaths } from './paths.js';
+import { assertSameOriginAbsoluteUrl, buildUrl, createTransportPaths, type TransportPaths } from './paths.js';
 import {
   composeMiddleware,
   createUuidV4,
@@ -354,7 +354,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
 
   const requestJsonForTransport = async <T>(pathOrUrl: string, requestOptions: HttpJsonRequestOptions = {}): Promise<T> => {
     const url = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
-      ? pathOrUrl
+      ? assertSameOriginAbsoluteUrl(pathOrUrl, baseUrl)
       : buildUrl(baseUrl, pathOrUrl);
     const method = requestOptions.method ?? (requestOptions.body === undefined ? 'GET' : 'POST');
     const methodId = requestOptions.methodId;

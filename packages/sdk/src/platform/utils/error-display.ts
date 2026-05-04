@@ -1,10 +1,10 @@
-import { AppError, ProviderError, type ErrorCategory, type ErrorSource, type ProviderErrorOptions } from '../types/errors.js';
+import { AppError, ProviderError, type PlatformErrorCategory, type PlatformErrorSource, type ProviderErrorOptions } from '../types/errors.js';
 import type { StructuredDaemonErrorBody } from '../types/daemon-error-contract.js';
 import { redactSensitiveData } from './redaction.js';
 
 const MAX_ERROR_LENGTH = 240;
 
-const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: ErrorCategory; message: (provider?: string) => string }> = [
+const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: PlatformErrorCategory; message: (provider?: string) => string }> = [
   {
     pattern: /ECONNREFUSED/i,
     category: 'network',
@@ -28,8 +28,8 @@ export interface NormalizedError {
   readonly summary: string;
   readonly hint?: string | undefined;
   readonly code?: string | undefined;
-  readonly category: ErrorCategory;
-  readonly source: ErrorSource;
+  readonly category: PlatformErrorCategory;
+  readonly source: PlatformErrorSource;
   readonly recoverable: boolean;
   readonly statusCode?: number | undefined;
   readonly provider?: string | undefined;
@@ -44,7 +44,7 @@ export interface NormalizedError {
 export interface ErrorNormalizationOptions {
   readonly provider?: string | undefined;
   readonly fallbackMessage?: string | undefined;
-  readonly source?: ErrorSource | undefined;
+  readonly source?: PlatformErrorSource | undefined;
 }
 
 export interface ProviderErrorNormalizationOptions extends ProviderErrorOptions {
@@ -100,7 +100,7 @@ function cleanMessage(msg: string, fallbackMessage?: string): string {
   return fallbackMessage ?? 'Unexpected error';
 }
 
-function inferCategory(message: string, statusCode?: number): ErrorCategory {
+function inferCategory(message: string, statusCode?: number): PlatformErrorCategory {
   const msg = message.toLowerCase();
   if (statusCode === 401) return 'authentication';
   if (statusCode === 402) return 'billing';
@@ -123,7 +123,7 @@ function inferCategory(message: string, statusCode?: number): ErrorCategory {
   return 'unknown';
 }
 
-function inferHint(category: ErrorCategory, statusCode?: number): string | undefined {
+function inferHint(category: PlatformErrorCategory, statusCode?: number): string | undefined {
   switch (category) {
     case 'rate_limit':
       return 'The caller may retry automatically. If this persists, wait, lower request volume, or switch models/providers.';
@@ -152,9 +152,9 @@ function inferHint(category: ErrorCategory, statusCode?: number): string | undef
   }
 }
 
-function inferSource(error: unknown, override?: ErrorSource): ErrorSource {
+function inferSource(error: unknown, override?: PlatformErrorSource): PlatformErrorSource {
   if (override) return override;
-  if (error instanceof AppError && error.source) return error.source as ErrorSource;
+  if (error instanceof AppError && error.source) return error.source as PlatformErrorSource;
   if (error instanceof Error && error.name === 'TypeError' && /fetch/i.test(error.message)) return 'transport';
   return 'unknown';
 }
@@ -174,7 +174,7 @@ function buildSummary(
   return tags.length > 0 ? `${message} (${tags.join(', ')})` : message;
 }
 
-function getNetworkErrorMessage(message: string, provider?: string): { category: ErrorCategory; summary: string } | undefined {
+function getNetworkErrorMessage(message: string, provider?: string): { category: PlatformErrorCategory; summary: string } | undefined {
   for (const entry of NETWORK_ERROR_PATTERNS) {
     if (entry.pattern.test(message)) {
       return {
@@ -212,7 +212,7 @@ export function normalizeError(error: unknown, options: ErrorNormalizationOption
   const network = getNetworkErrorMessage(rawMessage, provider);
   const category = (error instanceof AppError && error.category
     ? error.category
-    : network?.category ?? inferCategory(cleanedMessage, statusCode)) as ErrorCategory;
+    : network?.category ?? inferCategory(cleanedMessage, statusCode)) as PlatformErrorCategory;
   const source = inferSource(error, options.source);
   const summary = buildSummary(network?.summary ?? cleanedMessage, {
     requestId: error instanceof AppError ? error.requestId : undefined,
@@ -283,7 +283,7 @@ export function toProviderError(error: unknown, options: ProviderErrorNormalizat
   if (error instanceof ProviderError) {
     return new ProviderError(error.message, {
       statusCode: error.statusCode ?? options.statusCode,
-      category: (error.category ?? options.category) as ErrorCategory | undefined,
+      category: (error.category ?? options.category) as PlatformErrorCategory | undefined,
       guidance: error.guidance ?? options.guidance,
       detail: error.detail ?? options.detail,
       source: 'provider',

@@ -55,3 +55,9 @@ Companion clients have two different model-selection modes:
 - do not rely on string parsing for errors
 - do not assume mobile streaming behavior matches desktop/browser behavior
 - keep companion-app behavior implemented in the SDK itself, not in an external host repo
+
+## Next Reads
+
+- [Companion Message Routing](./companion-message-routing.md) — the `kind` taxonomy (`message` / `task` / `followup`) for companion-originated messages, including when to use each kind
+- [Authentication](./authentication.md) — token storage and refresh patterns for companion clients
+- [Runtime Surfaces](./surfaces.md) — surface-specific constructors and capabilities

@@ -1,3 +1,4 @@
+import { assertSameOriginAbsoluteUrl } from './paths.js';
 import { openRawServerSentEventStream, type ServerSentEventHandlers, type ServerSentEventOptions as CoreServerSentEventOptions } from './sse-stream.js';
 import type { HttpTransport } from './http.js';
 
@@ -11,7 +12,7 @@ export async function openServerSentEventStream(
   options: ServerSentEventOptions = {},
 ): Promise<() => void> {
   const url = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
-    ? pathOrUrl
+    ? assertSameOriginAbsoluteUrl(pathOrUrl, transport.buildUrl('/'))
     : transport.buildUrl(pathOrUrl);
   return await openRawServerSentEventStream(transport.fetchImpl, url, handlers, {
     ...options,

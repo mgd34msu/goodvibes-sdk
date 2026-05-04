@@ -55,6 +55,15 @@ for (const dir of packageDirs) {
   if (!pkg.bugs || typeof pkg.bugs.url !== 'string') {
     throw new Error(`${dir}/package.json is missing bugs metadata`);
   }
+  if (!pkg.engines || typeof pkg.engines !== 'object') {
+    throw new Error(`${dir}/package.json is missing engines field`);
+  }
+  if (pkg.engines.bun !== '1.3.10') {
+    throw new Error(`${dir}/package.json must declare engines.bun: "1.3.10" (found: ${JSON.stringify(pkg.engines.bun)})`);
+  }
+  if (pkg.engines.node !== '>=22.0.0') {
+    throw new Error(`${dir}/package.json must declare engines.node: ">=22.0.0" (found: ${JSON.stringify(pkg.engines.node)})`);
+  }
   const isPublic = publicPackageDirs.includes(dir);
   if (isPublic) {
     if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {

@@ -4,7 +4,7 @@ import { GoodVibesSdkError, RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-err
 
 export { RETRYABLE_STATUS_CODES };
 
-export type ErrorCategory =
+export type PlatformErrorCategory =
   | 'authentication'
   | 'authorization'
   | 'billing'
@@ -21,7 +21,7 @@ export type ErrorCategory =
   | 'internal'
   | 'unknown';
 
-export type ErrorSource =
+export type PlatformErrorSource =
   | 'provider'
   | 'tool'
   | 'transport'
@@ -34,10 +34,10 @@ export type ErrorSource =
 
 export interface AppErrorOptions {
   readonly statusCode?: number | undefined;
-  readonly category?: ErrorCategory | undefined;
+  readonly category?: PlatformErrorCategory | undefined;
   readonly guidance?: string | undefined;
   readonly detail?: string | undefined;
-  readonly source?: ErrorSource | undefined;
+  readonly source?: PlatformErrorSource | undefined;
   readonly provider?: string | undefined;
   readonly operation?: string | undefined;
   readonly phase?: string | undefined;
@@ -53,7 +53,7 @@ export interface ProviderErrorOptions extends AppErrorOptions {
   readonly statusCode?: number | undefined;
 }
 
-function inferErrorCategory(message: string, statusCode?: number): ErrorCategory {
+function inferErrorCategory(message: string, statusCode?: number): PlatformErrorCategory {
   const msg = message.toLowerCase();
 
   if (statusCode === 401) return 'authentication';
@@ -78,7 +78,7 @@ function inferErrorCategory(message: string, statusCode?: number): ErrorCategory
   return 'unknown';
 }
 
-function inferProviderGuidance(category: ErrorCategory, statusCode?: number): string | undefined {
+function inferProviderGuidance(category: PlatformErrorCategory, statusCode?: number): string | undefined {
   switch (category) {
     case 'rate_limit':
       return 'The provider rate limited this request. GoodVibes will retry automatically when the caller supports retries. If this keeps happening, wait, reduce request volume, or switch models/providers.';

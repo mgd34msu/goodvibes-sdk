@@ -193,6 +193,8 @@ const mediaBodySchemas = createRouteBodySchemaRegistry({
 });
 
 async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   // MAJ-10: pass context so defaults from tts.provider/tts.voice config are applied
@@ -217,6 +219,8 @@ async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): P
 }
 
 async function handleVoiceTtsStream(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const { providerId, input } = readVoiceSynthesisRequest(body, context);
@@ -270,6 +274,8 @@ function voiceStreamResponse(result: VoiceSynthesisStreamLike): Response {
 }
 
 async function handleVoiceStt(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   if (typeof body.audio !== 'object' || body.audio === null) {
@@ -299,6 +305,8 @@ async function handleVoiceStt(context: DaemonMediaRouteContext, req: Request): P
 }
 
 async function handleVoiceRealtimeSession(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   try {
@@ -326,6 +334,8 @@ async function handleVoiceRealtimeSession(context: DaemonMediaRouteContext, req:
 }
 
 async function handleMediaAnalyze(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const provider = context.mediaProviders.findProvider('understand', typeof body.providerId === 'string' ? body.providerId : undefined);
@@ -351,6 +361,8 @@ async function handleMediaAnalyze(context: DaemonMediaRouteContext, req: Request
 }
 
 async function handleArtifactCreate(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   if (isArtifactUploadRequest(req)) {
     const uploaded = await createArtifactFromUploadRequest(context.artifactStore, req);
     if (uploaded instanceof Response) return uploaded;
@@ -406,6 +418,8 @@ async function handleArtifactContent(context: DaemonMediaRouteContext, artifactI
 }
 
 async function handleWebSearch(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const input = mediaBodySchemas.webSearch.parse(body);
@@ -418,6 +432,8 @@ async function handleWebSearch(context: DaemonMediaRouteContext, req: Request): 
 }
 
 async function handleMediaTransform(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const provider = context.mediaProviders.findProvider('transform', typeof body.providerId === 'string' ? body.providerId : undefined);
@@ -437,6 +453,8 @@ async function handleMediaTransform(context: DaemonMediaRouteContext, req: Reque
 }
 
 async function handleMediaGenerate(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const provider = context.mediaProviders.findProvider('generate', typeof body.providerId === 'string' ? body.providerId : undefined);
@@ -453,6 +471,8 @@ async function handleMediaGenerate(context: DaemonMediaRouteContext, req: Reques
 }
 
 async function handleMultimodalAnalyze(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const requestedArtifact = typeof body.artifact === 'object' && body.artifact !== null
@@ -515,6 +535,8 @@ async function handleMultimodalAnalyze(context: DaemonMediaRouteContext, req: Re
 }
 
 async function handleMultimodalPacket(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   const input = mediaBodySchemas.multimodalPacket.parse(body);
@@ -529,6 +551,8 @@ async function handleMultimodalPacket(context: DaemonMediaRouteContext, req: Req
 }
 
 async function handleMultimodalWriteback(context: DaemonMediaRouteContext, req: Request): Promise<Response> {
+  const admin = context.requireAdmin(req);
+  if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
   if (typeof body.analysis !== 'object' || body.analysis === null) {
