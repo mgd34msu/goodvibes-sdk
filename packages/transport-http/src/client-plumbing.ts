@@ -6,6 +6,8 @@ const RISKY_SCHEMA_PATTERN_CHECKS: readonly RegExp[] = [
   /(^|[^\\])\\[1-9]/,
   /\((?:[^()\\]|\\.)*[+*{][^)]*\)\s*[+*{]/,
   /\.\*(?:[^|)]{0,64})\.\*/,
+  // NIT-7: lookbehind assertions (?<=...) can also produce pathological backtracking.
+  /\(\?<[=!]/,
 ];
 
 export type RequiredKeys<T extends object> = {
@@ -72,29 +74,34 @@ export interface JsonSchemaValidationFailure {
   readonly received: string;
 }
 
+const MAX_SCHEMA_WALK_DEPTH = 32;
+
 export function firstJsonSchemaFailure(
   schema: Record<string, unknown>,
   value: unknown,
   path = '$',
   root: Record<string, unknown> = schema,
+  _depth = 0,
 ): JsonSchemaValidationFailure | undefined {
+  // NIT-8: guard against cyclic $ref chains.
+  if (_depth >= MAX_SCHEMA_WALK_DEPTH) return undefined;
   if (typeof schema.$ref === 'string') {
     const resolved = resolveLocalSchemaRef(root, schema.$ref);
-    return resolved ? firstJsonSchemaFailure(resolved, value, path, root) : undefined;
+    return resolved ? firstJsonSchemaFailure(resolved, value, path, root, _depth + 1) : undefined;
   }
   const allOf = readSchemaList(schema.allOf);
   for (const child of allOf) {
-    const failure = firstJsonSchemaFailure(child, value, path, root);
+    const failure = firstJsonSchemaFailure(child, value, path, root, _depth + 1);
     if (failure) return failure;
   }
   const anyOf = readSchemaList(schema.anyOf);
   if (anyOf.length > 0) {
-    const failures = anyOf.map((child) => firstJsonSchemaFailure(child, value, path, root));
+    const failures = anyOf.map((child) => firstJsonSchemaFailure(child, value, path, root, _depth + 1));
     if (failures.every(Boolean)) return bestSchemaFailure(failures) ?? { path, expected: 'one matching schema', received: typeOfJsonValue(value) };
   }
   const oneOf = readSchemaList(schema.oneOf);
   if (oneOf.length > 0) {
-    const matches = oneOf.filter((child) => !firstJsonSchemaFailure(child, value, path, root)).length;
+    const matches = oneOf.filter((child) => !firstJsonSchemaFailure(child, value, path, root, _depth + 1)).length;
     if (matches !== 1) return { path, expected: 'exactly one matching schema', received: `${matches} matches` };
   }
   const enumValues = schema.enum;
