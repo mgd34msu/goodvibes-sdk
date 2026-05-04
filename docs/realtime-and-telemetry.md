@@ -44,6 +44,8 @@ await sdk.operator.telemetry.otlp.logs();
 await sdk.operator.telemetry.otlp.metrics();
 ```
 
+The OTLP endpoints return JSON-encoded OTLP responses (`application/json` with OTLP export response shape). Binary protobuf encoding is not used on these routes.
+
 ## Recommended use
 
 - use HTTP operator APIs to load initial snapshots

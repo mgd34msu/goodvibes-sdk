@@ -10,7 +10,7 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 
 ## Consumer Decision Matrix
 
-| Consumer | Entry point | Install | Read |
+| Consumer | Entry point (import path) | Install | Read |
 |---|---|---|---|
 | Bun service (TUI, daemon) | `@pellux/goodvibes-sdk` | `bun add @pellux/goodvibes-sdk` | [Getting started](./getting-started.md) |
 | Bun CLI app | `@pellux/goodvibes-sdk` | `bun add @pellux/goodvibes-sdk` | [Getting started](./getting-started.md) |

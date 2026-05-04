@@ -12,6 +12,8 @@ const sdk = createBrowserGoodVibesSdk({
 });
 
 async function refreshApprovals() {
+  // approvals.list() returns paginated results; pass { cursor } from the previous response
+  // to page through all records when the list may exceed the default page size.
   const approvals = await sdk.operator.approvals.list();
   console.log('approvals', approvals);
 }

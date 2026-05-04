@@ -35,6 +35,7 @@ const controlHandlers = createDaemonControlRouteHandlers({
   // PLACEHOLDER: { version: 1 } does not satisfy the full OperatorContract shape.
   // In production: import { buildOperatorContract } from '@pellux/goodvibes-sdk/operator';
   // and replace this with: getOperatorContract: () => buildOperatorContract({ ... }),
+  // See docs/daemon-embedding.md for the full OperatorContract construction pattern.
   // PLACEHOLDER: cast to Record<string,unknown>; in production supply a real OperatorContract.
   getOperatorContract: () => ({ version: 1 }) as unknown as Record<string, unknown>,
   inspectInboundTls: () => ({ mode: 'off' }),

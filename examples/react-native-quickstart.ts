@@ -6,7 +6,7 @@ import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-nativ
 const sdk = createReactNativeGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
   // Read from SecureStore in production: await SecureStore.getItemAsync('gv-token')
-  authToken: process.env.GOODVIBES_TOKEN ?? 'replace-me',
+  authToken: process.env.GOODVIBES_TOKEN ?? (() => { throw new Error('GOODVIBES_TOKEN env var is required'); })() as string,
 });
 
 const snapshot = await sdk.operator.control.snapshot();

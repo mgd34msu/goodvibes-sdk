@@ -374,7 +374,7 @@ The `AuthenticatedPrincipal` type carries a `principalKind` (`user` | `bot` | `s
 
 ### Bootstrap Credential File
 
-**Source:** `packages/sdk/src/platform/security/user-auth.ts` — `writeBootstrapCredentialFile()`, `clearBootstrapCredentialFile()`
+**Note:** `writeBootstrapCredentialFile()` and `clearBootstrapCredentialFile()` are available via `UserAuthManager` (accessed as `authManager.clearBootstrapCredentialFile()`). The underlying implementations are in the `security` namespace of `@pellux/goodvibes-sdk/platform`.
 
 #### What it is and when it is created
 
