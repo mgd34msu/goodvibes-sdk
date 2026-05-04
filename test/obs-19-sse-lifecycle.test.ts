@@ -5,13 +5,10 @@ import { describe, expect, test } from 'bun:test';
  * and STREAM_SUBSCRIBER_DISCONNECTED events are emittable and structurally correct.
  */
 describe('obs-19 sse lifecycle', () => {
-  test('emitStreamSubscriberConnected is exported from transport emitters', async () => {
-    const mod = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-  });
-
-  test('emitStreamSubscriberDisconnected is exported from transport emitters', async () => {
-    const mod = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-  });
+  // NOTE (CRIT-06): emitStreamSubscriberConnected / emitStreamSubscriberDisconnected have
+  // no production callers yet — addSseClient / removeSseClient do not invoke them.
+  // These tests verify the emitter functions themselves are correct; end-to-end
+  // production wiring is a separate engineering task.
 
   test('emitStreamSubscriberConnected emits correct payload', async () => {
     const { emitStreamSubscriberConnected } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
@@ -48,7 +45,7 @@ describe('obs-19 sse lifecycle', () => {
     expect(envelope.payload.reason).toBe('client closed');
   });
 
-  test('sseSubscribers gauge can be set to track connected/disconnected', async () => {
+  test('sseSubscribers gauge supports set/get', async () => {
     const { sseSubscribers } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const before = sseSubscribers.value();
     sseSubscribers.set(3);

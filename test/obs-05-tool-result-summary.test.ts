@@ -5,10 +5,6 @@ import { describe, expect, test } from 'bun:test';
  * ToolResult / SyntheticToolResult shapes to ToolResultSummary.
  */
 describe('obs-05 tool result summary', () => {
-  test('toToolResultSummary is exported from emitters barrel', async () => {
-    const mod = await import('../packages/sdk/src/platform/runtime/emitters/index.js');
-  });
-
   test('toToolResultSummary returns error kind on failure', async () => {
     const { toToolResultSummary } = await import('../packages/sdk/src/platform/runtime/emitters/index.js');
     const summary = toToolResultSummary({ success: false, error: 'Tool timed out' });

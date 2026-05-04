@@ -5,18 +5,6 @@
 import { describe, expect, test } from 'bun:test';
 
 describe('platform/export — smoke', () => {
-  test('exportToJSON is a function', async () => {
-    const mod = await import('../packages/sdk/src/platform/export/index.js');
-  });
-
-  test('exportToMarkdown is a function', async () => {
-    const mod = await import('../packages/sdk/src/platform/export/index.js');
-  });
-
-  test('exportToHTML is a function', async () => {
-    const mod = await import('../packages/sdk/src/platform/export/index.js');
-  });
-
   test('exportToJSON returns a string for minimal session data', async () => {
     const { exportToJSON } = await import('../packages/sdk/src/platform/export/index.js');
     // exportToJSON(messages, metadata?, options?) — pass empty messages array.

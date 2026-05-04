@@ -18,10 +18,6 @@ describe('obs-03 instrumentedFetch migration', () => {
     expect(result).toBeInstanceOf(Error);
   });
 
-  test('fetchWithTimeout exists alongside instrumentedFetch', async () => {
-    const mod = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
-  });
-
   // N-2: URL redaction — sensitive params are replaced with [redacted] in logged URL
   test('sanitizeUrlForLog redacts sensitive query params', async () => {
     const { sanitizeUrlForLog } = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');

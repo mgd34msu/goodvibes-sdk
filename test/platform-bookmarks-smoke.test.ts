@@ -21,10 +21,6 @@ function makeTmpDir(): string {
 }
 
 describe('platform/bookmarks — smoke', () => {
-  test('BookmarkManager is a class export', async () => {
-    const mod = await import('../packages/sdk/src/platform/bookmarks/index.js');
-  });
-
   test('BookmarkManager can be constructed with a minimal config store', async () => {
     const { BookmarkManager } = await import('../packages/sdk/src/platform/bookmarks/index.js');
     const mgr = new BookmarkManager(makeTmpDir());

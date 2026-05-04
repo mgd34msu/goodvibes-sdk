@@ -5,6 +5,7 @@ import { afterEach } from 'bun:test';
 import { ArtifactStore } from '../../packages/sdk/src/platform/artifacts/index.js';
 import type { KnowledgeSemanticLlm } from '../../packages/sdk/src/platform/knowledge/index.js';
 import { KnowledgeStore } from '../../packages/sdk/src/platform/knowledge/store.js';
+import { waitFor as _canonicalWaitFor } from './test-timeout.js';
 
 const tmpRoots: string[] = [];
 
@@ -152,13 +153,12 @@ export class ForegroundRepairLlm implements KnowledgeSemanticLlm {
   }
 }
 
+/**
+ * Delegates to the canonical waitFor from test/_helpers/test-timeout.ts.
+ * The canonical version uses timer.unref() to avoid hanging the process.
+ */
 export async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-  throw new Error('Timed out waiting for condition.');
+  return _canonicalWaitFor(predicate, { timeoutMs, intervalMs: 5 });
 }
 
 export class OrderedHomeGraphAskLlm implements KnowledgeSemanticLlm {

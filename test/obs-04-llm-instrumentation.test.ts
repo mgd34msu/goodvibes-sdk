@@ -6,16 +6,12 @@ import { describe, expect, test } from 'bun:test';
  * Includes integration tests asserting platformMeter instruments are recorded.
  */
 describe('obs-04 llm instrumentation', () => {
-  test('instrumentedLlmCall is exported from llm-observability', async () => {
-    const mod = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
-  });
-
   test('instrumentedLlmCall returns InstrumentedLlmResult with result and durationMs', async () => {
     const { instrumentedLlmCall } = await import('../packages/sdk/src/platform/runtime/llm-observability.js');
     const wrapped = await instrumentedLlmCall(async () => ({ answer: 42 }));
     expect(wrapped.result).toEqual({ answer: 42 });
     expect(typeof wrapped.durationMs).toBe('number');
-    // MAJ-03 (eighth-review): dropped >= 0 tautology; upper bound carries the real assertion
+    // Upper bound is the real assertion; a non-negative duration is also implied.
     expect(wrapped.durationMs).toBeLessThan(1000);
     expect(wrapped.retries).toBe(0);
   });

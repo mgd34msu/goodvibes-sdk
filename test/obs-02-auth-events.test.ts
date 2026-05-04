@@ -61,6 +61,9 @@ describe('obs-02 auth counter wiring — login path', () => {
       bootstrapCredentialPath: join(dir, 'auth-bootstrap.txt'),
     });
     const configManager = new ConfigManager({ configDir: dir });
+    // NOTE (MIN-02): `as unknown as` is used here to access the internal handleRequest
+    // method without a public test hook. Any future signature change will surface at
+    // runtime rather than compile time — acceptable trade-off for this integration test.
     const listener = new HttpListener({ port: 0, userAuth, configManager }) as unknown as {
       handleRequest: (req: Request) => Promise<Response>;
     };

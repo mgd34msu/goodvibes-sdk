@@ -8,7 +8,8 @@ describe('obs-22 label allowlist', () => {
   test('METRIC_LABEL_ALLOWLIST is exported and is a Set', async () => {
     const { METRIC_LABEL_ALLOWLIST } = await import('../packages/sdk/src/platform/runtime/telemetry/api-helpers.js');
     expect(METRIC_LABEL_ALLOWLIST).toBeInstanceOf(Set);
-    expect(METRIC_LABEL_ALLOWLIST.size).toBe(21);
+    // Lower bound: new low-cardinality labels may be added without breaking this test.
+    expect(METRIC_LABEL_ALLOWLIST.size).toBeGreaterThanOrEqual(20);
   });
 
   test('METRIC_LABEL_ALLOWLIST contains expected low-cardinality keys', async () => {

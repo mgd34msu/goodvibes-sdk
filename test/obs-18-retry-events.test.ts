@@ -6,15 +6,10 @@ import { describe, expect, test } from 'bun:test';
  * that the corresponding emitter functions are exported.
  */
 describe('obs-18 retry events', () => {
-  test('TRANSPORT_RETRY_SCHEDULED is a valid TransportEvent type', async () => {
-    // TypeScript validates the discriminated union at compile time.
-    // At runtime we verify the emitter functions are exported.
-    const mod = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-  });
-
-  test('TRANSPORT_RETRY_EXECUTED emitter is exported', async () => {
-    const { emitTransportRetryExecuted } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-  });
+  // NOTE (CRIT-05): emitTransportRetryScheduled / emitTransportRetryExecuted have no
+  // production callers yet — the retry/backoff transport path does not invoke them.
+  // These tests verify the emitter functions themselves are correct; end-to-end
+  // production wiring is a separate engineering task.
 
   test('emitTransportRetryScheduled emits on the transport channel', async () => {
     const { emitTransportRetryScheduled } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
