@@ -230,7 +230,7 @@ describe('F3 — DaemonHttpRouter: authenticated request succeeds, unauthenticat
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     // Response must include providers array (GET /api/providers shape)
-    expect(Array.isArray(body['providers'])).toBe(true);
+    expect(body['providers']).toBeInstanceOf(Array);
     router.dispose();
   });
 });

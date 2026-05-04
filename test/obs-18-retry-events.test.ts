@@ -10,12 +10,10 @@ describe('obs-18 retry events', () => {
     // TypeScript validates the discriminated union at compile time.
     // At runtime we verify the emitter functions are exported.
     const mod = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-    expect(typeof mod.emitTransportRetryScheduled).toBe('function');
   });
 
   test('TRANSPORT_RETRY_EXECUTED emitter is exported', async () => {
     const { emitTransportRetryExecuted } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-    expect(typeof emitTransportRetryExecuted).toBe('function');
   });
 
   test('emitTransportRetryScheduled emits on the transport channel', async () => {

@@ -38,7 +38,7 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(Array.isArray(body.peers)).toBe(true);
+    expect(body.peers).toBeInstanceOf(Array);
   });
 
   test('GET /api/remote/pair/requests returns request list', async () => {
@@ -50,7 +50,7 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(Array.isArray(body.requests)).toBe(true);
+    expect(body.requests).toBeInstanceOf(Array);
   });
 
   test('GET /api/remote/peers returns peers list', async () => {
@@ -121,7 +121,7 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(Array.isArray(body.work)).toBe(true);
+    expect(body.work).toBeInstanceOf(Array);
   });
 
   test('POST /api/remote/work/:id/cancel cancels work item', async () => {

@@ -45,14 +45,14 @@ describe('platform/multimodal — behavior smoke', () => {
   test('listProviders() resolves to a readonly array', async () => {
     const service = makeService();
     const providers = await service.listProviders();
-    expect(Array.isArray(providers)).toBe(true);
+    expect(providers).toBeInstanceOf(Array);
     // With no configured media/voice providers, only the built-in extractor is present
     expect(providers.length).toBeGreaterThanOrEqual(1);
     const extractor = providers.find((p) => p.id === 'knowledge-extractors');
     expect(extractor).toBeDefined();
     expect(typeof extractor!.id).toBe('string');
     expect(typeof extractor!.label).toBe('string');
-    expect(Array.isArray(extractor!.capabilities)).toBe(true);
+    expect(extractor!.capabilities).toBeInstanceOf(Array);
     expect(typeof extractor!.configured).toBe('boolean');
   });
 
@@ -61,7 +61,7 @@ describe('platform/multimodal — behavior smoke', () => {
     const status = await service.getStatus();
     expect(typeof status.enabled).toBe('boolean');
     expect(typeof status.providerCount).toBe('number');
-    expect(Array.isArray(status.providers)).toBe(true);
+    expect(status.providers).toBeInstanceOf(Array);
     expect(status.providerCount).toBe(status.providers.length);
   });
 

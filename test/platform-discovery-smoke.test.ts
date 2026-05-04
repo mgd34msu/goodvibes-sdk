@@ -27,7 +27,7 @@ describe('platform/discovery — behavior smoke', () => {
         homeDirectory: tmp,
         surfaceRoot: 'gv-test-surface',
       });
-      expect(Array.isArray(result)).toBe(true);
+      expect(result).toBeInstanceOf(Array);
       expect(result.length).toBe(0);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
@@ -43,7 +43,7 @@ describe('platform/discovery — behavior smoke', () => {
     ]).catch(() => null);
     // Either the scan resolved with a ScanResult, or we got null from the timeout — both are valid
     if (result !== null) {
-      expect(Array.isArray(result.servers)).toBe(true);
+      expect(result.servers).toBeInstanceOf(Array);
       expect(typeof result.scannedHosts).toBe('number');
       expect(typeof result.scannedPorts).toBe('number');
       expect(typeof result.durationMs).toBe('number');
@@ -56,7 +56,7 @@ describe('platform/discovery — behavior smoke', () => {
   test('scanHosts([]) resolves with empty DiscoveredServer array for empty host list', async () => {
     // Empty host list — no probes, immediate resolution
     const result = await scanHosts([]);
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toBeInstanceOf(Array);
     expect(result.length).toBe(0);
   });
 
@@ -68,7 +68,7 @@ describe('platform/discovery — behavior smoke', () => {
       ),
     ]).catch(() => null);
     if (result !== null) {
-      expect(Array.isArray(result.servers)).toBe(true);
+      expect(result.servers).toBeInstanceOf(Array);
       expect(typeof result.scannedHosts).toBe('number');
       expect(typeof result.scannedPorts).toBe('number');
       expect(typeof result.durationMs).toBe('number');
@@ -83,7 +83,7 @@ describe('platform/discovery — behavior smoke', () => {
         homeDirectory: tmp,
         surfaceRoot: 'gv-test',
       });
-      expect(Array.isArray(result.suggestions)).toBe(true);
+      expect(result.suggestions).toBeInstanceOf(Array);
       expect(typeof result.locationsScanned).toBe('number');
       expect(result.locationsScanned).toBeGreaterThan(0);
     } finally {

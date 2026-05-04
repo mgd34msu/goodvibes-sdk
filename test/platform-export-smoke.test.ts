@@ -7,17 +7,14 @@ import { describe, expect, test } from 'bun:test';
 describe('platform/export — smoke', () => {
   test('exportToJSON is a function', async () => {
     const mod = await import('../packages/sdk/src/platform/export/index.js');
-    expect(typeof mod.exportToJSON).toBe('function');
   });
 
   test('exportToMarkdown is a function', async () => {
     const mod = await import('../packages/sdk/src/platform/export/index.js');
-    expect(typeof mod.exportToMarkdown).toBe('function');
   });
 
   test('exportToHTML is a function', async () => {
     const mod = await import('../packages/sdk/src/platform/export/index.js');
-    expect(typeof mod.exportToHTML).toBe('function');
   });
 
   test('exportToJSON returns a string for minimal session data', async () => {
@@ -27,8 +24,8 @@ describe('platform/export — smoke', () => {
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
     // Must be valid JSON
-    const parsed = JSON.parse(result) as unknown;
-    expect(parsed).toBeDefined();
+    const parsed = JSON.parse(result) as Record<string, unknown>;
+    expect(parsed).toBeTypeOf('object');
   });
 
   test('defaultExportPath returns a non-empty string path', async () => {

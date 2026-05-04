@@ -200,7 +200,7 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
     expect(result?.ingestedSourceIds).toHaveLength(5);
     expect(ingested).toHaveLength(5);
     expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).checkedSourceLimit).toBe(5);
-    expect(Array.isArray((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).searchQueries)).toBe(true);
+    expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).searchQueries).toBeInstanceOf(Array);
   });
 
   test('web gap repair reuses pending official sources as accepted evidence', async () => {

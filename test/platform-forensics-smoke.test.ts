@@ -8,7 +8,7 @@ import { describe, expect, test } from 'bun:test';
 import { classifyFailure } from '../packages/sdk/src/platform/runtime/forensics/classifier.js';
 import { ForensicsRegistry, DEFAULT_REGISTRY_LIMIT } from '../packages/sdk/src/platform/runtime/forensics/registry.js';
 
-describe('platform/runtime/forensics — module load smoke', () => {
+describe('platform/runtime/forensics — classifier and registry behavior', () => {
   test('DEFAULT_REGISTRY_LIMIT is a positive number', () => {
     expect(DEFAULT_REGISTRY_LIMIT).toBeGreaterThan(0);
   });
@@ -30,7 +30,7 @@ describe('platform/runtime/forensics — module load smoke', () => {
       hasPermissionDenial: false,
       hasCompactionError: false,
     });
-    expect(result).toBeDefined();
     expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
   });
 });

@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { TemplateManager, parseTemplateArgs } from '../packages/sdk/src/platform/templates/manager.js';
 
-describe('platform/templates — module load smoke', () => {
+describe('platform/templates — template management behavior', () => {
   test('parseTemplateArgs parses named args', () => {
     const result = parseTemplateArgs(['name=foo', 'value=bar']);
     expect(result).toEqual({ name: 'foo', value: 'bar' });
@@ -22,6 +22,6 @@ describe('platform/templates — module load smoke', () => {
   test('TemplateManager instance has expected methods', () => {
     const mgr = new TemplateManager({ projectRoot: '/tmp', homeDirectory: '/tmp', projectDirectory: '/tmp', globalDirectory: '/tmp' });
     const listed = mgr.list();
-    expect(Array.isArray(listed)).toBe(true);
+    expect(listed).toBeInstanceOf(Array);
   });
 });

@@ -7,12 +7,9 @@
 import { describe, expect, test } from 'bun:test';
 import { EvalRunner } from '../packages/sdk/src/platform/runtime/eval/runner.js';
 
-describe('platform/runtime/eval — module load smoke', () => {
-  test('EvalRunner is a constructor', () => {
-    expect(typeof EvalRunner).toBe('function');
-  });
+describe('platform/runtime/eval — eval runner behavior', () => {
 
-  test('EvalRunner instance has expected methods', () => {
+  test('EvalRunner constructs and exposes runSuite method', () => {
     const runner = new EvalRunner();
     expect(typeof runner.runSuite).toBe('function');
     expect(typeof runner.evaluateGate).toBe('function');

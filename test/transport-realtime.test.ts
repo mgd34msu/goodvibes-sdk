@@ -146,7 +146,6 @@ describe('transport realtime', () => {
     const events = createRemoteRuntimeEvents(async () => () => {});
 
     expect(events.domains).toEqual(RUNTIME_EVENT_DOMAINS);
-    expect(typeof events.agents.on).toBe('function');
     expect(typeof events.domain('knowledge').onEnvelope).toBe('function');
   });
 

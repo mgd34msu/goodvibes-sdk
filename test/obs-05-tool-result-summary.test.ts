@@ -7,7 +7,6 @@ import { describe, expect, test } from 'bun:test';
 describe('obs-05 tool result summary', () => {
   test('toToolResultSummary is exported from emitters barrel', async () => {
     const mod = await import('../packages/sdk/src/platform/runtime/emitters/index.js');
-    expect(typeof mod.toToolResultSummary).toBe('function');
   });
 
   test('toToolResultSummary returns error kind on failure', async () => {

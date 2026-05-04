@@ -15,7 +15,8 @@ afterEach(() => {
 });
 
 export class FakeKnowledgeLlm implements KnowledgeSemanticLlm {
-  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+  async completeJson(input: { readonly purpose: string; readonly signal?: AbortSignal }): Promise<unknown | null> {
+    if (input.signal?.aborted) return null;
     if (input.purpose === 'knowledge-semantic-enrichment') {
       return {
         summary: 'Manual describing display and input features.',
@@ -64,7 +65,8 @@ export class FakeKnowledgeLlm implements KnowledgeSemanticLlm {
 }
 
 export class GapRepairAnswerLlm implements KnowledgeSemanticLlm {
-  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+  async completeJson(input: { readonly purpose: string; readonly signal?: AbortSignal }): Promise<unknown | null> {
+    if (input.signal?.aborted) return null;
     if (input.purpose !== 'knowledge-answer-synthesis') return null;
     return {
       answer: 'The manual only confirms Magic Remote Bluetooth compatibility.',
@@ -85,7 +87,8 @@ export class GapRepairAnswerLlm implements KnowledgeSemanticLlm {
 }
 
 export class WeakFeatureAnswerLlm implements KnowledgeSemanticLlm {
-  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+  async completeJson(input: { readonly purpose: string; readonly signal?: AbortSignal }): Promise<unknown | null> {
+    if (input.signal?.aborted) return null;
     if (input.purpose !== 'knowledge-answer-synthesis') return null;
     return {
       answer: 'The supplied evidence identifies the TV as having an LCD screen.',
@@ -161,7 +164,8 @@ export async function waitFor(predicate: () => boolean, timeoutMs: number): Prom
 export class OrderedHomeGraphAskLlm implements KnowledgeSemanticLlm {
   readonly calls: string[] = [];
 
-  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+  async completeJson(input: { readonly purpose: string; readonly signal?: AbortSignal }): Promise<unknown | null> {
+    if (input.signal?.aborted) return null;
     this.calls.push(input.purpose);
     if (input.purpose === 'knowledge-answer-synthesis') {
       return {
@@ -201,7 +205,8 @@ export class OrderedHomeGraphAskLlm implements KnowledgeSemanticLlm {
 }
 
 export class BoilerplateAnswerLlm implements KnowledgeSemanticLlm {
-  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+  async completeJson(input: { readonly purpose: string; readonly signal?: AbortSignal }): Promise<unknown | null> {
+    if (input.signal?.aborted) return null;
     if (input.purpose !== 'knowledge-answer-synthesis') return null;
     return {
       answer: [
@@ -231,7 +236,8 @@ export class BoilerplateAnswerLlm implements KnowledgeSemanticLlm {
 export class SlowKnowledgeLlm implements KnowledgeSemanticLlm {
   constructor(private readonly delayMs: number) {}
 
-  async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+  async completeJson(input: { readonly purpose: string; readonly signal?: AbortSignal }): Promise<unknown | null> {
+    if (input.signal?.aborted) return null;
     await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     if (input.purpose !== 'knowledge-semantic-enrichment') return null;
     return {

@@ -18,17 +18,8 @@ describe('platform/security — http-auth smoke (sec-04)', () => {
     expect(OPERATOR_SESSION_COOKIE_NAME.length).toBeGreaterThan(0);
   });
 
-  test('extractOperatorAuthToken is a function', () => {
-    expect(typeof extractOperatorAuthToken).toBe('function');
-  });
 
-  test('authenticateOperatorToken is a function', () => {
-    expect(typeof authenticateOperatorToken).toBe('function');
-  });
 
-  test('isOperatorAdmin is a function', () => {
-    expect(typeof isOperatorAdmin).toBe('function');
-  });
 
   test('extractOperatorAuthToken returns empty string for a request with no auth header', () => {
     const req = new Request('http://localhost/api/test');

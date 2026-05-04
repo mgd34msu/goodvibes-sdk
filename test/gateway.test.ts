@@ -157,7 +157,7 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
     );
 
     expect(result.clientId).not.toBe('');
-    expect(Array.isArray(result.domains)).toBe(true);
+    expect(result.domains).toBeInstanceOf(Array);
     expect(result.domains).toEqual(DEFAULT_DOMAINS_TEST_EXPORT);
     // 'ready' must be the first event sent
     expect(events[0]).toBe('ready');

@@ -120,7 +120,7 @@ describe('runDeadCode — dead_code mode', () => {
     );
 
     const deadExports = result.dead_exports as Array<{ name: string; file: string; line: number }>;
-    expect(Array.isArray(deadExports)).toBe(true);
+    expect(deadExports).toBeInstanceOf(Array);
     const deadNames = deadExports.map((e) => e.name);
     expect(deadNames).toContain('orphanedHelper');
     expect(result.total_exports).toBe(2);
@@ -146,7 +146,7 @@ describe('runDeadCode — dead_code mode', () => {
     );
 
     const deadExports = result.dead_exports as Array<{ name: string; file: string; line: number }>;
-    expect(Array.isArray(deadExports)).toBe(true);
+    expect(deadExports).toBeInstanceOf(Array);
     const deadNames = deadExports.map((e) => e.name);
     // computeSum is referenced in consumer.ts — must NOT appear as dead
     expect(deadNames).not.toContain('computeSum');

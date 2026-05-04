@@ -28,7 +28,6 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
   test('getSandboxConfigSnapshot returns a frozen object with expected keys', () => {
     const config = getSandboxConfigSnapshot(makeConfigManager());
     expect(config).toBeDefined();
-    expect(typeof config).toBe('object');
     // Must be frozen (Object.isFrozen)
     expect(Object.isFrozen(config)).toBe(true);
     // Must include replIsolation key
@@ -45,7 +44,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
 
   test('listSandboxProfiles returns a non-empty array, each profile has id/label/kind/isolation', () => {
     const profiles = listSandboxProfiles(makeConfigManager());
-    expect(Array.isArray(profiles)).toBe(true);
+    expect(profiles).toBeInstanceOf(Array);
     expect(profiles.length).toBeGreaterThan(0);
     const first = profiles[0] as Record<string, unknown>;
     expect(typeof first.id).toBe('string');
@@ -56,7 +55,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
 
   test('listSandboxPresets returns an array containing secure-balanced', () => {
     const presets = listSandboxPresets();
-    expect(Array.isArray(presets)).toBe(true);
+    expect(presets).toBeInstanceOf(Array);
     const ids = (presets as Array<Record<string, unknown>>).map((p) => p.id);
     expect(ids).toContain('secure-balanced');
   });

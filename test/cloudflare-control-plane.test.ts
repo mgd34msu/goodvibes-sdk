@@ -673,7 +673,7 @@ describe('CloudflareControlPlaneManager', () => {
     expect(result.generatedSecrets?.tunnelToken).toBe('tunnel-token');
     expect(result.generatedSecrets?.accessServiceTokenClientSecret).toBe('access-client-secret');
     const bindings = calls.workerUpdates[0]?.metadata['bindings'];
-    expect(Array.isArray(bindings)).toBe(true);
+    expect(bindings).toBeInstanceOf(Array);
     expect(JSON.stringify(bindings)).toContain('GOODVIBES_KV');
     expect(JSON.stringify(bindings)).toContain('GOODVIBES_ARTIFACTS');
     expect(JSON.stringify(bindings)).toContain('GOODVIBES_COORDINATOR');

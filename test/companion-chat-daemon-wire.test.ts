@@ -232,7 +232,7 @@ describe('companion-chat daemon wire: route reachability', () => {
     const body = await getRes!.json();
     expect(body.session.id).toBe(sessionId);
     expect(body.session.title).toBe('wire-get-test');
-    expect(Array.isArray(body.messages)).toBe(true);
+    expect(body.messages).toBeInstanceOf(Array);
   });
 });
 

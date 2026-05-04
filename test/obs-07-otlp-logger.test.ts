@@ -33,6 +33,6 @@ describe('obs-07 otlp logger', () => {
       errorsByCategory: {},
     } as Parameters<typeof buildOtlpMetricDocumentFromState>[1];
     const doc = buildOtlpMetricDocumentFromState(state, aggregates);
-    expect(Array.isArray((doc as { resourceMetrics: unknown[] }).resourceMetrics)).toBe(true);
+    expect((doc as { resourceMetrics: unknown[] }).resourceMetrics).toBeInstanceOf(Array);
   });
 });
