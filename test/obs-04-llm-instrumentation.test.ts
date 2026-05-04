@@ -16,7 +16,9 @@ describe('obs-04 llm instrumentation', () => {
     const wrapped = await instrumentedLlmCall(async () => ({ answer: 42 }));
     expect(wrapped.result).toEqual({ answer: 42 });
     expect(typeof wrapped.durationMs).toBe('number');
+    // Sanity-bound: trivial async fn completes well under 1 s; >= 0 alone is tautological
     expect(wrapped.durationMs).toBeGreaterThanOrEqual(0);
+    expect(wrapped.durationMs).toBeLessThan(1000);
     expect(wrapped.retries).toBe(0);
   });
 

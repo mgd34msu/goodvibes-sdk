@@ -131,7 +131,9 @@ describe('composeMiddleware: ctx mutation', () => {
     const mw: TransportMiddleware = async (ctx, next) => {
       await next();
       expect(typeof ctx.durationMs).toBe('number');
+      // Sanity-bound: must be non-negative and complete within 1 s for a trivial fetch stub
       expect(ctx.durationMs!).toBeGreaterThanOrEqual(0);
+      expect(ctx.durationMs!).toBeLessThan(1000);
     };
     const ctx = makeCtx();
     const composed = composeMiddleware([mw], makeInnerFetch());
@@ -174,7 +176,9 @@ describe('composeMiddleware: error propagation', () => {
     }
     expect(caught).toBe(expectedError);
     expect(ctx.error).toBe(expectedError);
+    // Sanity-bound: error path still records a real elapsed duration, bounded to 1 s
     expect(ctx.durationMs).toBeGreaterThanOrEqual(0);
+    expect(ctx.durationMs).toBeLessThan(1000);
   });
 
   test('middleware error before next() — propagates, inner fetch not called', async () => {
