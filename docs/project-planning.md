@@ -5,11 +5,7 @@ loop. It stores project-scoped planning artifacts in the knowledge system and
 can evaluate whether a plan is ready to execute, but it does not start,
 resume, or drive planning conversations.
 
-Source:
-
-- `packages/sdk/src/platform/knowledge/project-planning/`
-- `packages/sdk/src/platform/daemon/http/project-planning-routes.ts`
-- `packages/sdk/src/platform/control-plane/method-catalog-knowledge.ts`
+Accessible via `@pellux/goodvibes-sdk/platform/knowledge` (daemon embedders). Consumer apps interact through operator methods documented below.
 
 ## Boundary
 

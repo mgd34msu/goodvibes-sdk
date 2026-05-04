@@ -9,8 +9,14 @@ bun run build
 bun --cwd examples run typecheck
 ```
 
-Most examples read `GOODVIBES_BASE_URL` and `GOODVIBES_TOKEN` from the
-environment. Keep example tokens local and never commit real credentials,
+Most examples read environment variables at startup:
+
+| Variable | Description |
+| --- | --- |
+| `GOODVIBES_BASE_URL` | HTTP base URL of the running GoodVibes daemon (e.g. `http://127.0.0.1:3210`). Defaults to `http://127.0.0.1:3210` when omitted. |
+| `GOODVIBES_TOKEN` | Operator bearer token issued by the daemon. Copy from the TUI settings or daemon log on first boot. |
+
+Keep example tokens local and never commit real credentials,
 tokens, cookies, or screenshots containing them.
 See the repository [security policy](../SECURITY.md) before adapting examples
 that handle credentials, pairing tokens, or daemon URLs.

@@ -38,8 +38,10 @@ Use the platform this way:
 
 Companion clients have two different model-selection modes:
 
-- Shared TUI session: call `PATCH /api/providers/current`. This intentionally changes the daemon/TUI current model and emits `MODEL_CHANGED`.
-- True remote chat session: pass `provider` and `model` when creating the companion chat session, or update them with `PATCH /api/companion/chat/sessions/:id`. This keeps the selection local to that remote session while the daemon still hosts runtime context such as working directory and tools.
+- **Shared TUI session** — call `PATCH /api/providers/current`. This intentionally changes the daemon/TUI current model and emits `MODEL_CHANGED`. Use only when the companion is acting as a remote control for the operator's TUI session.
+- **True remote chat session** — pass `provider` and `model` when creating the companion chat session (`POST /api/companion/chat/sessions`), or update them later with `PATCH /api/companion/chat/sessions/:id`. This keeps the selection local to that remote session; the daemon still hosts runtime context such as working directory and tools, but the global TUI model is not affected.
+
+> **Disambiguation:** `PATCH /api/providers/current` and `PATCH /api/companion/chat/sessions/:id` are different routes with different scopes. The first is global (TUI-wide); the second is session-local. Most companion apps should use the session-local route.
 
 ### Approvals/status pane
 

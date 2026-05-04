@@ -4,7 +4,7 @@ The knowledge system is a persistent, structured memory layer for GoodVibes
 agents and clients. The SQLite store is the source of truth; markdown/wiki
 output is a projection generated from structured records.
 
-Source: `packages/sdk/src/platform/knowledge/`.
+Accessible via `@pellux/goodvibes-sdk/platform/knowledge` (daemon embedders). Consumer apps interact through operator methods documented below.
 
 ## Data Model
 

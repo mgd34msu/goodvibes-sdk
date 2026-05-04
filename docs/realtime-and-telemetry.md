@@ -30,7 +30,9 @@ The realtime layer supports:
 Telemetry APIs live on the operator client:
 
 ```ts
+// snapshot: returns recent telemetry entries (TelemetrySnapshotOptions: { limit?: number; offset?: number; domain?: string })
 const snapshot = await sdk.operator.telemetry.snapshot({ limit: 100 });
+// errors: filter by severity ('error' | 'warn' | 'info') and optional domain
 const errors = await sdk.operator.telemetry.errors({ severity: 'error' });
 ```
 

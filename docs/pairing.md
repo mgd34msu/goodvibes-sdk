@@ -348,7 +348,7 @@ When the host regenerates the companion token, any active companion connections 
 
 ```ts
 sdk.operator.control.status().catch(async (err) => {
-  if (err.status === 401) {
+  if (err.kind === 'auth') {
     // Token has been invalidated — prompt user to re-scan the QR code
     showRepairingScreen();
   }

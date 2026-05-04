@@ -121,7 +121,7 @@ The SDK accepts two auth options, with the following precedence (highest first):
 1. **`tokenStore`** — a `GoodVibesTokenStore` object with `getToken` / `setToken` / `clearToken`.
    Recommended for any interactive or long-lived client.
 
-2. **`getAuthToken`** — an async resolver `() => Promise<string | null>`.
+2. **`getAuthToken`** — an async resolver with signature `() => Promise<string | null>`.
    Use for dynamic token resolution without the full store interface.
 
 3. **`authToken`** — a static `string | null`.
