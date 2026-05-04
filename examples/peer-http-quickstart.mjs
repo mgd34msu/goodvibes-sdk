@@ -1,5 +1,10 @@
 /**
- * Call peer/distributed-runtime endpoints over HTTP.
+ * Call peer/distributed-runtime endpoints over HTTP using the umbrella SDK.
+ *
+ * Prerequisites: GoodVibes daemon at GOODVIBES_BASE_URL (default http://127.0.0.1:3210).
+ *   Set GOODVIBES_TOKEN if your daemon requires auth.
+ *
+ * Run: bun examples/peer-http-quickstart.mjs
  */
 import { createPeerSdk } from '@pellux/goodvibes-sdk/peer';
 
