@@ -22,8 +22,8 @@ describe('platform/export — smoke', () => {
 
   test('exportToJSON returns a string for minimal session data', async () => {
     const { exportToJSON } = await import('../packages/sdk/src/platform/export/index.js');
-    // Call with minimal session-like object; expect a JSON string output
-    const result = exportToJSON({ messages: [], sessionId: 'test-123' } as Parameters<typeof exportToJSON>[0]);
+    // exportToJSON(messages, metadata?, options?) — pass empty messages array.
+    const result = exportToJSON([]);
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
     // Must be valid JSON
