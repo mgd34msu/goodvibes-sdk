@@ -33,7 +33,7 @@ describe('obs-18 retry events', () => {
     const executedEvents: { attempt: number; maxAttempts: number }[] = [];
     let callCount = 0;
     const transport = createHttpJsonTransport({
-      baseUrl: 'http://example.com',
+      baseUrl: 'https://example.com',
       fetchImpl: async () => {
         callCount += 1;
         if (callCount === 1) {
