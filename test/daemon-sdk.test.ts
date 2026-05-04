@@ -95,7 +95,7 @@ describe('daemon sdk', () => {
       phase: 'request',
       requestId: 'req-401',
       providerCode: 'invalid_api_key',
-    }), { status: 400 });
+    }), { status: 400, isPrivileged: true });
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
       error: 'provider rejected auth (phase=request, code=invalid_api_key, request_id=req-401)',
@@ -127,7 +127,7 @@ describe('daemon sdk', () => {
       phase: 'request',
       requestId: 'req-401',
       providerCode: 'invalid_api_key',
-    }, { status: 400 });
+    }, { status: 400, isPrivileged: true });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({

@@ -10,7 +10,7 @@ import { describe, expect, test } from 'bun:test';
 
 describe('signal adapter — contract surface', () => {
   test('signal adapter module exports a default registration function', async () => {
-    const mod = await import('../packages/sdk/src/_internal/platform/adapters/signal/index.js');
+    const mod = await import('../packages/sdk/src/platform/adapters/signal/index.js');
     // Adapter must export a named or default registration function
     const hasRegistration =
       typeof mod.default === 'function' ||
@@ -21,6 +21,6 @@ describe('signal adapter — contract surface', () => {
   });
 
   test('signal adapter module is importable without throwing', async () => {
-    await expect(import('../packages/sdk/src/_internal/platform/adapters/signal/index.js')).resolves.toBeDefined();
+    await expect(import('../packages/sdk/src/platform/adapters/signal/index.js')).resolves.toBeDefined();
   });
 });

@@ -368,7 +368,7 @@ describe('error-response — buildErrorResponseBody — GoodVibesSdkError', () =
       requestId: 'req-abc',
       providerCode: 'invalid_key',
     });
-    const body = buildErrorResponseBody(err);
+    const body = buildErrorResponseBody(err, { isPrivileged: true });
     expect(body.error).toMatch(/provider rejected auth/);
     expect(body.category).toBe('authentication');
     expect(body.source).toBe('provider');

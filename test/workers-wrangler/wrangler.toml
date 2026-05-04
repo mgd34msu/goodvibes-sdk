@@ -12,5 +12,9 @@
 name = "goodvibes-sdk-workers-test"
 main = "worker.ts"
 compatibility_date = "2026-04-01"
+# nodejs_compat compatibility flag enables Node.js built-in polyfills (fs, path, etc.)
+# that the SDK imports transitively. node_compat = true was removed in wrangler v4;
+# the replacement is the nodejs_compat compatibility flag.
+compatibility_flags = ["nodejs_compat"]
 
 # No KV, D1, R2, or other bindings needed — pure HTTP + global API surface test.

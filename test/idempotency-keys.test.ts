@@ -94,6 +94,7 @@ describe('Idempotency-Key header: mutating methods', () => {
       await transport.requestJson('/v1/resource', {
         method,
         body: method !== 'DELETE' ? { data: 1 } : undefined,
+        idempotent: true,
       });
       expect(requests.length).toBe(1);
       expect(requests[0].method).toBe(method);
@@ -124,8 +125,8 @@ describe('Idempotency-Key: unique per request', () => {
       new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
     const transport = createHttpJsonTransport({ baseUrl: 'https://api.example.com', fetch });
-    await transport.requestJson('/v1/a', { method: 'POST', body: { x: 1 } });
-    await transport.requestJson('/v1/b', { method: 'POST', body: { x: 2 } });
+    await transport.requestJson('/v1/a', { method: 'POST', body: { x: 1 }, idempotent: true });
+    await transport.requestJson('/v1/b', { method: 'POST', body: { x: 2 }, idempotent: true });
     expect(requests.length).toBe(2);
     const key1 = requests[0].headers['idempotency-key'];
     const key2 = requests[1].headers['idempotency-key'];
