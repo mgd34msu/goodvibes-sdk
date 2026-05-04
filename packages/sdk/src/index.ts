@@ -44,9 +44,18 @@ export { createReactNativeGoodVibesSdk } from './react-native.js';
 export type { ExpoGoodVibesSdkOptions } from './expo.js';
 export { createExpoGoodVibesSdk } from './expo.js';
 // The barrel re-exports below flatten symbols from their respective packages
-// into the root SDK entrypoint. Each module is a single-concern passthrough.
+// into the root SDK entrypoint. Each module is a single-concern passthrough
+// that re-exports a transport, event, or contract layer.
+//
+// Why the indirection through named modules rather than direct `export *`?
+// - Each intermediate module (observer, events, contracts, daemon, errors,
+//   transport-*) is also a versioned, independently buildable sub-package.
+//   The indirection lets us tree-shake at sub-package boundaries.
+// - It makes source attribution explicit in the final bundle map.
+//
 // Collision risk: if two packages export the same name, TypeScript silently
 // prefers the first binding. Keep all exported names unique across these modules.
+export type { TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator } from './client-auth/index.js';
 export * from './observer/index.js';
 export * from './events/index.js';
 export * from './contracts.js';
