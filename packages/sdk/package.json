@@ -111,89 +111,9 @@
       "types": "./dist/platform/index.d.ts",
       "import": "./dist/platform/index.js"
     },
-    "./platform/acp": {
-      "types": "./dist/platform/acp/index.d.ts",
-      "import": "./dist/platform/acp/index.js"
-    },
-    "./platform/adapters": {
-      "types": "./dist/platform/adapters/index.d.ts",
-      "import": "./dist/platform/adapters/index.js"
-    },
-    "./platform/agents": {
-      "types": "./dist/platform/agents/index.d.ts",
-      "import": "./dist/platform/agents/index.js"
-    },
-    "./platform/artifacts": {
-      "types": "./dist/platform/artifacts/index.d.ts",
-      "import": "./dist/platform/artifacts/index.js"
-    },
-    "./platform/automation": {
-      "types": "./dist/platform/automation/index.d.ts",
-      "import": "./dist/platform/automation/index.js"
-    },
-    "./platform/batch": {
-      "types": "./dist/platform/batch/index.d.ts",
-      "import": "./dist/platform/batch/index.js"
-    },
-    "./platform/bookmarks": {
-      "types": "./dist/platform/bookmarks/index.d.ts",
-      "import": "./dist/platform/bookmarks/index.js"
-    },
-    "./platform/channels": {
-      "types": "./dist/platform/channels/index.d.ts",
-      "import": "./dist/platform/channels/index.js"
-    },
-    "./platform/cloudflare": {
-      "types": "./dist/platform/cloudflare/index.d.ts",
-      "import": "./dist/platform/cloudflare/index.js"
-    },
-    "./platform/companion": {
-      "types": "./dist/platform/companion/index.d.ts",
-      "import": "./dist/platform/companion/index.js"
-    },
     "./platform/config": {
       "types": "./dist/platform/config/index.d.ts",
       "import": "./dist/platform/config/index.js"
-    },
-    "./platform/config/helper-model": {
-      "types": "./dist/platform/config/helper-model.d.ts",
-      "import": "./dist/platform/config/helper-model.js"
-    },
-    "./platform/config/openai-codex-auth": {
-      "types": "./dist/platform/config/openai-codex-auth.d.ts",
-      "import": "./dist/platform/config/openai-codex-auth.js"
-    },
-    "./platform/config/secret-refs": {
-      "types": "./dist/platform/config/secret-refs.d.ts",
-      "import": "./dist/platform/config/secret-refs.js"
-    },
-    "./platform/config/secrets": {
-      "types": "./dist/platform/config/secrets.d.ts",
-      "import": "./dist/platform/config/secrets.js"
-    },
-    "./platform/config/service-registry": {
-      "types": "./dist/platform/config/service-registry.d.ts",
-      "import": "./dist/platform/config/service-registry.js"
-    },
-    "./platform/config/subscription-auth": {
-      "types": "./dist/platform/config/subscription-auth.d.ts",
-      "import": "./dist/platform/config/subscription-auth.js"
-    },
-    "./platform/config/subscription-providers": {
-      "types": "./dist/platform/config/subscription-providers.d.ts",
-      "import": "./dist/platform/config/subscription-providers.js"
-    },
-    "./platform/config/subscriptions": {
-      "types": "./dist/platform/config/subscriptions.d.ts",
-      "import": "./dist/platform/config/subscriptions.js"
-    },
-    "./platform/config/tool-llm": {
-      "types": "./dist/platform/config/tool-llm.d.ts",
-      "import": "./dist/platform/config/tool-llm.js"
-    },
-    "./platform/control-plane": {
-      "types": "./dist/platform/control-plane/index.d.ts",
-      "import": "./dist/platform/control-plane/index.js"
     },
     "./platform/core": {
       "types": "./dist/platform/core/index.d.ts",
@@ -203,21 +123,9 @@
       "types": "./dist/platform/daemon/index.d.ts",
       "import": "./dist/platform/daemon/index.js"
     },
-    "./platform/discovery": {
-      "types": "./dist/platform/discovery/index.d.ts",
-      "import": "./dist/platform/discovery/index.js"
-    },
-    "./platform/export": {
-      "types": "./dist/platform/export/index.d.ts",
-      "import": "./dist/platform/export/index.js"
-    },
     "./platform/git": {
       "types": "./dist/platform/git/index.d.ts",
       "import": "./dist/platform/git/index.js"
-    },
-    "./platform/hooks": {
-      "types": "./dist/platform/hooks/index.d.ts",
-      "import": "./dist/platform/hooks/index.js"
     },
     "./platform/integrations": {
       "types": "./dist/platform/integrations/index.d.ts",
@@ -239,18 +147,6 @@
       "types": "./dist/platform/knowledge/home-graph/index.d.ts",
       "import": "./dist/platform/knowledge/home-graph/index.js"
     },
-    "./platform/knowledge/project-planning": {
-      "types": "./dist/platform/knowledge/project-planning/index.d.ts",
-      "import": "./dist/platform/knowledge/project-planning/index.js"
-    },
-    "./platform/mcp": {
-      "types": "./dist/platform/mcp/index.d.ts",
-      "import": "./dist/platform/mcp/index.js"
-    },
-    "./platform/media": {
-      "types": "./dist/platform/media/index.d.ts",
-      "import": "./dist/platform/media/index.js"
-    },
     "./platform/multimodal": {
       "types": "./dist/platform/multimodal/index.d.ts",
       "import": "./dist/platform/multimodal/index.js"
@@ -267,18 +163,6 @@
       "types": "./dist/platform/pairing/index.d.ts",
       "import": "./dist/platform/pairing/index.js"
     },
-    "./platform/permissions": {
-      "types": "./dist/platform/permissions/index.d.ts",
-      "import": "./dist/platform/permissions/index.js"
-    },
-    "./platform/plugins": {
-      "types": "./dist/platform/plugins/index.d.ts",
-      "import": "./dist/platform/plugins/index.js"
-    },
-    "./platform/profiles": {
-      "types": "./dist/platform/profiles/index.d.ts",
-      "import": "./dist/platform/profiles/index.js"
-    },
     "./platform/providers": {
       "types": "./dist/platform/providers/index.d.ts",
       "import": "./dist/platform/providers/index.js"
@@ -287,37 +171,9 @@
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
     },
-    "./platform/runtime/bootstrap": {
-      "types": "./dist/platform/runtime/bootstrap.d.ts",
-      "import": "./dist/platform/runtime/bootstrap.js"
-    },
-    "./platform/runtime/events": {
-      "types": "./dist/platform/runtime/events/index.d.ts",
-      "import": "./dist/platform/runtime/events/index.js"
-    },
-    "./platform/runtime/feature-flags": {
-      "types": "./dist/platform/runtime/feature-flags/index.d.ts",
-      "import": "./dist/platform/runtime/feature-flags/index.js"
-    },
-    "./platform/runtime/network": {
-      "types": "./dist/platform/runtime/network/index.d.ts",
-      "import": "./dist/platform/runtime/network/index.js"
-    },
     "./platform/runtime/observability": {
       "types": "./dist/platform/runtime/observability.d.ts",
       "import": "./dist/platform/runtime/observability.js"
-    },
-    "./platform/runtime/operations": {
-      "types": "./dist/platform/runtime/operations.d.ts",
-      "import": "./dist/platform/runtime/operations.js"
-    },
-    "./platform/runtime/security": {
-      "types": "./dist/platform/runtime/security.d.ts",
-      "import": "./dist/platform/runtime/security.js"
-    },
-    "./platform/runtime/shell": {
-      "types": "./dist/platform/runtime/shell.d.ts",
-      "import": "./dist/platform/runtime/shell.js"
     },
     "./platform/runtime/state": {
       "types": "./dist/platform/runtime/state.d.ts",
@@ -327,41 +183,13 @@
       "types": "./dist/platform/runtime/store/index.d.ts",
       "import": "./dist/platform/runtime/store/index.js"
     },
-    "./platform/runtime/transport": {
-      "types": "./dist/platform/runtime/transport.d.ts",
-      "import": "./dist/platform/runtime/transport.js"
-    },
     "./platform/runtime/ui": {
       "types": "./dist/platform/runtime/ui-surface.d.ts",
       "import": "./dist/platform/runtime/ui-surface.js"
     },
-    "./platform/scheduler": {
-      "types": "./dist/platform/scheduler/index.d.ts",
-      "import": "./dist/platform/scheduler/index.js"
-    },
-    "./platform/security": {
-      "types": "./dist/platform/security/index.d.ts",
-      "import": "./dist/platform/security/index.js"
-    },
-    "./platform/sessions": {
-      "types": "./dist/platform/sessions/index.d.ts",
-      "import": "./dist/platform/sessions/index.js"
-    },
-    "./platform/state": {
-      "types": "./dist/platform/state/index.d.ts",
-      "import": "./dist/platform/state/index.js"
-    },
-    "./platform/templates": {
-      "types": "./dist/platform/templates/index.d.ts",
-      "import": "./dist/platform/templates/index.js"
-    },
     "./platform/tools": {
       "types": "./dist/platform/tools/index.d.ts",
       "import": "./dist/platform/tools/index.js"
-    },
-    "./platform/types": {
-      "types": "./dist/platform/types/index.d.ts",
-      "import": "./dist/platform/types/index.js"
     },
     "./platform/utils": {
       "types": "./dist/platform/utils/index.d.ts",
@@ -370,22 +198,6 @@
     "./platform/voice": {
       "types": "./dist/platform/voice/index.d.ts",
       "import": "./dist/platform/voice/index.js"
-    },
-    "./platform/watchers": {
-      "types": "./dist/platform/watchers/index.d.ts",
-      "import": "./dist/platform/watchers/index.js"
-    },
-    "./platform/web-search": {
-      "types": "./dist/platform/web-search/index.d.ts",
-      "import": "./dist/platform/web-search/index.js"
-    },
-    "./platform/workflow": {
-      "types": "./dist/platform/workflow/index.d.ts",
-      "import": "./dist/platform/workflow/index.js"
-    },
-    "./platform/workspace": {
-      "types": "./dist/platform/workspace/index.d.ts",
-      "import": "./dist/platform/workspace/index.js"
     },
     "./react-native": {
       "types": "./dist/react-native.d.ts",
