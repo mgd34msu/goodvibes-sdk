@@ -327,14 +327,6 @@
       "types": "./dist/platform/runtime/store/index.d.ts",
       "import": "./dist/platform/runtime/store/index.js"
     },
-    "./platform/runtime/store/domains": {
-      "types": "./dist/platform/runtime/store/domains/index.d.ts",
-      "import": "./dist/platform/runtime/store/domains/index.js"
-    },
-    "./platform/runtime/store/helpers": {
-      "types": "./dist/platform/runtime/store/helpers/index.d.ts",
-      "import": "./dist/platform/runtime/store/helpers/index.js"
-    },
     "./platform/runtime/transport": {
       "types": "./dist/platform/runtime/transport.d.ts",
       "import": "./dist/platform/runtime/transport.js"
