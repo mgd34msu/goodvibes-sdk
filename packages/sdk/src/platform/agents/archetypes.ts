@@ -136,7 +136,7 @@ function parseSimpleYaml(yaml: string): RawFrontmatter {
     // List item under current key
     const listItemMatch = line.match(/^\s+-\s+(.+)$/);
     if (listItemMatch && collectingList) {
-      listBuffer.push(listItemMatch[1]!.trim());
+      listBuffer.push(listItemMatch[1]?.trim() ?? '');
       continue;
     }
 
@@ -147,7 +147,7 @@ function parseSimpleYaml(yaml: string): RawFrontmatter {
       if (collectingList) flushList();
 
       currentKey = kvMatch[1]!;
-      const rawValue = kvMatch[2]!.trim();
+      const rawValue = kvMatch[2]?.trim() ?? '';
 
       if (!rawValue) {
         // Value will be on following list lines

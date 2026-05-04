@@ -173,7 +173,8 @@ export class ConversationManager {
   public undo(): boolean {
     let lastUserIdx = -1;
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      if (this.messages[i]!.role === 'user') {
+      const msg = this.messages[i];
+      if (msg?.role === 'user') {
         lastUserIdx = i;
         break;
       }
@@ -220,9 +221,9 @@ export class ConversationManager {
 
   public getLastUserMessage(): string | null {
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      if (this.messages[i]!.role === 'user') {
-        const content = this.messages[i]!.content;
-        return typeof content === 'string' ? content : null;
+      const msg = this.messages[i];
+      if (msg?.role === 'user') {
+        return typeof msg.content === 'string' ? msg.content : null;
       }
     }
     return null;
@@ -241,8 +242,9 @@ export class ConversationManager {
 
   public markLastUserMessageCancelled(): void {
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      if (this.messages[i]!.role === 'user') {
-        (this.messages[i] as { cancelled?: boolean }).cancelled = true;
+      const msg = this.messages[i];
+      if (msg?.role === 'user') {
+        (msg as { cancelled?: boolean }).cancelled = true;
         this._messagesRevision++;
         return;
       }

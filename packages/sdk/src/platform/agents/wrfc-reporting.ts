@@ -45,10 +45,10 @@ export function extractIssuesFromText(text: string): ReviewerReport['issues'] {
   const issuePattern = /(?:^|\n)\s*(?:\d+\.\s*|-\s*|\*\s*)?(?:\*{1,2})?\[?\(?(critical|major|minor|suggestion)\)?\]?(?:\*{1,2})?[\s:*]*(.+)/gi;
   let match: RegExpExecArray | null;
   while ((match = issuePattern.exec(text)) !== null) {
-    const severity = match[1]!.toLowerCase() as 'critical' | 'major' | 'minor' | 'suggestion';
+    const severity = (match[1]?.toLowerCase() ?? 'suggestion') as 'critical' | 'major' | 'minor' | 'suggestion';
     issues.push({
       severity,
-      description: match[2]!.trim(),
+      description: match[2]?.trim() ?? '',
       pointValue: severity === 'critical' ? 3 : severity === 'major' ? 2 : 1,
     });
   }

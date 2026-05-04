@@ -373,7 +373,7 @@ export class AcpConnection {
         const category: PermissionCategory = 'delegate';
         const callId = `acp-${this.id}-${Date.now()}`;
         const toolTitle = params.toolCall?.title ?? 'unknown';
-        const approveOptionId = params.options[0]!?.optionId ?? 'allow';
+        const approveOptionId = params.options[0]?.optionId ?? 'allow';
 
         return this.requestPermission({
           callId,

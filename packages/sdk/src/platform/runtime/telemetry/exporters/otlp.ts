@@ -31,7 +31,7 @@ function serialiseSpans(spans: ReadableSpan[]): string {
       },
       scopeSpans: [
         {
-          scope: { name: spans[0]!.instrumentationScope ?? 'goodvibes-sdk' },
+          scope: { name: spans[0]?.instrumentationScope ?? 'goodvibes-sdk' },
           spans: spans.map((s) => ({
             traceId: s.spanContext.traceId,
             spanId: s.spanContext.spanId,

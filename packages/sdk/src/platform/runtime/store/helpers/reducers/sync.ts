@@ -451,7 +451,7 @@ function buildBindingIdsBySurface(bindings: readonly AutomationRouteBinding[]): 
   };
   for (const binding of bindings) {
     grouped[binding.surfaceKind] ??= [];
-    grouped[binding.surfaceKind]!.push(binding.id);
+    grouped[binding.surfaceKind]?.push(binding.id);
   }
   return grouped;
 }

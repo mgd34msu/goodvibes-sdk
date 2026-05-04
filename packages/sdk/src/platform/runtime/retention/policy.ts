@@ -284,7 +284,8 @@ export class RetentionPolicy {
       const overflow = retained.length - config.maxCount;
       // Remove oldest first (sorted array is oldest-first).
       for (let i = 0; i < overflow; i++) {
-        pruneSet.add(retained[i]!.id);
+        const r = retained[i];
+        if (r) pruneSet.add(r.id);
       }
     }
 

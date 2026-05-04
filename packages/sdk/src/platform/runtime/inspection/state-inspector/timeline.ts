@@ -202,7 +202,7 @@ export class TimelineBuffer {
 
     let best = 0;
     for (let i = 0; i < all.length; i++) {
-      if (all[i]!.capturedAt <= epochMs) {
+      if ((all[i]?.capturedAt ?? Infinity) <= epochMs) {
         best = i;
       } else {
         break;

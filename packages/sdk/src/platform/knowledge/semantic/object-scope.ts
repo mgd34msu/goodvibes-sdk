@@ -50,7 +50,7 @@ export function inferAnswerObjectScope(
     .filter((entry) => entry.score > 0)
     .sort((left, right) => right.score - left.score || left.node.id.localeCompare(right.node.id));
 
-  const topScore = anchors[0]!?.score ?? 0;
+  const topScore = anchors[0]?.score ?? 0;
   if (topScore <= 0) return null;
   const selectedAnchors = anchors
     .filter((entry) => entry.score >= Math.max(1, topScore - 12))

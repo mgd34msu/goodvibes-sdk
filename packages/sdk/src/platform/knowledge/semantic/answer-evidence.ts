@@ -401,7 +401,7 @@ function pruneEvidence(items: readonly EvidenceItem[], limit: number, strictTopC
   const sourceSeen = new Set<string>();
   const nodeSeen = new Set<string>();
   const out: EvidenceItem[] = [];
-  const topScore = items[0]!?.score ?? 0;
+  const topScore = items[0]?.score ?? 0;
   const minScore = strictTopCluster ? Math.max(1, topScore - 90) : 1;
   for (const item of items) {
     if (item.score < minScore) continue;

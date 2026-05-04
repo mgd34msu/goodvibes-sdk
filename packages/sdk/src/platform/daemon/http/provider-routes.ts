@@ -337,7 +337,7 @@ async function handleListProviders(context: ProviderRouteContext): Promise<Respo
   for (const model of allModels) {
     if (!byProvider.has(model.provider)) byProvider.set(model.provider, []);
     const registryKey = model.registryKey ?? `${model.provider}:${model.id}`;
-    byProvider.get(model.provider)!.push({
+    byProvider.get(model.provider)?.push({
       id: model.id,
       registryKey,
       provider: model.provider,

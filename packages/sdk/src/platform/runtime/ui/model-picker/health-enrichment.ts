@@ -248,11 +248,11 @@ export function groupEntriesByProvider(entries: readonly ModelPickerEntry[]): Mo
       groupMap.set(entry.providerId, []);
       groupOrder.push(entry.providerId);
     }
-    groupMap.get(entry.providerId)!.push(entry);
+    groupMap.get(entry.providerId)?.push(entry);
   }
 
   return groupOrder.map((providerId) => ({
     label: providerId,
-    entries: groupMap.get(providerId)!,
+    entries: groupMap.get(providerId) ?? [],
   }));
 }

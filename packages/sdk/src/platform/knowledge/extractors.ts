@@ -117,7 +117,7 @@ function extractLinksFromHtml(html: string): string[] {
   const regex = /\bhref=["']([^"'#]+)["']/gi;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(html)) !== null) {
-    const candidate = match[1]!?.trim();
+    const candidate = match[1]?.trim();
     if (candidate) urls.push(candidate);
   }
   return uniqueStrings(urls, 50);
@@ -416,8 +416,8 @@ async function extractXlsx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
     const xml = await zip.file(sheetPath)?.async('string');
     if (!xml) continue;
     const rows = Array.from(xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g), (rowMatch) => {
-      return Array.from(rowMatch[1]!.matchAll(/<c[^>]*?(?:\st="([^"]+)")?[^>]*>([\s\S]*?)<\/c>/g), (cellMatch) => {
-        const type = cellMatch[1]! ?? '';
+      return Array.from((rowMatch[1] ?? '').matchAll(/<c[^>]*?(?:\st="([^"]+)")?[^>]*>([\s\S]*?)<\/c>/g), (cellMatch) => {
+        const type = cellMatch[1] ?? '';
         const body = cellMatch[2]! ?? '';
         const raw = body.match(/<v[^>]*>([\s\S]*?)<\/v>/)?.[1]
           ?? body.match(/<t[^>]*>([\s\S]*?)<\/t>/)?.[1]

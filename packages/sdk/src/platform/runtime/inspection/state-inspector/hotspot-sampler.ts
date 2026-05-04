@@ -161,7 +161,7 @@ export class SelectorHotspotSampler {
     const cutoff = now - this._windowMs;
     // Samples are chronological oldest-first; trim from front
     let i = 0;
-    while (i < state.samples.length && state.samples[i]!.ts < cutoff) {
+    while (i < state.samples.length && (state.samples[i]?.ts ?? 0) < cutoff) {
       i++;
     }
     if (i > 0) {

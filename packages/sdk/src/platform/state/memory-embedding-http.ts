@@ -529,7 +529,7 @@ function createOllamaEmbeddingDefinition(): ProviderDefinition {
 
 function pickEnv(env: EnvMap, keys: readonly string[], fallback: string): { readonly value: string; readonly source: string } {
   for (const key of keys) {
-    const value = env[key]!?.trim();
+    const value = env[key]?.trim();
     if (value) return { value, source: key };
   }
   return { value: fallback, source: 'default' };

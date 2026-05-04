@@ -256,7 +256,7 @@ export class McpClient {
       });
 
       try {
-        (this.proc!.stdin as import('bun').FileSink).write(line);
+        (this.proc?.stdin as import('bun').FileSink | undefined)?.write(line);
       } catch (err) {
         clearTimeout(timer);
         this.pendingRequests.delete(id);

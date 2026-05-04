@@ -95,7 +95,7 @@ function pathMatchesTemplate(template: string, pathname: string): boolean {
   const pathParts = normalize(pathname).split('/');
   if (templateParts.length !== pathParts.length) return false;
   return templateParts.every((segment, index) => {
-    if (segment.startsWith('{') && segment.endsWith('}')) return pathParts[index]!.length > 0;
+    if (segment.startsWith('{') && segment.endsWith('}')) return (pathParts[index]?.length ?? 0) > 0;
     return segment === pathParts[index];
   });
 }

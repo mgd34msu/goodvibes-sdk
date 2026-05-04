@@ -161,9 +161,9 @@ export class PolicyRuntimeState {
     const existingIndex = this._recentPermissionAudit.findIndex((candidate) => candidate.callId === entry.callId);
     if (existingIndex >= 0) {
       this._recentPermissionAudit[existingIndex] = {
-        ...this._recentPermissionAudit[existingIndex]!,
+        ...this._recentPermissionAudit[existingIndex],
         ...entry,
-        requestedAt: this._recentPermissionAudit[existingIndex]!.requestedAt,
+        requestedAt: this._recentPermissionAudit[existingIndex]?.requestedAt ?? entry.requestedAt,
       };
     } else {
       this._recentPermissionAudit.unshift(entry);

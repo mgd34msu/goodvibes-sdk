@@ -188,11 +188,11 @@ export class SessionTaskGraph {
 
     // Forward edge
     if (!this._deps.has(fromKey)) this._deps.set(fromKey, new Set());
-    this._deps.get(fromKey)!.add(toKey);
+    this._deps.get(fromKey)?.add(toKey);
 
     // Reverse edge
     if (!this._rdeps.has(toKey)) this._rdeps.set(toKey, new Set());
-    this._rdeps.get(toKey)!.add(fromKey);
+    this._rdeps.get(toKey)?.add(fromKey);
 
     const edge: TaskDependencyEdge = {
       fromRef: { sessionId: from.sessionId, taskId: from.taskId },

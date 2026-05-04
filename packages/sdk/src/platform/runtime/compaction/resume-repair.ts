@@ -88,12 +88,12 @@ export function runResumeRepair(options: ResumeRepairOptions): ResumeRepairResul
   }
 
   // ── Check 2: First message must be from 'user' ────────────────────────────
-  if (messages[0]!.role !== 'user') {
+  if (messages[0]?.role !== 'user') {
     actions.push({
       kind: 'prepend_user_message',
-      description: `First message had role '${messages[0]!.role}'; prepended synthetic user message.`,
+      description: `First message had role '${messages[0]?.role ?? 'unknown'}'; prepended synthetic user message.`,
       severity: 'warn',
-      meta: { originalFirstRole: messages[0]!.role },
+      meta: { originalFirstRole: messages[0]?.role ?? 'unknown' },
     });
     const synthetic: ProviderMessage = {
       role: 'user',

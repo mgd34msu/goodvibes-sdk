@@ -233,8 +233,8 @@ export class ImportGraph {
         const resolved = resolveSpecifierFromKnownFiles(filePath, spec, (candidate) => knownFiles.has(candidate));
         if (!resolved) continue;
 
-        imports.get(filePath)!.add(resolved);
-        dependents.get(resolved)!.add(filePath);
+        imports.get(filePath)?.add(resolved);
+        dependents.get(resolved)?.add(filePath);
       }
     }
 

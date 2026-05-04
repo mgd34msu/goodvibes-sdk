@@ -129,8 +129,8 @@ export class DaemonSurfaceActionHelper {
     const match = trimmed.match(/^(status|cancel|retry)\s+([a-z0-9:_-]+)/i);
     if (!match) return null;
     return {
-      action: match[1]!.toLowerCase() as 'status' | 'cancel' | 'retry',
-      id: match[2]!,
+      action: (match[1]?.toLowerCase() ?? 'status') as 'status' | 'cancel' | 'retry',
+      id: match[2] ?? ''
     };
   }
 

@@ -57,13 +57,13 @@ export function formatBatchSummary(notifications: Notification[]): string {
   }
 
   const last = notifications[notifications.length - 1];
-  const label = LEVEL_LABELS[last!.level];
+  const label = last ? LEVEL_LABELS[last.level] : 'info';
   const count = notifications.length;
   const preview =
-    last!.body && last!.body.length > MAX_BODY_PREVIEW
-      ? `${last!.body.slice(0, MAX_BODY_PREVIEW)}…`
-      : last!.body;
+    last?.body && last.body.length > MAX_BODY_PREVIEW
+      ? `${last.body.slice(0, MAX_BODY_PREVIEW)}…`
+      : last?.body;
 
   const suffix = preview ? ` — last: ${preview}` : '';
-  return `[${label}] ${last!.title} (\xD7${count} events)${suffix}`;
+  return `[${label}] ${last?.title ?? ''} (\xD7${count} events)${suffix}`;
 }

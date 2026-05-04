@@ -477,13 +477,13 @@ export class DaemonHttpRouter {
         requireAdmin: (request) => this.context.requireAdmin(request),
         sessionBroker: {
           start: () => this.context.sessionBroker.start(),
-          submitMessage: (input) => this!.context.sessionBroker.submitMessage(
+          submitMessage: (input) => this.context.sessionBroker.submitMessage(
             input as Parameters<SharedSessionBroker['submitMessage']>[0],
           ) as never,
-          steerMessage: (input) => this!.context.sessionBroker.steerMessage(
+          steerMessage: (input) => this.context.sessionBroker.steerMessage(
             input as Parameters<SharedSessionBroker['steerMessage']>[0],
           ) as never,
-          followUpMessage: (input) => this!.context.sessionBroker.followUpMessage(
+          followUpMessage: (input) => this.context.sessionBroker.followUpMessage(
             input as Parameters<SharedSessionBroker['followUpMessage']>[0],
           ) as never,
           bindAgent: async (sessionId, agentId) => {

@@ -245,7 +245,7 @@ export class ConfigManager {
     // Cast via unknown -> (n: unknown, o: unknown) => void to avoid deeply-recursive ConfigValue<K> comparison
     // that exceeds TypeScript's stack depth limit on the 100-entry conditional type.
     const wrapped = (newVal: unknown, oldVal: unknown) => (cb as (n: unknown, o: unknown) => void)(newVal, oldVal);
-    this._listeners.get(key)!.add(wrapped);
+    this._listeners.get(key)?.add(wrapped);
     return () => {
       this._listeners.get(key)?.delete(wrapped);
     };

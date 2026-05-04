@@ -284,7 +284,7 @@ export class GlobalNetworkTransportInstaller {
   install(configManager: OutboundTlsConfigReader): void {
     const currentFetch = globalThis.fetch as WrappedNetworkFetch;
     if (currentFetch[NETWORK_FETCH_MANAGER]) {
-      currentFetch[NETWORK_FETCH_MANAGER]!.setConfigManager(configManager);
+      currentFetch[NETWORK_FETCH_MANAGER]?.setConfigManager(configManager);
       logger.debug('Updated global network transport', { ...inspectOutboundTls(configManager) });
       return;
     }
