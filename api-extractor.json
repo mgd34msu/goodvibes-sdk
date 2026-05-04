@@ -84,9 +84,11 @@
       // Re-evaluate when these type files migrate to direct package exports or bundledPackages.
       "TS2694": { "logLevel": "none" },
       // TS2707: Generic type requires between N and M type arguments.
-      // Triggered by: ReadableStream<R> and EventTarget generic uses in
-      // packages/sdk/src/platform/runtime/transports/ — api-extractor's bundled
-      // lib.dom.d.ts omits default type parameter values present in the full TypeScript lib.
+      // Triggered by: ReadableStream<Uint8Array> uses in
+      // packages/sdk/src/platform/runtime/integration/helpers.ts:617 and
+      // packages/sdk/src/platform/runtime/telemetry/api-stream.ts:44 —
+      // api-extractor's bundled lib.dom.d.ts omits default type parameter values
+      // present in the full TypeScript lib.
       // Re-evaluate when api-extractor ships a TS6-compatible bundled compiler with
       // a complete lib.dom.d.ts.
       "TS2707": { "logLevel": "none" }
