@@ -1,21 +1,8 @@
 /**
  * session-cookie-auth-roundtrip.test.ts
  *
- * Regression test for the session-cookie auth bug:
- *   POST /login -> { authenticated: true } sets goodvibes_session cookie
- *   GET  /api/control-plane/auth with that cookie -> { authenticated: false, authMode: 'invalid' }  <-- BUG
- *   POST /api/companion/chat/sessions with that cookie -> 401                                         <-- BUG
- *
- * Root cause: authenticateOperatorToken() in http-auth.ts used an exclusive
- * early-return when sharedToken was set:
- *
- *   if (context.sharedToken) {
- *     return matchesSharedToken(...) ? { kind: 'shared-token' } : null;  // null killed session auth
- *   }
- *
- * Session tokens were never validated when a sharedToken was configured.
- * The fix: only short-circuit on a positive shared-token match; otherwise
- * fall through to userAuth.validateSession().
+ * Verifies that session-cookie authentication works when a shared operator
+ * token is also configured.
  *
  * Coverage:
  *   1. Unit: authenticateOperatorToken with sharedToken set accepts session tokens
@@ -161,8 +148,6 @@ function makeControlRouteHandlers(
       get: () => null,
     },
     getOperatorContract: () => ({ version: 1 }),
-    inspectInboundTls: () => ({ mode: 'off' }),
-    inspectOutboundTls: () => ({ mode: 'system' }),
     invokeGatewayMethodCall: async () => ({ status: 200, ok: true, body: null }),
     parseOptionalJsonBody: async (request) => {
       const text = await request.text();
@@ -175,6 +160,7 @@ function makeControlRouteHandlers(
       if (!result || result.kind !== 'session') return null;
       return { username: result.username, roles: [...result.roles] };
     },
+    login: () => Response.json({ error: 'not used by this fixture' }, { status: 500 }),
   }, req);
 }
 
@@ -192,8 +178,8 @@ afterEach(() => {
   for (const dir of cleanupDirs.splice(0)) {
     try {
       rmSync(dir, { recursive: true, force: true });
-    } catch (error) {
-      void error;
+    } catch {
+      // Test cleanup should not mask the assertion result.
     }
   }
 });
@@ -202,7 +188,7 @@ afterEach(() => {
 // 1. Unit: authenticateOperatorToken with sharedToken set must accept session tokens
 // ---------------------------------------------------------------------------
 
-describe('authenticateOperatorToken — session fallthrough when sharedToken is set', () => {
+describe('authenticateOperatorToken session validation when sharedToken is set', () => {
   test('accepts a valid session token even when sharedToken is configured', () => {
     const dir = makeTmpDir();
     cleanupDirs.push(dir);
@@ -211,8 +197,6 @@ describe('authenticateOperatorToken — session fallthrough when sharedToken is 
     const session = userAuth.createSession(user.username);
     const sharedToken = 'operator-shared-token-xyz';
 
-    // This is the regression: before the fix, this returned null because
-    // sharedToken was set and session.token !== sharedToken.
     const result = authenticateOperatorToken(session.token, { sharedToken, userAuth });
     expect(result).not.toBeNull();
     expect(result!.kind).toBe('session');
@@ -405,10 +389,9 @@ describe('companion-chat session creation via session-cookie auth', () => {
         Cookie: cookieValue,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: 'android-test-session' }),
+      body: JSON.stringify({ title: 'android-test-session', provider: 'inception', model: 'mercury-2' }),
     });
 
-    // Auth gate check — before the fix this returned null
     const authResult = authenticateOperatorRequest(companionReq, { sharedToken, userAuth });
     expect(authResult).not.toBeNull();
     expect(authResult!.kind).toBe('session');
@@ -423,7 +406,7 @@ describe('companion-chat session creation via session-cookie auth', () => {
         Cookie: cookieValue,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: 'android-test-session' }),
+      body: JSON.stringify({ title: 'android-test-session', provider: 'inception', model: 'mercury-2' }),
     });
     const res2 = await dispatchCompanionChatRoutes(companionReq2, ctx);
     expect(res2).not.toBeNull();

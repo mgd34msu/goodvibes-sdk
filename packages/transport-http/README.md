@@ -1,8 +1,8 @@
 # @pellux/goodvibes-transport-http
 
-Internal workspace package backing `@pellux/goodvibes-sdk/transport-http`.
+Public GoodVibes HTTP transport package for JSON requests, auth headers, retry/backoff, SSE streams, and contract route invocation.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/transport-http`. Install this package directly when you only need the HTTP transport subset.
 
 Exports include:
 - contract route invocation helpers

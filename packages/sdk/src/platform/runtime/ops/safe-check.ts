@@ -7,7 +7,6 @@
 import type { DiagnosticCheckResult } from './types.js';
 import { summarizeError } from '../../utils/error-display.js';
 
-/** @internal Run a check safely — never throws. */
 export async function safeCheck(
   fn: () => Promise<DiagnosticCheckResult>,
 ): Promise<DiagnosticCheckResult> {
@@ -16,7 +15,7 @@ export async function safeCheck(
   } catch (err) {
     return {
       passed: false,
-      summary: `Check threw unexpectedly: ${summarizeError(err)}`,
+      summary: `Diagnostic check failed while collecting evidence: ${summarizeError(err)}`,
       severity: 'error',
     };
   }

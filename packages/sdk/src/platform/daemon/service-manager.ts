@@ -46,7 +46,7 @@ interface ManagedServicePaths {
 
 export interface ManagedServiceManagerOptions extends ManagedServicePaths {
   readonly definitionOverride?: ManagedServiceDefinition | undefined;
-  readonly actionRunner?: ((command: string, args: readonly string[]) => ManagedServiceActionResult) | undefined | undefined;
+  readonly actionRunner?: ((command: string, args: readonly string[]) => ManagedServiceActionResult) | undefined;
   readonly surfaceRoot?: string | undefined;
   readonly binaryBaseName?: string | undefined;
   readonly defaultServiceName?: string | undefined;
@@ -236,7 +236,7 @@ export class PlatformServiceManager {
   private readonly workingDirectory: string;
   private readonly homeDirectory: string;
   private readonly definitionOverride?: ManagedServiceDefinition | undefined;
-  private readonly actionRunner?: ((command: string, args: readonly string[]) => ManagedServiceActionResult) | undefined | undefined;
+  private readonly actionRunner?: ((command: string, args: readonly string[]) => ManagedServiceActionResult) | undefined;
   private readonly surfaceRoot?: string | undefined;
   private readonly binaryBaseName?: string | undefined;
   private readonly defaultServiceName?: string | undefined;

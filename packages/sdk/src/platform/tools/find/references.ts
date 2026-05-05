@@ -1,6 +1,20 @@
 import { CodeIntelligence, uriToPath } from '../../intelligence/index.js';
+import { summarizeError } from '../../utils/error-display.js';
 import type { ReferencesQuery, OutputOptions } from './shared.js';
-import { collectTextFiles, makeCountResult, makeFilesResult, makeLocationsResult, readTextFile } from './shared.js';
+import {
+  addFindWarning,
+  collectTextFiles,
+  createFindDiagnostics,
+  makeCountResult,
+  makeFilesResult,
+  makeLocationsResult,
+  readTextFile,
+  withFindWarnings,
+} from './shared.js';
+
+function withFallbackReason<T extends Record<string, unknown>>(result: T, reason: string): T & { fallback_reason: string } {
+  return { ...result, fallback_reason: reason };
+}
 
 export async function executeReferencesQuery(
   query: ReferencesQuery,
@@ -11,6 +25,9 @@ export async function executeReferencesQuery(
 
   interface ReferenceLocation { file: string; line: number; }
   let locations: ReferenceLocation[] = [];
+  let lspFallbackReason = 'lsp returned no reference locations';
+  let skippedInvalidLspUris = 0;
+  const diagnostics = createFindDiagnostics();
 
   const ci = new CodeIntelligence({});
   try {
@@ -21,24 +38,37 @@ export async function executeReferencesQuery(
         try {
           const filePath = uriToPath(loc.uri);
           locations.push({ file: filePath, line: loc.range.start.line + 1 });
-        } catch {
-          // skip invalid URIs
+        } catch (err) {
+          skippedInvalidLspUris++;
+          addFindWarning(diagnostics, `Skipped invalid LSP reference URI '${loc.uri}': ${summarizeError(err)}`);
         }
       }
 
-      if (output.format === 'count_only') return makeCountResult(locations.length);
+      const source = skippedInvalidLspUris > 0 ? 'lsp_with_invalid_uri_skips' : undefined;
+      if (output.format === 'count_only') {
+        return withFindWarnings(skippedInvalidLspUris > 0
+          ? { ...makeCountResult(locations.length, source), invalid_lsp_uri_count: skippedInvalidLspUris }
+          : makeCountResult(locations.length), diagnostics.warnings);
+      }
       if (output.format === 'files_only') {
         const uniqueFiles = [...new Set(locations.map((l) => l.file))];
-        return makeFilesResult(uniqueFiles, locations.length);
+        return withFindWarnings(skippedInvalidLspUris > 0
+          ? { ...makeFilesResult(uniqueFiles, locations.length, source), invalid_lsp_uri_count: skippedInvalidLspUris }
+          : makeFilesResult(uniqueFiles, locations.length), diagnostics.warnings);
       }
-      return makeLocationsResult(locations, locations.length);
+      return withFindWarnings(skippedInvalidLspUris > 0
+        ? { ...makeLocationsResult(locations, locations.length, source), invalid_lsp_uri_count: skippedInvalidLspUris }
+        : makeLocationsResult(locations, locations.length), diagnostics.warnings);
     }
-  } catch {
-    // LSP unavailable — fall through to grep fallback
+  } catch (err) {
+    lspFallbackReason = `lsp unavailable: ${summarizeError(err)}`;
   }
 
   if (!query.symbol) {
-    return makeLocationsResult([], 0, 'fallback');
+    return withFindWarnings(
+      withFallbackReason(makeLocationsResult([], 0, 'grep_fallback'), `${lspFallbackReason}; no symbol supplied for grep fallback`),
+      diagnostics.warnings,
+    );
   }
 
   let regex: RegExp;
@@ -48,10 +78,10 @@ export async function executeReferencesQuery(
     return { error: `Invalid symbol name: ${query.symbol}` };
   }
 
-  const files = await collectTextFiles(projectRoot);
+  const files = await collectTextFiles(projectRoot, diagnostics);
   for (const file of files) {
     if (locations.length >= maxResults) break;
-    const content = await readTextFile(file);
+    const content = await readTextFile(file, diagnostics);
     if (content === null) continue;
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
@@ -63,10 +93,12 @@ export async function executeReferencesQuery(
     }
   }
 
-  if (output.format === 'count_only') return makeCountResult(locations.length, 'fallback');
+  if (output.format === 'count_only') {
+    return withFindWarnings(withFallbackReason(makeCountResult(locations.length, 'grep_fallback'), lspFallbackReason), diagnostics.warnings);
+  }
   if (output.format === 'files_only') {
     const uniqueFiles = [...new Set(locations.map((l) => l.file))];
-    return makeFilesResult(uniqueFiles, locations.length, 'fallback');
+    return withFindWarnings(withFallbackReason(makeFilesResult(uniqueFiles, locations.length, 'grep_fallback'), lspFallbackReason), diagnostics.warnings);
   }
-  return makeLocationsResult(locations, locations.length, 'fallback');
+  return withFindWarnings(withFallbackReason(makeLocationsResult(locations, locations.length, 'grep_fallback'), lspFallbackReason), diagnostics.warnings);
 }

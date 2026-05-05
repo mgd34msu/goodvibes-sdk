@@ -49,7 +49,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       },
       model: {
         type: 'string',
-        description: 'Model override for the spawned agent (mode: spawn).',
+        description: 'Provider-qualified model registry key for the spawned agent (mode: spawn).',
       },
       provider: {
         type: 'string',
@@ -58,7 +58,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       fallbackModels: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Ordered fallback model IDs or registry keys to try if the primary model fails (mode: spawn).',
+        description: 'Ordered provider-qualified registry keys to try if the primary model fails (mode: spawn).',
       },
       executionIntent: {
         type: 'object',
@@ -170,9 +170,9 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
           properties: {
             task: { type: 'string', description: 'Task description for the agent.' },
             template: { type: 'string', enum: ['engineer', 'reviewer', 'tester', 'researcher', 'general'], description: 'Agent template.' },
-            model: { type: 'string', description: 'Model override.' },
+            model: { type: 'string', description: 'Provider-qualified model registry key.' },
             provider: { type: 'string', description: 'Provider override.' },
-            fallbackModels: { type: 'array', items: { type: 'string' }, description: 'Ordered fallback model IDs or registry keys.' },
+            fallbackModels: { type: 'array', items: { type: 'string' }, description: 'Ordered provider-qualified registry keys.' },
             executionIntent: {
               type: 'object',
               properties: {
@@ -244,7 +244,6 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
 
 export interface AgentProviderRoutingPolicy {
   providerSelection?: 'inherit-current' | 'concrete' | 'synthetic' | undefined;
-  unresolvedModelPolicy?: 'fallback-to-current' | 'fail' | undefined;
   providerFailurePolicy?: 'ordered-fallbacks' | 'fail' | undefined;
   fallbackModels?: readonly string[] | undefined;
 }

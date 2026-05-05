@@ -58,8 +58,8 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     const source = await store.upsertSource({
       connectorId: 'manual',
       sourceType: 'manual',
-      title: 'Fallback manual',
-      canonicalUri: 'manual://fallback',
+      title: 'Deterministic manual',
+      canonicalUri: 'manual://deterministic',
       tags: ['manual'],
       status: 'indexed',
     });
@@ -182,6 +182,172 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     expect(factText).not.toContain('1HDMI');
     expect(factText).not.toContain('1 ports');
     expect(factText).not.toContain('ALLM or 4K/120');
+  });
+
+  test('strict candidate answers use canonical facts linked by secondary source ids and support edges', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store);
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const device = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'living-room-tv',
+      title: 'Living Room TV',
+      aliases: ['LG TV'],
+      status: 'active',
+      confidence: 90,
+      metadata: { knowledgeSpaceId: spaceId, manufacturer: 'LG', model: '86NANO90UNA' },
+    });
+    const official = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG 86NANO90UNA official manual',
+      canonicalUri: 'manual://official-lg-tv',
+      tags: ['manual'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    const secondary = await store.upsertSource({
+      connectorId: 'web',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA secondary specifications',
+      canonicalUri: 'https://example.test/lg-86nano90una',
+      tags: ['specifications'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'lg-display-canonical-fact',
+      title: 'Display and picture specifications',
+      summary: 'Display and picture specifications: 4K UHD resolution, HDR10, and Dolby Vision.',
+      aliases: ['display'],
+      status: 'active',
+      confidence: 88,
+      sourceId: secondary.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'specification',
+        value: '4K UHD resolution, HDR10, Dolby Vision',
+        sourceId: secondary.id,
+        sourceIds: [official.id, secondary.id],
+        subjectIds: [device.id],
+        linkedObjectIds: [device.id],
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: official.id,
+      toKind: 'node',
+      toId: fact.id,
+      relation: 'supports_fact',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: fact.id,
+      toKind: 'node',
+      toId: device.id,
+      relation: 'describes',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const answer = await semantic.answer({
+      knowledgeSpaceId: spaceId,
+      query: 'what display features does the living room tv have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+      linkedObjects: [device],
+      strictCandidates: true,
+      candidateSourceIds: [official.id],
+      autoRepairGaps: false,
+    });
+
+    expect(answer.answer.sources.map((source) => source.id)).toEqual([official.id]);
+    expect(answer.answer.facts.map((entry) => entry.id)).toContain(fact.id);
+    expect(answer.answer.text).toContain('Dolby Vision');
+    expect(answer.answer.text).not.toContain('matching sources');
+  });
+
+  test('semantic re-enrichment detaches superseded shared fact support without staling other sources', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store);
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const official = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'Official display manual',
+      canonicalUri: 'manual://official-display',
+      tags: ['manual'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain', sourceRank: 1 },
+      },
+    });
+    const secondary = await store.upsertSource({
+      connectorId: 'web',
+      sourceType: 'url',
+      title: 'Superseded display page',
+      canonicalUri: 'https://example.test/display',
+      tags: ['display'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'shared-display-fact',
+      title: 'Display and picture specifications',
+      summary: 'Display and picture specifications: 4K UHD resolution and Dolby Vision.',
+      aliases: ['display'],
+      status: 'active',
+      confidence: 90,
+      sourceId: official.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'specification',
+        value: '4K UHD resolution, Dolby Vision',
+        sourceId: official.id,
+        sourceIds: [official.id, secondary.id],
+      },
+    });
+    for (const source of [official, secondary]) {
+      await store.upsertEdge({
+        fromKind: 'source',
+        fromId: source.id,
+        toKind: 'node',
+        toId: fact.id,
+        relation: 'supports_fact',
+        metadata: { knowledgeSpaceId: spaceId },
+      });
+    }
+    await store.upsertExtraction({
+      sourceId: secondary.id,
+      extractorId: 'test',
+      format: 'text',
+      excerpt: 'This page now contains a general historical overview and no current device specifications or capabilities.',
+      structure: { searchText: 'This page now contains a general historical overview and no current device specifications or capabilities.' },
+    });
+
+    await semantic.enrichSource(secondary.id, { force: true, knowledgeSpaceId: spaceId });
+
+    const updatedFact = store.getNode(fact.id);
+    const secondarySupport = store.listEdges().find((edge) => (
+      edge.fromKind === 'source'
+      && edge.fromId === secondary.id
+      && edge.toKind === 'node'
+      && edge.toId === fact.id
+      && edge.relation === 'supports_fact'
+    ));
+    expect(updatedFact?.status).toBe('active');
+    expect(updatedFact?.sourceId).toBe(official.id);
+    expect(updatedFact?.metadata.sourceIds).toEqual([official.id]);
+    expect(secondarySupport?.weight).toBe(0);
+    expect(secondarySupport?.metadata.deleted).toBe(true);
   });
 
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
@@ -532,7 +698,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
           },
         });
         officialSourceId = source.id;
-        // MAJ-08 (eighth-review): replaced race-prone setTimeout(..., 120) with an
+        // replaced race-prone setTimeout(..., 120) with an
         // awaited call so the extraction is committed before the gapRepairer returns.
         // The ask() timeout (30 s) is the only deadline that now matters.
         await store.upsertExtraction({

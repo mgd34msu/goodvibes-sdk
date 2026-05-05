@@ -47,13 +47,13 @@ export class SessionManager {
 
   constructor(baseDir: string, options?: { readonly surfaceRoot?: string | undefined; readonly sessionsDir?: string | undefined }) {
     this.sessionsDir = options?.sessionsDir ?? resolveScopedDirectory(baseDir, options?.surfaceRoot, 'sessions');
-    // Clean up orphaned tmp files from a previous crash (C4 fix)
+    // Clean up orphaned tmp files from a crashed write.
     this._cleanupOrphanTempFiles();
   }
 
   /**
    * Remove any `.tmp-*` files left behind by a crashed write.
-   * Non-fatal: errors are logged and ignored.
+   * Cleanup errors are logged and startup continues.
    */
   private _cleanupOrphanTempFiles(): void {
     if (!existsSync(this.sessionsDir)) return;
@@ -64,23 +64,26 @@ export class SessionManager {
           try {
             unlinkSync(join(this.sessionsDir, f));
             logger.debug('SessionManager: removed orphan tmp file', { file: f });
-          } catch {
-            // Non-fatal
+          } catch (err: unknown) {
+            logger.warn('SessionManager: failed to remove orphan tmp file', {
+              file: join(this.sessionsDir, f),
+              error: summarizeError(err),
+            });
           }
         }
       }
     } catch (err: unknown) {
-      // OBS-11: Non-fatal — dir not readable yet; log so ops can diagnose permission issues
-      logger.debug('[SessionManager] _cleanupOrphanTempFiles: directory read failed', {
+      // Directory may not be readable yet; log so ops can diagnose permission issues.
+      logger.warn('[SessionManager] _cleanupOrphanTempFiles: directory read failed', {
         dir: this.sessionsDir,
-        error: String(err),
+        error: summarizeError(err),
       });
     }
   }
 
   /**
    * Atomically write content to filePath via a temp file + fsync + rename.
-   * Protects against partial writes on crash (C4 fix).
+   * Protects against partial writes on crash.
    */
   private _atomicWrite(filePath: string, content: string): void {
     const tmpPath = join(this.sessionsDir, `.tmp-${process.pid}-${Date.now()}`);
@@ -170,7 +173,7 @@ export class SessionManager {
       try {
         record = JSON.parse(line) as Record<string, unknown>;
       } catch {
-        // Non-fatal: malformed JSON line — skip and count it
+        // Malformed JSON line: skip and count it.
         skipped++;
         continue;
       }
@@ -187,7 +190,6 @@ export class SessionManager {
             : undefined,
         };
       } else if (record.type === 'message') {
-        // Skip messages marked as removed (F2 future feature)
         if (record.removed === true) continue;
         // Strip the 'type' wrapper before returning raw message
         const { type: _type, ...msgFields } = record;
@@ -200,7 +202,7 @@ export class SessionManager {
       }
     }
 
-    if (skipped > 0) logger.debug('Skipped malformed lines', { name, skipped });
+    if (skipped > 0) logger.warn('Skipped malformed session log lines', { name, skipped });
     return { meta, messages, agentRecords };
   }
 
@@ -213,9 +215,12 @@ export class SessionManager {
     let files: string[];
     try {
       files = readdirSync(this.sessionsDir).filter(f => f.endsWith('.jsonl'));
-    } catch {
-      // Non-fatal: sessions directory unreadable (permissions, doesn't exist yet)
-      logger.debug('SessionManager: could not read sessions directory', { dir: this.sessionsDir });
+    } catch (err: unknown) {
+      // Sessions directory unreadable: return an empty listing.
+      logger.warn('SessionManager: could not read sessions directory', {
+        dir: this.sessionsDir,
+        error: summarizeError(err),
+      });
       return [];
     }
 
@@ -248,9 +253,12 @@ export class SessionManager {
                   : undefined,
               };
             }
-          } catch {
-            // Non-fatal: malformed meta line — session listed with default title/model
-            logger.debug('SessionManager: malformed meta line', { name });
+          } catch (err: unknown) {
+            // Malformed meta line: list session with default title/model.
+            logger.warn('SessionManager: malformed meta line', {
+              name,
+              error: summarizeError(err),
+            });
           }
         }
 
@@ -267,9 +275,12 @@ export class SessionManager {
             }
           }
         }
-      } catch {
-        // Non-fatal: session file unreadable — skip it from the listing
-        logger.debug('SessionManager: unreadable session file', { name });
+      } catch (err: unknown) {
+        // Session file unreadable: skip it from the listing.
+        logger.warn('SessionManager: unreadable session file', {
+          name,
+          error: summarizeError(err),
+        });
         continue;
       }
 
@@ -316,9 +327,12 @@ export class SessionManager {
           ? (record.returnContext as SessionReturnContextSummary)
           : undefined,
       };
-    } catch {
-      // Non-fatal: session file unreadable or missing meta — return null to caller
-      logger.debug('SessionManager: could not read session meta', { name: filePath });
+    } catch (err: unknown) {
+      // Session file unreadable or missing meta: return null to caller.
+      logger.warn('SessionManager: could not read session meta', {
+        name: filePath,
+        error: summarizeError(err),
+      });
       return null;
     }
   }
@@ -344,8 +358,8 @@ export class SessionManager {
       record.title = newTitle;
       lines[0]! = JSON.stringify(record);
       this._atomicWrite(filePath, lines.join('\n'));
-    } catch {
-      throw new Error(`Failed to update session title: ${name}`);
+    } catch (err: unknown) {
+      throw new Error(`Failed to update session title: ${name}: ${summarizeError(err)}`);
     }
   }
 
@@ -398,18 +412,24 @@ export class SessionManager {
                 snippets.push(snippet);
               }
             }
-          } catch {
-            // Non-fatal: malformed line in session during search — skip it
-            logger.debug('SessionManager: malformed line during search', { name });
+          } catch (err: unknown) {
+            // Malformed line in session during search: skip it.
+            logger.warn('SessionManager: malformed line during search', {
+              name,
+              error: summarizeError(err),
+            });
           }
         }
 
         if (matchCount > 0) {
           results.push({ session, matchCount, snippets });
         }
-      } catch {
-        // Non-fatal: session unreadable during search — skip it
-        logger.debug('SessionManager: unreadable session during search', { name });
+      } catch (err: unknown) {
+        // Session unreadable during search: skip it.
+        logger.warn('SessionManager: unreadable session during search', {
+          name,
+          error: summarizeError(err),
+        });
       }
     }
 

@@ -1,7 +1,7 @@
 /**
  * Coverage-gap smoke test — platform/git
  * Verifies that GitService executes observable behavior when called.
- * Closes coverage gap: platform/git (eighth-review)
+ * Closes coverage gap: platform/git
  */
 
 import { describe, expect, test } from 'bun:test';

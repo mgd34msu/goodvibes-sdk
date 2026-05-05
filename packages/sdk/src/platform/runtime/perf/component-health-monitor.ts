@@ -39,7 +39,7 @@ interface RingBuffer {
 /** Recovery: violations reset to 0 after this many consecutive clean windows. */
 const RECOVERY_CLEAN_WINDOWS = 3;
 
-/** Internal per-component tracking state (not externally visible). */
+/** Per-component tracking state. */
 interface ComponentTrack {
   contract: ComponentResourceContract;
   health: ComponentHealthState;
@@ -242,7 +242,7 @@ export class ComponentHealthMonitor {
       } else {
         track.cleanWindows = 0;
       }
-      // Discard old requests
+      // Discard expired requests
       track.windowRequests = track.windowRequests.filter((t) => now - t < RATE_WINDOW_MS);
       track.windowStart = now;
       track.health.rendersInWindow = 0;

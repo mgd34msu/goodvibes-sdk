@@ -31,6 +31,7 @@ import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus, TurnInputOrigin } from '../runtime/events/index.js';
 import { HelperModel } from '../config/helper-model.js';
 import {
+  emitPreflightFail,
   emitStreamEnd,
   emitTurnCancel,
   emitTurnError,
@@ -113,13 +114,13 @@ export interface OrchestratorOptions {
   /** Manages tool-use permission grants and denials. */
   permissionManager: PermissionManager;
   /** Returns the current system prompt text. Defaults to `() => ''`. */
-  getSystemPrompt?: (() => string) | undefined | undefined;
+  getSystemPrompt?: (() => string) | undefined;
   /** Optional hook dispatcher for lifecycle events. */
   hookDispatcher?: HookDispatcherLike | null | undefined;
   /** Optional feature flag manager. */
   flagManager?: FeatureFlagManager | null | undefined;
   /** Optional render request callback, called after state changes requiring a redraw. */
-  requestRender?: (() => void) | null | undefined | undefined;
+  requestRender?: (() => void) | null | undefined;
   /** Optional runtime event bus for cross-system event propagation. */
   runtimeBus?: RuntimeEventBus | null | undefined;
   /**
@@ -487,7 +488,7 @@ export class Orchestrator {
       this.requestRender();
     }, 80);
     // unref() prevents this timer from holding the event loop open after the
-    // process has otherwise completed all work (PERF-07). The cast is required
+    // process has otherwise completed all work. The cast is required
     // because the TypeScript setInterval return type does not expose unref();
     // Bun and Node.js both implement it on their timer handle objects.
     (this.animInterval as unknown as { unref?: () => void }).unref?.();
@@ -516,7 +517,7 @@ export class Orchestrator {
 
     // --- Phase 1: Preflight — idempotency, event emission, plan injection ---
     const preflight = this.runTurnPreflight(text, content, options, providerRegistry);
-    if (!preflight) return; // duplicate in-flight turn — dropped
+    if (!preflight) return; // duplicate in-flight turn was rejected and reported
     const { submissionKey, turnId, preTurnPlan } = preflight;
 
     // --- Phase 2: Stream + tool dispatch ---
@@ -533,7 +534,7 @@ export class Orchestrator {
   }
 
   /** Phase 1: Idempotency fence, event emission, adaptive planner, plan injection, thinking start.
-   *  Returns null when the turn is a duplicate in-flight submission (caller should return early). */
+   *  Returns null when the turn is a duplicate in-flight submission that should not execute. */
   private runTurnPreflight(
     text: string,
     content: ContentPart[] | undefined,
@@ -544,7 +545,8 @@ export class Orchestrator {
     // of the message content (first 512 chars) + conversation length as context.
     // If the same physical turn is replayed (reconnect/restart) before the
     // prior execution completes, the second attempt hits 'in-flight' and is
-    // silently dropped. After completion the key expires via TTL.
+    // rejected with a preflight failure event. After completion the key expires
+    // via TTL.
     const turnId = createHash('sha256')
       .update(`${this.sessionId}:${this.conversation.getMessageCount()}:${text.slice(0, 512)}`)
       .digest('hex')
@@ -559,10 +561,24 @@ export class Orchestrator {
     this.currentSubmissionKey = submissionKey;
 
     if (submissionCheck.status === 'in-flight') {
-      logger.warn('Orchestrator: duplicate turn submission detected (in-flight) — dropping', {
+      const reason = 'Duplicate turn submission rejected because an equivalent turn is already in flight.';
+      logger.warn('Orchestrator: duplicate turn submission detected (in-flight) — rejecting', {
         sessionId: this.sessionId,
         submissionKey,
       });
+      if (this.runtimeBus) {
+        const ctx = createEmitterContext(this.sessionId, turnId);
+        emitTurnSubmitted(this.runtimeBus, ctx, {
+          turnId,
+          prompt: text,
+          ...(options?.origin ? { origin: options.origin } : {}),
+        });
+        emitPreflightFail(this.runtimeBus, ctx, {
+          turnId,
+          reason,
+          stopReason: 'preflight_failed',
+        });
+      }
       this.currentSubmissionKey = null;
       return null;
     }
@@ -725,7 +741,7 @@ export class Orchestrator {
     const autoSwitch = configManager.get('behavior.suggestAlternativeOnProviderFail') as boolean;
     if (autoSwitch && isNonTransientProviderFailure(err)) {
       const currentModel = providerRegistry.getCurrentModel();
-      const alt = currentModel ? providerRegistry.findAlternativeModel(currentModel.id) : null;
+      const alt = currentModel ? providerRegistry.findAlternativeModel(currentModel.registryKey) : null;
       if (alt) {
         this.conversation.addSystemMessage(`[Provider] ${currentModel?.provider ?? 'Unknown'} failed. Alternative available: ${alt.displayName} (${alt.provider}). Use /model to switch.`);
       }

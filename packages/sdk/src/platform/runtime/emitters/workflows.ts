@@ -87,8 +87,9 @@ export function emitWorkflowCascadeAborted(
 }
 
 /**
- * Emit WORKFLOW_CONSTRAINTS_ENUMERATED when an engineer agent has reported its constraints.
- * DO NOT CALL YET — declaration only for Phase 1. Emission is wired in Phase 2.
+ * Emit WORKFLOW_CONSTRAINTS_ENUMERATED after WRFC captures a chain's effective constraints.
+ * WRFC internals should prefer the thin wrapper in agents/wrfc-runtime-events.ts so
+ * session and chain context stay consistent.
  */
 export function emitWorkflowConstraintsEnumerated(
   bus: RuntimeEventBus,

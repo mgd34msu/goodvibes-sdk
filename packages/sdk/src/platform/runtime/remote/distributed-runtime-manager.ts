@@ -71,7 +71,7 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
     readonly sessionBridge?: DistributedSessionBridge | null | undefined;
     readonly approvalBridge?: DistributedApprovalBridge | null | undefined;
     readonly automationBridge?: DistributedAutomationBridge | null | undefined;
-    readonly eventPublisher?: ((event: string, payload: unknown) => void) | null | undefined | undefined;
+    readonly eventPublisher?: ((event: string, payload: unknown) => void) | null | undefined;
   }): void {
     attachDistributedRuntime(this, input);
   }

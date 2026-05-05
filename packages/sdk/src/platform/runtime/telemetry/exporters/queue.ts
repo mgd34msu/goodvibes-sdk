@@ -5,7 +5,7 @@
  * - Never blocks the caller — all export work is dequeued asynchronously.
  * - Never throws — all errors are caught and logged.
  * - Drops oldest entries when full (back-pressure relief).
- * - Drains best-effort on shutdown with a configurable timeout.
+ * - Shutdown drain waits up to the configured timeout before returning.
  */
 import { randomInt } from 'node:crypto';
 import type { ReadableSpan } from '../types.js';
@@ -20,7 +20,7 @@ import { DEFAULT_QUEUE_CONFIG } from './types.js';
 import { summarizeError } from '../../../utils/error-display.js';
 import { logger } from '../../../utils/logger.js';
 
-/** Internal entry held in the ring buffer. */
+/** Entry held in the ring buffer. */
 interface QueueEntry {
   readonly batch: ReadableSpan[];
   readonly enqueuedAt: number;
@@ -136,7 +136,7 @@ export class ExportQueue {
           completedAt: Date.now(),
         });
       }
-      // OBS-07: structured logger, not console
+      // structured logger, not console
       logger.warn('[ExportQueue] Queue overflow — dropped oldest batch', { maxSize: this._config.maxSize });
     }
 
@@ -148,8 +148,7 @@ export class ExportQueue {
   }
 
   /**
-   * Drain all queued batches best-effort, honouring drainTimeoutMs.
-   * Waits until the queue is empty or the timeout elapses.
+   * Wait until no queued entries remain or drainTimeoutMs elapses.
    */
   async drain(): Promise<void> {
     if (this._size === 0) return;
@@ -157,6 +156,12 @@ export class ExportQueue {
     const deadline = Date.now() + this._config.drainTimeoutMs;
     while (this._size > 0 && Date.now() < deadline) {
       await sleep(10);
+    }
+    if (this._size > 0) {
+      logger.warn('[ExportQueue] Drain timed out with queued batches remaining', {
+        remainingBatches: this._size,
+        drainTimeoutMs: this._config.drainTimeoutMs,
+      });
     }
   }
 
@@ -234,14 +239,14 @@ export class ExportQueue {
         lastError = summarizeError(err);
         if (attempt < maxRetries) {
           const delay = computeDelay(attempt, this._config.retry);
-          // OBS-07: structured logger, not console
+          // structured logger, not console
           logger.warn('[ExportQueue] Export attempt failed — retrying', { attempt: attempt + 1, delayMs: delay, error: lastError });
           await sleep(delay);
         }
       }
     }
 
-    // All retries exhausted — OBS-07: structured logger
+    // All retries exhausted; use structured logging.
     logger.error('[ExportQueue] Export failed after all retries — batch dropped', {
       attempts,
       spanCount: entry.batch.length,

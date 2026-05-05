@@ -1,7 +1,7 @@
 /**
  * Well-known local LLM service endpoints and ports.
  *
- * These are **fallback defaults** used for zero-config local LLM discovery when
+ * These are default endpoints used for zero-config local LLM discovery when
  * no explicit base URL has been provided by the user. They represent the
  * conventional ports that popular local inference servers listen on out of the box.
  *

@@ -364,7 +364,7 @@ export class McpLifecycleManager {
 
       // Load tool list
       const tools = await client.listTools().catch((err: unknown) => {
-        logger.debug('McpLifecycleManager: listTools failed', { server: serverName, err: summarizeError(err) });
+        logger.warn('McpLifecycleManager: listTools failed', { server: serverName, err: summarizeError(err) });
         return [];
       });
       entry.availableTools = tools.map((t) => t.name);
@@ -408,8 +408,8 @@ export class McpLifecycleManager {
       try {
         await client.disconnect();
       } catch (err) {
-        // Non-fatal — we are stopping regardless
-        logger.debug('McpLifecycleManager: disconnect error (suppressed)', { server: serverName, err: summarizeError(err) });
+        // Continue stopping even if disconnect fails.
+        logger.warn('McpLifecycleManager: disconnect failed during stop', { server: serverName, err: summarizeError(err) });
       }
       this.clients.delete(serverName);
     }
@@ -493,7 +493,7 @@ export class McpLifecycleManager {
   private _setState(entry: McpServerEntry, next: McpServerState): void {
     const result = applyTransition(entry.state, next);
     if (!result.success) {
-      logger.debug('McpLifecycleManager: invalid transition (ignored)', {
+      logger.warn('McpLifecycleManager: invalid transition rejected', {
         server: entry.name,
         from: entry.state,
         to: next,
@@ -511,8 +511,8 @@ export class McpLifecycleManager {
       try {
         handler(event);
       } catch (err) {
-        // Non-fatal: handler errors must not crash the manager
-        logger.debug('McpLifecycleManager: event handler threw', { event: event.type, err: summarizeError(err) });
+        // Handler errors must not crash the manager.
+        logger.warn('McpLifecycleManager: event handler threw', { event: event.type, err: summarizeError(err) });
       }
     }
   }

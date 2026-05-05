@@ -43,8 +43,8 @@ export interface HostModeWatcherHandle {
  * - When a key changes and `getIsRunning()` is true, calls `onRestart()`.
  * - The caller's `onRestart` implementation handles re-entrancy / dirty-flag
  *   logic internally (the watcher does NOT duplicate that logic).
- * - `unsubscribe()` removes all subscriptions; subsequent key changes are
- *   silently ignored.
+ * - `unsubscribe()` removes all subscriptions; subsequent key changes do not
+ *   trigger restarts.
  *
  * @param opts - Watcher configuration.
  * @returns A handle with an `unsubscribe` method.

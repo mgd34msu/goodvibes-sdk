@@ -4,7 +4,14 @@ import { isValidConfigKey } from '../../config/schema.js';
 import type { UserAuthManager } from '../../security/user-auth.js';
 import { buildOperatorSessionCookie, OPERATOR_SESSION_COOKIE_NAME } from '../../security/http-auth.js';
 import type { AgentManager } from '../../tools/agent/index.js';
-import { normalizeAtSchedule, normalizeCronSchedule, normalizeEverySchedule, type AutomationManager } from '../../automation/index.js';
+import {
+  normalizeAtSchedule,
+  normalizeCronSchedule,
+  normalizeEverySchedule,
+  type AutomationManager,
+  type CreateAutomationJobInput,
+  type UpdateAutomationJobInput,
+} from '../../automation/index.js';
 import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../../control-plane/index.js';
 import type { GatewayMethodCatalog } from '../../control-plane/index.js';
 import { buildOperatorContract } from '../../control-plane/operator-contract.js';
@@ -66,7 +73,7 @@ import { AppError } from '../../types/errors.js';
 import { VERSION } from '../../version.js';
 import type { CompanionChatManager } from '../../companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-routes.js';
-import { dispatchProviderRoutes } from './provider-routes.js';
+import { dispatchModelRoutes } from './model-routes.js';
 import { dispatchBatchRoutes } from './batch-routes.js';
 import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
 import { HomeAssistantConversationRoutes } from './homeassistant-routes.js';
@@ -161,15 +168,11 @@ interface DaemonHttpRouterContext {
    * when the companion feature is active.
    */
   readonly companionChatManager?: CompanionChatManager | null | undefined;
-  /**
-   * F16b: Resolve the current default provider/model from the provider registry.
-   * Forwarded into CompanionChatRouteContext so that session-create can fill in
-   * provider/model when the caller does not supply them.
-   */
+  /** Resolve the current provider/model for companion-chat session creation. */
   readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
   /**
    * SecretsManager instance used to resolve provider API keys stored as secrets
-   * rather than env vars. Threaded into ProviderRouteContext so that
+   * rather than env vars. Threaded into ModelRouteContext so that
    * resolveSecretKeys() can return the correct configuredVia='secrets' tier.
    * Without this, the production router always passes undefined and the secrets
    * tier is permanently dead on live code paths.
@@ -360,14 +363,14 @@ export class DaemonHttpRouter {
 
     // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.
     // Handled before the main API router so they never touch the global control-plane feed.
-    // Provider discovery + model-switching routes
-    if (req.url.includes('/api/providers')) {
-      const providerResponse = await dispatchProviderRoutes(req, {
+    // Model catalog + model-switching routes. Provider runtime metadata is owned
+    // by the operator contract under /api/providers.
+    if (url.pathname === '/api/models' || url.pathname.startsWith('/api/models/')) {
+      const providerResponse = await dispatchModelRoutes(req, {
         providerRegistry: this.context.providerRegistry,
         configManager: this.context.configManager,
         runtimeBus: this.context.runtimeBus,
         parseJsonBody: (request: Request) => this.parseJsonBody(request),
-        // threaded for configuredVia='secrets' tier — see DaemonHttpRouterContext.secretsManager doc above
         secretsManager: this.context.secretsManager,
       });
       if (providerResponse) return providerResponse;
@@ -399,7 +402,7 @@ export class DaemonHttpRouter {
       if (companionResponse) return companionResponse;
     }
 
-    return dispatchDaemonApiRoutes(req, {
+    const handlers = {
       ...createDaemonControlRouteHandlers({
         authToken: this.context.authToken(),
         version: VERSION,
@@ -412,13 +415,12 @@ export class DaemonHttpRouter {
         },
         gatewayMethods: this.context.gatewayMethods,
         getOperatorContract: () => buildOperatorContract(this.context.gatewayMethods),
-        inspectInboundTls: (surface) => inspectInboundTls(this.context.configManager, surface),
-        inspectOutboundTls: () => inspectOutboundTls(this.context.configManager),
         invokeGatewayMethodCall: this.context.invokeGatewayMethodCall,
         parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
         requireAdmin: this.context.requireAdmin,
         requireAuthenticatedSession: this.context.requireAuthenticatedSession,
-      }, req),
+      }),
+      postLogin: (request: Request) => this.handleLogin(request),
       ...createDaemonIntegrationRouteHandlers({
         channelPlugins: this.context.channelPlugins,
         integrationHelpers: this.context.integrationHelpers,
@@ -515,8 +517,8 @@ export class DaemonHttpRouter {
           triggerHeartbeat: (input) => this.context.automationManager.triggerHeartbeat(input),
           cancelRun: (runId, reason) => this.context.automationManager.cancelRun(runId, reason),
           retryRun: (runId) => this.context.automationManager.retryRun(runId),
-          createJob: (input) => this.context.automationManager.createJob(input as unknown as import('../../automation/index.js').CreateAutomationJobInput),
-          updateJob: (jobId, input) => this.context.automationManager.updateJob(jobId, input as unknown as import('../../automation/index.js').UpdateAutomationJobInput),
+          createJob: (input: CreateAutomationJobInput) => this.context.automationManager.createJob(input),
+          updateJob: (jobId, input: UpdateAutomationJobInput) => this.context.automationManager.updateJob(jobId, input),
           removeJob: async (jobId) => {
             await this.context.automationManager.removeJob(jobId);
           },
@@ -531,10 +533,13 @@ export class DaemonHttpRouter {
           start: () => this.context.routeBindings.start(),
           getBinding: (id) => this.context.routeBindings.getBinding(id),
         },
-        trySpawnAgent: (input, logLabel, sessionId) => this.context.trySpawnAgent({
-          ...input,
-          ...(input.tools ? { tools: [...input.tools] } : {}),
-        } as Parameters<AgentManager['spawn']>[0], logLabel, sessionId),
+        trySpawnAgent: (input, logLabel, sessionId) => {
+          const { tools, ...spawnInput } = input;
+          return this.context.trySpawnAgent({
+            ...spawnInput,
+            ...(tools ? { tools: [...tools] } : {}),
+          }, logLabel, sessionId);
+        },
         queueSurfaceReplyFromBinding: (binding, input) => this.context.queueSurfaceReplyFromBinding(
           binding as Parameters<typeof this.context.queueSurfaceReplyFromBinding>[0],
           input,
@@ -622,7 +627,8 @@ export class DaemonHttpRouter {
           webSearchService: this.context.webSearchService,
         }),
       }),
-    });
+    };
+    return dispatchDaemonApiRoutes(req, handlers);
   }
 
   private getHomeAssistantRoutes(): HomeAssistantConversationRoutes {

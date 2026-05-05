@@ -447,7 +447,6 @@ export class TelemetryApiService {
       appendBounded(this.errors, record, this.errorLimit);
       this.errorCountsByCategory.set(normalizedError.category, (this.errorCountsByCategory.get(normalizedError.category) ?? 0) + 1);
     }
-    // C-1: update telemetry buffer fill gauge
     telemetryBufferFill.set(this.records.length / this.eventLimit);
     this.captureSyntheticSpan(record);
     this.notify(record);

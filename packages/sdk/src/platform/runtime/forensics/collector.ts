@@ -14,7 +14,6 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { RuntimeEventBus, RuntimeEventEnvelope } from '../events/index.js';
-import { createEventEnvelope } from '../events/index.js';
 import type { AnyRuntimeEvent } from '../../../events/domain-map.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { logger } from '../../utils/logger.js';
@@ -31,10 +30,6 @@ import type {
 import { classifyFailure, summariseFailure } from './classifier.js';
 import type { ForensicsRegistry } from './registry.js';
 import { emitForensicsReportCreated } from '../emitters/forensics.js';
-
-// ---------------------------------------------------------------------------
-// Internal turn/task tracking
-// ---------------------------------------------------------------------------
 
 /** Maximum orphaned trackers retained before evicting oldest entries. */
 const MAX_TRACKER_SIZE = 500;
@@ -117,23 +112,53 @@ export class ForensicsCollector {
   private _start(): void {
     // Subscribe to turn domain
     this._unsubs.push(
-      this._bus.onDomain('turn', (env) => this._handleTurnEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>))
+      this._bus.onDomain('turn', (env) => this._collect('turn', env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>, () => {
+        this._handleTurnEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+      }))
     );
     // Subscribe to tasks domain
     this._unsubs.push(
-      this._bus.onDomain('tasks', (env) => this._handleTaskEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>))
+      this._bus.onDomain('tasks', (env) => this._collect('tasks', env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>, () => {
+        this._handleTaskEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+      }))
     );
     // Subscribe to tools domain for permission/failure context
     this._unsubs.push(
-      this._bus.onDomain('tools', (env) => this._handleToolEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>))
+      this._bus.onDomain('tools', (env) => this._collect('tools', env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>, () => {
+        this._handleToolEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+      }))
     );
     this._unsubs.push(
-      this._bus.onDomain('permissions', (env) => this._handlePermissionEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>))
+      this._bus.onDomain('permissions', (env) => this._collect('permissions', env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>, () => {
+        this._handlePermissionEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+      }))
     );
     // Subscribe to session domain for cascade/compaction events
     this._unsubs.push(
-      this._bus.onDomain('compaction', (env) => this._handleCompactionEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>))
+      this._bus.onDomain('compaction', (env) => this._collect('compaction', env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>, () => {
+        this._handleCompactionEnvelope(env as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>);
+      }))
     );
+  }
+
+  private _collect(
+    domain: string,
+    env: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
+    handle: () => void,
+  ): void {
+    try {
+      handle();
+    } catch (error) {
+      logger.warn('Forensics collector event collection failed', {
+        domain,
+        type: env.type,
+        sessionId: env.sessionId,
+        traceId: env.traceId,
+        turnId: env.turnId,
+        taskId: env.taskId,
+        error: summarizeError(error),
+      });
+    }
   }
 
   // ── Turn handling ──────────────────────────────────────────────────────────
@@ -150,7 +175,16 @@ export class ForensicsCollector {
         // Evict oldest orphaned tracker if at cap
         if (this._turns.size >= MAX_TRACKER_SIZE) {
           const firstKey = this._turns.keys().next().value;
-          if (firstKey !== undefined) this._turns.delete(firstKey);
+          if (firstKey !== undefined) {
+            const evicted = this._turns.get(firstKey);
+            this._turns.delete(firstKey);
+            logger.warn('Forensics collector evicted active turn tracker', {
+              turnId: firstKey,
+              sessionId: evicted?.sessionId,
+              traceId: evicted?.traceId,
+              maxTrackerSize: MAX_TRACKER_SIZE,
+            });
+          }
         }
         this._turns.set(turnId, {
           turnId,
@@ -262,7 +296,16 @@ export class ForensicsCollector {
         // Evict oldest orphaned tracker if at cap
         if (this._tasks.size >= MAX_TRACKER_SIZE) {
           const firstKey = this._tasks.keys().next().value;
-          if (firstKey !== undefined) this._tasks.delete(firstKey);
+          if (firstKey !== undefined) {
+            const evicted = this._tasks.get(firstKey);
+            this._tasks.delete(firstKey);
+            logger.warn('Forensics collector evicted active task tracker', {
+              taskId: firstKey,
+              sessionId: evicted?.sessionId,
+              traceId: evicted?.traceId,
+              maxTrackerSize: MAX_TRACKER_SIZE,
+            });
+          }
         }
         this._tasks.set(taskId, {
           taskId,
@@ -551,13 +594,7 @@ export class ForensicsCollector {
       jumpLinks,
     };
 
-    this._registry.push(report);
-    emitForensicsReportCreated(this._bus, { sessionId: tracker.sessionId, traceId: tracker.traceId, source: 'ForensicsCollector' }, {
-      reportId: report.id,
-      classification: report.classification,
-      errorMessage: report.errorMessage,
-      turnId: report.turnId,
-    });
+    this._publishReport(report, { turnId: tracker.turnId });
   }
 
   private _finalise_task(
@@ -602,13 +639,7 @@ export class ForensicsCollector {
       jumpLinks,
     };
 
-    this._registry.push(report);
-    emitForensicsReportCreated(this._bus, { sessionId: tracker.sessionId, traceId: tracker.traceId, source: 'ForensicsCollector' }, {
-      reportId: report.id,
-      classification: report.classification,
-      errorMessage: report.errorMessage,
-      taskId: report.taskId,
-    });
+    this._publishReport(report, { taskId: tracker.taskId });
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -673,6 +704,47 @@ export class ForensicsCollector {
       isRootCause,
       context,
     });
+  }
+
+  private _publishReport(
+    report: FailureReport,
+    context: { turnId?: string | undefined; taskId?: string | undefined },
+  ): void {
+    try {
+      this._registry.push(report);
+    } catch (error) {
+      logger.warn('Forensics collector failed to store report', {
+        reportId: report.id,
+        classification: report.classification,
+        sessionId: report.sessionId,
+        traceId: report.traceId,
+        ...context,
+        error: summarizeError(error),
+      });
+      return;
+    }
+
+    try {
+      emitForensicsReportCreated(
+        this._bus,
+        { sessionId: report.sessionId, traceId: report.traceId, source: 'ForensicsCollector' },
+        {
+          reportId: report.id,
+          classification: report.classification,
+          errorMessage: report.errorMessage,
+          ...context,
+        },
+      );
+    } catch (error) {
+      logger.warn('Forensics collector failed to emit report event', {
+        reportId: report.id,
+        classification: report.classification,
+        sessionId: report.sessionId,
+        traceId: report.traceId,
+        ...context,
+        error: summarizeError(error),
+      });
+    }
   }
 
   /** Derive a short human-readable report ID from a trace ID. */

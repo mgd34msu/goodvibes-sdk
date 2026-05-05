@@ -3,7 +3,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { GitService } from '../../git/service.js';
 import { resolveScopedDirectory } from '../surface-root.js';
 
-export type ManagedWorktreeState = 'active' | 'paused' | 'kept' | 'discard' | 'cleanup-pending';
+export type ManagedWorktreeState = 'active' | 'paused' | 'kept' | 'discard' | 'pending-cleanup';
 export type ManagedWorktreeKind = 'agent' | 'orchestrator' | 'manual';
 
 export interface ManagedWorktreeMeta {
@@ -32,7 +32,7 @@ export interface WorktreeOwnershipSummary {
   readonly paused: number;
   readonly kept: number;
   readonly discard: number;
-  readonly cleanupPending: number;
+  readonly pendingCleanup: number;
   readonly sessionAttached: number;
   readonly taskAttached: number;
   readonly agentOwned: number;
@@ -48,7 +48,7 @@ export interface WorktreeAttachmentReview {
   readonly paused: number;
   readonly kept: number;
   readonly discard: number;
-  readonly cleanupPending: number;
+  readonly pendingCleanup: number;
   readonly records: readonly ManagedWorktreeMeta[];
 }
 
@@ -102,7 +102,7 @@ export function reviewWorktreeAttachments(
     paused: summary.paused + (record.state === 'paused' ? 1 : 0),
     kept: summary.kept + (record.state === 'kept' ? 1 : 0),
     discard: summary.discard + (record.state === 'discard' ? 1 : 0),
-    cleanupPending: summary.cleanupPending + (record.state === 'cleanup-pending' ? 1 : 0),
+    pendingCleanup: summary.pendingCleanup + (record.state === 'pending-cleanup' ? 1 : 0),
     records: [...summary.records, record],
   }), {
     targetKind,
@@ -112,7 +112,7 @@ export function reviewWorktreeAttachments(
     paused: 0,
     kept: 0,
     discard: 0,
-    cleanupPending: 0,
+    pendingCleanup: 0,
     records: [],
   });
 }
@@ -124,7 +124,7 @@ export function summarizeWorktreeOwnership(records: readonly ManagedWorktreeMeta
     paused: summary.paused + (record.state === 'paused' ? 1 : 0),
     kept: summary.kept + (record.state === 'kept' ? 1 : 0),
     discard: summary.discard + (record.state === 'discard' ? 1 : 0),
-    cleanupPending: summary.cleanupPending + (record.state === 'cleanup-pending' ? 1 : 0),
+    pendingCleanup: summary.pendingCleanup + (record.state === 'pending-cleanup' ? 1 : 0),
     sessionAttached: summary.sessionAttached + (record.sessionId ? 1 : 0),
     taskAttached: summary.taskAttached + (record.taskId ? 1 : 0),
     agentOwned: summary.agentOwned + (record.kind === 'agent' ? 1 : 0),
@@ -136,7 +136,7 @@ export function summarizeWorktreeOwnership(records: readonly ManagedWorktreeMeta
     paused: 0,
     kept: 0,
     discard: 0,
-    cleanupPending: 0,
+    pendingCleanup: 0,
     sessionAttached: 0,
     taskAttached: 0,
     agentOwned: 0,

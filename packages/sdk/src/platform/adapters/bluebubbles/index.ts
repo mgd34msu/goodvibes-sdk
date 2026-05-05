@@ -44,7 +44,14 @@ export async function handleBlueBubblesSurfaceWebhook(req: Request, context: Sur
   const messageId = readString(message.guid) ?? readString(message.messageId) ?? readString(payload.guid);
   const isFromMe = Boolean(message.isFromMe ?? message.fromMe ?? payload.isFromMe ?? payload.fromMe);
   if (isFromMe) {
-    return Response.json({ ok: true, ignored: true, reason: 'from-me' });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      ignored: true,
+      reason: 'from-me',
+    });
   }
   const conversationId = chatGuid ?? senderId;
   if (!conversationId) return Response.json({ error: 'Missing BlueBubbles chat identifier' }, { status: 400 });
@@ -80,7 +87,14 @@ export async function handleBlueBubblesSurfaceWebhook(req: Request, context: Sur
     },
   });
   if (!text) {
-    return Response.json({ ok: true, acknowledged: true, bindingId: binding.id });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+    });
   }
 
   const controlCommand = context.parseSurfaceControlCommand(text);

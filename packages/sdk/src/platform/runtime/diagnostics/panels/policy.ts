@@ -20,6 +20,7 @@ import type { PolicyLintFinding } from '../../permissions/lint.js';
 import type { PolicySimulationSummary } from '../../permissions/simulation-scenarios.js';
 import type { PolicyPreflightReview } from '../../permissions/preflight.js';
 import { logger } from '../../../utils/logger.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 /**
  * A point-in-time snapshot of policy state for diagnostics rendering.
@@ -170,7 +171,7 @@ export class PolicyPanel {
       try {
         cb();
       } catch (err) {
-        logger.debug('[PolicyPanel] subscriber error', { err });
+        logger.warn('[PolicyPanel] subscriber error', { error: summarizeError(err) });
       }
     }
   }

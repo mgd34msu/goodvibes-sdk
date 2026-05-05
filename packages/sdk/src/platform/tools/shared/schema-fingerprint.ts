@@ -147,7 +147,7 @@ export function computeSchemaFingerprintSync(
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Fallback: deterministic but non-cryptographic (test/non-Bun environments)
+  // Deterministic but non-cryptographic path for test/non-Bun environments.
   // Produces a stable string for the same key set.
   let h = 0x811c9dc5;
   for (let i = 0; i < canonical.length; i++) {

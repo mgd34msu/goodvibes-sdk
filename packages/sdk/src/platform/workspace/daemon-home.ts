@@ -178,14 +178,14 @@ export function writeDaemonSetting(daemonHomeDir: string, key: string, value: st
     try {
       existing = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     } catch (err: unknown) {
-      // OBS-11: Overwrite corrupt file; log so ops can see when this happens
+      // Overwrite corrupt file; log so ops can see when this happens
       logger.warn('[DaemonHome] daemon-settings.json parse failed — overwriting with fresh state', {
         path: settingsPath,
         error: String(err),
       });
     }
   }
-  // SEC-12: daemon-settings.json may contain sensitive pairing state; write at 0600.
+  // daemon-settings.json may contain sensitive pairing state; write at 0600.
   writeFileSync(tmpPath, JSON.stringify({ ...existing, [key]: value }, null, 2), { encoding: 'utf-8', mode: 0o600 });
   try {
     chmodSync(tmpPath, 0o600);

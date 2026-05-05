@@ -78,7 +78,7 @@ export function emitTransportTerminalFailure(
   bus.emit('transport', createEventEnvelope('TRANSPORT_TERMINAL_FAILURE', { type: 'TRANSPORT_TERMINAL_FAILURE', ...data }, ctx));
 }
 
-/** OBS-18: Emit TRANSPORT_RETRY_SCHEDULED when a retry is queued with backoff. */
+/** Emit TRANSPORT_RETRY_SCHEDULED when a retry is queued with backoff. */
 export function emitTransportRetryScheduled(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
@@ -88,7 +88,7 @@ export function emitTransportRetryScheduled(
   bus.emit('transport', createEventEnvelope('TRANSPORT_RETRY_SCHEDULED', { type: 'TRANSPORT_RETRY_SCHEDULED', ...data }, ctx));
 }
 
-/** OBS-18: Emit TRANSPORT_RETRY_EXECUTED when a retry attempt is fired. */
+/** Emit TRANSPORT_RETRY_EXECUTED when a retry attempt is fired. */
 export function emitTransportRetryExecuted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
@@ -98,7 +98,7 @@ export function emitTransportRetryExecuted(
   bus.emit('transport', createEventEnvelope('TRANSPORT_RETRY_EXECUTED', { type: 'TRANSPORT_RETRY_EXECUTED', ...data }, ctx));
 }
 
-/** OBS-19: Emit STREAM_SUBSCRIBER_CONNECTED when an SSE subscriber connects. */
+/** Emit STREAM_SUBSCRIBER_CONNECTED when an SSE subscriber connects. */
 export function emitStreamSubscriberConnected(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
@@ -107,7 +107,7 @@ export function emitStreamSubscriberConnected(
   bus.emit('transport', createEventEnvelope('STREAM_SUBSCRIBER_CONNECTED', { type: 'STREAM_SUBSCRIBER_CONNECTED', ...data }, ctx));
 }
 
-/** OBS-19: Emit STREAM_SUBSCRIBER_DISCONNECTED when an SSE subscriber disconnects. */
+/** Emit STREAM_SUBSCRIBER_DISCONNECTED when an SSE subscriber disconnects. */
 export function emitStreamSubscriberDisconnected(
   bus: RuntimeEventBus,
   ctx: EmitterContext,

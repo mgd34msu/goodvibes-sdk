@@ -131,7 +131,7 @@ describe('composeMiddleware: ctx mutation', () => {
     const mw: TransportMiddleware = async (ctx, next) => {
       await next();
       expect(typeof ctx.durationMs).toBe('number');
-      // MAJ-03 (eighth-review): dropped >= 0 tautology; upper bound carries the real assertion
+      // dropped >= 0 tautology; upper bound carries the real assertion
       expect(ctx.durationMs!).toBeLessThan(1000);
     };
     const ctx = makeCtx();
@@ -170,7 +170,7 @@ describe('composeMiddleware: error propagation', () => {
     const caught = await composed(ctx).catch((e: unknown) => e);
     expect(caught).toBe(expectedError);
     expect(ctx.error).toBe(expectedError);
-    // MAJ-03 (eighth-review): dropped >= 0 tautology; upper bound carries the real assertion
+    // dropped >= 0 tautology; upper bound carries the real assertion
     expect(ctx.durationMs).toBeLessThan(1000);
   });
 

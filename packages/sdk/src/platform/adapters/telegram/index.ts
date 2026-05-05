@@ -1,5 +1,6 @@
 import type { SurfaceAdapterContext } from '../types.js';
 import { constantTimeEquals, parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
+import { logger } from '../../utils/logger.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -64,13 +65,37 @@ export async function handleTelegramSurfaceWebhook(req: Request, context: Surfac
     ?? readRecord(payload.channel_post)
     ?? readRecord(payload.edited_channel_post);
   if (!message) {
-    return Response.json({ ok: true, ignored: true });
+    logger.info('handleTelegramSurfaceWebhook: update ignored', {
+      reason: 'unsupported-update-type',
+      updateId: readNumberString(payload.update_id),
+    });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'unsupported-update-type',
+      updateId: readNumberString(payload.update_id) ?? null,
+    });
   }
 
   const chat = readRecord(message.chat);
   const from = readRecord(message.from);
   const chatId = readNumberString(chat?.id);
-  if (!chatId) return Response.json({ ok: true, ignored: true });
+  if (!chatId) {
+    logger.info('handleTelegramSurfaceWebhook: update ignored', {
+      reason: 'missing-chat-id',
+      updateId: readNumberString(payload.update_id),
+    });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'missing-chat-id',
+      updateId: readNumberString(payload.update_id) ?? null,
+    });
+  }
   const threadId = readNumberString(message.message_thread_id);
   const botUsername = readString(context.configManager.get('surfaces.telegram.botUsername'));
   const botHandle = normalizeBotUsername(botUsername);
@@ -119,7 +144,20 @@ export async function handleTelegramSurfaceWebhook(req: Request, context: Surfac
   });
 
   if (!task) {
-    return Response.json({ ok: true, acknowledged: true, bindingId: binding.id });
+    logger.info('handleTelegramSurfaceWebhook: message acknowledged without queueing', {
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+      chatId,
+      threadId,
+    });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+    });
   }
 
   const controlCommand = context.parseSurfaceControlCommand(task);

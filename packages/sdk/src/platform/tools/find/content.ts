@@ -4,6 +4,8 @@ import { summarizeError } from '../../utils/error-display.js';
 import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
 import {
   collectFilesForSearch,
+  createFindDiagnostics,
+  addFindWarning,
   isBinary,
   makeCountResult,
   makeFilesResult,
@@ -11,6 +13,7 @@ import {
   readTextFile,
   FindRuntimeService,
   validateSearchPath,
+  withFindWarnings,
 } from './shared.js';
 
 interface CacheKey {
@@ -34,6 +37,7 @@ async function executeContentQuery(
   const maxTotal = output.max_total_matches ?? output.max_results ?? 100;
   const ctxBefore = output.context_before ?? 0;
   const ctxAfter = output.context_after ?? 0;
+  const diagnostics = createFindDiagnostics();
 
   if (format === 'signatures' || format === 'full') {
     return { error: `Output format '${format}' is only valid for symbols mode` };
@@ -65,12 +69,12 @@ async function executeContentQuery(
     return { error: `Invalid regex: ${summarizeError(e)}` };
   }
 
-  const files = await collectFilesForSearch(basePath, query.glob);
+  const files = await collectFilesForSearch(basePath, query.glob, diagnostics);
 
   if (query.negate) {
     const nonMatchingFiles: string[] = [];
     for (const file of files) {
-      const content = await readTextFile(file);
+      const content = await readTextFile(file, diagnostics);
       if (content === null) continue;
       if (content.length > 500_000) continue;
       if (!safeRegExpTest(regex, content, { operation: 'find content negate', maxInputChars: 500_000 })) {
@@ -78,8 +82,8 @@ async function executeContentQuery(
         if (nonMatchingFiles.length >= maxTotal) break;
       }
     }
-    if (format === 'count_only') return makeCountResult(nonMatchingFiles.length);
-    return makeFilesResult(nonMatchingFiles, nonMatchingFiles.length);
+    if (format === 'count_only') return withFindWarnings(makeCountResult(nonMatchingFiles.length), diagnostics.warnings);
+    return withFindWarnings(makeFilesResult(nonMatchingFiles, nonMatchingFiles.length), diagnostics.warnings);
   }
 
   const cacheKey: CacheKey = { pattern: rawPattern, glob: query.glob ?? '', path: basePath, flags };
@@ -99,9 +103,9 @@ async function executeContentQuery(
     outer: for (const file of files) {
       if (totalMatches >= maxTotal) break;
 
-      const content = await readTextFile(file);
+      const content = await readTextFile(file, diagnostics);
       if (content === null) continue;
-      if (await isBinary(file)) continue;
+      if (await isBinary(file, diagnostics)) continue;
 
       const lines = content.split('\n');
       const fileMatches: ContentMatch[] = [];
@@ -155,7 +159,8 @@ async function executeContentQuery(
         try {
           const s = await statAsync(f);
           fileMtimes.set(f, s.mtimeMs);
-        } catch {
+        } catch (err) {
+          addFindWarning(diagnostics, `Could not stat '${f}' for ranked search; ranking may be incomplete: ${summarizeError(err)}`);
           fileMtimes.set(f, 0);
         }
       }),
@@ -195,18 +200,18 @@ async function executeContentQuery(
             m.startLine = scope.startLine;
             m.endLine = scope.endLine;
           }
-        } catch {
-          // ignore
+        } catch (err) {
+          addFindWarning(diagnostics, `Could not expand match scope in '${file}' at line ${m.line}: ${summarizeError(err)}`);
         }
       }
     }
   }
 
   if (format === 'count_only') {
-    return makeCountResult(totalMatches, undefined, matchedFiles.size);
+    return withFindWarnings(makeCountResult(totalMatches, undefined, matchedFiles.size), diagnostics.warnings);
   }
   if (format === 'files_only') {
-    return makeFilesResult(Array.from(matchedFiles.keys()), matchedFiles.size);
+    return withFindWarnings(makeFilesResult(Array.from(matchedFiles.keys()), matchedFiles.size), diagnostics.warnings);
   }
   if (format === 'locations') {
     const locations: Array<{ file: string; line: number }> = [];
@@ -215,7 +220,7 @@ async function executeContentQuery(
         locations.push({ file, line: m.line });
       }
     }
-    return makeLocationsResult(locations, totalMatches);
+    return withFindWarnings(makeLocationsResult(locations, totalMatches), diagnostics.warnings);
   }
 
   if (format === 'matches' || format === 'context') {
@@ -268,13 +273,16 @@ async function executeContentQuery(
           importedBy: importGraph.findDependents(file),
         };
       }
-      return { matches: results, count: totalMatches, relationships: relMap };
+      return withFindWarnings(
+        { matches: results, count: totalMatches, relationships: relMap },
+        [...diagnostics.warnings, ...(importGraph.getWarnings?.() ?? [])],
+      );
     }
 
-    return { matches: results, count: totalMatches };
+    return withFindWarnings({ matches: results, count: totalMatches }, diagnostics.warnings);
   }
 
-  return makeCountResult(totalMatches);
+  return withFindWarnings(makeCountResult(totalMatches), diagnostics.warnings);
 }
 
 export { executeContentQuery };

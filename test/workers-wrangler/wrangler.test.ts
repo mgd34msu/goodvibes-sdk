@@ -9,8 +9,8 @@
  * layer internally — it is NOT the raw workerd binary. Both this harness and
  * the standalone Miniflare harness share the same Miniflare 4 runtime, which
  * means EventSource IS available in both harnesses (Miniflare injects it).
- * The production EventSource-absence gap can only be verified via a real CF
- * deployment. See test/workers/FINDINGS.md for full details.
+ * The production EventSource absence can only be verified via a real CF
+ * deployment. See test/workers/NOTES.md for details.
  *
  * What this harness adds over the standalone Miniflare harness:
  *   - Exercises wrangler's esbuild bundling pipeline (not the manual esbundle step)
@@ -302,15 +302,13 @@ describe('Workers wrangler: globals audit', () => {
     expect(globals.setTimeout).toBe(true);
   }, 10_000);
 
-  // FINDING (discovered during harness implementation 2026-04-17):
   // wrangler dev --local uses Miniflare 4 internally as its local runtime layer.
   // Both this harness and the Miniflare standalone harness share the same
   // Miniflare 4 runtime, which injects EventSource as a simulation artifact.
   // EventSource === true in BOTH harnesses — the gap cannot be exercised locally
   // without a real Cloudflare deployment (CF_API_TOKEN required).
   //
-  // See test/workers/FINDINGS.md — "Real workerd harness — EventSource finding"
-  // for the full analysis and implications.
+  // See test/workers/NOTES.md for the runtime boundary.
   test('EventSource: wrangler dev --local uses Miniflare 4 (EventSource present, same as standalone Miniflare)', async () => {
     const { status, body } = await get('/globals');
     expect(status).toBe(200);

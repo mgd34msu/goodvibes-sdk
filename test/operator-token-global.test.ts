@@ -1,7 +1,7 @@
 /**
  * operator-token-global.test.ts
  *
- * F3 — operator tokens are global-only at <daemonHomeDir>/operator-tokens.json.
+ * Operator tokens are global-only at <daemonHomeDir>/operator-tokens.json.
  *
  * Tests:
  *   1. Token present at global path → getOrCreateCompanionToken returns it
@@ -113,7 +113,7 @@ function makeMinimalRouterContext(overrides: { checkAuth?: (req: Request) => boo
 // 1. Token at global path → getOrCreateCompanionToken returns it
 // ---------------------------------------------------------------------------
 
-describe('F3 — global-only operator token: existing token is returned', () => {
+describe('global-only operator token: existing token is returned', () => {
   let daemonHome: string;
 
   beforeEach(() => { daemonHome = tempDir('existing'); });
@@ -148,15 +148,14 @@ describe('F3 — global-only operator token: existing token is returned', () => 
 // 2. No workspace-scoped token file is ever consulted
 // ---------------------------------------------------------------------------
 
-describe('F3 — global-only: workspace-scoped token path is never read', () => {
+describe('global-only: workspace-scoped token path is never read', () => {
   let daemonHome: string;
 
   beforeEach(() => { daemonHome = tempDir('no-ws'); });
   afterEach(() => { cleanup(daemonHome); });
 
   test('generates fresh token even when workspace-scoped file is present', () => {
-    // Place a token at the old workspace-scoped path (in a sibling directory).
-    // companion-token.ts must NOT read it.
+    // Place a token at a workspace-scoped path that must not be read.
     const fakeWorkspaceDotGv = join(daemonHome, '..', 'workspace', '.goodvibes');
     mkdirSync(fakeWorkspaceDotGv, { recursive: true });
     const wsToken = { token: 'gv_workspace_should_not_be_used', peerId: 'ws_peer', createdAt: 999 };
@@ -176,7 +175,7 @@ describe('F3 — global-only: workspace-scoped token path is never read', () => 
 // 3. writeOperatorTokenFile sets mode 0600
 // ---------------------------------------------------------------------------
 
-describe('F3 — writeOperatorTokenFile: mode 0600', () => {
+describe('writeOperatorTokenFile: mode 0600', () => {
   let daemonHome: string;
 
   beforeEach(() => { daemonHome = tempDir('chmod'); });
@@ -201,11 +200,11 @@ describe('F3 — writeOperatorTokenFile: mode 0600', () => {
 // 4 & 5. E2E via DaemonHttpRouter.dispatchApiRoutes
 // ---------------------------------------------------------------------------
 
-describe('F3 — DaemonHttpRouter: authenticated request succeeds, unauthenticated is rejected', () => {
-  test('GET /api/providers with checkAuth=true → 200 (authenticated request processed)', async () => {
+describe('DaemonHttpRouter: authenticated request succeeds, unauthenticated is rejected', () => {
+  test('GET /api/models with checkAuth=true → 200 (authenticated request processed)', async () => {
     const ctx = makeMinimalRouterContext({ checkAuth: () => true });
     const router = new DaemonHttpRouter(ctx as never);
-    const req = new Request('http://localhost/api/providers', { method: 'GET' });
+    const req = new Request('http://localhost/api/models', { method: 'GET' });
     const res = await router.dispatchApiRoutes(req);
     // The route exists and returns (may be 200 or any non-auth error)
     expect(res).not.toBeNull();
@@ -213,23 +212,23 @@ describe('F3 — DaemonHttpRouter: authenticated request succeeds, unauthenticat
     router.dispose();
   });
 
-  test('GET /api/providers via handleRequest with checkAuth=false → 401', async () => {
+  test('GET /api/models via handleRequest with checkAuth=false → 401', async () => {
     const ctx = makeMinimalRouterContext({ checkAuth: () => false });
     const router = new DaemonHttpRouter(ctx as never);
-    const req = new Request('http://localhost/api/providers', { method: 'GET' });
+    const req = new Request('http://localhost/api/models', { method: 'GET' });
     const res = await router.handleRequest(req);
     expect(res.status).toBe(401);
     router.dispose();
   });
 
-  test('GET /api/providers via handleRequest with checkAuth=true returns valid JSON', async () => {
+  test('GET /api/models via handleRequest with checkAuth=true returns valid JSON', async () => {
     const ctx = makeMinimalRouterContext({ checkAuth: () => true });
     const router = new DaemonHttpRouter(ctx as never);
-    const req = new Request('http://localhost/api/providers', { method: 'GET' });
+    const req = new Request('http://localhost/api/models', { method: 'GET' });
     const res = await router.handleRequest(req);
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
-    // Response must include providers array (GET /api/providers shape)
+    // Response must include providers array (GET /api/models shape)
     expect(body['providers']).toBeInstanceOf(Array);
     router.dispose();
   });
@@ -243,7 +242,7 @@ describe('F3 — DaemonHttpRouter: authenticated request succeeds, unauthenticat
 //   → compares Bearer header → 200 on correct token, 401 on wrong token
 // ---------------------------------------------------------------------------
 
-describe('F3 — E2E real token through auth chain: file read inside checkAuth', () => {
+describe('E2E real token through auth chain: file read inside checkAuth', () => {
   let daemonHome: string;
 
   beforeEach(() => { daemonHome = tempDir('real-auth'); });
@@ -281,7 +280,7 @@ describe('F3 — E2E real token through auth chain: file read inside checkAuth',
 
     const ctx = makeRealAuthContext(daemonHome);
     const router = new DaemonHttpRouter(ctx as never);
-    const req = new Request('http://localhost/api/providers', {
+    const req = new Request('http://localhost/api/models', {
       method: 'GET',
       headers: { Authorization: `Bearer ${realToken}` },
     });
@@ -299,7 +298,7 @@ describe('F3 — E2E real token through auth chain: file read inside checkAuth',
 
     const ctx = makeRealAuthContext(daemonHome);
     const router = new DaemonHttpRouter(ctx as never);
-    const req = new Request('http://localhost/api/providers', {
+    const req = new Request('http://localhost/api/models', {
       method: 'GET',
       headers: { Authorization: 'Bearer gv_wrong_token' },
     });

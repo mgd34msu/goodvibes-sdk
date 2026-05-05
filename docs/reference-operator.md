@@ -3268,13 +3268,6 @@ Process automation jobs queued for the next heartbeat.
                       "synthetic"
                     ]
                   },
-                  "unresolvedModelPolicy": {
-                    "type": "string",
-                    "enum": [
-                      "fallback-to-current",
-                      "fail"
-                    ]
-                  },
                   "providerFailurePolicy": {
                     "type": "string",
                     "enum": [
@@ -4883,13 +4876,6 @@ Create a durable automation job.
                 "synthetic"
               ]
             },
-            "unresolvedModelPolicy": {
-              "type": "string",
-              "enum": [
-                "fallback-to-current",
-                "fail"
-              ]
-            },
             "providerFailurePolicy": {
               "type": "string",
               "enum": [
@@ -5855,13 +5841,6 @@ Return automation jobs and recent runs.
                       "inherit-current",
                       "concrete",
                       "synthetic"
-                    ]
-                  },
-                  "unresolvedModelPolicy": {
-                    "type": "string",
-                    "enum": [
-                      "fallback-to-current",
-                      "fail"
                     ]
                   },
                   "providerFailurePolicy": {
@@ -7147,13 +7126,6 @@ Patch a durable automation job.
                 "synthetic"
               ]
             },
-            "unresolvedModelPolicy": {
-              "type": "string",
-              "enum": [
-                "fallback-to-current",
-                "fail"
-              ]
-            },
             "providerFailurePolicy": {
               "type": "string",
               "enum": [
@@ -8222,13 +8194,6 @@ Cancel an active automation run.
                     "synthetic"
                   ]
                 },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
-                  ]
-                },
                 "providerFailurePolicy": {
                   "type": "string",
                   "enum": [
@@ -9215,13 +9180,6 @@ Return a single automation run record.
                     "inherit-current",
                     "concrete",
                     "synthetic"
-                  ]
-                },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
                   ]
                 },
                 "providerFailurePolicy": {
@@ -10305,13 +10263,6 @@ Return automation run history.
                       "synthetic"
                     ]
                   },
-                  "unresolvedModelPolicy": {
-                    "type": "string",
-                    "enum": [
-                      "fallback-to-current",
-                      "fail"
-                    ]
-                  },
                   "providerFailurePolicy": {
                     "type": "string",
                     "enum": [
@@ -11301,13 +11252,6 @@ Retry a completed or failed automation run.
                     "synthetic"
                   ]
                 },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
-                  ]
-                },
                 "providerFailurePolicy": {
                   "type": "string",
                   "enum": [
@@ -11977,7 +11921,7 @@ Create a schedule record.
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
-- HTTP: `POST /schedules`
+- HTTP: `POST /api/automation/schedules`
 - Scopes: `write:automation`
 - Emits events: none
 - Dangerous: `no`
@@ -12548,13 +12492,6 @@ Create a schedule record.
                 "inherit-current",
                 "concrete",
                 "synthetic"
-              ]
-            },
-            "unresolvedModelPolicy": {
-              "type": "string",
-              "enum": [
-                "fallback-to-current",
-                "fail"
               ]
             },
             "providerFailurePolicy": {
@@ -13143,7 +13080,7 @@ Delete a schedule record.
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
-- HTTP: `DELETE /schedules/{scheduleId}`
+- HTTP: `DELETE /api/automation/schedules/{scheduleId}`
 - Scopes: `write:automation`
 - Emits events: none
 - Dangerous: `yes`
@@ -13194,7 +13131,7 @@ Disable a schedule record.
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
-- HTTP: `POST /schedules/{scheduleId}/disable`
+- HTTP: `POST /api/automation/schedules/{scheduleId}/disable`
 - Scopes: `write:automation`
 - Emits events: none
 - Dangerous: `no`
@@ -13246,7 +13183,7 @@ Enable a schedule record.
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
-- HTTP: `POST /schedules/{scheduleId}/enable`
+- HTTP: `POST /api/automation/schedules/{scheduleId}/enable`
 - Scopes: `write:automation`
 - Emits events: none
 - Dangerous: `no`
@@ -13298,7 +13235,7 @@ Return schedule records.
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
-- HTTP: `GET /schedules`
+- HTTP: `GET /api/automation/schedules`
 - Scopes: `read:automation`
 - Emits events: none
 - Dangerous: `no`
@@ -13522,13 +13459,6 @@ Return schedule records.
                       "inherit-current",
                       "concrete",
                       "synthetic"
-                    ]
-                  },
-                  "unresolvedModelPolicy": {
-                    "type": "string",
-                    "enum": [
-                      "fallback-to-current",
-                      "fail"
                     ]
                   },
                   "providerFailurePolicy": {
@@ -14400,13 +14330,6 @@ Return schedule records.
                       "synthetic"
                     ]
                   },
-                  "unresolvedModelPolicy": {
-                    "type": "string",
-                    "enum": [
-                      "fallback-to-current",
-                      "fail"
-                    ]
-                  },
                   "providerFailurePolicy": {
                     "type": "string",
                     "enum": [
@@ -15078,7 +15001,7 @@ Trigger a schedule immediately.
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
-- HTTP: `POST /schedules/{scheduleId}/run`
+- HTTP: `POST /api/automation/schedules/{scheduleId}/run`
 - Scopes: `write:automation`
 - Emits events: none
 - Dangerous: `no`
@@ -49566,7 +49489,7 @@ Return runtime metadata for a single provider.
                 "type": "string"
               }
             },
-            "suppressedModels": {
+            "suppressedModelRegistryKeys": {
               "type": "array",
               "items": {
                 "type": "string"
@@ -49908,7 +49831,7 @@ Return runtime provider metadata, policy hooks, and priced model summaries.
                       "type": "string"
                     }
                   },
-                  "suppressedModels": {
+                  "suppressedModelRegistryKeys": {
                     "type": "array",
                     "items": {
                       "type": "string"
@@ -50139,7 +50062,7 @@ Return usage and pricing posture for a single provider.
     "active": {
       "type": "boolean"
     },
-    "currentModelId": {
+    "currentModelRegistryKey": {
       "type": "string"
     },
     "pricingSource": {
@@ -57474,13 +57397,6 @@ Queue a deferred follow-up for a shared session so it runs after the current age
             "synthetic"
           ]
         },
-        "unresolvedModelPolicy": {
-          "type": "string",
-          "enum": [
-            "fallback-to-current",
-            "fail"
-          ]
-        },
         "providerFailurePolicy": {
           "type": "string",
           "enum": [
@@ -57906,13 +57822,6 @@ Queue a deferred follow-up for a shared session so it runs after the current age
                 "inherit-current",
                 "concrete",
                 "synthetic"
-              ]
-            },
-            "unresolvedModelPolicy": {
-              "type": "string",
-              "enum": [
-                "fallback-to-current",
-                "fail"
               ]
             },
             "providerFailurePolicy": {
@@ -58459,13 +58368,6 @@ Cancel a queued shared-session input before it is delivered or spawned.
                 "synthetic"
               ]
             },
-            "unresolvedModelPolicy": {
-              "type": "string",
-              "enum": [
-                "fallback-to-current",
-                "fail"
-              ]
-            },
             "providerFailurePolicy": {
               "type": "string",
               "enum": [
@@ -58858,13 +58760,6 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
                   "inherit-current",
                   "concrete",
                   "synthetic"
-                ]
-              },
-              "unresolvedModelPolicy": {
-                "type": "string",
-                "enum": [
-                  "fallback-to-current",
-                  "fail"
                 ]
               },
               "providerFailurePolicy": {
@@ -59296,13 +59191,6 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
             "inherit-current",
             "concrete",
             "synthetic"
-          ]
-        },
-        "unresolvedModelPolicy": {
-          "type": "string",
-          "enum": [
-            "fallback-to-current",
-            "fail"
           ]
         },
         "providerFailurePolicy": {
@@ -59752,13 +59640,6 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
                     "inherit-current",
                     "concrete",
                     "synthetic"
-                  ]
-                },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
                   ]
                 },
                 "providerFailurePolicy": {
@@ -60384,13 +60265,6 @@ Deliver a live steering message to the active agent for a shared session, option
             "synthetic"
           ]
         },
-        "unresolvedModelPolicy": {
-          "type": "string",
-          "enum": [
-            "fallback-to-current",
-            "fail"
-          ]
-        },
         "providerFailurePolicy": {
           "type": "string",
           "enum": [
@@ -60819,13 +60693,6 @@ Deliver a live steering message to the active agent for a shared session, option
                 "inherit-current",
                 "concrete",
                 "synthetic"
-              ]
-            },
-            "unresolvedModelPolicy": {
-              "type": "string",
-              "enum": [
-                "fallback-to-current",
-                "fail"
               ]
             },
             "providerFailurePolicy": {
@@ -61685,13 +61552,6 @@ Submit a task to the daemon or a shared session.
             "inherit-current",
             "concrete",
             "synthetic"
-          ]
-        },
-        "unresolvedModelPolicy": {
-          "type": "string",
-          "enum": [
-            "fallback-to-current",
-            "fail"
           ]
         },
         "providerFailurePolicy": {
@@ -68018,7 +67878,7 @@ Return the worktree integration snapshot.
         "discard": {
           "type": "number"
         },
-        "cleanupPending": {
+        "pendingCleanup": {
           "type": "number"
         },
         "sessionAttached": {
@@ -68043,7 +67903,7 @@ Return the worktree integration snapshot.
         "paused",
         "kept",
         "discard",
-        "cleanupPending",
+        "pendingCleanup",
         "sessionAttached",
         "taskAttached",
         "agentOwned",
@@ -68075,7 +67935,7 @@ Return the worktree integration snapshot.
               "paused",
               "kept",
               "discard",
-              "cleanup-pending"
+              "pending-cleanup"
             ]
           },
           "ownerId": {

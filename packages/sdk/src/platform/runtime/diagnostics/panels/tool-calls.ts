@@ -20,8 +20,10 @@ import {
   applyFilter,
   appendBounded,
 } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
-/** Internal mutable tool call record used while the call is in progress. */
+/** Mutable tool call record used while the call is in progress. */
 interface MutableToolCallRecord {
   callId: string;
   turnId: string;
@@ -64,7 +66,6 @@ export class ToolCallsPanel {
 
   /**
    * Subscribe to the tool domain and wire up event handlers.
-   * @internal
    */
   private _start(): void {
     const handler: EnvelopeListener<AnyRuntimeEvent> = (
@@ -259,8 +260,8 @@ export class ToolCallsPanel {
     for (const cb of this._subscribers) {
       try {
         cb();
-      } catch {
-        // Non-fatal: subscriber errors must not crash the provider
+      } catch (error) {
+        logger.warn('[ToolCallsPanel] subscriber error', { error: summarizeError(error) });
       }
     }
   }

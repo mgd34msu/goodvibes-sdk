@@ -17,10 +17,6 @@ import type { ExecutionPlan, PlanItem } from './execution-plan.js';
 import type { CompactionSection, CompactionConfig, SessionMemory } from './compaction-types.js';
 import { estimateTokens } from './compaction-types.js';
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 /** Extract plain text from a ProviderMessage content field. */
 function extractText(content: string | ContentPart[]): string {
   if (typeof content === 'string') return content;

@@ -286,7 +286,7 @@ export function getImageMetadata(buffer: Buffer, ext: string): ImageMetadata {
         break;
     }
   } catch (err) {
-    logger.debug('[media] getImageMetadata failed', { error: summarizeError(err) });
+    logger.warn('[media] getImageMetadata failed', { error: summarizeError(err) });
   }
 
   return base;
@@ -392,7 +392,7 @@ export async function resizeImage(
       height: resized.info.height,
     };
   } catch (err) {
-    logger.debug('[media] sharp resize failed', { error: summarizeError(err) });
+    logger.warn('[media] sharp resize failed', { error: summarizeError(err) });
     return { buffer, resized: false };
   }
 }
@@ -433,7 +433,7 @@ export async function convertToPortableFormat(
     const pngBuffer = await sharpFn(buffer).png().toBuffer();
     return { buffer: pngBuffer, mediaType: 'image/png', converted: true, originalFormat };
   } catch (err) {
-    logger.debug('[media] format conversion failed', { error: summarizeError(err) });
+    logger.warn('[media] format conversion failed', { error: summarizeError(err) });
     return { buffer, mediaType: IMAGE_MEDIA_TYPES[ext.toLowerCase()] ?? 'application/octet-stream', converted: false, originalFormat };
   }
 }
@@ -558,7 +558,7 @@ export function listArchiveContents(
     const lines = entries.map((e) => `  ${e.name} (${humanSize(e.size)})`);
     return `Archive (${entries.length} files):\n${lines.join('\n')}`;
   } catch (err) {
-    logger.debug('[media] listArchiveContents failed', { error: summarizeError(err) });
+    logger.warn('[media] listArchiveContents failed', { error: summarizeError(err) });
     return 'Archive (unable to list contents)';
   }
 }

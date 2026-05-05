@@ -52,8 +52,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ---------------------------------------------------------------------------
-  # Single build job. Uploads packages/sdk/dist as an artifact so downstream
-  # consumers test the exact same bytes. Ensures build determinism across
+  # Single build job. Uploads all package dist directories as one artifact so
+  # downstream consumers test the exact same workspace package bytes. Ensures build determinism across
   # all typed-surface and packaging checks; matches the release pipeline which
   # builds once and publishes that artifact to npm.
   # ---------------------------------------------------------------------------
@@ -67,11 +67,13 @@ jobs:
         uses: ./.github/actions/setup
       - name: Build SDK
         run: bun run build
+      - name: Archive workspace package output
+        run: tar -czf /tmp/workspace-build-output.tgz packages/*/dist
       - name: Upload dist artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: sdk-dist
-          path: packages/sdk/dist
+          name: workspace-build-output
+          path: /tmp/workspace-build-output.tgz
           retention-days: 1
           if-no-files-found: error
 
@@ -95,7 +97,7 @@ jobs:
         include:
           # Matrix policy: single Node version (22) per run. Add a second
           # `include` row targeting Node 24 LTS once it is released to expand
-          # the compatibility surface without multiplying CI time unnecessarily.
+          # runtime coverage without multiplying CI time unnecessarily.
           - platform: bun
             node-version: "22"
             test-cmd: bun run build && bun run test
@@ -123,7 +125,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # Consumer jobs that share the build artifact. Each tests the exact same
   # bytes produced by the `build` job — eliminates the 4-parallel-builds
-  # non-determinism window the old CI had.
+  # non-determinism window from independent package builds.
   # ---------------------------------------------------------------------------
   types-resolution-check:
     name: Are the types wrong? (exports map resolution)
@@ -139,11 +141,13 @@ jobs:
           node-version: "22"
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
-      - name: Download dist artifact
+      - name: Download workspace package output
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: sdk-dist
-          path: packages/sdk/dist
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
       - name: Run are-the-types-wrong check
         run: bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm
 
@@ -157,11 +161,13 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
-      - name: Download dist artifact
+      - name: Download workspace package output
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: sdk-dist
-          path: packages/sdk/dist
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
       - name: Run publint
         run: bun run publint:check
 
@@ -179,30 +185,15 @@ jobs:
           node-version: "22"
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
-      - name: Download dist artifact
+      - name: Download workspace package output
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: sdk-dist
-          path: packages/sdk/dist
-      - name: Generate SBOM
-        run: bun run sbom:generate
-      - name: Assert SBOM is non-empty
-        run: |
-          set -euo pipefail
-          if [ ! -f sbom.cdx.json ]; then
-            echo "ERROR: sbom.cdx.json was not generated." >&2
-            exit 1
-          fi
-          SIZE=$(wc -c < sbom.cdx.json)
-          if [ "$SIZE" -lt 100 ]; then
-            echo "ERROR: sbom.cdx.json is suspiciously small (${SIZE} bytes)." >&2
-            exit 1
-          fi
-          echo "sbom-check: sbom.cdx.json is ${SIZE} bytes — OK"
-      - name: Validate SBOM schema (CycloneDX)
-        run: bun scripts/sbom-validate.ts sbom.cdx.json
-      - name: Enforce license policy
-        run: bun scripts/sbom-license-policy.ts sbom.cdx.json
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
+      - name: Generate and validate SBOM
+        run: bun run sbom:check
       - name: Upload SBOM as CI artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

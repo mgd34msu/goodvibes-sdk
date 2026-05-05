@@ -14,6 +14,17 @@ function defaultSnapshot(): AutomationRunsSnapshot {
   };
 }
 
+function validateSnapshot(snapshot: AutomationRunsSnapshot | null): AutomationRunsSnapshot {
+  if (!snapshot) return defaultSnapshot();
+  if (snapshot.version !== 1 || !Array.isArray(snapshot.runs)) {
+    throw new Error('Automation runs store snapshot is invalid.');
+  }
+  return {
+    version: 1,
+    runs: snapshot.runs,
+  };
+}
+
 export interface AutomationRunStoreConfig {
   readonly path?: string | undefined;
   readonly configManager?: AutomationStorePathConfig | undefined;
@@ -30,14 +41,7 @@ export class AutomationRunStore {
   }
 
   async load(): Promise<AutomationRunsSnapshot> {
-    const snapshot = await this.store.load();
-    if (!snapshot || !Array.isArray(snapshot.runs)) {
-      return defaultSnapshot();
-    }
-    return {
-      version: 1,
-      runs: snapshot.runs,
-    };
+    return validateSnapshot(await this.store.load());
   }
 
   async save(runs: readonly AutomationRun[]): Promise<void> {

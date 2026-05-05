@@ -34,7 +34,7 @@ interface ConstraintFinding {
 }
 ```
 
-Only `Constraint` is exported from `@pellux/goodvibes-sdk` root (via `events/index` → root `index.ts`). `ConstraintFinding` is accessible through `@pellux/goodvibes-sdk/platform` (as `platform.agents.ConstraintFinding`) but is not re-exported from the root SDK entry. Neither type is part of the public companion surface.
+Only `Constraint` is exported from `@pellux/goodvibes-sdk` root (via `events/index` -> root `index.ts`). `ConstraintFinding` is internal to the WRFC agent reporting implementation and is not part of the public companion surface.
 
 ---
 
@@ -166,7 +166,7 @@ The fixer returns an `EngineerReport` containing the same `constraints[]` array 
 Fixer regressed constraint continuity: missing=[c2] extra=[c3]
 ```
 
-Synthetic critical issues are prepended to the next review task as a `[CRITICAL]` block, consumed once, and cleared. This ensures the reviewer flags the regression explicitly rather than letting it propagate silently.
+Synthetic critical issues are prepended to the next review task as a `[CRITICAL]` block, consumed once, and cleared. This ensures the reviewer flags the regression explicitly rather than letting it propagate.
 
 The authoritative constraint list on `chain.constraints` is never overwritten by a fixer run — only the initial engineer's enumeration is canonical.
 

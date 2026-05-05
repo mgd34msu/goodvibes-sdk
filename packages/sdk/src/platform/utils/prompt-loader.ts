@@ -5,7 +5,8 @@ import { summarizeError } from './error-display.js';
 
 /**
  * Read a prompt file, resolving `@path/to/file` includes recursively.
- * Circular includes and missing files are silently skipped.
+ * Missing files, unreadable files, circular includes, and depth-limited
+ * includes are skipped and logged.
  * Max include depth: 5 (depths 0-4 inclusive; depth >= 5 returns '').
  *
  * The `visited` Set is intentionally shared across all recursive calls
@@ -21,12 +22,22 @@ export function readPromptFile(
   const maxDepth = 5;
   const currentDepth = depth ?? 0;
   const seen = visited ?? new Set<string>();
+  const resolved = resolve(filePath);
 
   // Fix #3: >= maxDepth so depths 0-4 are valid (5 levels of nesting)
-  if (currentDepth >= maxDepth) return '';
+  if (currentDepth >= maxDepth) {
+    logger.debug('System prompt include skipped because max depth was reached', {
+      path: resolved,
+      depth: currentDepth,
+      maxDepth,
+    });
+    return '';
+  }
 
-  const resolved = resolve(filePath);
-  if (seen.has(resolved)) return ''; // circular include guard
+  if (seen.has(resolved)) {
+    logger.debug('System prompt include skipped because it was already visited', { path: resolved });
+    return '';
+  }
   seen.add(resolved);
 
   let content: string;
@@ -81,7 +92,7 @@ export function readPromptFile(
 export interface LoadSystemPromptOptions {
   readonly workingDirectory: string;
   readonly homeDirectory: string;
-  readonly getConfigPath?: (() => string | undefined) | undefined | undefined;
+  readonly getConfigPath?: (() => string | undefined) | undefined;
   readonly argv?: readonly string[] | undefined;
 }
 

@@ -12,6 +12,7 @@ import type { AnthropicContentBlock } from './tool-formats.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import {
   fromAnthropicContent,
+  parseToolCallArguments,
   toAnthropicMessages,
   toAnthropicTools,
 } from './tool-formats.js';
@@ -156,12 +157,12 @@ export class AnthropicSdkProvider implements LLMProvider {
           contentBlocks.push({ type: 'text', text: responseText } as AnthropicContentBlock);
         }
         for (const [, block] of [...toolBlocks.entries()].sort(([a], [b]) => a - b)) {
-          let parsedInput: Record<string, unknown> = {};
-          try {
-            parsedInput = JSON.parse(block.args || '{}') as Record<string, unknown>;
-          } catch {
-            parsedInput = {};
-          }
+          const parsedInput = parseToolCallArguments(block.args, {
+            provider: this.name,
+            toolName: block.name,
+            callId: block.id,
+          });
+          if (parsedInput === undefined) continue;
           contentBlocks.push({
             type: 'tool_use',
             id: block.id,

@@ -91,7 +91,7 @@ export const reconnectFailurePlaybook: Playbook = {
         'Review the local ledger or console exporter for transport.* spans with ERROR status. ' +
         'Note the error message and last successful connection timestamp.',
       kind: 'observe',
-      expectedOutcome: 'Root cause identified (auth, network, server-side error).',
+      expectedOutcome: 'Cause identified (auth, network, server-side error).',
       automatable: false,
     },
     {

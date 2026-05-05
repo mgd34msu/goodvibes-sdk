@@ -115,6 +115,10 @@ export class ToolRegistry {
       // Tool.execute returns ToolResult without callId — inject it here
       const toolResult = { ...result, callId };
 
+      if (repairResult.warnings && repairResult.warnings.length > 0) {
+        toolResult.warnings = [...(toolResult.warnings ?? []), ...repairResult.warnings];
+      }
+
       // Surface repairs to the LLM so it knows what was auto-fixed
       if (repairResult.repaired) {
         const repairNote = `[Auto-repaired: ${repairResult.repairs.join(', ')}]`;

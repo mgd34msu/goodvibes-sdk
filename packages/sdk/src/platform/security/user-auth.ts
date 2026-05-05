@@ -129,7 +129,7 @@ function atomicWriteSecretFile(filePath: string, content: string): void {
 }
 
 function writeBootstrapUsers(filePath: string, users: AuthUser[]): void {
-  // SEC-01: auth-user store contains scrypt password hashes — must be 0600.
+  // auth-user store contains scrypt password hashes — must be 0600.
   const payload: AuthUserStore = { version: 1, users };
   atomicWriteSecretFile(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }

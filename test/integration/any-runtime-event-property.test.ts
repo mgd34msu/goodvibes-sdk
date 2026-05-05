@@ -35,7 +35,7 @@ import {
 /**
  * A typed validation error returned by the event validator.
  *
- * We do not throw silently — validation failures must produce this.
+ * Validation failures must produce this instead of throwing.
  */
 export interface EventValidationError {
   readonly kind: 'EventValidationError';

@@ -1,5 +1,5 @@
 /**
- * Phase 5: String-shape tests for the three WRFC prompt addendum builders.
+ * String-shape tests for the three WRFC prompt addendum builders.
  *
  * Verifies each builder:
  * - Returns a stable, complete string with required substrings.
@@ -45,7 +45,7 @@ describe('buildEngineerConstraintAddendum', () => {
     expect(result).toContain('16');
   });
 
-  test('contains issues[] fallback clause', () => {
+  test('contains issues[] unsatisfied-constraint clause', () => {
     const result = buildEngineerConstraintAddendum();
     expect(result).toContain('issues[]');
   });

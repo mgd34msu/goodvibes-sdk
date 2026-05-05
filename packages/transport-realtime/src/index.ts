@@ -16,4 +16,4 @@ export {
   forSessionRuntime,
   WebSocketTransportError,
 } from './runtime-events.js';
-export type { RuntimeEventConnectorOptions } from './runtime-events.js';
+export type { AuthTokenSource, RuntimeEventConnectorOptions } from './runtime-events.js';

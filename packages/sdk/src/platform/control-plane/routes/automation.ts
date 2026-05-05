@@ -62,11 +62,11 @@ export async function dispatchAutomationRoutes(
   const deliveryMatch = pathname.match(/^\/api\/deliveries\/([^/]+)$/);
   if (deliveryMatch && method === 'GET' && deliveryMatch[1]) return handlers.getDelivery(deliveryMatch[1]);
 
-  if (pathname === '/schedules' && method === 'GET') return handlers.getSchedules();
-  if (pathname === '/schedules' && method === 'POST') return handlers.postSchedule(req);
-  const scheduleIdMatch = pathname.match(/^\/schedules\/([^/]+)$/);
+  if (pathname === '/api/automation/schedules' && method === 'GET') return handlers.getSchedules();
+  if (pathname === '/api/automation/schedules' && method === 'POST') return handlers.postSchedule(req);
+  const scheduleIdMatch = pathname.match(/^\/api\/automation\/schedules\/([^/]+)$/);
   if (scheduleIdMatch && method === 'DELETE' && scheduleIdMatch[1]) return handlers.deleteSchedule(scheduleIdMatch[1], req);
-  const scheduleActionMatch = pathname.match(/^\/schedules\/([^/]+)\/(enable|disable|run)$/);
+  const scheduleActionMatch = pathname.match(/^\/api\/automation\/schedules\/([^/]+)\/(enable|disable|run)$/);
   if (scheduleActionMatch && method === 'POST') {
     const [, scheduleId, action] = scheduleActionMatch;
     if (!scheduleId) return null;

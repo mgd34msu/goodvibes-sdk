@@ -1,71 +1,46 @@
-# Release And Publishing
+# Release Policy
 
-This document describes the current release process for the GoodVibes SDK
+This document describes the public release quality policy for the GoodVibes SDK
 workspace. Historical release narratives live in `CHANGELOG.md`.
 
 ## Platform Support
 
-The release tooling is supported on **macOS** and **Linux** only. Windows is
-not supported: the release scripts rely on POSIX process management (`SIGTERM`,
-`SIGKILL`), `mkdtemp`, Unix paths, and shell invocations that do not translate
-to Windows. If you need to run the release pipeline on Windows, use WSL2 or a
-Linux CI runner.
+Release validation is supported on macOS and Linux. Windows users should use a
+Linux CI runner or WSL2 for release validation because the validation scripts
+use POSIX process management and filesystem behavior.
 
 ## Release Rules
 
-- Do not publish from a dirty worktree.
-- Do not publish unless package versions are aligned.
-- Do not publish unless `CHANGELOG.md` has an entry for the package version.
-- Do not publish unless generated contracts/docs are in sync.
-- Do not publish unless validation passes.
-- Do not push or publish when the operator has explicitly said to hold.
+- Package versions must be aligned across the workspace.
+- `CHANGELOG.md` must contain the release narrative for the package version.
+- Generated contracts and generated docs must match source.
+- Validation must pass before a release is cut.
+- Releases must not be cut while the operator has explicitly placed a hold.
 
-The SDK targets Bun **1.3.10** for the full surface and browser/Hermes/Workers for the
-companion surface. Node.js is not a supported runtime target; see
-[Runtime surfaces](./surfaces.md). (See also `CONTRIBUTING.md` for the pinned runtime requirement.)
+The SDK targets Bun for daemon/platform surfaces and browser, Hermes, and
+Workers for companion-safe surfaces. Node.js is not a documented consumer
+runtime target; see [Runtime surfaces](./surfaces.md).
 
-## Local Validation
+## Validation Scope
 
-Run the strict local gate before tagging or publishing:
+Release validation covers:
 
-```bash
-bun install
-bun run validate
-bun run test
-```
+- package build output
+- TypeScript type checks
+- unit and integration tests
+- generated API reference docs
+- generated contract artifacts
+- changelog/version alignment
+- bundle budgets
+- SBOM generation
 
-Useful focused checks:
+Contributors should run the focused check that matches their change before
+opening a pull request. Maintainers run the full release gate before cutting a
+release.
 
-```bash
-bun run build
-bun run types:check
-bun run docs:generate
-bun run docs:check
-bun run refresh:contracts:check
-bun run contracts:check
-bun run changelog:check
-```
+## Changelog
 
-## Version Alignment
-
-The root `package.json` and every `packages/*/package.json` must have the same
-version. The version sync test enforces this:
-
-```bash
-bun run version:check
-```
-
-The generated contract artifacts also carry the package version. Refresh
-contracts after changing method catalogs, schemas, events, or generated client
-types:
-
-```bash
-bun run refresh:contracts
-```
-
-## Changelog Gate
-
-Every release must have a matching section in `CHANGELOG.md`:
+Every release has a matching `CHANGELOG.md` section:
 
 ```md
 ## [X.Y.Z] - YYYY-MM-DD
@@ -77,13 +52,7 @@ Every release must have a matching section in `CHANGELOG.md`:
 ```
 
 Only include sections that apply. The changelog is the canonical release
-narrative and the machine-checked publish gate.
-
-Check it with:
-
-```bash
-bun run changelog:check
-```
+narrative for users and downstream maintainers.
 
 ## Generated References
 
@@ -93,80 +62,25 @@ The generated docs are:
 - `docs/reference-peer.md`
 - `docs/reference-runtime-events.md`
 
-Regenerate them with:
+These files are derived from source contracts and must not be edited by hand
+except as part of the documented generation workflow.
 
-```bash
-bun run docs:generate
-```
+## Contract Artifacts
 
-Check them without writing:
-
-```bash
-bun run docs:check
-```
-
-## Contract Artifact Check
-
-The SDK package embeds generated contract JSON artifacts for published
-contract subpaths. Update the contracts package artifacts first, then run:
-
-```bash
-bun run contracts:check
-```
-
-`contracts:check` verifies generated contract artifacts without writing.
-
-## Publishing
-
-Publishing is handled by the repo scripts and CI workflow. The normal sequence:
-
-```bash
-bun run validate
-bun run test
-git status --short
-git tag vX.Y.Z
-git push origin main --tags
-```
-
-CI must pass before npm publishing. The publish workflow stages every public
-workspace package, resolves workspace ranges to the release version, and
-publishes source-of-truth packages before the main SDK facade.
-
-## GitHub Release
-
-The release tag should match the package version exactly:
-
-```bash
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-The GitHub release should use the matching `CHANGELOG.md` section as release
-notes and attach generated artifacts when the workflow produces them.
-
-## npm Provenance
-
-The npm publish path should use provenance when available in CI. Local manual
-publishing should be reserved for recovery situations and should still run the
-same validation, changelog, version, docs, and contract-artifact gates.
+The SDK package embeds generated contract JSON artifacts for public contract
+subpaths. Contract artifacts must be refreshed when method catalogs, schemas,
+events, or generated client types change.
 
 ## SBOM
 
-Generate and validate the CycloneDX SBOM before release:
-
-```bash
-bun run sbom:generate
-```
-
-The SBOM is a release artifact. It is generated for review and CI/release upload,
-but it is not committed or included in the SDK npm package payload.
+The CycloneDX SBOM is a release artifact used for review and release upload. It
+is not committed and is not included in the SDK npm package payload.
 
 ## Failure Handling
 
-If any release gate fails:
+If a release gate fails:
 
 1. Fix the source of truth.
 2. Regenerate derived files when needed.
 3. Rerun the focused failing check.
-4. Rerun `bun run validate`.
-5. Do not tag or publish until the worktree is clean and CI is green.
+4. Rerun the release gate before cutting a release.

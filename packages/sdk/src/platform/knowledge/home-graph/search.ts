@@ -153,7 +153,8 @@ export interface HomeGraphSearchState {
 }
 
 export function readHomeGraphSearchState(store: KnowledgeStore, spaceId: string): HomeGraphSearchState {
-  const sources = store.listSourcesInSpace(spaceId).filter((source) => !isGeneratedPageSource(source));
+  const sources = store.listSourcesInSpace(spaceId)
+    .filter((source) => source.status !== 'stale' && !isGeneratedPageSource(source));
   const nodes = store.listNodesInSpace(spaceId).filter((node) => node.status !== 'stale');
   const sourceIds = new Set(sources.map((source) => source.id));
   const nodeIds = new Set(nodes.map((node) => node.id));
@@ -190,7 +191,7 @@ export function scoreHomeGraphResults(
   const sourceAnchors = selectSourceAnchors(anchorTokens, anchors.map((anchor) => anchor.node), isSingularObjectQuery(query, tokens));
   const anchorIds = new Set(sourceAnchors.map((node) => node.id));
   const anchorIdentityTokens = collectAnchorIdentityTokens(sourceAnchors);
-  const sourceLinks = buildSourceLinkIndex(edges);
+  const sourceLinks = buildSourceLinkIndex(edges, nodes);
   const useAnchorScope = sourceAnchors.length > 0 && sourceAnchors.length <= ANCHOR_SCOPE_LIMIT;
   const objectScopedQuery = sourceAnchors.length > 0;
   const sourceEvidenceQuery = queryNeedsSourceEvidence(expandedTokens);
@@ -227,7 +228,7 @@ export function scoreHomeGraphResults(
     const linkBoost = linkedToAnchor ? 120 + relationBoost(source.id, anchorIds, edges) : 0;
     const inferredAnchorBoost = !linkedToAnchor && anchorIdentityScore > 0 ? Math.min(90, 30 + anchorIdentityScore) : 0;
     const manualBoost = isManualLikeSource(source) ? 24 : 0;
-    const indexedBoost = source.status === 'indexed' ? 18 : source.status === 'stale' ? 6 : 0;
+    const indexedBoost = source.status === 'indexed' ? 18 : 0;
     const extractionBoost = extraction ? 20 : 0;
     const score = baseScore > 0 || linkBoost > 0 || inferredAnchorBoost > 0
       ? baseScore + linkBoost + inferredAnchorBoost + manualBoost + indexedBoost + extractionBoost
@@ -281,7 +282,7 @@ export function selectHomeGraphExtractionRepairCandidates(
   const sourceAnchors = selectSourceAnchors(tokens, anchors.map((anchor) => anchor.node), isSingularObjectQuery(query, tokens));
   const anchorIds = new Set(sourceAnchors.map((anchor) => anchor.id));
   const anchorIdentityTokens = collectAnchorIdentityTokens(sourceAnchors);
-  const sourceLinks = buildSourceLinkIndex(edges);
+  const sourceLinks = buildSourceLinkIndex(edges, nodes);
   return sources
     .map((source) => {
       if (!source.artifactId || !homeGraphExtractionNeedsRepair(extractionBySourceId(source.id))) return { source, score: 0 };

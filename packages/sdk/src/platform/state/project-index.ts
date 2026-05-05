@@ -65,7 +65,7 @@ export class ProjectIndex {
 
   /**
    * Load the index from disk.
-   * Non-blocking: called at startup, safe to call multiple times.
+   * Called at startup, safe to call multiple times.
    */
   async load(): Promise<void> {
     if (!existsSync(this.indexPath)) {
@@ -82,8 +82,7 @@ export class ProjectIndex {
       this.loaded = true;
       logger.debug('ProjectIndex: loaded', { files: this.files.size });
     } catch (err) {
-      logger.debug('ProjectIndex: load failed (non-fatal)', { error: summarizeError(err) });
-      this.loaded = true;
+      throw new Error(`ProjectIndex load failed for ${this.indexPath}: ${summarizeError(err)}`);
     }
   }
 
@@ -170,8 +169,8 @@ export class ProjectIndex {
       this.files.set(normalPath, tokens);
       this.scheduleFlush();
     } catch (err: unknown) {
-      // OBS-11: Non-fatal — stat failed; leave existing token estimate
-      logger.debug('[ProjectIndex] statSync failed for file update', { path, error: String(err) });
+      // Stat failed; leave existing token estimate.
+      logger.warn('[ProjectIndex] statSync failed for file update', { path, error: String(err) });
     }
   }
 
@@ -208,24 +207,19 @@ export class ProjectIndex {
   /**
    * Re-root the project index to a new base directory.
    *
-   * Flushes any pending writes to the old location, then resets all in-memory
+   * Flushes any pending writes to the current location, then resets all in-memory
    * state and re-points the index path to the new directory. A fresh load is
    * performed to pick up any existing index at the new location.
    *
    * @param newBaseDir - Absolute path to the new project root.
    */
   async reroot(newBaseDir: string): Promise<void> {
-    // Step 1: flush pending writes to the old location (best-effort)
+    // Step 1: flush pending writes to the current location.
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
-    try {
-      await this.forceFlush();
-    } catch (err: unknown) {
-      // OBS-11: Non-fatal — old location may be inaccessible after swap
-      logger.debug('[ProjectIndex] forceFlush failed during reroot (non-fatal)', { error: String(err) });
-    }
+    await this.forceFlush();
     // Step 2: reset state and re-point to new directory
     this.projectRoot = newBaseDir;
     this.baseDir = newBaseDir;
@@ -242,44 +236,39 @@ export class ProjectIndex {
     this.flushTimer = setTimeout(() => {
       this.flushTimer = null;
       this.flush().catch(err => {
-        logger.debug('ProjectIndex: scheduled flush failed', { error: summarizeError(err) });
+        logger.error('ProjectIndex: scheduled flush failed', { error: summarizeError(err) });
       });
     }, 5000);
     this.flushTimer.unref?.();
   }
 
   private async flush(): Promise<void> {
-    try {
-      mkdirSync(dirname(this.indexPath), { recursive: true });
-      const tree = buildTree(this.files);
-      const totalFiles = this.files.size;
-      // Count dirs
-      const dirs = new Set<string>();
-      for (const path of this.files.keys()) {
-        const parts = path.split('/');
-        for (let i = 1; i < parts.length; i++) {
-          dirs.add(parts.slice(0, i).join('/'));
-        }
+    mkdirSync(dirname(this.indexPath), { recursive: true });
+    const tree = buildTree(this.files);
+    const totalFiles = this.files.size;
+    const dirs = new Set<string>();
+    for (const path of this.files.keys()) {
+      const parts = path.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        dirs.add(parts.slice(0, i).join('/'));
       }
-      const disk: DiskFormat = {
-        _format: 'tree: { "directory/": { "file.ext": token_count } }',
-        version: 4,
-        created_at: this.createdAt,
-        updated_at: new Date().toISOString(),
-        project_root: this.projectRoot,
-        stats: {
-          total_files: totalFiles,
-          total_dirs: dirs.size,
-          index_duration_ms: 0,
-        },
-        tree,
-      };
-      const tmpPath = `${this.indexPath}.tmp`;
-      writeFileSync(tmpPath, JSON.stringify(disk) + '\n', 'utf-8');
-      renameSync(tmpPath, this.indexPath);
-    } catch (err) {
-      logger.debug('ProjectIndex: flush failed (non-fatal)', { error: summarizeError(err) });
     }
+    const disk: DiskFormat = {
+      _format: 'tree: { "directory/": { "file.ext": token_count } }',
+      version: 4,
+      created_at: this.createdAt,
+      updated_at: new Date().toISOString(),
+      project_root: this.projectRoot,
+      stats: {
+        total_files: totalFiles,
+        total_dirs: dirs.size,
+        index_duration_ms: 0,
+      },
+      tree,
+    };
+    const tmpPath = `${this.indexPath}.tmp`;
+    writeFileSync(tmpPath, JSON.stringify(disk) + '\n', 'utf-8');
+    renameSync(tmpPath, this.indexPath);
   }
 }
 

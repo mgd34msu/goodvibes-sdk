@@ -48,7 +48,7 @@ export interface ModelDefinition {
 export interface RuntimeProviderRegistration {
   readonly provider: LLMProvider;
   readonly models?: readonly ModelDefinition[] | undefined;
-  readonly suppressCatalogModels?: readonly string[] | undefined;
+  readonly suppressCatalogModelRegistryKeys?: readonly string[] | undefined;
   readonly replace?: boolean | undefined;
 }
 

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const testRoot = resolve(repoRoot, 'test');
 const testFilePattern = /\.test\.(ts|tsx|mjs)$/;
-// NIT-08 (eighth-review): also catch .skipIf, .skip.if, .each.skip, .runIf variants that Bun supports
+// Also catch .skipIf, .skip.if, .each.skip, and .runIf variants that Bun supports.
 const forbidden = /\b(?:describe|test|it)\.(?:skip(?:If|\.if)?|todo)\b/;
 
 function* walk(dir: string): Generator<string> {

@@ -37,7 +37,6 @@ Entry points:
 - `@pellux/goodvibes-sdk/react-native`
 - `@pellux/goodvibes-sdk/expo`
 - `@pellux/goodvibes-sdk/daemon`
-- `@pellux/goodvibes-sdk/platform`
 
 Cloudflare batch provisioning is exposed through daemon `/api/cloudflare/*`
 routes. The `/workers` entry is for manual Worker deployments.

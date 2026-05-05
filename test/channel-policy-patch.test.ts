@@ -1,7 +1,7 @@
 /**
  * channel-policy-patch.test.ts
  *
- * Tests for F19 — PATCH /api/channels/policies/:surface
+ * Tests for PATCH /api/channels/policies/:surface.
  *
  * - PATCH with partial body → 200, response policy reflects merged fields
  * - PATCH without admin context → requireAdmin rejects (returns non-null Response)
@@ -94,7 +94,7 @@ function makePatchRequest(surface: string, body: unknown): Request {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('F19 — PATCH /api/channels/policies/:surface: partial update', () => {
+describe('PATCH /api/channels/policies/:surface: partial update', () => {
   test('PATCH with partial body → 200 and response reflects merged policy', async () => {
     const { service } = makePolicyStore({ enabled: false, requireMention: false });
     const ctx = makeContext(service);
@@ -143,7 +143,7 @@ describe('F19 — PATCH /api/channels/policies/:surface: partial update', () => 
   });
 });
 
-describe('F19 — PATCH /api/channels/policies/:surface: admin guard', () => {
+describe('PATCH /api/channels/policies/:surface: admin guard', () => {
   test('PATCH without admin context → requireAdmin response returned', async () => {
     const { service } = makePolicyStore({});
     // Simulate requireAdmin returning a 403
@@ -192,11 +192,8 @@ describe('channel optional JSON bodies', () => {
   });
 });
 
-describe('F19 — PATCH /api/channels/policies/:surface: field filter', () => {
+describe('PATCH /api/channels/policies/:surface: field filter', () => {
   test('handler strips untyped fields — only known typed fields reach upsertPolicy', async () => {
-    // B3: production field-filter test
-    // Posts a body mixing typed + untyped fields; asserts the handler's
-    // field-by-field spread only forwards known typed fields to upsertPolicy.
     let capturedPatch: Record<string, unknown> = {};
     const channelPolicy: DaemonChannelRouteContext['channelPolicy'] = {
       listPolicies: () => [],
@@ -233,7 +230,7 @@ describe('F19 — PATCH /api/channels/policies/:surface: field filter', () => {
   });
 });
 
-describe('F19 — PATCH /api/channels/policies/:surface: dispatcher integration', () => {
+describe('PATCH /api/channels/policies/:surface: dispatcher integration', () => {
   test('PATCH via dispatchOperatorRoutes routes to patchChannelPolicy and merges fields', async () => {
     // Existing policy: { enabled: true, rate_limit: 5 }
     // Patch: { enabled: false }

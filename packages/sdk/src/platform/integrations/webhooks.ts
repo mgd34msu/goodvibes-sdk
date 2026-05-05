@@ -87,26 +87,40 @@ export class WebhookNotifier {
    *
    * Uses ntfy.sh format by default: POST with text/plain body.
    * URLs are delivered with bounded concurrency; individual failures are
-   * logged but do not throw — remaining URLs still receive the notification.
+   * logged and returned but do not throw — remaining URLs still receive the notification.
    */
-  async send(text: string): Promise<void> {
-    if (this.urls.length === 0) return;
+  async send(text: string): Promise<WebhookNotifierSendResult> {
+    if (this.urls.length === 0) {
+      return { attempted: 0, delivered: 0, failed: 0, results: [] };
+    }
 
     const results = await mapSettledWithConcurrency(this.urls, this.maxConcurrent, (url) => this.postOne(url, text));
-
-    for (let i = 0; i < results.length; i++) {
+    const deliveries = this.urls.map((url, i): WebhookNotifierDeliveryResult => {
       const result = results[i]!;
-      if (result.status === 'rejected') {
-        const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-        logger.warn('WebhookNotifier: delivery failed', { url: this.urls[i], error: msg });
+      if (result.status === 'fulfilled') {
+        return { url, ok: true };
+      }
+      const error = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      return { url, ok: false, error };
+    });
+
+    for (const delivery of deliveries) {
+      if (!delivery.ok) {
+        logger.warn('WebhookNotifier: delivery failed', { url: delivery.url, error: delivery.error });
       }
     }
+    return {
+      attempted: deliveries.length,
+      delivered: deliveries.filter((result) => result.ok).length,
+      failed: deliveries.filter((result) => !result.ok).length,
+      results: deliveries,
+    };
   }
 
   /**
    * Send a test notification to all configured webhooks.
    */
-  async test(): Promise<{ url: string; ok: boolean; error?: string }[]> {
+  async test(): Promise<WebhookNotifierDeliveryResult[]> {
     if (this.urls.length === 0) return [];
 
     const results = await mapSettledWithConcurrency(this.urls, this.maxConcurrent, (url) => this.postOne(url, 'goodvibes-sdk: webhook test'));
@@ -169,7 +183,7 @@ export class WebhookNotifier {
   // -------------------------------------------------------------------------
 
   private async postOne(url: string, text: string): Promise<void> {
-    // SEC-08: SSRF tier filter — block requests to internal/private hosts.
+    // SSRF tier filter — block requests to internal/private hosts.
     const hostname = extractHostname(url);
     if (hostname !== null) {
       const trustResult = classifyHostTrustTier(hostname);
@@ -224,6 +238,19 @@ export interface WebhookNotifierOptions {
   maxConcurrent?: number | undefined;
   maxBodyBytes?: number | undefined;
   signingSecret?: string | Uint8Array | undefined;
+}
+
+export interface WebhookNotifierDeliveryResult {
+  readonly url: string;
+  readonly ok: boolean;
+  readonly error?: string | undefined;
+}
+
+export interface WebhookNotifierSendResult {
+  readonly attempted: number;
+  readonly delivered: number;
+  readonly failed: number;
+  readonly results: readonly WebhookNotifierDeliveryResult[];
 }
 
 function normalizeWebhookTimeoutMs(timeoutMs: number | undefined): number {

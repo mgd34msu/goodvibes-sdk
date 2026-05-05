@@ -12,6 +12,7 @@ export function buildFallbackChainData(
   nodes.push({
     providerId: modelState.activeProviderId,
     modelId: modelState.activeModelId,
+    registryKey: modelState.registryKey,
     displayName: modelState.displayName,
     position: 0,
     isCurrent: modelState.activeFallbackIndex === -1,
@@ -24,6 +25,7 @@ export function buildFallbackChainData(
     nodes.push({
       providerId: entry.providerId,
       modelId: entry.modelId,
+      registryKey: `${entry.providerId}:${entry.modelId}`,
       displayName: entry.displayName,
       position: index + 1,
       isCurrent: modelState.activeFallbackIndex === index,

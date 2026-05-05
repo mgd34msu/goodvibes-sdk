@@ -24,6 +24,7 @@ import {
   toAnthropicTools,
   toAnthropicMessages,
   fromAnthropicContent,
+  parseToolCallArguments,
 } from './tool-formats.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
@@ -349,7 +350,10 @@ export class AnthropicProvider implements LLMProvider {
             try {
               event = JSON.parse(data) as AnthropicSSEEvent;
             } catch {
-              logger.debug('Anthropic SSE: failed to parse JSON chunk', { data });
+              logger.warn('Anthropic SSE: failed to parse JSON chunk', {
+                chunkPreview: data.slice(0, 200),
+                chunkLength: data.length,
+              });
               continue;
             }
 
@@ -405,13 +409,12 @@ export class AnthropicProvider implements LLMProvider {
         contentBlocks.push({ type: 'text', text: responseText } as AnthropicContentBlock);
       }
       for (const [, block] of [...toolBlocks.entries()].sort(([a], [b]) => a - b)) {
-        let parsedInput: Record<string, unknown> = {};
-        try {
-          parsedInput = JSON.parse(block.args || '{}') as Record<string, unknown>;
-        } catch {
-          logger.debug('Anthropic: failed to parse tool args JSON', { name: block.name, args: block.args });
-          parsedInput = {};
-        }
+        const parsedInput = parseToolCallArguments(block.args, {
+          provider: this.name,
+          toolName: block.name,
+          callId: block.id,
+        });
+        if (parsedInput === undefined) continue;
         contentBlocks.push({
           type: 'tool_use',
           id: block.id,

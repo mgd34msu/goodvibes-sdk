@@ -17,10 +17,7 @@ import { summarizeError } from '../../utils/error-display.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Reserved keys that KVState silently drops on set.
- * Duplicated here to filter them out of `keys_written` reporting.
- */
+/** Reserved keys that callers cannot set or clear through the state tool. */
 const RESERVED_KEYS = new Set(['id', 'started_at', '__proto__', 'constructor', 'prototype']);
 
 function summarizeEntries(entries: Record<string, unknown>): Array<{ key: string; type: string }> {
@@ -146,7 +143,7 @@ export function createStateTool(
     } catch (err) {
       _telemetry.errors++;
       const message = summarizeError(err);
-      logger.debug('state tool: unexpected error', { error: message });
+      logger.error('state tool: unexpected error', { error: message });
       return { success: false, error: `Unexpected error: ${message}` };
     }
   }
@@ -534,9 +531,15 @@ async function runSet(
       error: `Cannot write to read-only well-known key(s): ${readonlyAttempts.join(', ')}. These keys are immutable at runtime.`,
     };
   }
+  const reservedAttempts = Object.keys(values).filter((k) => RESERVED_KEYS.has(k));
+  if (reservedAttempts.length > 0) {
+    return {
+      success: false,
+      error: `Cannot write reserved state key(s): ${reservedAttempts.join(', ')}.`,
+    };
+  }
   await kvState.set(values);
-  // Only report keys that KVState actually persists (exclude reserved keys).
-  const written = Object.keys(values).filter((k) => !RESERVED_KEYS.has(k));
+  const written = Object.keys(values);
   return {
     success: true,
     output: JSON.stringify({
@@ -572,6 +575,13 @@ async function runClear(
   const keys = input.clearKeys ?? [];
   if (keys.length === 0) {
     return { success: false, error: 'mode "clear" requires a non-empty "clearKeys" array' };
+  }
+  const reservedAttempts = keys.filter((k) => RESERVED_KEYS.has(k));
+  if (reservedAttempts.length > 0) {
+    return {
+      success: false,
+      error: `Cannot clear reserved state key(s): ${reservedAttempts.join(', ')}.`,
+    };
   }
   await kvState.clear(keys);
   return {

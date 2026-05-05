@@ -1,7 +1,7 @@
 /**
  * otlp-ingest-e2e.test.ts
  *
- * F7 end-to-end ingestion tests. Proves that:
+ * End-to-end ingestion tests. Proves that:
  *
  *   1. POSTing to /api/v1/telemetry/otlp/v1/{logs|traces|metrics} via a
  *      real DaemonHttpRouter returns 200.
@@ -15,7 +15,7 @@
  *         → record appended to this.records
  *           → GET /api/v1/telemetry/events returns the record
  *
- * Pattern: matches test/provider-routes-secrets-skipped.test.ts DaemonHttpRouter
+ * Pattern: matches test/model-routes-secrets-skipped.test.ts DaemonHttpRouter
  * section (lines 113-199).
  */
 
@@ -27,7 +27,7 @@ import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/re
 import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // ---------------------------------------------------------------------------
-// Stubs — identical pattern to provider-routes-secrets-skipped.test.ts
+// Stubs — identical pattern to model-routes-secrets-skipped.test.ts
 // ---------------------------------------------------------------------------
 
 function makeConfigManager(): ConfigManager {
@@ -155,7 +155,7 @@ function eventsRequest(): Request {
 // E2E: POST logs → GET /events
 // ---------------------------------------------------------------------------
 
-describe('F7 E2E — DaemonHttpRouter: OTLP logs ingest → observable on GET /events', () => {
+describe('DaemonHttpRouter: OTLP logs ingest → observable on GET /events', () => {
   test('POST /api/v1/telemetry/otlp/v1/logs returns 200 and records appear on GET /events', async () => {
     const { router, dispose } = makeRouter();
     try {
@@ -214,7 +214,7 @@ describe('F7 E2E — DaemonHttpRouter: OTLP logs ingest → observable on GET /e
 // E2E: POST traces → GET /events
 // ---------------------------------------------------------------------------
 
-describe('F7 E2E — DaemonHttpRouter: OTLP traces ingest → observable on GET /events', () => {
+describe('DaemonHttpRouter: OTLP traces ingest → observable on GET /events', () => {
   test('POST /api/v1/telemetry/otlp/v1/traces returns 200 and sentinel record appears on GET /events', async () => {
     const { router, dispose } = makeRouter();
     try {
@@ -266,7 +266,7 @@ describe('F7 E2E — DaemonHttpRouter: OTLP traces ingest → observable on GET 
 // E2E: POST metrics → GET /events
 // ---------------------------------------------------------------------------
 
-describe('F7 E2E — DaemonHttpRouter: OTLP metrics ingest → observable on GET /events', () => {
+describe('DaemonHttpRouter: OTLP metrics ingest → observable on GET /events', () => {
   test('POST /api/v1/telemetry/otlp/v1/metrics returns 200 and sentinel record appears on GET /events', async () => {
     const { router, dispose } = makeRouter();
     try {
@@ -315,7 +315,7 @@ describe('F7 E2E — DaemonHttpRouter: OTLP metrics ingest → observable on GET
 // B5 — Sentinel gating: empty payloads must NOT produce observability events
 // ---------------------------------------------------------------------------
 
-describe('F7 E2E — Sentinel gating: empty payloads do not emit events', () => {
+describe('Sentinel gating: empty payloads do not emit events', () => {
   test('empty resourceSpans → 200 but no OTLP_TRACE_INGEST on GET /events', async () => {
     const { router, dispose } = makeRouter();
     try {

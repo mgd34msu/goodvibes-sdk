@@ -283,7 +283,7 @@ function evaluateCondition(condition: string, event: HookEvent): boolean {
     const parser = new ConditionParser(tokens, event);
     return parser.parse();
   } catch (err) {
-    logger.debug('TriggerExecutor: condition evaluation error', {
+    logger.warn('TriggerExecutor: condition evaluation error', {
       condition,
       error: summarizeError(err),
     });
@@ -324,7 +324,7 @@ async function executeAction(
 
     // Fire-and-forget: don't await full completion
     proc.exited.catch((err) => {
-      logger.debug('TriggerExecutor: action process error', {
+      logger.warn('TriggerExecutor: action process error', {
         triggerId: trigger.id,
         error: summarizeError(err),
       });
@@ -335,7 +335,7 @@ async function executeAction(
     return { ...base, executed: true, pid };
   } catch (err) {
     const message = summarizeError(err);
-    logger.debug('TriggerExecutor: failed to spawn action', { triggerId: trigger.id, error: message });
+    logger.warn('TriggerExecutor: failed to spawn action', { triggerId: trigger.id, error: message });
     return { ...base, executed: false, error: message };
   }
 }

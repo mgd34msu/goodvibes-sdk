@@ -10,6 +10,7 @@
  */
 
 import { logger } from '../../../utils/logger.js';
+import { summarizeError } from '../../../utils/error-display.js';
 import type {
   ApiTokenAuditor,
   TokenAuditReport,
@@ -159,7 +160,7 @@ export class SecurityPanel {
       try {
         cb();
       } catch (err) {
-        logger.debug('[SecurityPanel] subscriber error', { err });
+        logger.warn('[SecurityPanel] subscriber error', { error: summarizeError(err) });
       }
     }
   }

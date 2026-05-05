@@ -51,6 +51,6 @@ echo "Hermes installed at: $BIN_DIR/hermes"
 "$BIN_DIR/hermes" --version
 
 echo ""
-echo "WARNING: This Hermes v${HERMES_VERSION} tarball contains a 2022-era binary that rejects async/await."
-echo "         See test/hermes/FINDINGS.md F1. Use only for syntax-level probes."
+echo "WARNING: This Hermes v${HERMES_VERSION} tarball may reject async/await."
+echo "         Use it for syntax probes; use a React Native embedded Hermes binary for runtime checks."
 echo "         Override via HERMES_VERSION=<newer-ver> if a newer binary is available."

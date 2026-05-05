@@ -31,8 +31,7 @@ function readEventPayload(data: string): unknown {
   if (!data.trimEnd()) return null;
   try {
     return JSON.parse(data) as unknown;
-  } catch (error) {
-    void error;
+  } catch {
     return data;
   }
 }

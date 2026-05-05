@@ -7,7 +7,7 @@
  * agentic (Bun-only) surface has leaked into a companion bundle — this is a
  * hard architectural violation and must block release.
  *
- * This test catches regressions before they reach CI.
+ * This test enforces the companion bundle boundary.
  */
 
 import { readFileSync, existsSync } from 'node:fs';

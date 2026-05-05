@@ -338,7 +338,7 @@ export class DiagnosticActionDispatcher {
   public async dispatch(action: DiagnosticAction): Promise<ActionResult> {
     // Permission gate
     if (!this._checkPermission(action.permission)) {
-      logger.debug('[DiagnosticActionDispatcher] permission denied', {
+      logger.warn('[DiagnosticActionDispatcher] permission denied', {
         type: action.type,
         required: action.permission,
       });
@@ -353,8 +353,11 @@ export class DiagnosticActionDispatcher {
       return await this._route(action);
     } catch (err) {
       const message = summarizeError(err);
-      logger.debug('[DiagnosticActionDispatcher] action error', {
+      logger.warn('[DiagnosticActionDispatcher] action error', {
         type: action.type,
+        label: action.label,
+        permission: action.permission,
+        target: describeActionTarget(action),
         err: message,
       });
       return {
@@ -548,6 +551,24 @@ export class DiagnosticActionDispatcher {
       success: true,
       message: `Agent '${payload.agentId}' cancelled.`,
     };
+  }
+}
+
+function describeActionTarget(action: DiagnosticAction): Record<string, string> {
+  switch (action.type) {
+    case 'load-replay':
+      return { runId: action.payload.runId };
+    case 'run-policy-simulation':
+      return { toolName: action.payload.toolName };
+    case 'jump-to-task':
+    case 'retry-task':
+    case 'cancel-task':
+      return { taskId: action.payload.taskId };
+    case 'jump-to-agent':
+    case 'cancel-agent':
+      return { agentId: action.payload.agentId };
+    case 'jump-to-tool-call':
+      return { callId: action.payload.callId };
   }
 }
 

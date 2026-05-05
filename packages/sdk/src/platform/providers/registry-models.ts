@@ -19,10 +19,8 @@ export function findModelDefinition(
   modelId: string,
   registry: readonly ModelDefinition[],
 ): ModelDefinition | undefined {
-  if (modelId.includes(':')) {
-    return registry.find((model) => model.registryKey === modelId) ?? registry.find((model) => model.id === modelId);
-  }
-  return registry.find((model) => model.id === modelId);
+  if (!modelId.includes(':')) return undefined;
+  return registry.find((model) => model.registryKey === modelId);
 }
 
 export function findModelDefinitionForProvider(
@@ -33,12 +31,11 @@ export function findModelDefinitionForProvider(
 ): ModelDefinition | undefined {
   const providerCandidates = new Set(getProviderLookupCandidates(providerName, aliases));
   const resolvedModelId = modelId.includes(':') ? splitModelRegistryKey(modelId).resolvedModelId : modelId;
-  const registryMatch = modelId.includes(':')
-    ? findModelDefinition(modelId, registry)
-    : undefined;
-
-  if (registryMatch && providerCandidates.has(registryMatch.provider)) {
-    return registryMatch;
+  if (modelId.includes(':')) {
+    const registryMatch = findModelDefinition(modelId, registry);
+    return registryMatch && providerCandidates.has(registryMatch.provider)
+      ? registryMatch
+      : undefined;
   }
 
   return registry.find((model) => model.id === resolvedModelId && providerCandidates.has(model.provider));
@@ -50,28 +47,37 @@ export function buildModelRegistry(input: {
   readonly syntheticModels: readonly ModelDefinition[];
   readonly catalogModels: readonly ModelDefinition[];
   readonly discoveredModels: readonly ModelDefinition[];
-  readonly suppressedCatalogIds: ReadonlySet<string>;
+  readonly suppressedCatalogRegistryKeys: ReadonlySet<string>;
 }): ModelDefinition[] {
-  const catalogFiltered = input.catalogModels.filter(
+  const customModels = input.customModels.map(withRegistryKey);
+  const runtimeModels = input.runtimeModels.map(withRegistryKey);
+  const syntheticModels = input.syntheticModels.map(withRegistryKey);
+  const catalogModels = input.catalogModels.map(withRegistryKey);
+  const discoveredModels = input.discoveredModels.map(withRegistryKey);
+  const sameRegistryKey = (left: ModelDefinition, right: ModelDefinition): boolean =>
+    left.registryKey === right.registryKey;
+
+  const catalogFiltered = catalogModels.filter(
     (builtin) =>
-      !input.customModels.some((model) => model.id === builtin.id) &&
-      !input.runtimeModels.some((model) => model.id === builtin.id) &&
-      !input.suppressedCatalogIds.has(builtin.id) &&
+      !customModels.some((model) => sameRegistryKey(model, builtin)) &&
+      !runtimeModels.some((model) => sameRegistryKey(model, builtin)) &&
+      !input.suppressedCatalogRegistryKeys.has(builtin.registryKey) &&
+      !input.suppressedCatalogRegistryKeys.has(`${builtin.provider}:${builtin.id}`) &&
       !builtin.id.startsWith('hf:'),
   );
 
-  const discoveredFiltered = input.discoveredModels.filter(
+  const discoveredFiltered = discoveredModels.filter(
     (discovered) =>
-      !input.catalogModels.some((model) => model.id === discovered.id) &&
-      !input.customModels.some((model) => model.id === discovered.id) &&
-      !input.runtimeModels.some((model) => model.id === discovered.id),
+      !catalogModels.some((model) => sameRegistryKey(model, discovered)) &&
+      !customModels.some((model) => sameRegistryKey(model, discovered)) &&
+      !runtimeModels.some((model) => sameRegistryKey(model, discovered)),
   );
 
   return [
-    ...input.customModels.map(withRegistryKey),
-    ...input.runtimeModels.map(withRegistryKey),
-    ...input.syntheticModels.map(withRegistryKey),
-    ...catalogFiltered.map(withRegistryKey),
-    ...discoveredFiltered.map(withRegistryKey),
+    ...customModels,
+    ...runtimeModels,
+    ...syntheticModels,
+    ...catalogFiltered,
+    ...discoveredFiltered,
   ];
 }

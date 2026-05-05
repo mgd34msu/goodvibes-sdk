@@ -21,8 +21,7 @@ export async function withTimeoutOrNull<T>(
 ): Promise<T | null> {
   try {
     return await withTimeout(promise, timeoutMs, 'operation timed out');
-  } catch (error) {
-    void error;
+  } catch {
     return null;
   }
 }

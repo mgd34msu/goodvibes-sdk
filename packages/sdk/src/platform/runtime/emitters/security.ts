@@ -52,7 +52,7 @@ export function emitTokenBlocked(
   bus.emit('security', securityEvent('TOKEN_BLOCKED', data, ctx));
 }
 
-// ── Auth audit emitters (OBS-02) ────────────────────────────────────────────
+// ── Auth audit emitters ────────────────────────────────────────────
 
 /** Emit AUTH_SUCCEEDED when a user authenticates successfully. Never include credential values. */
 export function emitAuthSucceeded(
@@ -76,7 +76,7 @@ export function emitAuthFailed(
   bus.emit('security', securityEvent('AUTH_FAILED', data, ctx));
 }
 
-// ── Companion pairing emitters (OBS-21) ──────────────────────────────────
+// ── Companion pairing emitters ──────────────────────────────────
 
 /** Emit COMPANION_PAIR_REQUESTED when a pairing request is initiated. */
 export function emitCompanionPairRequested(

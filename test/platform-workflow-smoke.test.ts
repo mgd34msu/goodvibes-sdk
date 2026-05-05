@@ -1,5 +1,5 @@
 /**
- * COV-05 (ninth-review): platform/workflow/ smoke test.
+ * platform/workflow/ smoke test.
  * Verifies that the workflow trigger executor is importable and exports the
  * fireTriggers function with the correct arity.
  */

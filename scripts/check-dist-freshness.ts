@@ -16,21 +16,12 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { packageDirs } from './release-shared.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
 
-const BUILT_PACKAGES = [
-  'contracts',
-  'daemon-sdk',
-  'errors',
-  'operator-sdk',
-  'peer-sdk',
-  'sdk',
-  'transport-core',
-  'transport-http',
-  'transport-realtime',
-] as const;
+const BUILT_PACKAGES = packageDirs.map((dir) => dir.replace(/^packages\//, ''));
 
 const filter = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const targetPackages = filter.length > 0

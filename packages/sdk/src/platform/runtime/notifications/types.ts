@@ -14,7 +14,7 @@ export type NotificationLevel = 'critical' | 'warning' | 'info' | 'debug';
  * Surface target for a routed notification.
  * - `conversation` — inline in the main conversation (high-signal only)
  * - `status_bar`   — ephemeral status bar display
- * - `panel_only`   — routed silently to a dedicated panel
+ * - `panel_only`   — routed only to a dedicated panel
  */
 export type NotificationTarget = 'conversation' | 'status_bar' | 'panel_only';
 

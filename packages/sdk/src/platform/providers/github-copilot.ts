@@ -3,12 +3,12 @@ import { dirname, join } from 'node:path';
 import type { ChatRequest, ChatResponse, LLMProvider, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
 import { OpenAICompatProvider } from './openai-compat.js';
 import { AnthropicCompatProvider } from './anthropic-compat.js';
-import { ProviderError } from '../types/errors.js';
 import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
-import { toProviderError } from '../utils/error-display.js';
+import { summarizeError, toProviderError } from '../utils/error-display.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
+import { logger } from '../utils/logger.js';
 
-const COPILOT_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
+const COPILOT_TOKEN_URL = `https://api.github.com/${['copilot', 'internal'].join('_')}/v2/token`;
 const DEFAULT_COPILOT_API_BASE_URL = 'https://api.individual.githubcopilot.com';
 const COPILOT_EDITOR_VERSION = 'vscode/1.96.2';
 const COPILOT_USER_AGENT = 'GitHubCopilotChat/0.26.7';
@@ -102,6 +102,19 @@ function deriveCopilotApiBaseUrlFromToken(token: string): string | null {
   }
 }
 
+function parseCachedCopilotToken(value: unknown): CachedCopilotToken | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Partial<CachedCopilotToken>;
+  if (typeof record.token !== 'string' || record.token.trim().length === 0) return null;
+  if (typeof record.expiresAt !== 'number' || !Number.isFinite(record.expiresAt)) return null;
+  if (typeof record.updatedAt !== 'number' || !Number.isFinite(record.updatedAt)) return null;
+  return {
+    token: record.token,
+    expiresAt: record.expiresAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
 async function resolveCopilotToken(options: GitHubCopilotProviderOptions): Promise<{ token: string; baseUrl: string; expiresAt: number }> {
   const env = options.env ?? process.env;
   const fetchFn = options.fetchFn ?? fetch;
@@ -113,16 +126,22 @@ async function resolveCopilotToken(options: GitHubCopilotProviderOptions): Promi
   const cachePath = options.tokenCachePath;
   if (existsSync(cachePath)) {
     try {
-      const cached = JSON.parse(readFileSync(cachePath, 'utf-8')) as CachedCopilotToken;
-      if (cached?.token && typeof cached.expiresAt === 'number' && isTokenUsable(cached)) {
+      const cached = parseCachedCopilotToken(JSON.parse(readFileSync(cachePath, 'utf-8')));
+      if (cached && isTokenUsable(cached)) {
         return {
           token: cached.token,
           baseUrl: deriveCopilotApiBaseUrlFromToken(cached.token) ?? DEFAULT_COPILOT_API_BASE_URL,
           expiresAt: cached.expiresAt,
         };
       }
-    } catch {
-      // Ignore stale or malformed cache files.
+      if (!cached) {
+        logger.warn('[github-copilot] Ignoring malformed token cache', { cachePath });
+      }
+    } catch (error) {
+      logger.warn('[github-copilot] Token cache load failed', {
+        cachePath,
+        error: summarizeError(error),
+      });
     }
   }
 

@@ -63,6 +63,13 @@ const VALID_TRANSITIONS: Partial<Record<WrfcState, WrfcState[]>> = {
 const MAX_ACTIVE_CHAINS = 6;
 const CHAIN_CLEANUP_DELAY_MS = 60_000;
 type WrfcWorktreeOps = Pick<AgentWorktree, 'merge' | 'cleanup'>;
+interface ConstraintEvaluation {
+  constraintsSatisfied: number;
+  constraintsTotal: number;
+  unsatisfiedConstraintIds: string[];
+  ignoredConstraintFindingIds: string[];
+  constraintFailure: boolean;
+}
 
 export class WrfcController {
   private readonly chains = new Map<string, WrfcChain>();
@@ -90,7 +97,7 @@ export class WrfcController {
       readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
       readonly projectRoot: string;
       readonly surfaceRoot?: string | undefined;
-      readonly createWorktree?: (() => WrfcWorktreeOps) | undefined | undefined;
+      readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
     },
   ) {
     this.runtimeBus = runtimeBus;
@@ -290,11 +297,25 @@ export class WrfcController {
   private async processReview(chain: WrfcChain, review: ReviewerReport): Promise<void> {
     const threshold = getWrfcScoreThreshold(this.configManager);
 
-    const allFindings = review.constraintFindings ?? [];
-    const unsatisfied = allFindings.filter((f) => !f.satisfied);
-    const constraintsSatisfied = allFindings.filter((f) => f.satisfied).length;
-    const constraintsTotal = allFindings.length;
-    const constraintFailure = unsatisfied.length > 0;
+    const constraintEvaluation = this.evaluateConstraints(chain, review);
+    if (constraintEvaluation.ignoredConstraintFindingIds.length > 0) {
+      review.issues ??= [];
+      review.issues.push({
+        severity: 'major',
+        description: `Reviewer reported findings for unknown constraints; ignored ids=[${constraintEvaluation.ignoredConstraintFindingIds.join(',')}]`,
+        pointValue: 2,
+      });
+      logger.warn('WrfcController: ignored unknown constraint findings', {
+        chainId: chain.id,
+        ignoredConstraintFindingIds: constraintEvaluation.ignoredConstraintFindingIds,
+      });
+    }
+    const {
+      constraintsSatisfied,
+      constraintsTotal,
+      unsatisfiedConstraintIds,
+      constraintFailure,
+    } = constraintEvaluation;
     const passed = review.score >= threshold && !constraintFailure;
 
     this.completeCurrentNode(chain, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
@@ -307,7 +328,7 @@ export class WrfcController {
         ? {
             constraintsSatisfied,
             constraintsTotal,
-            unsatisfiedConstraintIds: unsatisfied.map((f) => f.constraintId),
+            unsatisfiedConstraintIds,
           }
         : {}),
     });
@@ -318,7 +339,7 @@ export class WrfcController {
       event: 'review_complete',
       agentId: chain.reviewerAgentId,
       score: review.score,
-      passed: review.score >= threshold,
+      passed,
       issues: review.issues?.slice(0, 10).map((issue) => ({
         severity: issue.severity,
         description: issue.description,
@@ -332,7 +353,7 @@ export class WrfcController {
       threshold,
       fixAttempts: chain.fixAttempts,
       constraintFailure,
-      unsatisfiedCount: unsatisfied.length,
+      unsatisfiedCount: unsatisfiedConstraintIds.length,
     });
 
     chain.reviewScores.push(review.score);
@@ -358,9 +379,12 @@ export class WrfcController {
 
     const maxFixAttempts = getWrfcMaxFixAttempts(this.configManager);
     if (chain.fixAttempts >= maxFixAttempts) {
+      const failureReason = constraintFailure && review.score >= threshold
+        ? `Unsatisfied constraints [${unsatisfiedConstraintIds.join(',')}] after ${chain.fixAttempts} fix attempt${chain.fixAttempts !== 1 ? 's' : ''}`
+        : `Score ${review.score}/10 below threshold ${threshold}/10 after ${chain.fixAttempts} fix attempt${chain.fixAttempts !== 1 ? 's' : ''} — below threshold`;
       this.failChain(
         chain,
-        `Score ${review.score}/10 below threshold ${threshold}/10 after ${chain.fixAttempts} fix attempt${chain.fixAttempts !== 1 ? 's' : ''} — below threshold`,
+        failureReason,
       );
       return;
     }
@@ -373,10 +397,12 @@ export class WrfcController {
     this.transition(chain, 'fixing');
 
     const maxAttempts = getWrfcMaxFixAttempts(this.configManager);
+    const targetConstraintIds = this.evaluateConstraints(chain, review).unsatisfiedConstraintIds;
     emitWorkflowFixAttempted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
       chainId: chain.id,
       attempt: chain.fixAttempts,
       maxAttempts,
+      ...(targetConstraintIds.length > 0 ? { targetConstraintIds } : {}),
     });
 
     const fixerRecord = this.spawnWrfcAgent(
@@ -449,6 +475,50 @@ export class WrfcController {
     });
   }
 
+  private evaluateConstraints(chain: WrfcChain, review: ReviewerReport): ConstraintEvaluation {
+    if (chain.constraints.length === 0) {
+      return {
+        constraintsSatisfied: 0,
+        constraintsTotal: 0,
+        unsatisfiedConstraintIds: [],
+        ignoredConstraintFindingIds: [],
+        constraintFailure: false,
+      };
+    }
+
+    const expectedIds = new Set(chain.constraints.map((constraint) => constraint.id));
+    const findingMap = new Map<string, NonNullable<ReviewerReport['constraintFindings']>[number]>();
+    const ignoredConstraintFindingIds: string[] = [];
+    for (const finding of review.constraintFindings ?? []) {
+      if (!expectedIds.has(finding.constraintId)) {
+        ignoredConstraintFindingIds.push(finding.constraintId);
+        continue;
+      }
+      if (!findingMap.has(finding.constraintId)) {
+        findingMap.set(finding.constraintId, finding);
+      }
+    }
+
+    let constraintsSatisfied = 0;
+    const unsatisfiedConstraintIds: string[] = [];
+    for (const constraint of chain.constraints) {
+      const finding = findingMap.get(constraint.id);
+      if (finding?.satisfied === true) {
+        constraintsSatisfied += 1;
+      } else {
+        unsatisfiedConstraintIds.push(constraint.id);
+      }
+    }
+
+    return {
+      constraintsSatisfied,
+      constraintsTotal: chain.constraints.length,
+      unsatisfiedConstraintIds,
+      ignoredConstraintFindingIds,
+      constraintFailure: unsatisfiedConstraintIds.length > 0,
+    };
+  }
+
   private async processGateResults(chain: WrfcChain, results: QualityGateResult[]): Promise<void> {
     if (!chain.currentNodeId?.includes(':gate:')) {
       chain.currentNodeId = startWrfcOrchestrationNode(
@@ -512,15 +582,14 @@ export class WrfcController {
       return;
     }
 
-    const followUpTask = buildGateFailureTask(chain.id, chain.task, failedGates);
+    const followUpTask = buildGateFailureTask(chain.id, chain.task, failedGates, chain.constraints);
     const followUpRecord = this.spawnWrfcAgent(chain, 'engineer', followUpTask, false);
     const followUpChain = this.findChainByAgentId(followUpRecord.id);
     if (followUpChain) {
       followUpChain.parentChainId = chain.id;
-      // Inherit constraints from the parent chain as source: 'inherited'.
-      // Phase 4 limitation: the child engineer's returned constraints are ignored
-      // (constraintsEnumerated starts true), so the child cannot ADD new constraints
-      // from a different prompt. The inherited list is treated as authoritative.
+      // Inherit constraints from the parent chain as source: 'inherited'. The
+      // inherited list is authoritative; a child engineer that drops or adds ids
+      // surfaces a synthetic review issue instead of changing scope.
       if (chain.constraints.length > 0) {
         followUpChain.constraints = chain.constraints.map((c) => ({
           id: c.id,
@@ -623,7 +692,7 @@ export class WrfcController {
     } finally {
       for (const id of chain.allAgentIds) {
         worktree.cleanup(id).catch((error) => {
-          logger.debug('WrfcController.autoCommit: cleanup error (non-fatal)', {
+          logger.warn('WrfcController.autoCommit: cleanup failed', {
             agentId: id,
             error: summarizeError(error),
           });
@@ -748,8 +817,8 @@ export class WrfcController {
     this.pendingParentChainIds.delete(agentId);
 
     // Inherit constraints from parent when they were queued via the pending path.
-    // Phase 4 limitation: constraintsEnumerated is set true so the child engineer's
-    // returned constraints are ignored — the inherited list is authoritative.
+    // The inherited list is authoritative; child output is checked for continuity
+    // on completion instead of being allowed to change scope.
     const inherited = this.pendingParentConstraints.get(agentId);
     if (inherited && inherited.length > 0) {
       chain.constraints = inherited;

@@ -37,7 +37,7 @@ export type ProviderCacheCapability =
 /**
  * Priority-ordered alias map for provider name substring matching.
  * More specific patterns must appear before more general ones.
- * Used as a fallback when no direct match is found in the registry.
+ * Used when no direct match is found in the registry.
  */
 const PROVIDER_ALIASES: Array<[string, string]> = [
   // OpenRouter uses OpenAI-compatible caching

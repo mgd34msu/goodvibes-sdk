@@ -242,8 +242,8 @@ export interface OpenAICompatOptions {
   serviceNames?: readonly string[] | undefined;
   /** Optional subscription-provider identity when this provider can use a stored OAuth session. */
   subscriptionProviderId?: string | undefined;
-  /** Optional provider-owned model suppression list for runtime clients. */
-  suppressedModels?: readonly string[] | undefined;
+  /** Optional provider-owned model suppression registry keys for runtime metadata consumers. */
+  suppressedModelRegistryKeys?: readonly string[] | undefined;
   /** Optional provider aliases exposed to runtime metadata consumers. */
   aliases?: readonly string[] | undefined;
   /** Optional explicit stream protocol label for diagnostics. */
@@ -277,7 +277,7 @@ export class OpenAICompatProvider implements LLMProvider {
   private readonly authEnvVars: readonly string[];
   private readonly serviceNames: readonly string[];
   private readonly subscriptionProviderId?: string | undefined;
-  private readonly suppressedModels: readonly string[];
+  private readonly suppressedModelRegistryKeys: readonly string[];
   private readonly aliases: readonly string[];
   private readonly streamProtocol?: string | undefined;
   private readonly allowAnonymous: boolean;
@@ -299,7 +299,7 @@ export class OpenAICompatProvider implements LLMProvider {
     this.authEnvVars = opts.authEnvVars ?? [];
     this.serviceNames = opts.serviceNames ?? [];
     this.subscriptionProviderId = opts.subscriptionProviderId;
-    this.suppressedModels = opts.suppressedModels ?? [];
+    this.suppressedModelRegistryKeys = opts.suppressedModelRegistryKeys ?? [];
     this.aliases = opts.aliases ?? [];
     this.streamProtocol = opts.streamProtocol;
     this.allowAnonymous = opts.allowAnonymous ?? false;
@@ -611,7 +611,9 @@ export class OpenAICompatProvider implements LLMProvider {
         models: this.models,
         embeddingModel: this.embeddingModel,
         ...(this.aliases.length > 0 ? { aliases: this.aliases } : {}),
-        ...(this.suppressedModels.length > 0 ? { suppressedModels: this.suppressedModels } : {}),
+        ...(this.suppressedModelRegistryKeys.length > 0
+          ? { suppressedModelRegistryKeys: this.suppressedModelRegistryKeys }
+          : {}),
       },
       usage: {
         streaming: true,

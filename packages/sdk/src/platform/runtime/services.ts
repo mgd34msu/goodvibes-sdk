@@ -8,6 +8,7 @@ import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } fr
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker } from '../control-plane/index.js';
+import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { ArtifactStore } from '../artifacts/index.js';
 import {
@@ -96,7 +97,7 @@ export interface RuntimeServicesOptions {
   readonly configManager: ConfigManager;
   readonly surfaceRoot: string;
   readonly featureFlags?: FeatureFlagManager | undefined;
-  readonly getConversationTitle?: (() => string | undefined) | undefined | undefined;
+  readonly getConversationTitle?: (() => string | undefined) | undefined;
   readonly workingDir: string;
   readonly homeDirectory: string;
   readonly panelManager?: PanelManagerLike | undefined;
@@ -194,10 +195,10 @@ export interface RuntimeServices {
    *
    * Stores that are re-rooted in-process:
    * - MemoryStore (memory.sqlite + vector index): closed and reopened at new path.
-   * - ProjectIndex: flushed to old location then reset to new directory.
+   * - ProjectIndex: flushed at its current path, then reset to the new directory.
    *
    * Stores that require a process restart to fully re-root emit a warn-level log
-   * naming the subsystem. They continue serving the old path until the daemon is
+   * naming the subsystem. They keep using their current filesystem path until the daemon is
    * restarted with --working-dir=<newDir> (or the persisted daemon-settings.json
    * value is picked up at startup).
    *
@@ -342,20 +343,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     const record = agentManager.spawn({
       mode: 'spawn',
       task,
-      ...(input.routing?.modelId ? { model: input.routing.modelId } : {}),
-      ...(input.routing?.providerId ? { provider: input.routing.providerId } : {}),
-      ...(input.routing?.tools?.length ? { tools: [...input.routing.tools], restrictTools: true } : {}),
-      ...(input.routing
-        ? {
-            routing: {
-              providerSelection: input.routing.providerSelection ?? (input.routing.providerId ? 'concrete' : 'inherit-current'),
-              unresolvedModelPolicy: input.routing.unresolvedModelPolicy ?? 'fallback-to-current',
-              providerFailurePolicy: input.routing.providerFailurePolicy ?? 'ordered-fallbacks',
-              ...(input.routing.fallbackModels?.length ? { fallbackModels: [...input.routing.fallbackModels] } : {}),
-            },
-          }
-        : {}),
-      ...(input.routing?.reasoningEffort ? { reasoningEffort: input.routing.reasoningEffort } : {}),
+      ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { restrictTools: true }),
       context: `shared-session:${input.sessionId}`,
     });
     return { agentId: record.id };
@@ -639,11 +627,11 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       const newMemoryDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'memory.sqlite');
       await memoryStore.reroot(newMemoryDbPath);
 
-      // Step 2: Re-root ProjectIndex — flush old location, reset, load from new directory.
+      // Step 2: Re-root ProjectIndex — flush current path, reset, load from new directory.
       await projectIndex.reroot(newWorkingDir);
 
       // Step 3: Subsystems that cannot be live-rerooted emit a warn log.
-      // They continue operating at the old root path until the next process restart,
+      // They continue operating at their current root path until the next process restart,
       // at which point --working-dir / daemon-settings.json points to the new path.
       // This is acceptable because: (a) the swap endpoint is daemon-token-gated,
       // (b) these services primarily write user-scoped state (auth, bookmarks, profiles)

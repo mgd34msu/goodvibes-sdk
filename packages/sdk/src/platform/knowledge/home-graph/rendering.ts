@@ -7,7 +7,7 @@ import type {
 } from '../types.js';
 import { renderKnowledgeMap } from '../map.js';
 import { countFacet, normalizeStringArray, readString } from '../map-filters.js';
-import { edgeIsActive, isGeneratedPageSource, uniqueStrings } from './helpers.js';
+import { edgeIsActive, factSourceIds, isGeneratedPageSource, uniqueStrings } from './helpers.js';
 import type { HomeGraphMapHaFilterInput, HomeGraphMapInput, HomeGraphMapResult } from './types.js';
 import { isLowValueFeatureOrSpecText } from '../semantic/fact-quality.js';
 import { isUsefulHomeGraphPageFact, isUsefulHomeGraphPageSource } from './page-quality.js';
@@ -46,8 +46,8 @@ export function renderRoomPage(state: HomeGraphRenderState, areaId?: string): st
     ...scenes.map((node) => node.id),
     ...scripts.map((node) => node.id),
   ]);
-  const sources = relatedSources(state.sources, state.edges, relatedNodeIds);
-  const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges);
+  const sources = relatedSources(state.sources, state.edges, state.nodes, relatedNodeIds);
+  const semanticFacts = semanticFactsLinkedToSources(sources, state.nodes, state.edges, relatedNodeIds);
   const issues = issuesForScope(state.issues, state.edges, relatedNodeIds, sources);
   return [
     `# ${title}`,
@@ -153,7 +153,7 @@ function applyHomeGraphMapFilters(
     .map((node) => node.id));
   const nodeIds = expandHomeGraphMapNodeIds(state.edges, matchedNodeIds);
   const nodes = state.nodes.filter((node) => nodeIds.has(node.id));
-  const sourceIds = sourceIdsLinkedToNodes(state.edges, nodeIds);
+  const sourceIds = sourceIdsLinkedToNodes(state.edges, state.nodes, nodeIds);
   const sources = state.sources.filter((source) => sourceIds.has(source.id) || matchesHomeGraphSource(source, filters));
   const sourceSet = new Set(sources.map((source) => source.id));
   const issues = state.issues.filter((issue) => (
@@ -265,7 +265,11 @@ function matchesAreaFilter(
     && targetAreaNodeIds.has(edge.toId));
 }
 
-function sourceIdsLinkedToNodes(edges: readonly KnowledgeEdgeRecord[], nodeIds: ReadonlySet<string>): Set<string> {
+function sourceIdsLinkedToNodes(
+  edges: readonly KnowledgeEdgeRecord[],
+  nodes: readonly KnowledgeNodeRecord[],
+  nodeIds: ReadonlySet<string>,
+): Set<string> {
   const sourceIds = new Set<string>();
   const factIds = new Set<string>();
   for (const edge of edges) {
@@ -281,6 +285,10 @@ function sourceIdsLinkedToNodes(edges: readonly KnowledgeEdgeRecord[], nodeIds: 
     if (edge.fromKind === 'source' && edge.toKind === 'node' && factIds.has(edge.toId) && edge.relation === 'supports_fact') {
       sourceIds.add(edge.fromId);
     }
+  }
+  for (const fact of nodes) {
+    if (!factIds.has(fact.id)) continue;
+    for (const sourceId of factSourceIds(fact)) sourceIds.add(sourceId);
   }
   return sourceIds;
 }
@@ -418,9 +426,8 @@ function renderPageFactLine(fact: KnowledgeNodeRecord): string {
   if (!title) return '';
   const value = cleanPageFactDetail(readString(fact.metadata.value));
   const summary = cleanPageFactDetail(fact.summary);
-  const evidence = cleanPageFactDetail(readString(fact.metadata.evidence));
-  const canonicalValue = selectPageFactValue(title, value, summary, evidence);
-  const detail = selectPageFactDetail(title, canonicalValue, summary, evidence);
+  const canonicalValue = selectPageFactValue(title, value, summary);
+  const detail = selectPageFactDetail(title, canonicalValue, summary);
   const line = normalizePageFactLine(`- ${title}${canonicalValue ? `: ${canonicalValue}` : ''}${detail ? ` - ${detail}` : ''}`);
   return isLowValueFeatureOrSpecText(line) ? '' : line;
 }
@@ -429,9 +436,8 @@ function selectPageFactValue(
   title: string,
   value: string | undefined,
   summary: string | undefined,
-  evidence: string | undefined,
 ): string | undefined {
-  for (const candidate of [value, extractSummaryValue(title, summary), extractSummaryValue(title, evidence)]) {
+  for (const candidate of [value, extractSummaryValue(title, summary)]) {
     if (!candidate) continue;
     if (isLowValueFeatureOrSpecText(candidate)) continue;
     if (isRedundantPageFactDetail(title, undefined, candidate)) continue;
@@ -444,16 +450,12 @@ function selectPageFactDetail(
   title: string,
   value: string | undefined,
   summary: string | undefined,
-  evidence: string | undefined,
 ): string | undefined {
-  for (const detail of [summary, evidence]) {
-    if (!detail) continue;
-    const normalized = normalizePageFactText(detail);
-    if (!normalized) continue;
-    if (isRedundantPageFactDetail(title, value, detail)) continue;
-    return detail;
-  }
-  return undefined;
+  if (!summary) return undefined;
+  const normalized = normalizePageFactText(summary);
+  if (!normalized) return undefined;
+  if (isRedundantPageFactDetail(title, value, summary)) return undefined;
+  return summary;
 }
 
 function extractSummaryValue(title: string, detail: string | undefined): string | undefined {
@@ -531,8 +533,10 @@ function semanticFactsLinkedToSources(
   sources: readonly KnowledgeSourceRecord[],
   nodes: readonly KnowledgeNodeRecord[],
   edges: readonly KnowledgeEdgeRecord[],
+  nodeIds?: ReadonlySet<string>,
 ): KnowledgeNodeRecord[] {
   const sourceIds = new Set(sources.map((source) => source.id));
+  const describedFactIds = nodeIds ? factIdsDescribingNodes(edges, nodeIds) : undefined;
   const factIds = new Set(edges.filter((edge) => (
     edgeIsActive(edge)
     && edge.fromKind === 'source'
@@ -540,7 +544,34 @@ function semanticFactsLinkedToSources(
     && edge.toKind === 'node'
     && edge.relation === 'supports_fact'
   )).map((edge) => edge.toId));
-  return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
+  return nodes.filter((node) => (
+    (factIds.has(node.id) || factSourceIds(node).some((sourceId) => sourceIds.has(sourceId)))
+    && (!nodeIds || factHasSubjectLink(node, nodeIds, describedFactIds))
+    && isUsefulHomeGraphPageFact(node)
+  ));
+}
+
+function factIdsDescribingNodes(
+  edges: readonly KnowledgeEdgeRecord[],
+  nodeIds: ReadonlySet<string>,
+): ReadonlySet<string> {
+  return new Set(edges.filter((edge) => (
+    edgeIsActive(edge)
+    && edge.fromKind === 'node'
+    && edge.toKind === 'node'
+    && edge.relation === 'describes'
+    && nodeIds.has(edge.toId)
+  )).map((edge) => edge.fromId));
+}
+
+function factHasSubjectLink(
+  fact: KnowledgeNodeRecord,
+  nodeIds: ReadonlySet<string>,
+  describedFactIds: ReadonlySet<string> | undefined,
+): boolean {
+  if (describedFactIds?.has(fact.id)) return true;
+  return normalizeStringArray(fact.metadata.subjectIds).some((id) => nodeIds.has(id))
+    || normalizeStringArray(fact.metadata.linkedObjectIds).some((id) => nodeIds.has(id));
 }
 
 function semanticFactSortKey(node: KnowledgeNodeRecord): string {
@@ -631,16 +662,12 @@ function renderMetadataField(label: string, value: unknown): string {
 function relatedSources(
   sources: readonly KnowledgeSourceRecord[],
   edges: readonly KnowledgeEdgeRecord[],
+  nodes: readonly KnowledgeNodeRecord[],
   nodeIds: ReadonlySet<string>,
 ): KnowledgeSourceRecord[] {
   const visibleSources = sources.filter((source) => !isGeneratedPageSource(source) && isUsefulHomeGraphPageSource(source));
   if (nodeIds.size === 0) return visibleSources;
-  const sourceIds = new Set(edges.filter((edge) => (
-    edgeIsActive(edge)
-    && edge.fromKind === 'source'
-    && edge.toKind === 'node'
-    && nodeIds.has(edge.toId)
-  )).map((edge) => edge.fromId));
+  const sourceIds = sourceIdsLinkedToNodes(edges, nodes, nodeIds);
   return visibleSources.filter((source) => sourceIds.has(source.id));
 }
 

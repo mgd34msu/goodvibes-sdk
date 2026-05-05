@@ -7,6 +7,10 @@ export type {
 export { createGoodVibesSdk } from './client.js';
 export type {
   BrowserTokenStoreOptions,
+  AutoRefreshCoordinatorOptions,
+  AutoRefreshOptions,
+  ControlPlaneAuthMode,
+  ControlPlaneAuthSnapshot,
   GoodVibesAuthClient,
   GoodVibesAuthLoginOptions,
   GoodVibesCurrentAuth,
@@ -48,20 +52,27 @@ export { createExpoGoodVibesSdk } from './expo.js';
 // that re-exports a transport, event, or contract layer.
 //
 // Why the indirection through named modules rather than direct `export *`?
-// - Each intermediate module (observer, events, contracts, daemon, errors,
+// - Each intermediate module (observer, events, contracts, errors,
 //   transport-*) is also a versioned, independently buildable sub-package.
 //   The indirection lets us tree-shake at sub-package boundaries.
 // - It makes source attribution explicit in the final bundle map.
 //
-// Collision risk: if two packages export the same name, TypeScript silently
-// prefers the first binding. Keep all exported names unique across these modules.
-export type { TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator } from './client-auth/index.js';
+// Collision risk: keep exported names unique across these modules so the root
+// surface remains deterministic and compile-time collisions stay obvious.
+export { TokenStore, SessionManager, PermissionResolver, AutoRefreshCoordinator } from './client-auth/index.js';
 export * from './observer/index.js';
 export * from './events/index.js';
 // Re-export contracts explicitly, excluding names also exported by events/index.js
 // (RUNTIME_EVENT_DOMAINS, RuntimeEventDomain, isRuntimeEventDomain) to avoid TS2308.
 export type {
   ContractHttpDefinition,
+  DistributedPeerKind,
+  DistributedWorkStatus,
+  DistributedWorkType,
+  GatewayEventTransport,
+  GatewayMethodAccess,
+  GatewayMethodSource,
+  GatewayMethodTransport,
   JsonSchema,
   OperatorContractManifest,
   OperatorEventCoverageContract,
@@ -72,6 +83,8 @@ export type {
   PeerEndpointContract,
   OperatorEventPayload,
   OperatorEventPayloadMap,
+  JsonPrimitive,
+  JsonValue,
   OperatorMethodInput,
   OperatorMethodInputMap,
   OperatorMethodOutput,
@@ -88,6 +101,7 @@ export type {
   RuntimeDomainEventPayloadMap,
   RuntimeDomainEventType,
   RuntimeEventTypedDomain,
+  SharedSessionConversationRouteOutput,
   OperatorMethodId,
   PeerEndpointId,
   ControlAuthLoginResponse,
@@ -100,8 +114,9 @@ export type {
   ProviderModelRef,
   ProviderModelEntry,
   ConfiguredVia,
-  ProviderEntry,
-  ListProvidersResponse,
+  ProviderAuthRouteDescriptor,
+  ProviderModelProvider,
+  ListProviderModelsResponse,
   CurrentModelResponse,
   PatchCurrentModelBody,
   PatchCurrentModelError,
@@ -109,6 +124,7 @@ export type {
   ModelChangedEvent,
 } from './contracts.js';
 export {
+  DISTRIBUTED_WORK_TYPES,
   FOUNDATION_METADATA,
   OPERATOR_CONTRACT,
   OPERATOR_METHOD_IDS,
@@ -133,15 +149,15 @@ export {
   ProviderModelRefSchema,
   ProviderModelEntrySchema,
   ConfiguredViaSchema,
-  ProviderEntrySchema,
-  ListProvidersResponseSchema,
+  ProviderAuthRouteDescriptorSchema,
+  ProviderModelProviderSchema,
+  ListProviderModelsResponseSchema,
   CurrentModelResponseSchema,
   PatchCurrentModelBodySchema,
   PatchCurrentModelErrorSchema,
   PatchCurrentModelResponseSchema,
   ModelChangedEventSchema,
 } from './contracts.js';
-export * from './daemon.js';
 export * from './errors.js';
 export * from './transport-core.js';
 export * from './transport-direct.js';

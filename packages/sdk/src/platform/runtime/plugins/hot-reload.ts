@@ -4,7 +4,7 @@
  * Implements the 6-phase hot-reload sequence:
  *   1. Quiesce   — stop accepting new work from the plugin
  *   2. Unregister — remove plugin's registrations (commands, tools, hooks)
- *   3. Unload    — deactivate and clean up the old plugin instance
+ *   3. Unload    - deactivate and clean up the previous plugin instance
  *   4. Reload    — load the new version with a cache-bust timestamp
  *   5. Re-register — new instance calls init/activate (registers naturally)
  *   6. Health check → active (healthy) or degraded (unhealthy)
@@ -44,7 +44,7 @@ export interface HotReloadOptions {
    * Return a PluginHealthCheckResult to indicate whether the plugin is healthy.
    * Defaults to a trivial healthy check.
    */
-  healthCheck?: ((name: string) => Promise<PluginHealthCheckResult>) | undefined | undefined;
+  healthCheck?: ((name: string) => Promise<PluginHealthCheckResult>) | undefined;
 
   /**
    * Maximum time (ms) to wait for the health check before timing out.

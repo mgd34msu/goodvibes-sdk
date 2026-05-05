@@ -23,11 +23,11 @@ export interface RuntimeStoreAccess {
  */
 export interface TaskHooks {
   /** Called when the tool begins execution. */
-  onStart?: ((callId: string, toolName: string) => void) | undefined | undefined;
+  onStart?: ((callId: string, toolName: string) => void) | undefined;
   /** Called when the tool completes (success or failure). */
-  onComplete?: ((callId: string, durationMs: number) => void) | undefined | undefined;
+  onComplete?: ((callId: string, durationMs: number) => void) | undefined;
   /** Called when the tool fails. */
-  onError?: ((callId: string, error: string) => void) | undefined | undefined;
+  onError?: ((callId: string, error: string) => void) | undefined;
 }
 
 /**

@@ -183,7 +183,7 @@ async function buildRuntimeSummary(deps: GoodVibesRuntimeToolDeps): Promise<Json
           current: {
             id: currentModel.id,
             provider: currentModel.provider,
-            registryKey: currentModel.registryKey ?? `${currentModel.provider}:${currentModel.id}`,
+            registryKey: currentModel.registryKey,
             displayName: currentModel.displayName,
           },
           providerCount: deps.providerRegistry.listProviders().length,

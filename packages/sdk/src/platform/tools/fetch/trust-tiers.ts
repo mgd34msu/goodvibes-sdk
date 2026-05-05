@@ -32,7 +32,7 @@ import { hostMatchesGlob } from './host-utils.js';
  *
  * - `trusted`  — Explicitly allowlisted; sanitization may be relaxed.
  * - `unknown`  — Not in any list; standard `safe-text` sanitization applied.
- * - `blocked`  — Internal/sensitive host; request denied pre-request.
+ * - `blocked`  — Sensitive host; request denied pre-request.
  */
 export type HostTrustTier = 'trusted' | 'unknown' | 'blocked';
 
@@ -132,8 +132,8 @@ const ENCODED_IP_HEX_OCTAL_PATTERNS: RegExp[] = [
  * Returns true if the host is a decimal integer representation of a
  * private/loopback IPv4 address (e.g. 2130706433 = 127.0.0.1).
  *
- * The old pattern `/^\d{8,10}$/` was too broad — it blocked all 8-10 digit
- * numbers regardless of whether they decoded to a private address.
+ * Only block decimal integers that decode to private addresses; ordinary
+ * numeric hostnames remain subject to the rest of the trust-tier checks.
  */
 function isPrivateDecimalIp(host: string): boolean {
   if (!/^\d{1,10}$/.test(host)) return false;

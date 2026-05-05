@@ -17,6 +17,8 @@ import {
   DEFAULT_COMPONENT_CONFIG,
   appendBounded,
 } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 /** All domains observed by the events panel. */
 const ALL_DOMAINS: readonly RuntimeEventDomain[] = [
@@ -180,8 +182,8 @@ export class EventsPanel {
     for (const cb of this._subscribers) {
       try {
         cb();
-      } catch {
-        // Non-fatal: subscriber errors must not crash the provider
+      } catch (error) {
+        logger.warn('[EventsPanel] subscriber error', { error: summarizeError(error) });
       }
     }
   }

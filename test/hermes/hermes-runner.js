@@ -9,7 +9,7 @@
  * DO NOT use Bun.* APIs — not available inside the Hermes VM.
  */
 
-// NIT-1: print() is native in the Hermes CLI but absent in JSI-embedded Hermes
+// print() is native in the Hermes CLI but absent in JSI-embedded Hermes
 // (React Native). This adapter makes the runner portable to both environments.
 var print = typeof globalThis.print === 'function' ? globalThis.print : console.log;
 
@@ -216,8 +216,8 @@ describe('Hermes engine feature parity', function () {
     expect(a).toBe('assigned');
 
     var b = '';
-    b ||= 'fallback';
-    expect(b).toBe('fallback');
+    b ||= 'assigned-or';
+    expect(b).toBe('assigned-or');
 
     var c = 'keep';
     c &&= 'replaced';

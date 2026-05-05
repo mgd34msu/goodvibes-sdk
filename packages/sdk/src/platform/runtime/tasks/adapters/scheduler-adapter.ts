@@ -17,6 +17,22 @@ import type { RuntimeStore, DomainDispatch } from '../../store/index.js';
 import type { RuntimeTask } from '../../store/domains/tasks.js';
 import type { TaskScheduler, ScheduledTask, TaskRunRecord } from '../../../scheduler/scheduler.js';
 
+function mapSchedulerRunStatus(status: TaskRunRecord['status']): TaskRunRecord['status'] {
+  switch (status) {
+    case 'running':
+      return 'running';
+    case 'completed':
+      return 'completed';
+    case 'failed':
+      return 'failed';
+  }
+  return assertNeverSchedulerRunStatus(status);
+}
+
+function assertNeverSchedulerRunStatus(status: never): never {
+  throw new Error(`Unhandled scheduler run status: ${String(status)}`);
+}
+
 /**
  * Bridges TaskScheduler job executions into the RuntimeTask registry.
  *
@@ -61,6 +77,7 @@ export class SchedulerTaskAdapter {
 
     const taskId = randomUUID();
     const now = record.startedAt;
+    const status = mapSchedulerRunStatus(record.status);
 
     const task: RuntimeTask = {
       id: taskId,
@@ -69,13 +86,13 @@ export class SchedulerTaskAdapter {
       description: scheduledTask.prompt.length > 200
         ? `${scheduledTask.prompt.slice(0, 197)}...`
         : scheduledTask.prompt,
-      status: record.status === 'running' ? 'running' : 'completed',
+      status,
       owner: `scheduler:${scheduledTask.id}`,
-      cancellable: record.status === 'running',
+      cancellable: status === 'running',
       childTaskIds: [],
       queuedAt: now,
       startedAt: now,
-      endedAt: record.status !== 'running' ? Date.now() : undefined,
+      endedAt: status !== 'running' ? Date.now() : undefined,
       correlationId: record.agentId,
       turnId: record.taskId,
       error: record.error,
@@ -162,8 +179,15 @@ export class SchedulerTaskAdapter {
     for (const runAgentId of staleRunIds) {
       const taskId = this._runToTask.get(runAgentId)!;
       const record = historyByAgentId.get(runAgentId);
-      const terminalStatus = record?.status === 'failed' ? 'failed' : 'completed';
-      this._transitionTask(taskId, terminalStatus, { error: record?.error });
+      if (!record) {
+        this._transitionTask(taskId, 'cancelled', {
+          error: `Scheduler run ${runAgentId} disappeared before terminal status was recorded`,
+        });
+      } else {
+        const terminalStatus = mapSchedulerRunStatus(record.status);
+        if (terminalStatus === 'running') continue;
+        this._transitionTask(taskId, terminalStatus, { error: record.error });
+      }
       this._runToTask.delete(runAgentId);
       this._taskToRun.delete(taskId);
     }

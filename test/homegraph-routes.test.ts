@@ -28,6 +28,24 @@ describe('Home Graph daemon routes', () => {
     (service as unknown as { activeReindex: Promise<unknown> | null }).activeReindex = null;
   });
 
+  test('reset cancels pending Home Graph sync self-improvement for the scoped space', async () => {
+    const { service } = createHomeGraphService();
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const controller = new AbortController();
+    const internals = service as unknown as {
+      pendingSyncSelfImprove: Set<string>;
+      syncSelfImproveControllers: Map<string, AbortController>;
+    };
+    internals.pendingSyncSelfImprove.add(spaceId);
+    internals.syncSelfImproveControllers.set(spaceId, controller);
+
+    await service.resetSpace({ installationId: 'house-1' });
+
+    expect(controller.signal.aborted).toBe(true);
+    expect(internals.pendingSyncSelfImprove.has(spaceId)).toBe(false);
+    expect(internals.syncSelfImproveControllers.has(spaceId)).toBe(false);
+  });
+
   test('keeps Home Graph review decisions durable across quality refreshes', async () => {
     const { service } = createHomeGraphService();
     await service.syncSnapshot({

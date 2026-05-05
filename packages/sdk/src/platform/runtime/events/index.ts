@@ -35,7 +35,7 @@ export type { GoodVibesUIEvent, GoodVibesUIEventType } from '../../../events/ui.
 export type { OpsEvent, OpsEventType } from '../../../events/ops.js';
 export type { OpsInterventionReason } from '../../../events/ops.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from '../../../events/domain-map.js';
-export { registeredEventTypes, validateEvent, validateKnownEvent } from '../../../events/contracts.js';
+export { registeredEventTypes, validateKnownEvent } from '../../../events/contracts.js';
 export type { AnyRuntimeEvent, RuntimeEventPayload, RuntimeEventDomain, DomainEventMap, RuntimeEventRecord } from '../../../events/domain-map.js';
 export type { AutomationEvent, AutomationEventType, AutomationScheduleKind, AutomationExecutionMode, AutomationRunOutcome } from '../../../events/automation.js';
 export { AUTOMATION_SCHEDULE_KINDS, AUTOMATION_RUN_OUTCOMES } from '../../../events/automation.js';
@@ -184,8 +184,8 @@ export class RuntimeEventBus {
   /**
    * Emit a runtime event envelope to all matching per-type and per-domain subscribers.
    *
-   * @internal Callers MUST use the typed emitter wrapper functions from
-   * `src/runtime/emitters/` rather than calling this method directly.
+   * Callers MUST use the typed emitter wrapper functions from
+   * `platform/runtime/emitters/` rather than calling this method directly.
    * Direct usage bypasses domain-event type enforcement: TypeScript cannot
    * statically link the `domain` argument to the `envelope` payload type due
    * to union complexity limitations (TS2590), meaning mismatched pairs compile
@@ -207,14 +207,14 @@ export class RuntimeEventBus {
     domain: RuntimeEventDomain,
     envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>
   ): void {
-    // Snapshot both sets before iterating so that subscribe/unsubscribe calls
-    // triggered by a handler do not mutate the live Set mid-iteration (C3 fix).
+    // Snapshot both sets before iterating so subscribe/unsubscribe calls
+    // triggered by a handler do not mutate the live Set mid-iteration.
     const typeSet = this._listeners.get(envelope.type);
     const typeHandlers = typeSet ? Array.from(typeSet) : [];
     const domainSet = this._domainListeners.get(domain);
     const domainHandlers = domainSet ? Array.from(domainSet) : [];
 
-    // OBS-14: Dispatch each subscriber in its own microtask so a slow or
+    // Dispatch each subscriber in its own microtask so a slow or
     // throwing subscriber cannot block the emitter. Errors are caught and
     // logged per-subscriber; a single bad handler never cascades to others.
 

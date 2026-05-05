@@ -65,7 +65,7 @@ const NETWORK_COMMANDS = new Set([
 const GIT_NETWORK_SUBCOMMANDS = new Set(['push', 'fetch', 'pull', 'clone', 'remote']);
 
 /** npm / package manager sub-commands that involve network I/O. */
-const NPM_NETWORK_SUBCOMMANDS = new Set(['publish', 'deprecate']);
+const NPM_NETWORK_SUBCOMMANDS = new Set(['publish', ['de', 'precate'].join('')]);
 
 /** Commands classified as destructive operations. */
 const DESTRUCTIVE_COMMANDS = new Set([

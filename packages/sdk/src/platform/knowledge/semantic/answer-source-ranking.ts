@@ -1,6 +1,6 @@
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import { isGeneratedKnowledgeSource } from '../generated-projections.js';
-import { readRecord, readString } from './utils.js';
+import { readRecord, readString, readStringArray, uniqueStrings } from './utils.js';
 
 export interface AnswerSourceRankingEvidence {
   readonly score: number;
@@ -19,11 +19,19 @@ export function rankAnswerSources(
   const factCountBySource = new Map<string, number>();
   const promotedFactCountBySource = new Map<string, number>();
   for (const fact of facts) {
-    const sourceId = readString(fact.metadata.sourceId) ?? fact.sourceId;
-    if (!sourceId) continue;
-    factCountBySource.set(sourceId, (factCountBySource.get(sourceId) ?? 0) + 1);
+    const sourceIds = uniqueStrings([
+      ...readStringArray(fact.metadata.sourceIds),
+      readString(fact.metadata.sourceId),
+      fact.sourceId,
+    ]);
+    if (sourceIds.length === 0) continue;
     if (readString(fact.metadata.extractor) === 'repair-promotion') {
-      promotedFactCountBySource.set(sourceId, (promotedFactCountBySource.get(sourceId) ?? 0) + 1);
+      for (const sourceId of sourceIds) {
+        promotedFactCountBySource.set(sourceId, (promotedFactCountBySource.get(sourceId) ?? 0) + 1);
+      }
+    }
+    for (const sourceId of sourceIds) {
+      factCountBySource.set(sourceId, (factCountBySource.get(sourceId) ?? 0) + 1);
     }
   }
   const sources = uniqueSources(evidence.flatMap((item) => item.source ? [item.source] : []));

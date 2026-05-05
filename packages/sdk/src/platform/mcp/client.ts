@@ -30,14 +30,20 @@ export interface McpToolSchema extends McpToolInfo {
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
-  id: number;
+  id: JsonRpcId;
+  method: string;
+  params?: unknown | undefined;
+}
+
+interface JsonRpcNotification {
+  jsonrpc: '2.0';
   method: string;
   params?: unknown | undefined;
 }
 
 interface JsonRpcResponse {
   jsonrpc: '2.0';
-  id: number;
+  id: JsonRpcId | null;
   result?: unknown | undefined;
   error?: { code: number; message: string; data?: unknown };
 }
@@ -53,10 +59,71 @@ const PING_TIMEOUT_MS = 5_000;
 const RESTART_DELAY_MS = 2_000;
 const MAX_RESTART_ATTEMPTS = 3;
 
+export type JsonRpcId = number | string;
+
+export interface McpClientNotification {
+  serverName: string;
+  method: string;
+  params?: unknown | undefined;
+}
+
+export interface McpClientServerRequest {
+  serverName: string;
+  id: JsonRpcId;
+  method: string;
+  params?: unknown | undefined;
+}
+
+export interface McpClientUnhandledResponse {
+  serverName: string;
+  id: JsonRpcId | null;
+  hasError: boolean;
+  error?: string | undefined;
+}
+
+export interface McpClientOptions {
+  timeout?: number | undefined;
+  processSpec?: McpProcessSpec | undefined;
+  onNotification?: ((notification: McpClientNotification) => void) | undefined;
+  onServerRequest?: ((request: McpClientServerRequest) => void) | undefined;
+  onUnhandledResponse?: ((response: McpClientUnhandledResponse) => void) | undefined;
+}
+
+function isJsonRpcId(value: unknown): value is JsonRpcId {
+  return typeof value === 'number' || typeof value === 'string';
+}
+
+function jsonRpcIdKey(id: JsonRpcId): string {
+  return `${typeof id}:${String(id)}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
+  return isRecord(value)
+    && 'id' in value
+    && (isJsonRpcId(value.id) || value.id === null)
+    && typeof value.method !== 'string';
+}
+
+function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
+  return isRecord(value)
+    && typeof value.method === 'string'
+    && isJsonRpcId(value.id);
+}
+
+function isJsonRpcNotification(value: unknown): value is JsonRpcNotification {
+  return isRecord(value)
+    && typeof value.method === 'string'
+    && (!('id' in value) || value.id === null);
+}
+
 export class McpClient {
   private proc: ReturnType<typeof Bun.spawn> | null = null;
   private nextId = 1;
-  private pendingRequests = new Map<number, PendingRequest>();
+  private pendingRequests = new Map<string, PendingRequest>();
   private buffer = '';
   private readLoopRunning = false;
   private restartCount = 0;
@@ -70,7 +137,7 @@ export class McpClient {
 
   constructor(
     private config: McpServerConfig,
-    private options?: { timeout?: number; processSpec?: McpProcessSpec },
+    private options?: McpClientOptions,
   ) {}
 
   get name(): string {
@@ -175,8 +242,8 @@ export class McpClient {
       this.proc.kill();
       await this.proc.exited;
     } catch (err: unknown) {
-      // OBS-11: Non-fatal — process may already be gone; log at debug for ops
-      logger.debug('[McpClient] error during process shutdown (non-fatal)', { error: String(err) });
+      // The process may already be gone; record the shutdown error for ops.
+      logger.warn('[McpClient] error during process shutdown', { error: String(err) });
     } finally {
       this.proc = null;
       this.buffer = '';
@@ -238,18 +305,19 @@ export class McpClient {
     }
 
     const id = this.nextId++;
+    const pendingKey = jsonRpcIdKey(id);
     const msg: JsonRpcRequest = { jsonrpc: '2.0', id, method, params };
     const line = JSON.stringify(msg) + '\n';
     const timeoutMs = this.options?.timeout ?? DEFAULT_TIMEOUT_MS;
 
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
-        this.pendingRequests.delete(id);
+        this.pendingRequests.delete(pendingKey);
         reject(new Error(`McpClient(${this.config.name}): request '${method}' timed out after ${timeoutMs}ms`));
       }, timeoutMs);
       timer.unref?.();
 
-      this.pendingRequests.set(id, {
+      this.pendingRequests.set(pendingKey, {
         resolve: resolve as (value: unknown) => void,
         reject,
         timer,
@@ -259,7 +327,7 @@ export class McpClient {
         (this.proc?.stdin as import('bun').FileSink | undefined)?.write(line);
       } catch (err) {
         clearTimeout(timer);
-        this.pendingRequests.delete(id);
+        this.pendingRequests.delete(pendingKey);
         reject(new Error(`McpClient(${this.config.name}): write failed: ${summarizeError(err)}`));
       }
     });
@@ -267,12 +335,15 @@ export class McpClient {
 
   /** Send a JSON-RPC notification (no response expected). */
   private _notify(method: string, params?: unknown): void {
-    if (!this.proc || !this.isConnected) return;
+    if (!this.proc || !this.isConnected) {
+      logger.warn('McpClient: skipped JSON-RPC notification because process is not connected', { server: this.config.name, method });
+      return;
+    }
     try {
       const msg = { jsonrpc: '2.0', method, params };
       (this.proc.stdin as import('bun').FileSink).write(JSON.stringify(msg) + '\n');
     } catch (err) {
-      logger.debug('McpClient: failed to send notification', { method, err: summarizeError(err) });
+      logger.warn('McpClient: failed to send JSON-RPC notification', { server: this.config.name, method, err: summarizeError(err) });
     }
   }
 
@@ -293,7 +364,7 @@ export class McpClient {
           this._processBuffer();
         }
       } catch (err) {
-        logger.debug('McpClient: stdout read loop ended', { server: this.config.name, err: summarizeError(err) });
+        logger.warn('McpClient: stdout read loop ended', { server: this.config.name, err: summarizeError(err) });
       } finally {
         this.readLoopRunning = false;
         // Reject remaining pending requests
@@ -328,26 +399,129 @@ export class McpClient {
     try {
       msg = JSON.parse(line);
     } catch (err) {
-      logger.debug('McpClient: failed to parse JSON line', { server: this.config.name, err: summarizeError(err), line: line.slice(0, 200) });
+      logger.warn('McpClient: failed to parse JSON line', { server: this.config.name, err: summarizeError(err), line: line.slice(0, 200) });
       return;
     }
 
-    if (typeof msg !== 'object' || msg === null) return;
-
-    const response = msg as JsonRpcResponse;
-    if ('id' in response && typeof response.id === 'number') {
-      const pending = this.pendingRequests.get(response.id);
-      if (pending) {
-        clearTimeout(pending.timer);
-        this.pendingRequests.delete(response.id);
-        if (response.error) {
-          pending.reject(new Error(`McpClient(${this.config.name}) RPC error ${response.error.code}: ${response.error.message}`));
-        } else {
-          pending.resolve(response.result);
-        }
-      }
+    if (!isRecord(msg)) {
+      logger.warn('McpClient: ignored non-object JSON-RPC line', { server: this.config.name, line: line.slice(0, 200) });
+      return;
     }
-    // Notifications (no id or id=null) are silently ignored
+
+    if (isJsonRpcResponse(msg)) {
+      this._handleResponse(msg);
+      return;
+    }
+
+    if (isJsonRpcRequest(msg)) {
+      this._handleServerRequest(msg);
+      return;
+    }
+
+    if (isJsonRpcNotification(msg)) {
+      this._handleNotification(msg);
+      return;
+    }
+
+    logger.warn('McpClient: ignored unsupported JSON-RPC message', { server: this.config.name, line: line.slice(0, 200) });
+  }
+
+  private _handleResponse(response: JsonRpcResponse): void {
+    const pendingKey = response.id === null ? null : jsonRpcIdKey(response.id);
+    if (pendingKey === null) {
+      this._handleUnhandledResponse(response);
+      return;
+    }
+    const pending = pendingKey ? this.pendingRequests.get(pendingKey) : undefined;
+    if (!pending) {
+      this._handleUnhandledResponse(response);
+      return;
+    }
+
+    clearTimeout(pending.timer);
+    this.pendingRequests.delete(pendingKey);
+    if (response.error) {
+      pending.reject(new Error(`McpClient(${this.config.name}) RPC error ${response.error.code}: ${response.error.message}`));
+    } else {
+      pending.resolve(response.result);
+    }
+  }
+
+  private _handleNotification(notification: JsonRpcNotification): void {
+    logger.debug('McpClient: received JSON-RPC notification', {
+      server: this.config.name,
+      method: notification.method,
+    });
+    const observed: McpClientNotification = {
+      serverName: this.config.name,
+      method: notification.method,
+      ...(notification.params !== undefined ? { params: notification.params } : {}),
+    };
+    this._callObserver('notification', () => this.options?.onNotification?.(observed));
+  }
+
+  private _handleServerRequest(request: JsonRpcRequest): void {
+    logger.info('McpClient: received unsupported server JSON-RPC request', {
+      server: this.config.name,
+      method: request.method,
+      id: request.id,
+    });
+    const observed: McpClientServerRequest = {
+      serverName: this.config.name,
+      id: request.id,
+      method: request.method,
+      ...(request.params !== undefined ? { params: request.params } : {}),
+    };
+    this._callObserver('server request', () => this.options?.onServerRequest?.(observed));
+    this._sendJsonRpcError(request.id, -32601, `Client method '${request.method}' is not supported`);
+  }
+
+  private _handleUnhandledResponse(response: JsonRpcResponse): void {
+    const error = response.error
+      ? `${response.error.code}: ${response.error.message}`
+      : undefined;
+    logger.warn('McpClient: received JSON-RPC response with no pending request', {
+      server: this.config.name,
+      id: response.id,
+      hasError: response.error !== undefined,
+      ...(error ? { error } : {}),
+    });
+    const observed: McpClientUnhandledResponse = {
+      serverName: this.config.name,
+      id: response.id,
+      hasError: response.error !== undefined,
+      ...(error ? { error } : {}),
+    };
+    this._callObserver('unhandled response', () => this.options?.onUnhandledResponse?.(observed));
+  }
+
+  private _sendJsonRpcError(id: JsonRpcId, code: number, message: string): void {
+    if (!this.proc || !this.isConnected) return;
+    try {
+      const response: JsonRpcResponse = {
+        jsonrpc: '2.0',
+        id,
+        error: { code, message },
+      };
+      (this.proc.stdin as import('bun').FileSink).write(JSON.stringify(response) + '\n');
+    } catch (err) {
+      logger.warn('McpClient: failed to send JSON-RPC error response', {
+        server: this.config.name,
+        id,
+        err: summarizeError(err),
+      });
+    }
+  }
+
+  private _callObserver(label: string, fn: () => void): void {
+    try {
+      fn();
+    } catch (err) {
+      logger.warn(`McpClient: ${label} observer threw`, {
+        server: this.config.name,
+        err: summarizeError(err),
+      });
+    }
   }
 
   private _scheduleRestart(): void {

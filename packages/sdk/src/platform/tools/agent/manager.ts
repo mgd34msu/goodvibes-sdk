@@ -18,6 +18,7 @@ import type { ExecutionIntent } from '../../runtime/execution-intents.js';
 import { logger } from '../../utils/logger.js';
 import type { AgentInput } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { splitModelRegistryKey } from '../../providers/registry-helpers.js';
 
 export type AgentExecutor = {
   runAgent(record: AgentRecord): Promise<void>;
@@ -53,6 +54,24 @@ export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools
     defaultTools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],
   },
 };
+
+function requireProviderQualifiedModel(modelId: string | undefined, label: string): string | undefined {
+  const trimmed = typeof modelId === 'string' ? modelId.trim() : '';
+  if (!trimmed) return undefined;
+  try {
+    splitModelRegistryKey(trimmed);
+  } catch {
+    throw new Error(`${label} must be a provider-qualified registry key; received '${modelId}'.`);
+  }
+  return trimmed;
+}
+
+function normalizeProviderQualifiedModelList(models: readonly string[] | undefined, label: string): string[] | undefined {
+  const normalized = models
+    ?.filter((model) => typeof model === 'string' && model.trim().length > 0)
+    .map((model) => requireProviderQualifiedModel(model, label)!);
+  return normalized && normalized.length > 0 ? normalized : undefined;
+}
 
 export interface AgentRecord {
   id: string;
@@ -140,9 +159,11 @@ export class AgentManager {
     tools: string[];
     capabilityCeilingTools?: string[] | undefined;
   } {
-    const requestedTools = input.tools
-      ? (input.restrictTools ? [...input.tools] : [...new Set([...defaultTools, ...input.tools])])
-      : [...defaultTools];
+    const requestedTools = input.restrictTools
+      ? [...(input.tools ?? [])]
+      : input.tools
+        ? [...new Set([...defaultTools, ...input.tools])]
+        : [...defaultTools];
 
     if (!input.parentAgentId) {
       return { tools: requestedTools };
@@ -178,9 +199,6 @@ export class AgentManager {
     const archetype = this.archetypeLoader.loadArchetype(template);
     const templateDef = AGENT_TEMPLATES[template]! ?? AGENT_TEMPLATES.general;
     const defaultTools = archetype ? archetype.tools : templateDef.defaultTools;
-    if (input.restrictTools && (!input.tools || input.tools.length === 0)) {
-      logger.warn('spawn: restrictTools=true has no effect without a tools array — falling back to template defaults', { template });
-    }
     const toolResolution = this.deriveEffectiveTools(input, defaultTools);
     const tools = toolResolution.tools;
 
@@ -225,25 +243,41 @@ export class AgentManager {
     const reviewMode = input.reviewMode ?? (input.dangerously_disable_wrfc ? 'none' : 'wrfc');
     const communicationLane = input.communicationLane
       ?? (input.parentAgentId ? 'parent-only' : input.cohort ? 'cohort' : 'direct');
+    const model = requireProviderQualifiedModel(input.model, 'Agent model overrides');
+    const provider = input.provider?.trim() || undefined;
+    if (!model && provider) {
+      throw new Error('Agent provider routing requires a provider-qualified model when provider is supplied.');
+    }
+    if (model && provider && splitModelRegistryKey(model).providerId !== provider) {
+      throw new Error(`Agent model override '${model}' conflicts with provider '${provider}'.`);
+    }
+    const fallbackModels = normalizeProviderQualifiedModelList(input.fallbackModels, 'Agent fallback models');
+    const routingFallbackModels = normalizeProviderQualifiedModelList(input.routing?.fallbackModels, 'Agent routing fallback models');
+    const effectiveFallbackModels = input.routing?.providerFailurePolicy === 'fail'
+      ? undefined
+      : routingFallbackModels ?? fallbackModels;
+    if (
+      input.routing?.providerFailurePolicy === 'ordered-fallbacks'
+      && !effectiveFallbackModels?.length
+    ) {
+      throw new Error('Agent ordered fallback routing requires at least one provider-qualified fallback model.');
+    }
+    if (input.routing?.providerFailurePolicy === 'fail' && (routingFallbackModels?.length || fallbackModels?.length)) {
+      throw new Error('Agent fail routing cannot include fallback models; use ordered-fallbacks to enable model failover.');
+    }
 
     const id = `agent-${crypto.randomUUID().slice(0, 8)}`;
     const record: AgentRecord = {
       id,
       task,
       template,
-      model: input.model,
-      provider: input.provider,
-      fallbackModels: input.fallbackModels?.filter((model) => typeof model === 'string' && model.trim().length > 0).map((model) => model.trim()),
+      model,
+      provider,
+      fallbackModels: effectiveFallbackModels,
       routing: input.routing
         ? {
             ...input.routing,
-            ...(input.routing.fallbackModels
-              ? {
-                  fallbackModels: input.routing.fallbackModels
-                    .filter((model) => typeof model === 'string' && model.trim().length > 0)
-                    .map((model) => model.trim()),
-                }
-              : {}),
+            ...(effectiveFallbackModels ? { fallbackModels: effectiveFallbackModels } : {}),
           }
         : undefined,
       executionIntent: input.executionIntent,

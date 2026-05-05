@@ -3,7 +3,7 @@
 The automation system provides durable jobs, runs, schedules, route bindings,
 deliveries, and watcher services for daemon-hosted work.
 
-Accessible via `@pellux/goodvibes-sdk/platform` (daemon embedders) under the `platform.automation.*` namespace. Consumer apps interact through operator methods documented below.
+Consumer apps interact through operator methods documented below. Daemon embedders wire automation through host runtime composition rather than a catch-all platform namespace.
 
 ## Automation Domain
 

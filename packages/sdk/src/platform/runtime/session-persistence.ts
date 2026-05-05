@@ -101,20 +101,16 @@ export function saveSession(
   title = '',
   options?: SessionPersistenceOptions,
 ): void {
-  try {
-    const manager = resolveSessionManager(options);
-    const meta: SessionMeta = {
-      title,
-      model,
-      provider,
-      timestamp: data.timestamp ?? Date.now(),
-      titleSource: data.titleSource,
-      returnContext: data.returnContext,
-    };
-    manager.save(sessionId, data.messages as Array<Record<string, unknown>>, meta);
-  } catch (error) {
-    logger.debug('saveSession failed', { error: summarizeError(error) });
-  }
+  const manager = resolveSessionManager(options);
+  const meta: SessionMeta = {
+    title,
+    model,
+    provider,
+    timestamp: data.timestamp ?? Date.now(),
+    titleSource: data.titleSource,
+    returnContext: data.returnContext,
+  };
+  manager.save(sessionId, data.messages as Array<Record<string, unknown>>, meta);
 }
 
 export function persistConversation(
@@ -140,7 +136,7 @@ export function writeLastSessionPointer(sessionId: string, options?: SessionPers
       'utf-8',
     );
   } catch (error) {
-    logger.debug('writeLastSessionPointer failed', { error: summarizeError(error) });
+    logger.warn('writeLastSessionPointer failed', { error: summarizeError(error) });
   }
 }
 
@@ -152,7 +148,7 @@ export function readLastSessionPointer(options?: SessionPersistenceOptions): str
     const data = JSON.parse(readFileSync(pointerPath, 'utf-8')) as { sessionId?: unknown };
     if (typeof data.sessionId === 'string' && data.sessionId.trim()) return data.sessionId;
   } catch (error) {
-    logger.debug('readLastSessionPointer failed', { error: summarizeError(error) });
+    logger.warn('readLastSessionPointer failed', { error: summarizeError(error) });
   }
   return null;
 }
@@ -166,7 +162,7 @@ export function loadLastConversation(options?: SessionPersistenceOptions): Sessi
     const { messages } = manager.load(lastId);
     return { messages: messages as Array<Record<string, unknown>> };
   } catch (error) {
-    logger.debug('loadLastConversation failed', { error: summarizeError(error) });
+    logger.warn('loadLastConversation failed', { error: summarizeError(error) });
   }
   return null;
 }
@@ -201,7 +197,7 @@ export function writeRecoveryFile(
     writeFileSync(tmpPath, lines.join('\n') + '\n', 'utf-8');
     renameSync(tmpPath, recoveryFile);
   } catch (error) {
-    logger.debug('[Recovery] Write failed', { error: summarizeError(error) });
+    logger.warn('[Recovery] Write failed', { error: summarizeError(error) });
   }
 }
 
@@ -246,7 +242,7 @@ export function checkRecoveryFile(options?: SessionPersistenceOptions): Recovery
       returnContext: meta.returnContext,
     };
   } catch (error) {
-    logger.debug('[Recovery] Check failed', { error: summarizeError(error) });
+    logger.warn('[Recovery] Check failed', { error: summarizeError(error) });
     return null;
   }
 }
@@ -293,7 +289,7 @@ export function loadRecoveryConversation(options?: SessionPersistenceOptions): S
       }),
     };
   } catch (error) {
-    logger.debug('[Recovery] Load failed', { error: summarizeError(error) });
+    logger.warn('[Recovery] Load failed', { error: summarizeError(error) });
     return null;
   }
 }

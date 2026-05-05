@@ -164,9 +164,9 @@ function readNumeric(reader: ProtoReader, wireType: WireType): number | undefine
 }
 
 /**
- * CRIT-04: Return uint64 fields as string (via BigInt) to preserve nanosecond
+ * Return uint64 fields as string (via BigInt) to preserve nanosecond
  * precision. Year-2026 timestamps (~1.78e18 ns) exceed Number.MAX_SAFE_INTEGER
- * (~9e15), so Number conversion silently loses the low ~7 digits.
+ * (~9e15), so Number conversion loses the low ~7 digits.
  * OTLP JSON spec §3.4 encodes int64 fields as strings — this matches the spec.
  */
 function readNumericBigIntAsString(reader: ProtoReader, wireType: WireType): string | undefined {
@@ -921,7 +921,7 @@ function decodeGenericDataPoint(bytes: Uint8Array): Record<string, unknown> {
   while (!reader.eof()) {
     const { fieldNumber, wireType } = reader.readField();
     if (fieldNumber === 2 || fieldNumber === 3 || fieldNumber === 4 || fieldNumber === 5 || fieldNumber === 10 || fieldNumber === 11 || fieldNumber === 12) {
-      // CRIT-04: fields 2/3 are *UnixNano (uint64), use string form to preserve precision.
+      // fields 2/3 are *UnixNano (uint64), use string form to preserve precision.
       const isNano = fieldNumber === 2 || fieldNumber === 3;
       const value = fieldNumber === 5 || fieldNumber === 11 || fieldNumber === 12
         ? readFloating(reader, wireType)

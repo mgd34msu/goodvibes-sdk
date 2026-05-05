@@ -1,5 +1,5 @@
 /**
- * Regression test: Phase 1 — Daemon authorization boundary
+ * Daemon authorization boundary.
  *
  * Verifies that each handler derives authorization from the per-call
  * request, not from a closure-captured factory-time request. An admin
@@ -42,10 +42,10 @@ const nonAdminReq = new Request('http://localhost/', {
 });
 
 // ---------------------------------------------------------------------------
-// createDaemonSystemRouteHandlers — C3 regression
+// createDaemonSystemRouteHandlers
 // ---------------------------------------------------------------------------
 
-describe('createDaemonSystemRouteHandlers per-request auth (C3)', () => {
+describe('createDaemonSystemRouteHandlers per-request auth', () => {
   function makeContext(): DaemonSystemRouteContext {
     return {
       requireAdmin: makeRequireAdmin(ADMIN_TOKEN),
@@ -110,7 +110,7 @@ describe('createDaemonSystemRouteHandlers per-request auth (C3)', () => {
     expect(denied.status).toBe(403);
   });
 
-  test('identity-of-request: installService passes each call-site request to requireAdmin (C3 closure-capture proof)', async () => {
+  test('identity-of-request: installService passes each call-site request to requireAdmin', async () => {
     const seen: Request[] = [];
     const requireAdmin = (req: Request): Response | null => {
       seen.push(req);
@@ -126,10 +126,10 @@ describe('createDaemonSystemRouteHandlers per-request auth (C3)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createDaemonIntegrationRouteHandlers — C3 regression
+// createDaemonIntegrationRouteHandlers
 // ---------------------------------------------------------------------------
 
-describe('createDaemonIntegrationRouteHandlers per-request auth (C3)', () => {
+describe('createDaemonIntegrationRouteHandlers per-request auth', () => {
   function makeContext(): DaemonIntegrationRouteContext {
     return {
       requireAdmin: makeRequireAdmin(ADMIN_TOKEN),
@@ -205,7 +205,7 @@ describe('createDaemonIntegrationRouteHandlers per-request auth (C3)', () => {
     expect(denied.status).toBe(403);
   });
 
-  test('identity-of-request: deleteBootstrapFile passes each call-site request to requireAdmin (C3 closure-capture proof)', async () => {
+  test('identity-of-request: deleteBootstrapFile passes each call-site request to requireAdmin', async () => {
     const seen: Request[] = [];
     const requireAdmin = (req: Request): Response | null => {
       seen.push(req);
@@ -221,10 +221,10 @@ describe('createDaemonIntegrationRouteHandlers per-request auth (C3)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createDaemonRuntimeSessionRouteHandlers — C4 regression (getSharedSessionEvents)
+// createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents
 // ---------------------------------------------------------------------------
 
-describe('createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents auth (C4)', () => {
+describe('createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents auth', () => {
   function makeContext(): DaemonRuntimeRouteContext {
     return {
       requireAdmin: makeRequireAdmin(ADMIN_TOKEN),

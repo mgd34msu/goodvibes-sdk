@@ -1,8 +1,8 @@
 /**
  * Root-barrel symbol uniqueness guard.
  *
- * Regression test for api-extractor `_2`-suffix collisions.
- * If two packages export the same name and the bundler silently deduplicates
+ * Guards against api-extractor `_2`-suffix collisions.
+ * If two packages export the same name and the bundler deduplicates
  * with a numeric suffix (e.g. `foo_2`), this test catches it immediately.
  *
  * The check is intentionally forward-looking: JS cannot have duplicate keys in

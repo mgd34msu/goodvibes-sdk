@@ -60,6 +60,68 @@ function toDataUrl(artifact: MediaArtifact): string | undefined {
   return undefined;
 }
 
+interface RemoteArtifactRetrieval extends Record<string, unknown> {
+  readonly source: 'media-generation-provider';
+  readonly sourceProviderId: string;
+  readonly sourceUrl: string;
+  readonly sourceUri: string;
+  readonly sourceQuality: 'provider-output-url';
+  readonly inlined: boolean;
+  readonly retrievalMethod: 'GET' | 'remote-reference';
+  readonly headProbe: {
+    readonly attempted: true;
+    readonly ok: boolean;
+    readonly status?: number | undefined;
+    readonly contentLength?: number | undefined;
+    readonly contentType?: string | undefined;
+    readonly error?: string | undefined;
+  };
+  readonly transportRecovery?: {
+    readonly from: 'HEAD';
+    readonly to: 'GET';
+    readonly reason: string;
+  } | undefined;
+}
+
+function buildRemoteArtifactMetadata(
+  providerId: string,
+  url: string,
+  input: {
+    readonly inlined: boolean;
+    readonly retrievalMethod: 'GET' | 'remote-reference';
+    readonly headOk: boolean;
+    readonly headStatus?: number | undefined;
+    readonly headContentLength?: number | undefined;
+    readonly headContentType?: string | undefined;
+    readonly headError?: string | undefined;
+  },
+): RemoteArtifactRetrieval {
+  return {
+    source: 'media-generation-provider',
+    sourceProviderId: providerId,
+    sourceUrl: url,
+    sourceUri: url,
+    sourceQuality: 'provider-output-url',
+    inlined: input.inlined,
+    retrievalMethod: input.retrievalMethod,
+    headProbe: {
+      attempted: true,
+      ok: input.headOk,
+      ...(input.headStatus !== undefined ? { status: input.headStatus } : {}),
+      ...(input.headContentLength !== undefined ? { contentLength: input.headContentLength } : {}),
+      ...(input.headContentType ? { contentType: input.headContentType } : {}),
+      ...(input.headError ? { error: input.headError } : {}),
+    },
+    ...(input.headError ? {
+      transportRecovery: {
+        from: 'HEAD',
+        to: 'GET',
+        reason: input.headError,
+      },
+    } : {}),
+  };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, ms);
@@ -108,43 +170,75 @@ async function fetchResponse(url: string, init: RequestInit, timeoutMs = 120_000
 }
 
 function buildArtifactFromRemote(
+  providerId: string,
   url: string,
   mimeType = 'application/octet-stream',
   filename?: string,
+  retrieval?: {
+    readonly headOk: boolean;
+    readonly headStatus?: number | undefined;
+    readonly headContentLength?: number | undefined;
+    readonly headContentType?: string | undefined;
+    readonly headError?: string | undefined;
+  },
 ): MediaArtifact {
   return {
     uri: url,
     mimeType,
     ...(filename ? { filename } : {}),
-    metadata: { sourceUrl: url },
+    metadata: buildRemoteArtifactMetadata(providerId, url, {
+      inlined: false,
+      retrievalMethod: 'remote-reference',
+      headOk: retrieval?.headOk ?? false,
+      headStatus: retrieval?.headStatus,
+      headContentLength: retrieval?.headContentLength,
+      headContentType: retrieval?.headContentType,
+      headError: retrieval?.headError,
+    }),
   };
 }
 
 async function maybeInlineArtifact(
+  providerId: string,
   url: string,
   fallbackMimeType: string,
   filename?: string,
   maxInlineBytes = 5_000_000,
 ): Promise<MediaArtifact> {
   let head: Response | null = null;
+  let headError: string | undefined;
   try {
     head = await instrumentedFetch(url, { method: 'HEAD', signal: AbortSignal.timeout(20_000) });
   } catch (error) {
-    logger.debug('Media artifact HEAD probe failed; falling back to GET', {
+    headError = summarizeError(error);
+    logger.warn('Media artifact HEAD probe failed; recovering with GET', {
       url,
-      error: summarizeError(error),
+      providerId,
+      recovery: 'HEAD_TO_GET',
+      error: headError,
     });
   }
   const contentLength = Number.parseInt(head?.headers.get('content-length') ?? '', 10);
   const contentType = head?.headers.get('content-type')?.trim() || fallbackMimeType;
+  const normalizedContentLength = Number.isFinite(contentLength) ? contentLength : undefined;
+  const retrieval = {
+    headOk: head?.ok ?? false,
+    headStatus: head?.status,
+    headContentLength: normalizedContentLength,
+    headContentType: contentType,
+    headError,
+  };
   if (Number.isFinite(contentLength) && contentLength > maxInlineBytes) {
-    return buildArtifactFromRemote(url, contentType, filename);
+    return buildArtifactFromRemote(providerId, url, contentType, filename, retrieval);
   }
   const response = await fetchResponse(url, { method: 'GET' }, 120_000);
   const buffer = Buffer.from(await response.arrayBuffer());
   const mimeType = response.headers.get('content-type')?.trim() || contentType;
   if (buffer.length > maxInlineBytes) {
-    return buildArtifactFromRemote(url, mimeType, filename);
+    return buildArtifactFromRemote(providerId, url, mimeType, filename, {
+      ...retrieval,
+      headContentType: mimeType,
+    });
   }
   return {
     uri: url,
@@ -152,16 +246,21 @@ async function maybeInlineArtifact(
     ...(filename ? { filename } : {}),
     dataBase64: buffer.toString('base64'),
     sizeBytes: buffer.length,
-    metadata: { sourceUrl: url },
+    metadata: buildRemoteArtifactMetadata(providerId, url, {
+      ...retrieval,
+      inlined: true,
+      retrievalMethod: 'GET',
+      headContentType: mimeType,
+    }),
   };
 }
 
-function inferVideoArtifact(url: string): Promise<MediaArtifact> {
-  return maybeInlineArtifact(url, 'video/mp4', 'video.mp4', 1_500_000);
+function inferVideoArtifact(providerId: string, url: string): Promise<MediaArtifact> {
+  return maybeInlineArtifact(providerId, url, 'video/mp4', 'video.mp4', 1_500_000);
 }
 
-function inferImageArtifact(url: string): Promise<MediaArtifact> {
-  return maybeInlineArtifact(url, 'image/png', 'image.png', 5_000_000);
+function inferImageArtifact(providerId: string, url: string): Promise<MediaArtifact> {
+  return maybeInlineArtifact(providerId, url, 'image/png', 'image.png', 5_000_000);
 }
 
 function createByteplusProvider(): MediaProvider {
@@ -234,7 +333,7 @@ function createByteplusProvider(): MediaProvider {
       if (!videoUrl) throw new Error('BytePlus generation completed without a video URL');
       return {
         providerId: 'byteplus',
-        artifacts: [await inferVideoArtifact(videoUrl)],
+        artifacts: [await inferVideoArtifact('byteplus', videoUrl)],
         metadata: {
           taskId,
           model,
@@ -314,7 +413,7 @@ function createRunwayProvider(): MediaProvider {
       if (outputs.length === 0) throw new Error('Runway generation completed without output URLs');
       return {
         providerId: 'runway',
-        artifacts: await Promise.all(outputs.map((url) => inferVideoArtifact(url))),
+        artifacts: await Promise.all(outputs.map((url) => inferVideoArtifact('runway', url))),
         metadata: { taskId, model },
       };
     },
@@ -393,7 +492,7 @@ function createAlibabaProvider(): MediaProvider {
       if (urls.length === 0) throw new Error('Alibaba generation completed without a video URL');
       return {
         providerId: 'alibaba',
-        artifacts: await Promise.all(urls.map((url) => inferVideoArtifact(url))),
+        artifacts: await Promise.all(urls.map((url) => inferVideoArtifact('alibaba', url))),
         metadata: { taskId, model },
       };
     },
@@ -469,7 +568,7 @@ function createFalProvider(): MediaProvider {
       if (!finalUrl) throw new Error('fal generation completed without an output URL');
       return {
         providerId: 'fal',
-        artifacts: [isImage ? await inferImageArtifact(finalUrl) : await inferVideoArtifact(finalUrl)],
+        artifacts: [isImage ? await inferImageArtifact('fal', finalUrl) : await inferVideoArtifact('fal', finalUrl)],
         metadata: { model: path },
       };
     },
@@ -556,7 +655,7 @@ function createComfyProvider(): MediaProvider {
       for (const entry of outputs) {
         const remoteUrl = trimString(entry['url']);
         if (remoteUrl) {
-          artifacts.push((request.outputMimeType?.startsWith('video/') ?? false) ? await inferVideoArtifact(remoteUrl) : await inferImageArtifact(remoteUrl));
+          artifacts.push((request.outputMimeType?.startsWith('video/') ?? false) ? await inferVideoArtifact('comfy', remoteUrl) : await inferImageArtifact('comfy', remoteUrl));
           continue;
         }
         const filename = trimString(entry['filename']);
@@ -565,7 +664,7 @@ function createComfyProvider(): MediaProvider {
           ? `/api/view?filename=${encodeURIComponent(filename)}&subfolder=${encodeURIComponent(trimString(entry['subfolder']) ?? '')}&type=${encodeURIComponent(trimString(entry['type']) ?? 'output')}`
           : `/view?filename=${encodeURIComponent(filename)}&subfolder=${encodeURIComponent(trimString(entry['subfolder']) ?? '')}&type=${encodeURIComponent(trimString(entry['type']) ?? 'output')}`;
         const remote = `${baseUrl.replace(/\/+$/, '')}${viewPath}`;
-        artifacts.push((request.outputMimeType?.startsWith('video/') ?? false) ? await inferVideoArtifact(remote) : await inferImageArtifact(remote));
+        artifacts.push((request.outputMimeType?.startsWith('video/') ?? false) ? await inferVideoArtifact('comfy', remote) : await inferImageArtifact('comfy', remote));
       }
       if (artifacts.length === 0) throw new Error('Comfy generation completed without downloadable artifacts');
       return {

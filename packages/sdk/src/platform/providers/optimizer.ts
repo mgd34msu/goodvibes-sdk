@@ -280,7 +280,7 @@ export class ProviderOptimizer {
    */
   explainCurrentRoute(profile: RequestProfile = {}): RouteExplanation {
     const current = this.registry.getCurrentModel();
-    return this.registry.explainRoute(current.registryKey ?? `${current.provider}:${current.id}`, profile);
+    return this.registry.explainRoute(current.registryKey, profile);
   }
 
   // -------------------------------------------------------------------------

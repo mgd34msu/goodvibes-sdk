@@ -1,10 +1,8 @@
 /**
  * companion-followup-persistence.test.ts
  *
- * Regression test for SDK 0.21.9 fix:
- *   POST /api/sessions/:id/messages with kind='message' (companion main-chat sends)
- *   must persist the message to the shared session message log AND emit the
- *   conversation.followup.companion event. Previously only the event fired.
+ * Verifies that companion follow-up messages persist to the shared session log
+ * and emit the conversation.followup.companion event.
  *
  * Coverage:
  *   - 202 is returned

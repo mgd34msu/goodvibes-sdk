@@ -3,7 +3,7 @@
 export interface DeferredStartupTask {
   readonly label: string;
   readonly run: () => void | Promise<void>;
-  readonly onError?: ((error: unknown) => void) | undefined | undefined;
+  readonly onError?: ((error: unknown) => void) | undefined;
 }
 
 export interface DeferredStartupCoordinator {

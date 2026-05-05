@@ -123,46 +123,31 @@ export class KVState {
   static listSessions(options: Pick<KVStateOptions, 'stateDir'>): string[] {
     const stateDir = readKVStateDir(options);
     if (!existsSync(stateDir)) return [];
-    try {
-      return readdirSync(stateDir)
-        .filter(f => /^session_[0-9a-f]{8}\.json$/.test(f))
-        .map(f => f.replace(/^session_/, '').replace(/\.json$/, ''))
-        .sort();
-    } catch {
-      return [];
-    }
+    return readdirSync(stateDir)
+      .filter(f => /^session_[0-9a-f]{8}\.json$/.test(f))
+      .map(f => f.replace(/^session_/, '').replace(/\.json$/, ''))
+      .sort();
   }
 
   static cleanupOldSessions(keepCount: number, options: Pick<KVStateOptions, 'stateDir'>): void {
     const stateDir = readKVStateDir(options);
     if (!existsSync(stateDir)) return;
-    try {
-      const files = readdirSync(stateDir)
-        .filter(f => /^session_[0-9a-f]{8}\.json$/.test(f))
-        .map(f => ({
+    const files = readdirSync(stateDir)
+      .filter(f => /^session_[0-9a-f]{8}\.json$/.test(f))
+      .map(f => {
+        const path = join(stateDir, f);
+        return {
           name: f,
-          path: join(stateDir, f),
-          mtime: (() => {
-            try {
-              return statSync(join(stateDir, f)).mtimeMs;
-            } catch {
-              return 0;
-            }
-          })(),
-        }))
-        .sort((a, b) => b.mtime - a.mtime);
+          path,
+          mtime: statSync(path).mtimeMs,
+        };
+      })
+      .sort((a, b) => b.mtime - a.mtime);
 
-      const toDelete = files.slice(keepCount);
-      for (const f of toDelete) {
-        try {
-          unlinkSync(f.path);
-          logger.debug('KVState: cleaned up old session', { file: f.name });
-        } catch (err) {
-          logger.debug('KVState: could not delete session file', { file: f.name, error: summarizeError(err) });
-        }
-      }
-    } catch (err) {
-      logger.debug('KVState: cleanupOldSessions failed (non-fatal)', { error: summarizeError(err) });
+    const toDelete = files.slice(keepCount);
+    for (const f of toDelete) {
+      unlinkSync(f.path);
+      logger.debug('KVState: cleaned up expired session', { file: f.name });
     }
   }
 
@@ -191,7 +176,7 @@ export class KVState {
     this.persistTimer = setTimeout(() => {
       this.persistTimer = null;
       this.persist().catch(err => {
-        logger.debug('KVState: scheduled persist failed', { error: summarizeError(err) });
+        logger.warn('KVState: scheduled persist failed', { filePath: this.filePath, error: summarizeError(err) });
       });
     }, 5000);
     this.persistTimer.unref?.();

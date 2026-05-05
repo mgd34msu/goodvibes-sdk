@@ -277,7 +277,7 @@ describe('daemon streaming TTS route', () => {
           capturedProviderId = providerId;
           capturedInput = input;
           return {
-            providerId: providerId ?? 'fallback',
+            providerId: providerId ?? 'default-provider',
             mimeType: 'audio/mpeg',
             format: 'mp3',
             chunks: byteChunks([new Uint8Array([5]), new Uint8Array([6, 7])]),

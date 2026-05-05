@@ -284,8 +284,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'using ProviderCapabilityRegistry contracts. Supports manual, auto, and pinned '
       + 'routing modes with deterministic, fully-explainable route decisions. '
       + 'Exposes /provider route, /provider explain-route, /provider pin, and '
-      + '/provider fallback test commands. '
-      + 'Disable to revert to implicit provider selection with zero behavior change.',
+      + '/provider fallback test commands.',
     defaultState: 'disabled',
     tier: 5,
     runtimeToggleable: true,

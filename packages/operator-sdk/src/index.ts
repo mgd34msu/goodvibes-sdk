@@ -13,4 +13,7 @@ export type {
   OperatorRemoteClientInvokeOptions,
   OperatorRemoteClientOptions,
   OperatorRemoteClientStreamOptions,
+  KnownMethodArgs,
+  KnownPathMethodArgs,
+  KnownStreamArgs,
 } from './client-core.js';

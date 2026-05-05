@@ -7,10 +7,13 @@
  * States:
  *   discovered → loading → loaded → active ↔ degraded
  *                                          ↓
- *                                        error → (unloading | disabled)
+ *                                        error → (unloading | disabled | loading)
+ *                    loading/loaded/active/degraded → error
  *                    active/loaded/degraded/error → unloading → disabled
- *                    any → error (non-fatal)
  *                    disabled → loading (re-enable)
+ *
+ * Recoverable plugin errors are recorded by the lifecycle manager without a state
+ * transition; only fatal/load failures enter the `error` state.
  */
 
 import type { PluginLifecycleState } from '../store/domains/plugins.js';
@@ -87,8 +90,8 @@ export function isReloadable(state: PluginLifecycleState): boolean {
 }
 
 /**
- * Returns whether the plugin's current state represents a terminal failure
- * that requires operator intervention (disabled or persistent error).
+ * Returns whether the plugin's current state represents a terminal lifecycle
+ * stop. The `error` state is recoverable via retry or unload.
  */
 export function isTerminal(state: PluginLifecycleState): boolean {
   return state === 'disabled';

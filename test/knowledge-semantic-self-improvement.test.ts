@@ -39,7 +39,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       canonicalUri: 'homegraph://passport/lg-edge-source-tv',
       tags: ['generated-page'],
       status: 'indexed',
-      metadata: { knowledgeSpaceId: spaceId, homeGraphGeneratedPage: true },
+      metadata: { knowledgeSpaceId: spaceId, generatedKnowledgePage: true, generatedProjection: true },
     });
     const official = await store.upsertSource({
       connectorId: 'semantic-gap-repair',
@@ -154,7 +154,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       summary: 'Generated passport for LG 86NANO90UNA.',
       tags: ['generated-page'],
       status: 'indexed',
-      metadata: { knowledgeSpaceId: spaceId, homeGraphGeneratedPage: true },
+      metadata: { knowledgeSpaceId: spaceId, generatedKnowledgePage: true, generatedProjection: true },
     });
     await store.upsertEdge({
       fromKind: 'source',

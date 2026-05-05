@@ -39,7 +39,7 @@ Accessible via `@pellux/goodvibes-sdk/platform/tools` (daemon embedders). Consum
 
 ## Registration Requirements
 
-`registerAllTools()` requires host-owned collaborators instead of silently
+`registerAllTools()` requires host-owned collaborators instead of implicitly
 constructing global state. Required collaborators include file undo, mode
 manager, process manager, agent manager, message bus, workflow services,
 config manager, provider registry, tool LLM resolver, sandbox session registry,

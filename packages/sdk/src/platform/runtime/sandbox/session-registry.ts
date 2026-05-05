@@ -12,6 +12,7 @@ import type {
   SandboxSessionKind,
 } from './types.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 
 function createSandboxSessionId(): string {
   return `sandbox_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`;
@@ -33,6 +34,21 @@ function readManagerPort(manager: ConfigManagerLike, key: string, fallback: numb
   const raw = manager.get(key);
   const parsed = typeof raw === 'number' ? raw : Number.parseInt(`${raw ?? ''}`, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function errorCode(error: unknown): string | undefined {
+  return error && typeof error === 'object' && 'code' in error
+    ? String((error as { code?: unknown }).code)
+    : undefined;
+}
+
+function logGuestCleanupFailure(pid: number, context: string, error: unknown): void {
+  if (errorCode(error) === 'ESRCH') return;
+  logger.warn('Sandbox managed guest cleanup failed', {
+    pid,
+    context,
+    error: summarizeError(error),
+  });
 }
 
 function waitForTcp(host: string, port: number, timeoutMs: number): Promise<boolean> {
@@ -81,6 +97,9 @@ async function launchManagedQemuGuest(
   const proc = spawn(launchPlan.command, [...launchPlan.args], {
     cwd: launchPlan.workspaceRoot,
     detached: true,
+    // QEMU is a detached, long-running guest. Startup failures are surfaced by
+    // the TCP readiness wait and wrapper startup probe, so keeping stdio open
+    // here would tie host lifetime to the VM process.
     stdio: 'ignore',
     windowsHide: true,
   });
@@ -92,8 +111,8 @@ async function launchManagedQemuGuest(
   if (!ready) {
     try {
       process.kill(proc.pid, 'SIGTERM');
-    } catch {
-      // ignore cleanup failure
+    } catch (error) {
+      logGuestCleanupFailure(proc.pid, 'startup-timeout', error);
     }
     throw new Error(`Timed out waiting for QEMU guest SSH on ${host}:${port}.`);
   }
@@ -210,8 +229,8 @@ export class SandboxSessionRegistry {
     if (existing.managedGuestPid) {
       try {
         process.kill(existing.managedGuestPid, 'SIGTERM');
-      } catch {
-        // already gone
+      } catch (error) {
+        logGuestCleanupFailure(existing.managedGuestPid, 'session-stop', error);
       }
     }
     return this.updateSession(sessionId, (session) => ({

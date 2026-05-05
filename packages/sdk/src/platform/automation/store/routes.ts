@@ -14,6 +14,17 @@ function defaultSnapshot(): AutomationRoutesSnapshot {
   };
 }
 
+function validateSnapshot(snapshot: AutomationRoutesSnapshot | null): AutomationRoutesSnapshot {
+  if (!snapshot) return defaultSnapshot();
+  if (snapshot.version !== 1 || !Array.isArray(snapshot.routes)) {
+    throw new Error('Automation routes store snapshot is invalid.');
+  }
+  return {
+    version: 1,
+    routes: snapshot.routes,
+  };
+}
+
 export interface AutomationRouteStoreConfig {
   readonly path?: string | undefined;
   readonly configManager?: AutomationStorePathConfig | undefined;
@@ -30,14 +41,7 @@ export class AutomationRouteStore {
   }
 
   async load(): Promise<AutomationRoutesSnapshot> {
-    const snapshot = await this.store.load();
-    if (!snapshot || !Array.isArray(snapshot.routes)) {
-      return defaultSnapshot();
-    }
-    return {
-      version: 1,
-      routes: snapshot.routes,
-    };
+    return validateSnapshot(await this.store.load());
   }
 
   async save(routes: readonly AutomationRouteBinding[]): Promise<void> {

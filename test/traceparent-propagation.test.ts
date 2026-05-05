@@ -9,11 +9,12 @@
  * 5. injectTraceparentAsync() — async variant, same behaviour
  * 6. traceparent format: "00-{traceId}-{spanId}-{flags}"
  * 7. tracestate header injected when span has traceState
- * 8. OTel errors do not propagate (swallowed)
+ * 8. OTel errors are isolated and do not propagate
  */
 
-import { describe, expect, test, mock, afterEach } from 'bun:test';
+import { describe, expect, test, afterEach } from 'bun:test';
 import { injectTraceparent, injectTraceparentAsync } from '../packages/transport-core/src/otel.js';
+import { resetOtelState, setOtelModuleOverride } from '../packages/transport-core/src/otel-state.js';
 import { settleEvents } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
@@ -67,7 +68,7 @@ describe('injectTraceparent() — OTel absent', () => {
   });
 });
 
-describe('injectTraceparent() — OTel present via globalThis mock', () => {
+describe('injectTraceparent() — OTel present via injected state', () => {
   const origRequire = (globalThis as { require?: unknown }).require;
 
   afterEach(() => {
@@ -76,7 +77,7 @@ describe('injectTraceparent() — OTel present via globalThis mock', () => {
     } else {
       delete (globalThis as { require?: unknown }).require;
     }
-    // Reset the module-level cache by patching require to undefined, then back.
+    resetOtelState();
   });
 
   test('traceparent header is injected when active span is present', () => {
@@ -85,21 +86,13 @@ describe('injectTraceparent() — OTel present via globalThis mock', () => {
       spanId: '0102030405060708',
       traceFlags: 1,
     });
-    const api = makeOtelApi(spanCtx as ReturnType<typeof makeSpanContext>);
+    resetOtelState();
+    setOtelModuleOverride(makeOtelApi(spanCtx as ReturnType<typeof makeSpanContext>) as never);
 
-    // Temporarily replace globalThis.require to simulate OTel presence.
-    // Note: otel.ts module cache may already have null. We test the algorithm
-    // directly by calling injectTraceparent with a fresh headers object.
-    // Since module-level cache persists across test runs, we test the format
-    // of traceparent via a manual invocation of the algorithm.
+    const headers: Record<string, string> = {};
+    injectTraceparent(headers);
 
-    // Direct algorithm test — verify the expected traceparent string format.
-    const traceId = 'aabbccdd001122334455667788990011';
-    const spanId = '0102030405060708';
-    const flags = 1;
-    const flagsHex = (flags & 0xff).toString(16).padStart(2, '0');
-    const expected = `00-${traceId}-${spanId}-${flagsHex}`;
-    expect(expected).toBe('00-aabbccdd001122334455667788990011-0102030405060708-01');
+    expect(headers['traceparent']).toBe('00-aabbccdd001122334455667788990011-0102030405060708-01');
   });
 
   test('traceparent format is 00-{32hex}-{16hex}-{2hex}', () => {
@@ -148,7 +141,7 @@ describe('injectTraceparentAsync() — OTel absent', () => {
 });
 
 // ---------------------------------------------------------------------------
-// OTel errors swallowed
+// OTel error isolation
 // ---------------------------------------------------------------------------
 
 describe('OTel error isolation', () => {
@@ -182,6 +175,7 @@ describe('OTel error isolation', () => {
     } else {
       delete (globalThis as { require?: unknown }).require;
     }
+    resetOtelState();
 
     expect(threw).toBe(false);
     // Headers may or may not have been modified, but no exception must escape.
@@ -226,51 +220,36 @@ describe('HTTP transport: traceparent not present when OTel absent', () => {
 // MINOR 1: Positive OTel path — injection seam
 // ---------------------------------------------------------------------------
 
-describe('injectTraceparent() — OTel present via injection seam', () => {
-  // Import the seam functions from source (where __otelModuleOverride is available).
-  // This tests the algorithm path when OTel IS present.
+describe('injectTraceparent() — OTel present via test state', () => {
   test('traceparent header injected with correct W3C format when active span is present', async () => {
-    const { __otelModuleOverride: _unused, __resetOtelCache, injectTraceparent: inject } =
-      await import('../packages/transport-core/src/otel.js') as {
-        __otelModuleOverride: unknown;
-        __resetOtelCache: () => void;
-        injectTraceparent: (h: Record<string, string>) => void;
-        injectTraceparentAsync: (h: Record<string, string>) => Promise<void>;
-      };
+    resetOtelState();
+    setOtelModuleOverride(makeOtelApi(makeSpanContext()) as never);
 
-    // Reset cache so the override is picked up.
-    __resetOtelCache();
+    const headers: Record<string, string> = {};
+    injectTraceparent(headers);
+    resetOtelState();
 
-    // Inject a fake OTel module directly via the module-level variable.
-    const { setOtelOverride } = await import('../packages/transport-core/src/otel.js') as {
-      setOtelOverride?: (api: unknown) => void;
-    };
-
-    // Since __otelModuleOverride is a module-level `let`, we can't assign to it directly
-    // from outside the module (ESM). Use a setter if available, or test via the
-    // documented seam: the format of the header value is fully tested synchronously.
-
-    // Verify format: 00-{32hex traceId}-{16hex spanId}-{2hex flags}
-    const traceId = 'aabbccdd001122334455667788990011';
-    const spanId = '0102030405060708';
-    const flags = 1; // SAMPLED
-
-    const flagsHex = (flags & 0xff).toString(16).padStart(2, '0');
-    const expected = `00-${traceId}-${spanId}-${flagsHex}`;
-
-    expect(expected).toBe('00-aabbccdd001122334455667788990011-0102030405060708-01');
-    expect(expected).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
-
-    __resetOtelCache();
+    expect(headers['traceparent']).toBe('00-aabbccdd001122334455667788990011-0102030405060708-01');
+    expect(headers['traceparent']).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
   });
 
-  test('setOtelModuleOverride seam is exported and callable', async () => {
+  test('OTel test state is not part of the public otel surface', async () => {
     const otelModule = await import('../packages/transport-core/src/otel.js');
-    expect('setOtelModuleOverride' in otelModule).toBe(true);
-    expect('__resetOtelCache' in otelModule).toBe(true);
-    expect('getOtelModuleOverride' in otelModule).toBe(true);
+    expect('setOtelModuleOverride' in otelModule).toBe(false);
+    expect('__resetOtelCache' in otelModule).toBe(false);
+    expect('getOtelModuleOverride' in otelModule).toBe(false);
+  });
 
-    (otelModule as { __resetOtelCache: () => void }).__resetOtelCache();
+  test('OTel test state is not exported from source public surfaces', async () => {
+    const rootModule = await import('../packages/transport-core/src/index.js');
+    const otelModule = await import('../packages/transport-core/src/otel.js');
+
+    for (const module of [rootModule, otelModule]) {
+      expect('setOtelModuleOverride' in module).toBe(false);
+      expect('resetOtelState' in module).toBe(false);
+      expect('readOtelModuleOverride' in module).toBe(false);
+      expect('cacheOtelApi' in module).toBe(false);
+    }
   });
 
   test('traceparent format verified for various flag values', () => {
@@ -288,13 +267,12 @@ describe('injectTraceparent() — OTel present via injection seam', () => {
 
   test('tracestate header is injected when present in span context', async () => {
     // Verify the seam in the async path exists and is callable.
-    const { injectTraceparentAsync, __resetOtelCache } =
+    const { injectTraceparentAsync } =
       await import('../packages/transport-core/src/otel.js') as {
         injectTraceparentAsync: (h: Record<string, string>) => Promise<void>;
-        __resetOtelCache: () => void;
       };
 
-    __resetOtelCache();
+    resetOtelState();
 
     // Without a real OTel module, async inject is a no-op. Verify it doesn't throw.
     const headers: Record<string, string> = {};
@@ -302,20 +280,18 @@ describe('injectTraceparent() — OTel present via injection seam', () => {
     // Headers unchanged when no span is active.
     expect(Object.keys(headers).length).toBe(0);
 
-    __resetOtelCache();
+    resetOtelState();
   });
 });
 
-describe('HTTP transport: traceparent injection with OTel module override (injection seam)', () => {
-  test('injectTraceparent injects correct W3C traceparent header via setOtelModuleOverride', async () => {
-    const { setOtelModuleOverride, __resetOtelCache, injectTraceparent: inject } =
+describe('HTTP transport: traceparent injection with OTel test state', () => {
+  test('injectTraceparent injects correct W3C traceparent header via test override', async () => {
+    const { injectTraceparent: inject } =
       await import('../packages/transport-core/src/otel.js') as {
-        setOtelModuleOverride: (api: unknown) => void;
-        __resetOtelCache: () => void;
         injectTraceparent: (h: Record<string, string>) => void;
       };
 
-    __resetOtelCache();
+    resetOtelState();
 
     const mockTraceId = '0af7651916cd43dd8448eb211c80319c';
     const mockSpanId = 'b7ad6b7169203331';
@@ -336,21 +312,19 @@ describe('HTTP transport: traceparent injection with OTel module override (injec
 
     const headers: Record<string, string> = {};
     inject(headers);
-    __resetOtelCache();
+    resetOtelState();
 
     expect(headers['traceparent']).toBe(`00-${mockTraceId}-${mockSpanId}-01`);
     expect(headers['tracestate']).toBeUndefined();
   });
 
   test('tracestate header is injected when span context has traceState', async () => {
-    const { setOtelModuleOverride, __resetOtelCache, injectTraceparent: inject } =
+    const { injectTraceparent: inject } =
       await import('../packages/transport-core/src/otel.js') as {
-        setOtelModuleOverride: (api: unknown) => void;
-        __resetOtelCache: () => void;
         injectTraceparent: (h: Record<string, string>) => void;
       };
 
-    __resetOtelCache();
+    resetOtelState();
 
     setOtelModuleOverride({
       trace: {
@@ -367,21 +341,19 @@ describe('HTTP transport: traceparent injection with OTel module override (injec
 
     const headers: Record<string, string> = {};
     inject(headers);
-    __resetOtelCache();
+    resetOtelState();
 
     expect(headers['traceparent']).toBe('00-00000000000000000000000000000001-0000000000000001-01');
     expect(headers['tracestate']).toBe('vendor=example');
   });
 
   test('no span active — no traceparent injected even when OTel is present', async () => {
-    const { setOtelModuleOverride, __resetOtelCache, injectTraceparent: inject } =
+    const { injectTraceparent: inject } =
       await import('../packages/transport-core/src/otel.js') as {
-        setOtelModuleOverride: (api: unknown) => void;
-        __resetOtelCache: () => void;
         injectTraceparent: (h: Record<string, string>) => void;
       };
 
-    __resetOtelCache();
+    resetOtelState();
 
     // OTel present but no active span.
     setOtelModuleOverride({
@@ -392,7 +364,7 @@ describe('HTTP transport: traceparent injection with OTel module override (injec
 
     const headers: Record<string, string> = {};
     inject(headers);
-    __resetOtelCache();
+    resetOtelState();
 
     expect(headers['traceparent']).toBeUndefined();
   });
@@ -404,24 +376,17 @@ describe('HTTP transport: traceparent injection with OTel module override (injec
 
 describe('SSE transport: traceparent in fetch headers when OTel is present', () => {
   test('traceparent header appears in SSE fetch request when active span is present', async () => {
-    // Strategy: use the setOtelModuleOverride injection seam exported from the dist
-    // otel module. This is reliable across the full CI test suite because:
-    //   1. _otelModuleOverride is checked FIRST in probeOtel(), before the module cache.
-    //   2. Even if otelApi was set to null by a prior "OTel absent" test, the override
-    //      takes priority — mock.module cannot re-bind already-loaded ESM modules in CI.
-    //   3. __resetOtelCache() clears both otelApi and _otelModuleOverride after each use.
-    const { setOtelModuleOverride, __resetOtelCache } =
-      await import('../packages/transport-core/dist/otel.js') as {
+    const { setOtelModuleOverride: setDistOtelModuleOverride, resetOtelState: resetDistOtelState } =
+      await import('../packages/transport-core/dist/otel-state.js') as {
         setOtelModuleOverride: (api: unknown) => void;
-        __resetOtelCache: () => void;
+        resetOtelState: () => void;
       };
 
     const mockTraceId = '0af7651916cd43dd8448eb211c80319c';
     const mockSpanId  = 'b7ad6b7169203331';
 
-    // Reset any prior cache state, then install the fake OTel API.
-    __resetOtelCache();
-    setOtelModuleOverride({
+    resetDistOtelState();
+    setDistOtelModuleOverride({
       trace: {
         getActiveSpan: () => ({
           spanContext: () => ({
@@ -462,8 +427,7 @@ describe('SSE transport: traceparent in fetch headers when OTel is present', () 
     const stop = await connector('agents', () => {});
     stop();
 
-    // Always clear the override so subsequent tests are not affected.
-    __resetOtelCache();
+    resetDistOtelState();
 
     expect(capturedHeaders['traceparent']).toBe(`00-${mockTraceId}-${mockSpanId}-01`);
   });
@@ -475,20 +439,17 @@ describe('SSE transport: traceparent in fetch headers when OTel is present', () 
 
 describe('WebSocket transport: traceparent in auth frame when OTel is present', () => {
   test('traceparent field appears in WS auth frame when active span is present', async () => {
-    // Strategy: use the setOtelModuleOverride injection seam (same as SSE test above).
-    // Avoids mock.module which cannot re-bind already-loaded ESM modules in CI.
-    const { setOtelModuleOverride, __resetOtelCache } =
-      await import('../packages/transport-core/dist/otel.js') as {
+    const { setOtelModuleOverride: setDistOtelModuleOverride, resetOtelState: resetDistOtelState } =
+      await import('../packages/transport-core/dist/otel-state.js') as {
         setOtelModuleOverride: (api: unknown) => void;
-        __resetOtelCache: () => void;
+        resetOtelState: () => void;
       };
 
     const mockTraceId = '0af7651916cd43dd8448eb211c80319c';
     const mockSpanId  = 'b7ad6b7169203331';
 
-    // Reset any prior cache state, then install the fake OTel API.
-    __resetOtelCache();
-    setOtelModuleOverride({
+    resetDistOtelState();
+    setDistOtelModuleOverride({
       trace: {
         getActiveSpan: () => ({
           spanContext: () => ({
@@ -554,8 +515,7 @@ describe('WebSocket transport: traceparent in auth frame when OTel is present', 
     // Allow async onOpen handler (which calls injectTraceparentAsync) to complete.
     await settleEvents(30);
 
-    // Always clear the override so subsequent tests are not affected.
-    __resetOtelCache();
+    resetDistOtelState();
 
     expect(sentMessages.length).toBeGreaterThanOrEqual(1);
     const authFrame = JSON.parse(sentMessages[0]!) as {

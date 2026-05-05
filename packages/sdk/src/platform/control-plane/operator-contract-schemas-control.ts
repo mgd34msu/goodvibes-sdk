@@ -202,7 +202,7 @@ export const CONTINUITY_SNAPSHOT_SCHEMA = objectSchema({
 const WORKTREE_META_SCHEMA = objectSchema({
   path: STRING_SCHEMA,
   kind: enumSchema(['agent', 'orchestrator', 'manual']),
-  state: enumSchema(['active', 'paused', 'kept', 'discard', 'cleanup-pending']),
+  state: enumSchema(['active', 'paused', 'kept', 'discard', 'pending-cleanup']),
   ownerId: STRING_SCHEMA,
   sessionId: STRING_SCHEMA,
   taskId: STRING_SCHEMA,
@@ -215,13 +215,13 @@ const WORKTREE_SUMMARY_SCHEMA = objectSchema({
   paused: NUMBER_SCHEMA,
   kept: NUMBER_SCHEMA,
   discard: NUMBER_SCHEMA,
-  cleanupPending: NUMBER_SCHEMA,
+  pendingCleanup: NUMBER_SCHEMA,
   sessionAttached: NUMBER_SCHEMA,
   taskAttached: NUMBER_SCHEMA,
   agentOwned: NUMBER_SCHEMA,
   orchestratorOwned: NUMBER_SCHEMA,
   manualOwned: NUMBER_SCHEMA,
-}, ['total', 'active', 'paused', 'kept', 'discard', 'cleanupPending', 'sessionAttached', 'taskAttached', 'agentOwned', 'orchestratorOwned', 'manualOwned']);
+}, ['total', 'active', 'paused', 'kept', 'discard', 'pendingCleanup', 'sessionAttached', 'taskAttached', 'agentOwned', 'orchestratorOwned', 'manualOwned']);
 
 export const WORKTREE_SNAPSHOT_SCHEMA = objectSchema({
   summary: WORKTREE_SUMMARY_SCHEMA,

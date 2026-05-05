@@ -3,7 +3,7 @@
  *
  * Maps combinations of stop reasons, error messages, event sequences,
  * and cascade presence to a FailureClass without requiring manual log
- * spelunking. Classification is heuristic and best-effort.
+ * spelunking. Classification is heuristic and exposes the matched class.
  */
 import type { FailureClass } from './types.js';
 

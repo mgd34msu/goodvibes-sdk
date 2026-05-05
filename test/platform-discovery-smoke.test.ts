@@ -2,7 +2,7 @@
  * Coverage-gap smoke test — platform/discovery
  * Verifies that the scanner and mcp-scanner modules load, export their
  * primary symbols, and execute observable behavior via await.
- * Closes coverage gap: platform/discovery (eighth-review, MIN-1 fix)
+ * Closes coverage gap: platform/discovery
  */
 
 import { describe, expect, test } from 'bun:test';

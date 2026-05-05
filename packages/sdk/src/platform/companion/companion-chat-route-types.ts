@@ -9,18 +9,14 @@ import type { CompanionChatManager } from './companion-chat-manager.js';
 export interface CompanionChatRouteContext {
   /**
    * The chat session manager. Caller injects a real instance;
-   * tests inject a mock or real instance with a mock provider.
+   * tests can inject an isolated instance with a deterministic provider.
    */
   readonly chatManager: CompanionChatManager;
   /** Parse JSON body from request. Returns Response on parse error. */
   readonly parseJsonBody: (req: Request) => Promise<{ [k: string]: unknown } | Response>;
   /** Parse optional JSON body. Returns null if body is absent. */
   readonly parseOptionalJsonBody: (req: Request) => Promise<{ [k: string]: unknown } | null | Response>;
-  /**
-   * F16b: Resolve the current default provider/model from the provider registry.
-   * Called at session-create time when the caller does not specify provider/model.
-   * Returns null if no provider is currently configured.
-   */
+  /** Resolve the current provider/model when session creation omits an explicit route. */
   readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
   /**
    * Open an SSE event stream scoped to a session.

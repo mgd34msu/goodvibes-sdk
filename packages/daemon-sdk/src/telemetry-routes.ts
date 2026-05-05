@@ -174,7 +174,7 @@ async function parseOtlpBody(
     );
   }
 
-  // CRIT-03: reject oversized requests before buffering the body into memory.
+  // reject oversized requests before buffering the body into memory.
   const contentLength = Number(req.headers.get('content-length'));
   if (!Number.isNaN(contentLength) && contentLength > OTLP_INGEST_MAX_BODY_BYTES) {
     return jsonErrorResponse(
@@ -201,8 +201,7 @@ async function parseOtlpBody(
   if (acceptsProtobuf) {
     try {
       return decodeOtlpProtobuf(kind, new Uint8Array(raw));
-    } catch (error) {
-      void error;
+    } catch {
       return jsonErrorResponse(
         { error: 'OTLP ingest body is not valid protobuf', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
         { status: 400 },
@@ -220,8 +219,7 @@ async function parseOtlpBody(
       );
     }
     return parsed as Record<string, unknown>;
-  } catch (error) {
-    void error;
+  } catch {
     return jsonErrorResponse(
       { error: 'OTLP ingest body is not valid JSON', code: 'INVALID_PAYLOAD', category: DaemonErrorCategory.BAD_REQUEST },
       { status: 400 },

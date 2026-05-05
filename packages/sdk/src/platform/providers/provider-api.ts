@@ -90,10 +90,10 @@ export interface ProviderApiModelRecord extends ProviderApiModelReference {
 }
 
 export interface ProviderApiFavoriteRecord {
-  readonly modelId: string;
+  readonly registryKey: string;
   readonly available: boolean;
+  readonly modelId?: string | undefined;
   readonly providerId?: string | undefined;
-  readonly registryKey?: string | undefined;
   readonly displayName?: string | undefined;
   readonly pinnedAt?: string | undefined;
   readonly lastUsed?: string | undefined;
@@ -112,7 +112,7 @@ export interface ProviderApiModelQuery {
 }
 
 export interface ProviderApiBenchmarkQuery {
-  readonly modelRefs?: readonly string[] | undefined;
+  readonly registryKeys?: readonly string[] | undefined;
   readonly limit?: number | undefined;
 }
 
@@ -135,15 +135,15 @@ export interface ProviderApi {
   listProviderIds(): readonly string[];
   getCurrentModel(): Promise<ProviderApiModelRecord>;
   listModels(query?: ProviderApiModelQuery): Promise<readonly ProviderApiModelRecord[]>;
-  selectModel(modelRef: string): Promise<ProviderApiModelRecord>;
+  selectModel(registryKey: string): Promise<ProviderApiModelRecord>;
   registerDiscoveredProviders(servers: readonly DiscoveredServer[]): Promise<void>;
   refreshCatalog(): Promise<ProviderApiCatalogRefreshResult>;
   refreshBenchmarks(): Promise<number>;
   refreshModelLimits(): Promise<number>;
   getFavorites(): Promise<ProviderApiFavoritesSnapshot>;
-  pinModel(modelRef: string): Promise<ProviderApiFavoritesSnapshot>;
-  unpinModel(modelRef: string): Promise<ProviderApiFavoritesSnapshot>;
-  recordModelUsage(modelRef: string): Promise<ProviderApiFavoritesSnapshot>;
+  pinModel(registryKey: string): Promise<ProviderApiFavoritesSnapshot>;
+  unpinModel(registryKey: string): Promise<ProviderApiFavoritesSnapshot>;
+  recordModelUsage(registryKey: string): Promise<ProviderApiFavoritesSnapshot>;
   listBenchmarks(query?: ProviderApiBenchmarkQuery): Promise<readonly ProviderApiBenchmarkRecord[]>;
   queryRuntimeMetadata(query: ProviderApiRuntimeQuery): Promise<ProviderApiRuntimeQueryResult>;
   createHelperModel(configManager: HelperModelDeps['configManager']): HelperModel;
@@ -151,8 +151,9 @@ export interface ProviderApi {
 
 export interface ProviderApiRegistry {
   describeRuntime(name: string): Promise<ProviderRuntimeMetadata | null>;
-  findAlternativeModel(currentModelId: string): ModelDefinition | null;
+  findAlternativeModel(currentRegistryKey: string): ModelDefinition | null;
   getCostFromCatalog(modelId: string): { input: number; output: number };
+  getPricingForModel(modelId: string, provider: string): { prompt: number; completion: number } | null;
   getCatalogModelDefinitions(): readonly MinimalModelDefinition[];
   has(id: string): boolean;
   get?(id: string): LLMProvider | undefined;
@@ -169,7 +170,7 @@ export interface ProviderApiRegistry {
   registerDiscoveredProviders(servers: DiscoveredServer[]): void;
   refreshCatalog(): Promise<void>;
   refreshModelLimits(): Promise<number>;
-  setCurrentModel(modelId: string): void;
+  setCurrentModel(registryKey: string): void;
 }
 
 export interface ProviderApiFavoritesStore extends Pick<FavoritesStore, 'load' | 'pinModel' | 'recordUsage' | 'unpinModel'> {}
@@ -193,10 +194,7 @@ function findModelDefinition(
   models: readonly ModelDefinition[],
   modelRef: string,
 ): ModelDefinition | undefined {
-  if (modelRef.includes(':')) {
-    return models.find((model) => model.registryKey === modelRef) ?? models.find((model) => model.id === modelRef);
-  }
-  return models.find((model) => model.id === modelRef);
+  return models.find((model) => model.registryKey === modelRef);
 }
 
 function toModelReference(model: ModelDefinition): ProviderApiModelReference {
@@ -208,12 +206,12 @@ function toModelReference(model: ModelDefinition): ProviderApiModelReference {
 }
 
 function buildFavoriteIndexes(data: FavoritesData): {
-  readonly pinnedByModelId: ReadonlyMap<string, FavoritesData['pinned'][number]>;
-  readonly recentByModelId: ReadonlyMap<string, FavoritesData['history'][number]>;
+  readonly pinnedByRegistryKey: ReadonlyMap<string, FavoritesData['pinned'][number]>;
+  readonly recentByRegistryKey: ReadonlyMap<string, FavoritesData['history'][number]>;
 } {
   return {
-    pinnedByModelId: new Map(data.pinned.map((entry) => [entry.modelId, entry])),
-    recentByModelId: new Map(data.history.map((entry) => [entry.modelId, entry])),
+    pinnedByRegistryKey: new Map(data.pinned.map((entry) => [entry.registryKey, entry])),
+    recentByRegistryKey: new Map(data.history.map((entry) => [entry.registryKey, entry])),
   };
 }
 
@@ -311,8 +309,8 @@ function buildModelRecord(
   deps: ProviderApiDependencies,
 ): ProviderApiModelRecord {
   const indexes = buildFavoriteIndexes(favorites);
-  const pinned = indexes.pinnedByModelId.get(model.id);
-  const recent = indexes.recentByModelId.get(model.id);
+  const pinned = indexes.pinnedByRegistryKey.get(model.registryKey);
+  const recent = indexes.recentByRegistryKey.get(model.registryKey);
 
   return {
     ...toModelReference(model),
@@ -336,7 +334,7 @@ function buildModelRecord(
 }
 
 function buildFavoriteRecord(
-  modelId: string,
+  registryKey: string,
   models: readonly ModelDefinition[],
   extras: {
     readonly pinnedAt?: string | undefined;
@@ -344,14 +342,14 @@ function buildFavoriteRecord(
     readonly useCount?: number | undefined;
   },
 ): ProviderApiFavoriteRecord {
-  const model = findModelDefinition(models, modelId);
+  const model = findModelDefinition(models, registryKey);
   return {
-    modelId,
+    registryKey,
     available: model != null,
     ...(model
       ? {
+          modelId: model.id,
           providerId: model.provider,
-          registryKey: model.registryKey,
           displayName: model.displayName,
         }
       : {}),
@@ -365,13 +363,13 @@ async function loadFavoritesSnapshot(
   const favorites = cloneFavoritesData(await deps.favoritesStore.load());
   const models = deps.providerRegistry.listModels();
   const pinned = favorites.pinned.map((entry) =>
-    buildFavoriteRecord(entry.modelId, models, { pinnedAt: entry.pinnedAt }),
+    buildFavoriteRecord(entry.registryKey, models, { pinnedAt: entry.pinnedAt }),
   );
   const recent = favorites.history
     .slice()
     .sort((a, b) => b.lastUsed.localeCompare(a.lastUsed))
     .map((entry) =>
-      buildFavoriteRecord(entry.modelId, models, {
+      buildFavoriteRecord(entry.registryKey, models, {
         lastUsed: entry.lastUsed,
         useCount: entry.count,
       }),
@@ -394,27 +392,37 @@ function applyModelQuery(
   });
 }
 
+function requireProviderQualifiedRegistryKey(modelRef: string): void {
+  if (!modelRef.includes(':')) {
+    throw new Error(`Model references must use a provider-qualified registryKey; received '${modelRef}'.`);
+  }
+}
+
 function resolveModelOrThrow(
   deps: ProviderApiDependencies,
   modelRef: string,
 ): ModelDefinition {
-  const model = findModelDefinition(deps.providerRegistry.listModels(), modelRef);
+  requireProviderQualifiedRegistryKey(modelRef);
+  const models = deps.providerRegistry.listModels();
+  const model = findModelDefinition(models, modelRef);
   if (!model) {
     throw new Error(`Model '${modelRef}' not found.`);
   }
   return model;
 }
 
-async function resolvePinnedModelIdOrThrow(
+async function resolvePinnedRegistryKeyOrThrow(
   deps: ProviderApiDependencies,
   modelRef: string,
 ): Promise<string> {
-  const model = findModelDefinition(deps.providerRegistry.listModels(), modelRef);
-  if (model) return model.id;
+  requireProviderQualifiedRegistryKey(modelRef);
+  const models = deps.providerRegistry.listModels();
+  const model = findModelDefinition(models, modelRef);
+  if (model) return model.registryKey;
 
   const favorites = cloneFavoritesData(await deps.favoritesStore.load());
-  const pinned = favorites.pinned.find((entry) => entry.modelId === modelRef);
-  if (pinned) return pinned.modelId;
+  const pinned = favorites.pinned.find((entry) => entry.registryKey === modelRef);
+  if (pinned) return pinned.registryKey;
 
   throw new Error(`Model '${modelRef}' not found.`);
 }
@@ -424,9 +432,12 @@ async function buildBenchmarkRecords(
   query?: ProviderApiBenchmarkQuery,
 ): Promise<readonly ProviderApiBenchmarkRecord[]> {
   const models = deps.providerRegistry.listModels();
-  const selectedModels = query?.modelRefs
-    ? query.modelRefs
-        .map((modelRef) => findModelDefinition(models, modelRef))
+  const selectedModels = query?.registryKeys
+    ? query.registryKeys
+        .map((registryKey) => {
+          requireProviderQualifiedRegistryKey(registryKey);
+          return findModelDefinition(models, registryKey);
+        })
         .filter((model): model is ModelDefinition => model != null)
     : models;
 
@@ -476,8 +487,8 @@ export function createProviderApi(deps: ProviderApiDependencies): ProviderApi {
       return applyModelQuery(models, query);
     },
 
-    async selectModel(modelRef: string): Promise<ProviderApiModelRecord> {
-      deps.providerRegistry.setCurrentModel(modelRef);
+    async selectModel(registryKey: string): Promise<ProviderApiModelRecord> {
+      deps.providerRegistry.setCurrentModel(registryKey);
       return await this.getCurrentModel();
     },
 
@@ -503,21 +514,21 @@ export function createProviderApi(deps: ProviderApiDependencies): ProviderApi {
       return await loadFavoritesSnapshot(deps);
     },
 
-    async pinModel(modelRef: string): Promise<ProviderApiFavoritesSnapshot> {
-      const model = resolveModelOrThrow(deps, modelRef);
-      await deps.favoritesStore.pinModel(model.id);
+    async pinModel(registryKey: string): Promise<ProviderApiFavoritesSnapshot> {
+      const model = resolveModelOrThrow(deps, registryKey);
+      await deps.favoritesStore.pinModel(model.registryKey);
       return await loadFavoritesSnapshot(deps);
     },
 
-    async unpinModel(modelRef: string): Promise<ProviderApiFavoritesSnapshot> {
-      const modelId = await resolvePinnedModelIdOrThrow(deps, modelRef);
-      await deps.favoritesStore.unpinModel(modelId);
+    async unpinModel(registryKey: string): Promise<ProviderApiFavoritesSnapshot> {
+      const resolvedRegistryKey = await resolvePinnedRegistryKeyOrThrow(deps, registryKey);
+      await deps.favoritesStore.unpinModel(resolvedRegistryKey);
       return await loadFavoritesSnapshot(deps);
     },
 
-    async recordModelUsage(modelRef: string): Promise<ProviderApiFavoritesSnapshot> {
-      const model = resolveModelOrThrow(deps, modelRef);
-      await deps.favoritesStore.recordUsage(model.id);
+    async recordModelUsage(registryKey: string): Promise<ProviderApiFavoritesSnapshot> {
+      const model = resolveModelOrThrow(deps, registryKey);
+      await deps.favoritesStore.recordUsage(model.registryKey);
       return await loadFavoritesSnapshot(deps);
     },
 

@@ -16,6 +16,7 @@ import type {
 import { DEFAULT_COMPONENT_CONFIG, appendBounded } from '../types.js';
 import type { ContractVerificationResult } from '../../tools/contract-verifier.js';
 import { logger } from '../../../utils/logger.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 /**
  * ToolContractsPanel — diagnostics data provider for tool contract verification.
@@ -38,7 +39,6 @@ export class ToolContractsPanel {
   private readonly _subscribers = new Set<() => void>();
   /**
    * Bounded history of entries from previous load() calls, for audit.
-   * @internal
    */
   private readonly _history: ToolContractEntry[] = [];
 
@@ -205,8 +205,7 @@ export class ToolContractsPanel {
       try {
         cb();
       } catch (err) {
-        // Non-fatal: subscriber errors must not crash the provider
-        logger.debug('[ToolContractsPanel] subscriber error', { err });
+        logger.warn('[ToolContractsPanel] subscriber error', { error: summarizeError(err) });
       }
     }
   }

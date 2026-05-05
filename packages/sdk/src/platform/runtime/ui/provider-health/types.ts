@@ -40,6 +40,7 @@ export interface ProviderHealthEntry {
 export interface FallbackChainNode {
   readonly providerId: string;
   readonly modelId: string;
+  readonly registryKey: string;
   readonly displayName: string;
   readonly position: number;
   readonly isCurrent: boolean;

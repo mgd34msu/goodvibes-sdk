@@ -34,6 +34,16 @@ export interface ExecutionPlan {
   awaitingPlan?: boolean; // true when /plan created the shell, waiting for model to fill it
 }
 
+export interface ExecutionPlanParseIssue {
+  readonly line: number;
+  readonly text: string;
+  readonly reason: string;
+}
+
+export type ParsedExecutionPlan = Partial<ExecutionPlan> & {
+  parseIssues?: ExecutionPlanParseIssue[] | undefined;
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -125,7 +135,7 @@ export class ExecutionPlanManager {
       const raw = readFileSync(filePath, 'utf-8');
       return JSON.parse(raw) as ExecutionPlan;
     } catch (err) {
-      logger.debug('ExecutionPlanManager: failed to load plan', { planId: filePath, error: String(err) });
+      logger.warn('ExecutionPlanManager: failed to load plan', { planId: filePath, error: String(err) });
       return null;
     }
   }
@@ -152,7 +162,7 @@ export class ExecutionPlanManager {
       if (sessionId && !plan.sessionId) return null;
       return plan;
     } catch (err) {
-      logger.debug('ExecutionPlanManager: failed to read active plan pointer', { error: String(err) });
+      logger.warn('ExecutionPlanManager: failed to read active plan pointer', { error: String(err) });
       return null;
     }
   }
@@ -301,9 +311,10 @@ export class ExecutionPlanManager {
    * Parse a markdown execution plan written by the model into structured format.
    * Robust to minor formatting variations models may produce.
    */
-  parseFromMarkdown(markdown: string): Partial<ExecutionPlan> {
+  parseFromMarkdown(markdown: string): ParsedExecutionPlan {
     const lines = markdown.split('\n');
     const items: PlanItem[] = [];
+    const parseIssues: ExecutionPlanParseIssue[] = [];
     let title = '';
     let currentPhase = '';
 
@@ -312,7 +323,8 @@ export class ExecutionPlanManager {
     // Checkbox prefix: - [x], - [ ], - [~], - [!], - [-]
     const checkboxRe = /^-\s+(\[[\sxX~!\-]\])\s+(.+)$/;
 
-    for (const line of lines) {
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex]!;
       const trimmed = line.trim();
       if (!trimmed) continue;
 
@@ -391,7 +403,6 @@ export class ExecutionPlanManager {
             ...(dependencies && dependencies.length > 0 ? { dependencies } : {}),
           });
         } else {
-          // Fallback: best-effort parse without status
           const descMatch = /^-\s+(?:\[[\s\w~!-]\]\s+)?(.+)$/.exec(trimmed);
           if (descMatch) {
             items.push({
@@ -399,6 +410,11 @@ export class ExecutionPlanManager {
               phase: currentPhase,
               description: descMatch[1]?.trim() ?? '',
               status: 'pending',
+            });
+            parseIssues.push({
+              line: lineIndex + 1,
+              text: trimmed,
+              reason: 'Plan item did not include a recognized checkbox status; parsed as pending.',
             });
           }
         }
@@ -412,6 +428,7 @@ export class ExecutionPlanManager {
       updatedAt: now,
       status: 'draft',
       items,
+      ...(parseIssues.length > 0 ? { parseIssues } : {}),
     };
   }
 

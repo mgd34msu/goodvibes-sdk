@@ -55,15 +55,10 @@ function handleListModels(context: OpenAICompatibleRouteContext): Response {
   const created = Math.floor(Date.now() / 1000);
   const models = context.providerRegistry.listModels();
   const current = context.providerRegistry.getCurrentModel();
-  const ids = new Set<string>(['goodvibes/current', 'goodvibes/default']);
-  const plainIdCounts = new Map<string, number>();
+  const ids = new Set<string>(['goodvibes/current']);
 
   for (const model of models) {
-    ids.add(model.registryKey ?? `${model.provider}:${model.id}`);
-    plainIdCounts.set(model.id, (plainIdCounts.get(model.id) ?? 0) + 1);
-  }
-  for (const model of models) {
-    if (plainIdCounts.get(model.id) === 1) ids.add(model.id);
+    ids.add(model.registryKey);
   }
 
   return Response.json({
@@ -134,12 +129,15 @@ function resolveModel(
 ): ResolvedModel {
   const current = registry.getCurrentModel();
   const raw = requested?.trim();
-  if (!raw || raw === 'goodvibes/current' || raw === 'goodvibes/default') {
+  if (!raw) {
+    throw new Error('Missing required field: model.');
+  }
+  if (raw === 'goodvibes/current') {
     return {
-      provider: registry.getForModel(current.id, current.provider),
+      provider: registry.getForModel(current.registryKey, current.provider),
       providerId: current.provider,
       modelId: current.id,
-      responseModel: raw || 'goodvibes/current',
+      responseModel: raw,
     };
   }
 
@@ -147,32 +145,18 @@ function resolveModel(
   const exact = models.find((model) => model.registryKey === raw);
   if (exact) {
     return {
-      provider: registry.getForModel(exact.id, exact.provider),
+      provider: registry.getForModel(exact.registryKey, exact.provider),
       providerId: exact.provider,
       modelId: exact.id,
       responseModel: exact.registryKey,
     };
   }
 
-  const separator = raw.indexOf(':');
-  if (separator > 0) {
-    const providerId = raw.slice(0, separator);
-    const modelId = raw.slice(separator + 1);
-    return {
-      provider: registry.getForModel(modelId, providerId),
-      providerId,
-      modelId,
-      responseModel: raw,
-    };
-  }
-
-  const plain = models.find((model) => model.id === raw);
-  return {
-    provider: registry.getForModel(raw),
-    providerId: plain?.provider ?? '',
-    modelId: plain?.id ?? raw,
-    responseModel: plain?.registryKey ?? raw,
-  };
+  throw new Error(
+    raw.includes(':')
+      ? `Model '${raw}' not found.`
+      : `Model '${raw}' must be requested as a provider-qualified registryKey.`,
+  );
 }
 
 function prepareChatRequest(input: ChatCompletionRequest): {
@@ -483,11 +467,10 @@ function openAIErrorFromResponse(response: Response): Response {
   return openAIError(response.statusText || 'Invalid request body', response.status || 400, 'invalid_request_error', 'invalid_json');
 }
 
-function modelOwnerFor(id: string, models: ReturnType<ProviderRegistry['listModels']>, fallback: string): string {
+function modelOwnerFor(id: string, models: ReturnType<ProviderRegistry['listModels']>, defaultOwner: string): string {
   const registryMatch = models.find((model) => model.registryKey === id);
   if (registryMatch) return registryMatch.provider;
-  const plainMatch = models.find((model) => model.id === id);
-  return plainMatch?.provider ?? fallback;
+  return defaultOwner;
 }
 
 function normalizePathPrefix(prefix: string): string {

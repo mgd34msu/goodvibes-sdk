@@ -49,7 +49,7 @@ describe('L1: create → message → close lifecycle', () => {
   test('full lifecycle completes without error', async () => {
     const manager = makeManager();
 
-    const session = manager.createSession({ title: 'My chat', model: 'claude-sonnet' });
+    const session = manager.createSession({ title: 'My chat', provider: 'anthropic', model: 'claude-sonnet' });
     expect(session.id).not.toBe('');
     expect(session.kind).toBe('companion-chat');
     expect(session.status).toBe('active');
@@ -87,6 +87,13 @@ describe('L1: create → message → close lifecycle', () => {
     expect(session.systemPrompt).toBe('Be helpful');
     expect(session.status).toBe('active');
     expect(session.messageCount).toBe(0);
+  });
+
+  test('session route metadata requires provider and model together', () => {
+    const manager = makeManager();
+    expect(() => manager.createSession({ title: 'Partial route', model: 'gpt-5' })).toThrow(
+      'provider and model must be supplied together',
+    );
   });
 });
 

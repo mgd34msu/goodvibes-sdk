@@ -29,7 +29,7 @@ export const SERVICE_NAME = 'goodvibes-sdk';
 export const DEFAULT_EVENT_LIMIT = 500;
 
 /**
- * OBS-22: Allowlist of metric label keys permitted in telemetry attributes.
+ * Allowlist of metric label keys permitted in telemetry attributes.
  * Keys outside this set are stripped before storage to prevent high-cardinality
  * label explosion in metrics backends (Prometheus, OTLP, etc.).
  */
@@ -62,7 +62,7 @@ export const METRIC_LABEL_ALLOWLIST = new Set<string>([
   'error_source',
   // Stream labels
   'stream_type',
-  // Listener/event labels (OBS-13)
+  // Listener/event labels
   'event_type',
 ]);
 export const DEFAULT_ERROR_LIMIT = 250;
@@ -243,7 +243,7 @@ export function isErrorEventType(type: string): boolean {
 }
 
 /**
- * OBS-22: Filter metric labels against the allowlist to prevent high-cardinality
+ * Filter metric labels against the allowlist to prevent high-cardinality
  * label injection into metrics backends. Non-allowlisted keys are dropped.
  *
  * Note: full event attribute payloads (for telemetry records) are NOT filtered —
@@ -264,8 +264,8 @@ export function buildAttributes(
   envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
   payload: Record<string, unknown>,
 ): Record<string, unknown> {
-  // C-2: merge correlation context so every event emitted from within a
-  // correlationCtx.run() scope automatically carries the ambient IDs.
+  // Merge correlation context so every event emitted from within a
+  // correlationCtx.run() scope carries the ambient IDs.
   const ctx = getCorrelationContext();
   return {
     domain,

@@ -636,8 +636,7 @@ function hasIdentity(searchable: string, value: string): boolean {
 function safeDomain(url: string): string | undefined {
   try {
     return new URL(url).hostname;
-  } catch (error) {
-    void error;
+  } catch {
     return undefined;
   }
 }

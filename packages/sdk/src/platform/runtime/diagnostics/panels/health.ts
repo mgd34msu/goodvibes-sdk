@@ -10,11 +10,13 @@
  */
 import type { RuntimeHealthAggregator } from '../../health/aggregator.js';
 import type { CompositeHealth, HealthDomain, HealthStatus } from '../../health/types.js';
-import type { HealthDashboardData, DomainHealthSummary, SloRow, SloGateStatus, RemediationAction } from '../types.js';
+import type { HealthDashboardData, DomainHealthSummary, SloRow, SloGateStatus, RemediationAction, DiagnosticPanelIssue } from '../types.js';
 import type { SloCollector } from '../../perf/slo-collector.js';
 import type { CascadeTimer } from '../../health/cascade-timing.js';
 import { SLO_METRICS } from '../../perf/slo-collector.js';
 import { DEFAULT_BUDGETS } from '../../perf/budgets.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Human-readable names for playbooks, keyed by playbook ID.
@@ -75,7 +77,18 @@ export class HealthPanel {
     // Capture the initial snapshot before subscribing
     this._current = this._buildDashboard(aggregator.getCompositeHealth());
     this._unsub = aggregator.subscribe((health) => {
-      this._current = this._buildDashboard(health);
+      try {
+        this._current = this._buildDashboard(health);
+      } catch (error) {
+        const message = summarizeError(error);
+        logger.warn('[HealthPanel] dashboard refresh failed', { error: message });
+        this._current = this._withIssue(this._current, {
+          severity: 'error',
+          code: 'dashboard_refresh_failed',
+          message: `Health dashboard refresh failed; showing previous snapshot: ${message}`,
+          source: 'HealthPanel',
+        });
+      }
       this._notify();
     });
   }
@@ -84,6 +97,7 @@ export class HealthPanel {
    * Build a HealthDashboardData snapshot from a CompositeHealth record.
    */
   private _buildDashboard(composite: CompositeHealth): HealthDashboardData {
+    const issues: DiagnosticPanelIssue[] = [];
     const domains: DomainHealthSummary[] = [];
     for (const [, dh] of composite.domains) {
       domains.push({
@@ -107,8 +121,9 @@ export class HealthPanel {
       degradedDomains: composite.degradedDomains,
       failedDomains: composite.failedDomains,
       lastUpdatedAt: composite.lastUpdatedAt,
-      sloRows: this._buildSloRows(),
-      remediationActions: this._buildRemediationActions(composite),
+      sloRows: this._buildSloRows(issues),
+      remediationActions: this._buildRemediationActions(composite, issues),
+      ...(issues.length > 0 ? { issues } : {}),
     };
   }
 
@@ -119,7 +134,10 @@ export class HealthPanel {
    * Returns an empty array when no CascadeTimer is attached or when
    * no domains are in the failed state.
    */
-  private _buildRemediationActions(composite: CompositeHealth): readonly RemediationAction[] {
+  private _buildRemediationActions(
+    composite: CompositeHealth,
+    issues: DiagnosticPanelIssue[],
+  ): readonly RemediationAction[] {
     if (this._cascadeTimer === null || composite.failedDomains.length === 0) {
       return [];
     }
@@ -128,10 +146,27 @@ export class HealthPanel {
     const seen = new Set<string>(); // deduplicate by playbookId+ruleId
 
     for (const domain of composite.failedDomains) {
-      const { cascades } = this._cascadeTimer.evaluate(
-        domain,
-        'failed',
-      );
+      let cascades: ReturnType<CascadeTimer['evaluate']>['cascades'];
+      try {
+        ({ cascades } = this._cascadeTimer.evaluate(
+          domain,
+          'failed',
+        ));
+      } catch (error) {
+        const message = summarizeError(error);
+        issues.push({
+          severity: 'warn',
+          code: 'remediation_collection_failed',
+          message: `Failed to collect remediation actions for failed domain '${domain}': ${message}`,
+          source: 'HealthPanel',
+          context: { domain },
+        });
+        logger.warn('[HealthPanel] remediation collection failed', {
+          domain,
+          error: message,
+        });
+        continue;
+      }
 
       for (const cascade of cascades) {
         for (const playbookId of cascade.remediationPlaybookIds) {
@@ -160,11 +195,25 @@ export class HealthPanel {
    * Build SLO status rows from the current SloCollector snapshot.
    * Returns an empty array when no SloCollector is attached.
    */
-  private _buildSloRows(): SloRow[] {
+  private _buildSloRows(issues: DiagnosticPanelIssue[]): SloRow[] {
     if (this._sloCollector === null) return [];
 
-    const metrics = this._sloCollector.getMetrics();
-    const counts = this._sloCollector.getSampleCounts();
+    let metrics: ReturnType<SloCollector['getMetrics']>;
+    let counts: ReturnType<SloCollector['getSampleCounts']>;
+    try {
+      metrics = this._sloCollector.getMetrics();
+      counts = this._sloCollector.getSampleCounts();
+    } catch (error) {
+      const message = summarizeError(error);
+      issues.push({
+        severity: 'warn',
+        code: 'slo_collection_failed',
+        message: `Failed to collect SLO rows: ${message}`,
+        source: 'HealthPanel',
+      });
+      logger.warn('[HealthPanel] SLO collection failed', { error: message });
+      return [];
+    }
 
     const SLO_ORDER = [
       SLO_METRICS.TURN_START,
@@ -210,6 +259,16 @@ export class HealthPanel {
     return this._current;
   }
 
+  private _withIssue(snapshot: HealthDashboardData, issue: DiagnosticPanelIssue): HealthDashboardData {
+    return {
+      ...snapshot,
+      issues: [
+        ...(snapshot.issues ?? []).filter((existing) => existing.code !== issue.code),
+        issue,
+      ],
+    };
+  }
+
   /**
    * Register a callback invoked whenever health data changes.
    * @returns An unsubscribe function.
@@ -234,8 +293,8 @@ export class HealthPanel {
     for (const cb of this._subscribers) {
       try {
         cb();
-      } catch {
-        // Non-fatal: subscriber errors must not crash the provider
+      } catch (error) {
+        logger.warn('[HealthPanel] subscriber error', { error: summarizeError(error) });
       }
     }
   }

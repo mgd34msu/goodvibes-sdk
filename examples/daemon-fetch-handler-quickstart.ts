@@ -6,6 +6,7 @@ import {
   createDaemonTelemetryRouteHandlers,
   jsonErrorResponse,
 } from '@pellux/goodvibes-sdk/daemon';
+import { getOperatorContract } from '@pellux/goodvibes-sdk/contracts';
 import sdkPackage from '@pellux/goodvibes-sdk/package.json' with { type: 'json' };
 
 const controlHandlers = createDaemonControlRouteHandlers({
@@ -20,26 +21,27 @@ const controlHandlers = createDaemonControlRouteHandlers({
     listRecentEvents: () => [],
     listSurfaceMessages: () => [],
     listClients: () => [],
-    // PLACEHOLDER: returns a one-shot SSE event. Replace with a real persistent stream.
+    // The quickstart returns one SSE event; daemon hosts can keep this stream open.
     createEventStream: () => new Response('event: ready\ndata: {"ok":true}\n\n', {
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     }),
   },
+  login: async () => Response.json({
+    error: 'This quickstart does not implement username/password login',
+  }, { status: 404 }),
   extractAuthToken: () => '',
-  resolveAuthenticatedPrincipal: () => null,
+  resolveAuthenticatedPrincipal: () => ({
+    principalId: 'quickstart-admin',
+    principalKind: 'user',
+    admin: true,
+    scopes: ['*'],
+  }),
   gatewayMethods: {
     list: () => [],
     listEvents: () => [],
     get: () => null,
   },
-  // PLACEHOLDER: { version: 1 } does not satisfy the full OperatorContract shape.
-  // In production: import { buildOperatorContract } from '@pellux/goodvibes-sdk/operator';
-  // and replace this with: getOperatorContract: () => buildOperatorContract({ ... }),
-  // See docs/daemon-embedding.md for the full OperatorContract construction pattern.
-  // PLACEHOLDER: cast to Record<string,unknown>; in production supply a real OperatorContract.
-  getOperatorContract: () => ({ version: 1 }) as unknown as Record<string, unknown>,
-  inspectInboundTls: () => ({ mode: 'off' }),
-  inspectOutboundTls: () => ({ mode: 'system' }),
+  getOperatorContract,
   invokeGatewayMethodCall: async () => ({
     status: 404,
     ok: false,
@@ -53,7 +55,7 @@ const controlHandlers = createDaemonControlRouteHandlers({
   },
   requireAdmin: () => null,
   requireAuthenticatedSession: () => null,
-}, new Request('http://127.0.0.1/api/control-plane/status'));
+});
 
 const telemetryHandlers = createDaemonTelemetryRouteHandlers({
   telemetryApi: null,
@@ -64,7 +66,7 @@ const telemetryHandlers = createDaemonTelemetryRouteHandlers({
 export async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
   if (request.method === 'GET' && url.pathname === '/api/control-plane/status') {
-    return await controlHandlers.getStatus();
+    return await controlHandlers.getStatus(request);
   }
   if (request.method === 'GET' && url.pathname === '/api/v1/telemetry') {
     return await telemetryHandlers.getTelemetrySnapshot(request);

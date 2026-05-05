@@ -56,7 +56,7 @@ export interface TransportContext {
    */
   activeMiddlewareName?: string | undefined;
   /**
-   * MAJ-03: the already-parsed response body, stashed by innerFetch after
+   * the already-parsed response body, stashed by innerFetch after
    * the real fetch resolves. If set, middleware callers should read this
    * field directly instead of calling `ctx.response.json()` to avoid an
    * unnecessary JSON stringify → parse round-trip.
@@ -105,7 +105,7 @@ export function composeMiddleware(
 
     let dispatchCount = 0;
     const dispatch = async (i: number): Promise<void> => {
-      // MIN-1: count actual re-entrant dispatch() invocations rather than
+      // count actual re-entrant dispatch() invocations rather than
       // reusing `i` (which is the chain index and cannot exceed chain length).
       dispatchCount += 1;
       if (dispatchCount > MAX_MIDDLEWARE_DEPTH) {
@@ -130,8 +130,8 @@ export function composeMiddleware(
         ctx.activeMiddlewareName = mwName;
         try {
           await mw(ctx, () => dispatch(i + 1));
-          // MIN-9: clear middlewareError and activeMiddlewareName when the middleware
-          // swallowed the error (caught internally, did not re-throw). Leaving
+          // clear middlewareError and activeMiddlewareName when the middleware
+          // handled the error internally and did not re-throw. Leaving
           // activeMiddlewareName set would wrongly attribute a later unrelated error
           // to this middleware in the cause chain.
           ctx.middlewareError = false;

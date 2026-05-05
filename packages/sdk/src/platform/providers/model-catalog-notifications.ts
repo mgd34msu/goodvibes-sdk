@@ -2,12 +2,16 @@ import { logger } from '../utils/logger.js';
 import type { FavoritesData } from './favorites.js';
 import type { CatalogDiff, CatalogModel } from './model-catalog.js';
 
+function catalogRegistryKey(model: CatalogModel): string {
+  return `${model.providerId}:${model.id}`;
+}
+
 export function diffCatalogs(
   oldCatalog: readonly CatalogModel[],
   newCatalog: readonly CatalogModel[],
 ): CatalogDiff {
-  const oldMap = new Map<string, CatalogModel>(oldCatalog.map((model) => [model.id, model]));
-  const newMap = new Map<string, CatalogModel>(newCatalog.map((model) => [model.id, model]));
+  const oldMap = new Map<string, CatalogModel>(oldCatalog.map((model) => [catalogRegistryKey(model), model]));
+  const newMap = new Map<string, CatalogModel>(newCatalog.map((model) => [catalogRegistryKey(model), model]));
 
   const added: CatalogModel[] = [];
   const removed: CatalogModel[] = [];
@@ -52,12 +56,13 @@ export function filterRelevantChanges(
   favorites: FavoritesData,
   topBenchmarkModelIds: readonly string[],
 ): CatalogDiff {
-  const relevantIds = new Set<string>();
-  for (const entry of favorites.history) relevantIds.add(entry.modelId);
-  for (const entry of favorites.pinned) relevantIds.add(entry.modelId);
-  for (const id of topBenchmarkModelIds) relevantIds.add(id);
+  const relevantRegistryKeys = new Set<string>();
+  for (const entry of favorites.history) relevantRegistryKeys.add(entry.registryKey);
+  for (const entry of favorites.pinned) relevantRegistryKeys.add(entry.registryKey);
+  const topBenchmarkIds = new Set(topBenchmarkModelIds);
 
-  const isRelevant = (model: CatalogModel) => relevantIds.has(model.id);
+  const isRelevant = (model: CatalogModel) =>
+    relevantRegistryKeys.has(`${model.providerId}:${model.id}`) || topBenchmarkIds.has(model.id);
   return {
     added: diff.added.filter(isRelevant),
     removed: diff.removed.filter(isRelevant),

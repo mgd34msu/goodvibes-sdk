@@ -111,7 +111,7 @@ export interface WatcherRegistryLike {
     readonly source: WatcherSourceRecord;
     readonly intervalMs: number;
     readonly metadata: Record<string, unknown>;
-    readonly run?: (() => string) | undefined | undefined;
+    readonly run?: (() => string) | undefined;
   }): WatcherRecord;
   getWatcher(watcherId: string): WatcherRecord | null;
   startWatcher(watcherId: string): WatcherRecord | null;

@@ -117,7 +117,7 @@ export class McpSchemaFreshnessTracker {
       });
     } else {
       record.freshness = 'fetch_failed';
-      logger.debug('McpSchemaFreshnessTracker: fetch failed', { serverName, error, consecutiveFailures: record.consecutiveFailures });
+      logger.warn('McpSchemaFreshnessTracker: fetch failed', { serverName, error, consecutiveFailures: record.consecutiveFailures });
     }
   }
 

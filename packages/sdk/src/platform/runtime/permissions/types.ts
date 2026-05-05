@@ -50,7 +50,7 @@ export type CommandClassification =
  *   PROMPT_ — user was prompted and responded
  *   SAFETY_ — bypass-immune safety guardrail fired
  *   MODE_   — active permission mode determined the outcome
- *   DEFAULT_— fallback default policy
+ *   DEFAULT_— default policy
  */
 export type DecisionReason =
   // Policy layer — user-defined allow rules
@@ -89,9 +89,9 @@ export type DecisionReason =
   | 'MODE_DENY_BACKGROUND'
   // Mode — remote-restricted mode blocks network tools
   | 'MODE_DENY_REMOTE_RESTRICTED'
-  // Default policy fallback allow
+  // Default policy allow
   | 'DEFAULT_ALLOW'
-  // Default policy fallback deny
+  // Default policy deny
   | 'DEFAULT_DENY';
 
 // ── Evaluation Source Layer ────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ export type SourceLayer =
   | 'mode'    // Layer 2: mode constraints
   | 'session' // Layer 3: session overrides / cache
   | 'policy'  // Layer 4: policy rules (prefix, arg-shape, path, network)
-  | 'default' // Layer 5: default policy fallback
+  | 'default' // Layer 5: default policy
   ;
 
 // ── Evaluation Trace ──────────────────────────────────────────────────────────
@@ -177,7 +177,8 @@ export interface PermissionDecision {
  * Controls how the permission simulator behaves during evaluation.
  *
  * - `simulation-only`     — Both evaluators run; only the actual decision is
- *                           enforced. Divergence is logged silently.
+ *                           enforced. Divergence is recorded for reports without
+ *                           warning emission.
  * - `warn-on-divergence`  — Both evaluators run; actual enforced. Divergence
  *                           emits a warning to the decision log.
  * - `enforce`             — The simulated evaluator becomes the authoritative
@@ -298,9 +299,9 @@ export interface PermissionSimulatorConfig {
    * Optional callback invoked when a divergence is detected in `warn-on-divergence` mode.
    *
    * Receives the full `DivergenceRecord` for the diverging evaluation.
-   * If omitted, warnings are written to `process.stderr` as a fallback.
+   * If omitted, warnings are written to `process.stderr`.
    */
-  onWarning?: ((record: DivergenceRecord) => void) | undefined | undefined;
+  onWarning?: ((record: DivergenceRecord) => void) | undefined;
 }
 
 // ── Policy Rules ───────────────────────────────────────────────────────────────

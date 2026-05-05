@@ -19,7 +19,7 @@ export class RateLimiter {
    * To promote an entry to MRU: delete it and re-set it (both O(1)).
    * The Map iterator yields entries in insertion order, so the first entry is
    * the least-recently-used — perfect for LRU eviction without any indexOf scan.
-   * (PERF-02)
+   *
    */
   private lruMap = new Map<string, number>();
   private sweepInterval: ReturnType<typeof setInterval> | null = null;
@@ -27,7 +27,7 @@ export class RateLimiter {
   constructor(private limit: number) {
     // Periodic sweep to evict entries whose TTL has expired.
     this.sweepInterval = setInterval(() => this._sweep(), RATE_SWEEP_INTERVAL_MS);
-    // Don't block clean process exit (PERF-07).
+    // Don't block clean process exit.
     (this.sweepInterval as unknown as { unref?: () => void }).unref?.();
   }
 

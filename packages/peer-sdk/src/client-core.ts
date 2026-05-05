@@ -25,12 +25,12 @@ export interface PeerRemoteClientOptions {
   readonly validateResponses?: boolean | undefined;
 }
 
-type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<
+export type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<
   PeerEndpointInput<TEndpointId>,
   PeerRemoteClientInvokeOptions
 >;
 
-type KnownPathEndpointArgs<
+export type KnownPathEndpointArgs<
   TEndpointId extends PeerTypedEndpointId,
   TKeys extends PropertyKey,
 > = MethodArgs<

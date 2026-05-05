@@ -33,18 +33,18 @@ import {
   type NativeChatResult,
   type NativeFetch,
   normalizeProviderError,
-  parseJsonObject,
   shouldFallbackFromNative,
   shouldFallbackFromResponses,
   toNativeChatInput,
   toRecord,
 } from './lm-studio-helpers.js';
+import { parseToolCallArguments } from './tool-formats.js';
 import { mapLmStudioStopReason } from './stop-reason-maps.js';
 
 export interface LMStudioProviderOptions extends OpenAICompatOptions {
   nativeFetch?: NativeFetch | undefined;
   responsesClient?: LMStudioResponsesClient | undefined;
-  fallbackProvider?: LLMProvider | undefined;
+  compatProvider?: LLMProvider | undefined;
   capabilities?: Partial<ProviderCapability> | undefined;
 }
 
@@ -57,7 +57,7 @@ export class LMStudioProvider implements LLMProvider {
   private readonly nativeChatUrl: string;
   private readonly nativeFetch: NativeFetch;
   private readonly responsesClient: LMStudioResponsesClient;
-  private readonly fallbackProvider: LLMProvider;
+  private readonly compatProvider: LLMProvider;
   private readonly nativeResponseIds = new Map<string, string>();
 
   constructor(opts: LMStudioProviderOptions) {
@@ -68,11 +68,11 @@ export class LMStudioProvider implements LLMProvider {
     this.nativeChatUrl = deriveNativeChatUrl(opts.baseURL);
     this.nativeFetch = opts.nativeFetch ?? instrumentedFetch;
     this.responsesClient = opts.responsesClient ?? createResponsesClient(opts.baseURL, opts.apiKey, opts.defaultHeaders);
-    this.fallbackProvider = opts.fallbackProvider ?? new OpenAICompatProvider(opts);
+    this.compatProvider = opts.compatProvider ?? new OpenAICompatProvider(opts);
   }
 
   isConfigured(): boolean {
-    return this.fallbackProvider.isConfigured?.() ?? true;
+    return this.compatProvider.isConfigured?.() ?? true;
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
@@ -99,20 +99,20 @@ export class LMStudioProvider implements LLMProvider {
         }
       }
 
-      return this.fallbackProvider.chat(params);
+      return this.compatProvider.chat(params);
     }), { provider: this.name, model: params.model || this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {
-    if (!this.fallbackProvider.embed) {
-      throw new ProviderError('LM Studio fallback provider does not support embeddings.', {
+    if (!this.compatProvider.embed) {
+      throw new ProviderError('LM Studio OpenAI-compatible transport does not support embeddings.', {
         statusCode: 501,
         provider: this.name,
         operation: 'embed',
         phase: 'response',
       });
     }
-    return this.fallbackProvider.embed(request);
+    return this.compatProvider.embed(request);
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
@@ -436,10 +436,16 @@ export class LMStudioProvider implements LLMProvider {
           ? item['arguments']
           : (toolArgs.get(callId) ?? '{}');
         if (!callId || !name) continue;
+        const parsedArguments = parseToolCallArguments(argumentsText, {
+          provider: this.name,
+          toolName: name,
+          callId,
+        });
+        if (parsedArguments === undefined) continue;
         toolCalls.set(callId, {
           id: callId,
           name,
-          arguments: parseJsonObject(argumentsText),
+          arguments: parsedArguments,
         });
         continue;
       }

@@ -10,6 +10,8 @@ import type {
   HealthTimeline,
   HealthTimelinePoint,
 } from './types.js';
+import { logger } from '../../../utils/logger.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 const TIMELINE_MAX_POINTS = 60;
 
@@ -166,8 +168,10 @@ export class ProviderHealthDataProvider {
     for (const callback of this._subscribers) {
       try {
         callback();
-      } catch {
-        // Subscriber failures are intentionally non-fatal.
+      } catch (error) {
+        logger.warn('ProviderHealthDataProvider subscriber failed', {
+          error: summarizeError(error),
+        });
       }
     }
   }

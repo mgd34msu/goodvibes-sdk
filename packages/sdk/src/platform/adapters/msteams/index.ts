@@ -1,6 +1,7 @@
 import type { ChannelConversationKind } from '../../channels/index.js';
 import { constantTimeEquals, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
 import type { SurfaceAdapterContext } from '../types.js';
+import { logger } from '../../utils/logger.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -61,7 +62,18 @@ export async function handleMSTeamsSurfaceWebhook(req: Request, context: Surface
   if (!activity) return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   const activityType = readString(activity.type)?.toLowerCase();
   if (activityType && activityType !== 'message' && activityType !== 'invoke') {
-    return Response.json({ ok: true, ignored: true, activityType });
+    logger.info('handleMSTeamsSurfaceWebhook: activity ignored', {
+      reason: 'unsupported-activity-type',
+      activityType,
+    });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'unsupported-activity-type',
+      activityType,
+    });
   }
 
   const conversation = readRecord(activity.conversation);
@@ -133,7 +145,19 @@ export async function handleMSTeamsSurfaceWebhook(req: Request, context: Surface
     },
   });
   if (!text) {
-    return Response.json({ ok: true, acknowledged: true, bindingId: binding.id });
+    logger.info('handleMSTeamsSurfaceWebhook: activity acknowledged without queueing', {
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+      activityId: readString(activity.id),
+    });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+    });
   }
 
   const controlCommand = context.parseSurfaceControlCommand(text);

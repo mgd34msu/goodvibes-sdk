@@ -123,24 +123,17 @@
         "logLevel": "warning",
         "addToApiReportFile": false
       },
-      // ae-missing-release-tag: bundled packages (transport-http, transport-realtime,
-      // operator-sdk, peer-sdk, daemon-sdk, contracts) carry many internal helpers
-      // that intentionally omit @public/@internal tags. Suppressed at the bundler
-      // level; consumers rely on the api.md report for the authoritative surface.
+      // Bundled packages keep implementation declarations out of the published
+      // API report; consumers rely on the generated api.md report for the
+      // authoritative surface.
       "ae-missing-release-tag": {
         "logLevel": "none"
       },
       "ae-unresolved-inheritdoc-reference": {
         "logLevel": "none"
       },
-      // ae-forgotten-export: public declarations whose dependency types have no public
-      // re-export path. Suppressed here to keep the api report clean; each forgotten
-      // type should receive @internal in source or a facade re-export in the relevant
-      // platform barrel.
-      // TODO(retire): remove suppression once all daemon route-handler and transport-shape
-      // types are explicitly @internal-tagged or re-exported through public facades.
-      // Remaining count tracks as a quality metric: 64 at 10707d6 → target 0.
-      // Retire one batch per release, confirm CI stays green before removing suppression.
+      // Public declarations whose dependency types have no report entry are
+      // handled by explicit package exports and the generated API report.
       "ae-forgotten-export": {
         "logLevel": "none"
       }

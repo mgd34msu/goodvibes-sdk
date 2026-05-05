@@ -167,6 +167,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
     const isAnthropic = providerLower.includes('anthropic');
     const isOpenAI = providerLower.includes('openai');
     const hasReasoning = model.reasoning === true || isAnthropic || isOpenAI || isGoogle;
+    const hasCatalogContextWindow = model.contextWindow != null;
     return {
       id: model.id,
       provider: model.providerId,
@@ -179,7 +180,10 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
         reasoning: hasReasoning,
         multimodal: isGoogle || isOpenAI,
       },
-      contextWindow: model.contextWindow ?? (isGoogle ? 1_000_000 : isAnthropic ? 200_000 : 128_000),
+      contextWindow: hasCatalogContextWindow
+        ? model.contextWindow!
+        : (isGoogle ? 1_000_000 : isAnthropic ? 200_000 : 128_000),
+      ...(!hasCatalogContextWindow ? { contextWindowProvenance: 'fallback' as const } : {}),
       selectable: true,
       tier: model.tier === 'subscription' ? 'subscription' : isFree ? 'free' : model.pricing.input >= 3 ? 'premium' : 'standard',
       ...(hasReasoning ? { reasoningEffort: ['instant', 'low', 'medium', 'high'] } : {}),

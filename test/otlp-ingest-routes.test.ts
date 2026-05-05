@@ -1,7 +1,7 @@
 /**
  * otlp-ingest-routes.test.ts
  *
- * Tests for F7 — OTLP POST ingest endpoints.
+ * Tests for OTLP POST ingest endpoints.
  *
  * Routes under test:
  *   POST /api/v1/telemetry/otlp/v1/logs
@@ -145,7 +145,7 @@ function protobufMetricsPayload(): Uint8Array {
 // Happy path — JSON
 // ---------------------------------------------------------------------------
 
-describe('F7 — OTLP POST ingest: happy path (application/json)', () => {
+describe('OTLP POST ingest: happy path (application/json)', () => {
   test('POST logs with JSON body → 200 with partialSuccess', async () => {
     const h = makeHandlers({ authenticated: true });
     const req = jsonRequest('http://localhost/api/v1/telemetry/otlp/v1/logs', { resourceLogs: [] });
@@ -178,7 +178,7 @@ describe('F7 — OTLP POST ingest: happy path (application/json)', () => {
 // Happy path — Protobuf
 // ---------------------------------------------------------------------------
 
-describe('F7 — OTLP POST ingest: happy path (application/x-protobuf)', () => {
+describe('OTLP POST ingest: happy path (application/x-protobuf)', () => {
   test('POST logs with protobuf body → 200 and decoded payload forwarded', async () => {
     const received: Record<string, unknown>[] = [];
     const h = makeHandlers({
@@ -247,7 +247,7 @@ describe('F7 — OTLP POST ingest: happy path (application/x-protobuf)', () => {
 // Error paths
 // ---------------------------------------------------------------------------
 
-describe('F7 — OTLP POST ingest: error paths', () => {
+describe('OTLP POST ingest: error paths', () => {
   test('401 when no authenticated principal (logs)', async () => {
     const h = makeHandlers({ authenticated: false });
     const req = jsonRequest('http://localhost/api/v1/telemetry/otlp/v1/logs', { resourceLogs: [] });
@@ -313,7 +313,7 @@ describe('F7 — OTLP POST ingest: error paths', () => {
 // Ingest sink forwarding
 // ---------------------------------------------------------------------------
 
-describe('F7 — OTLP POST ingest: sink forwarding', () => {
+describe('OTLP POST ingest: sink forwarding', () => {
   test('JSON logs payload is forwarded to ingestSink.ingestLogs', async () => {
     const received: Record<string, unknown>[] = [];
     const h = makeHandlers({
@@ -343,7 +343,7 @@ describe('F7 — OTLP POST ingest: sink forwarding', () => {
 // Router dispatch wiring — E2E via dispatchDaemonApiRoutes
 // ---------------------------------------------------------------------------
 
-describe('F7 — OTLP POST ingest: router dispatch wiring', () => {
+describe('OTLP POST ingest: router dispatch wiring', () => {
   function makeFullHandlers() {
     const handlers = makeHandlers({ authenticated: true });
     // Provide a minimal stub that satisfies all other required handler fields.

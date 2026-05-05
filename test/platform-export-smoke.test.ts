@@ -1,5 +1,5 @@
 /**
- * COV-02 (ninth-review): platform/export/ smoke test.
+ * platform/export/ smoke test.
  * Verifies that session export functions are importable and produce correct output types.
  */
 import { describe, expect, test } from 'bun:test';

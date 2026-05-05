@@ -158,7 +158,7 @@ export interface ModelPickerData {
   readonly degradedProviderIds: readonly string[];
   /** IDs of providers that are currently unavailable. */
   readonly unavailableProviderIds: readonly string[];
-  /** Model ID currently at the head of the fallback chain (active model). */
+  /** Registry key currently at the head of the fallback chain (active model). */
   readonly activeModelId: string;
   /** Epoch ms when this snapshot was produced. */
   readonly snapshotAt: number;

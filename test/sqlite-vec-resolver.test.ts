@@ -1,12 +1,7 @@
 /**
  * sqlite-vec-resolver.test.ts
  *
- * Tests for F5b — sqlite-vec bundled binary resolver.
- *
- * The fix wraps the sqlite-vec load call with detection for Bun's bundled
- * executable context (import.meta.url contains "$bunfs"). In that context
- * the npm package's import.meta.resolve() cannot locate node_modules, so
- * we fall back to a predictable path relative to the binary.
+ * Tests for the sqlite-vec bundled binary resolver.
  *
  * Coverage:
  *   - Dev mode (current process.meta.url has no $bunfs): returns ''
@@ -19,7 +14,7 @@ import { describe, expect, test } from 'bun:test';
 import { resolveSqliteVecPath } from '../packages/sdk/src/platform/state/memory-vector-store.js';
 import { join, dirname } from 'node:path';
 
-describe('F5b — resolveSqliteVecPath: dev mode', () => {
+describe('resolveSqliteVecPath: dev mode', () => {
   test('returns empty string when not running inside $bunfs (dev/test mode)', () => {
     // In normal bun test execution, import.meta.url does NOT contain "$bunfs"
     const result = resolveSqliteVecPath();
@@ -27,7 +22,7 @@ describe('F5b — resolveSqliteVecPath: dev mode', () => {
   });
 });
 
-describe('F5b — resolveSqliteVecPath: bundled binary path construction', () => {
+describe('resolveSqliteVecPath: bundled binary path construction', () => {
   /**
    * We cannot mock import.meta.url directly in a running test (it is
    * statically bound at module load). Instead we verify the path construction
@@ -68,7 +63,7 @@ describe('F5b — resolveSqliteVecPath: bundled binary path construction', () =>
   });
 
   test('resolveSqliteVecPath in dev mode never points to a nonexistent path', () => {
-    // In dev mode we return '' which causes the fallback to use loadSqliteVec()
+    // In dev mode we return '' which causes resolution to use loadSqliteVec()
     // This asserts the contract: empty string === "use npm package resolver"
     const result = resolveSqliteVecPath();
     if (result === '') {

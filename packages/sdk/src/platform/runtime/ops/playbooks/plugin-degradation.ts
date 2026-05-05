@@ -67,7 +67,7 @@ export const pluginDegradationPlaybook: Playbook = {
         'Review the local ledger for plugin.* spans with ERROR status. ' +
         'Note the error message, plugin ID, and capability being invoked.',
       kind: 'observe',
-      expectedOutcome: 'Root cause identified from span error messages.',
+      expectedOutcome: 'Cause identified from span error messages.',
       automatable: false,
     },
     {

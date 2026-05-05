@@ -30,7 +30,7 @@ export function createEventEnvelope<TType extends string, TPayload>(
     ts: Date.now(),
     // Callers that want multiple fan-out envelopes correlated under one trace
     // must provide a shared traceId.
-    // MIN-04: default to undefined instead of generating entropy on every envelope.
+    // default to undefined instead of generating entropy on every envelope.
     // High-volume callers (telemetry, streaming deltas) should provide a shared
     // traceId in context to correlate fan-out envelopes under one trace.
     traceId: context.traceId,

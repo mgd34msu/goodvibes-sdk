@@ -149,7 +149,6 @@ const AUTOMATION_DELIVERY_MODE_SCHEMA = enumSchema(['none', 'webhook', 'surface'
 const AUTOMATION_FAILURE_ACTION_SCHEMA = enumSchema(['retry', 'cooldown', 'disable', 'dead_letter']);
 const AUTOMATION_RETRY_STRATEGY_SCHEMA = enumSchema(['fixed', 'linear', 'exponential']);
 const PROVIDER_SELECTION_SCHEMA = enumSchema(['inherit-current', 'concrete', 'synthetic']);
-const UNRESOLVED_MODEL_POLICY_SCHEMA = enumSchema(['fallback-to-current', 'fail']);
 const PROVIDER_FAILURE_POLICY_SCHEMA = enumSchema(['ordered-fallbacks', 'fail']);
 const AUTOMATION_EXECUTION_MODE_SCHEMA = enumSchema(['spawn', 'shared-session', 'continued-live', 'background']);
 const AUTOMATION_SESSION_POLICY_SCHEMA = enumSchema(['create-or-bind', 'continue-existing', 'require-existing']);
@@ -208,7 +207,6 @@ export const AUTOMATION_SCHEDULE_SCHEMA: Record<string, unknown> = {
 
 const AUTOMATION_ROUTING_POLICY_SCHEMA = objectSchema({
   providerSelection: PROVIDER_SELECTION_SCHEMA,
-  unresolvedModelPolicy: UNRESOLVED_MODEL_POLICY_SCHEMA,
   providerFailurePolicy: PROVIDER_FAILURE_POLICY_SCHEMA,
   fallbackModels: STRING_LIST_SCHEMA,
 }, [], { additionalProperties: false });
@@ -520,7 +518,7 @@ export const AUTOMATION_HEARTBEAT_RESULT_SCHEMA = objectSchema({
   checkedAt: NUMBER_SCHEMA,
 }, ['processed', 'failed', 'pending', 'checkedAt']);
 
-export const LEGACY_SCHEDULES_OUTPUT_SCHEMA = objectSchema({
+export const AUTOMATION_SCHEDULES_OUTPUT_SCHEMA = objectSchema({
   jobs: arraySchema(AUTOMATION_JOB_SCHEMA),
   runs: arraySchema(AUTOMATION_RUN_SCHEMA),
 }, ['jobs', 'runs']);

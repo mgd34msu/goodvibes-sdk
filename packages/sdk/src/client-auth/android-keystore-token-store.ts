@@ -24,14 +24,8 @@
  * # Android: auto-linked via Gradle; no manual step required
  * ```
  *
- * Wave 6 three-part error messages: [what happened] · [why] · [what to do]
+ * Error messages use the format: [what happened] · [why] · [what to do]
  */
-// Inline minimal debug logging to keep client-auth/ free of platform/ dependencies.
-function debugLog(msg: string, ctx?: Record<string, unknown>): void {
-  if (ctx !== undefined) { console.debug(`[goodvibes] ${msg}`, ctx); }
-  else { console.debug(`[goodvibes] ${msg}`); }
-}
-
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { GoodVibesTokenStore } from './types.js';
 
@@ -108,15 +102,39 @@ interface StoredPayload {
 // Dynamic loader
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-type KeychainModule = typeof import('react-native-keychain');
+type KeychainOptions = {
+  service?: string | undefined;
+  accessible?: string | undefined;
+  accessControl?: string | undefined;
+};
+
+type KeychainUserCredentials = {
+  username: string;
+  password: string;
+  service: string;
+  storage: string;
+};
+
+type KeychainModule = {
+  ACCESSIBLE: Partial<Record<AndroidAccessible, string>>;
+  ACCESS_CONTROL: Partial<Record<AndroidAccessControl, string>>;
+  setGenericPassword(
+    username: string,
+    password: string,
+    options?: KeychainOptions,
+  ): Promise<false | { service: string; storage: string }>;
+  getGenericPassword(options?: KeychainOptions): Promise<false | KeychainUserCredentials>;
+  resetGenericPassword(options?: KeychainOptions): Promise<boolean>;
+};
+
+const REACT_NATIVE_KEYCHAIN_MODULE: string = 'react-native-keychain';
 
 let _mod: KeychainModule | null = null;
 
 async function loadKeychain(): Promise<KeychainModule> {
   if (_mod !== null) return _mod;
   try {
-    _mod = await import('react-native-keychain');
+    _mod = (await import(REACT_NATIVE_KEYCHAIN_MODULE)) as KeychainModule;
     return _mod;
   } catch {
     throw new GoodVibesSdkError(
@@ -206,30 +224,23 @@ export function createAndroidKeystoreTokenStore(
     return loadKeychain();
   }
 
-  function buildOptions(mod: KeychainModule): Record<string, unknown> {
-    const opts: Record<string, unknown> = { service };
-    const accessibleValue: string | undefined = mod.ACCESSIBLE[accessible];
+  function buildOptions(mod: KeychainModule): KeychainOptions {
+    const opts: KeychainOptions = { service };
+    const accessibleValue = mod.ACCESSIBLE[accessible];
     if (accessibleValue !== undefined) {
-      opts['accessible'] = accessibleValue;
-    } else if (options.accessible !== undefined) {
-      // console.warn is used here because this module runs in a React Native
-      // context where a structured logger is not available. The warning surfaces
-      // a keychain capability mismatch that the developer needs to address
-      // (e.g. upgrading react-native-keychain or choosing a supported constant).
-      console.warn(
-        `[pellux/goodvibes-sdk] react-native-keychain does not expose ACCESSIBLE.${accessible}; falling back to default`,
+      opts.accessible = accessibleValue;
+    } else {
+      throw new Error(
+        `react-native-keychain does not expose ACCESSIBLE.${accessible}; choose a supported keychain accessibility constant.`,
       );
     }
     if (accessControl !== undefined) {
-      const acValue: string | undefined = mod.ACCESS_CONTROL[accessControl];
+      const acValue = mod.ACCESS_CONTROL[accessControl];
       if (acValue !== undefined) {
-        opts['accessControl'] = acValue;
+        opts.accessControl = acValue;
       } else {
-        // Same rationale as ACCESSIBLE warn above: capability mismatch on the
-        // ACCESS_CONTROL enum is a developer-facing configuration error, not a
-        // runtime error, so console.warn is the appropriate escalation path.
-        console.warn(
-          `[pellux/goodvibes-sdk] react-native-keychain does not expose ACCESS_CONTROL.${accessControl}; falling back to default`,
+        throw new Error(
+          `react-native-keychain does not expose ACCESS_CONTROL.${accessControl}; choose a supported keychain access-control constant.`,
         );
       }
     }
@@ -243,8 +254,14 @@ export function createAndroidKeystoreTokenStore(
     try {
       return JSON.parse(result.password) as StoredPayload;
     } catch (err) {
-      debugLog('AndroidKeystoreTokenStore: failed to parse stored payload (clearing corrupt entry)', { error: String(err) });
-      return null;
+      await mod.resetGenericPassword(buildOptions(mod));
+      throw new GoodVibesSdkError('Android keystore token store payload is corrupt and was cleared.', {
+        code: 'SDK_TOKEN_STORE_CORRUPT',
+        category: 'authentication',
+        source: 'runtime',
+        recoverable: true,
+        cause: err,
+      });
     }
   }
 

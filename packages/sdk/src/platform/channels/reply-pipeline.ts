@@ -32,7 +32,7 @@ interface ReplyPipelineDeps {
   readonly channelPlugins: ChannelPluginRegistry;
   readonly routeBindings: RouteBindingManager;
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
-  readonly now?: (() => number) | undefined | undefined;
+  readonly now?: (() => number) | undefined;
 }
 
 interface ReplyBufferState {
@@ -714,6 +714,16 @@ export class ChannelReplyPipeline {
       },
     };
     const result = await this.channelPlugins.render(state.pending.surfaceKind, request);
+    if (!result || !result.delivered) {
+      logger.warn('ChannelReplyPipeline: channel render did not report delivery', {
+        surface: state.pending.surfaceKind,
+        phase,
+        agentId: state.pending.agentId,
+        sessionId: state.pending.sessionId,
+        routeId: state.pending.routeId,
+        reason: !result ? 'no-renderer-or-delivery-handler' : result.metadata.reason,
+      });
+    }
     if (result?.responseId && state.pending.routeId) {
       await this.routeBindings.captureReplyTarget(
         state.pending.routeId,

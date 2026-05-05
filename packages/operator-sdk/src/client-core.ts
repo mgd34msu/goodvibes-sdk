@@ -28,7 +28,7 @@ export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {}
 
 export interface OperatorRemoteClientOptions {
-  readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined | undefined;
+  readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined;
   /**
    * Applies to JSON request/response methods. Server-sent event stream payloads
    * are validated by their realtime event schemas at the transport boundary.
@@ -36,12 +36,12 @@ export interface OperatorRemoteClientOptions {
   readonly validateResponses?: boolean | undefined;
 }
 
-type KnownMethodArgs<TMethodId extends OperatorTypedMethodId> = MethodArgs<
+export type KnownMethodArgs<TMethodId extends OperatorTypedMethodId> = MethodArgs<
   OperatorMethodInput<TMethodId>,
   OperatorRemoteClientInvokeOptions
 >;
 
-type KnownPathMethodArgs<
+export type KnownPathMethodArgs<
   TMethodId extends OperatorTypedMethodId,
   TKeys extends PropertyKey,
 > = MethodArgs<
@@ -49,7 +49,7 @@ type KnownPathMethodArgs<
   OperatorRemoteClientInvokeOptions
 >;
 
-type KnownStreamArgs<TMethodId extends OperatorStreamMethodId> = MethodArgs<
+export type KnownStreamArgs<TMethodId extends OperatorStreamMethodId> = MethodArgs<
   OperatorMethodInput<TMethodId>,
   OperatorRemoteClientStreamOptions
 >;
@@ -200,7 +200,7 @@ export function createOperatorRemoteClient(
       input,
       schema ? { ...options, responseSchema: schema } : options,
     ).then((body) => {
-      // MIN-8: truth table for validation decision:
+      // truth table for validation decision:
       // | schema (Zod) | validateResponses | getResponseSchema | action                |
       // |    present   |       any         |      any          | Zod only (no overlap) |
       // |    absent    |      false        |      any          | skip                  |
@@ -221,11 +221,10 @@ export function createOperatorRemoteClient(
     // openContractRouteStream never has to infer a missing options object.
     // Response validation is not applied here because stream payloads are
     // delivered through per-event handlers rather than a single response body.
-    // M3: Note — if the underlying transport does not advertise event-schema
-    // validation (e.g. drops realtime-event envelope checks), stream payloads
-    // will be emitted to handlers without schema verification. The validateResponses
-    // option from clientOptions is intentionally not forwarded to streamOptions
-    // because there is no single response body to validate here.
+    // If the underlying transport does not validate realtime envelopes, stream
+    // payloads are emitted to handlers without schema verification. The
+    // validateResponses option is intentionally not forwarded because streams
+    // do not have a single response body to validate.
     const streamOptions = options ?? { handlers: {} };
     return openContractRouteStream(
       transport,

@@ -3,6 +3,12 @@ import type { ProviderMessage, ContentPart } from './interface.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
+export interface ToolArgumentParseContext {
+  readonly provider?: string | undefined;
+  readonly toolName?: string | undefined;
+  readonly callId?: string | undefined;
+}
+
 // ---------------------------------------------------------------------------
 // OpenAI wire format
 // ---------------------------------------------------------------------------
@@ -47,11 +53,20 @@ export function toOpenAITools(tools: ToolDefinition[]): OpenAITool[] {
 
 /** Parse OpenAI tool_calls from a response into internal ToolCall[]. */
 export function fromOpenAIToolCalls(calls: OpenAIToolCall[]): ToolCall[] {
-  return calls.map((c) => ({
-    id: c.id,
-    name: c.function.name,
-    arguments: parseJson(c.function.arguments),
-  }));
+  const toolCalls: ToolCall[] = [];
+  for (const c of calls) {
+    const parsedArguments = parseToolCallArguments(c.function.arguments, {
+      toolName: c.function.name,
+      callId: c.id,
+    });
+    if (parsedArguments === undefined) continue;
+    toolCalls.push({
+      id: c.id,
+      name: c.function.name,
+      arguments: parsedArguments,
+    });
+  }
+  return toolCalls;
 }
 
 /** Convert internal ProviderMessages to OpenAI message array. */
@@ -381,10 +396,18 @@ export function extractTextToolCalls(content: string): {
 
     const toolName = match[1]!;
     const rawArgs = match[2]!;
+    const parsedArguments = parseToolCallArguments(rawArgs, {
+      toolName,
+      callId: `text-call-${index}`,
+    });
+    if (parsedArguments === undefined) {
+      index++;
+      continue;
+    }
     toolCalls.push({
       id: `text-call-${index}`,
       name: toolName,
-      arguments: parseJson(rawArgs),
+      arguments: parsedArguments,
     });
     index++;
   }
@@ -404,11 +427,20 @@ export function extractTextToolCalls(content: string): {
 // Shared helper
 // ---------------------------------------------------------------------------
 
-function parseJson(raw: string): Record<string, unknown> {
+export function parseToolCallArguments(
+  raw: string,
+  context: ToolArgumentParseContext = {},
+): Record<string, unknown> | undefined {
+  if (raw.trim().length === 0) return {};
   try {
     return JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    logger.warn('tool-formats: failed to parse JSON tool arguments', { error: summarizeError(err) });
-    return {};
+    logger.warn('tool-formats: failed to parse JSON tool arguments; dropping malformed tool call', {
+      error: summarizeError(err),
+      provider: context.provider,
+      toolName: context.toolName,
+      callId: context.callId,
+    });
+    return undefined;
   }
 }

@@ -59,7 +59,7 @@ export const DATA_RETRY_POLICY: Readonly<RetryPolicy> = Object.freeze({
 
 /**
  * Default retry policy for ack messages.
- * Acks are best-effort; fewer retries since missing acks trigger replay.
+ * Ack delivery is bounded; fewer retries are used because missing acks trigger replay.
  */
 export const ACK_RETRY_POLICY: Readonly<RetryPolicy> = Object.freeze({
   maxAttempts: 3,
@@ -105,7 +105,7 @@ export const CURRENT_PROTOCOL_VERSION: Readonly<ProtocolVersion> = Object.freeze
  * with for a given local version. Major version must always match exactly.
  *
  * Policy:
- * - Peers advertising minor < minSupportedMinor are rejected (too old).
+ * - Peers advertising minor < minSupportedMinor are rejected as unsupported.
  * - Peers advertising minor > maxSupportedMinor are accepted; we downgrade to
  *   the peer's level (peer is newer — they offer a superset of our features).
  * - Peers advertising the same minor connect at full capability.
@@ -168,7 +168,7 @@ export class VersionMismatchError extends GoodVibesSdkError {
  * Rules:
  * 1. Major versions must match exactly — a mismatch is always unsupported.
  * 2. Find the protocol support entry for the local version in the matrix.
- * 3. Peer minor below `minSupportedMinor` → unsupported (peer too old).
+ * 3. Peer minor below `minSupportedMinor` -> unsupported.
  * 4. Peer minor equal to local minor → full capability, no downgrade.
  * 5. Peer minor above local minor → downgrade to local (we are the older peer).
  * 6. Peer minor in (local, maxSupportedMinor] → downgrade to peer (peer is newer).
@@ -218,7 +218,7 @@ export function negotiateProtocolVersion(
   const minMinor = entry?.minSupportedMinor ?? 0;
   const maxMinor = entry?.maxSupportedMinor ?? localVersion.minor;
 
-  // Rule 3: Peer minor too old → reject
+  // Rule 3: Peer minor below the supported range -> reject
   if (peerVersion.minor < minMinor) {
     return {
       proceed: false,

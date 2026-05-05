@@ -7,7 +7,7 @@ import type {
   KnowledgeSourceRecord,
   KnowledgeSourceType,
 } from '../types.js';
-import { belongsToSpace, edgeIsActive, readRecord, readStringArray } from './helpers.js';
+import { belongsToSpace, edgeIsActive, readRecord, readString, readStringArray } from './helpers.js';
 import type { HomeGraphRenderState } from './rendering.js';
 
 export interface HomeGraphState extends Omit<HomeGraphRenderState, 'title'> {
@@ -15,7 +15,7 @@ export interface HomeGraphState extends Omit<HomeGraphRenderState, 'title'> {
 }
 
 export function readHomeGraphState(store: KnowledgeStore, spaceId: string): HomeGraphState {
-  const sources = store.listSourcesInSpace(spaceId);
+  const sources = store.listSourcesInSpace(spaceId).filter((source) => source.status !== 'stale');
   const nodes = store.listNodesInSpace(spaceId).filter((node) => node.status !== 'stale');
   const sourceIds = new Set(sources.map((source) => source.id));
   const nodeIds = new Set(nodes.map((node) => node.id));
@@ -27,7 +27,10 @@ export function readHomeGraphState(store: KnowledgeStore, spaceId: string): Home
     && (edge.fromKind !== 'node' || nodeIds.has(edge.fromId))
     && (edge.toKind !== 'node' || nodeIds.has(edge.toId))
   ));
-  const issues = store.listIssuesInSpace(spaceId);
+  const issues = store.listIssuesInSpace(spaceId).filter((issue) => (
+    (!issue.sourceId || sourceIds.has(issue.sourceId))
+    && (!issue.nodeId || nodeIds.has(issue.nodeId))
+  ));
   const extractions = store.listExtractionsForSources(sourceIds);
   return { spaceId, sources, nodes, edges, issues, extractions };
 }
@@ -122,13 +125,29 @@ function sourceLinkedObjectIds(source: KnowledgeSourceRecord): string[] {
 export function missingDevicePassportFields(
   device: KnowledgeNodeRecord,
   sources: readonly KnowledgeSourceRecord[],
+  facts: readonly KnowledgeNodeRecord[] = [],
 ): string[] {
+  const hasManufacturer = typeof device.metadata.manufacturer === 'string'
+    || factsContainField(facts, /\b(manufacturer|brand|vendor)\b/);
+  const hasModel = typeof device.metadata.model === 'string'
+    || factsContainField(facts, /\b(model|model number|model id)\b/);
+  const hasBatteryType = factsContainField(facts, /\b(battery type|battery|cr2032|cr123|aaa|aa)\b/);
   return [
-    typeof device.metadata.manufacturer === 'string' ? '' : 'manufacturer',
-    typeof device.metadata.model === 'string' ? '' : 'model',
-    devicePassportNeedsBatteryField(device) ? 'battery type' : '',
+    hasManufacturer ? '' : 'manufacturer',
+    hasModel ? '' : 'model',
+    devicePassportNeedsBatteryField(device) && !hasBatteryType ? 'battery type' : '',
     sources.length > 0 ? '' : 'manual/source',
   ].filter(Boolean);
+}
+
+function factsContainField(facts: readonly KnowledgeNodeRecord[], pattern: RegExp): boolean {
+  return facts.some((fact) => pattern.test([
+    fact.title,
+    fact.summary,
+    readString(fact.metadata.value),
+    readString(fact.metadata.evidence),
+    ...readStringArray(fact.metadata.labels),
+  ].filter(Boolean).join(' ').toLowerCase()));
 }
 
 function devicePassportNeedsBatteryField(device: KnowledgeNodeRecord): boolean {

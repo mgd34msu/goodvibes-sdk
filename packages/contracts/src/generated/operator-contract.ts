@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.30.5"
+    "version": "0.33.0"
   },
   "auth": {
     "modes": [
@@ -3421,13 +3421,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "synthetic"
                             ]
                           },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
-                            ]
-                          },
                           "providerFailurePolicy": {
                             "type": "string",
                             "enum": [
@@ -5031,13 +5024,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "synthetic"
                       ]
                     },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
-                      ]
-                    },
                     "providerFailurePolicy": {
                       "type": "string",
                       "enum": [
@@ -6000,13 +5986,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "inherit-current",
                               "concrete",
                               "synthetic"
-                            ]
-                          },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
                             ]
                           },
                           "providerFailurePolicy": {
@@ -7291,13 +7270,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "synthetic"
                       ]
                     },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
-                      ]
-                    },
                     "providerFailurePolicy": {
                       "type": "string",
                       "enum": [
@@ -8359,13 +8331,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "synthetic"
                           ]
                         },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
-                          ]
-                        },
                         "providerFailurePolicy": {
                           "type": "string",
                           "enum": [
@@ -9348,13 +9313,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "inherit-current",
                             "concrete",
                             "synthetic"
-                          ]
-                        },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
                           ]
                         },
                         "providerFailurePolicy": {
@@ -10434,13 +10392,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "synthetic"
                             ]
                           },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
-                            ]
-                          },
                           "providerFailurePolicy": {
                             "type": "string",
                             "enum": [
@@ -11426,13 +11377,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "synthetic"
                           ]
                         },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
-                          ]
-                        },
                         "providerFailurePolicy": {
                           "type": "string",
                           "enum": [
@@ -12110,7 +12054,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules"
+          "path": "/api/automation/schedules"
         },
         "inputSchema": {
           "type": "object",
@@ -12669,13 +12613,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "inherit-current",
                         "concrete",
                         "synthetic"
-                      ]
-                    },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
                       ]
                     },
                     "providerFailurePolicy": {
@@ -13272,7 +13209,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "DELETE",
-          "path": "/schedules/{scheduleId}"
+          "path": "/api/automation/schedules/{scheduleId}"
         },
         "inputSchema": {
           "type": "object",
@@ -13320,7 +13257,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules/{scheduleId}/disable"
+          "path": "/api/automation/schedules/{scheduleId}/disable"
         },
         "inputSchema": {
           "type": "object",
@@ -13368,7 +13305,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules/{scheduleId}/enable"
+          "path": "/api/automation/schedules/{scheduleId}/enable"
         },
         "inputSchema": {
           "type": "object",
@@ -13416,7 +13353,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "GET",
-          "path": "/schedules"
+          "path": "/api/automation/schedules"
         },
         "inputSchema": {
           "type": "object",
@@ -13628,13 +13565,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "inherit-current",
                               "concrete",
                               "synthetic"
-                            ]
-                          },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
                             ]
                           },
                           "providerFailurePolicy": {
@@ -14506,13 +14436,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "synthetic"
                             ]
                           },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
-                            ]
-                          },
                           "providerFailurePolicy": {
                             "type": "string",
                             "enum": [
@@ -15192,7 +15115,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules/{scheduleId}/run"
+          "path": "/api/automation/schedules/{scheduleId}/run"
         },
         "inputSchema": {
           "type": "object",
@@ -49071,7 +48994,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "type": "string"
                       }
                     },
-                    "suppressedModels": {
+                    "suppressedModelRegistryKeys": {
                       "type": "array",
                       "items": {
                         "type": "string"
@@ -49409,7 +49332,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "type": "string"
                             }
                           },
-                          "suppressedModels": {
+                          "suppressedModelRegistryKeys": {
                             "type": "array",
                             "items": {
                               "type": "string"
@@ -49636,7 +49559,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "active": {
               "type": "boolean"
             },
-            "currentModelId": {
+            "currentModelRegistryKey": {
               "type": "string"
             },
             "pricingSource": {
@@ -56871,13 +56794,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "synthetic"
                   ]
                 },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
-                  ]
-                },
                 "providerFailurePolicy": {
                   "type": "string",
                   "enum": [
@@ -57298,13 +57214,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "inherit-current",
                         "concrete",
                         "synthetic"
-                      ]
-                    },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
                       ]
                     },
                     "providerFailurePolicy": {
@@ -57843,13 +57752,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "synthetic"
                       ]
                     },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
-                      ]
-                    },
                     "providerFailurePolicy": {
                       "type": "string",
                       "enum": [
@@ -58238,13 +58140,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "inherit-current",
                           "concrete",
                           "synthetic"
-                        ]
-                      },
-                      "unresolvedModelPolicy": {
-                        "type": "string",
-                        "enum": [
-                          "fallback-to-current",
-                          "fail"
                         ]
                       },
                       "providerFailurePolicy": {
@@ -58672,13 +58567,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "inherit-current",
                     "concrete",
                     "synthetic"
-                  ]
-                },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
                   ]
                 },
                 "providerFailurePolicy": {
@@ -59123,13 +59011,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "inherit-current",
                             "concrete",
                             "synthetic"
-                          ]
-                        },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
                           ]
                         },
                         "providerFailurePolicy": {
@@ -59748,13 +59629,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "synthetic"
                   ]
                 },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
-                  ]
-                },
                 "providerFailurePolicy": {
                   "type": "string",
                   "enum": [
@@ -60178,13 +60052,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "inherit-current",
                         "concrete",
                         "synthetic"
-                      ]
-                    },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
                       ]
                     },
                     "providerFailurePolicy": {
@@ -61032,13 +60899,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "inherit-current",
                     "concrete",
                     "synthetic"
-                  ]
-                },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
                   ]
                 },
                 "providerFailurePolicy": {
@@ -67258,7 +67118,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "discard": {
                   "type": "number"
                 },
-                "cleanupPending": {
+                "pendingCleanup": {
                   "type": "number"
                 },
                 "sessionAttached": {
@@ -67283,7 +67143,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "paused",
                 "kept",
                 "discard",
-                "cleanupPending",
+                "pendingCleanup",
                 "sessionAttached",
                 "taskAttached",
                 "agentOwned",
@@ -67315,7 +67175,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "paused",
                       "kept",
                       "discard",
-                      "cleanup-pending"
+                      "pending-cleanup"
                     ]
                   },
                   "ownerId": {

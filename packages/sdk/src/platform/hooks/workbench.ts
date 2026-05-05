@@ -41,7 +41,7 @@ export interface HookConfigInspection {
 export interface HookWorkbenchOptions {
   readonly hookDispatcher: Pick<HookDispatcher, 'clear' | 'loadFromFile'>;
   readonly configManager: Pick<ConfigManager, 'get' | 'getWorkingDirectory'>;
-  readonly hooksFilePathResolver?: (() => string) | undefined | undefined;
+  readonly hooksFilePathResolver?: (() => string) | undefined;
 }
 
 const EMPTY_CONFIG: HooksConfig = Object.freeze({ hooks: {}, chains: [] });
@@ -128,7 +128,7 @@ export class HookWorkbench {
       this.managedConfig = ensureConfigShape(parsed);
       this.recordAction({ kind: 'load', target: path, timestamp: Date.now(), detail: `${this.listManagedHooks().length} hooks / ${this.listManagedChains().length} chains` });
     } catch (error) {
-      logger.debug('HookWorkbench.loadManagedConfig failed, using empty config', { path, error: summarizeError(error) });
+      logger.warn('HookWorkbench.loadManagedConfig failed, using empty config', { path, error: summarizeError(error) });
       this.managedConfig = cloneConfig(EMPTY_CONFIG);
       this.recordAction({ kind: 'load', target: path, timestamp: Date.now(), detail: 'invalid JSON; using empty config' });
     }

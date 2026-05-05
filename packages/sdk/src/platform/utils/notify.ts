@@ -5,7 +5,7 @@ import { logger } from './logger.js';
 
 /**
  * notifyCompletion - Emit terminal bell and/or desktop notification on turn completion.
- * Non-fatal: notification errors are reported and never crash the app.
+ * Notification errors are reported and never crash the app.
  *
  * @param title     - Notification title
  * @param message   - Notification body
@@ -14,6 +14,37 @@ import { logger } from './logger.js';
 /** Escape a string for safe interpolation into an AppleScript string literal. */
 export function escapeAppleScript(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function trimNotificationOutput(value: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, 500) : undefined;
+}
+
+function spawnNotification(command: string[]): void {
+  try {
+    const proc = Bun.spawn(command, { stdin: 'ignore', stdout: 'ignore', stderr: 'pipe' });
+    const stderr = new Response(proc.stderr).text();
+    void Promise.all([proc.exited, stderr])
+      .then(([exitCode, stderrText]) => {
+        if (exitCode !== 0) {
+          logger.warn('Completion notification command failed', {
+            command: command[0],
+            exitCode,
+            stderr: trimNotificationOutput(stderrText),
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        logger.warn('Completion notification failed', {
+          error: summarizeError(error),
+        });
+      });
+  } catch (error) {
+    logger.warn('Completion notification failed', {
+      error: summarizeError(error),
+    });
+  }
 }
 
 export function notifyCompletion(title: string, message: string, durationMs: number): void {
@@ -27,21 +58,12 @@ export function notifyCompletion(title: string, message: string, durationMs: num
 
   // Desktop notification for responses > 30s
   if (durationMs > 30000) {
-    try {
-      if (process.platform === 'linux') {
-        Bun.spawn(['notify-send', title, message], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' });
-      } else if (process.platform === 'darwin') {
-        const safeTitle = escapeAppleScript(title);
-        const safeMessage = escapeAppleScript(message);
-        Bun.spawn(
-          ['osascript', '-e', `display notification "${safeMessage}" with title "${safeTitle}"`],
-          { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
-        );
-      }
-    } catch (error) {
-      logger.debug('Completion notification failed', {
-        error: summarizeError(error),
-      });
+    if (process.platform === 'linux') {
+      spawnNotification(['notify-send', title, message]);
+    } else if (process.platform === 'darwin') {
+      const safeTitle = escapeAppleScript(title);
+      const safeMessage = escapeAppleScript(message);
+      spawnNotification(['osascript', '-e', `display notification "${safeMessage}" with title "${safeTitle}"`]);
     }
   }
 }

@@ -2,10 +2,6 @@
 
 /**
  * System-prompt addenda injected into WRFC agent spawns.
- *
- * Phase 2 wires `buildEngineerConstraintAddendum` into engineer spawns.
- * Reviewer (Phase 3) and fixer (Phase 4) addenda are declared here for
- * module-shape stability but throw at call time until their phase lands.
  */
 
 /**
@@ -39,7 +35,7 @@ A **non-build or unconstrained prompt** looks like: a question, a conversational
 
 **Hard cap: at most ~16 constraints.** If you find more, you are over-enumerating — consolidate. Real user prompts almost never produce more than 5-10.
 
-These constraints become your self-declared acceptance criteria. The reviewer will verify each one independently. If you cannot satisfy a constraint, record it under \`issues[]\` with an explanation — do not silently drop it.`;
+These constraints become your self-declared acceptance criteria. The reviewer will verify each one independently. If you cannot satisfy a constraint, record it under \`issues[]\` with an explanation — do not omit it.`;
   return _engineerAddendumCache;
 }
 
@@ -97,7 +93,7 @@ The chain's authoritative constraint list is fixed — the engineer declared it 
 - If the reviewer marked it \`satisfied: true\`, your fix must keep it satisfied. Do not change code in ways that break it.
 - If the reviewer marked it \`satisfied: false\`, your fix must satisfy it AND resolve whichever rubric issues the reviewer flagged.
 - If the reviewer marked it \`UNVERIFIED\` (no finding was recorded), treat it as a constraint you must verify and satisfy before returning.
-- If a reviewer issue can only be resolved by violating a constraint, STOP. Record the conflict under \`issues[]\` with both the \`constraintId\` and the reviewer issue id/description. Do NOT silently regress the constraint.
+- If a reviewer issue can only be resolved by violating a constraint, STOP. Record the conflict under \`issues[]\` with both the \`constraintId\` and the reviewer issue id/description. Do NOT regress the constraint.
 
 **Return protocol:** Your output must be an \`EngineerReport\` carrying the exact same \`constraints[]\` array you received — same ids, same text, same order. The controller will verify continuity. Renaming, dropping, reordering, or adding constraints will be treated as a regression and surface as a synthetic critical issue in the next review cycle.`;
   return _fixerAddendumCache;

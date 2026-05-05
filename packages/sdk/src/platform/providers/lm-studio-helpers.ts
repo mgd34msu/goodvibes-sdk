@@ -37,7 +37,7 @@ export type NativeChatContext = {
 };
 
 export type LMStudioResponsesStream = AsyncIterable<unknown> & {
-  finalResponse?: (() => Promise<Record<string, unknown>>) | undefined | undefined;
+  finalResponse?: (() => Promise<Record<string, unknown>>) | undefined;
 };
 
 export type LMStudioResponsesClient = {
@@ -300,18 +300,6 @@ function stableStringify(value: unknown): string {
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record).sort();
   return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(',')}}`;
-}
-
-export function parseJsonObject(raw: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {
-    // ignore malformed arguments
-  }
-  return {};
 }
 
 export function toRecord(value: unknown): Record<string, unknown> {

@@ -228,7 +228,7 @@ export async function executeToolCalls(
           sessionId: deps.sessionId,
           timestamp: Date.now(),
           payload: { tool: call.name, path: filePath, callId: call.id },
-        }).catch((err: unknown) => { logger.debug(`Post:file:${call.name} hook error`, { error: summarizeError(err) }); });
+        }).catch((err: unknown) => { logger.warn(`Post:file:${call.name} hook error`, { error: summarizeError(err) }); });
       } else {
         deps.hookDispatcher.fire({
           path: `Fail:file:${call.name}` as HookEventPath,
@@ -238,7 +238,7 @@ export async function executeToolCalls(
           sessionId: deps.sessionId,
           timestamp: Date.now(),
           payload: { tool: call.name, path: filePath, callId: call.id, error: result.error },
-        }).catch((err: unknown) => { logger.debug(`Fail:file:${call.name} hook error`, { error: summarizeError(err) }); });
+        }).catch((err: unknown) => { logger.warn(`Fail:file:${call.name} hook error`, { error: summarizeError(err) }); });
       }
     }
 
@@ -437,7 +437,7 @@ export function autoSpawnPendingItems(
         mode: 'spawn',
         task: item.description,
         template: 'engineer',
-        model: currentModel.id,
+        model: currentModel.registryKey,
         provider: currentModel.provider,
       };
       const agentRecord = agentManager.spawn(spawnInput);

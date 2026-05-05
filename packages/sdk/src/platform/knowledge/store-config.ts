@@ -3,7 +3,7 @@ import { resolveKnowledgeDbPathFromControlPlaneDir } from './store-schema.js';
 export interface KnowledgeStoreConfig {
   readonly dbPath?: string | undefined;
   readonly configManager?: {
-    getControlPlaneConfigDir?: (() => string) | undefined | undefined;
+    getControlPlaneConfigDir?: (() => string) | undefined;
   };
 }
 

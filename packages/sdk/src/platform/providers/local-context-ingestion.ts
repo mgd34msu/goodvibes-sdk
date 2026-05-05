@@ -116,6 +116,12 @@ export class LocalContextIngestionService {
     // Returns an empty Map when all probes fail — treat that as a fetch failure.
     const discovered = await discoverContextWindows(baseURL, apiKey);
     const failed = discovered.size === 0;
+    if (failed) {
+      logger.warn('[local-context-ingestion] Context window discovery returned no models', {
+        providerName,
+        baseURL,
+      });
+    }
     this.providerCache.set(providerName, {
       fetchedAt: now,
       models: discovered,

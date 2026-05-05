@@ -231,7 +231,7 @@ export class AcpConnection {
       try {
         await this.conn.cancel({ sessionId: this.sessionId });
       } catch (err) {
-        // Best-effort — kill the child if cancel fails
+        // If protocol cancel fails, still kill the child process.
         logger.error('AcpConnection.cancel: failed to send cancel to subagent', { id: this.id, err: summarizeError(err) });
       }
     }

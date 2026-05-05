@@ -1,11 +1,11 @@
 /**
  * runtime-session-input-cancel.test.ts
  *
- * Tests for F17 — cancelSharedSessionInput state-transition guard.
+ * Tests for cancelSharedSessionInput state-transition guard.
  *
  * queued input → cancel returns 200, input state transitions to cancelled
  * spawned input → cancel returns 409 CANCEL_NOT_ALLOWED
- * unknown input id → 404 regression guard
+ * unknown input id → 404
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -105,7 +105,7 @@ function makeContext(inputs: Map<string, InputRecord>): DaemonRuntimeRouteContex
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('F17 — cancelSharedSessionInput: queued → cancelled', () => {
+describe('cancelSharedSessionInput: queued → cancelled', () => {
   test('queued input → cancel returns 200, input state is cancelled', async () => {
     const inputs = new Map<string, InputRecord>([
       ['input-queued-1', { id: 'input-queued-1', state: 'queued' }],
@@ -131,7 +131,7 @@ describe('F17 — cancelSharedSessionInput: queued → cancelled', () => {
   });
 });
 
-describe('F17 — cancelSharedSessionInput: spawned → 409 CANCEL_NOT_ALLOWED', () => {
+describe('cancelSharedSessionInput: spawned → 409 CANCEL_NOT_ALLOWED', () => {
   test('spawned input → 409 CANCEL_NOT_ALLOWED', async () => {
     const inputs = new Map<string, InputRecord>([
       ['input-spawned-1', { id: 'input-spawned-1', state: 'spawned' }],
@@ -159,7 +159,7 @@ describe('F17 — cancelSharedSessionInput: spawned → 409 CANCEL_NOT_ALLOWED',
   });
 });
 
-describe('F17 — cancelSharedSessionInput: unknown input → 404', () => {
+describe('cancelSharedSessionInput: unknown input → 404', () => {
   test('unknown input id → 404', async () => {
     const inputs = new Map<string, InputRecord>();
     const ctx = makeContext(inputs);

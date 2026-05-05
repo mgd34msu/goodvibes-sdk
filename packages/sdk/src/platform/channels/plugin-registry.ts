@@ -40,48 +40,48 @@ export interface ChannelPlugin {
   readonly capabilities: readonly ChannelCapability[];
   readonly setupVersion?: number | undefined;
   readonly webhookPath?: string | undefined;
-  readonly handleInbound?: ((req: Request) => Promise<Response>) | undefined | undefined;
-  readonly renderPolicy?: (() => ChannelRenderPolicy | Promise<ChannelRenderPolicy>) | undefined | undefined;
-  readonly renderEvent?: ((request: ChannelRenderRequest) => Promise<ChannelRenderResult | void>) | undefined | undefined;
-  readonly deliverReply?: ((pending: unknown, message: string) => Promise<void>) | undefined | undefined;
-  readonly deliverProgress?: ((pending: unknown, progress: string) => Promise<void>) | undefined | undefined;
-  readonly notifyApproval?: ((approval: SharedApprovalRecord, binding: AutomationRouteBinding) => Promise<void>) | undefined | undefined;
-  readonly getSetupSchema?: ((accountId?: string) => Promise<ChannelSetupSchema> | ChannelSetupSchema) | undefined | undefined;
-  readonly doctor?: ((accountId?: string) => Promise<ChannelDoctorReport> | ChannelDoctorReport) | undefined | undefined;
-  readonly listRepairActions?: ((accountId?: string) => Promise<readonly ChannelRepairAction[]> | readonly ChannelRepairAction[]) | undefined | undefined;
-  readonly getLifecycleState?: ((accountId?: string) => Promise<ChannelLifecycleState> | ChannelLifecycleState) | undefined | undefined;
-  readonly resolveAllowlist?: ((input: ChannelAllowlistEditInput) => Promise<ChannelAllowlistResolution> | ChannelAllowlistResolution) | undefined | undefined;
-  readonly editAllowlist?: ((input: ChannelAllowlistEditInput) => Promise<ChannelAllowlistEditResult> | ChannelAllowlistEditResult) | undefined | undefined;
-  readonly getStatus?: (() => Promise<ChannelStatusSnapshot>) | undefined | undefined;
-  readonly listAccounts?: (() => Promise<readonly ChannelAccountRecord[]>) | undefined | undefined;
-  readonly getAccount?: ((accountId: string) => Promise<ChannelAccountRecord | null>) | undefined | undefined;
-  readonly startAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined | undefined;
-  readonly stopAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined | undefined;
-  readonly loginAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined | undefined;
-  readonly loginWithQrStart?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined | undefined;
-  readonly loginWithQrWait?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined | undefined;
-  readonly logoutAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined | undefined;
+  readonly handleInbound?: ((req: Request) => Promise<Response>) | undefined;
+  readonly renderPolicy?: (() => ChannelRenderPolicy | Promise<ChannelRenderPolicy>) | undefined;
+  readonly renderEvent?: ((request: ChannelRenderRequest) => Promise<ChannelRenderResult | void>) | undefined;
+  readonly deliverReply?: ((pending: unknown, message: string) => Promise<void>) | undefined;
+  readonly deliverProgress?: ((pending: unknown, progress: string) => Promise<void>) | undefined;
+  readonly notifyApproval?: ((approval: SharedApprovalRecord, binding: AutomationRouteBinding) => Promise<void>) | undefined;
+  readonly getSetupSchema?: ((accountId?: string) => Promise<ChannelSetupSchema> | ChannelSetupSchema) | undefined;
+  readonly doctor?: ((accountId?: string) => Promise<ChannelDoctorReport> | ChannelDoctorReport) | undefined;
+  readonly listRepairActions?: ((accountId?: string) => Promise<readonly ChannelRepairAction[]> | readonly ChannelRepairAction[]) | undefined;
+  readonly getLifecycleState?: ((accountId?: string) => Promise<ChannelLifecycleState> | ChannelLifecycleState) | undefined;
+  readonly resolveAllowlist?: ((input: ChannelAllowlistEditInput) => Promise<ChannelAllowlistResolution> | ChannelAllowlistResolution) | undefined;
+  readonly editAllowlist?: ((input: ChannelAllowlistEditInput) => Promise<ChannelAllowlistEditResult> | ChannelAllowlistEditResult) | undefined;
+  readonly getStatus?: (() => Promise<ChannelStatusSnapshot>) | undefined;
+  readonly listAccounts?: (() => Promise<readonly ChannelAccountRecord[]>) | undefined;
+  readonly getAccount?: ((accountId: string) => Promise<ChannelAccountRecord | null>) | undefined;
+  readonly startAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined;
+  readonly stopAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined;
+  readonly loginAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined;
+  readonly loginWithQrStart?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined;
+  readonly loginWithQrWait?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined;
+  readonly logoutAccount?: ((accountId?: string, input?: Record<string, unknown>) => Promise<ChannelAccountLifecycleResult>) | undefined;
   readonly runAccountAction?: (
     action: ChannelAccountLifecycleAction,
     accountId?: string,
     input?: Record<string, unknown>,
   ) => Promise<ChannelAccountLifecycleResult>;
-  readonly authorizeActorAction?: ((request: ChannelActorAuthorizationRequest) => Promise<ChannelActorAuthorizationResult>) | undefined | undefined;
-  readonly getActionAvailabilityState?: ((request: ChannelActorAuthorizationRequest) => Promise<ChannelActorAuthorizationResult>) | undefined | undefined;
-  readonly listCapabilities?: (() => Promise<readonly ChannelCapabilityDescriptor[]> | readonly ChannelCapabilityDescriptor[]) | undefined | undefined;
-  readonly listTools?: (() => Promise<readonly ChannelToolDescriptor[]> | readonly ChannelToolDescriptor[]) | undefined | undefined;
-  readonly runTool?: ((toolId: string, input?: Record<string, unknown>) => Promise<unknown>) | undefined | undefined;
-  readonly listOperatorActions?: (() => Promise<readonly ChannelOperatorActionDescriptor[]> | readonly ChannelOperatorActionDescriptor[]) | undefined | undefined;
-  readonly runOperatorAction?: ((actionId: string, input?: Record<string, unknown>) => Promise<unknown>) | undefined | undefined;
-  readonly lookupDirectory?: ((query: string, options?: ChannelDirectoryQueryOptions) => Promise<readonly ChannelDirectoryEntry[]>) | undefined | undefined;
-  readonly queryDirectory?: ((query: ChannelDirectoryQueryOptions) => Promise<readonly ChannelDirectoryEntry[]>) | undefined | undefined;
-  readonly listGroupMembers?: ((groupId: string, options?: ChannelDirectoryQueryOptions) => Promise<readonly ChannelDirectoryEntry[]>) | undefined | undefined;
-  readonly parseExplicitTarget?: ((input: string, options?: ChannelTargetResolveOptions) => Promise<ChannelResolvedTarget | null> | ChannelResolvedTarget | null) | undefined | undefined;
-  readonly inferTargetConversationKind?: ((input: string, options?: ChannelTargetResolveOptions) => Promise<ChannelConversationKind | null> | ChannelConversationKind | null) | undefined | undefined;
-  readonly resolveTarget?: ((options: ChannelTargetResolveOptions) => Promise<ChannelResolvedTarget | null>) | undefined | undefined;
-  readonly resolveSessionTarget?: ((target: ChannelResolvedTarget, options?: ChannelTargetResolveOptions) => Promise<string | null> | string | null) | undefined | undefined;
-  readonly resolveParentConversationCandidates?: ((options: ChannelTargetResolveOptions) => Promise<readonly ChannelResolvedTarget[]>) | undefined | undefined;
-  readonly listAgentTools?: (() => readonly Tool[]) | undefined | undefined;
+  readonly authorizeActorAction?: ((request: ChannelActorAuthorizationRequest) => Promise<ChannelActorAuthorizationResult>) | undefined;
+  readonly getActionAvailabilityState?: ((request: ChannelActorAuthorizationRequest) => Promise<ChannelActorAuthorizationResult>) | undefined;
+  readonly listCapabilities?: (() => Promise<readonly ChannelCapabilityDescriptor[]> | readonly ChannelCapabilityDescriptor[]) | undefined;
+  readonly listTools?: (() => Promise<readonly ChannelToolDescriptor[]> | readonly ChannelToolDescriptor[]) | undefined;
+  readonly runTool?: ((toolId: string, input?: Record<string, unknown>) => Promise<unknown>) | undefined;
+  readonly listOperatorActions?: (() => Promise<readonly ChannelOperatorActionDescriptor[]> | readonly ChannelOperatorActionDescriptor[]) | undefined;
+  readonly runOperatorAction?: ((actionId: string, input?: Record<string, unknown>) => Promise<unknown>) | undefined;
+  readonly lookupDirectory?: ((query: string, options?: ChannelDirectoryQueryOptions) => Promise<readonly ChannelDirectoryEntry[]>) | undefined;
+  readonly queryDirectory?: ((query: ChannelDirectoryQueryOptions) => Promise<readonly ChannelDirectoryEntry[]>) | undefined;
+  readonly listGroupMembers?: ((groupId: string, options?: ChannelDirectoryQueryOptions) => Promise<readonly ChannelDirectoryEntry[]>) | undefined;
+  readonly parseExplicitTarget?: ((input: string, options?: ChannelTargetResolveOptions) => Promise<ChannelResolvedTarget | null> | ChannelResolvedTarget | null) | undefined;
+  readonly inferTargetConversationKind?: ((input: string, options?: ChannelTargetResolveOptions) => Promise<ChannelConversationKind | null> | ChannelConversationKind | null) | undefined;
+  readonly resolveTarget?: ((options: ChannelTargetResolveOptions) => Promise<ChannelResolvedTarget | null>) | undefined;
+  readonly resolveSessionTarget?: ((target: ChannelResolvedTarget, options?: ChannelTargetResolveOptions) => Promise<string | null> | string | null) | undefined;
+  readonly resolveParentConversationCandidates?: ((options: ChannelTargetResolveOptions) => Promise<readonly ChannelResolvedTarget[]>) | undefined;
+  readonly listAgentTools?: (() => readonly Tool[]) | undefined;
 }
 
 export class ChannelPluginRegistry {
@@ -208,7 +208,15 @@ export class ChannelPluginRegistry {
     if (plugin.renderEvent) {
       const result = await plugin.renderEvent(request);
       if (result) return result;
-      return { delivered: true, metadata: { surface, pluginId: plugin.id } };
+      return {
+        delivered: true,
+        metadata: {
+          surface,
+          pluginId: plugin.id,
+          outcome: 'rendered-without-result',
+          reason: 'plugin-render-event-returned-void',
+        },
+      };
     }
     if (request.phase === 'final' && plugin.deliverReply) {
       await plugin.deliverReply(request.pending, request.text);

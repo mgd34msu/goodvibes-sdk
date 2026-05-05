@@ -7,26 +7,26 @@
  * Resolution order:
  *   1. Per-provider helper (helper.providers.{currentProvider}.provider + model)
  *   2. Global helper (helper.globalProvider + helper.globalModel)
- *   3. Tool LLM (tools.llmProvider + tools.llmModel) — if configured
- *   4. Main model (fallback — not a true helper, but ensures the task runs)
+ *   3. Tool LLM (tools.llmProvider + tools.llmModel) — when enabled/configured
  *
  * Design constraints:
- *   - Never throws from HelperModel.chat() — returns empty string on any error
- *   - Logs failures via logger.debug (non-fatal)
- *   - Singleton pattern — import `helperModel` for use
+ *   - Optional helper absence is explicit: helperOnly calls return null.
+ *   - Configured routes are provider-qualified through the model registry.
+ *   - HelperModel.chat() throws request and configuration failures.
  *   - Tracks token usage separately from the main model
  */
 
 import type { ConfigManager } from './manager.js';
 import type { LLMProvider } from '../providers/interface.js';
 import type { ProviderRegistry } from '../providers/registry.js';
+import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
 /** Tasks that can be routed to a helper model. */
 export type HelperTask =
   | 'cache_strategy'     // Plan cache breakpoints + TTL
-  | 'compaction'         // Summarize old context for compaction
+  | 'compaction'         // Summarize prior context for compaction
   | 'intent_classify'    // Classify user intent (question vs task)
   | 'tool_summarize'     // Condense large tool output
   | 'commit_message'     // Generate commit messages
@@ -36,7 +36,7 @@ export type HelperTask =
 export interface ResolvedHelper {
   provider: LLMProvider;
   modelId: string;
-  /** true if using a dedicated helper, false if falling back to main model. */
+  /** true when a dedicated helper/tool-LLM route was configured. */
   isHelper: boolean;
 }
 
@@ -44,7 +44,7 @@ export interface ResolvedHelper {
 export interface HelperChatOptions {
   maxTokens?: number | undefined;
   systemPrompt?: string | undefined;
-  /** If true, return empty string instead of falling back to main model. */
+  /** If true, return null when no dedicated helper route is available. */
   helperOnly?: boolean | undefined;
 }
 
@@ -57,10 +57,18 @@ export interface HelperUsage {
 
 export interface HelperModelDeps {
   readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
-  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'> & {
-    readonly get?: ProviderRegistry['get'] | undefined;
-    readonly require?: ProviderRegistry['require'] | undefined;
-  };
+  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'>;
+}
+
+export class HelperModelUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'HelperModelUnavailableError';
+  }
+}
+
+function readOptionalString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 /**
@@ -69,25 +77,33 @@ export interface HelperModelDeps {
  * Resolution order:
  *   1. Per-provider helper (helper.providers.{currentProvider}.provider + model)
  *   2. Global helper (helper.globalProvider + helper.globalModel)
- *   3. Tool LLM (tools.llmProvider + tools.llmModel) — if configured
- *   4. Main model (fallback — not a true helper, but ensures the task runs)
+ *   3. Tool LLM (tools.llmProvider + tools.llmModel) — when enabled/configured
  */
 export class HelperRouter {
   constructor(private readonly deps: HelperModelDeps) {}
 
-  private requireProvider(providerId: string): LLMProvider {
-    if (this.deps.providerRegistry.require) {
-      return this.deps.providerRegistry.require(providerId);
+  private resolveConfiguredProviderModel(providerId: string, modelId: string): ResolvedHelper {
+    const provider = providerId.trim();
+    const model = modelId.trim();
+    if (!provider || !model) {
+      throw new Error('Helper model route requires provider and model.');
     }
-    const provider = this.deps.providerRegistry.get?.(providerId);
-    if (!provider) throw new Error(`Unknown provider: ${providerId}`);
-    return provider;
+    const registryKey = model.includes(':') ? model : `${provider}:${model}`;
+    const parsed = splitModelRegistryKey(registryKey);
+    if (parsed.providerId !== provider) {
+      throw new Error(`Helper model '${model}' conflicts with provider '${provider}'.`);
+    }
+    return {
+      provider: this.deps.providerRegistry.getForModel(registryKey, provider),
+      modelId: parsed.resolvedModelId,
+      isHelper: true,
+    };
   }
 
   /**
    * Resolve the best helper for the given task.
    *
-   * Returns null only if no provider can be resolved at all.
+   * Returns null only when no dedicated helper route is configured.
    */
   resolve(_task: HelperTask): ResolvedHelper | null {
     try {
@@ -102,47 +118,42 @@ export class HelperRouter {
         const providers = helperConfig['providers'] as Record<string, { provider?: string; model?: string }> | undefined;
         if (providers && currentProviderName && providers[currentProviderName]) {
           const perProvider = providers[currentProviderName]!;
-          if (perProvider.provider && perProvider.model) {
-            try {
-              const provider = this.requireProvider(perProvider.provider);
-              return { provider, modelId: perProvider.model, isHelper: true };
-            } catch {
-              logger.debug(`HelperRouter: per-provider helper ${perProvider.provider} not found, falling through`);
+          const provider = readOptionalString(perProvider.provider);
+          const model = readOptionalString(perProvider.model);
+          if (provider || model) {
+            if (!provider || !model) {
+              throw new Error(`Per-provider helper route for '${currentProviderName}' requires provider and model.`);
             }
+            return this.resolveConfiguredProviderModel(provider, model);
           }
         }
       }
 
       // 2. Global helper
-      const globalProvider = this.deps.configManager.get('helper.globalProvider') as string;
-      const globalModel = this.deps.configManager.get('helper.globalModel') as string;
-      if (globalProvider && globalModel) {
-        try {
-          const provider = this.requireProvider(globalProvider);
-          return { provider, modelId: globalModel, isHelper: true };
-        } catch {
-          logger.debug(`HelperRouter: global helper ${globalProvider} not found, falling through`);
+      const globalProvider = readOptionalString(this.deps.configManager.get('helper.globalProvider'));
+      const globalModel = readOptionalString(this.deps.configManager.get('helper.globalModel'));
+      if (globalProvider || globalModel) {
+        if (!globalProvider || !globalModel) {
+          throw new Error('Global helper routing requires both helper.globalProvider and helper.globalModel.');
         }
+        return this.resolveConfiguredProviderModel(globalProvider, globalModel);
       }
 
       // 3. Tool LLM
-      const toolProvider = this.deps.configManager.get('tools.llmProvider') as string;
-      const toolModel = this.deps.configManager.get('tools.llmModel') as string;
-      if (toolProvider && toolModel) {
-        try {
-          const provider = this.requireProvider(toolProvider);
-          return { provider, modelId: toolModel, isHelper: true };
-        } catch {
-          logger.debug(`HelperRouter: tool LLM ${toolProvider} not found, falling through`);
+      const toolEnabled = this.deps.configManager.get('tools.llmEnabled') as boolean;
+      const toolProvider = readOptionalString(this.deps.configManager.get('tools.llmProvider'));
+      const toolModel = readOptionalString(this.deps.configManager.get('tools.llmModel'));
+      if (toolEnabled && (toolProvider || toolModel)) {
+        if (!toolProvider || !toolModel) {
+          throw new Error('Helper tool-LLM routing requires both tools.llmProvider and tools.llmModel.');
         }
+        return this.resolveConfiguredProviderModel(toolProvider, toolModel);
       }
 
-      // 4. Fallback to main model
-      const mainProvider = this.deps.providerRegistry.getForModel(currentModel.id, currentModel.provider);
-      return { provider: mainProvider, modelId: currentModel.id, isHelper: false };
-    } catch (err) {
-      logger.debug('HelperRouter.resolve: failed', { task: _task, error: summarizeError(err) });
       return null;
+    } catch (err) {
+      logger.error('HelperRouter.resolve: failed', { task: _task, error: summarizeError(err) });
+      throw err;
     }
   }
 }
@@ -150,7 +161,8 @@ export class HelperRouter {
 /**
  * HelperModel — lightweight LLM interface for helper tasks.
  *
- * Callers own HelperModel lifetimes explicitly. Never throws — returns empty string on failure.
+ * Callers own HelperModel lifetimes explicitly. Provider and configuration
+ * failures throw. Explicit optional-helper calls return null when unavailable.
  * Tracks token usage separately from the main model.
  */
 export class HelperModel {
@@ -167,43 +179,26 @@ export class HelperModel {
    * @param task     The helper task type (for routing).
    * @param prompt   The user prompt to send.
    * @param options  Optional maxTokens, systemPrompt, helperOnly.
-   * @returns        The assistant's text response, or empty string on failure.
+   * @returns        The assistant's text response, or null for explicit optional helper absence.
    */
-  async chat(task: HelperTask, prompt: string, options: HelperChatOptions = {}): Promise<string> {
-    // When helper is disabled, skip the resolution chain entirely
+  async chat(task: HelperTask, prompt: string, options: HelperChatOptions = {}): Promise<string | null> {
     const enabled = this.deps.configManager.get('helper.enabled') as boolean;
     if (!enabled) {
-      if (options.helperOnly) return '';
-      // Disabled: bypass helper resolution — use main model directly
-      try {
-        const currentModel = this.deps.providerRegistry.getCurrentModel();
-        const mainProvider = this.deps.providerRegistry.getForModel(currentModel.id, currentModel.provider);
-        const response = await mainProvider.chat({
-          model: currentModel.id,
-          messages: [{ role: 'user', content: prompt }],
-          maxTokens: options.maxTokens ?? 2048,
-          systemPrompt: options.systemPrompt,
-        });
-        this._usage.inputTokens += response.usage?.inputTokens ?? 0;
-        this._usage.outputTokens += response.usage?.outputTokens ?? 0;
-        this._usage.calls += 1;
-        return response.content ?? '';
-      } catch (err) {
-        logger.debug('HelperModel.chat: main model fallback failed (non-fatal)', { task, error: summarizeError(err) });
-        return '';
+      if (options.helperOnly) {
+        logger.info('HelperModel.chat: helper disabled for optional helper request', { task });
+        return null;
       }
+      throw new HelperModelUnavailableError('Helper model routing is disabled.');
     }
 
     try {
       const resolved = this.router.resolve(task);
       if (!resolved) {
-        logger.debug('HelperModel.chat: no provider resolved', { task });
-        return '';
-      }
-
-      // If helperOnly is set and we fell back to the main model, return empty
-      if (options.helperOnly && !resolved.isHelper) {
-        return '';
+        if (options.helperOnly) {
+          logger.info('HelperModel.chat: no helper route for optional helper request', { task });
+          return null;
+        }
+        throw new HelperModelUnavailableError('No helper model route is configured.');
       }
 
       const response = await resolved.provider.chat({
@@ -226,10 +221,13 @@ export class HelperModel {
         outputTokens: response.usage?.outputTokens,
       });
 
-      return response.content ?? '';
+      if (typeof response.content !== 'string') {
+        throw new Error('Helper model response did not include string content.');
+      }
+      return response.content;
     } catch (err) {
-      logger.debug('HelperModel.chat: request failed (non-fatal)', { task, error: summarizeError(err) });
-      return '';
+      logger.error('HelperModel.chat: request failed', { task, error: summarizeError(err) });
+      throw err;
     }
   }
 

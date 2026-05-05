@@ -198,7 +198,7 @@ For `createMemoryTokenStore` (non-persistent, suitable only for ephemeral use or
 
 ### Regenerating a token
 
-Calling `regenerateCompanionToken({ daemonHomeDir })` (equivalent to `getOrCreateCompanionToken` with `regenerate: true`) issues a new token and replaces the stored record. Any companion app holding the old token will receive `401 Unauthorized` on its next API call and must re-pair.
+Calling `regenerateCompanionToken({ daemonHomeDir })` (equivalent to `getOrCreateCompanionToken` with `regenerate: true`) issues a new token and replaces the stored record. Any companion app holding the previous token will receive `401 Unauthorized` on its next API call and must re-pair.
 
 ```ts
 import { regenerateCompanionToken } from '@pellux/goodvibes-sdk/platform/pairing';

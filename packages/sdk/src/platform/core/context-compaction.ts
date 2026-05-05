@@ -184,8 +184,18 @@ async function llmExtract(
   if (!prompt.trim()) return null;
 
   let provider: LLMProvider;
+  let providerModelId: string;
   try {
     provider = registry.getForModel(modelId, providerName);
+    const modelDef = registry.listModels().find((model) => (
+      providerName
+        ? model.provider === providerName && (model.registryKey === modelId || model.id === modelId)
+        : model.registryKey === modelId
+    ));
+    if (!modelDef) {
+      throw new Error(`Model '${modelId}' is not in registry.`);
+    }
+    providerModelId = modelDef.id;
   } catch (err) {
     logger.warn(`Compaction: failed to get provider for ${label}`, {
       modelId,
@@ -197,7 +207,7 @@ async function llmExtract(
   try {
     const response = await provider.chat({
       messages: [{ role: 'user', content: prompt }],
-      model: modelId,
+      model: providerModelId,
     });
     const text = response.content?.trim() ?? '';
     if (!text) {
@@ -284,7 +294,7 @@ export async function compactMessages(
 }
 
 /**
- * runCompaction — internal implementation for structured compaction.
+ * runCompaction — structured compaction implementation.
  *
  * Accepts a CompactionContext containing all data sources. Makes targeted LLM
  * calls for substance filtering and extraction (parallelized), assembles a
@@ -398,7 +408,7 @@ async function runCompaction(
         tokens: estimateTokens(filteredText),
       });
     } else {
-      // Fallback: include raw gathered messages if LLM filter fails
+      // Include raw gathered messages if the LLM filter fails.
       const fallbackLines = gatheredMessages.map((m) => {
         const text = typeof m.content === 'string'
           ? m.content

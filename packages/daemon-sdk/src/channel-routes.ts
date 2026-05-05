@@ -292,7 +292,7 @@ export function createDaemonChannelRouteHandlers(
           groupPolicies: body.groupPolicies
             .filter((value): value is Record<string, unknown> => typeof value === 'object' && value !== null)
             .map((value) => ({
-              // MIN-06: use the full UUID to avoid birthday-paradox collisions at scale.
+              // use the full UUID to avoid birthday-paradox collisions at scale.
               id: typeof value.id === 'string' ? value.id : `group-policy-${randomUUID()}`,
               ...(typeof value.label === 'string' ? { label: value.label } : {}),
               ...(typeof value.groupId === 'string' ? { groupId: value.groupId } : {}),

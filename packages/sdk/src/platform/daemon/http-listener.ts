@@ -49,9 +49,8 @@ interface HttpListenerConfig {
    *   - Requests carrying an Origin header are validated against allowedOrigins
    * Default: false (permissive — no CORS enforcement). Opt-in for multi-user,
    * internet-exposed, or enterprise deployments where browser-based CSRF is a
-   * concern. Home/single-user local deployments do not need this and the default
-   * behavior matches pre-0.21.29 semantics. When true, allowedOrigins must be
-   * configured (or hostMode must be local/loopback) — see SEC-07.
+   * concern. Home/single-user local deployments do not need this. When true,
+   * allowedOrigins must be configured or hostMode must be local/loopback.
    */
   enforceCors?: boolean | undefined;
   /** Pre-configured UserAuthManager owned by the runtime service graph. */
@@ -81,13 +80,13 @@ export class HttpListener {
   private port: number;
   private host: string;
   private allowedOrigins: string[];
-  /** SEC-07: opt-in strict CORS enforcement. Default false (permissive). */
+  /** Opt-in strict CORS enforcement. Default false (permissive). */
   private enforceCors: boolean;
   private hookDispatcher: HookDispatcher | null;
   private authToken: string | null = null;
   private userAuth: UserAuthManager;
   private rateLimiter: RateLimiter;
-  /** Dedicated tight rate-limiter for POST /login (SEC-03). */
+  /** Dedicated tight rate-limiter for POST /login. */
   private loginRateLimiter: RateLimiter;
   /** Whether to trust x-forwarded-for / x-real-ip for client IP resolution. */
   private trustProxy: boolean;
@@ -116,7 +115,7 @@ export class HttpListener {
     this.allowedOrigins = config.allowedOrigins ?? [];
     this.enforceCors = config.enforceCors ?? false;
 
-    // SEC-07: When enforceCors is true, refuse to construct with hostMode=network + empty allowedOrigins.
+    // When enforceCors is true, refuse to construct with hostMode=network + empty allowedOrigins.
     // Off by default — home and single-user local deployments don't need CORS enforcement.
     // Enterprise / multi-user / internet-exposed deployments set enforceCors: true to gate against CSRF.
     if (this.enforceCors) {
@@ -132,7 +131,7 @@ export class HttpListener {
     this.hookDispatcher = config.hookDispatcher ?? null;
     this.userAuth = config.userAuth;
     this.rateLimiter = new RateLimiter(config.rateLimit ?? 60);
-    // SEC-03: /login gets its own tight budget (5 attempts/min per IP) to prevent
+    // /login gets its own tight budget (5 attempts/min per IP) to prevent
     // scrypt-cost-throttled online brute-force attacks.
     this.loginRateLimiter = new RateLimiter(config.loginRateLimit ?? 5);
     this.trustProxy = config.trustProxy ?? Boolean(this.configManager.get('httpListener.trustProxy'));
@@ -170,7 +169,7 @@ export class HttpListener {
       return;
     }
 
-    // Skip real OS port check when a mock serveFactory is injected (test-only path).
+    // Skip the OS port probe when the host injects a custom serve factory.
     if (this.serveFactory === Bun.serve) {
       await requirePortAvailable(this.port, this.host, 'HTTP listener');
     }
@@ -306,7 +305,7 @@ export class HttpListener {
   }
 
   private async parseJsonBody(req: Request): Promise<Record<string, unknown> | Response> {
-    // SEC-05: cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
+    // cap inbound JSON bodies at 1 MiB to prevent memory exhaustion.
     const MAX_JSON_BYTES = 1 * 1024 * 1024; // 1 MiB
     try {
       const text = await readTextBodyWithinLimit(req, MAX_JSON_BYTES);
@@ -336,7 +335,7 @@ export class HttpListener {
     } finally {
       const status = response?.status ?? 500;
       const latencyMs = Date.now() - startMs;
-      // OBS-01: structured HTTP access log — SIEM-ingestable
+      // structured HTTP access log — SIEM-ingestable
       logger.info('HTTP_ACCESS_LOG', {
         type: 'HTTP_ACCESS_LOG',
         requestId,
@@ -346,7 +345,6 @@ export class HttpListener {
         latencyMs,
         clientIp,
       });
-      // C-1: record HTTP metric instruments
       const statusClass = status >= 500 ? '5xx' : status >= 400 ? '4xx' : '2xx';
       const pathPattern = url.pathname.replace(/\/[0-9a-f-]{8,}(?=\/|$)/gi, '/:id');
       httpRequestsTotal.add(1, { method: req.method, status_class: statusClass });
@@ -361,7 +359,7 @@ export class HttpListener {
     requestId: string,
   ): Promise<Response> {
 
-    // SEC-07: CORS origin check is OPT-IN via enforceCors. Default is permissive
+    // CORS origin check is opt-in via enforceCors. Default is permissive
     // for home and single-user deployments. When
     // enforceCors is true:
     //   - No Origin header → same-origin or non-browser request → allow.
@@ -381,7 +379,7 @@ export class HttpListener {
       }
     }
 
-    // SEC-03: /login route handled AFTER origin check and under its own tight
+    // /login route handled AFTER origin check and under its own tight
     // rate-limit budget (5/min per IP) to prevent online brute-force attacks.
     // x-forwarded-for is only trustworthy when running behind a trusted reverse proxy.
     if (url.pathname === '/login' && req.method === 'POST') {
@@ -423,7 +421,7 @@ export class HttpListener {
     const user = this.userAuth.authenticate(username, password);
 
     if (!user) {
-      // OBS-02: AUTH_FAILED — never log credential values
+      // AUTH_FAILED — never log credential values
       logger.warn('AUTH_FAILED', {
         type: 'AUTH_FAILED',
         requestId,
@@ -431,14 +429,12 @@ export class HttpListener {
         clientIp,
         reason: 'invalid_credentials',
       });
-      // C-1: record auth failure metric
       authFailureTotal.add(1);
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     const session = this.userAuth.createSession(user.username);
-    // OBS-02: AUTH_SUCCEEDED — never log credential values
-    // C-1: record auth success metric
+    // AUTH_SUCCEEDED — never log credential values
     authSuccessTotal.add(1);
     logger.info('AUTH_SUCCEEDED', {
       type: 'AUTH_SUCCEEDED',

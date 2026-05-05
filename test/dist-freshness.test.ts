@@ -18,7 +18,7 @@ const BUILT_PACKAGE_ENTRIES = [
 ] as const;
 
 /**
- * MAJ-04 / MAJ-10 (eighth-review): shell out to the authoritative recursive
+ * shell out to the authoritative recursive
  * walker in scripts/check-dist-freshness.ts so both checks share the same
  * logic and deep-tree staleness (files other than index.ts) is caught.
  *

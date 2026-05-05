@@ -10,6 +10,7 @@ import {
   isInKnowledgeSpace,
   normalizeKnowledgeSpaceId,
 } from '../spaces.js';
+import { isActiveKnowledgeEdge } from '../projection-utils.js';
 import type { KnowledgeObjectProfilePolicy } from '../extensions.js';
 import type { KnowledgeSemanticAnswerInput } from './types.js';
 import {
@@ -64,7 +65,9 @@ export function collectAnswerEvidence(
   const candidateNodeIds = new Set(input.candidateNodeIds ?? []);
   const linkedObjectIds = new Set((input.linkedObjects ?? []).map((node) => node.id));
   const strictCandidates = input.strictCandidates === true && (candidateSourceIds.size > 0 || candidateNodeIds.size > 0);
-  const sourceFacts = buildSourceFactIndex(store, spaceId);
+  const answerSources = listAnswerSources(store, spaceId).filter(isUsableAnswerSource);
+  const usableSourceIds = new Set(answerSources.map((source) => source.id));
+  const sourceFacts = buildSourceFactIndex(store, spaceId, usableSourceIds);
   const linkedSourceIds = sourceIdsLinkedToNodes(store, new Set([...candidateNodeIds, ...linkedObjectIds]), spaceId);
   const broadNamespaceAlias = isBroadKnowledgeSpaceAlias(spaceId) && !strictCandidates;
   if (broadNamespaceAlias && subjectTokens.length === 0 && linkedObjectIds.size === 0) return [];
@@ -72,7 +75,7 @@ export function collectAnswerEvidence(
     ? inferAnswerObjectScope(store, spaceId, input.query, subjectTokens, objectProfiles)
     : null;
 
-  const sourceItems = listAnswerSources(store, spaceId)
+  const sourceItems = answerSources
     .filter((source) => belongsToAnswerSpace(source, spaceId))
     .filter((source) => sourceInAnswerObjectScope(store, source, objectScope))
     .filter((source) => !strictCandidates || candidateSourceIds.has(source.id) || linkedSourceIds.has(source.id))
@@ -116,6 +119,7 @@ export function collectAnswerEvidence(
 
   const nodeItems = listAnswerNodes(store, spaceId)
     .filter((node) => belongsToAnswerSpace(node, spaceId) && node.status !== 'stale')
+    .filter((node) => node.metadata.semanticKind !== 'fact' || factHasUsableSource(node, usableSourceIds))
     .filter((node) => nodeInAnswerObjectScope(node, objectScope))
     .filter((node) => !strictCandidates
       || candidateNodeIds.has(node.id)
@@ -203,6 +207,7 @@ export function includeOfficialLinkedSources(
   const linkedIds = new Set(linkedObjects.map((node) => node.id));
   const linkedSourceIds = sourceIdsLinkedToNodes(store, linkedIds, spaceId);
   const official = listAnswerSources(store, spaceId)
+    .filter(isUsableAnswerSource)
     .filter((source) => belongsToAnswerSpace(source, spaceId))
     .filter((source) => sourceAuthorityBoostForAnswer(source) > 0)
     .filter((source) => {
@@ -226,8 +231,10 @@ export function includeOfficialLinkedEvidence(
   const linkedIds = new Set(linkedObjects.map((node) => node.id));
   const linkedSourceIds = sourceIdsLinkedToNodes(store, linkedIds, spaceId);
   const tokens = expandQueryTokens(tokenizeSemanticQuery(query));
-  const sourceFacts = buildSourceFactIndex(store, spaceId);
+  const usableSourceIds = new Set(listAnswerSources(store, spaceId).filter(isUsableAnswerSource).map((source) => source.id));
+  const sourceFacts = buildSourceFactIndex(store, spaceId, usableSourceIds);
   const officialItems = listAnswerSources(store, spaceId)
+    .filter(isUsableAnswerSource)
     .filter((source) => belongsToAnswerSpace(source, spaceId))
     .filter((source) => sourceAuthorityBoostForAnswer(source) > 0)
     .filter((source) => linkedSourceIds.has(source.id) || readStringArray(readRecord(source.metadata.sourceDiscovery).linkedObjectIds).some((id) => linkedIds.has(id)))
@@ -291,49 +298,105 @@ export function withAnswerSourceAliases(source: KnowledgeSourceRecord): Knowledg
   };
 }
 
-function buildSourceFactIndex(store: KnowledgeStore, spaceId: string): Map<string, KnowledgeNodeRecord[]> {
+function buildSourceFactIndex(
+  store: KnowledgeStore,
+  spaceId: string,
+  usableSourceIds: ReadonlySet<string>,
+): Map<string, KnowledgeNodeRecord[]> {
   const facts = listAnswerNodes(store, spaceId).filter((node) => (
     node.status !== 'stale' && node.metadata.semanticKind === 'fact' && belongsToAnswerSpace(node, spaceId)
   ));
+  const factsById = new Map(facts.map((fact) => [fact.id, fact]));
   const bySource = new Map<string, KnowledgeNodeRecord[]>();
   for (const fact of facts) {
-    const sourceId = readString(fact.metadata.sourceId) ?? fact.sourceId;
-    if (!sourceId) continue;
-    bySource.set(sourceId, [...(bySource.get(sourceId) ?? []), fact]);
+    for (const sourceId of factSourceIds(fact)) {
+      addSourceFact(bySource, usableSourceIds, sourceId, fact);
+    }
+  }
+  for (const edge of store.listEdges()) {
+    if (!edgeIsActive(edge)) continue;
+    if (!belongsToAnswerSpace(edge, spaceId)) continue;
+    if (edge.fromKind !== 'source' || edge.toKind !== 'node' || edge.relation !== 'supports_fact') continue;
+    const fact = factsById.get(edge.toId);
+    if (!fact) continue;
+    addSourceFact(bySource, usableSourceIds, edge.fromId, fact);
   }
   return bySource;
 }
 
+function factHasUsableSource(node: KnowledgeNodeRecord, usableSourceIds: ReadonlySet<string>): boolean {
+  return factSourceIds(node).some((sourceId) => usableSourceIds.has(sourceId));
+}
+
+function factSourceIds(fact: KnowledgeNodeRecord): string[] {
+  return uniqueStrings([
+    ...readStringArray(fact.metadata.sourceIds),
+    readString(fact.metadata.sourceId),
+    fact.sourceId,
+  ]);
+}
+
+function addSourceFact(
+  bySource: Map<string, KnowledgeNodeRecord[]>,
+  usableSourceIds: ReadonlySet<string>,
+  sourceId: string | undefined,
+  fact: KnowledgeNodeRecord,
+): void {
+  if (!sourceId || !usableSourceIds.has(sourceId)) return;
+  const existing = bySource.get(sourceId) ?? [];
+  if (existing.some((entry) => entry.id === fact.id)) return;
+  bySource.set(sourceId, [...existing, fact]);
+}
+
+function isUsableAnswerSource(source: KnowledgeSourceRecord): boolean {
+  return source.status === 'indexed';
+}
+
 function listAnswerSources(store: KnowledgeStore, spaceId: string): KnowledgeSourceRecord[] {
-  if (isBroadKnowledgeSpaceAlias(spaceId)) return store.listSources(Number.MAX_SAFE_INTEGER);
-  return store.listSourcesInSpace(spaceId);
+  const sources = isBroadKnowledgeSpaceAlias(spaceId)
+    ? store.listSources(Number.MAX_SAFE_INTEGER)
+    : store.listSourcesInSpace(spaceId);
+  return sources.filter((source) => source.status !== 'stale');
 }
 
 function listAnswerNodes(store: KnowledgeStore, spaceId: string): KnowledgeNodeRecord[] {
-  if (isBroadKnowledgeSpaceAlias(spaceId)) return store.listNodes(Number.MAX_SAFE_INTEGER);
-  return store.listNodesInSpace(spaceId);
+  const nodes = isBroadKnowledgeSpaceAlias(spaceId)
+    ? store.listNodes(Number.MAX_SAFE_INTEGER)
+    : store.listNodesInSpace(spaceId);
+  return nodes.filter((node) => node.status !== 'stale');
 }
 
 function sourceIdsLinkedToNodes(store: KnowledgeStore, nodeIds: ReadonlySet<string>, spaceId: string): Set<string> {
   const sourceIds = new Set<string>();
   if (nodeIds.size === 0) return sourceIds;
+  const usableSourceIds = new Set(listAnswerSources(store, spaceId).map((source) => source.id));
   const edges = store.listEdges();
   const factIds = new Set<string>();
   for (const edge of edges) {
+    if (!edgeIsActive(edge)) continue;
     if (!belongsToAnswerSpace(edge, spaceId)) continue;
-    if (edge.fromKind === 'source' && edge.toKind === 'node' && nodeIds.has(edge.toId)) sourceIds.add(edge.fromId);
-    if (edge.fromKind === 'node' && nodeIds.has(edge.fromId) && edge.toKind === 'source') sourceIds.add(edge.toId);
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && nodeIds.has(edge.toId) && usableSourceIds.has(edge.fromId)) sourceIds.add(edge.fromId);
+    if (edge.fromKind === 'node' && nodeIds.has(edge.fromId) && edge.toKind === 'source' && usableSourceIds.has(edge.toId)) sourceIds.add(edge.toId);
     if (edge.fromKind === 'node' && edge.toKind === 'node' && nodeIds.has(edge.toId) && edge.relation === 'describes') {
       factIds.add(edge.fromId);
     }
   }
   for (const edge of edges) {
+    if (!edgeIsActive(edge)) continue;
     if (!belongsToAnswerSpace(edge, spaceId)) continue;
-    if (edge.fromKind === 'source' && edge.toKind === 'node' && factIds.has(edge.toId) && edge.relation === 'supports_fact') {
+    if (edge.fromKind === 'source'
+      && edge.toKind === 'node'
+      && factIds.has(edge.toId)
+      && edge.relation === 'supports_fact'
+      && usableSourceIds.has(edge.fromId)) {
       sourceIds.add(edge.fromId);
     }
   }
   return sourceIds;
+}
+
+function edgeIsActive(edge: { readonly weight: number; readonly metadata: Record<string, unknown> }): boolean {
+  return isActiveKnowledgeEdge(edge);
 }
 
 function selectEvidenceExcerpt(

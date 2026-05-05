@@ -139,8 +139,8 @@ export class DaemonServer {
   /** True if a config change arrived while _restarting was set; triggers a second cycle. */
   private _restartDirty = false;
 
-  constructor(private config: DaemonConfig = {}, _configManager?: ConfigManager) {
-    const resolved = resolveDaemonFacadeRuntime(config, _configManager);
+  constructor(private config: DaemonConfig = {}) {
+    const resolved = resolveDaemonFacadeRuntime(config);
     this.configManager = resolved.configManager;
     this.runtimeServices = resolved.runtimeServices;
     this.integrationHelpers = resolved.integrationHelpers;
@@ -198,9 +198,8 @@ export class DaemonServer {
       handleApprovalAction: (approvalId, action, req) => this.handleApprovalAction(approvalId, action, req),
       tlsState: () => this.tlsState,
       swapManager: this.config.swapManager ?? null,
-      // F16b: Resolve current provider/model for companion-chat session-create
-      // defaults. Delegates to the live ProviderRegistry so the resolver always
-      // reflects the currently active provider, not a snapshot captured at startup.
+      // Resolve companion-chat defaults from the live ProviderRegistry so session
+      // creation uses the current route, not a snapshot captured at startup.
       resolveDefaultProviderModel: () => {
         try {
           const current = resolved.runtimeServices.providerRegistry.getCurrentModel();
@@ -220,11 +219,11 @@ export class DaemonServer {
     this.providerRuntime = collaborators.providerRuntime;
     this.builtinChannels = collaborators.builtinChannels;
 
-    // M1: Wire AgentTaskAdapter to the RuntimeEventBus so task records reach
+    // Wire AgentTaskAdapter to the RuntimeEventBus so task records reach
     // terminal states when their backing agent finishes.
     this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore);
     this.agentTaskAdapterUnsub = this.agentTaskAdapter.attachRuntimeBus(this.runtimeBus);
-    // M2: Mark any tasks that were 'running' at startup as aborted (daemon restart)
+    // Mark any tasks that were running at startup as aborted after daemon restart.
     this.agentTaskAdapter.reconcileOnRestart();
 
     configureDaemonSessionContinuation({
@@ -310,7 +309,7 @@ export class DaemonServer {
     });
 
     const self = this;
-    // Skip real OS port check when a mock serveFactory is injected (test-only path).
+    // Skip the OS port probe when the host injects a custom serve factory.
     if (this.serveFactory === Bun.serve) {
       await requirePortAvailable(this.port, this.host, 'daemon');
     }
@@ -355,8 +354,7 @@ export class DaemonServer {
         this.distributedRuntime.start(),
       ]);
       await this.providerRuntime.startConfigured();
-      // C-2: Load persisted companion sessions from disk so sessions survive
-      // daemon restarts. Must run after providers are configured.
+      // Load persisted companion sessions after providers are configured.
       await this.companionChatManager.init();
       if (this.replyPoller === null) {
         // Poll every 2 s for surface replies that have resolved asynchronously.
@@ -409,7 +407,13 @@ export class DaemonServer {
       this.pendingSurfaceReplies.clear();
       this.automationManager.stop();
       this.providerRuntime.stopAll();
-      this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-start-failed');
+      try {
+        this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-start-failed');
+      } catch (cleanupError) {
+        logger.warn('DaemonServer startup cleanup failed to stop heartbeat watcher', {
+          error: summarizeError(cleanupError),
+        });
+      }
       this.approvalBrokerUnsubscribe?.();
       this.approvalBrokerUnsubscribe = null;
       if (this.server !== null) {
@@ -428,7 +432,7 @@ export class DaemonServer {
    *
    * Services are stopped in reverse start order. Each service stop is raced
    * against a 10-second timeout so a hung service cannot block the full
-   * shutdown sequence (C1 fix).
+   * shutdown sequence.
    */
   /**
    * Wait for any in-progress config-driven restart to settle.
@@ -469,7 +473,7 @@ export class DaemonServer {
     // when the server socket closes. We stop what we can in reverse start order.
     this.providerRuntime.stopAll();
     this.automationManager.stop();
-    // M1+M3: tear down adapter bus subscription and sessionBroker GC interval
+    // Tear down the adapter bus subscription and session broker GC interval.
     this.agentTaskAdapterUnsub?.();
     this.agentTaskAdapterUnsub = null;
     await this.sessionBroker.stop();
@@ -747,7 +751,7 @@ export class DaemonServer {
         : input;
       const record = this.agentManager.spawn(spawnInput);
       this.syncSpawnedAgentTask(record, sessionId);
-      // M1: Register agent with AgentTaskAdapter so bus events can transition its task
+      // Register the agent with AgentTaskAdapter so bus events can transition its task.
       if (this.agentTaskAdapter) {
         this.agentTaskAdapter.wrapAgent(record.id, record.task, { sessionId: sessionId ?? 'daemon' });
       }

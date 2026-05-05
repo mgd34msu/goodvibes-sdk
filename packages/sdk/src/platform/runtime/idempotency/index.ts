@@ -19,6 +19,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type {
   IdempotencyKeyContext,
   IdempotencyRecord,
@@ -33,6 +34,19 @@ const DEFAULT_TTL_MS = 5 * 60 * 1_000;
 
 /** Default maximum stored records before eviction sweep. */
 const DEFAULT_MAX_RECORDS = 5_000;
+
+function missingRecordError(operation: 'markComplete' | 'markFailed', key: string): GoodVibesSdkError {
+  return new GoodVibesSdkError(
+    `IdempotencyStore.${operation}: no record found for key ${key}`,
+    {
+      code: 'IDEMPOTENCY_RECORD_NOT_FOUND',
+      category: 'internal',
+      source: 'runtime',
+      recoverable: false,
+      operation,
+    },
+  );
+}
 
 /**
  * IdempotencyStore — bounded, TTL-evicted in-process store.
@@ -135,14 +149,15 @@ export class IdempotencyStore {
   /**
    * Mark a previously recorded key as `completed` and cache the result.
    *
-   * No-op if the key is not in the store (e.g. evicted before completion).
+   * Throws if the key is not in the store. In-flight records are not eligible
+   * for eviction, so a missing key indicates an invalid finalization path.
    *
    * @param key    - Idempotency key.
    * @param result - Optional result to cache for duplicate callers.
    */
   markComplete(key: string, result?: unknown): void {
     const record = this.store.get(key);
-    if (!record) return; // evicted — treat as best-effort
+    if (!record) throw missingRecordError('markComplete', key);
     record.status = 'completed';
     record.completedAt = Date.now();
     if (result !== undefined) {
@@ -157,13 +172,14 @@ export class IdempotencyStore {
    * `checkAndRecord` with the same key the failed record is deleted and the
    * caller receives `'new'`, allowing a fresh retry.
    *
-   * No-op if the key is not in the store.
+   * Throws if the key is not in the store. In-flight records are not eligible
+   * for eviction, so a missing key indicates an invalid finalization path.
    *
    * @param key - Idempotency key.
    */
   markFailed(key: string): void {
     const record = this.store.get(key);
-    if (!record) return;
+    if (!record) throw missingRecordError('markFailed', key);
     record.status = 'failed';
     record.completedAt = Date.now();
   }

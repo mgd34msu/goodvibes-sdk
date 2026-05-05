@@ -1,6 +1,4 @@
 /**
- * Phase 5: Constraint-propagation integration tests.
- *
  * Tests every propagation path, every guard, and every no-op through the
  * WrfcController without spinning up a real LLM. Constraints are injected via
  * structured EngineerReport / ReviewerReport JSON blocks in agent fullOutput,
@@ -318,6 +316,64 @@ describe('A2: Review → fix propagation with markers', () => {
     expect(fixerTask).toContain('c1 [SATISFIED]');
     expect(fixerTask).toContain('c2 [UNSATISFIED]');
     expect(fixerTask).toContain('Constraint preservation during fix');
+
+    h.controller.dispose();
+  });
+
+  test('missing finding for a known constraint forces fix and is observable', async () => {
+    const constraints: Constraint[] = [
+      { id: 'c1', text: 'must be pure', source: 'prompt' },
+      { id: 'c2', text: 'no deps', source: 'prompt' },
+    ];
+    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
+
+    h.setOutput(reviewerAgentId(), reviewerOutput(10.0, [
+      { constraintId: 'c1', satisfied: true, evidence: 'pure function, no side effects' },
+    ]));
+    emitAgentCompleted(h.bus, reviewerAgentId());
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('fixing');
+
+    const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
+    expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
+    const reviewPayload = eventData(reviewEvent!);
+    expect(reviewPayload['passed']).toBe(false);
+    expect(reviewPayload['constraintsSatisfied']).toBe(1);
+    expect(reviewPayload['constraintsTotal']).toBe(2);
+    expect(reviewPayload['unsatisfiedConstraintIds']).toEqual(['c2']);
+
+    const fixEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_FIX_ATTEMPTED');
+    expect(fixEvent?.type).toBe('WORKFLOW_FIX_ATTEMPTED');
+    expect(eventData(fixEvent!)['targetConstraintIds']).toEqual(['c2']);
+
+    const fixerTask = h.spawnedRecords[1]!.task;
+    expect(fixerTask).toContain('c1 [SATISFIED]');
+    expect(fixerTask).toContain('c2 [UNVERIFIED]');
+
+    h.controller.dispose();
+  });
+
+  test('unknown constraint findings are ignored with a review issue, not treated as satisfied scope', async () => {
+    const { h, chain, reviewerAgentId } = await seedChainWithConstraints([
+      { id: 'c1', text: 'must be pure', source: 'prompt' },
+    ]);
+
+    h.setOutput(reviewerAgentId(), reviewerOutput(10.0, [
+      { constraintId: 'c1', satisfied: true, evidence: 'pure' },
+      { constraintId: 'c99', satisfied: false, evidence: 'not part of this chain', severity: 'major' },
+    ]));
+    emitAgentCompleted(h.bus, reviewerAgentId());
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('passed');
+    expect(chain.reviewerReport?.issues.some((issue) =>
+      issue.description.includes('unknown constraints') && issue.description.includes('c99'),
+    )).toBe(true);
+
+    const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
+    expect(eventData(reviewEvent!)['passed']).toBe(true);
+    expect(eventData(reviewEvent!)['constraintsTotal']).toBe(1);
 
     h.controller.dispose();
   });
@@ -641,6 +697,9 @@ describe('A9: Gate-retry inheritance — immediate (followUpChain)', () => {
     // (The controller spawns the agent but only registers a chain when createChain is called externally.)
     const followUpRecord = spawnedRecords[1];
     expect(followUpRecord).not.toBeUndefined(); // presence-only: array element existence
+    expect(followUpRecord!.task).toContain('## Inherited constraints');
+    expect(followUpRecord!.task).toContain('c1: must be pure');
+    expect(followUpRecord!.task).toContain('c2: no deps');
     const followUpChain = controller.createChain(followUpRecord!);
     await flushMicrotasks(20);
 

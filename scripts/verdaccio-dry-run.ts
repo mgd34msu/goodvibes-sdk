@@ -28,7 +28,6 @@ import {
   cleanupStage,
   getRegistryHost,
   getRootVersion,
-  getPublicPackageNameOverride,
   readPackage,
   run,
   stagePackages,
@@ -39,7 +38,7 @@ import {
 const __dirname = resolve(fileURLToPath(import.meta.url), '..');
 const SDK_ROOT = resolve(__dirname, '..');
 const PUBLIC_PACKAGE_DIR = 'packages/sdk';
-const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || requirePackageName(PUBLIC_PACKAGE_DIR);
+const PUBLIC_PACKAGE_NAME = requirePackageName(PUBLIC_PACKAGE_DIR);
 
 function requirePackageName(dir: string): string {
   const name = readPackage(dir).name;

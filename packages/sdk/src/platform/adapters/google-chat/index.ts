@@ -1,5 +1,6 @@
 import type { SurfaceAdapterContext } from '../types.js';
 import { constantTimeEquals, parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
+import { logger } from '../../utils/logger.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -28,7 +29,18 @@ export async function handleGoogleChatSurfaceWebhook(req: Request, context: Surf
 
   const eventType = readString(payload.type) ?? 'MESSAGE';
   if (eventType !== 'MESSAGE' && eventType !== 'ADDED_TO_SPACE') {
-    return Response.json({ text: 'ignored' });
+    logger.info('handleGoogleChatSurfaceWebhook: event ignored', {
+      reason: 'unsupported-event-type',
+      eventType,
+    });
+    return Response.json({
+      text: 'Ignored.',
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'unsupported-event-type',
+      eventType,
+    });
   }
 
   const message = readRecord(payload.message);
@@ -75,7 +87,19 @@ export async function handleGoogleChatSurfaceWebhook(req: Request, context: Surf
   });
 
   if (!text) {
-    return Response.json({ text: 'Acknowledged.' });
+    logger.info('handleGoogleChatSurfaceWebhook: message acknowledged without queueing', {
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+      eventType,
+    });
+    return Response.json({
+      text: 'Acknowledged.',
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+    });
   }
 
   const controlCommand = context.parseSurfaceControlCommand(text);

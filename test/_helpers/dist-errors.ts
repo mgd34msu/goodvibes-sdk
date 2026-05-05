@@ -8,7 +8,7 @@
  *
  * For tests that assert `err instanceof GoodVibesSdkError`, use these re-exports.
  *
- * CRIT-01 (eighth-review): Wire the dist-staleness sentinel so dist-loading tests
+ * Wire the dist-staleness sentinel so dist-loading tests
  * fail loudly when the compiled output is older than the TypeScript source.
  */
 import './dist-mtime-check.js';

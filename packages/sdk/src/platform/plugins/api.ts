@@ -50,8 +50,8 @@ export interface PluginProviderConfig {
   serviceNames?: readonly string[] | undefined;
   /** Optional subscription-provider identity used for stored OAuth posture. */
   subscriptionProviderId?: string | undefined;
-  /** Optional catalog suppressions for runtime clients. */
-  suppressCatalogModels?: readonly string[] | undefined;
+  /** Optional provider-qualified catalog registry keys hidden by this runtime provider. */
+  suppressCatalogModelRegistryKeys?: readonly string[] | undefined;
 }
 
 export interface PluginRuntimeProviderModel {
@@ -69,7 +69,7 @@ export interface PluginRuntimeProviderModel {
 export interface PluginProviderRegistration {
   readonly provider: LLMProvider;
   readonly models?: readonly PluginRuntimeProviderModel[] | undefined;
-  readonly suppressCatalogModels?: readonly string[] | undefined;
+  readonly suppressCatalogModelRegistryKeys?: readonly string[] | undefined;
   readonly replace?: boolean | undefined;
 }
 
@@ -153,10 +153,7 @@ export interface PluginAPI {
   log(level: 'info' | 'warn' | 'error' | 'debug', message: string): void;
 }
 
-/**
- * PluginAPIContext — Internal dependencies passed when creating a PluginAPI instance.
- * Not exposed to plugins.
- */
+/** Dependencies passed when creating a PluginAPI instance. */
 export interface PluginAPIContext {
   pluginName: string;
   runtimeBus: RuntimeEventBus;
@@ -216,7 +213,6 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
             ...(config.authEnvVars ? { authEnvVars: config.authEnvVars } : {}),
             ...(config.serviceNames ? { serviceNames: config.serviceNames } : {}),
             ...(config.subscriptionProviderId ? { subscriptionProviderId: config.subscriptionProviderId } : {}),
-            ...(config.suppressCatalogModels ? { suppressedModels: config.suppressCatalogModels } : {}),
           });
           const unregister = ctx.providerRegistry.registerRuntimeProvider({
             provider,
@@ -238,7 +234,7 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
               ...(config.tier ? { tier: config.tier } : {}),
               ...(config.tokenLimits ? { tokenLimits: config.tokenLimits } : {}),
             })),
-            suppressCatalogModels: config.suppressCatalogModels,
+            suppressCatalogModelRegistryKeys: config.suppressCatalogModelRegistryKeys,
           });
           ctx.cleanup.push(unregister);
           logger.info(`[plugin:${ctx.pluginName}] Registered provider '${name}' with ${config.models.length} model(s)`);
@@ -273,7 +269,7 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
           ...(model.tier ? { tier: model.tier } : {}),
           ...(model.tokenLimits ? { tokenLimits: model.tokenLimits } : {}),
         })),
-        suppressCatalogModels: registration.suppressCatalogModels,
+        suppressCatalogModelRegistryKeys: registration.suppressCatalogModelRegistryKeys,
         replace: registration.replace,
       } satisfies RuntimeProviderRegistration);
       ctx.cleanup.push(unregister);

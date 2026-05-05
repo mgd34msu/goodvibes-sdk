@@ -8,7 +8,7 @@
  *
  * TS7016 root cause: these modules use CommonJS or untyped dist/ bundles
  * that TypeScript cannot introspect under `noImplicitAny`. Adding ambient
- * stubs here satisfies the checker without requiring `skipLibCheck: true`
+ * declarations here satisfy the checker without requiring `skipLibCheck: true`
  * overrides or per-file `@ts-ignore` suppressions.
  */
 

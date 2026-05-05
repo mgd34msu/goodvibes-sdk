@@ -656,14 +656,14 @@ export class ControlPlaneGateway {
     }
 
     let teardown = (): void => {};
-    // PERF-08: ReadableStream default HWM is 1, which causes startup `ready` + replay
+    // ReadableStream default HWM is 1, which causes startup `ready` + replay
     // enqueues to drop subsequent chunks before any consumer has pulled. Raise HWM to
     // 256 chunks so initial handshake + recent-traffic replay + live events fit without
     // tripping the backpressure guard for a healthy consumer.
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         const send = (event: string, payload: unknown, id?: string): void => {
-          // PERF-05: Drop event if the stream's internal queue is full (backpressure guard).
+          // Drop event if the stream's internal queue is full (backpressure guard).
           // desiredSize <= 0 means the consumer is falling behind; dropping prevents
           // unbounded memory growth from enqueued-but-unread chunks.
           if ((controller.desiredSize ?? 1) <= 0) return;
@@ -691,7 +691,7 @@ export class ControlPlaneGateway {
           routeId: options.routeId,
           send,
         });
-        // COV-05/06: emit STREAM_SUBSCRIBER_CONNECTED when the SSE client is registered.
+        // emit STREAM_SUBSCRIBER_CONNECTED when the SSE client is registered.
         emitStreamSubscriberConnected(this.runtimeBus!, {
           sessionId: options.sessionId ?? 'control-plane',
           source: 'control-plane.gateway',
@@ -704,7 +704,7 @@ export class ControlPlaneGateway {
         const heartbeat = setInterval(() => {
           send('heartbeat', { clientId, ts: Date.now() });
         }, 15_000);
-        // Don't block clean process exit (PERF-07).
+        // Don't block clean process exit.
         (heartbeat as unknown as { unref?: () => void }).unref?.();
         teardown = () => {
           clearInterval(heartbeat);
@@ -742,7 +742,7 @@ export class ControlPlaneGateway {
               clientId,
               reason: 'stream-closed',
             });
-            // COV-05/06: emit STREAM_SUBSCRIBER_DISCONNECTED when the SSE client tears down.
+            // emit STREAM_SUBSCRIBER_DISCONNECTED when the SSE client tears down.
             emitStreamSubscriberDisconnected(this.runtimeBus!, {
               sessionId: options.sessionId ?? 'control-plane',
               source: 'control-plane.gateway',
@@ -820,5 +820,5 @@ export class ControlPlaneGateway {
   }
 }
 
-// Test export — exposes DEFAULT_DOMAINS for regression tests.
+// Exposes DEFAULT_DOMAINS invariants for direct verification.
 export { DEFAULT_DOMAINS as DEFAULT_DOMAINS_TEST_EXPORT };

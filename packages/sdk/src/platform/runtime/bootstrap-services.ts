@@ -31,13 +31,13 @@ interface ServiceFactories {
     configManager: RuntimeServices['configManager'],
   ) => HttpListenerService;
   startupTimeoutMs?: number | undefined;
-  probeDaemonPortInUse?: ((host: string, port: number) => Promise<boolean>) | undefined | undefined;
+  probeDaemonPortInUse?: ((host: string, port: number) => Promise<boolean>) | undefined;
   probeDaemonIdentity?: (
     host: string,
     port: number,
     token?: string,
   ) => Promise<DaemonIdentityProbeResult>;
-  probeHttpListenerPortInUse?: ((host: string, port: number) => Promise<boolean>) | undefined | undefined;
+  probeHttpListenerPortInUse?: ((host: string, port: number) => Promise<boolean>) | undefined;
   /**
    * Shared bearer token the daemon should accept on inbound HTTP requests.
    * When set, `daemon.enable()` registers this token and requests carrying

@@ -47,7 +47,7 @@ export class FileWatcher {
   private watchers: Map<string, FSWatcher> = new Map();
   /** Pending debounce timers keyed by absolute path */
   private debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-  /** watchFile listeners keyed by absolute path for reliable polling fallback */
+  /** watchFile listeners keyed by absolute path for reliable polling mode */
   private pollListeners: Map<string, (curr: Stats, prev: Stats) => void> = new Map();
 
   private watching = false;
@@ -95,7 +95,7 @@ export class FileWatcher {
     const MAX_WATCHERS = 500;
     for (const entry of this.projectIndex.getFiles()) {
       if (this.watchedPaths.size >= MAX_WATCHERS) {
-        logger.debug('FileWatcher: MAX_WATCHERS cap reached, skipping remaining files', { cap: MAX_WATCHERS });
+        logger.warn('FileWatcher: MAX_WATCHERS cap reached, skipping remaining files', { cap: MAX_WATCHERS });
         break;
       }
       const absPath = entry.path.startsWith('/')
@@ -122,11 +122,11 @@ export class FileWatcher {
 
     // Close all watchers
     for (const watcher of this.watchers.values()) {
-      try { watcher.close(); } catch (err) { logger.debug('FileWatcher: watcher close error', { error: summarizeError(err) }); }
+      try { watcher.close(); } catch (err) { logger.warn('FileWatcher: watcher close failed', { error: summarizeError(err) }); }
     }
     this.watchers.clear();
     for (const [absPath, listener] of this.pollListeners) {
-      try { unwatchFile(absPath, listener); } catch (err) { logger.debug('FileWatcher: unwatchFile error', { absPath, error: summarizeError(err) }); }
+      try { unwatchFile(absPath, listener); } catch (err) { logger.warn('FileWatcher: unwatchFile failed', { absPath, error: summarizeError(err) }); }
     }
     this.pollListeners.clear();
     this.watchedPaths.clear();
@@ -146,7 +146,7 @@ export class FileWatcher {
   /**
    * Add a path to the watch list.
    * If already watching, opens a watcher immediately.
-   * Silently skips paths that do not exist.
+   * Missing paths remain registered and are opened if they appear later.
    */
   addPath(inputPath: string): void {
     const absPath = resolve(inputPath);
@@ -178,12 +178,12 @@ export class FileWatcher {
 
     const watcher = this.watchers.get(absPath);
     if (watcher) {
-      try { watcher.close(); } catch (err) { logger.debug('FileWatcher: watcher close error', { error: summarizeError(err) }); }
+      try { watcher.close(); } catch (err) { logger.warn('FileWatcher: watcher close failed', { absPath, error: summarizeError(err) }); }
       this.watchers.delete(absPath);
     }
     const pollListener = this.pollListeners.get(absPath);
     if (pollListener) {
-      try { unwatchFile(absPath, pollListener); } catch (err) { logger.debug('FileWatcher: unwatchFile error', { absPath, error: summarizeError(err) }); }
+      try { unwatchFile(absPath, pollListener); } catch (err) { logger.warn('FileWatcher: unwatchFile failed', { absPath, error: summarizeError(err) }); }
       this.pollListeners.delete(absPath);
     }
   }
@@ -193,13 +193,11 @@ export class FileWatcher {
     return new Set(this.watchedPaths);
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal
-  // ---------------------------------------------------------------------------
-
   private _openWatcher(absPath: string): void {
-    // Skip non-existent paths silently
-    if (!existsSync(absPath)) return;
+    if (!existsSync(absPath)) {
+      logger.debug('FileWatcher: watch path does not exist yet', { path: absPath });
+      return;
+    }
 
     // Already watching this path
     if (this.watchers.has(absPath)) return;
@@ -209,7 +207,7 @@ export class FileWatcher {
       try {
         isDir = statSync(absPath).isDirectory();
       } catch (error) {
-        logger.debug('FileWatcher: stat before watch failed', {
+        logger.warn('FileWatcher: stat before watch failed', {
           path: absPath,
           error: summarizeError(error),
         });
@@ -228,7 +226,7 @@ export class FileWatcher {
       );
 
       watcher.on('error', (err) => {
-        logger.debug('FileWatcher: watcher error', { absPath, error: summarizeError(err) });
+        logger.warn('FileWatcher: watcher error', { absPath, error: summarizeError(err) });
         this.watchers.delete(absPath);
       });
 
@@ -244,7 +242,7 @@ export class FileWatcher {
         this.pollListeners.set(absPath, pollListener);
       }
     } catch (err) {
-      logger.debug('FileWatcher: failed to open watcher', { absPath, error: summarizeError(err) });
+      logger.warn('FileWatcher: failed to open watcher', { absPath, error: summarizeError(err) });
     }
   }
 
@@ -293,7 +291,7 @@ export class FileWatcher {
         payload: { filePath: absPath },
       };
       this.hookDispatcher.fire(event).catch((err) => {
-        logger.debug('FileWatcher: hook fire error', { absPath, error: summarizeError(err) });
+        logger.warn('FileWatcher: hook fire failed', { absPath, error: summarizeError(err) });
       });
     }
   }

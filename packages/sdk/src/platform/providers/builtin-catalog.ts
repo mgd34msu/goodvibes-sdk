@@ -18,7 +18,7 @@ export interface BuiltinOpenAICompatDefinition extends BuiltinProviderDefinition
   readonly models: readonly string[];
   readonly embeddingModel?: string | undefined;
   readonly reasoningFormat?: OpenAICompatOptions['reasoningFormat'] | undefined;
-  readonly suppressedModels?: readonly string[] | undefined;
+  readonly suppressedModelRegistryKeys?: readonly string[] | undefined;
   readonly streamProtocol?: string | undefined;
   readonly defaultHeaders?: Record<string, string> | undefined;
   readonly allowAnonymous?: boolean | undefined;

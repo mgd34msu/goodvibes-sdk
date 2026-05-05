@@ -83,19 +83,19 @@ function isBinaryCached(binaryDir: string, name: string): boolean {
 async function downloadBinary(binaryDir: string, name: string): Promise<string | null> {
   const spec = BINARY_SPECS.find(s => s.name === name);
   if (!spec) {
-    logger.debug(`BinaryDownloader: unknown binary '${name}'`);
+    logger.warn(`BinaryDownloader: unknown binary '${name}'`);
     return null;
   }
 
   const platformKey = getPlatformKey();
   if (!platformKey) {
-    logger.debug(`BinaryDownloader: unsupported platform ${process.platform}/${process.arch}`);
+    logger.warn(`BinaryDownloader: unsupported platform ${process.platform}/${process.arch}`);
     return null;
   }
 
   const assetName = spec.assets[platformKey]!;
   if (!assetName) {
-    logger.debug(`BinaryDownloader: no asset for ${name} on ${platformKey}`);
+    logger.warn(`BinaryDownloader: no asset for ${name} on ${platformKey}`);
     return null;
   }
 
@@ -120,20 +120,20 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
       if (releaseRes.status === 403) {
         logger.info('BinaryDownloader: GitHub API rate limited (60 req/hr unauthenticated). Set GITHUB_TOKEN env var for higher limits.', { name });
       } else {
-        logger.debug(`BinaryDownloader: GitHub API returned ${releaseRes.status} for ${name}`);
+        logger.warn(`BinaryDownloader: GitHub API returned ${releaseRes.status} for ${name}`);
       }
       return null;
     }
 
     const release = await releaseRes.json() as { assets?: Array<{ name: string; browser_download_url: string }> };
     if (!release || !Array.isArray(release.assets)) {
-      logger.debug('BinaryDownloader: unexpected GitHub API response shape', { name });
+      logger.warn('BinaryDownloader: unexpected GitHub API response shape', { name });
       return null;
     }
     const asset = release.assets.find(a => a.name === assetName);
 
     if (!asset) {
-      logger.debug(`BinaryDownloader: asset '${assetName}' not found in latest release of ${spec.repo}`);
+      logger.warn(`BinaryDownloader: asset '${assetName}' not found in latest release of ${spec.repo}`);
       return null;
     }
 
@@ -144,7 +144,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
     });
 
     if (!downloadRes.ok) {
-      logger.debug(`BinaryDownloader: download failed with ${downloadRes.status}`);
+      logger.warn(`BinaryDownloader: download failed with ${downloadRes.status}`);
       return null;
     }
 
@@ -206,7 +206,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
     logger.info(`BinaryDownloader: ${name} downloaded to ${destPath}`);
     return destPath;
   } catch (err) {
-    logger.debug(`BinaryDownloader: failed to download ${name}`, { error: summarizeError(err) });
+    logger.warn(`BinaryDownloader: failed to download ${name}`, { error: summarizeError(err) });
     // Clean up partial download
     const tmpPath = `${destPath}.tmp`;
     try {
@@ -237,7 +237,7 @@ async function ensureGopls(binaryDir: string): Promise<string | null> {
   // Check if go is available
   const goPath = Bun.which('go');
   if (!goPath) {
-    logger.debug('BinaryDownloader: go not found on PATH, cannot install gopls');
+    logger.warn('BinaryDownloader: go not found on PATH, cannot install gopls');
     return null;
   }
 
@@ -256,7 +256,7 @@ async function ensureGopls(binaryDir: string): Promise<string | null> {
 
     if (exitCode !== 0) {
       const stderr = await new Response(proc.stderr).text();
-      logger.debug('BinaryDownloader: gopls install failed', { exitCode, stderr: stderr.slice(0, 500) });
+      logger.warn('BinaryDownloader: gopls install failed', { exitCode, stderr: stderr.slice(0, 500) });
       return null;
     }
 
@@ -267,7 +267,7 @@ async function ensureGopls(binaryDir: string): Promise<string | null> {
 
     return null;
   } catch (err) {
-    logger.debug('BinaryDownloader: gopls install error', { error: summarizeError(err) });
+    logger.warn('BinaryDownloader: gopls install error', { error: summarizeError(err) });
     return null;
   }
 }

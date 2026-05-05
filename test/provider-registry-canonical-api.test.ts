@@ -1,13 +1,12 @@
 /**
  * Unit tests for the canonical ProviderRegistry.has() / .get() / .require() API.
  *
- * These tests use a minimal stub-based approach — no real providers or heavy
- * dependencies are instantiated. We create a bare-minimum ProviderRegistry
- * instance and directly manipulate its internal Map via register() so the
- * tests remain fast and isolated.
+ * These tests use lightweight test doubles so no real providers or heavy
+ * dependencies are instantiated. Providers are registered through the public
+ * ProviderRegistry API to keep the tests fast and isolated.
  */
 import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
@@ -21,7 +20,7 @@ import {
 } from '../packages/sdk/src/platform/providers/model-catalog.js';
 
 // ---------------------------------------------------------------------------
-// Minimal stubs
+// Test doubles
 // ---------------------------------------------------------------------------
 
 function makeProvider(name: string): LLMProvider {
@@ -32,10 +31,13 @@ function makeProvider(name: string): LLMProvider {
   } as unknown as LLMProvider;
 }
 
-/** Build a ProviderRegistry with the minimum required options stubbed out. */
-function makeRegistry(root = '/tmp/test-registry'): ProviderRegistry {
+/** Build a ProviderRegistry with the minimum required options provided by test doubles. */
+function makeRegistry(
+  root = '/tmp/test-registry',
+  config: Readonly<Record<string, unknown>> = {},
+): ProviderRegistry {
   const configManager = {
-    get: () => undefined,
+    get: (key: string) => config[key],
     getCategory: () => ({}),
     getControlPlaneConfigDir: () => root,
   } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['configManager'];
@@ -58,7 +60,7 @@ function makeRegistry(root = '/tmp/test-registry'): ProviderRegistry {
   } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['cacheHitTracker'];
 
   const favoritesStore = {
-    load: async () => ({ pinned: [], recent: [], byModelId: {} }),
+    load: async () => ({ pinned: [], history: [] }),
   } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['favoritesStore'];
 
   const benchmarkStore = {
@@ -95,6 +97,28 @@ function makeCatalogModel(id: string, providerId: string): CatalogModel {
     contextWindow: 128_000,
     maxOutputTokens: 16_384,
   };
+}
+
+function writeCustomProvider(root: string, name: string, modelId: string): void {
+  const providersDir = join(root, 'providers');
+  mkdirSync(providersDir, { recursive: true });
+  writeFileSync(join(providersDir, `${name}.json`), JSON.stringify({
+    name,
+    displayName: name,
+    type: 'openai-compat',
+    baseURL: `https://${name}.example.test/v1`,
+    models: [{
+      id: modelId,
+      displayName: modelId,
+      contextWindow: 8192,
+      capabilities: {
+        toolCalling: true,
+        codeEditing: false,
+        reasoning: false,
+        multimodal: false,
+      },
+    }],
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -228,17 +252,68 @@ describe('ProviderRegistry model catalog cache', () => {
       );
       registry.initCatalog();
       expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-5.4')).toBe(true);
+      expect(() => registry.getForModel('gpt-5.4')).toThrow(
+        "Model lookup requires a provider-qualified registryKey; received 'gpt-5.4'.",
+      );
+      expect(registry.getForModel('openai:gpt-5.4').name).toBe('openai');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  test('explicit OpenAI selection can use provider when local catalog is stale', () => {
+  test('bare OpenAI model IDs are not guessed when local catalog is stale', () => {
     const registry = makeRegistry();
-    const provider = registry.getForModel('gpt-5.4', 'openai');
-    expect(provider.name).toBe('openai');
+    expect(() => registry.getForModel('gpt-5.4')).toThrow(
+      "Model lookup requires a provider-qualified registryKey; received 'gpt-5.4'.",
+    );
+    expect(() => registry.getForModel('gpt-5.4', 'openai')).toThrow(
+      "No model 'gpt-5.4' for provider 'openai' in registry.",
+    );
     expect(() => registry.getForModel('gpt-5.4', 'anthropic')).toThrow(
       "No model 'gpt-5.4' for provider 'anthropic' in registry.",
     );
+  });
+
+  test('configured bare model requires explicit provider identity', () => {
+    expect(() => makeRegistry('/tmp/test-registry', { 'provider.model': 'gpt-5.4' })).toThrow(
+      "provider.model must be a provider-qualified registryKey; received 'gpt-5.4'.",
+    );
+  });
+
+  test('model selection rejects bare model ids without a provider', () => {
+    const registry = makeRegistry();
+    expect(() => registry.getForModel('gpt-5.4')).toThrow(
+      "Model lookup requires a provider-qualified registryKey; received 'gpt-5.4'.",
+    );
+    expect(() => registry.setCurrentModel('gpt-5.4')).toThrow(
+      "Model selection requires a provider-qualified registryKey; received 'gpt-5.4'.",
+    );
+    expect(() => registry.getCapabilityForModel('gpt-5.4')).toThrow(
+      "Model capability lookups require a provider-qualified registryKey; received 'gpt-5.4'.",
+    );
+  });
+
+  test('custom provider changes and catalog override warnings use registry keys', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'goodvibes-provider-registry-'));
+    try {
+      saveCatalogCache(
+        [makeCatalogModel('shared-model', 'openai')],
+        getCatalogCachePath(root),
+        getCatalogTmpPath(root),
+      );
+      writeCustomProvider(root, 'openai', 'shared-model');
+      writeCustomProvider(root, 'custom-ai', 'shared-model');
+
+      const registry = makeRegistry(root);
+      registry.initCatalog();
+      const result = await registry.loadCustomProviders();
+
+      expect(result.added).toContain('openai:shared-model');
+      expect(result.added).toContain('custom-ai:shared-model');
+      expect(result.warnings).toContain("[registry] Custom model 'openai:shared-model' overrides catalog model.");
+      expect(result.warnings.some((warning) => warning.includes("'custom-ai:shared-model' overrides"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

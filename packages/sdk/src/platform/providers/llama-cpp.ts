@@ -52,7 +52,7 @@ type LlamaCppChatCompletion = {
 
 export interface LlamaCppProviderOptions extends OpenAICompatOptions {
   nativeFetch?: NativeFetch | undefined;
-  fallbackProvider?: LLMProvider | undefined;
+  compatProvider?: LLMProvider | undefined;
 }
 
 export class LlamaCppProvider implements LLMProvider {
@@ -64,7 +64,7 @@ export class LlamaCppProvider implements LLMProvider {
   private readonly reasoningFormat: OpenAICompatOptions['reasoningFormat'];
   private readonly nativeChatUrl: string;
   private readonly nativeFetch: NativeFetch;
-  private readonly fallbackProvider: LLMProvider;
+  private readonly compatProvider: LLMProvider;
   private readonly apiKey: string;
   private readonly defaultHeaders?: Record<string, string> | undefined;
 
@@ -76,35 +76,35 @@ export class LlamaCppProvider implements LLMProvider {
     this.reasoningFormat = opts.reasoningFormat ?? 'none';
     this.nativeChatUrl = deriveLlamaCppChatUrl(opts.baseURL);
     this.nativeFetch = opts.nativeFetch ?? instrumentedFetch;
-    this.fallbackProvider = opts.fallbackProvider ?? new OpenAICompatProvider(opts);
+    this.compatProvider = opts.compatProvider ?? new OpenAICompatProvider(opts);
     this.apiKey = opts.apiKey;
     this.defaultHeaders = opts.defaultHeaders;
   }
 
   isConfigured(): boolean {
-    return this.fallbackProvider.isConfigured?.() ?? true;
+    return this.compatProvider.isConfigured?.() ?? true;
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
     return (await instrumentedLlmCall(
       () => withRetry(async () => {
       if (!shouldUseNonStreamingLlamaCpp(params)) {
-        return this.fallbackProvider.chat(params);
+        return this.compatProvider.chat(params);
       }
       return this.chatViaNonStreamingCompat(params, params.model || this.defaultModel);
     }), { provider: this.name, model: params.model || this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {
-    if (!this.fallbackProvider.embed) {
-      throw new ProviderError('llama.cpp fallback provider does not support embeddings.', {
+    if (!this.compatProvider.embed) {
+      throw new ProviderError('llama.cpp OpenAI-compatible transport does not support embeddings.', {
         statusCode: 501,
         provider: this.name,
         operation: 'embed',
         phase: 'response',
       });
     }
-    return this.fallbackProvider.embed(request);
+    return this.compatProvider.embed(request);
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

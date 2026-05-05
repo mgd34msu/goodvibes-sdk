@@ -113,7 +113,7 @@ export class RuntimeHealthAggregator {
   getDomainHealth(domain: HealthDomain): DomainHealth {
     const health = this.domainHealth.get(domain);
     if (!health) {
-      // Defensive fallback: domain not in ALL_DOMAINS list
+      // Defensive record for a domain outside ALL_DOMAINS.
       return {
         domain,
         status: 'unknown',

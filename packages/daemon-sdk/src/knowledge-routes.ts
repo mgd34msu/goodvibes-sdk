@@ -703,7 +703,7 @@ async function handleKnowledgeReviewIssue(context: DaemonKnowledgeRouteContext, 
       ...(body?.value && typeof body.value === 'object' && !Array.isArray(body.value) ? { value: body.value as Record<string, unknown> } : {}),
     }));
   } catch (error) {
-    // MAJ-07: map status from error code, not English-prefix match.
+    // map status from error code, not English-prefix match.
     const isNotFound = error instanceof Error && (
       (error as { code?: unknown }).code === 'NOT_FOUND'
       || (error as { code?: unknown }).code === 'KNOWLEDGE_ISSUE_NOT_FOUND'
@@ -731,7 +731,7 @@ async function handleKnowledgeDecideCandidate(context: DaemonKnowledgeRouteConte
       }),
     });
   } catch (error) {
-    // MAJ-07: map status from error code, not English-prefix match.
+    // map status from error code, not English-prefix match.
     const isNotFound = error instanceof Error && (
       (error as { code?: unknown }).code === 'NOT_FOUND'
       || (error as { code?: unknown }).code === 'KNOWLEDGE_CANDIDATE_NOT_FOUND'
@@ -752,7 +752,7 @@ async function handleKnowledgeRunJob(context: DaemonKnowledgeRouteContext, jobId
       run: await context.knowledgeService.runJob(jobId, input),
     });
   } catch (error) {
-    // MAJ-07: map status from error code, not English-prefix match.
+    // map status from error code, not English-prefix match.
     const isNotFound = error instanceof Error && (
       (error as { code?: unknown }).code === 'NOT_FOUND'
       || (error as { code?: unknown }).code === 'KNOWLEDGE_JOB_NOT_FOUND'

@@ -1,7 +1,7 @@
 /**
  * Coverage-gap smoke test — platform/runtime/network
  * Verifies inbound/outbound TLS inspection functions return correct observable shapes.
- * Closes coverage gap: platform/runtime/network (eighth-review)
+ * Closes coverage gap: platform/runtime/network
  */
 
 import { describe, expect, test } from 'bun:test';

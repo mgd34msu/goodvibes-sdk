@@ -13,7 +13,7 @@ export interface KnowledgeIngestContext {
     sessionId?: string,
   ) => void;
   readonly syncReviewedMemory: () => Promise<void>;
-  readonly semanticEnrichSource?: ((sourceId: string, knowledgeSpaceId?: string) => void | Promise<void>) | undefined | undefined;
+  readonly semanticEnrichSource?: ((sourceId: string, knowledgeSpaceId?: string) => void | Promise<void>) | undefined;
   readonly lint: () => Promise<readonly KnowledgeIssueRecord[]>;
   readonly listConnectors: () => readonly KnowledgeConnector[];
 }

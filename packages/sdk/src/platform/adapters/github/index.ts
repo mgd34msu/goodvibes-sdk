@@ -49,7 +49,13 @@ export async function handleGitHubAutomationWebhook(
       type: event.type,
       action: event.action,
     });
-    return Response.json({ acknowledged: true, queued: false, reason: 'Event not actionable' });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'event-not-actionable',
+      message: 'Event not actionable',
+    });
   }
 
   const spawnResult = context.trySpawnAgent({ mode: 'spawn', task: prompt }, 'handleGitHubAutomationWebhook');

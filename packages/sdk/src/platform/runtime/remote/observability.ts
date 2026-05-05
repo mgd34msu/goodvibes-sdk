@@ -229,8 +229,8 @@ export class RemoteObservabilityProvider {
       try {
         cb();
       } catch (err) {
-        // Non-fatal — subscriber errors must not crash the provider
-        logger.debug('RemoteObservabilityProvider: subscriber error', {
+        // Subscriber errors must not crash the provider.
+        logger.warn('RemoteObservabilityProvider: subscriber error', {
           err: summarizeError(err),
         });
       }

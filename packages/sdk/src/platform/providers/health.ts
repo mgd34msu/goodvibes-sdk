@@ -7,7 +7,7 @@ import { ProviderNotFoundError } from './provider-not-found-error.js';
 import { CATALOG_PROVIDER_NAME_ALIASES } from './builtin-registry.js';
 
 /**
- * Retrieve a provider by name (with alias fallback), or throw ProviderNotFoundError.
+ * Retrieve a provider by name with catalog-provider alias resolution, or throw ProviderNotFoundError.
  * Unlike ProviderRegistry.require(), this does NOT apply subscription route aliasing.
  */
 function getRegisteredProvider(

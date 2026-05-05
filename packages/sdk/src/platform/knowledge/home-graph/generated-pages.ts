@@ -16,6 +16,7 @@ import {
   HOME_GRAPH_CONNECTOR_ID,
   buildHomeGraphMetadata,
   edgeIsActive,
+  factSourceIds,
   homeGraphNodeId,
   homeGraphSourceId,
   isGeneratedPageSource,
@@ -39,7 +40,8 @@ import {
   renderRoomPage,
 } from './rendering.js';
 import { deriveRepairProfileFacts } from '../semantic/repair-profile.js';
-import { semanticHash, semanticSlug } from '../semantic/utils.js';
+import { semanticFactId, semanticHash, semanticSlug } from '../semantic/utils.js';
+import { upsertSourceLinkedRepairProfileFact } from '../semantic/self-improvement-promotion.js';
 import { sourceAuthorityBoostForAnswer } from '../semantic/answer-source-ranking.js';
 import { compareHomeGraphPageSources, isUsefulHomeGraphPageFact, isUsefulHomeGraphPageSource } from './page-quality.js';
 import type {
@@ -213,9 +215,11 @@ export async function refreshHomeGraphDevicePassport(
     readonly state?: HomeGraphStateSnapshot | undefined;
     readonly sourceLookup?: DevicePassportSourceLookup | undefined;
     readonly extractionsBySourceId?: ExtractionBySourceId | undefined;
+    readonly signal?: AbortSignal | undefined;
   },
 ): Promise<HomeGraphDevicePassportResult & { readonly artifactCreated: boolean }> {
   const { store, artifactStore, spaceId, installationId, input } = context;
+  throwIfAborted(context.signal);
   if (!input.deviceId) {
     throw new GoodVibesSdkError('refreshDevicePassport requires deviceId.', {
       category: 'bad_request',
@@ -224,6 +228,7 @@ export async function refreshHomeGraphDevicePassport(
     });
   }
   const state = context.state ?? readHomeGraphState(store, spaceId);
+  throwIfAborted(context.signal);
   const device = findHomeAssistantNode(state.nodes, 'ha_device', input.deviceId);
   if (!device) {
     throw new GoodVibesSdkError(`Unknown Home Assistant device: ${input.deviceId}`, {
@@ -244,21 +249,23 @@ export async function refreshHomeGraphDevicePassport(
   ));
   const sourceLookup = context.sourceLookup ?? buildDevicePassportSourceLookup(state.sources, state.nodes, state.edges);
   const sources = sourcesForDevicePassport(device.id, sourceLookup);
-  const pageProfileFacts = await upsertDevicePageProfileFacts({
+  const pageProfileFacts = await buildDevicePageProfileFacts({
     store,
     spaceId,
     installationId,
     device,
     sources,
     extractionsBySourceId: context.extractionsBySourceId,
+    signal: context.signal,
   });
+  throwIfAborted(context.signal);
   const semanticFacts = uniqueNodesById([
     ...semanticFactsForNode(device.id, sources, state.nodes, state.edges),
-    ...pageProfileFacts,
+    ...pageProfileFacts.map((fact) => fact.node),
   ]);
   const scopedNodeIds = new Set([device.id, ...entities.map((node) => node.id)]);
   const issues = filterDevicePassportIssues(issuesForScope(state.issues, state.edges, scopedNodeIds, sources), sources);
-  const missingFields = missingDevicePassportFields(device, sources);
+  const missingFields = missingDevicePassportFields(device, sources, semanticFacts);
   const markdown = renderDevicePassportPage({ spaceId, device, entities, sources, issues, missingFields, semanticFacts });
   const pageContentHash = semanticHash(markdown);
   const passportId = homeGraphNodeId(spaceId, 'ha_device_passport', input.deviceId);
@@ -268,51 +275,78 @@ export async function refreshHomeGraphDevicePassport(
     ? existingPassportMetadata.refreshedAt
     : undefined;
   const { passport, generated } = await store.batch(async () => {
-    const passport = await store.upsertNode({
-      id: passportId,
-      kind: 'ha_device_passport',
-      slug: `${device.slug}-passport`,
-      title: `${device.title} passport`,
-      summary: `Living device profile for ${device.title}.`,
-      aliases: [`${device.title} passport`],
-      confidence: 80,
-      metadata: buildHomeGraphMetadata(spaceId, installationId, {
-        homeAssistant: { installationId, objectKind: 'device_passport', objectId: input.deviceId },
-        deviceId: input.deviceId,
-        missingFields,
-        pageContentHash,
-        refreshedAt: existingPassportMetadata.pageContentHash === pageContentHash && previousRefreshedAt !== undefined
-          ? previousRefreshedAt
-          : Date.now(),
-      }),
-    });
-    await store.upsertEdge({
-      fromKind: 'node',
-      fromId: passport.id,
-      toKind: 'node',
-      toId: device.id,
-      relation: 'source_for',
-      metadata: buildHomeGraphMetadata(spaceId, installationId),
-    });
-    const generated = await materializeGeneratedMarkdown({
-      store,
-      artifactStore,
-      spaceId,
-      installationId,
-      filename: `${safeHomeGraphFilename(device.title)}-passport.md`,
-      markdown,
-      projectionKind: 'device-passport',
-      canonicalValue: `device-passport:${input.deviceId}`,
-      title: `${device.title} passport`,
-      summary: `Living device profile for ${device.title}.`,
-      tags: ['homeassistant', 'home-graph', 'generated-page', 'device-passport'],
-      targetNodeId: passport.id,
-      metadata: {
-        ...(input.metadata ?? {}),
-        deviceId: input.deviceId,
-      },
-    });
-    return { passport, generated };
+    throwIfAborted(context.signal);
+    const priorRecords = captureDevicePassportRefreshRecords(store, passportId, pageProfileFacts.map((fact) => fact.node.id));
+    const writtenNodeIds = new Set<string>();
+    const writtenEdgeKeys: { fromKind: KnowledgeEdgeRecord['fromKind']; fromId: string; toKind: KnowledgeEdgeRecord['toKind']; toId: string; relation: string }[] = [];
+    async function rollbackWrittenRecords(): Promise<void> {
+      await restoreDevicePassportRefreshRecords(store, priorRecords, writtenNodeIds, writtenEdgeKeys);
+    }
+    let passport: KnowledgeNodeRecord | undefined;
+    try {
+      passport = await store.upsertNode({
+        id: passportId,
+        kind: 'ha_device_passport',
+        slug: `${device.slug}-passport`,
+        title: `${device.title} passport`,
+        summary: `Living device profile for ${device.title}.`,
+        aliases: [`${device.title} passport`],
+        status: 'active',
+        confidence: 80,
+        metadata: buildHomeGraphMetadata(spaceId, installationId, {
+          homeAssistant: { installationId, objectKind: 'device_passport', objectId: input.deviceId },
+          deviceId: input.deviceId,
+          missingFields,
+          pageContentHash,
+          refreshedAt: existingPassportMetadata.pageContentHash === pageContentHash && previousRefreshedAt !== undefined
+            ? previousRefreshedAt
+            : Date.now(),
+        }),
+      });
+      writtenNodeIds.add(passport.id);
+      await store.upsertEdge({
+        fromKind: 'node',
+        fromId: passport.id,
+        toKind: 'node',
+        toId: device.id,
+        relation: 'source_for',
+        metadata: buildHomeGraphMetadata(spaceId, installationId),
+      });
+      writtenEdgeKeys.push({ fromKind: 'node', fromId: passport.id, toKind: 'node', toId: device.id, relation: 'source_for' });
+      throwIfAborted(context.signal);
+      for (const factPlan of pageProfileFacts) {
+        writtenNodeIds.add(factPlan.node.id);
+        writtenEdgeKeys.push(
+          { fromKind: 'source', fromId: factPlan.source.id, toKind: 'node', toId: factPlan.node.id, relation: 'supports_fact' },
+          { fromKind: 'node', fromId: factPlan.node.id, toKind: 'node', toId: device.id, relation: 'describes' },
+        );
+        const fact = await upsertDevicePageProfileFact(store, spaceId, installationId, device, factPlan);
+        throwIfAborted(context.signal);
+      }
+      const generated = await materializeGeneratedMarkdown({
+        store,
+        artifactStore,
+        spaceId,
+        installationId,
+        filename: `${safeHomeGraphFilename(device.title)}-passport.md`,
+        markdown,
+        projectionKind: 'device-passport',
+        canonicalValue: `device-passport:${input.deviceId}`,
+        title: `${device.title} passport`,
+        summary: `Living device profile for ${device.title}.`,
+        tags: ['homeassistant', 'home-graph', 'generated-page', 'device-passport'],
+        targetNodeId: passport.id,
+        signal: context.signal,
+        metadata: {
+          ...(input.metadata ?? {}),
+          deviceId: input.deviceId,
+        },
+      });
+      return { passport, generated };
+    } catch (error) {
+      await rollbackWrittenRecords();
+      throw error;
+    }
   });
   return {
     ok: true,
@@ -327,6 +361,121 @@ export async function refreshHomeGraphDevicePassport(
     missingFields,
     artifactCreated: generated.artifactCreated,
   };
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return;
+  throw new GoodVibesSdkError('Home Graph device passport refresh was cancelled.', {
+    category: 'timeout',
+    source: 'runtime',
+    operation: 'homegraph.refreshDevicePassport',
+  });
+}
+
+interface DevicePassportRefreshPriorRecords {
+  readonly nodes: ReadonlyMap<string, KnowledgeNodeRecord | null>;
+  readonly edges: ReadonlyMap<string, KnowledgeEdgeRecord | null>;
+}
+
+interface DevicePassportRefreshEdgeKey {
+  readonly fromKind: KnowledgeEdgeRecord['fromKind'];
+  readonly fromId: string;
+  readonly toKind: KnowledgeEdgeRecord['toKind'];
+  readonly toId: string;
+  readonly relation: string;
+}
+
+function captureDevicePassportRefreshRecords(
+  store: KnowledgeStore,
+  passportId: string,
+  factIds: readonly string[],
+): DevicePassportRefreshPriorRecords {
+  const nodeIds = uniqueStrings([passportId, ...factIds]);
+  const edgeKeys: DevicePassportRefreshEdgeKey[] = [];
+  const passport = store.getNode(passportId);
+  if (passport) {
+    for (const edge of store.edgesFor('node', passport.id)) {
+      if (edge.fromKind === 'node' && edge.fromId === passport.id && edge.relation === 'source_for') {
+        edgeKeys.push(edgeKey(edge));
+      }
+    }
+  }
+  for (const factId of factIds) {
+    const fact = store.getNode(factId);
+    if (!fact) continue;
+    for (const edge of store.edgesFor('node', fact.id)) {
+      if ((edge.toKind === 'node' && edge.toId === fact.id && edge.relation === 'supports_fact')
+        || (edge.fromKind === 'node' && edge.fromId === fact.id && edge.relation === 'describes')) {
+        edgeKeys.push(edgeKey(edge));
+      }
+    }
+  }
+  return {
+    nodes: new Map(nodeIds.map((id) => [id, store.getNode(id)])),
+    edges: new Map(edgeKeys.map((key) => [edgeKeyId(key), findDevicePassportRefreshEdge(store, key)])),
+  };
+}
+
+async function restoreDevicePassportRefreshRecords(
+  store: KnowledgeStore,
+  prior: DevicePassportRefreshPriorRecords,
+  writtenNodeIds: ReadonlySet<string>,
+  writtenEdgeKeys: readonly DevicePassportRefreshEdgeKey[],
+): Promise<void> {
+  const edgeIds = uniqueStrings([
+    ...writtenEdgeKeys.map(edgeKeyId),
+    ...prior.edges.keys(),
+  ]);
+  for (const id of edgeIds) {
+    const priorEdge = prior.edges.get(id);
+    const current = findDevicePassportRefreshEdgeByKeyId(store, id);
+    if (priorEdge) {
+      await store.replaceEdgeRecord(priorEdge);
+    } else if (current) {
+      await store.deleteEdge(current.id);
+    }
+  }
+  const nodeIds = uniqueStrings([...writtenNodeIds, ...prior.nodes.keys()]);
+  for (const id of nodeIds) {
+    const priorNode = prior.nodes.get(id);
+    const current = store.getNode(id);
+    if (priorNode) {
+      await store.replaceNodeRecord(priorNode);
+    } else if (current) {
+      await store.deleteNode(id);
+    }
+  }
+}
+
+function edgeKey(edge: KnowledgeEdgeRecord): DevicePassportRefreshEdgeKey {
+  return {
+    fromKind: edge.fromKind,
+    fromId: edge.fromId,
+    toKind: edge.toKind,
+    toId: edge.toId,
+    relation: edge.relation,
+  };
+}
+
+function edgeKeyId(key: DevicePassportRefreshEdgeKey): string {
+  return `${key.fromKind}:${key.fromId}->${key.toKind}:${key.toId}:${key.relation}`;
+}
+
+function findDevicePassportRefreshEdge(
+  store: KnowledgeStore,
+  key: DevicePassportRefreshEdgeKey,
+): KnowledgeEdgeRecord | null {
+  return store.edgesFor(key.fromKind, key.fromId).find((edge) => edgeKeyId(edgeKey(edge)) === edgeKeyId(key)) ?? null;
+}
+
+function findDevicePassportRefreshEdgeByKeyId(
+  store: KnowledgeStore,
+  keyId: string,
+): KnowledgeEdgeRecord | null {
+  for (const edge of store.listEdges()) {
+    if (edgeKeyId(edgeKey(edge)) === keyId) return edge;
+  }
+  return null;
 }
 
 export async function generateHomeGraphRoomPage(
@@ -411,6 +560,7 @@ async function materializeGeneratedMarkdown(input: HomeGraphPageContext & {
   readonly metadata?: Record<string, unknown> | undefined;
   readonly targetNodeId?: string | undefined;
   readonly relation?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
 }): Promise<{
   readonly artifact: HomeGraphProjectionResult['artifact'];
   readonly source: KnowledgeSourceRecord;
@@ -435,8 +585,10 @@ async function materializeGeneratedMarkdown(input: HomeGraphPageContext & {
     pagePolicyVersion: HOME_GRAPH_PAGE_POLICY_VERSION,
     pageEditable: true,
     regeneration,
+    ...(input.targetNodeId ? { generatedTargetNodeId: input.targetNodeId } : {}),
   };
   const homeGraphMetadata = buildHomeGraphMetadata(input.spaceId, input.installationId, metadata);
+  throwIfAborted(input.signal);
   const generated = await materializeGeneratedKnowledgeProjection({
     store: input.store,
     artifactStore: input.artifactStore,
@@ -453,6 +605,7 @@ async function materializeGeneratedMarkdown(input: HomeGraphPageContext & {
     metadata: homeGraphMetadata,
     sourceMetadata: homeGraphMetadata,
     artifactMetadata: homeGraphMetadata,
+    signal: input.signal,
     edgeMetadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
       homeGraphGeneratedPage: true,
       projectionKind: input.projectionKind,
@@ -530,42 +683,61 @@ function generatedPagePriority(node: KnowledgeNodeRecord): number {
   return score;
 }
 
-function semanticFactsLinkedToSources(
-  sources: readonly KnowledgeSourceRecord[],
-  nodes: readonly KnowledgeNodeRecord[],
-  edges: readonly KnowledgeEdgeRecord[],
-): KnowledgeNodeRecord[] {
-  const sourceIds = new Set(sources.map((source) => source.id));
-  const factIds = new Set(edges.filter((edge) => (
-    edgeIsActive(edge)
-    && edge.fromKind === 'source'
-    && sourceIds.has(edge.fromId)
-    && edge.toKind === 'node'
-    && edge.relation === 'supports_fact'
-  )).map((edge) => edge.toId));
-  return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
-}
-
 function semanticFactsForNode(
   nodeId: string,
   sources: readonly KnowledgeSourceRecord[],
   nodes: readonly KnowledgeNodeRecord[],
   edges: readonly KnowledgeEdgeRecord[],
 ): KnowledgeNodeRecord[] {
-  const factIds = new Set<string>();
-  for (const edge of edges) {
-    if (edgeIsActive(edge)
-      && edge.fromKind === 'node'
-      && edge.toKind === 'node'
-      && edge.toId === nodeId
-      && edge.relation === 'describes') {
-      factIds.add(edge.fromId);
-    }
+  const sourceIds = new Set(sources.map((source) => source.id));
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const subjectFactIds = factIdsDescribingNode(edges, nodeId);
+  const edgeSupportedFactIds = sourceSupportedFactIds(edges, sourceIds);
+  const supportedFactIds = new Set<string>();
+  for (const fact of nodesById.values()) {
+    if (fact.kind !== 'fact') continue;
+    if (!factHasSubjectLink(fact, nodeId, subjectFactIds)) continue;
+    const hasSource = edgeSupportedFactIds.has(fact.id)
+      || factSourceIds(fact).some((sourceId) => sourceIds.has(sourceId));
+    if (hasSource) supportedFactIds.add(fact.id);
   }
-  for (const fact of semanticFactsLinkedToSources(sources, nodes, edges)) {
-    factIds.add(fact.id);
-  }
-  return nodes.filter((node) => factIds.has(node.id) && isUsefulHomeGraphPageFact(node));
+  return nodes.filter((node) => supportedFactIds.has(node.id) && isUsefulHomeGraphPageFact(node));
+}
+
+function sourceSupportedFactIds(
+  edges: readonly KnowledgeEdgeRecord[],
+  sourceIds: ReadonlySet<string>,
+): ReadonlySet<string> {
+  return new Set(edges.filter((edge) => (
+    edgeIsActive(edge)
+    && edge.fromKind === 'source'
+    && sourceIds.has(edge.fromId)
+    && edge.toKind === 'node'
+    && edge.relation === 'supports_fact'
+  )).map((edge) => edge.toId));
+}
+
+function factIdsDescribingNode(
+  edges: readonly KnowledgeEdgeRecord[],
+  nodeId: string,
+): ReadonlySet<string> {
+  return new Set(edges.filter((edge) => (
+    edgeIsActive(edge)
+    && edge.fromKind === 'node'
+    && edge.toKind === 'node'
+    && edge.toId === nodeId
+    && edge.relation === 'describes'
+  )).map((edge) => edge.fromId));
+}
+
+function factHasSubjectLink(
+  fact: KnowledgeNodeRecord,
+  nodeId: string,
+  describedFactIds: ReadonlySet<string>,
+): boolean {
+  if (describedFactIds.has(fact.id)) return true;
+  return readStringArray(fact.metadata.subjectIds).includes(nodeId)
+    || readStringArray(fact.metadata.linkedObjectIds).includes(nodeId);
 }
 
 function buildDevicePassportSourceLookup(
@@ -623,7 +795,7 @@ function buildDevicePassportSourceLookup(
     for (const factId of factIds) {
       const fact = nodesById.get(factId);
       if (!fact || fact.status === 'stale') continue;
-      if (fact.sourceId) addSourceForNode(nodeId, fact.sourceId);
+      for (const sourceId of factSourceIds(fact)) addSourceForNode(nodeId, sourceId);
       for (const sourceId of sourceIdsByFactId.get(factId) ?? []) {
         addSourceForNode(nodeId, sourceId);
       }
@@ -657,34 +829,61 @@ function filterDevicePassportIssues(
   return issues.filter((issue) => issue.code !== 'homegraph.device.missing_manual');
 }
 
-async function upsertDevicePageProfileFacts(input: {
+interface DevicePageProfileFactPlan {
+  readonly node: KnowledgeNodeRecord;
+  readonly source: KnowledgeSourceRecord;
+  readonly title: string;
+  readonly summary: string;
+  readonly evidence: string;
+  readonly classification: ReturnType<typeof deriveRepairProfileFacts>[number];
+  readonly authority: 'official-vendor' | 'vendor' | 'secondary';
+}
+
+async function buildDevicePageProfileFacts(input: {
   readonly store: KnowledgeStore;
   readonly spaceId: string;
   readonly installationId: string;
   readonly device: KnowledgeNodeRecord;
   readonly sources: readonly KnowledgeSourceRecord[];
   readonly extractionsBySourceId?: ExtractionBySourceId | undefined;
-}): Promise<KnowledgeNodeRecord[]> {
-  return input.store.batch(async () => {
-    const facts: KnowledgeNodeRecord[] = [];
-    const sources = input.sources
-      .filter(isUsefulHomeGraphPageSource)
-      .sort(compareHomeGraphPageSources)
-      .slice(0, MAX_PROFILE_SOURCES_PER_DEVICE_PAGE);
-    for (const source of sources) {
-      const extraction = input.extractionsBySourceId?.get(source.id) ?? input.store.getExtractionBySourceId(source.id);
-      const sourceText = extractedPageSourceText(source, extraction);
-      if (!sourceText.trim()) continue;
-      const profileFacts = deriveRepairProfileFacts({
-        query: `complete features specifications ${input.device.title}`,
-        source,
-        text: sourceText,
+  readonly signal?: AbortSignal | undefined;
+}): Promise<DevicePageProfileFactPlan[]> {
+  throwIfAborted(input.signal);
+  const facts: DevicePageProfileFactPlan[] = [];
+  const sources = input.sources
+    .filter(isUsefulHomeGraphPageSource)
+    .sort(compareHomeGraphPageSources)
+    .slice(0, MAX_PROFILE_SOURCES_PER_DEVICE_PAGE);
+  for (const source of sources) {
+    throwIfAborted(input.signal);
+    const extraction = input.extractionsBySourceId?.get(source.id) ?? input.store.getExtractionBySourceId(source.id);
+    const sourceText = extractedPageSourceText(extraction);
+    if (!sourceText.trim()) continue;
+    const profileFacts = deriveRepairProfileFacts({
+      query: `complete features specifications ${input.device.title}`,
+      source,
+      text: sourceText,
+    });
+    for (const profileFact of profileFacts) {
+      throwIfAborted(input.signal);
+      const authorityBoost = sourceAuthorityBoostForAnswer(source);
+      const subjectIds = [input.device.id];
+      const sourceIds = [source.id];
+      const now = Date.now();
+      const factId = semanticFactId({
+        spaceId: input.spaceId,
+        kind: profileFact.kind,
+        title: profileFact.title,
+        value: profileFact.value,
+        summary: profileFact.summary,
+        subjectIds,
+        fallbackScope: source.id,
       });
-      for (const profileFact of profileFacts) {
-        const fact = await input.store.upsertNode({
-          id: `sem-fact-${semanticHash(input.spaceId, source.id, input.device.id, profileFact.title, profileFact.value ?? profileFact.summary)}`,
+      facts.push({
+        node: {
+          id: factId,
           kind: 'fact',
-          slug: semanticSlug(`${input.spaceId}-${input.device.title}-${profileFact.title}-${source.id}`),
+          slug: semanticSlug(`${input.spaceId}-${profileFact.title}-${profileFact.summary}-${source.id}`),
           title: profileFact.title,
           summary: profileFact.summary,
           aliases: profileFact.aliases,
@@ -698,56 +897,66 @@ async function upsertDevicePageProfileFacts(input: {
             evidence: profileFact.evidence,
             labels: profileFact.labels,
             sourceId: source.id,
+            sourceIds,
             subject: input.device.title,
-            subjectIds: [input.device.id],
-            targetHints: [{ id: input.device.id, kind: input.device.kind, title: input.device.title }],
-            linkedObjectIds: [input.device.id],
+            subjectIds,
+            targetHints: [{ id: input.device.id, title: input.device.title, kind: input.device.kind }],
+            linkedObjectIds: subjectIds,
             extractor: 'page-profile',
+            sourceAuthority: authorityBoost >= 120 ? 'official-vendor' : authorityBoost > 0 ? 'vendor' : 'secondary',
           }),
-        });
-        await input.store.upsertEdge({
-          fromKind: 'source',
-          fromId: source.id,
-          toKind: 'node',
-          toId: fact.id,
-          relation: 'supports_fact',
-          weight: PAGE_PROFILE_SOURCE_WEIGHT,
-          metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
-            linkedBy: 'generated-page-profile',
-          }),
-        });
-        await input.store.upsertEdge({
-          fromKind: 'node',
-          fromId: fact.id,
-          toKind: 'node',
-          toId: input.device.id,
-          relation: 'describes',
-          weight: PAGE_PROFILE_DESCRIBES_WEIGHT,
-          metadata: buildHomeGraphMetadata(input.spaceId, input.installationId, {
-            linkedBy: 'generated-page-profile',
-            sourceId: source.id,
-          }),
-        });
-        facts.push(fact);
-      }
+          createdAt: now,
+          updatedAt: now,
+        },
+        source,
+        title: profileFact.title,
+        summary: profileFact.summary,
+        evidence: profileFact.evidence,
+        classification: profileFact,
+        authority: authorityBoost >= 120 ? 'official-vendor' : authorityBoost > 0 ? 'vendor' : 'secondary',
+      });
     }
-    return facts;
+  }
+  return facts;
+}
+
+async function upsertDevicePageProfileFact(
+  store: KnowledgeStore,
+  spaceId: string,
+  installationId: string,
+  device: KnowledgeNodeRecord,
+  fact: DevicePageProfileFactPlan,
+): Promise<KnowledgeNodeRecord> {
+  return upsertSourceLinkedRepairProfileFact({
+    store,
+    spaceId,
+    source: fact.source,
+    subjects: [device],
+    authority: fact.authority,
+    title: fact.title,
+    summary: fact.summary,
+    evidence: fact.evidence,
+    classification: fact.classification,
+    extractor: 'page-profile',
+    confidence: 72,
+    supportWeight: PAGE_PROFILE_SOURCE_WEIGHT,
+    describesWeight: PAGE_PROFILE_DESCRIBES_WEIGHT,
+    edgeMetadata: {
+      linkedBy: 'generated-page-profile',
+    },
+    metadataBuilder: (metadata) => buildHomeGraphMetadata(spaceId, installationId, metadata),
   });
 }
 
-function extractedPageSourceText(
-  source: KnowledgeSourceRecord,
-  extraction: ReturnType<KnowledgeStore['getExtractionBySourceId']>,
-): string {
-  const structure = readRecord(extraction?.structure);
+function extractedPageSourceText(extraction: ReturnType<KnowledgeStore['getExtractionBySourceId']>): string {
+  if (!extraction) return '';
+  const structure = readRecord(extraction.structure);
   const nestedStructure = readRecord(structure.structure);
-  const metadata = readRecord(extraction?.metadata);
+  const metadata = readRecord(extraction.metadata);
   const nestedMetadata = readRecord(structure.metadata);
   return [
-    source.summary,
-    source.description,
-    extraction?.excerpt,
-    ...(extraction?.sections ?? []),
+    extraction.excerpt,
+    ...extraction.sections,
     typeof structure.searchText === 'string' ? structure.searchText : undefined,
     typeof structure.text === 'string' ? structure.text : undefined,
     typeof structure.content === 'string' ? structure.content : undefined,

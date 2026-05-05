@@ -40,7 +40,7 @@ export type SecurityEvent =
       label: string;
       reason: 'scope_violation' | 'rotation_overdue' | 'scope_violation_and_rotation_overdue';
     }
-  // ── Auth audit events (OBS-02) ────────────────────────────────────────────
+  // ── Auth audit events ────────────────────────────────────────────
   /** Emitted when a user authenticates successfully. Never includes credentials. */
   | {
       type: 'AUTH_SUCCEEDED';
@@ -63,7 +63,7 @@ export type SecurityEvent =
       /** Machine-readable failure reason. */
       reason: 'invalid_credentials' | 'rate_limited' | 'session_expired' | 'origin_denied' | 'unknown';
     }
-  // ── Companion pairing events (OBS-21) ────────────────────────────────────
+  // ── Companion pairing events ────────────────────────────────────
   /** Emitted when a companion pairing request is initiated. */
   | {
       type: 'COMPANION_PAIR_REQUESTED';

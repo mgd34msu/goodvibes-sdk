@@ -124,7 +124,7 @@ describe('Home Graph repair and generated pages', () => {
       ...passportPage!.source,
       metadata: {
         ...passportPage!.source.metadata,
-        pagePolicyVersion: 'old-test-policy',
+        pagePolicyVersion: 'previous-test-policy',
       },
     });
     const policyReindex = await service.reindex({ installationId: 'house-1' });
@@ -532,11 +532,9 @@ describe('Home Graph repair and generated pages', () => {
         sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
       },
     });
-    const sourceWithoutUris = (({ sourceUri, canonicalUri, ...rest }) => {
-      void sourceUri;
-      void canonicalUri;
-      return rest;
-    })(source);
+    const sourceWithoutUris = { ...source } as Record<string, unknown>;
+    delete sourceWithoutUris.sourceUri;
+    delete sourceWithoutUris.canonicalUri;
     const responseOnlyOfficialSource = {
       ...sourceWithoutUris,
       id: responseOnlyOfficialSourceId,

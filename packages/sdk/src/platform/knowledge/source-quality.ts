@@ -1,9 +1,9 @@
 import type { KnowledgeSourceRecord } from './types.js';
 
 export interface KnowledgePageSourceQualityPolicy {
-  readonly isGeneratedSource?: ((source: KnowledgeSourceRecord) => boolean) | undefined | undefined;
-  readonly authorityBoost?: ((source: KnowledgeSourceRecord) => number) | undefined | undefined;
-  readonly isLowValueSource?: ((source: KnowledgeSourceRecord, existing?: KnowledgeSourceRecord) => boolean) | undefined | undefined;
+  readonly isGeneratedSource?: ((source: KnowledgeSourceRecord) => boolean) | undefined;
+  readonly authorityBoost?: ((source: KnowledgeSourceRecord) => number) | undefined;
+  readonly isLowValueSource?: ((source: KnowledgeSourceRecord, existing?: KnowledgeSourceRecord) => boolean) | undefined;
   readonly usablePendingPattern?: RegExp | undefined;
   readonly qualityKeywordPattern?: RegExp | undefined;
 }

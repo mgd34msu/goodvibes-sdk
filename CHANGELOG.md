@@ -6,29 +6,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+---
+
+## [0.33.0] - 2026-05-04
+
 ### Breaking
 - Renamed platform error type aliases `ErrorCategory` → `PlatformErrorCategory` and `ErrorSource` → `PlatformErrorSource` in `@pellux/goodvibes-sdk/platform/types`. The platform-layer error hierarchy (`AppError`, `ProviderError`, etc.) is unchanged; only the type aliases were renamed to eliminate the public-surface name collision with the canonical `ErrorCategory` / `ErrorSource` from `@pellux/goodvibes-errors`. Consumers importing these aliases via `@pellux/goodvibes-sdk/platform/types` must update their imports.
 
 ### Added
-- Documented `validateEvent` deprecation policy: the alias is `@deprecated` in favor of `validateKnownEvent` but remains in the public surface for the entire 0.x series. A removal target will be scheduled before any 1.0 release.
+- Removed the `validateEvent` alias from the public event contracts; `validateKnownEvent` is now the single runtime event validator.
 - Tagged `daemon-sdk` `ExecutionIntent` alias (`type ExecutionIntent = unknown`) with `/** @public */` to align with the existing `AutomationSurfaceKind` widening pattern. Eliminates an api-extractor `ae-incompatible-release-tags` warning at the daemon-sdk ↔ platform-runtime circular-dep boundary.
-- Documented `SessionManager.#observer` non-emission policy: the field is intentionally retained but observer notification lives in the `createGoodVibesAuthClient` facade (`auth.ts`), which has full priorToken awareness for `anonymous→token` vs `token→token` transitions. Emitting from SessionManager would produce duplicate transitions. Investigates and reframes review-finding MAJ-05 (the constructor parameter is held for future bypass-the-facade use cases, not dead code).
-- Added `assertSameOriginAbsoluteUrl` helper in `@pellux/goodvibes-transport-http` and wired it into `requestJson` and `openServerSentEventStream` so absolute URLs that diverge from the transport's `baseUrl` origin are rejected with `ConfigurationError SDK_TRANSPORT_CROSS_ORIGIN` instead of silently receiving the bearer Authorization header. Closes MAJ-02.
-- Added `requireAdmin` gates to all twelve state-changing handlers in `daemon-sdk/media-routes.ts` (voice TTS/STT/realtime, web search, artifact create, media analyze/transform/generate, multimodal analyze/packet/writeback). Closes MAJ-01 (auth contract gap).
+- Documented `SessionManager.#observer` non-emission policy: the field is intentionally retained but observer notification lives in the `createGoodVibesAuthClient` facade (`auth.ts`), which has full priorToken awareness for `anonymous→token` vs `token→token` transitions. Emitting from `SessionManager` would produce duplicate transitions.
+- Added `assertSameOriginAbsoluteUrl` helper in `@pellux/goodvibes-transport-http` and wired it into `requestJson` and `openServerSentEventStream` so absolute URLs that diverge from the transport's `baseUrl` origin are rejected with `ConfigurationError SDK_TRANSPORT_CROSS_ORIGIN` instead of silently receiving the bearer Authorization header.
+- Added `requireAdmin` gates to all twelve state-changing handlers in `daemon-sdk/media-routes.ts` (voice TTS/STT/realtime, web search, artifact create, media analyze/transform/generate, multimodal analyze/packet/writeback).
 - Extended `scripts/package-metadata-check.ts` to assert `engines.bun === "1.3.10"` and `engines.node === ">=22.0.0"` per workspace package, preventing future regressions where a package drops the engines pin.
 
 ### Fixed
-- `docs/observability.md:9` no longer references a non-existent `sdk.observer` field; updated to instruct passing `observer` via `createGoodVibesSdk({ ..., observer })` or subscribing via `sdk.realtime.viaSse()` / `sdk.realtime.viaWebSocket()` (full-review MAJ-06).
-- `examples/README.md` env-var table now documents `GOODVIBES_USERNAME` / `GOODVIBES_PASSWORD` required by `auth-login-and-token-store.ts` (full-review MAJ-07).
-- `bundle-budgets.README.md` now documents the aggregate `./events` budget entry separately from the per-domain exclusions, with a pointer to the `domains` array for human reference (full-review MAJ-08).
-- `docs/secrets.md:6` standardized on `**Public subpath:**` wording to match `docs/security.md` (full-review MIN-02).
-- Standardized cross-link footer headings on `## Next Reads` across `docs/getting-started.md`, `docs/observability.md`, `docs/wrfc-constraint-propagation.md`, `docs/performance.md` (previously a mix of `## Next reads` and `## Related`) (full-review MIN-03).
-- `docs/observability.md` activity-logger snippet now uses `homedir()` + `path.join` instead of a hardcoded Linux path (full-review MIN-10).
-- `docs/companion-app-patterns.md` now cross-references `docs/companion-message-routing.md` for the `kind: 'followup'` taxonomy (full-review MIN-07).
-- `docs/getting-started.md:128` `authToken` type description now mentions the `undefined` member and points to `client.ts` JSDoc as canonical (full-review MIN-08).
-- `docs/error-kinds.md` clarified the two `err.code` namespaces (HTTP route-body codes vs. typed-error-subclass codes) (full-review MIN-09).
-- `docs/realtime-and-telemetry.md` now declares its scope vs. `docs/observability.md` to clarify the intentional content overlap (full-review MIN-06).
-- `packages/sdk/src/platform/runtime/observability.ts` now carries a header comment documenting why this barrel uses named re-exports only (no `export *`), in contrast to sibling runtime barrels (full-review MIN-05).
+- `docs/observability.md:9` no longer references a non-existent `sdk.observer` field; updated to instruct passing `observer` via `createGoodVibesSdk({ ..., observer })` or subscribing via `sdk.realtime.viaSse()` / `sdk.realtime.viaWebSocket()`.
+- `examples/README.md` env-var table now documents `GOODVIBES_USERNAME` / `GOODVIBES_PASSWORD` required by `auth-login-and-token-store.ts`.
+- `bundle-budgets.README.md` now documents the aggregate `./events` budget entry separately from the per-domain exclusions, with a pointer to the `domains` array for human reference.
+- `docs/secrets.md:6` standardized on `**Public subpath:**` wording to match `docs/security.md`.
+- Standardized cross-link footer headings on `## Next Reads` across `docs/getting-started.md`, `docs/observability.md`, `docs/wrfc-constraint-propagation.md`, `docs/performance.md` (previously a mix of `## Next reads` and `## Related`).
+- `docs/observability.md` activity-logger snippet now uses `homedir()` + `path.join` instead of a hardcoded Linux path.
+- `docs/companion-app-patterns.md` now cross-references `docs/companion-message-routing.md` for the `kind: 'followup'` taxonomy.
+- `docs/getting-started.md:128` `authToken` type description now mentions the `undefined` member and points to `client.ts` JSDoc as canonical.
+- `docs/error-kinds.md` clarified the two `err.code` namespaces (HTTP route-body codes vs. typed-error-subclass codes).
+- `docs/realtime-and-telemetry.md` now declares its scope vs. `docs/observability.md` to clarify the intentional content overlap.
+- `packages/sdk/src/platform/runtime/observability.ts` now carries a header comment documenting why this barrel uses named re-exports only (no `export *`), in contrast to sibling runtime barrels.
 
 ### Migration
 - **Platform error type rename**: if you import `ErrorCategory` or `ErrorSource` from `@pellux/goodvibes-sdk/platform/types` (or the deeper `platform/types/errors` path), rename to `PlatformErrorCategory` / `PlatformErrorSource`. The canonical `ErrorCategory` / `ErrorSource` from `@pellux/goodvibes-errors` are the consumer-facing names and are unchanged.
@@ -41,19 +45,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
-- Closed eleventh-review docs+examples findings (4 CRITICAL, 7 MAJOR, 33 MINOR, 15 NITPICK) across `docs/`, `examples/`, `packages/sdk/src/client.ts`, and all package `package.json` files.
-- Bumped all package versions to `0.30.5` to align CHANGELOG with source-of-truth (CRIT-03).
-- Fixed `docs/media-and-search.md`: removed non-existent `platform/media` subpath; corrected to `platform.media.*` namespace and `platform/multimodal` subpath (CRIT-01).
-- Fixed `packages/sdk/src/client.ts:48`: JSDoc example replaced broken `.then(events => ...)` form with correct synchronous `viaSse()` usage (CRIT-02).
-- Fixed `docs/security.md:226`: changed "Internal module" to "**Public subpath:**" for `platform/config` (CRIT-04).
-- Fixed five example quickstarts (`submit-turn`, `retry-and-reconnect`, `realtime-events`, `peer-http`, `operator-http`): replaced silent `?? null` authToken with explicit guard that throws when `GOODVIBES_TOKEN` is unset (MAJ-01).
-- Removed duplicate `> **Note:**` block from `docs/observability.md` after daemon-embedder gate was already present at section top (MAJ-02).
-- Updated `examples/peer-http-quickstart.mjs` clarification comment to reference `docs/public-surface.md` capability namespaces (MAJ-03).
-- Strengthened `examples/README.md` daemon-fetch-handler entry to call out ~14 placeholder callbacks explicitly (MAJ-04).
-- Added Route-Level Error Codes section to `docs/error-kinds.md` cataloguing `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `INVALID_REQUEST`, and other HTTP-route error codes (MAJ-05).
-- Removed lone JSDoc `@param` annotation from `examples/submit-turn-quickstart.mjs` for consistency with other `.mjs` examples (MAJ-06).
-- Added `(internal helper)` marker to `extractAuthToken` prose in `docs/auth.md` (MIN-03).
-- Converted long companion-chat route list paragraph to a table in `docs/companion-message-routing.md` (MIN-22).
+- Closed docs and examples audit findings across `docs/`, `examples/`, `packages/sdk/src/client.ts`, and all package `package.json` files.
+- Bumped all package versions to `0.30.5` to align CHANGELOG with source-of-truth.
+- Fixed `docs/media-and-search.md`: removed non-existent `platform/media` subpath; corrected to `platform.media.*` namespace and `platform/multimodal` subpath.
+- Fixed `packages/sdk/src/client.ts:48`: JSDoc example replaced broken `.then(events => ...)` form with correct synchronous `viaSse()` usage.
+- Fixed `docs/security.md:226`: changed "Internal module" to "**Public subpath:**" for `platform/config`.
+- Fixed five example quickstarts (`submit-turn`, `retry-and-reconnect`, `realtime-events`, `peer-http`, `operator-http`): replaced silent `?? null` authToken with explicit guard that throws when `GOODVIBES_TOKEN` is unset.
+- Removed duplicate `> **Note:**` block from `docs/observability.md` after daemon-embedder gate was already present at section top.
+- Updated `examples/peer-http-quickstart.mjs` clarification comment to reference `docs/public-surface.md` capability namespaces.
+- Strengthened `examples/README.md` daemon-fetch-handler entry to describe the host callback boundaries explicitly.
+- Added Route-Level Error Codes section to `docs/error-kinds.md` cataloguing `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `INVALID_REQUEST`, and other HTTP-route error codes.
+- Removed lone JSDoc `@param` annotation from `examples/submit-turn-quickstart.mjs` for consistency with other `.mjs` examples.
+- Added `(internal helper)` marker to `extractAuthToken` prose in `docs/auth.md`.
+- Converted long companion-chat route list paragraph to a table in `docs/companion-message-routing.md`.
 
 ### Fixed
 - none
@@ -69,7 +73,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - none
 
 ### Added
-- Closed tenth-review docs+examples findings (8 CRITICAL, 8 MAJOR, 28 MINOR, 15 NITPICK) across `docs/`, `examples/`, `README.md`, `CHANGELOG.md`, `SECURITY.md`, and package READMEs.
+- Closed docs and examples audit findings across `docs/`, `examples/`, `README.md`, `CHANGELOG.md`, `SECURITY.md`, and package READMEs.
 - Corrected default daemon control-plane port from `3210` to `3421` across all quickstarts, docs, examples, and package READMEs.
 - Fixed sealed-path imports: `docs/automation.md` (`platform/automation` → `platform`), `docs/security.md` (`platform/permissions` → `platform` namespace), `docs/media-and-search.md` (removed non-existent `platform/media` subpath), `packages/contracts/src/zod-schemas/README.md` (`zod-schemas` → `zod-schemas/index`).
 - Corrected `docs/wrfc-constraint-propagation.md`: `ConstraintFinding` is not exported from the SDK root; corrected to reflect `platform` namespace access.
@@ -86,17 +90,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - Marked internal functions in `docs/auth.md` scope flow list; aligned `client-auth` phrasing.
 - Added clarifying note to `docs/error-kinds.md` WRFC synthetic critical issues section.
 - Added Next Reads sections to `docs/automation.md`, `docs/voice.md`, `docs/troubleshooting.md`.
-- Added `examples/README.md` note about `daemon-fetch-handler-quickstart.ts` placeholder.
+- Clarified `examples/README.md` guidance for `daemon-fetch-handler-quickstart.ts` host callbacks.
 - Added usage hint comment to `docs/getting-started.md` daemon embed snippet.
 - Added `peer-http-quickstart.mjs` operator.snapshot clarification comment.
-- Closed eighth-review docs+examples findings (8 CRITICAL, 12 MAJOR, 20 MINOR, 13 NITPICK) across `docs/`, `examples/`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`.
+- Closed docs and examples audit findings across `docs/`, `examples/`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, and `SECURITY.md`.
 - Reconciled `docs/public-surface.md` platform table with actual `packages/sdk/package.json` exports map; added `./client-auth` and `./observer` entries.
 - Corrected `docs/authentication.md`: `autoRefresh: false` → `autoRefresh: { autoRefresh: false }`, `AutoRefreshCoordinator` import path corrected to `./client-auth`.
 - Corrected `docs/retries-and-reconnect.md`: removed non-existent `generateIdempotencyKey` import from `transport-http`.
 - Corrected `docs/error-handling.md`: `OperatorSdk`/`ControlSnapshot` replaced with `GoodVibesSdk`/`OperatorMethodOutput<'control.snapshot'>`.
 - Fixed `docs/daemon-embedding.md` route-group list to reflect actual exported dispatchers.
 - Replaced internal source file paths in `docs/secrets.md`, `docs/auth.md`, `docs/runtime-orchestration.md`, `docs/channel-surfaces.md` with public API references.
-- Added PLACEHOLDER comment to `examples/daemon-fetch-handler-quickstart.ts` for `getOperatorContract` stub.
+- Updated `examples/daemon-fetch-handler-quickstart.ts` to use the generated operator contract.
 
 ### Fixed
 - none
@@ -120,7 +124,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   seams.
 - Added automation store snapshot import coverage through the automation API.
 - Added a runtime lifecycle facade that routes plugin, MCP, task, and
-  compaction transition helpers through the aggregate `platform/runtime` seam
+  compaction transition helpers through the explicit `platform/runtime` seam
   while keeping the subsystem-specific modules typed for direct consumers.
 
 ### Fixed
@@ -132,8 +136,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   diagnostics consumers.
 
 ### Migration
-- Continue using `@pellux/goodvibes-sdk/platform/*` public seams. The release
-  adds missing public exports only; private source paths remain unavailable.
+- Continue using explicit `@pellux/goodvibes-sdk/platform/...` public seams
+  listed in the package export map. Private source paths remain unavailable.
 
 ---
 
@@ -149,11 +153,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   forensics, sandbox, worktree, remote runtime, session persistence, return
   context, settings sync, ecosystem catalog, provider health UI data, and
   runtime read models are now available through the aggregate runtime entry.
-- Expanded `platform/providers`, `platform/tools`, `platform/config`,
-  `platform/state`, `platform/pairing`, `platform/daemon`,
-  `platform/discovery`, `platform/integrations`, `platform/security`,
-  `platform/knowledge`, and `platform/acp` with SDK-owned symbols needed by
-  host runtimes.
+- Expanded exported platform seams with SDK-owned symbols needed by host
+  runtimes. Consumers should import only exact subpaths listed in the package
+  export map.
 
 ### Fixed
 - Restored package-export-valid public access for the TUI's production SDK
@@ -166,8 +168,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   stale operator-token pruning through the public pairing seam.
 
 ### Migration
-- Keep using `@pellux/goodvibes-sdk/platform/*` seams. Do not import old
-  private SDK source paths; this release makes the host-runtime seams explicit.
+- Keep using exact `@pellux/goodvibes-sdk/platform/...` seams from the package
+  export map. Do not import private SDK source paths.
 
 ---
 
@@ -178,12 +180,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 - Added deliberate public SDK seams for daemon host runtimes that need to
-  compose GoodVibes platform services without importing private source paths:
-  `platform/agents`, `platform/bookmarks`, `platform/core`,
-  `platform/export`, `platform/permissions`, `platform/plugins`,
-  `platform/profiles`, `platform/scheduler`, `platform/sessions`,
-  `platform/templates`, `platform/types`, `platform/utils`,
-  `platform/workflow`, and `platform/workspace`.
+  compose GoodVibes platform services without importing private source paths.
 - Added public runtime subpaths for event bus, feature flags, network helpers,
   runtime store, store domains, and store reducer helpers.
 - Added public config subpaths and aggregate exports for secrets, secret
@@ -196,13 +193,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - `platform/providers` now exports `ProviderRegistry`, so host runtimes can
   wire provider catalog, routing, and model state through the public provider
   seam.
-- The top-level `platform` namespace now includes all exported platform
-  domains instead of omitting several public subpackages.
+- Host-runtime composition moved to explicit platform subpaths instead of
+  private source imports.
 
 ### Migration
 - Replace private deep imports such as `config/manager`,
   `runtime/feature-flags`, `runtime/network`, `utils/logger`, and
-  `daemon/server/http-listener` with the corresponding `platform/*` public
+  `daemon/server/http-listener` with corresponding explicit platform public
   seams.
 
 ---
@@ -245,9 +242,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   `@pellux/goodvibes-errors` list everywhere, so SDK platform helpers,
   transport retry policy, and structured HTTP errors agree on 408, 429, 500,
   502, 503, and 504.
-- CI no longer runs dead `_internal` mirror deletion guards. The old
-  `mirror-drift` job is replaced with a contract-artifact check that matches
-  the current source-of-truth architecture.
+- CI no longer runs dead mirror deletion guards. The mirror-drift job is
+  replaced with a contract-artifact check that matches the current
+  source-of-truth architecture.
 - Large semantic and Home Graph route tests were split into focused files with
   shared fixtures.
 
@@ -258,4 +255,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   mirror system.
 - Replace old deep imports into SDK mirror or platform wildcard paths with
   explicit v0.30.0 exports.
-

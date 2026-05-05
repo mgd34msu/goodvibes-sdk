@@ -64,16 +64,16 @@ function request(path: string, body?: unknown): Request {
 }
 
 describe('OpenAI-compatible daemon routes', () => {
-  test('lists registry models and GoodVibes aliases', async () => {
+  test('lists registry models and the current-model alias', async () => {
     const provider = makeProvider();
     const response = await dispatchOpenAICompatibleRoutes(request('/v1/models'), makeContext(provider));
     expect(response?.status).toBe(200);
     const body = await response!.json() as { data: Array<{ id: string }> };
     const ids = body.data.map((entry) => entry.id);
     expect(ids).toContain('goodvibes/current');
-    expect(ids).toContain('goodvibes/default');
     expect(ids).toContain('openai:gpt-test');
-    expect(ids).toContain('gpt-test');
+    expect(ids).not.toContain('goodvibes/default');
+    expect(ids).not.toContain('gpt-test');
   });
 
   test('maps chat completions requests to provider chat responses', async () => {
@@ -113,5 +113,28 @@ describe('OpenAI-compatible daemon routes', () => {
     expect(text).toContain('"content":"hello"');
     expect(text).toContain('"content":" world"');
     expect(text).toContain('data: [DONE]');
+  });
+
+  test('rejects missing, unqualified, and removed default model aliases', async () => {
+    const provider = makeProvider();
+    const context = makeContext(provider);
+
+    const missing = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
+      messages: [{ role: 'user', content: 'hi' }],
+    }), context);
+    expect(missing?.status).toBe(400);
+
+    const unqualified = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
+      model: 'gpt-test',
+      messages: [{ role: 'user', content: 'hi' }],
+    }), context);
+    expect(unqualified?.status).toBe(400);
+    expect((await unqualified!.json() as { error: { message: string } }).error.message).toContain('provider-qualified registryKey');
+
+    const removedAlias = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
+      model: 'goodvibes/default',
+      messages: [{ role: 'user', content: 'hi' }],
+    }), context);
+    expect(removedAlias?.status).toBe(400);
   });
 });

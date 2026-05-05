@@ -16,14 +16,8 @@
  * npx pod-install   # iOS CocoaPods link
  * ```
  *
- * Wave 6 three-part error messages: [what happened] · [why] · [what to do]
+ * Error messages use the format: [what happened] · [why] · [what to do]
  */
-// Inline minimal debug logging to keep client-auth/ free of platform/ dependencies.
-function debugLog(msg: string, ctx?: Record<string, unknown>): void {
-  if (ctx !== undefined) { console.debug(`[goodvibes] ${msg}`, ctx); }
-  else { console.debug(`[goodvibes] ${msg}`); }
-}
-
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { GoodVibesTokenStore } from './types.js';
 
@@ -82,15 +76,38 @@ interface StoredPayload {
 // Dynamic loader
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-type KeychainModule = typeof import('react-native-keychain');
+type KeychainOptions = {
+  service?: string | undefined;
+  accessible?: string | undefined;
+  accessGroup?: string | undefined;
+};
+
+type KeychainUserCredentials = {
+  username: string;
+  password: string;
+  service: string;
+  storage: string;
+};
+
+type KeychainModule = {
+  ACCESSIBLE: Partial<Record<KeychainAccessible, string>>;
+  setGenericPassword(
+    username: string,
+    password: string,
+    options?: KeychainOptions,
+  ): Promise<false | { service: string; storage: string }>;
+  getGenericPassword(options?: KeychainOptions): Promise<false | KeychainUserCredentials>;
+  resetGenericPassword(options?: KeychainOptions): Promise<boolean>;
+};
+
+const REACT_NATIVE_KEYCHAIN_MODULE: string = 'react-native-keychain';
 
 let _mod: KeychainModule | null = null;
 
 async function loadKeychain(): Promise<KeychainModule> {
   if (_mod !== null) return _mod;
   try {
-    _mod = await import('react-native-keychain');
+    _mod = (await import(REACT_NATIVE_KEYCHAIN_MODULE)) as KeychainModule;
     return _mod;
   } catch {
     throw new GoodVibesSdkError(
@@ -177,22 +194,18 @@ export function createIOSKeychainTokenStore(
     return loadKeychain();
   }
 
-  function buildOptions(mod: KeychainModule): Record<string, unknown> {
-    const opts: Record<string, unknown> = { service };
-    const accessibleValue: string | undefined = mod.ACCESSIBLE[accessible];
+  function buildOptions(mod: KeychainModule): KeychainOptions {
+    const opts: KeychainOptions = { service };
+    const accessibleValue = mod.ACCESSIBLE[accessible];
     if (accessibleValue !== undefined) {
-      opts['accessible'] = accessibleValue;
-    } else if (options.accessible !== undefined) {
-      // console.warn is used here because this module runs in a React Native
-      // context where a structured logger is not available. The warning surfaces
-      // a keychain capability mismatch that the developer needs to address
-      // (e.g. upgrading react-native-keychain or choosing a supported constant).
-      console.warn(
-        `[pellux/goodvibes-sdk] react-native-keychain does not expose ACCESSIBLE.${accessible}; falling back to default`,
+      opts.accessible = accessibleValue;
+    } else {
+      throw new Error(
+        `react-native-keychain does not expose ACCESSIBLE.${accessible}; choose a supported keychain accessibility constant.`,
       );
     }
     if (accessGroup !== undefined) {
-      opts['accessGroup'] = accessGroup;
+      opts.accessGroup = accessGroup;
     }
     return opts;
   }
@@ -204,8 +217,14 @@ export function createIOSKeychainTokenStore(
     try {
       return JSON.parse(result.password) as StoredPayload;
     } catch (err) {
-      debugLog('IOSKeychainTokenStore: failed to parse stored payload (clearing corrupt entry)', { error: String(err) });
-      return null;
+      await mod.resetGenericPassword(buildOptions(mod));
+      throw new GoodVibesSdkError('iOS keychain token store payload is corrupt and was cleared.', {
+        code: 'SDK_TOKEN_STORE_CORRUPT',
+        category: 'authentication',
+        source: 'runtime',
+        recoverable: true,
+        cause: err,
+      });
     }
   }
 

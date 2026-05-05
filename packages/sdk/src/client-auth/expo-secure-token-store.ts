@@ -14,14 +14,8 @@
  * expo install expo-secure-store
  * ```
  *
- * Wave 6 three-part error messages: [what happened] · [why] · [what to do]
+ * Error messages use the format: [what happened] · [why] · [what to do]
  */
-// Inline minimal debug logging to keep client-auth/ free of platform/ dependencies.
-function debugLog(msg: string, ctx?: Record<string, unknown>): void {
-  if (ctx !== undefined) { console.debug(`[goodvibes] ${msg}`, ctx); }
-  else { console.debug(`[goodvibes] ${msg}`); }
-}
-
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import type { GoodVibesTokenStore } from './types.js';
 
@@ -32,7 +26,7 @@ import type { GoodVibesTokenStore } from './types.js';
 /**
  * String union of the `SecureStore.ACCESSIBLE_*` constant names.
  * Resolved by property lookup on the dynamically-imported module so that
- * numeric values never need to be hard-coded here.
+ * numeric native values never need to be hard-coded here.
  */
 export type ExpoSecureStoreAccessible =
   | 'AFTER_FIRST_UNLOCK'
@@ -82,15 +76,25 @@ interface StoredPayload {
 // Dynamic loader (cached per process)
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-type ExpoSecureStoreModule = typeof import('expo-secure-store');
+type ExpoSecureStoreOptions = {
+  keychainService?: string | undefined;
+  keychainAccessible?: number | undefined;
+};
+
+type ExpoSecureStoreModule = Partial<Record<ExpoSecureStoreAccessible, number>> & {
+  setItemAsync(key: string, value: string, options?: ExpoSecureStoreOptions): Promise<void>;
+  getItemAsync(key: string, options?: ExpoSecureStoreOptions): Promise<string | null>;
+  deleteItemAsync(key: string, options?: ExpoSecureStoreOptions): Promise<void>;
+};
+
+const EXPO_SECURE_STORE_MODULE: string = 'expo-secure-store';
 
 let _mod: ExpoSecureStoreModule | null = null;
 
 async function loadExpoSecureStore(): Promise<ExpoSecureStoreModule> {
   if (_mod !== null) return _mod;
   try {
-    _mod = await import('expo-secure-store');
+    _mod = (await import(EXPO_SECURE_STORE_MODULE)) as ExpoSecureStoreModule;
     return _mod;
   } catch {
     throw new GoodVibesSdkError(
@@ -166,18 +170,18 @@ export function createExpoSecureTokenStore(
     return loadExpoSecureStore();
   }
 
-  function buildStoreOptions(mod: ExpoSecureStoreModule): Record<string, unknown> {
-    const opts: Record<string, unknown> = {};
-    const accessibleValue: string | undefined = mod[accessible];
+  function buildStoreOptions(mod: ExpoSecureStoreModule): ExpoSecureStoreOptions {
+    const opts: ExpoSecureStoreOptions = {};
+    const accessibleValue = mod[accessible];
     if (accessibleValue !== undefined) {
-      opts['accessible'] = accessibleValue;
-    } else if (options.accessible !== undefined) {
-      console.warn(
-        `[pellux/goodvibes-sdk] expo-secure-store does not expose ${accessible}; falling back to default`,
+      opts.keychainAccessible = accessibleValue;
+    } else {
+      throw new Error(
+        `expo-secure-store does not expose ${accessible}; choose a supported SecureStore accessibility constant.`,
       );
     }
     if (keychainService !== undefined) {
-      opts['keychainService'] = keychainService;
+      opts.keychainService = keychainService;
     }
     return opts;
   }
@@ -189,8 +193,14 @@ export function createExpoSecureTokenStore(
     try {
       return JSON.parse(raw) as StoredPayload;
     } catch (err) {
-      debugLog('ExpoSecureTokenStore: failed to parse stored payload (clearing corrupt entry)', { error: String(err) });
-      return null;
+      await mod.deleteItemAsync(key, buildStoreOptions(mod));
+      throw new GoodVibesSdkError('Expo secure token store payload is corrupt and was cleared.', {
+        code: 'SDK_TOKEN_STORE_CORRUPT',
+        category: 'authentication',
+        source: 'runtime',
+        recoverable: true,
+        cause: err,
+      });
     }
   }
 

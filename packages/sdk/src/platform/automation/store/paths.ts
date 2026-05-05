@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 export interface AutomationStorePathConfig {
   readonly controlPlaneDir?: string | undefined;
-  readonly getControlPlaneConfigDir?: (() => string) | undefined | undefined;
+  readonly getControlPlaneConfigDir?: (() => string) | undefined;
 }
 
 function resolveAutomationStoreRootDir(config: AutomationStorePathConfig): string {

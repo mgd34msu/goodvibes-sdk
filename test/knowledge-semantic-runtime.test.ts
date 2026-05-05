@@ -19,6 +19,56 @@ import {
 } from './_helpers/knowledge-semantic-fixtures.js';
 
 describe('semantic knowledge/wiki enrichment: runtime bounds', () => {
+  test('semantic reindex excludes generated page sources from enrichment input', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const semantic = new KnowledgeSemanticService(store, { backgroundRepairDelayMs: 60_000 });
+    const generated = await store.upsertSource({
+      connectorId: 'generated-pages',
+      sourceType: 'document',
+      title: 'Generated TV Passport',
+      canonicalUri: 'knowledge://generated/homegraph-device/lg-tv',
+      tags: ['generated'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        generatedKnowledgePage: true,
+        generatedProjection: true,
+      },
+    });
+    await store.upsertExtraction({
+      sourceId: generated.id,
+      extractorId: 'generated-page',
+      format: 'markdown',
+      sections: ['Features'],
+      structure: { searchText: 'Generated summary text that should not feed semantic enrichment again.' },
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const source = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'manual',
+      title: 'LG source',
+      canonicalUri: 'manual://lg-tv',
+      tags: ['manual'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'manual',
+      format: 'text',
+      sections: ['Features'],
+      structure: { searchText: 'LG 86NANO90UNA has webOS smart TV features and a 4K NanoCell display.' },
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const result = await semantic.reindex({ knowledgeSpaceId: spaceId, limit: 10 });
+
+    expect(result.scanned).toBe(1);
+    expect(store.getSource(generated.id)?.metadata.semanticEnrichment).toBeUndefined();
+    expect(store.getSource(source.id)?.metadata.semanticEnrichment).toBeDefined();
+  });
+
   test('scheduled self-improvement repairs intrinsic device gaps without waiting for Ask', async () => {
     const { store } = createStores();
     const spaceId = homeAssistantKnowledgeSpaceId('house');
@@ -564,7 +614,7 @@ describe('semantic knowledge/wiki enrichment: runtime bounds', () => {
   test('provider-backed semantic LLM calls time out and abort provider requests', async () => {
     let aborted = false;
     const semanticLlm = createProviderBackedKnowledgeSemanticLlm({
-      getCurrentModel: () => ({ id: 'model', provider: 'test' }),
+      getCurrentModel: () => ({ id: 'model', provider: 'test', registryKey: 'test:model' }),
       getForModel: () => ({
         name: 'test',
         models: ['model'],

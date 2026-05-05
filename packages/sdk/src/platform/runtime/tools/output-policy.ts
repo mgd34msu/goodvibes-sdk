@@ -43,7 +43,7 @@ export interface ToolOutputPolicy {
    * - `tail`    — keep the beginning, drop the end (default for most classes)
    * - `head`    — keep the end, drop the beginning (useful for execute stdout)
    * - `middle`  — keep both ends, drop the middle
-   * - `summary` — replace with a size/type summary (not yet implemented; falls back to `tail`)
+   * - `summary` — replace with a compact size/type summary
    */
   truncationMode: 'tail' | 'head' | 'middle' | 'summary';
 
@@ -210,8 +210,7 @@ function truncate(content: string, maxBytes: number, mode: ToolOutputPolicy['tru
       return start + `\n[... ${dropped} bytes omitted ...]\n` + end;
     }
     case 'summary':
-      // Future: replace with AI-generated summary; fall through to tail for now
-      // falls through
+      return summarizeOutput(content, maxBytes, byteLen);
     case 'tail':
     default: {
       // Keep the head — slice at string level to avoid corrupting multi-byte chars.
@@ -222,6 +221,65 @@ function truncate(content: string, maxBytes: number, mode: ToolOutputPolicy['tru
       return head + `\n[... truncated ${droppedBytes} bytes]`;
     }
   }
+}
+
+function summarizeOutput(content: string, maxBytes: number, byteLen: number): string {
+  const encoder = new TextEncoder();
+  const lineCount = content.length === 0 ? 0 : content.split(/\r\n|\r|\n/).length;
+  const trimmed = content.trim();
+  const type = classifyOutput(trimmed);
+  const summary = [
+    '[output summarized by policy]',
+    `type: ${type}`,
+    `bytes: ${byteLen}`,
+    `characters: ${content.length}`,
+    `lines: ${lineCount}`,
+    `policyLimitBytes: ${maxBytes}`,
+  ].join('\n');
+
+  if (encoder.encode(summary).length <= maxBytes) {
+    return summary;
+  }
+
+  const compact = `[output summarized: ${type}, ${byteLen} bytes, ${lineCount} lines]`;
+  if (encoder.encode(compact).length <= maxBytes) {
+    return compact;
+  }
+
+  if (maxBytes <= 3) {
+    return '.'.repeat(Math.max(0, maxBytes));
+  }
+  return compact.slice(0, maxBytes - 3) + '...';
+}
+
+function classifyOutput(trimmed: string): string {
+  if (trimmed.length === 0) return 'empty';
+  if (looksLikeJson(trimmed)) return 'json';
+  if (looksLikeXml(trimmed)) return 'xml';
+  if (looksBinaryLike(trimmed)) return 'binary-like';
+  return 'text';
+}
+
+function looksLikeJson(trimmed: string): boolean {
+  if (!((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']')))) {
+    return false;
+  }
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeXml(trimmed: string): boolean {
+  return /^<\?xml[\s>]/.test(trimmed) || /^<[A-Za-z][\s\S]*>$/.test(trimmed);
+}
+
+function looksBinaryLike(trimmed: string): boolean {
+  if (trimmed.includes('\u0000')) return true;
+  const controlChars = trimmed.match(/[\u0001-\u0008\u000B\u000C\u000E-\u001F]/g)?.length ?? 0;
+  return controlChars > Math.max(4, trimmed.length * 0.02);
 }
 
 // ─── Policy Enforcement ──────────────────────────────────────────────────────

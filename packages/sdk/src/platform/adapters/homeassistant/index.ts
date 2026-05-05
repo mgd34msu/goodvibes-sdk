@@ -98,6 +98,8 @@ export async function handleHomeAssistantSurfaceWebhook(
     return Response.json({
       acknowledged: true,
       queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
       bindingId: binding.id,
     });
   }

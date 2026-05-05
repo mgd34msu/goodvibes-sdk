@@ -103,7 +103,7 @@ function readConfigFile(filePath: string): LanguageConfig | null {
     const raw = readFileSync(filePath, 'utf-8');
     return JSON.parse(raw) as LanguageConfig;
   } catch (err) {
-    logger.debug('config: failed to read language config', {
+    logger.warn('config: failed to read language config', {
       filePath,
       error: summarizeError(err),
     });

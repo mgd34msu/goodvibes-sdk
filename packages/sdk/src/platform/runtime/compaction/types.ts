@@ -92,7 +92,7 @@ export interface StrategyOutput {
   strategy: CompactionStrategy;
   /** Wall-clock duration for this strategy's execution. */
   durationMs: number;
-  /** Any warnings or non-fatal issues encountered. */
+  /** Any warnings encountered while compacting. */
   warnings: string[];
 }
 

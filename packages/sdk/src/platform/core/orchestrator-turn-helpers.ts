@@ -253,6 +253,11 @@ export function handleFinalResponseOutcome(args: {
         filledPlan.awaitingPlan = false;
         planManager.save(filledPlan);
       }
+      if (parsed.parseIssues?.length) {
+        args.conversation.addSystemMessage(
+          `[Plan] Parsed ${parsed.items.length} item(s) with ${parsed.parseIssues.length} formatting warning(s); unrecognized item statuses were marked pending.`
+        );
+      }
       const updatedPlan = planManager.getActive(args.sessionId);
       if (updatedPlan) {
         const nextItems = planManager.getNextItems(updatedPlan);
@@ -334,7 +339,7 @@ export function emitMalformedToolUseWarning(args: {
   isReconciliationEnabled: boolean;
 }): void {
   logger.warn('Orchestrator: provider reported stopReason=tool_use but returned no tool calls (malformed response)', {
-    model: args.providerRegistry.getCurrentModel().id,
+    model: args.providerRegistry.getCurrentModel().registryKey,
     stopReason: 'tool_call',
   });
   if (args.isReconciliationEnabled) {

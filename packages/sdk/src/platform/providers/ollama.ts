@@ -47,7 +47,7 @@ type OllamaChatChunk = {
 
 export interface OllamaProviderOptions extends OpenAICompatOptions {
   nativeFetch?: NativeFetch | undefined;
-  fallbackProvider?: LLMProvider | undefined;
+  compatProvider?: LLMProvider | undefined;
 }
 
 export class OllamaProvider implements LLMProvider {
@@ -60,7 +60,7 @@ export class OllamaProvider implements LLMProvider {
   private readonly nativeChatUrl: string;
   private readonly nativeEmbedUrl: string;
   private readonly nativeFetch: NativeFetch;
-  private readonly fallbackProvider: LLMProvider;
+  private readonly compatProvider: LLMProvider;
   private readonly embeddingModel = 'embeddinggemma';
 
   constructor(opts: OllamaProviderOptions) {
@@ -72,11 +72,11 @@ export class OllamaProvider implements LLMProvider {
     this.nativeChatUrl = deriveOllamaChatUrl(opts.baseURL);
     this.nativeEmbedUrl = deriveOllamaEmbedUrl(opts.baseURL);
     this.nativeFetch = opts.nativeFetch ?? instrumentedFetch;
-    this.fallbackProvider = opts.fallbackProvider ?? new OpenAICompatProvider(opts);
+    this.compatProvider = opts.compatProvider ?? new OpenAICompatProvider(opts);
   }
 
   isConfigured(): boolean {
-    return this.fallbackProvider.isConfigured?.() ?? true;
+    return this.compatProvider.isConfigured?.() ?? true;
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
@@ -94,7 +94,7 @@ export class OllamaProvider implements LLMProvider {
         }
       }
 
-      return this.fallbackProvider.chat(params);
+      return this.compatProvider.chat(params);
     }), { provider: this.name, model: params.model || this.defaultModel })).result;
   }
 
@@ -130,8 +130,8 @@ export class OllamaProvider implements LLMProvider {
         },
       };
     } catch (err: unknown) {
-      if (this.fallbackProvider.embed) {
-        return this.fallbackProvider.embed(request);
+      if (this.compatProvider.embed) {
+        return this.compatProvider.embed(request);
       }
       throw normalizeProviderError(err, this.name, 'embed', 'request');
     }

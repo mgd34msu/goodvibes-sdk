@@ -13,8 +13,7 @@ export const coreConfigDefaults = {
   },
   provider: {
     reasoningEffort: 'medium',
-    model: 'openrouter/free',
-    provider: 'openrouter',
+    model: 'openrouter:openrouter/free',
     embeddingProvider: 'hashed-local',
     systemPromptFile: '',
   },
@@ -188,14 +187,13 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'provider.model',
     type: 'string',
-    default: 'openrouter/free',
-    description: 'Default LLM model ID',
-  },
-  {
-    key: 'provider.provider',
-    type: 'string',
-    default: 'openrouter',
-    description: 'Default provider name',
+    default: 'openrouter:openrouter/free',
+    description: 'Default provider-qualified LLM model registry key',
+    validate: (v) => {
+      if (typeof v !== 'string') return false;
+      const separator = v.trim().indexOf(':');
+      return separator > 0 && separator < v.trim().length - 1;
+    },
   },
   {
     key: 'provider.embeddingProvider',

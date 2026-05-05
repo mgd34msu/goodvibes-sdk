@@ -17,7 +17,7 @@ import type { GoodVibesSdk } from './client.js';
  */
 export type WebGoodVibesSdkOptions = BrowserGoodVibesSdkOptions;
 
-export { forSession } from './_companion-realtime.js';
+export { forSession } from './companion-realtime.js';
 
 /**
  * Create a GoodVibes SDK instance from the web-specific entrypoint.

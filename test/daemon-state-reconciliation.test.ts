@@ -1,21 +1,19 @@
 /**
  * daemon-state-reconciliation.test.ts
  *
- * Regression tests for 0.18.42 — daemon state reconciliation.
+ * Daemon state reconciliation invariants.
  * Covers three invariants:
  *
- * DR1: SharedSessionBroker — AGENT_COMPLETED / AGENT_FAILED / AGENT_CANCELLED
- *      events on the RuntimeEventBus correctly transition spawned input records
- *      to terminal states. Missing wire was root cause of 8 stuck inputs at
- *      192.168.0.61:3421.
+ * SharedSessionBroker — AGENT_COMPLETED / AGENT_FAILED / AGENT_CANCELLED
+ * events on the RuntimeEventBus correctly transition spawned input records
+ * to terminal states.
  *
- * DR2: AgentTaskAdapter — same bus events drive task records from 'running' to
- *      terminal. Missing wire kept tasks.list returning stale 'running' rows.
+ * AgentTaskAdapter — same bus events drive task records from 'running' to
+ * terminal.
  *
- * DR3: SharedSessionBroker idle-session GC — gcSweep() closes empty ghost
- *      sessions (messageCount=0, idle >= idleEmptyMs) and long-idle content
- *      sessions (idle >= idleLongMs) while leaving sessions with live agents
- *      alone.
+ * SharedSessionBroker idle-session GC — gcSweep() closes empty ghost sessions
+ * (messageCount=0, idle >= idleEmptyMs) and long-idle content sessions
+ * (idle >= idleLongMs) while leaving sessions with live agents alone.
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
@@ -36,10 +34,10 @@ function makeStore(): RuntimeStore {
 }
 
 // ---------------------------------------------------------------------------
-// DR2: AgentTaskAdapter — task registry sync on agent terminal events
+// AgentTaskAdapter — task registry sync on agent terminal events
 // ---------------------------------------------------------------------------
 
-describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
+describe('AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
   let bus: RuntimeEventBus;
   let store: ReturnType<typeof makeStore>;
   let adapter: AgentTaskAdapter;
@@ -68,7 +66,7 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
     expect(before?.status).toBe('running');
 
     emitAgent('AGENT_COMPLETED', 'ag-1', { output: 'done', durationMs: 500 });
-    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
+    await Promise.resolve(); // drain queueMicrotask
 
     const after = store.getState().tasks.tasks.get(taskId);
     expect(after?.status).toBe('completed');
@@ -79,7 +77,7 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
     adapter.handleAgentStateChange('ag-2', 'running');
 
     emitAgent('AGENT_FAILED', 'ag-2', { error: 'oops', durationMs: 200 });
-    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
+    await Promise.resolve(); // drain queueMicrotask
 
     const after = store.getState().tasks.tasks.get(taskId);
     expect(after?.status).toBe('failed');
@@ -90,7 +88,7 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
     adapter.handleAgentStateChange('ag-3', 'running');
 
     emitAgent('AGENT_CANCELLED', 'ag-3', { reason: 'user cancelled' });
-    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
+    await Promise.resolve(); // drain queueMicrotask
 
     const after = store.getState().tasks.tasks.get(taskId);
     expect(after?.status).toBe('cancelled');
@@ -123,7 +121,7 @@ describe('DR2: AgentTaskAdapter.attachRuntimeBus — task registry sync', () => 
 });
 
 // ---------------------------------------------------------------------------
-// DR1: SharedSessionBroker — input record reconciliation via RuntimeEventBus
+// SharedSessionBroker — input record reconciliation via RuntimeEventBus
 // ---------------------------------------------------------------------------
 
 import type { SharedSessionRecord, SharedSessionMessage } from '../packages/sdk/src/platform/control-plane/session-types.js';
@@ -179,7 +177,7 @@ function emitAgentOnBus(
   }));
 }
 
-describe('DR1: SharedSessionBroker.attachRuntimeBus — input record reconciliation', () => {
+describe('SharedSessionBroker.attachRuntimeBus — input record reconciliation', () => {
   test('submit input transitions queued -> spawned -> completed on AGENT_COMPLETED', async () => {
     const bus = new RuntimeEventBus();
     const broker = makeBroker();
@@ -291,10 +289,10 @@ describe('DR1: SharedSessionBroker.attachRuntimeBus — input record reconciliat
 });
 
 // ---------------------------------------------------------------------------
-// M1 integration: wrapAgent + AGENT_COMPLETED -> task transitions to completed
+// AgentTaskAdapter integration: wrapAgent + AGENT_COMPLETED -> task transitions to completed
 // ---------------------------------------------------------------------------
 
-describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task completed', () => {
+describe('AgentTaskAdapter wrapAgent + bus event -> task completed', () => {
   test('wrapAgent then AGENT_COMPLETED transitions task to completed in store', async () => {
     const bus = new RuntimeEventBus();
     const store = makeStore();
@@ -302,20 +300,20 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
     adapter.attachRuntimeBus(bus);
 
     // Simulates what DaemonServer.trySpawnAgent does
-    const taskId = adapter.wrapAgent('ag-m1', 'Fix tests', { sessionId: 'sess-m1' });
-    adapter.handleAgentStateChange('ag-m1', 'running');
+    const taskId = adapter.wrapAgent('ag-wrap', 'Fix tests', { sessionId: 'sess-wrap' });
+    adapter.handleAgentStateChange('ag-wrap', 'running');
 
     const running = store.getState().tasks.tasks.get(taskId);
     expect(running?.status).toBe('running');
 
     // Bus event simulates AGENT_COMPLETED arriving from the runtime event bus
-    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-m1', durationMs: 400, output: 'ok' } as AgentEvent;
+    const payload = { type: 'AGENT_COMPLETED', agentId: 'ag-wrap', durationMs: 400, output: 'ok' } as AgentEvent;
     bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', payload, {
-      sessionId: 'sess-m1',
-      traceId: 'test:m1',
+      sessionId: 'sess-wrap',
+      traceId: 'test:wrap-agent',
       source: 'test',
     }));
-    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
+    await Promise.resolve(); // drain queueMicrotask
 
     const completed = store.getState().tasks.tasks.get(taskId);
     expect(completed?.status).toBe('completed');
@@ -331,11 +329,7 @@ describe('M1 integration: AgentTaskAdapter wrapAgent + bus event -> task complet
   });
 });
 
-// ---------------------------------------------------------------------------
-// m3: AgentTaskAdapter.attachRuntimeBus idempotency
-// ---------------------------------------------------------------------------
-
-describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
+describe('AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
   test('second attachRuntimeBus call is a no-op and does not double-fire events', async () => {
     const bus = new RuntimeEventBus();
     const store = makeStore();
@@ -352,17 +346,13 @@ describe('m3: AgentTaskAdapter.attachRuntimeBus is idempotent', () => {
     bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', payload, {
       sessionId: 'sess-x', traceId: 'idem2', source: 'test',
     }));
-    await Promise.resolve(); // drain queueMicrotask (OBS-14 async dispatch)
+    await Promise.resolve(); // drain queueMicrotask
     // Should still complete (first subscription still active)
     expect(store.getState().tasks.tasks.get(taskId)?.status).toBe('completed');
   });
 });
 
-// ---------------------------------------------------------------------------
-// M2: AgentTaskAdapter.reconcileOnRestart
-// ---------------------------------------------------------------------------
-
-describe('M2: AgentTaskAdapter.reconcileOnRestart — marks running tasks aborted', () => {
+describe('AgentTaskAdapter.reconcileOnRestart marks running tasks aborted', () => {
   test('tasks with status running at startup are cancelled with daemon-restart error', () => {
     const store = makeStore();
     const adapter = new AgentTaskAdapter(store);
@@ -404,11 +394,7 @@ describe('M2: AgentTaskAdapter.reconcileOnRestart — marks running tasks aborte
   });
 });
 
-// ---------------------------------------------------------------------------
-// M2: SharedSessionBroker startup reconciliation
-// ---------------------------------------------------------------------------
-
-describe('M2: SharedSessionBroker.start() — startup reconciliation', () => {
+describe('SharedSessionBroker.start() reconciles startup state', () => {
   test('spawned/delivered inputs cancelled on start(), activeAgentId nulled', async () => {
     const storeStub = makePersistentStoreStub();
     const routeBindings = makeRouteBindingStub();
@@ -461,11 +447,7 @@ describe('M2: SharedSessionBroker.start() — startup reconciliation', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// M3: SharedSessionBroker.stop()
-// ---------------------------------------------------------------------------
-
-describe('M3: SharedSessionBroker.stop() — graceful teardown', () => {
+describe('SharedSessionBroker.stop() tears down resources', () => {
   test('stop() clears GC interval and bus subscriptions', async () => {
     const broker = makeBroker();
     await broker.start();
@@ -509,11 +491,7 @@ describe('M3: SharedSessionBroker.stop() — graceful teardown', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// m3: SharedSessionBroker.attachRuntimeBus idempotency
-// ---------------------------------------------------------------------------
-
-describe('m3: SharedSessionBroker.attachRuntimeBus is idempotent', () => {
+describe('SharedSessionBroker.attachRuntimeBus is idempotent', () => {
   test('second call returns no-op unsub', async () => {
     const bus = new RuntimeEventBus();
     const broker = makeBroker();
@@ -524,11 +502,7 @@ describe('m3: SharedSessionBroker.attachRuntimeBus is idempotent', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// M4: touch lifecycle + lastActivityAt coverage
-// ---------------------------------------------------------------------------
-
-describe('M4: lastActivityAt bumped at touch sites', () => {
+describe('lastActivityAt is bumped at touch sites', () => {
   test('recordInput bumps lastActivityAt', async () => {
     const broker = makeBroker();
     const sess = await broker.createSession({ title: 'Touch test' });
@@ -586,11 +560,7 @@ describe('M4: lastActivityAt bumped at touch sites', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// M4: GC guard — sessions with pendingInputCount > 0 not GCd
-// ---------------------------------------------------------------------------
-
-describe('M4: GC guard — pendingInputCount > 0 prevents sweep', () => {
+describe('session GC keeps sessions with pending inputs active', () => {
   test('session with pending inputs is not closed even past idle threshold', async () => {
     const broker = makeBroker(1, 1); // both thresholds 1ms
     const sess = await broker.createSession({ title: 'Pending inputs' });
@@ -613,10 +583,10 @@ describe('M4: GC guard — pendingInputCount > 0 prevents sweep', () => {
 });
 
 // ---------------------------------------------------------------------------
-// DR3: SharedSessionBroker idle-session GC
+// SharedSessionBroker idle-session GC
 // ---------------------------------------------------------------------------
 
-describe('DR3: SharedSessionBroker idle-session GC sweep', () => {
+describe('SharedSessionBroker idle-session GC sweep', () => {
   /**
    * Manually advance a session's lastActivityAt backward in time so the GC
    * sees it as idle without actually waiting wall-clock time.

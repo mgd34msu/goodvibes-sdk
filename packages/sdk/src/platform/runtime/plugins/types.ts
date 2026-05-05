@@ -189,14 +189,14 @@ export interface PluginLifecycleManagerOptions {
    * Return `true` to grant the capability, `false` to deny.
    * Defaults to a permissive policy that grants all valid capabilities.
    */
-  capabilityPolicy?: ((pluginName: string, capability: PluginCapability) => boolean) | undefined | undefined;
+  capabilityPolicy?: ((pluginName: string, capability: PluginCapability) => boolean) | undefined;
   /**
    * Optional trust tier resolver. Called during capability resolution to
    * determine the effective trust tier for capability filtering.
    * Return the tier for the given plugin name.
    * Defaults to 'untrusted' for all plugins when not provided.
    */
-  trustTierResolver?: ((pluginName: string) => import('./trust.js').PluginTrustTier) | undefined | undefined;
+  trustTierResolver?: ((pluginName: string) => import('./trust.js').PluginTrustTier) | undefined;
   /**
    * Runtime event bus used for lifecycle emission.
    * When omitted, the manager creates an isolated in-memory bus.

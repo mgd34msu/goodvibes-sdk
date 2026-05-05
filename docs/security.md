@@ -161,7 +161,7 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 | First QR display | `getOrCreateCompanionToken({ daemonHomeDir })` — generates and persists token |
 | Companion connects | Token validated against stored record |
 | Companion disconnects | Token remains valid; reconnection requires no re-scan |
-| Revocation needed | `regenerateCompanionToken({ daemonHomeDir })` — replaces stored token; all current sessions using old token are rejected on next request |
+| Revocation needed | `regenerateCompanionToken({ daemonHomeDir })` — replaces the stored token; existing sessions using the previous token are rejected on next request |
 | Daemon restart | Token is loaded from disk; companion reconnects without re-scan |
 
 ---
@@ -296,7 +296,7 @@ Slack setup uses this same URI mechanism. Direct setup writes Slack token values
 
 ## Permission System
 
-**Public namespace:** `@pellux/goodvibes-sdk/platform` — use the `platform.permissions.*` namespace (daemon embedders). There is no dedicated `./platform/permissions` subpath; access permissions APIs through the aggregate `./platform` entry.
+**Public subpath:** `@pellux/goodvibes-sdk/platform/runtime` — use the `security.*` namespace for policy simulation and signed policy bundles. Tool-execution permission checks remain daemon-host wiring.
 
 Every tool call goes through the `PermissionManager` before execution.
 
@@ -376,7 +376,7 @@ The `AuthenticatedPrincipal` type carries a `principalKind` (`user` | `bot` | `s
 
 ### Bootstrap Credential File
 
-**Note:** `writeBootstrapCredentialFile()` and `clearBootstrapCredentialFile()` are available via `UserAuthManager` (accessed as `authManager.clearBootstrapCredentialFile()`). The underlying implementations are in the `security` namespace of `@pellux/goodvibes-sdk/platform`.
+**Note:** `writeBootstrapCredentialFile()` and `clearBootstrapCredentialFile()` are available via `UserAuthManager` (accessed as `authManager.clearBootstrapCredentialFile()`). Host code reaches user-auth wiring through daemon/runtime composition, not through a public catch-all platform barrel.
 
 #### What it is and when it is created
 
@@ -438,7 +438,7 @@ Drift detection fires only on file-backed instances; test configs that pass expl
 | Situation | Outcome |
 |---|---|
 | Bootstrap file deleted before first login | Re-bootstrap by deleting both `auth-bootstrap.txt` **and** `auth-users.json`; both files are regenerated on next start |
-| `auth-users.json` deleted while `auth-bootstrap.txt` still exists | Daemon re-bootstraps with a new password; old bootstrap file becomes stale. Drift detection will warn on next start |
+| `auth-users.json` deleted while `auth-bootstrap.txt` still exists | Daemon re-bootstraps with a new password; the previous bootstrap file becomes stale. Drift detection will warn on next start |
 | Both files deleted | Clean re-bootstrap — a new admin account and new bootstrap file are created. All existing sessions are invalidated (sessions are in-memory) |
 | Bootstrap file manually edited | Password mismatch; `/login` will reject the edited password. Drift detection warns on next startup. Fix by calling `rotatePassword()` to bring both files back in sync |
 

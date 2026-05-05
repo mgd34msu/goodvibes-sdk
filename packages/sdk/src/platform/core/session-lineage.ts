@@ -11,8 +11,7 @@
  *   - Owned instance: wire a `SessionLineageTracker` through bootstrap/services.
  *   - Session-scoped: call `reset()` when starting a new session.
  *   - Append-only: entries are never modified or removed after being added.
- *   - `setOriginalTask()` is idempotent — subsequent calls are silently ignored
- *     to support multiple init paths that may each attempt to set the task.
+ *   - `setOriginalTask()` is idempotent — only the first call takes effect.
  */
 export class SessionLineageTracker {
   private originalTask: string | null = null;
@@ -31,7 +30,7 @@ export class SessionLineageTracker {
   /**
    * Add a compaction entry. Called after each successful compaction.
    * Increments the internal counter and appends one line: `- #N: {summary}`
-   * Empty or whitespace-only summaries are silently ignored.
+   * Empty or whitespace-only summaries do not create entries.
    */
   addCompactionEntry(summary: string): void {
     const trimmed = summary.trim();

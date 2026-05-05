@@ -103,9 +103,15 @@ const DEFAULT_IDLE_EMPTY_MS = 5 * 60 * 1_000;   // 5 minutes empty session
 const GC_INTERVAL_MS = 60 * 1_000;               // sweep every minute
 const MAX_TOOL_ROUNDS_PER_TURN = 8;
 
-// ---------------------------------------------------------------------------
-// Internal session state (includes mutable conversation + turn queue)
-// ---------------------------------------------------------------------------
+function assertCompleteProviderModelRoute(
+  input: { readonly model?: string | undefined; readonly provider?: string | undefined },
+): void {
+  if ((input.model !== undefined) === (input.provider !== undefined)) return;
+  throw Object.assign(new Error('provider and model must be supplied together'), {
+    code: 'INVALID_MODEL_ROUTE',
+    status: 400,
+  });
+}
 
 interface InternalSession {
   readonly meta: CompanionChatSession;
@@ -281,6 +287,7 @@ export class CompanionChatManager {
   // ---------------------------------------------------------------------------
 
   createSession(input: CreateCompanionChatSessionInput = {}): CompanionChatSession {
+    assertCompleteProviderModelRoute(input);
     const id = randomUUID();
     const now = Date.now();
     const meta: CompanionChatSession = {
@@ -325,6 +332,7 @@ export class CompanionChatManager {
     sessionId: string,
     input: UpdateCompanionChatSessionInput,
   ): CompanionChatSession {
+    assertCompleteProviderModelRoute(input);
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
@@ -735,10 +743,6 @@ export class CompanionChatManager {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal helpers
-  // ---------------------------------------------------------------------------
-
   private _updateMeta(
     session: InternalSession,
     patch: Partial<MutableSessionMeta>,
@@ -759,7 +763,7 @@ export class CompanionChatManager {
     const prior = this._pendingSaves.get(sessionId) ?? Promise.resolve();
     const next = prior
       .catch((error: unknown) => {
-        logger.debug('[companion-chat] previous session persistence failed before a newer save', {
+        logger.warn('[companion-chat] previous session persistence failed before a newer save', {
           sessionId,
           error: summarizeError(error),
         });

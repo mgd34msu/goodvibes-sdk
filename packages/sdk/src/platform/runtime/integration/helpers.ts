@@ -28,7 +28,7 @@ export interface IntegrationHelpersContext {
   readonly runtimeBus: RuntimeEventBus;
   readonly configManager?: ConfigManager | undefined;
   readonly featureFlags?: FeatureFlagManager | undefined;
-  readonly getConversationTitle?: (() => string | undefined) | undefined | undefined;
+  readonly getConversationTitle?: (() => string | undefined) | undefined;
   readonly automationManager: AutomationManager;
   readonly approvalBroker: ApprovalBroker;
   readonly sessionBroker: SharedSessionBroker;
@@ -612,19 +612,19 @@ export class IntegrationHelperService {
     const encoder = new TextEncoder();
     let teardown = (): void => {};
 
-    // PERF-08: raise ReadableStream HWM so startup `ready` + live events aren't
+    // raise ReadableStream HWM so startup `ready` + live events aren't
     // dropped by the backpressure guard before a consumer has pulled the first chunk.
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         const unsubs = selectedDomains.map((domain) => this.context.runtimeBus.onDomain(domain, (envelope) => {
-          // PERF-06: Drop event if the stream buffer is full (backpressure guard).
+          // Drop event if the stream buffer is full (backpressure guard).
           if ((controller.desiredSize ?? 1) <= 0) return;
           controller.enqueue(encoder.encode(`event: ${domain}\ndata: ${JSON.stringify(serializeEnvelope(envelope))}\n\n`));
         }));
         const heartbeat = setInterval(() => {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
         }, 15_000);
-        // Don't block clean process exit (PERF-07).
+        // Don't block clean process exit.
         (heartbeat as unknown as { unref?: () => void }).unref?.();
         teardown = () => {
           clearInterval(heartbeat);

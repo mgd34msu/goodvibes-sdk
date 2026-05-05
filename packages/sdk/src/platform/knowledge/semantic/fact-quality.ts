@@ -1,5 +1,5 @@
 import type { KnowledgeNodeRecord } from '../types.js';
-import { readString } from './utils.js';
+import { readString, readStringArray } from './utils.js';
 
 const USEFUL_PAGE_FACT_KINDS = new Set([
   'feature',
@@ -25,15 +25,27 @@ export function isSemanticAnswerLinkedObject(node: KnowledgeNodeRecord): boolean
 }
 
 export function semanticFactText(fact: KnowledgeNodeRecord): string {
-  const parts = [
+  return semanticFactTextFromParts([
     fact.title,
     fact.summary,
     readString(fact.metadata.value),
     readString(fact.metadata.evidence),
     Array.isArray(fact.metadata.labels) ? fact.metadata.labels.join(' ') : '',
-  ].filter(Boolean) as string[];
+  ]);
+}
+
+function semanticPageFactText(fact: KnowledgeNodeRecord): string {
+  return semanticFactTextFromParts([
+    fact.title,
+    fact.summary,
+    readString(fact.metadata.value),
+    Array.isArray(fact.metadata.labels) ? fact.metadata.labels.join(' ') : '',
+  ]);
+}
+
+function semanticFactTextFromParts(parts: readonly (string | undefined)[]): string {
   const uniqueParts: string[] = [];
-  for (const part of parts) {
+  for (const part of parts.filter(Boolean) as string[]) {
     const normalized = normalizeComparableFactPart(part);
     if (!normalized) continue;
     if (uniqueParts.some((existing) => {
@@ -104,10 +116,13 @@ export function isLowValueFeatureOrSpecText(text: string): boolean {
   if (/\b(energy monitoring cutoff|quantity table|table fragment|table debris)\b/.test(lower)) {
     return true;
   }
+  if (/^\s*\|/.test(text) || /\|\s*-{2,}\s*\|/.test(text) || (text.match(/\|/g)?.length ?? 0) >= 2) {
+    return true;
+  }
   if (/\bquantity\b/.test(lower) && /\b(table|cutoff|energy monitoring|source list|series_url)\b/.test(lower)) {
     return true;
   }
-  if (/\bwf:\s*\d+\s*w\b|\b\d+\s*w\/wf:\s*\d+\s*w\b|\bcompatibility line\b.*\bper channel\b/.test(lower)) {
+  if (/\bcompatibility line\b.*\bper channel\b/.test(lower)) {
     return true;
   }
   if (hasConcreteFeatureSignal(lower)
@@ -269,10 +284,10 @@ export function isUsefulKnowledgePageFact(
   if (fact.metadata.semanticKind !== 'fact') return false;
   const kind = readString(fact.metadata.factKind) ?? 'note';
   if (!(options.allowedFactKinds ?? USEFUL_PAGE_FACT_KINDS).has(kind)) return false;
-  const text = semanticFactText(fact);
+  const text = semanticPageFactText(fact);
   if (isLowValueFeatureOrSpecText(text)) return false;
   if (['feature', 'capability', 'specification', 'compatibility', 'configuration'].includes(kind)) {
-    if (!readString(fact.metadata.sourceId) && !fact.sourceId) return false;
+    if (!hasPersistedFactSource(fact)) return false;
     if (!hasConcreteFeatureSignal(text)) return false;
   }
   if (options.rejectRemoteAccessoryDetails === true
@@ -286,4 +301,12 @@ export function isUsefulKnowledgePageFact(
     return hasConcreteFeatureSignal(text);
   }
   return true;
+}
+
+function hasPersistedFactSource(fact: KnowledgeNodeRecord): boolean {
+  return Boolean(
+    readString(fact.metadata.sourceId)
+    || fact.sourceId
+    || readStringArray(fact.metadata.sourceIds).length > 0,
+  );
 }

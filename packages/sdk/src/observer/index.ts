@@ -6,8 +6,8 @@
  * optional; the SDK works identically whether an observer is present or not.
  *
  * Observer call sites are wrapped through `invokeObserver`: an observer that
- * throws will not propagate into SDK logic. This is intentional because observer
- * errors must never break the SDK flow.
+ * throws will not propagate into SDK logic. Failures are reported and returned
+ * so observer isolation does not hide broken callbacks.
  *
  * @example
  * const sdk = createGoodVibesSdk({
@@ -59,7 +59,7 @@ export interface AuthTransitionInfo {
  * instance to a supported client factory. All methods are optional.
  *
  * Every call site should go through `invokeObserver` so observer errors are
- * isolated from SDK control flow.
+ * isolated from SDK control flow while remaining observable.
  */
 // SDKObserver extends TransportObserver which contributes:
 //   onTransportActivity?(info: TransportActivityInfo): void
@@ -101,18 +101,53 @@ export interface SDKObserver extends TransportObserver {
 }
 
 /**
- * Safely invoke an observer method. Observer errors are swallowed so they
- * never disrupt SDK control flow. This is the canonical call pattern for
- * all observer call sites throughout the SDK.
+ * Result returned from a protected observer callback invocation.
+ */
+export type ObserverInvocationResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly error: unknown };
+
+export interface InvokeObserverOptions {
+  /**
+   * Optional callback label included in failure logs.
+   */
+  readonly label?: string | undefined;
+  /**
+   * Set to false when a caller handles a failed result itself and does not want
+   * the default warning.
+   */
+  readonly report?: boolean | undefined;
+}
+
+function reportObserverFailure(error: unknown, label: string | undefined): void {
+  try {
+    const suffix = label ? `: ${label}` : '';
+    globalThis.console?.warn?.(`[sdk:observer] observer callback failed${suffix}`, error);
+  } catch {
+    // Logging must not become another way for observer isolation to break SDK flow.
+  }
+}
+
+/**
+ * Safely invoke an observer method. Observer errors are isolated so they
+ * never disrupt SDK control flow, but failures are returned and logged by
+ * default. This is the canonical call pattern for all observer call sites
+ * throughout the SDK.
  *
  * @param fn - Zero-argument thunk wrapping the observer call.
  */
-export function invokeObserver(fn: () => void): void {
+export function invokeObserver(
+  fn: () => void,
+  options: InvokeObserverOptions = {},
+): ObserverInvocationResult {
   try {
     fn();
-  } catch {
-    // Observer errors must not propagate into SDK logic.
-    // Observers are passive listeners; they have no authority to break flows.
+    return { ok: true };
+  } catch (error) {
+    if (options.report !== false) {
+      reportObserverFailure(error, options.label);
+    }
+    return { ok: false, error };
   }
 }
 

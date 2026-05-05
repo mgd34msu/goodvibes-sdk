@@ -131,7 +131,7 @@ export class WorkflowManager {
 
   list(): WorkflowInstance[] {
     const now = Date.now();
-    // Evict old completed/cancelled workflows
+    // Evict expired completed/cancelled workflows
     for (const [id, wf] of this.workflows) {
       if (wf.completedAt !== undefined && now - wf.completedAt > WORKFLOW_EVICT_AFTER_MS) {
         this.workflows.delete(id);
@@ -339,7 +339,7 @@ export class ScheduleManager {
         const idx = this.spawnedProcs.findIndex(p => p.pid === pid);
         if (idx !== -1) this.spawnedProcs.splice(idx, 1);
       }).catch((error: unknown) => {
-        logger.debug('[workflow] scheduled command exit tracking failed', {
+        logger.warn('[workflow] scheduled command exit tracking failed', {
           workflow: name,
           error: summarizeError(error),
         });

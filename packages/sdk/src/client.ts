@@ -79,7 +79,7 @@ export interface GoodVibesSdkOptions {
   readonly baseUrl: string;
 
   /**
-   * Static auth token string. Internally wrapped in an in-memory token store,
+   * Static auth token string. Wrapped in an in-memory token store,
    * so `sdk.auth.setToken()` / `sdk.auth.clearToken()` work.
    *
    * Lowest-precedence auth option — ignored when `tokenStore` or `getAuthToken`
@@ -192,9 +192,9 @@ export interface GoodVibesSdkOptions {
   readonly middleware?: TransportMiddleware[] | undefined;
 
   /**
-   * Options for silent token auto-refresh.
+   * Options for token auto-refresh.
    *
-   * - `autoRefresh` — when `false`, disables silent refresh entirely and lets
+   * - `autoRefresh` — when `false`, disables automatic refresh entirely and lets
    *   401 responses propagate to the caller immediately. Default: `true`.
    * - `refreshLeewayMs` — milliseconds before token expiry to trigger a
    *   pre-flight refresh. Default: 60_000 (1 minute).

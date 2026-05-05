@@ -146,7 +146,7 @@ async function writeSuccessfulTextEdits(
             tool: 'edit',
           });
         } catch {
-          // Non-fatal
+          // Undo snapshot failure should not fail the edit.
         }
       }
       env.changeTracker?.recordChange(resolvedPath);
@@ -214,7 +214,7 @@ async function restoreOriginalContents(fileContents: Map<string, string>, env: E
       await writeFile(resolvedPath, originalContent, 'utf-8');
       env.fileCache.update(resolvedPath, originalContent);
     } catch {
-      // Best-effort rollback
+      // Continue restoring the remaining files.
     }
   }
 }
@@ -238,7 +238,7 @@ async function repairAfterValidationFailure(
         env.fileCache.update(resolvedPath, healResult.content);
         healed = true;
       } catch {
-        // Best-effort heal write
+        // Leave validation failure handling to the caller if the heal write fails.
       }
     }
   }

@@ -9,7 +9,7 @@ import { ProjectIndex } from '../../state/project-index.js';
 import { FileUndoManager } from '../../state/file-undo.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { ToolLLM } from '../../config/tool-llm.js';
-import { AutoHealer } from '../shared/auto-heal.js';
+import { AutoHealer, type HealResult } from '../shared/auto-heal.js';
 import { isNotebookFile } from '../../utils/notebook.js';
 import { logger } from '../../utils/logger.js';
 import type { SessionChangeTracker } from '../../sessions/change-tracker.js';
@@ -26,6 +26,12 @@ interface FileWriteResult {
   bytes_written: number;
   mode_applied: WriteMode;
   backup_path?: string | undefined;
+  warnings?: string[] | undefined;
+  auto_heal?: {
+    attempted: boolean;
+    healed: boolean;
+    method?: 'formatter' | 'linter' | 'llm' | undefined;
+  } | undefined;
   /** true if this was a dry-run entry */
   would_write?: boolean | undefined;
   /** decoded content — used internally to avoid double resolveContent call */
@@ -37,6 +43,18 @@ interface WriteOutput {
   bytes_written: number;
   files?: FileWriteResult[] | undefined;
   dry_run?: boolean | undefined;
+  warnings?: string[] | undefined;
+}
+
+function appendWarning(
+  warnings: string[],
+  warning: string,
+  fileResult?: FileWriteResult | undefined,
+): void {
+  warnings.push(warning);
+  if (fileResult) {
+    fileResult.warnings = [...(fileResult.warnings ?? []), warning];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -137,8 +155,11 @@ function atomicWrite(targetPath: string, content: string, encoding: BufferEncodi
     // Clean up temp file if rename failed
     try {
       unlinkSync(tmpPath);
-    } catch {
-      // Ignore cleanup errors
+    } catch (cleanupErr) {
+      throw new Error(
+        `Atomic write failed for '${targetPath}': ${summarizeError(err)}. `
+        + `Failed to remove temporary file '${tmpPath}': ${summarizeError(cleanupErr)}`,
+      );
     }
     throw err;
   }
@@ -302,6 +323,8 @@ function formatOutput(
       mode_applied: r.mode_applied,
       ...(r.backup_path ? { backup_path: r.backup_path } : {}),
       ...(r.would_write ? { would_write: r.would_write } : {}),
+      ...(r.auto_heal ? { auto_heal: r.auto_heal } : {}),
+      ...(r.warnings ? { warnings: r.warnings } : {}),
     }));
     return base;
   }
@@ -356,6 +379,7 @@ export function createWriteTool(options?: {
 
       const results: FileWriteResult[] = [];
       const errors: string[] = [];
+      const warnings: string[] = [];
       const transactionMode = input.transaction?.mode ?? 'none';
       // Snapshots for atomic rollback: map from resolvedPath -> original content (null = new file)
       const snapshots = new Map<string, string | null>();
@@ -368,23 +392,38 @@ export function createWriteTool(options?: {
 
         // Capture before-content for undo and atomic transaction snapshots BEFORE the write happens
         let beforeContent: string | null = null;
+        let existedBeforeWrite = false;
         if (!dryRun && fileInput.path) {
           let resolvedForUndo: string | undefined;
           try {
             resolvedForUndo = resolveAndValidatePath(fileInput.path, projectRoot);
-          } catch {
+          } catch (err) {
+            logger.warn('write tool: failed to resolve path for before-write snapshot', {
+              path: fileInput.path,
+              error: summarizeError(err),
+            });
             resolvedForUndo = undefined;
           }
           if (resolvedForUndo && existsSync(resolvedForUndo)) {
+            existedBeforeWrite = true;
             try {
               beforeContent = readFileSync(resolvedForUndo, 'utf-8');
-            } catch {
+            } catch (err) {
+              const warning = `Failed to read existing content before writing '${fileInput.path}': ${summarizeError(err)}`;
+              if (transactionMode === 'atomic') {
+                return {
+                  success: false,
+                  error: `Atomic transaction cannot safely snapshot '${fileInput.path}': ${summarizeError(err)}`,
+                  warnings: [warning],
+                };
+              }
+              appendWarning(warnings, `${warning}. Undo snapshot will not include original content.`);
               beforeContent = null;
             }
           }
           // Store snapshot for atomic transaction rollback
           if (transactionMode === 'atomic' && resolvedForUndo && !snapshots.has(resolvedForUndo)) {
-            snapshots.set(resolvedForUndo, beforeContent);
+            snapshots.set(resolvedForUndo, existedBeforeWrite ? beforeContent : null);
           }
         }
 
@@ -392,11 +431,12 @@ export function createWriteTool(options?: {
 
         if (!outcome.ok) {
           errors.push(outcome.error);
-          logger.debug('write tool: file write failed', { path: fileInput.path, error: outcome.error });
+          logger.warn('write tool: file write failed', { path: fileInput.path, error: outcome.error });
 
           // Atomic transaction: rollback all successfully written files
           if (transactionMode === 'atomic' && results.length > 0) {
             const rolledBack: string[] = [];
+            const rollbackFailures: string[] = [];
             for (const written of results) {
               try {
                 const snapshot = snapshots.get(written.resolved_path);
@@ -409,16 +449,22 @@ export function createWriteTool(options?: {
                 }
                 rolledBack.push(written.path);
               } catch (rollbackErr) {
-                logger.debug('write tool: atomic rollback failed (non-fatal)', {
+                const rollbackFailure = `Failed to roll back '${written.path}': ${summarizeError(rollbackErr)}`;
+                rollbackFailures.push(rollbackFailure);
+                logger.warn('write tool: atomic rollback failed', {
                   path: written.resolved_path,
-                  error: String(rollbackErr),
+                  error: summarizeError(rollbackErr),
                 });
               }
             }
-            const failMsg = `Atomic transaction failed on '${fileInput.path}': ${outcome.error}. Rolled back ${rolledBack.length} file(s): ${rolledBack.join(', ')}`;
+            const rollbackDetail = rollbackFailures.length > 0
+              ? `. Rollback failures: ${rollbackFailures.join('; ')}`
+              : '';
+            const failMsg = `Atomic transaction failed on '${fileInput.path}': ${outcome.error}. Rolled back ${rolledBack.length} file(s): ${rolledBack.join(', ')}${rollbackDetail}`;
             return {
               success: false,
               error: failMsg,
+              ...(rollbackFailures.length > 0 ? { warnings: rollbackFailures } : {}),
             };
           }
 
@@ -432,7 +478,19 @@ export function createWriteTool(options?: {
           let content = outcome.result._content ?? '';
 
           // Auto-heal: if file is JS/TS and auto-heal is enabled, run syntax check
-          if (options?.configManager?.get('tools.autoHeal')) {
+          let autoHealEnabled = false;
+          if (options?.configManager) {
+            try {
+              autoHealEnabled = Boolean(options.configManager.get('tools.autoHeal'));
+            } catch (err) {
+              appendWarning(
+                warnings,
+                `Auto-heal configuration check failed for '${outcome.result.path}': ${summarizeError(err)}`,
+                outcome.result,
+              );
+            }
+          }
+          if (autoHealEnabled) {
             const ext = extname(outcome.result.resolved_path).toLowerCase();
             const isJsTs = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs'].includes(ext);
             if (isJsTs) {
@@ -442,24 +500,50 @@ export function createWriteTool(options?: {
                 transpiler.transformSync(content);
               } catch (syntaxErr) {
                 const syntaxErrors = [String(syntaxErr)];
-                const healResult = options.toolLLM && options.configManager
+                outcome.result.auto_heal = { attempted: true, healed: false };
+                const healResult: HealResult = options.toolLLM && options.configManager
                   ? await new AutoHealer(options.configManager, options.toolLLM).heal(outcome.result.resolved_path, content, syntaxErrors)
-                  : { healed: false, content };
+                  : {
+                      healed: false,
+                      content,
+                      warnings: [`Auto-heal skipped for '${outcome.result.path}': tool LLM is not configured`],
+                    };
+                for (const warning of healResult.warnings ?? []) {
+                  appendWarning(warnings, warning, outcome.result);
+                }
                 if (healResult.healed) {
                   logger.debug('write tool: auto-heal succeeded', {
                     path: outcome.result.resolved_path,
                     method: healResult.method,
                   });
-                  content = healResult.content;
                   // Rewrite file with healed content
                   try {
-                    atomicWrite(outcome.result.resolved_path, content);
+                    atomicWrite(outcome.result.resolved_path, healResult.content);
+                    content = healResult.content;
+                    outcome.result._content = content;
+                    outcome.result.bytes_written = Buffer.byteLength(content, 'utf-8');
+                    outcome.result.auto_heal = {
+                      attempted: true,
+                      healed: true,
+                      method: healResult.method,
+                    };
                   } catch (writeErr) {
-                    logger.debug('write tool: auto-heal rewrite failed (non-fatal)', {
+                    logger.warn('write tool: auto-heal rewrite failed', {
                       path: outcome.result.resolved_path,
-                      error: String(writeErr),
+                      error: summarizeError(writeErr),
                     });
+                    appendWarning(
+                      warnings,
+                      `Auto-heal produced repaired content for '${outcome.result.path}' but rewrite failed: ${summarizeError(writeErr)}`,
+                      outcome.result,
+                    );
                   }
+                } else {
+                  appendWarning(
+                    warnings,
+                    `Auto-heal could not repair syntax errors in '${outcome.result.path}': ${summarizeError(syntaxErr)}`,
+                    outcome.result,
+                  );
                 }
               }
             }
@@ -472,7 +556,12 @@ export function createWriteTool(options?: {
             try {
               options.fileCache.update(outcome.result.resolved_path, content, { tool: 'write' });
             } catch (err) {
-              logger.debug('write tool: fileCache.update failed (non-fatal)', {
+              appendWarning(
+                warnings,
+                `File cache update failed for '${outcome.result.path}': ${summarizeError(err)}`,
+                outcome.result,
+              );
+              logger.warn('write tool: fileCache.update failed', {
                 path: outcome.result.resolved_path,
                 error: summarizeError(err),
               });
@@ -483,7 +572,12 @@ export function createWriteTool(options?: {
             try {
               options.projectIndex.upsertFile(outcome.result.resolved_path, tokenEstimate);
             } catch (err) {
-              logger.debug('write tool: projectIndex.upsertFile failed (non-fatal)', {
+              appendWarning(
+                warnings,
+                `Project index update failed for '${outcome.result.path}': ${summarizeError(err)}`,
+                outcome.result,
+              );
+              logger.warn('write tool: projectIndex.upsertFile failed', {
                 path: outcome.result.resolved_path,
                 error: summarizeError(err),
               });
@@ -500,7 +594,12 @@ export function createWriteTool(options?: {
                 tool: 'write',
               });
             } catch (err) {
-              logger.debug('write tool: fileUndoManager.snapshot failed (non-fatal)', {
+              appendWarning(
+                warnings,
+                `Undo snapshot failed for '${outcome.result.path}': ${summarizeError(err)}`,
+                outcome.result,
+              );
+              logger.warn('write tool: fileUndoManager.snapshot failed', {
                 path: outcome.result.resolved_path,
                 error: summarizeError(err),
               });
@@ -513,7 +612,21 @@ export function createWriteTool(options?: {
             mode: outcome.result.mode_applied,
           });
           // Track for /diff session change view
-          options?.changeTracker?.recordChange(outcome.result.resolved_path);
+          if (options?.changeTracker) {
+            try {
+              options.changeTracker.recordChange(outcome.result.resolved_path);
+            } catch (err) {
+              appendWarning(
+                warnings,
+                `Change tracker update failed for '${outcome.result.path}': ${summarizeError(err)}`,
+                outcome.result,
+              );
+              logger.warn('write tool: changeTracker.recordChange failed', {
+                path: outcome.result.resolved_path,
+                error: summarizeError(err),
+              });
+            }
+          }
         }
       }
 
@@ -521,6 +634,7 @@ export function createWriteTool(options?: {
         return {
           success: false,
           error: errors.join('\n'),
+          ...(warnings.length > 0 ? { warnings } : {}),
         };
       }
 
@@ -547,22 +661,33 @@ export function createWriteTool(options?: {
               stderr: f.stderr.trim(),
               message: formatValidatorFailure(f),
             }));
-            logger.debug('write tool: post-write validators failed', {
+            logger.warn('write tool: post-write validators failed', {
               count: failures.length,
               validators: failures.map((f) => f.validator),
             });
+            appendWarning(
+              warnings,
+              `Post-write validation failed for validator(s): ${failures.map((f) => f.validator).join(', ')}`,
+            );
           } else {
             finalOutput.validation_passed = true;
           }
         } catch (validationErr) {
-          logger.debug('write tool: validator execution error (non-fatal)', { error: String(validationErr) });
-          finalOutput.validation_error = String(validationErr);
+          const validationMessage = summarizeError(validationErr);
+          logger.warn('write tool: validator execution error', { error: validationMessage });
+          finalOutput.validation_error = validationMessage;
+          appendWarning(warnings, `Post-write validator execution failed: ${validationMessage}`);
         }
+      }
+
+      if (warnings.length > 0) {
+        finalOutput.warnings = warnings;
       }
 
       return {
         success: errors.length === 0,
         output: JSON.stringify(finalOutput),
+        ...(warnings.length > 0 ? { warnings } : {}),
       };
     },
   };

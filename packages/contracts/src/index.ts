@@ -12,6 +12,13 @@ import { PEER_ENDPOINT_IDS } from './generated/peer-endpoint-ids.js';
 
 export type {
   ContractHttpDefinition,
+  DistributedPeerKind,
+  DistributedWorkStatus,
+  DistributedWorkType,
+  GatewayEventTransport,
+  GatewayMethodAccess,
+  GatewayMethodSource,
+  GatewayMethodTransport,
   JsonSchema,
   OperatorContractManifest,
   OperatorEventCoverageContract,
@@ -21,10 +28,12 @@ export type {
   PeerContractManifest,
   PeerEndpointContract,
 } from './types.js';
+export { DISTRIBUTED_WORK_TYPES } from './types.js';
 export { FOUNDATION_METADATA } from './generated/foundation-metadata.js';
 export type {
   JsonPrimitive,
   JsonValue,
+  SharedSessionConversationRouteOutput,
   OperatorEventPayload,
   OperatorEventPayloadMap,
   OperatorMethodInput,
@@ -61,7 +70,7 @@ export function getPeerContract(): PeerContractManifest {
   return PEER_CONTRACT;
 }
 
-// MIN-1: Lazy-init maps so tree-shake-conscious bundles that only need
+// Lazy-init maps so tree-shake-conscious bundles that only need
 // OPERATOR_METHOD_IDS / PEER_ENDPOINT_IDS don't pay the map-construction cost.
 let _operatorMethodsById: Map<string, OperatorMethodContract> | undefined;
 let _peerEndpointsById: Map<string, PeerEndpointContract> | undefined;
@@ -80,7 +89,7 @@ function getPeerEndpointsById(): Map<string, PeerEndpointContract> {
   return _peerEndpointsById;
 }
 
-// MIN-2: Precomputed Sets for O(1) membership tests. Also lazy.
+// Precomputed Sets for O(1) membership tests. Also lazy.
 let _operatorMethodIdSet: Set<string> | undefined;
 let _peerEndpointIdSet: Set<string> | undefined;
 
@@ -115,15 +124,14 @@ export function listPeerEndpoints(): readonly PeerEndpointContract[] {
 }
 
 export function isOperatorMethodId(value: string): value is (typeof OPERATOR_METHOD_IDS)[number] {
-  // MIN-2: O(1) Set lookup instead of O(n) linear .includes over the readonly tuple.
+  // O(1) Set lookup instead of O(n) linear .includes over the readonly tuple.
   return getOperatorMethodIdSet().has(value);
 }
 
 export function isPeerEndpointId(value: string): value is (typeof PEER_ENDPOINT_IDS)[number] {
-  // MIN-2: O(1) Set lookup instead of O(n) linear .includes over the readonly tuple.
+  // O(1) Set lookup instead of O(n) linear .includes over the readonly tuple.
   return getPeerEndpointIdSet().has(value);
 }
 
 // Re-export Zod schemas + inferred shapes for runtime validation.
 export * from './zod-schemas/index.js';
-

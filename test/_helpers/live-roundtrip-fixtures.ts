@@ -97,8 +97,6 @@ export function createRoundtripServer(): ReturnType<typeof Bun.serve> {
             : null,
         },
         getOperatorContract: () => ({ version: 1 }),
-        inspectInboundTls: () => ({ mode: 'off' }),
-        inspectOutboundTls: () => ({ mode: 'system' }),
         invokeGatewayMethodCall: async (input) => {
           if (input.methodId === 'control.auth.current') {
             return {
@@ -156,7 +154,19 @@ export function createRoundtripServer(): ReturnType<typeof Bun.serve> {
         },
         requireAdmin: () => null,
         requireAuthenticatedSession: () => ({ username: 'alice', roles: ['user'] }),
-      }, req);
+        login: async (request) => {
+          const body = await request.json() as Record<string, unknown>;
+          if (body.username === 'alice' && body.password === 'secret') {
+            return Response.json({
+              authenticated: true,
+              token: 'token-login',
+              username: 'alice',
+              expiresAt: Date.now() + 60_000,
+            });
+          }
+          return Response.json({ error: 'invalid credentials' }, { status: 401 });
+        },
+      });
 
       const response = await dispatchDaemonApiRoutes(req, handlers as never);
       return response ?? Response.json({ error: 'not found' }, { status: 404 });

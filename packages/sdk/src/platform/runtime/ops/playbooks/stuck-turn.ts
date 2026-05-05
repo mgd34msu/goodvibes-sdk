@@ -66,8 +66,8 @@ export function createStuckTurnPlaybook(
         }),
     },
     {
-      id: 'turn.event-bus-silent',
-      label: 'Event bus silent',
+      id: 'turn.event-bus-inactive',
+      label: 'Event bus inactive',
       description: 'Checks whether the RuntimeEventBus has emitted any events recently.',
       run: async (): Promise<DiagnosticCheckResult> =>
         safeCheck(async () => {
@@ -79,17 +79,17 @@ export function createStuckTurnPlaybook(
               severity: 'warning',
             };
           }
-          const silenceMs = runtime.now() - runtime.lastEventAt;
+          const inactiveMs = runtime.now() - runtime.lastEventAt;
           const thresholdMs = 30_000;
-          const silent = silenceMs > thresholdMs;
+          const inactive = inactiveMs > thresholdMs;
           return {
-            passed: !silent,
-            summary: silent
-              ? `No runtime events have been observed for ${silenceMs}ms.`
-              : `Runtime event flow is active (${silenceMs}ms since the last event).`,
-            severity: silent ? 'warning' : 'info',
+            passed: !inactive,
+            summary: inactive
+              ? `No runtime events have been observed for ${inactiveMs}ms.`
+              : `Runtime event flow is active (${inactiveMs}ms since the last event).`,
+            severity: inactive ? 'warning' : 'info',
             context: {
-              silenceMs,
+              inactiveMs,
               thresholdMs,
               lastEventAt: runtime.lastEventAt,
             },

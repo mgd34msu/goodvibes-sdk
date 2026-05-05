@@ -145,7 +145,7 @@ export class AcpTaskAdapter {
 
     if (manager) {
       void manager.cancel(remoteId).catch((error) => {
-        logger.debug('ACP remote cancellation failed after task cancellation', {
+        logger.warn('ACP remote cancellation failed after task cancellation', {
           taskId,
           remoteId,
           error: summarizeError(error),

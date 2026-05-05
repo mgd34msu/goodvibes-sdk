@@ -16,9 +16,10 @@
 - Package/runtime boundaries changed:
 - Knowledge/refinement/page behavior changed:
 - Debt removed:
-- New temporary adapters added: none. If not none, explain why this is not debt and when it will be removed.
+- New adapter boundaries added:
+- Why each new adapter is permanent architecture rather than transition debt:
 
 ## Risk
 
 - Rollback commit/strategy:
-- Known follow-up:
+- Remaining risk after validation:

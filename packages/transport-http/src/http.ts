@@ -163,7 +163,7 @@ export function normalizeTransportError(error: unknown): Error {
     );
   }
   if (error instanceof Error) {
-    // Defensive string-match fallback for non-SDK errors that slip through.
+    // Defensive string-match path for non-SDK errors that slip through.
     // With structured throws in http-core.ts, these paths are rarely exercised.
     if (error.message === 'Fetch implementation is required' || error.message === 'Transport baseUrl is required') {
       return new ConfigurationError(error.message);

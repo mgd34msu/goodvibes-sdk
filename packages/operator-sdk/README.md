@@ -1,8 +1,8 @@
 # @pellux/goodvibes-operator-sdk
 
-Internal workspace package backing `@pellux/goodvibes-sdk/operator`.
+Public GoodVibes operator package for the contract-driven operator and control-plane HTTP client.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/operator`. Install this package directly when you only need the operator client subset.
 
 ```ts
 import { createOperatorSdk } from '@pellux/goodvibes-sdk/operator';
@@ -19,7 +19,7 @@ const login = await operator.invoke('control.auth.login', {
 });
 ```
 
-Use this surface when you want only the operator/control-plane surface and do not need the umbrella SDK composition layer.
+Use this surface when you want only the operator/control-plane surface and do not need the main SDK composition layer.
 
 Advanced consumers can also build directly from a preconfigured transport and contract:
 

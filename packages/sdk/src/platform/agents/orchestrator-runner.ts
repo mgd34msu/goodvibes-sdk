@@ -8,6 +8,8 @@ import { ConversationManager } from '../core/conversation.js';
 import { ToolRegistry } from '../tools/registry.js';
 import { join } from 'node:path';
 import type { ProviderRegistry } from '../providers/registry.js';
+import type { ModelDefinition } from '../providers/registry-types.js';
+import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { logger } from '../utils/logger.js';
 import { ConsecutiveErrorBreaker } from '../core/circuit-breaker.js';
 import { isRateLimitOrQuotaError, isContextSizeExceededError } from '../types/errors.js';
@@ -71,14 +73,67 @@ export interface AgentOrchestratorRunContext {
   readonly resolveProviderForRecord: (
     providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels'>,
     record: AgentRecord,
-    currentModel: { id: string; provider: string },
+    currentModel: { id: string; provider: string; registryKey: string },
   ) => { provider: LLMProvider; modelId: string; requestedModelId: string };
   readonly resolveFallbackModelRoutes: (
     providerRegistry: Pick<ProviderRegistry, 'listModels' | 'getForModel'>,
     record: AgentRecord,
-    currentModel: { id: string; provider: string },
+    currentModel: { id: string; provider: string; registryKey: string },
     primaryRequestedModelId: string,
   ) => Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }>;
+}
+
+type ActiveProviderRoute = {
+  readonly provider: Pick<LLMProvider, 'name'>;
+  readonly modelId: string;
+  readonly requestedModelId: string;
+};
+
+function parseProviderQualifiedRouteId(modelId: string | undefined): { providerId: string; registryKey: string } | null {
+  const trimmed = modelId?.trim();
+  if (!trimmed?.includes(':')) return null;
+  try {
+    const { providerId } = splitModelRegistryKey(trimmed);
+    return { providerId, registryKey: trimmed };
+  } catch {
+    return null;
+  }
+}
+
+function providerQualifiedRouteLabel(activeRoute: ActiveProviderRoute): string {
+  return (
+    parseProviderQualifiedRouteId(activeRoute.requestedModelId)?.registryKey
+    ?? parseProviderQualifiedRouteId(activeRoute.modelId)?.registryKey
+    ?? `${activeRoute.provider.name}:${activeRoute.requestedModelId || activeRoute.modelId}`
+  );
+}
+
+export function resolveContextWindowModelDefinition(
+  providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'listModels'>,
+  activeRoute: ActiveProviderRoute,
+): ModelDefinition {
+  const models = providerRegistry.listModels();
+  const providerQualifiedRouteIds = [
+    parseProviderQualifiedRouteId(activeRoute.requestedModelId),
+    parseProviderQualifiedRouteId(activeRoute.modelId),
+  ].filter((routeId): routeId is { providerId: string; registryKey: string } => routeId !== null);
+
+  for (const routeId of providerQualifiedRouteIds) {
+    const exactRegistryMatch = models.find(
+      (model) => model.provider === routeId.providerId && model.registryKey === routeId.registryKey,
+    );
+    if (exactRegistryMatch) return exactRegistryMatch;
+  }
+
+  const routeProviderId = providerQualifiedRouteIds[0]?.providerId ?? activeRoute.provider.name;
+  return models.find(
+    (model) =>
+      model.provider === routeProviderId &&
+      (
+        model.id === activeRoute.modelId ||
+        model.id === activeRoute.requestedModelId
+      ),
+  ) ?? providerRegistry.getCurrentModel();
 }
 
 function isNetworkError(err: unknown): boolean {
@@ -171,8 +226,10 @@ function cleanupLeakedProcesses(
 async function disposeSession(session: AgentSession): Promise<void> {
   try {
     await session.dispose();
-  } catch {
-    // non-fatal
+  } catch (error) {
+    logger.warn('[AgentOrchestrator] session disposal failed', {
+      error: summarizeError(error),
+    });
   }
 }
 
@@ -455,13 +512,7 @@ export async function runAgentTask(
       }
 
       if (context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true) {
-        const modelDef = providerRegistry.listModels().find(
-          (m) =>
-            m.id === activeRoute.modelId ||
-            m.registryKey === activeRoute.modelId ||
-            m.id === activeRoute.requestedModelId ||
-            m.registryKey === activeRoute.requestedModelId,
-        ) ?? providerRegistry.getCurrentModel();
+        const modelDef = resolveContextWindowModelDefinition(providerRegistry, activeRoute);
         const contextWindow = context.providerRegistry.getContextWindowForModel(modelDef);
         systemPrompt = applyContextWindowAwareness(
           context,
@@ -531,16 +582,18 @@ export async function runAgentTask(
               const previousRoute = activeRoute;
               activeRoute = fallbackRoutes[fallbackRouteIndex++]!;
               const reason = chatErr instanceof Error ? chatErr.message : String(chatErr);
+              const previousRouteId = providerQualifiedRouteLabel(previousRoute);
+              const activeRouteId = providerQualifiedRouteLabel(activeRoute);
               logger.warn('[AgentOrchestrator] switching to fallback model', {
                 agentId: record.id,
-                from: previousRoute.requestedModelId,
-                to: activeRoute.requestedModelId,
+                from: previousRouteId,
+                to: activeRouteId,
                 reason,
               });
-              context.providerOptimizer?.recordFallbackTransition(previousRoute.requestedModelId, activeRoute.requestedModelId, reason);
-              record.model = activeRoute.requestedModelId;
+              context.providerOptimizer?.recordFallbackTransition(previousRouteId, activeRouteId, reason);
+              record.model = activeRouteId;
               record.provider = activeRoute.provider.name;
-              record.progress = `Model fallback → ${activeRoute.requestedModelId}`;
+              record.progress = `Model fallback → ${activeRouteId}`;
               context.emitAgentProgress(record.id, record.progress);
               context.emitOrchestrationProgress(record, record.progress);
             } else if (isNetworkError(chatErr) && networkAttempt < NETWORK_RETRY_DELAYS_MS.length) {

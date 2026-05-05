@@ -17,7 +17,7 @@ export interface HostRuntimeEventBridgeOptions {
   readonly runtimeBus: RuntimeEventBus;
   readonly domainDispatch: ReturnType<typeof createDomainDispatch>;
   readonly getSystemMessageRouter: () => HostRuntimeMessageRouter | null;
-  readonly queueConversationFollowUp?: ((item: ConversationFollowUpItem) => void) | undefined | undefined;
+  readonly queueConversationFollowUp?: ((item: ConversationFollowUpItem) => void) | undefined;
   readonly requestRender: () => void;
   readonly configManager: ConfigManager;
   readonly agentManager: AgentManager;
@@ -254,7 +254,7 @@ export function registerHostRuntimeEvents(
     });
     requestRender();
   }, AGENT_STATUS_INTERVAL_MS);
-  // Don't block clean process exit (PERF-07).
+  // Don't block clean process exit.
   (agentStatusIntervalRef.value as unknown as { unref?: () => void }).unref?.();
 
   return { unsubs, agentStatusIntervalRef };

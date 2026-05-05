@@ -1,17 +1,13 @@
 /**
  * provider-sse-integration.test.ts
  *
- * C-2 regression test: exercises the real SSE plumbing end-to-end.
+ * Exercises the real SSE plumbing end-to-end.
  *
  * - Constructs a real ControlPlaneGateway with an in-memory RuntimeEventBus
  * - Opens a live SSE event stream via gateway.createEventStream()
  * - Emits a MODEL_CHANGED envelope on the runtime bus while reading the stream
  * - Asserts exactly ONE SSE frame arrives with domain 'providers' carrying the
  *   MODEL_CHANGED payload
- *
- * This protects against future regressions of:
- *   - DEFAULT_DOMAINS domain filtering (gateway.ts line ~459)
- *   - serializeEnvelope serialization (gateway.ts line ~120)
  *
  * The cheap "DEFAULT_DOMAINS includes 'providers'" sanity check is also retained.
  */
@@ -23,7 +19,7 @@ import type { RuntimeEventDomain } from '../packages/sdk/src/platform/runtime/ev
 import { settleEvents } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
-// C-2: DEFAULT_DOMAINS includes 'providers' (cheap sanity check)
+// DEFAULT_DOMAINS includes 'providers' (cheap sanity check)
 // ---------------------------------------------------------------------------
 
 describe('gateway DEFAULT_DOMAINS', () => {
@@ -41,7 +37,7 @@ describe('gateway DEFAULT_DOMAINS', () => {
 });
 
 // ---------------------------------------------------------------------------
-// C-2: Real end-to-end SSE regression test
+// Real end-to-end SSE test
 // ---------------------------------------------------------------------------
 
 describe('ControlPlaneGateway SSE — real end-to-end', () => {

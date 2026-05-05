@@ -13,8 +13,7 @@
  * @remarks
  * Pre-positioned for feature-flag-gated production integration.
  * When the `diagnostics.divergencePanel` feature flag is enabled, this
- * dashboard is wired into the session emitter pipeline (same pattern as
- * session emitters in GC-ARCH-002). Until that flag is active, this module
+ * dashboard is wired into the session emitter pipeline. Until that flag is active, this module
  * is exercised only via `DivergencePanel` in the diagnostics layer.
  */
 
@@ -186,7 +185,7 @@ export class DivergenceDashboard {
     return this._computeGate(report.overall);
   }
 
-  /** @internal Compute gate result from pre-fetched stats to avoid double getDivergenceReport() calls. */
+  /** Compute gate result from pre-fetched stats to avoid double getDivergenceReport() calls. */
   private _computeGate({ totalEvaluations, divergenceRate }: { totalEvaluations: number; divergenceRate: number }): EnforceGateResult {
     if (totalEvaluations < this._minEvals) {
       return {

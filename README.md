@@ -19,15 +19,6 @@ bun add @pellux/goodvibes-sdk
 npm install @pellux/goodvibes-sdk
 ```
 
-Alternate registry:
-
-```ini
-@mgd34msu:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
-```
-
-> **Warning:** `YOUR_GITHUB_TOKEN` is a placeholder. Never commit a real token to source control. Store tokens in `~/.npmrc` (user scope) outside the project directory, or use GitHub Actions `secrets.*` bindings. See [GitHub docs: Authenticating to a registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry#authenticating-to-github-packages) for the recommended setup.
-
 ## What The SDK Provides
 
 - **Client SDKs** for operator, peer, browser, web, React Native, Expo, and
@@ -140,13 +131,13 @@ export default createGoodVibesCloudflareWorker();
 | `@pellux/goodvibes-sdk/react-native` | React Native client factory and mobile secure stores |
 | `@pellux/goodvibes-sdk/expo` | Expo client factory with Expo token store exports |
 | `@pellux/goodvibes-sdk/workers` | Cloudflare Worker bridge for daemon batch endpoints |
-| `@pellux/goodvibes-sdk/platform` | Full platform hub for Bun/server embedders |
-| `@pellux/goodvibes-sdk/platform/node` | Node-like runtime boundary and capability metadata for server hosts |
-| `@pellux/goodvibes-sdk/platform/runtime` | Runtime services, events, stores, diagnostics, and task surfaces |
+| `@pellux/goodvibes-sdk/platform/node` | Runtime capability metadata and Node-like runtime-boundary helpers for server hosts |
+| `@pellux/goodvibes-sdk/platform/runtime` | Runtime bootstrap, observability, operations, security, shell, state, transport, and UI namespaces |
 | `@pellux/goodvibes-sdk/platform/knowledge` | Base self-improving knowledge/wiki system |
 | `@pellux/goodvibes-sdk/platform/knowledge/home-graph` | Home Assistant Home Graph extension over the base knowledge system |
 
-The old `@pellux/goodvibes-sdk/platform/*` wildcard is not a public contract.
+There is no root `@pellux/goodvibes-sdk/platform` entry and no
+`@pellux/goodvibes-sdk/platform/*` wildcard contract.
 Import only explicit subpaths listed in `package.json` and
 [`docs/public-surface.md`](./docs/public-surface.md).
 

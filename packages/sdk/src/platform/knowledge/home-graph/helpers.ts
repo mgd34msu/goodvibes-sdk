@@ -10,6 +10,7 @@ import type {
 import {
   isGeneratedKnowledgeSource,
 } from '../generated-projections.js';
+import { isActiveKnowledgeEdge } from '../projection-utils.js';
 import {
   HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX,
   getKnowledgeSpaceId,
@@ -179,11 +180,19 @@ function homeGraphObjectId(kind: HomeGraphNodeKind, object: HomeGraphObjectInput
 }
 
 export function edgeIsActive(edge: KnowledgeEdgeRecord): boolean {
-  return edge.metadata.linkStatus !== 'unlinked';
+  return isActiveKnowledgeEdge(edge);
 }
 
 export function isGeneratedPageSource(source: KnowledgeSourceRecord): boolean {
   return isGeneratedKnowledgeSource(source);
+}
+
+export function factSourceIds(fact: KnowledgeNodeRecord): string[] {
+  return uniqueStrings([
+    ...readStringArray(fact.metadata.sourceIds),
+    readString(fact.metadata.sourceId),
+    fact.sourceId,
+  ]);
 }
 
 export function belongsToSpace(record: { readonly metadata?: Record<string, unknown> } | undefined | null, spaceId: string): boolean {
@@ -405,8 +414,7 @@ function stableJson(value: unknown): string {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
       return Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right)));
     });
-  } catch (error) {
-    void error;
+  } catch {
     return String(value);
   }
 }

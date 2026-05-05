@@ -26,28 +26,13 @@ import type { AnyRuntimeEvent, RuntimeEventDomain } from '../events/index.js';
  * cross-domain cast in a single, documented location rather than duplicating it
  * at each call site.
  */
-/**
- * GC-ARCH-002 allowlist: This file is explicitly permitted to call
- * RuntimeEventBus.emit() directly because it emits synthetic health events
- * (CASCADE_APPLIED, EMIT_EVENT effects) that are intentionally outside the
- * AnyRuntimeEvent typed union. The necessary cast is isolated here to avoid
- * duplicating it at every effect-handler call site.
- *
- * Do NOT copy this pattern elsewhere — use typed emitters from
- * src/runtime/emitters/ for all standard domain events.
- */
 function emitHealthEvent(
   bus: RuntimeEventBus,
   envelope: RuntimeEventEnvelope<string, unknown>,
 ): void {
-  // GC-ARCH-002: CASCADE_APPLIED and synthetic health events live outside the AnyRuntimeEvent
-  // typed union by design. We use the implementation overload of bus.emit directly to route
-  // them without polluting the AnyRuntimeEvent union. The single-step cast (not via unknown)
-  // is audited and intentional — health events are valid RuntimeEventEnvelope objects whose
-  // type discriminant is a string literal unknown to the compile-time union.
-  //
-  // Do NOT copy this pattern elsewhere — use typed emitters from src/runtime/emitters/ for
-  // all standard domain events.
+  // CASCADE_APPLIED and synthetic health events live outside the AnyRuntimeEvent typed union
+  // by design. Keep the cross-domain cast isolated here so standard domain events can continue
+  // using typed emitters.
   bus.emit(
     // Health events use 'session' as the routing domain — it is the most general
     // domain and health cascades originate from session-level failures.

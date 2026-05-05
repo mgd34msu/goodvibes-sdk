@@ -67,7 +67,7 @@ export const compactionFailurePlaybook: Playbook = {
         'Review compaction.* spans in the local ledger for ERROR status. ' +
         'Note the error message, strategy, and token count at time of failure.',
       kind: 'observe',
-      expectedOutcome: 'Root cause identified from span error messages.',
+      expectedOutcome: 'Cause identified from span error messages.',
       automatable: false,
     },
     {

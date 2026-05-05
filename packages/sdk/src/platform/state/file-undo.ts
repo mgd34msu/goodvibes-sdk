@@ -73,7 +73,7 @@ export class FileUndoManager {
         logger.debug('file-undo: restored previous content', { path: op.path });
       }
     } catch (err) {
-      logger.debug('file-undo: undo write failed', { path: op.path, error: summarizeError(err) });
+      logger.warn('file-undo: undo write failed', { path: op.path, error: summarizeError(err) });
       // Put it back on the stack so state is consistent
       this.undoStack.push(op);
       throw err;
@@ -102,7 +102,7 @@ export class FileUndoManager {
       writeFileSync(op.path, op.afterContent, 'utf-8');
       logger.debug('file-undo: re-applied operation', { path: op.path });
     } catch (err) {
-      logger.debug('file-undo: redo write failed', { path: op.path, error: summarizeError(err) });
+      logger.warn('file-undo: redo write failed', { path: op.path, error: summarizeError(err) });
       this.redoStack.push(op);
       throw err;
     }

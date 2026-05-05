@@ -8,7 +8,6 @@ Public API surfaces:
 
 - `@pellux/goodvibes-sdk/platform/core`
 - `@pellux/goodvibes-sdk/platform/runtime`
-- `@pellux/goodvibes-sdk/platform` (full platform hub)
 
 > See [Public surface reference](./public-surface.md) for stability status and the full list of exported platform subpaths.
 
@@ -138,8 +137,8 @@ Supported routes:
 
 Set the client base URL to the daemon prefix, for example
 `http://127.0.0.1:3421/v1` (default control-plane port; configurable via `controlPlane.port`), and use the daemon bearer token as the API key.
-The route accepts `goodvibes/current`, `goodvibes/default`, registry keys such
-as `openai:gpt-5.5`, and unambiguous plain model ids. Streaming responses use
+The route accepts `goodvibes/current`, `goodvibes/default`, and provider-qualified registry keys such
+as `openai:gpt-5.5`. Streaming responses use
 OpenAI-style `text/event-stream` chunks ending with `data: [DONE]`.
 
 This layer is intentionally narrow. It maps OpenAI-style requests to the active

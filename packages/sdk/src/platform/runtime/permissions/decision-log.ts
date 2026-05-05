@@ -48,7 +48,8 @@ export interface DecisionLogQuery {
  * DecisionLog — Bounded circular buffer for permission decision audit records.
  *
  * Thread-safe for single-threaded Bun/Node runtimes (no async gaps in write path).
- * Oldest entries are silently evicted when the buffer is full.
+ * Oldest entries are evicted when the buffer is full; `totalRecorded` and
+ * `summary().evicted` expose rollover.
  *
  * Implements a true O(1) ring buffer with head/tail indexing to avoid O(n)
  * Array.shift() evictions.
@@ -71,8 +72,9 @@ export class DecisionLog {
   /**
    * append — Records a permission decision in the audit log.
    *
-   * If the buffer has reached `maxEntries`, the oldest entry is silently evicted
-   * in O(1) time via ring buffer head advancement.
+   * If the buffer has reached `maxEntries`, the oldest entry is evicted in O(1)
+   * time via ring buffer head advancement. Rollover is observable via
+   * `totalRecorded` and `summary().evicted`.
    *
    * @param decision — The completed PermissionDecision to record.
    */

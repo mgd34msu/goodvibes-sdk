@@ -18,6 +18,7 @@ import {
 import { ConfigurationError } from '../packages/errors/src/index.js';
 import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
 import type { SDKObserver, AuthTransitionInfo } from '../packages/sdk/src/observer/index.js';
+import { captureConsole } from './_helpers/test-timeout.js';
 
 function makeStorage(initial: Record<string, string> = {}): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   const store = { ...initial };
@@ -234,22 +235,36 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
     expect(transitions[0].to).toBe('anonymous');
   });
 
-  test('observer that throws on onAuthTransition does not propagate into login', async () => {
+  test('observer that throws on onAuthTransition is reported but does not propagate into login', async () => {
     const observer: SDKObserver = {
       onAuthTransition(_t) { throw new Error('observer exploded'); },
     };
     const tokenStore = createMemoryTokenStore();
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
-    await expect(client.login({ username: 'alice', password: 'secret' })).resolves.toMatchObject({ token: 'auth-tok' });
+    const capture = captureConsole('warn');
+    try {
+      await expect(client.login({ username: 'alice', password: 'secret' })).resolves.toMatchObject({ token: 'auth-tok' });
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0]?.[0])).toMatch(/observer callback failed: onAuthTransition/);
+    } finally {
+      capture.restore();
+    }
   });
 
-  test('observer that throws on onAuthTransition does not propagate into clearToken', async () => {
+  test('observer that throws on onAuthTransition is reported but does not propagate into clearToken', async () => {
     const observer: SDKObserver = {
       onAuthTransition(_t) { throw new Error('observer exploded'); },
     };
     const tokenStore = createMemoryTokenStore('existing');
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
-    await expect(client.clearToken()).resolves.toBeUndefined();
+    const capture = captureConsole('warn');
+    try {
+      await expect(client.clearToken()).resolves.toBeUndefined();
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0]?.[0])).toMatch(/observer callback failed: onAuthTransition/);
+    } finally {
+      capture.restore();
+    }
   });
 });
 

@@ -6,5 +6,5 @@ export interface ConfigSettingDefinition {
   default: unknown;
   description: string;
   enumValues?: string[] | undefined;
-  validate?: ((value: unknown) => boolean) | undefined | undefined;
+  validate?: ((value: unknown) => boolean) | undefined;
 }

@@ -237,7 +237,7 @@ The report format depends on your role:
   if (archetype?.systemPrompt) {
     parts.push(archetype.systemPrompt);
   } else {
-    // Fallback: minimal role description from built-in templates
+    // Use the minimal role description from built-in templates.
     const roleDescriptions: Record<string, string> = {
       engineer: '## Role: Engineer\nFull-stack implementation agent. Build production-ready features with error handling, type safety, input validation, and security. Follow existing project patterns.\n\nEngineer execution protocol:\n1. Gather: read the necessary files, symbols, and constraints before editing.\n2. Plan: decide the exact writes and tool actions before making changes.\n3. Apply: perform the smallest correct set of edits and validations.\n\nYour final message MUST include a structured EngineerReport JSON block with gatheredContext, plannedActions, and appliedChanges (see Structured Output section).\n\nWill NOT do: architecture planning, code review, test writing, deployment.',
       reviewer: '## Role: Reviewer\nCode review and quality assessment agent. Evaluate code for correctness, security, performance, and adherence to project conventions. Produce structured pass/fail assessments with specific issues.\n\nYour final message MUST include a structured ReviewerReport JSON block (see Structured Output section).\n\nWill NOT do: implementation, deployment, testing.',
@@ -350,7 +350,7 @@ export function buildLayeredOrchestratorSystemPrompt(
     return noContext;
   }
 
-  // Final fallback: truncate the reduced prompt to fit
+  // Final bounded reduction: truncate the reduced prompt to fit.
   const targetChars = remainingTokens * 4; // rough chars from tokens
   const truncated = noContext.length > targetChars
     ? noContext.slice(0, targetChars) + '\n[...system prompt truncated to fit context window]'

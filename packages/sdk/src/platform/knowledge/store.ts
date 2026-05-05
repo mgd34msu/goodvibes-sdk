@@ -363,6 +363,78 @@ export class KnowledgeStore {
     return record;
   }
 
+  async deleteSource(id: string): Promise<boolean> {
+    await this.init();
+    if (!this.sources.has(id)) return false;
+    for (const [edgeId, edge] of [...this.edges.entries()]) {
+      if ((edge.fromKind === 'source' && edge.fromId === id) || (edge.toKind === 'source' && edge.toId === id)) {
+        this.sqlite.run('DELETE FROM knowledge_edges WHERE id = ?', [edgeId]);
+        this.edges.delete(edgeId);
+      }
+    }
+    for (const [extractionId, extraction] of [...this.extractions.entries()]) {
+      if (extraction.sourceId === id) {
+        this.sqlite.run('DELETE FROM knowledge_extractions WHERE id = ?', [extractionId]);
+        this.extractions.delete(extractionId);
+      }
+    }
+    for (const [issueId, issue] of [...this.issues.entries()]) {
+      if (issue.sourceId === id) {
+        this.sqlite.run('DELETE FROM knowledge_issues WHERE id = ?', [issueId]);
+        this.issues.delete(issueId);
+      }
+    }
+    for (const [usageId, usage] of [...this.usageRecords.entries()]) {
+      if (usage.targetKind === 'source' && usage.targetId === id) {
+        this.sqlite.run('DELETE FROM knowledge_usage_records WHERE id = ?', [usageId]);
+        this.usageRecords.delete(usageId);
+      }
+    }
+    for (const [candidateId, candidate] of [...this.consolidationCandidates.entries()]) {
+      if (candidate.subjectKind === 'source' && candidate.subjectId === id) {
+        this.sqlite.run('DELETE FROM knowledge_consolidation_candidates WHERE id = ?', [candidateId]);
+        this.consolidationCandidates.delete(candidateId);
+      }
+    }
+    this.sqlite.run('DELETE FROM knowledge_sources WHERE id = ?', [id]);
+    this.sources.delete(id);
+    await this.sqlite.save();
+    return true;
+  }
+
+  async replaceSourceRecord(record: KnowledgeSourceRecord): Promise<void> {
+    await this.init();
+    this.sqlite.run(`
+      INSERT OR REPLACE INTO knowledge_sources (
+        id, connector_id, source_type, title, source_uri, canonical_uri, summary, description,
+        tags, folder_path, status, artifact_id, content_hash, last_crawled_at, crawl_error,
+        session_id, metadata, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      record.id,
+      record.connectorId,
+      record.sourceType,
+      record.title ?? null,
+      record.sourceUri ?? null,
+      record.canonicalUri ?? null,
+      record.summary ?? null,
+      record.description ?? null,
+      JSON.stringify([...record.tags]),
+      record.folderPath ?? null,
+      record.status,
+      record.artifactId ?? null,
+      record.contentHash ?? null,
+      record.lastCrawledAt ?? null,
+      record.crawlError ?? null,
+      record.sessionId ?? null,
+      JSON.stringify(record.metadata),
+      record.createdAt,
+      record.updatedAt,
+    ]);
+    this.sources.set(record.id, record);
+    await this.sqlite.save();
+  }
+
   async upsertNode(input: KnowledgeNodeUpsertInput): Promise<KnowledgeNodeRecord> {
     await this.init();
     const existing = input.id
@@ -411,6 +483,63 @@ export class KnowledgeStore {
     return record;
   }
 
+  async deleteNode(id: string): Promise<boolean> {
+    await this.init();
+    if (!this.nodes.has(id)) return false;
+    for (const [edgeId, edge] of [...this.edges.entries()]) {
+      if ((edge.fromKind === 'node' && edge.fromId === id) || (edge.toKind === 'node' && edge.toId === id)) {
+        this.sqlite.run('DELETE FROM knowledge_edges WHERE id = ?', [edgeId]);
+        this.edges.delete(edgeId);
+      }
+    }
+    for (const [issueId, issue] of [...this.issues.entries()]) {
+      if (issue.nodeId === id) {
+        this.sqlite.run('DELETE FROM knowledge_issues WHERE id = ?', [issueId]);
+        this.issues.delete(issueId);
+      }
+    }
+    for (const [usageId, usage] of [...this.usageRecords.entries()]) {
+      if (usage.targetKind === 'node' && usage.targetId === id) {
+        this.sqlite.run('DELETE FROM knowledge_usage_records WHERE id = ?', [usageId]);
+        this.usageRecords.delete(usageId);
+      }
+    }
+    for (const [candidateId, candidate] of [...this.consolidationCandidates.entries()]) {
+      if (candidate.subjectKind === 'node' && candidate.subjectId === id) {
+        this.sqlite.run('DELETE FROM knowledge_consolidation_candidates WHERE id = ?', [candidateId]);
+        this.consolidationCandidates.delete(candidateId);
+      }
+    }
+    this.sqlite.run('DELETE FROM knowledge_nodes WHERE id = ?', [id]);
+    this.nodes.delete(id);
+    await this.sqlite.save();
+    return true;
+  }
+
+  async replaceNodeRecord(record: KnowledgeNodeRecord): Promise<void> {
+    await this.init();
+    this.sqlite.run(`
+      INSERT OR REPLACE INTO knowledge_nodes (
+        id, kind, slug, title, summary, aliases, status, confidence, source_id, metadata, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      record.id,
+      record.kind,
+      record.slug,
+      record.title,
+      record.summary ?? null,
+      JSON.stringify([...record.aliases]),
+      record.status,
+      record.confidence,
+      record.sourceId ?? null,
+      JSON.stringify(record.metadata),
+      record.createdAt,
+      record.updatedAt,
+    ]);
+    this.nodes.set(record.id, record);
+    await this.sqlite.save();
+  }
+
   async upsertEdge(input: KnowledgeEdgeUpsertInput): Promise<KnowledgeEdgeRecord> {
     await this.init();
     const existing = [...this.edges.values()].find((edge) => (
@@ -455,6 +584,37 @@ export class KnowledgeStore {
     this.edges.set(record.id, record);
     await this.sqlite.save();
     return record;
+  }
+
+  async deleteEdge(id: string): Promise<boolean> {
+    await this.init();
+    if (!this.edges.has(id)) return false;
+    this.sqlite.run('DELETE FROM knowledge_edges WHERE id = ?', [id]);
+    this.edges.delete(id);
+    await this.sqlite.save();
+    return true;
+  }
+
+  async replaceEdgeRecord(record: KnowledgeEdgeRecord): Promise<void> {
+    await this.init();
+    this.sqlite.run(`
+      INSERT OR REPLACE INTO knowledge_edges (
+        id, from_kind, from_id, to_kind, to_id, relation, weight, metadata, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      record.id,
+      record.fromKind,
+      record.fromId,
+      record.toKind,
+      record.toId,
+      record.relation,
+      record.weight,
+      JSON.stringify(record.metadata),
+      record.createdAt,
+      record.updatedAt,
+    ]);
+    this.edges.set(record.id, record);
+    await this.sqlite.save();
   }
 
   async replaceIssues(inputs: readonly KnowledgeIssueUpsertInput[], namespace?: string): Promise<KnowledgeIssueRecord[]> {

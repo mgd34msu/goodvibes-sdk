@@ -17,7 +17,7 @@ export interface AnswerFallbackPolicy {
     readonly query: string;
     readonly sourceTitles: readonly string[];
   }) => FallbackAnswer;
-  readonly renderNoMatch?: ((query: string) => FallbackAnswer) | undefined | undefined;
+  readonly renderNoMatch?: ((query: string) => FallbackAnswer) | undefined;
 }
 
 const DEFAULT_ANSWER_FALLBACK_POLICY: Required<AnswerFallbackPolicy> = {

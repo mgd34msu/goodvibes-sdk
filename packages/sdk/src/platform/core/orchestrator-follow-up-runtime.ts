@@ -53,7 +53,7 @@ export class OrchestratorFollowUpRuntime {
     queueMicrotask(() => {
       this.flushScheduled = false;
       void this.flush().catch((error: unknown) => {
-        logger.debug('Orchestrator follow-up flush failed before provider call', {
+        logger.warn('Orchestrator follow-up flush failed before provider call', {
           error: summarizeError(error),
         });
       });
@@ -90,7 +90,7 @@ export class OrchestratorFollowUpRuntime {
 
     const providerRegistry = this.options.getProviderRegistry();
     const model = this.options.getCurrentModel();
-    const provider = providerRegistry.require(model.provider);
+    const provider = providerRegistry.getForModel(model.registryKey, model.provider);
     const tokenLimit = Math.min(
       FOLLOW_UP_MAX_OUTPUT_TOKENS,
       providerRegistry.getTokenLimitsForModel(model).maxOutputTokens ?? FOLLOW_UP_MAX_OUTPUT_TOKENS,
@@ -124,7 +124,7 @@ export class OrchestratorFollowUpRuntime {
         this.options.requestRender();
       }
     } catch (error) {
-      logger.debug('Orchestrator follow-up acknowledgement failed', {
+      logger.warn('Orchestrator follow-up acknowledgement failed', {
         error: summarizeError(error),
         updates: batch.map((item) => item.summary),
       });

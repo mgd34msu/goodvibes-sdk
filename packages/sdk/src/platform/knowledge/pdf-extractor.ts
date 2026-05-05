@@ -68,15 +68,25 @@ function uniqueStrings(values: Iterable<string>, limit = 24): string[] {
   return result;
 }
 
+interface PdfJsExtractionAttempt {
+  readonly result?: KnowledgeExtractionResult | undefined;
+  readonly warning?: string | undefined;
+}
+
+interface RawPdfExtractionDiagnostics {
+  failedFlateDecodeStreams: number;
+  firstFlateDecodeError?: string | undefined;
+}
+
 export async function extractPdf(buffer: Buffer): Promise<KnowledgeExtractionResult> {
   const parsed = await extractPdfWithPdfJs(buffer);
-  if (parsed) return parsed;
-  const raw = extractPdfRawStreams(buffer);
+  if (parsed.result) return parsed.result;
+  const raw = extractPdfRawStreams(buffer, parsed.warning ? [parsed.warning] : []);
   if (raw) return raw;
   throw new Error('PDF extraction failed: no readable text was extracted. OCR or a dedicated PDF provider may be required.');
 }
 
-async function extractPdfWithPdfJs(buffer: Buffer): Promise<KnowledgeExtractionResult | undefined> {
+async function extractPdfWithPdfJs(buffer: Buffer): Promise<PdfJsExtractionAttempt> {
   try {
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
     const loadingTask = pdfjs.getDocument({
@@ -95,31 +105,34 @@ async function extractPdfWithPdfJs(buffer: Buffer): Promise<KnowledgeExtractionR
     }
     await document.destroy();
     const text = cleanText(pageTexts.join('\n\n'));
-    if (!text) return undefined;
+    if (!text) return {};
     const searchText = searchTextPayload(text);
     return {
-      extractorId: 'pdfjs',
-      format: 'pdf',
-      title: firstNonEmptyLine(text) ?? 'PDF document',
-      summary: summarizeText(text) ?? 'PDF document.',
-      excerpt: excerptText(text),
-      sections: uniqueStrings(text.split(/\n+/), 24),
-      links: uniqueStrings(Array.from(text.matchAll(/\bhttps?:\/\/[^\s)]+/g), (match) => match[0]), 50),
-      estimatedTokens: estimateTokens(text),
-      structure: {
-        pageCount,
-        extractedTextChars: text.length,
-        ...(searchText ? { searchText } : {}),
-      },
-      metadata: {
-        limitations: ['PDF text extraction does not perform OCR for scanned images.'],
+      result: {
+        extractorId: 'pdfjs',
+        format: 'pdf',
+        title: firstNonEmptyLine(text) ?? 'PDF document',
+        summary: summarizeText(text) ?? 'PDF document.',
+        excerpt: excerptText(text),
+        sections: uniqueStrings(text.split(/\n+/), 24),
+        links: uniqueStrings(Array.from(text.matchAll(/\bhttps?:\/\/[^\s)]+/g), (match) => match[0]), 50),
+        estimatedTokens: estimateTokens(text),
+        structure: {
+          pageCount,
+          extractedTextChars: text.length,
+          ...(searchText ? { searchText } : {}),
+        },
+        metadata: {
+          limitations: ['PDF text extraction does not perform OCR for scanned images.'],
+        },
       },
     };
   } catch (error) {
-    logger.debug('PDF extraction: pdfjs path failed; trying raw stream extraction', {
+    const warning = `PDF.js extraction failed; used raw stream fallback: ${summarizeError(error)}`;
+    logger.warn('PDF extraction: pdfjs path failed; trying raw stream extraction', {
       error: summarizeError(error),
     });
-    return undefined;
+    return { warning };
   }
 }
 
@@ -143,15 +156,16 @@ function unknownRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? value as Record<string, unknown> : {};
 }
 
-function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult | undefined {
+function extractPdfRawStreams(buffer: Buffer, initialWarnings: readonly string[] = []): KnowledgeExtractionResult | undefined {
   const body = buffer.toString('latin1');
   const texts: string[] = [];
+  const diagnostics: RawPdfExtractionDiagnostics = { failedFlateDecodeStreams: 0 };
   const streamRe = /(<<[\s\S]{0,4096}?>>)\s*stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let match: RegExpExecArray | null;
   while ((match = streamRe.exec(body)) !== null) {
     const dictionary = match[1]! ?? '';
     const rawChunk = match[2]! ?? '';
-    const chunk = decodePdfStreamChunk(dictionary, rawChunk);
+    const chunk = decodePdfStreamChunk(dictionary, rawChunk, diagnostics);
     for (const text of extractPdfTextStrings(chunk)) {
       if (isReadablePdfText(text)) texts.push(text);
     }
@@ -160,6 +174,13 @@ function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult | undef
   const searchable = uniqueStrings(texts, 512).join('\n');
   const searchText = searchTextPayload(searchable);
   if (!searchText) return undefined;
+  const warnings = [...initialWarnings];
+  if (diagnostics.failedFlateDecodeStreams > 0) {
+    warnings.push(
+      `Failed to inflate ${diagnostics.failedFlateDecodeStreams} FlateDecode PDF stream(s); extracted readable text from remaining streams.`
+      + (diagnostics.firstFlateDecodeError ? ` First error: ${diagnostics.firstFlateDecodeError}` : ''),
+    );
+  }
   return {
     extractorId: 'pdf-raw',
     format: 'pdf',
@@ -177,18 +198,23 @@ function extractPdfRawStreams(buffer: Buffer): KnowledgeExtractionResult | undef
       limitations: texts.length === 0
         ? ['No readable text streams were found. Complex PDFs need OCR or a dedicated provider.']
         : ['PDF text extraction does not perform OCR for scanned images.'],
+      ...(warnings.length > 0 ? { warnings } : {}),
+      ...(diagnostics.failedFlateDecodeStreams > 0 ? { failedFlateDecodeStreamCount: diagnostics.failedFlateDecodeStreams } : {}),
     },
   };
 }
 
-function decodePdfStreamChunk(dictionary: string, rawChunk: string): string {
+function decodePdfStreamChunk(
+  dictionary: string,
+  rawChunk: string,
+  diagnostics: RawPdfExtractionDiagnostics,
+): string {
   if (!/\/FlateDecode\b/i.test(dictionary)) return rawChunk;
   try {
     return inflateSync(Buffer.from(rawChunk, 'latin1')).toString('latin1');
   } catch (error) {
-    logger.debug('PDF extraction: failed to inflate FlateDecode stream', {
-      error: summarizeError(error),
-    });
+    diagnostics.failedFlateDecodeStreams += 1;
+    diagnostics.firstFlateDecodeError ??= summarizeError(error);
     return '';
   }
 }

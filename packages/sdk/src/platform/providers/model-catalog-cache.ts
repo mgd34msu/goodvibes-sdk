@@ -96,22 +96,36 @@ function getStringArray(value: unknown): string[] {
 
 function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
   const models: CatalogModel[] = [];
+  let skippedProviders = 0;
+  let skippedProviderModelLists = 0;
+  let skippedModels = 0;
 
   for (const [providerId, providerData] of Object.entries(json)) {
-    if (!providerData || typeof providerData !== 'object') continue;
+    if (!providerData || typeof providerData !== 'object' || Array.isArray(providerData)) {
+      skippedProviders++;
+      continue;
+    }
 
     const providerCategory = categorizeProvider(providerId);
     if (providerCategory === 'shutdown') continue;
 
-    const providerName = String(providerData.name ?? providerId);
+    const providerName = typeof providerData.name === 'string' && providerData.name.trim()
+      ? providerData.name
+      : providerId;
     const providerModels = providerData.models;
-    if (!providerModels || typeof providerModels !== 'object') continue;
+    if (!providerModels || typeof providerModels !== 'object' || Array.isArray(providerModels)) {
+      skippedProviderModelLists++;
+      continue;
+    }
 
     for (const [modelKey, modelData] of Object.entries(providerModels)) {
-      if (!modelData || typeof modelData !== 'object') continue;
+      if (!modelData || typeof modelData !== 'object' || Array.isArray(modelData)) {
+        skippedModels++;
+        continue;
+      }
 
-      const modelId = String(modelData.id ?? modelKey);
-      const modelName = String(modelData.name ?? modelId);
+      const modelId = typeof modelData.id === 'string' && modelData.id.trim() ? modelData.id : modelKey;
+      const modelName = typeof modelData.name === 'string' && modelData.name.trim() ? modelData.name : modelId;
       const modelFamily = typeof modelData.family === 'string' ? modelData.family : undefined;
       const cost = modelData.cost;
       const limit = modelData.limit;
@@ -148,15 +162,43 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
     }
   }
 
+  if (skippedProviders > 0 || skippedProviderModelLists > 0 || skippedModels > 0) {
+    logger.warn('[model-catalog] Ignored malformed catalog entries', {
+      skippedProviders,
+      skippedProviderModelLists,
+      skippedModels,
+    });
+  }
+
   return models;
+}
+
+function validateCatalogCache(value: unknown): { cache: CatalogCacheFile | null; reason?: string } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { cache: null, reason: 'root value is not an object' };
+  }
+  const parsed = value as Partial<CatalogCacheFile>;
+  if (parsed.version !== 1) return { cache: null, reason: 'unsupported cache version' };
+  if (typeof parsed.fetchedAt !== 'number' || !Number.isFinite(parsed.fetchedAt)) {
+    return { cache: null, reason: 'fetchedAt must be a finite number' };
+  }
+  if (typeof parsed.ttlMs !== 'number' || !Number.isFinite(parsed.ttlMs)) {
+    return { cache: null, reason: 'ttlMs must be a finite number' };
+  }
+  if (!Array.isArray(parsed.models)) return { cache: null, reason: 'models must be an array' };
+  return { cache: parsed as CatalogCacheFile };
 }
 
 function loadCatalogCache(cachePath: string): CatalogCacheFile | null {
   try {
     const raw = fs.readFileSync(cachePath, 'utf-8');
-    const parsed = JSON.parse(raw) as CatalogCacheFile;
-    if (parsed.version !== 1 || !Array.isArray(parsed.models)) return null;
-    return parsed;
+    const parsed = JSON.parse(raw) as unknown;
+    const { cache, reason } = validateCatalogCache(parsed);
+    if (!cache) {
+      logger.warn('[model-catalog] Ignoring malformed cache', { cachePath, reason: reason ?? 'unknown' });
+      return null;
+    }
+    return cache;
   } catch (err) {
     const msg = summarizeError(err);
     if (msg.includes('ENOENT') || msg.includes('no such file')) {

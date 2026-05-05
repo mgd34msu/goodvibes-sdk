@@ -91,8 +91,8 @@ export const editSchema = {
           enum: ['exact', 'fuzzy', 'regex', 'ast', 'ast_pattern'],
           description:
             'Match mode. exact: literal string match. fuzzy: whitespace-insensitive. regex: treat find as regex. ' +
-            'ast: structural match using tree-sitter (falls back to exact if unavailable). ' +
-            'ast_pattern: pattern matching using @ast-grep/napi metavariables like $VAR or $$$ARGS (falls back to exact if unavailable).',
+            'ast: structural match using tree-sitter; if unavailable, exact fallback is reported as a warning. ' +
+            'ast_pattern: pattern matching using @ast-grep/napi metavariables like $VAR or $$$ARGS; if unavailable, exact fallback is reported as a warning.',
           default: 'exact',
         },
         case_sensitive: {

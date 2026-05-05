@@ -57,7 +57,7 @@ export interface ProviderRuntimeMetadata {
     readonly embeddingModel?: string | undefined;
     readonly embeddingDimensions?: number | undefined;
     readonly aliases?: readonly string[] | undefined;
-    readonly suppressedModels?: readonly string[] | undefined;
+    readonly suppressedModelRegistryKeys?: readonly string[] | undefined;
   };
   readonly usage?: {
     readonly streaming: boolean;
@@ -223,7 +223,7 @@ export interface ChatRequest {
   /** Mercury-2 specific: whether to include a reasoning summary in the response. */
   reasoningSummary?: boolean | undefined;
   /** Called per-chunk during streaming when streaming is enabled. */
-  onDelta?: ((delta: StreamDelta) => void) | undefined | undefined;
+  onDelta?: ((delta: StreamDelta) => void) | undefined;
 }
 
 /**
@@ -237,7 +237,7 @@ export type ChatStopReason =
   | 'stop_sequence'    // Matched an explicit stop sequence
   | 'content_filter'   // Provider content filter triggered
   | 'error'            // Generation aborted due to error
-  | 'unknown';         // Fallback for unmapped provider values
+  | 'unknown';         // Default for unmapped provider values
 
 export interface ChatResponse {
   content: string;

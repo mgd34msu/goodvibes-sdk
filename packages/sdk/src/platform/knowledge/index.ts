@@ -65,6 +65,7 @@ export {
 export type {
   GeneratedKnowledgeProjectionInput,
   GeneratedKnowledgeProjectionResult,
+  GeneratedKnowledgeProjectionTargetKind,
 } from './generated-projections.js';
 export { renderKnowledgeMap } from './map.js';
 export type { KnowledgeMapRenderOptions, KnowledgeMapRenderState } from './map.js';

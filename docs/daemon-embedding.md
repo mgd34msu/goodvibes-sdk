@@ -50,9 +50,9 @@ import {
 } from '@pellux/goodvibes-sdk/daemon';
 ```
 
-Other route categories (channel, integration, system, knowledge, media) are available
-internally via the full platform hub (`@pellux/goodvibes-sdk/platform`) but do not
-have separate public dispatcher exports at this time.
+Other route categories (channel, integration, system, knowledge, media) are host-owned
+composition points. Import the exported subsystem routes and services from their
+explicit public subpaths rather than through a catch-all platform barrel.
 
 ## Host responsibility
 

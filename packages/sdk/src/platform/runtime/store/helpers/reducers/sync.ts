@@ -312,7 +312,7 @@ function transportStateForEvent(event: TransportEvent): AcpTransportState | Daem
       return 'disconnected';
     case 'TRANSPORT_TERMINAL_FAILURE':
       return 'terminal_failure';
-    // OBS-18/OBS-19: observability-only events — no state change.
+    // observability-only events — no state change.
     case 'TRANSPORT_RETRY_SCHEDULED':
     case 'TRANSPORT_RETRY_EXECUTED':
     case 'STREAM_SUBSCRIBER_CONNECTED':
@@ -327,7 +327,7 @@ export function updateTransportState(
   event: TransportEvent,
 ): Pick<import('../../state.js').RuntimeState, 'acp' | 'daemon'> {
   const nextTransportState = transportStateForEvent(event);
-  // OBS-18/OBS-19: observability-only events have no transportId and no state to update.
+  // observability-only events have no transportId and no state to update.
   if (nextTransportState === null) return { acp, daemon };
   const transportId = 'transportId' in event ? event.transportId : '';
   const isAcp = transportId.startsWith('acp');

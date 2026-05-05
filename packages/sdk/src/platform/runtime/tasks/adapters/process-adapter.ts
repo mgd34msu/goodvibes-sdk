@@ -146,7 +146,7 @@ export class ProcessTaskAdapter {
    * Reconcile adapter state with the RuntimeTask registry.
    *
    * Scans all ProcessManager processes:
-   * - Wraps any un-tracked processes as new tasks (with a fallback owner).
+   * - Wraps any un-tracked processes as new tasks (with a derived owner).
    * - Marks completed (done) processes as completed or failed in the task store.
    * - Removes task mappings for processes that have been cleaned up.
    *

@@ -50,7 +50,7 @@ export type TurnEvent =
    * TURN_COMPLETED, TURN_ERROR, TURN_CANCEL, or PREFLIGHT_FAIL.
    */
   | { type: 'STREAM_END'; turnId: string; scope?: 'provider'; terminal?: false }
-  /** OBS-04: An LLM request is about to be dispatched to the provider. */
+  /** An LLM request is about to be dispatched to the provider. */
   | {
     type: 'LLM_REQUEST_STARTED';
     turnId: string;
@@ -72,7 +72,7 @@ export type TurnEvent =
     outputTokens: number;
     cacheReadTokens?: number | undefined;
     cacheWriteTokens?: number | undefined;
-    /** OBS-04 enrichments */
+    /** LLM request enrichments */
     durationMs?: number | undefined;
     retries?: number | undefined;
     costUsdCents?: number | undefined;

@@ -39,7 +39,7 @@ export function evaluateProjectPlanningReadiness(state: ProjectPlanningState): P
       'The plan has no explicit boundary for what is included or excluded.',
       'What is in scope, and what should be left out for this pass?',
       'Scope boundaries prevent the planning loop from turning a focused change into unrelated work.',
-      'Define the first-pass scope and record do-later items separately.',
+      'Define the first-pass scope and separate out-of-scope work from the current acceptance criteria.',
     ));
   }
   for (const question of state.openQuestions) {
@@ -162,4 +162,3 @@ function blockingQuestion(
     question,
   };
 }
-

@@ -94,13 +94,13 @@ export class CachePlanner {
           };
         }
       } catch (err) {
-        logger.debug('[CachePlanner] Helper planning failed, falling back to heuristic', {
+        logger.warn('[CachePlanner] Helper planning failed, falling back to heuristic', {
           error: summarizeError(err),
         });
       }
     }
 
-    // Fallback: heuristic strategy
+    // Use a heuristic strategy when no explicit strategy is available.
     const heuristicStrategy = getDefaultStrategy(context);
     this.currentStrategy = heuristicStrategy;
     this.lastPlanTurn = this.turnsSinceLastPlan;
@@ -174,7 +174,7 @@ export class CachePlanner {
       };
 
       if (!parsed.breakpoints || !Array.isArray(parsed.breakpoints)) {
-        logger.debug('[CachePlanner] Helper returned invalid structure');
+        logger.warn('[CachePlanner] Helper returned invalid structure');
         return null;
       }
 
@@ -200,7 +200,7 @@ export class CachePlanner {
       }
 
       if (breakpoints.length === 0) {
-        logger.debug('[CachePlanner] Helper produced no valid breakpoints');
+        logger.warn('[CachePlanner] Helper produced no valid breakpoints');
         return null;
       }
 
@@ -210,7 +210,7 @@ export class CachePlanner {
         refreshAfterTurns: parsed.refreshAfterTurns ?? 10,
       };
     } catch (err) {
-      logger.debug('[CachePlanner] Failed to parse helper response', {
+      logger.warn('[CachePlanner] Failed to parse helper response', {
         error: summarizeError(err),
         response: response.slice(0, 200),
       });
@@ -237,7 +237,7 @@ Current request context:
 
 Rules:
 - system_and_tools content NEVER changes during a session \u2192 prefer longest TTL
-- conversation_prefix grows each turn but old turns are stable \u2192 5m TTL (refreshes on read)
+- conversation_prefix grows each turn but earlier turns are stable -> 5m TTL (refreshes on read)
 - Longer TTL breakpoints MUST come before shorter TTL in content order
 - Only place breakpoints if content exceeds ${cap.type === 'explicit' ? cap.minCacheableTokens : 1024} token minimum
 

@@ -1,5 +1,10 @@
 import type { DaemonRuntimeRouteHandlers } from '../../control-plane/routes/context.js';
 import type { DaemonRuntimeRouteContext as SdkDaemonRuntimeRouteContext, AutomationSurfaceKind, JsonBody } from '@pellux/goodvibes-daemon-sdk';
+import type {
+  AutomationScheduleDefinition,
+  CreateAutomationJobInput,
+  UpdateAutomationJobInput,
+} from '../../automation/index.js';
 import type { ExecutionIntent } from '../../runtime/execution-intents.js';
 // The local Like-view types below describe the minimal route handler inputs
 // accepted by daemon-sdk handlers. They stay narrow so callers can provide
@@ -45,7 +50,10 @@ interface RuntimeTaskStateLike {
   readonly tasks: Map<string, RuntimeTaskLike>;
 }
 
-export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteContext, 'trySpawnAgent'> {
+export interface DaemonRuntimeRouteContext extends Omit<
+  SdkDaemonRuntimeRouteContext,
+  'automationManager' | 'normalizeAtSchedule' | 'normalizeEverySchedule' | 'normalizeCronSchedule' | 'trySpawnAgent'
+> {
   readonly parseJsonBody: (req: Request) => Promise<JsonBody | Response>;
   readonly parseOptionalJsonBody: (req: Request) => Promise<JsonBody | null | Response>;
   readonly recordApiResponse: (req: Request, path: string, response: Response) => Response;
@@ -160,16 +168,16 @@ export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteCon
     triggerHeartbeat(input: { source: string }): Promise<unknown>;
     cancelRun(runId: string, reason: string): Promise<unknown | null>;
     retryRun(runId: string): Promise<unknown>;
-    createJob(input: Record<string, unknown>): Promise<AutomationJobLike>;
-    updateJob(jobId: string, input: Record<string, unknown>): Promise<AutomationJobLike | null>;
+    createJob(input: CreateAutomationJobInput): Promise<AutomationJobLike>;
+    updateJob(jobId: string, input: UpdateAutomationJobInput): Promise<AutomationJobLike | null>;
     removeJob(jobId: string): Promise<void>;
     setEnabled(jobId: string, enabled: boolean): Promise<AutomationJobLike | null>;
     runNow(jobId: string): Promise<{ id: string; agentId?: string; status: string }>;
     getSchedulerCapacity(): { slotsTotal: number; slotsInUse: number; queueDepth: number; oldestQueuedAgeMs: number | null };
   };
-  readonly normalizeAtSchedule: (at: number) => unknown;
-  readonly normalizeEverySchedule: (interval: string | number, anchorAt?: number) => unknown;
-  readonly normalizeCronSchedule: (expression: string, timezone?: string, staggerMs?: unknown) => unknown;
+  readonly normalizeAtSchedule: (at: number) => AutomationScheduleDefinition;
+  readonly normalizeEverySchedule: (interval: string | number, anchorAt?: number) => AutomationScheduleDefinition;
+  readonly normalizeCronSchedule: (expression: string, timezone?: string, staggerMs?: unknown) => AutomationScheduleDefinition;
   readonly routeBindings: {
     start(): Promise<void>;
     getBinding(id: string): AutomationRouteBinding | undefined;
@@ -182,6 +190,10 @@ export interface DaemonRuntimeRouteContext extends Omit<SdkDaemonRuntimeRouteCon
     provider?: string | undefined;
     context?: string | undefined;
     executionIntent?: ExecutionIntent | undefined;
+    executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
+    reviewMode?: 'none' | 'wrfc' | undefined;
+    communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
+    dangerously_disable_wrfc?: boolean | undefined;
   }, logLabel: string, sessionId?: string) => AgentRecordLike | Response;
   readonly queueSurfaceReplyFromBinding: (
     binding: AutomationRouteBinding | undefined,

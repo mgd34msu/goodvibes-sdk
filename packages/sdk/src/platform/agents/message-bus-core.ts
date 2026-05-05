@@ -164,7 +164,7 @@ export class AgentMessageBus {
         try {
           callback(message);
         } catch (error) {
-          logger.debug('MessageBus: subscriber error in broadcast', {
+          logger.warn('MessageBus: subscriber error in broadcast', {
             error: summarizeError(error),
           });
         }
@@ -303,7 +303,7 @@ export class AgentMessageBus {
       try {
         callback(message);
       } catch (error) {
-        logger.debug('MessageBus: subscriber error in deliver', {
+        logger.warn('MessageBus: subscriber error in deliver', {
           error: summarizeError(error),
         });
       }

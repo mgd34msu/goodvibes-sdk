@@ -41,6 +41,23 @@ export interface DiagnosticFilter {
 /** Severity level for diagnostic entries. */
 export type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error';
 
+/**
+ * Panel-level issue metadata for snapshots that were produced in a degraded
+ * state. Providers use this when they can still return partial data.
+ */
+export interface DiagnosticPanelIssue {
+  /** Severity of the panel degradation. */
+  readonly severity: 'warn' | 'error';
+  /** Stable machine-readable issue code. */
+  readonly code: string;
+  /** Human-readable issue summary. */
+  readonly message: string;
+  /** Panel or subsystem that produced the issue. */
+  readonly source: string;
+  /** Optional safe correlation details. */
+  readonly context?: Record<string, string | number | boolean> | undefined;
+}
+
 // ── Tool Call entries ─────────────────────────────────────────────────────────
 
 /** Phase of a single tool call in its execution timeline. */
@@ -230,6 +247,8 @@ export interface RuntimeStateSnapshot {
   readonly capturedAt: number;
   /** All domain state entries. */
   readonly domains: readonly DomainStateEntry[];
+  /** Panel-level warnings/errors for partial snapshots. */
+  readonly issues?: readonly DiagnosticPanelIssue[] | undefined;
 }
 
 // ── SLO status ───────────────────────────────────────────────────────────────
@@ -319,6 +338,8 @@ export interface HealthDashboardData {
    * Empty when no cascades are pending or no playbook mappings exist.
    */
   readonly remediationActions: readonly RemediationAction[];
+  /** Panel-level warnings/errors for degraded health dashboard collection. */
+  readonly issues?: readonly DiagnosticPanelIssue[] | undefined;
 }
 
 // ── Component config ─────────────────────────────────────────────────────────
@@ -542,6 +563,8 @@ export interface ComponentResourceSnapshot {
   readonly totalSuppressed: number;
   /** Epoch ms when this snapshot was captured. */
   readonly capturedAt: number;
+  /** Panel-level warnings/errors for degraded resource collection. */
+  readonly issues?: readonly DiagnosticPanelIssue[] | undefined;
 }
 
 // ── Token audit diagnostics ──────────────────────────────────────────────────
@@ -575,7 +598,7 @@ export interface TokenAuditDiagEntry {
   readonly policyId: string;
   /** Rotation audit outcome. */
   readonly rotationOutcome: TokenRotationAuditOutcome;
-  /** How old the token is in ms. */
+  /** Token age in ms. */
   readonly ageMs: number;
   /** Configured rotation cadence in ms. */
   readonly cadenceMs: number;

@@ -428,7 +428,7 @@ describe('error-response — buildErrorResponseBody — GoodVibesSdkError', () =
 
 describe('error-response — buildErrorResponseBody — structured body passthrough', () => {
   test('StructuredDaemonErrorBody unprivileged: returns safe copy (not original reference)', () => {
-    // CRIT-02: non-privileged callers get a stripped copy — internal fields like
+    // non-privileged callers get a stripped copy — internal fields like
     // provider/operation/phase are not exposed. Source and category are safe.
     const structured = {
       error: 'already structured',
@@ -537,12 +537,12 @@ describe('error-response — summarizeErrorForRecord', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MAJ-08: remote-routes — estimateJsonByteLengthWithinLimit
+// remote-routes — estimateJsonByteLengthWithinLimit
 // Verifies the cap is enforced via counting replacer — the full encoded string
 // is NEVER allocated for over-limit payloads (sentinel path exits early).
 // ---------------------------------------------------------------------------
 
-describe('remote-routes — estimateJsonByteLengthWithinLimit (MAJ-08 cap-before-allocate)', () => {
+describe('remote-routes — estimateJsonByteLengthWithinLimit cap-before-allocate', () => {
   test('small value within limit: returns kind="ok" and byteLength <= maxBytes', () => {
     const result = estimateJsonByteLengthWithinLimit({ hello: 'world' }, 10_000);
     expect(result.kind).toBe('ok');
@@ -591,4 +591,3 @@ describe('remote-routes — estimateJsonByteLengthWithinLimit (MAJ-08 cap-before
     }
   });
 });
-

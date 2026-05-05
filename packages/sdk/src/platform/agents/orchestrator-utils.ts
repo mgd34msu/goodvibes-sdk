@@ -14,7 +14,7 @@ export function summarizeToolArgs(args: Record<string, unknown>): string {
       return ` \u2014 ${trimmed}`;
     }
   }
-  // Fallback: first string value found
+  // Otherwise use the first string value found.
   for (const val of Object.values(args)) {
     if (typeof val === 'string' && val.length > 0) {
       const trimmed = val.length > 30 ? val.slice(0, 27) + '\u2026' : val;

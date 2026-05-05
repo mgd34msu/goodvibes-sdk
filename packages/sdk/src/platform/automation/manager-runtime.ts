@@ -85,8 +85,8 @@ export type { AutomationHeartbeatWake } from './manager-runtime-scheduling.js';
 interface AutomationManagerConfig {
   readonly jobStore?: AutomationJobStore | undefined;
   readonly runStore?: AutomationRunStore | undefined;
-  readonly spawnTask?: ((input: SpawnAutomationTaskInput) => string) | undefined | undefined;
-  readonly cancelTask?: ((agentId: string) => void) | undefined | undefined;
+  readonly spawnTask?: ((input: SpawnAutomationTaskInput) => string) | undefined;
+  readonly cancelTask?: ((agentId: string) => void) | undefined;
   readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'> | undefined;
   readonly runtimeStore?: RuntimeStore | undefined;
   readonly runtimeBus?: RuntimeEventBus | undefined;
@@ -112,8 +112,8 @@ export interface AutomationHeartbeatResult {
 export class AutomationManager {
   private readonly jobStore: AutomationJobStore;
   private readonly runStore: AutomationRunStore;
-  private readonly spawnTask?: ((input: SpawnAutomationTaskInput) => string) | undefined | undefined;
-  private readonly cancelTask?: ((agentId: string) => void) | undefined | undefined;
+  private readonly spawnTask?: ((input: SpawnAutomationTaskInput) => string) | undefined;
+  private readonly cancelTask?: ((agentId: string) => void) | undefined;
   private readonly agentStatusProvider?: Pick<AgentManager, 'getStatus'> | undefined;
   private readonly configManager: ConfigManager;
   private readonly routeBindings: RouteBindingManager;

@@ -3,7 +3,7 @@
  *
  * Verifies that:
  * 1. createGoodVibesAuthClient accepts an observer and fires onAuthTransition on login.
- * 2. Observers that throw do NOT propagate errors into SDK logic.
+ * 2. Observers that throw are reported and do NOT propagate errors into SDK logic.
  * 3. createConsoleObserver and createOpenTelemetryObserver construct without error.
  */
 
@@ -20,6 +20,7 @@ import {
   type TransportActivityInfo,
 } from '../packages/sdk/src/observer/index.js';
 import type { OperatorSdk } from '../packages/operator-sdk/src/index.js';
+import { captureConsole } from './_helpers/test-timeout.js';
 
 function makeRawStore(initial: string | null = null) {
   let current = initial;
@@ -95,7 +96,7 @@ describe('SDKObserver — auth wire-up', () => {
     expect(observed[0].reason).toBe('logout');
   });
 
-  test('an observer that throws does NOT propagate into SDK logic', async () => {
+  test('an observer that throws is reported but does NOT propagate into SDK logic', async () => {
     const observer: SDKObserver = {
       onAuthTransition(_t) {
         throw new Error('observer is broken');
@@ -109,8 +110,15 @@ describe('SDKObserver — auth wire-up', () => {
       observer,
     );
 
-    // Should NOT throw despite the observer throwing
-    await expect(auth.login({ username: 'alice', password: 'secret' })).resolves.not.toBeNull(); // presence-only: login resolves
+    const capture = captureConsole('warn');
+    try {
+      // Should NOT throw despite the observer throwing
+      await expect(auth.login({ username: 'alice', password: 'secret' })).resolves.not.toBeNull(); // presence-only: login resolves
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0]?.[0])).toMatch(/observer callback failed: onAuthTransition/);
+    } finally {
+      capture.restore();
+    }
   });
 
   test('createGoodVibesAuthClient works identically when observer is undefined', async () => {
@@ -139,31 +147,58 @@ describe('SDKObserver — TransportObserver callbacks', () => {
     expect(activities[1].durationMs).toBe(42);
   });
 
-  test('invokeObserver swallows onTransportActivity errors', () => {
+  test('invokeObserver isolates and reports onTransportActivity errors', () => {
     const observer: SDKObserver = {
       onTransportActivity(_a) { throw new Error('transport observer broken'); },
     };
-    expect(() =>
-      invokeObserver(() => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'http' }))
-    ).not.toThrow();
+    const capture = captureConsole('warn');
+    try {
+      const result = invokeObserver(
+        () => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'http' }),
+        { label: 'onTransportActivity' },
+      );
+      expect(result.ok).toBe(false);
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0]?.[0])).toMatch(/onTransportActivity/);
+    } finally {
+      capture.restore();
+    }
   });
 
-  test('invokeObserver swallows onError errors', () => {
+  test('invokeObserver isolates and reports onError errors', () => {
     const observer: SDKObserver = {
       onError(_e) { throw new Error('error observer broken'); },
     };
-    expect(() =>
-      invokeObserver(() => (observer as { onError?: (e: Error) => void }).onError?.(new Error('sdk error')))
-    ).not.toThrow();
+    const capture = captureConsole('warn');
+    try {
+      const result = invokeObserver(
+        () => (observer as { onError?: (e: Error) => void }).onError?.(new Error('sdk error')),
+        { label: 'onError' },
+      );
+      expect(result.ok).toBe(false);
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0]?.[0])).toMatch(/onError/);
+    } finally {
+      capture.restore();
+    }
   });
 
-  test('invokeObserver swallows onEvent errors', () => {
+  test('invokeObserver isolates and reports onEvent errors', () => {
     const observer: SDKObserver = {
       onEvent(_e) { throw new Error('event observer broken'); },
     };
-    expect(() =>
-      invokeObserver(() => (observer as { onEvent?: (e: unknown) => void }).onEvent?.({ type: 'UNKNOWN' }))
-    ).not.toThrow();
+    const capture = captureConsole('warn');
+    try {
+      const result = invokeObserver(
+        () => (observer as { onEvent?: (e: unknown) => void }).onEvent?.({ type: 'UNKNOWN' }),
+        { label: 'onEvent' },
+      );
+      expect(result.ok).toBe(false);
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0]?.[0])).toMatch(/onEvent/);
+    } finally {
+      capture.restore();
+    }
   });
 
   test('onTransportActivity sse and ws kind values accepted', () => {

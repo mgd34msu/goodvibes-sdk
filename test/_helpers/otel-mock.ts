@@ -1,5 +1,5 @@
 /**
- * NIT-02 fix: shared OTel mock helper extracted from observer-coverage.test.ts.
+ * Shared OTel mock helper extracted from observer-coverage.test.ts.
  * Import in any test that needs a mock OtelTracer/OtelMeter.
  */
 import type {

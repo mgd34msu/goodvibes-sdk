@@ -11,7 +11,6 @@ const SENSITIVE_PARAMS = new Set([
 
 /**
  * Sanitize a URL for logging: strip query params that might contain secrets.
- * @internal Exported for testing only.
  */
 export function sanitizeUrlForLog(url: string | URL | Request): string {
   try {

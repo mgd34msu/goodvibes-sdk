@@ -521,7 +521,7 @@ export class SyntheticProvider implements LLMProvider {
                   provider: backend.providerName,
                 });
               } catch (e) {
-                logger.debug('[Synthetic] runtime bus emit failed', { error: summarizeError(e) });
+                logger.warn('[Synthetic] runtime bus emit failed', { error: summarizeError(e) });
               }
             }
 

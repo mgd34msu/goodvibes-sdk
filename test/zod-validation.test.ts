@@ -55,7 +55,7 @@ describe('zod-validation: happy path', () => {
     expect(result).toEqual(validBody);
   });
 
-  it('passes through response when no schema is provided (graceful fallback)', async () => {
+  it('passes through response when no schema is provided', async () => {
     const unknownBody = { whatever: true, nested: { foo: 'bar' } };
 
     const result = await invokeContractRoute(

@@ -14,13 +14,36 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\"'\"'`)}'`;
 }
 
-function hasCommand(command: string, args: readonly string[] = ['--version']): boolean {
+interface CommandProbeResult {
+  readonly available: boolean;
+  readonly detail: string;
+}
+
+function summarizeProbeOutput(value: unknown): string {
+  if (!value) return '';
+  return Buffer.from(value as Uint8Array).toString('utf-8').trim().slice(0, 300);
+}
+
+function probeCommand(command: string, args: readonly string[] = ['--version']): CommandProbeResult {
   const result = spawnSync(command, [...args], {
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'buffer',
     timeout: 1500,
     windowsHide: true,
   });
-  return result.status === 0 || result.status === 1;
+  const available = result.status === 0 || result.status === 1;
+  if (available) {
+    return { available: true, detail: `${command} responded to ${args.join(' ')}` };
+  }
+  const errorDetail = result.error instanceof Error ? result.error.message : '';
+  const outputDetail = summarizeProbeOutput(result.stderr) || summarizeProbeOutput(result.stdout);
+  const exitDetail = result.signal
+    ? `terminated by ${result.signal}`
+    : `exit ${result.status ?? 'unknown'}`;
+  return {
+    available: false,
+    detail: errorDetail || outputDetail || exitDetail,
+  };
 }
 
 function qemuBinaryFor(manager: ConfigManagerLike): string {
@@ -84,20 +107,25 @@ export function probeSandboxBackends(
   const qemuImage = qemuImageFor(manager);
   const qemuExecWrapper = qemuExecWrapperFor(manager);
   const qemuGuestHost = qemuGuestHostFor(manager);
+  const qemuBlockedReason = host.windows && !host.runningInWsl
+    ? 'QEMU sandboxing on Windows requires running GoodVibes inside WSL.'
+    : '';
+  const qemuCommandProbe = probeCommand(qemuBinary);
+  const qemuDetail = qemuBlockedReason
+    || (qemuCommandProbe.available
+      ? `requires ${qemuBinary} on PATH`
+      : `requires ${qemuBinary} on PATH (${qemuCommandProbe.detail})`);
   const backends: readonly SandboxBackendAvailability[] = [
-    buildAvailability('local', true, 'host-local process isolation fallback is always available'),
-    buildAvailability('qemu', hasCommand(qemuBinary), `requires ${qemuBinary} on PATH`),
+    buildAvailability('local', true, 'host-local process isolation is available when explicitly selected'),
+    buildAvailability('qemu', qemuCommandProbe.available && !qemuBlockedReason, qemuDetail),
   ];
 
   const requested = config.vmBackend;
-  let resolved: SandboxResolvedBackend = 'local';
-  if (config.vmBackend === 'qemu') {
-    resolved = backends.find((entry) => entry.id === 'qemu')?.available ? 'qemu' : 'local';
-  }
+  const resolved: SandboxResolvedBackend = requested;
 
   const warnings: string[] = [];
-  if (config.vmBackend === 'qemu' && resolved === 'local') {
-    warnings.push(`Requested sandbox backend "${config.vmBackend}" is unavailable; falling back to local process isolation.`);
+  if (config.vmBackend === 'qemu' && !backends.find((entry) => entry.id === 'qemu')?.available) {
+    warnings.push(`Requested sandbox backend "${config.vmBackend}" is unavailable; local process isolation will not be used unless sandbox.vmBackend is set to "local".`);
   }
   if (config.vmBackend === 'qemu' && !qemuImage) {
     warnings.push('QEMU backend selected without sandbox.qemuImagePath; sessions can be planned and reviewed, but guest execution remains disabled.');
@@ -139,6 +167,10 @@ export function buildSandboxLaunchPlan(
   const backendProbe = probeSandboxBackends(manager);
   const safeWorkspaceRoot = resolve(workspaceRoot);
   if (backendProbe.resolvedBackend === 'qemu') {
+    const qemuAvailability = backendProbe.backends.find((entry) => entry.id === 'qemu');
+    if (!qemuAvailability?.available) {
+      throw new Error(`Requested QEMU sandbox backend is unavailable (${qemuAvailability?.detail ?? 'probe failed'}); refusing to downgrade to local process isolation. Set sandbox.vmBackend to "local" to use host-local isolation explicitly.`);
+    }
     const qemuBinary = qemuBinaryFor(manager);
     const qemuImage = qemuImageFor(manager);
     const guestPort = qemuGuestPortFor(manager);

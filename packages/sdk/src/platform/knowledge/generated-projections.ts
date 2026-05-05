@@ -4,11 +4,12 @@ import type { ArtifactStore } from '../artifacts/index.js';
 import type { KnowledgeStore } from './store.js';
 import type {
   KnowledgeEdgeRecord,
-  KnowledgeReferenceKind,
   KnowledgeSourceRecord,
   KnowledgeSourceType,
 } from './types.js';
 import { logger } from '../utils/logger.js';
+
+export type GeneratedKnowledgeProjectionTargetKind = 'source' | 'node' | 'artifact';
 
 export interface GeneratedKnowledgeProjectionInput {
   readonly store: KnowledgeStore;
@@ -27,8 +28,9 @@ export interface GeneratedKnowledgeProjectionInput {
   readonly sourceMetadata?: Record<string, unknown> | undefined;
   readonly artifactMetadata?: Record<string, unknown> | undefined;
   readonly edgeMetadata?: Record<string, unknown> | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly target?: {
-    readonly kind: KnowledgeReferenceKind;
+    readonly kind: GeneratedKnowledgeProjectionTargetKind;
     readonly id: string;
     readonly relation?: string | undefined;
   };
@@ -51,14 +53,13 @@ export function generatedKnowledgeCanonicalUri(kind: string, value: string): str
 
 export function isGeneratedKnowledgeSource(source: KnowledgeSourceRecord): boolean {
   return source.metadata.generatedKnowledgePage === true
-    || source.metadata.generatedProjection === true
-    || source.metadata.homeGraphGeneratedPage === true
-    || source.metadata.homeGraphSourceKind === 'generated-page';
+    || source.metadata.generatedProjection === true;
 }
 
 export async function materializeGeneratedKnowledgeProjection(
   input: GeneratedKnowledgeProjectionInput,
 ): Promise<GeneratedKnowledgeProjectionResult> {
+  throwIfAborted(input.signal);
   const existing = input.store.getSource(input.sourceId);
   const contentHash = stableHash(input.markdown, 40);
   const existingMetadata = readRecord(existing?.metadata);
@@ -74,7 +75,15 @@ export async function materializeGeneratedKnowledgeProjection(
     generatedContentHash: contentHash,
     pageEditable: true,
   };
+  if (input.target) {
+    assertGeneratedProjectionTarget(input.artifactStore, input.store, {
+      toKind: input.target.kind,
+      toId: input.target.id,
+    });
+  }
+  throwIfAborted(input.signal);
   const reusedArtifact = await findReusableGeneratedArtifact(input.artifactStore, existing, input.markdown);
+  throwIfAborted(input.signal);
   const artifact = reusedArtifact ?? await input.artifactStore.create({
     kind: 'document',
     mimeType: 'text/markdown',
@@ -88,7 +97,7 @@ export async function materializeGeneratedKnowledgeProjection(
       generatedContentHash: contentHash,
     },
   });
-  const source = await input.store.upsertSource({
+  const sourceInput = {
     id: input.sourceId,
     connectorId: input.connectorId,
     sourceType: input.sourceType ?? 'document',
@@ -97,7 +106,7 @@ export async function materializeGeneratedKnowledgeProjection(
     canonicalUri: input.canonicalUri,
     ...(input.summary ? { summary: input.summary } : {}),
     tags: uniqueStrings(input.tags ?? []),
-    status: 'indexed',
+    status: 'indexed' as const,
     artifactId: artifact.id,
     lastCrawledAt: contentUnchanged && typeof existing?.lastCrawledAt === 'number'
       ? existing.lastCrawledAt
@@ -110,11 +119,11 @@ export async function materializeGeneratedKnowledgeProjection(
       generatedAt,
       generatedContentHash: contentHash,
     },
-  });
-  const linked = input.target
-    ? await input.store.upsertEdge({
-        fromKind: 'source',
-        fromId: source.id,
+  };
+  const edgeInput = input.target
+    ? {
+        fromKind: 'source' as const,
+        fromId: input.sourceId,
         toKind: input.target.kind,
         toId: input.target.id,
         relation: input.target.relation ?? 'source_for',
@@ -124,14 +133,88 @@ export async function materializeGeneratedKnowledgeProjection(
           projectionKind: input.projectionKind,
           ...(input.edgeMetadata ?? {}),
         },
-      })
+      }
     : undefined;
+  const existingLinked = edgeInput
+    ? input.store.edgesFor(edgeInput.fromKind, edgeInput.fromId).find((edge) => (
+        edge.toKind === edgeInput.toKind
+        && edge.toId === edgeInput.toId
+        && edge.relation === edgeInput.relation
+      ))
+    : undefined;
+  let source: KnowledgeSourceRecord | undefined;
+  let linked: KnowledgeEdgeRecord | undefined;
+  try {
+    throwIfAborted(input.signal);
+    source = await input.store.upsertSource(sourceInput);
+    throwIfAborted(input.signal);
+    linked = edgeInput ? await input.store.upsertEdge(edgeInput) : undefined;
+    throwIfAborted(input.signal);
+  } catch (error) {
+    if (!reusedArtifact) input.artifactStore.delete(artifact.id);
+    const currentLinked = edgeInput
+      ? input.store.edgesFor(edgeInput.fromKind, edgeInput.fromId).find((edge) => (
+          edge.toKind === edgeInput.toKind
+          && edge.toId === edgeInput.toId
+          && edge.relation === edgeInput.relation
+        ))
+      : undefined;
+    if (currentLinked && edgeInput) {
+      if (existingLinked) {
+        await input.store.replaceEdgeRecord(existingLinked);
+      } else {
+        await input.store.deleteEdge(currentLinked.id);
+      }
+    }
+    const persistedSource = input.store.getSource(input.sourceId);
+    if (!existing && persistedSource) {
+      await input.store.deleteSource(persistedSource.id);
+    } else if (existing && persistedSource) {
+      await input.store.replaceSourceRecord(existing);
+    }
+    throw error;
+  }
+  if (!source) throw new Error(`Generated projection '${input.sourceId}' did not persist a source record.`);
+  if (!reusedArtifact && existing?.artifactId && existing.artifactId !== artifact.id) {
+    const existingArtifact = input.artifactStore.get(existing.artifactId);
+    if (existingArtifact && readRecord(existingArtifact.metadata).generatedKnowledgePage === true) {
+      input.artifactStore.delete(existing.artifactId);
+    }
+  }
   return {
     artifact,
     source,
     ...(linked ? { linked } : {}),
     artifactCreated: !reusedArtifact,
   };
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return;
+  throw new Error('Generated knowledge projection was cancelled.');
+}
+
+function assertGeneratedProjectionTarget(
+  artifactStore: ArtifactStore,
+  store: KnowledgeStore,
+  edge: {
+    readonly toKind: string;
+    readonly toId: string;
+  },
+): void {
+  switch (edge.toKind) {
+    case 'node':
+      if (!store.getNode(edge.toId)) throw new Error(`Generated projection target node does not exist: ${edge.toId}`);
+      return;
+    case 'source':
+      if (!store.getSource(edge.toId)) throw new Error(`Generated projection target source does not exist: ${edge.toId}`);
+      return;
+    case 'artifact':
+      if (!artifactStore.get(edge.toId)) throw new Error(`Generated projection target artifact does not exist: ${edge.toId}`);
+      return;
+    default:
+      throw new Error(`Generated projection target kind is not supported: ${edge.toKind}`);
+  }
 }
 
 async function findReusableGeneratedArtifact(
@@ -146,7 +229,7 @@ async function findReusableGeneratedArtifact(
     const { buffer } = await artifactStore.readContent(artifact.id);
     return buffer.toString('utf-8') === markdown ? artifact : undefined;
   } catch (error) {
-    logger.debug('Generated knowledge projection artifact reuse failed', {
+    logger.warn('Generated knowledge projection artifact reuse failed', {
       sourceId: source.id,
       artifactId: artifact.id,
       error: error instanceof Error ? error.message : String(error),

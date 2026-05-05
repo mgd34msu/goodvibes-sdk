@@ -106,7 +106,10 @@ export async function extractOutline(
   } catch (err) {
     logger.debug('read tool: tree-sitter outline failed, using regex fallback', { filePath, error: summarizeError(err) });
   }
-  return extractOutlineRegex(lines, includeLineNumbers);
+  return (
+    '# Note: tree-sitter outline unavailable for this file. Falling back to regex.\n'
+    + extractOutlineRegex(lines, includeLineNumbers)
+  );
 }
 
 export async function extractSymbols(
@@ -124,7 +127,10 @@ export async function extractSymbols(
   } catch (err) {
     logger.debug('read tool: tree-sitter symbols failed, using regex fallback', { filePath, error: summarizeError(err) });
   }
-  return extractSymbolsRegex(lines, includeLineNumbers);
+  return (
+    '# Note: tree-sitter symbols unavailable for this file. Falling back to regex.\n'
+    + extractSymbolsRegex(lines, includeLineNumbers)
+  );
 }
 
 export async function extractAst(

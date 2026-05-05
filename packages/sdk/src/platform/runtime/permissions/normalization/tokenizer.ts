@@ -21,7 +21,7 @@ import type { CommandToken } from './types.js';
 /**
  * Maximum number of characters accepted from a raw command string.
  * Inputs longer than this are hard-truncated before tokenization begins.
- * Emergency fallback: truncation ensures the tokenizer can never hang
+ * Emergency truncation ensures the tokenizer can never hang
  * on extremely long inputs even if other guards are bypassed.
  */
 export const MAX_INPUT_LENGTH = 65_536;
@@ -163,7 +163,7 @@ function splitRaw(input: string, maxTokens: number): Array<{ value: string; posi
  */
 export function tokenize(command: string): CommandToken[] {
   // Hard-truncate inputs that exceed the maximum length limit.
-  // This is the emergency fallback that bounds runtime independently of all
+  // This emergency truncation bounds runtime independently of all
   // other logic — if the string is too long, we cut it before any parsing.
   const safe = command.length > MAX_INPUT_LENGTH ? command.slice(0, MAX_INPUT_LENGTH) : command;
   const raw = splitRaw(safe, MAX_TOKEN_COUNT);

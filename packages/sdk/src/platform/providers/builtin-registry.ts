@@ -94,7 +94,9 @@ export function createBuiltinCompatProvider(
     authEnvVars: definition.envVars,
     serviceNames: definition.serviceNames,
     ...(definition.subscriptionProviderId ? { subscriptionProviderId: definition.subscriptionProviderId } : {}),
-    ...(definition.suppressedModels ? { suppressedModels: definition.suppressedModels } : {}),
+    ...(definition.suppressedModelRegistryKeys
+      ? { suppressedModelRegistryKeys: definition.suppressedModelRegistryKeys }
+      : {}),
     ...(definition.aliases ? { aliases: definition.aliases } : {}),
     ...(definition.streamProtocol ? { streamProtocol: definition.streamProtocol } : {}),
     ...(definition.allowAnonymous ? { allowAnonymous: true } : {}),

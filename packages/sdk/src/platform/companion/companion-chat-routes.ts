@@ -72,10 +72,6 @@ export async function dispatchCompanionChatRoutes(
     return handlePostMessage(req, sessionId, context);
   }
 
-  // F21 restoration (SDK 0.21.36): GET /api/companion/chat/sessions/:sessionId/messages
-  // returns the message list directly (previously only reachable via the session-detail
-  // endpoint's embedded `messages` field). Restored for consumer parity — clients that
-  // enumerate messages independently of the session record can hit this path.
   if (sub === 'messages' && req.method === 'GET') {
     return handleGetMessages(sessionId, context);
   }
@@ -100,8 +96,17 @@ async function handleCreateSession(
   if (bodyOrResponse instanceof Response) return bodyOrResponse;
 
   const body = (bodyOrResponse ?? {}) as Record<string, unknown>;
-  // Resolve provider/model from registry if caller did not specify them.
-  const shouldResolveDefaults = typeof body['model'] !== 'string' || typeof body['provider'] !== 'string';
+  const hasModel = typeof body['model'] === 'string';
+  const hasProvider = typeof body['provider'] === 'string';
+  if (hasModel !== hasProvider) {
+    return Response.json(
+      { error: 'provider and model must be supplied together', code: 'INVALID_MODEL_ROUTE' },
+      { status: 400 },
+    );
+  }
+
+  // Resolve provider/model from registry only when caller did not specify a route.
+  const shouldResolveDefaults = !hasModel && !hasProvider;
   const hasDefaultResolver = typeof context.resolveDefaultProviderModel === 'function';
   const resolvedDefaults = hasDefaultResolver && shouldResolveDefaults
     ? (context.resolveDefaultProviderModel?.() ?? null)
@@ -109,8 +114,8 @@ async function handleCreateSession(
 
   const input: CreateCompanionChatSessionInput = {
     title: typeof body['title'] === 'string' ? body['title'] : undefined,
-    model: typeof body['model'] === 'string' ? body['model'] : (resolvedDefaults?.model ?? undefined),
-    provider: typeof body['provider'] === 'string' ? body['provider'] : (resolvedDefaults?.provider ?? undefined),
+    model: hasModel ? (body['model'] as string) : (resolvedDefaults?.model ?? undefined),
+    provider: hasProvider ? (body['provider'] as string) : (resolvedDefaults?.provider ?? undefined),
     systemPrompt: typeof body['systemPrompt'] === 'string' ? body['systemPrompt'] : undefined,
   };
 
@@ -203,15 +208,18 @@ async function handleUpdateSession(
   if (model instanceof Response) return model;
   if (model !== undefined) {
     (input as { model?: string }).model = model;
-    if (!hasOwn(body, 'provider') && model.includes(':')) {
-      const providerId = model.split(':')[0];
-      if (providerId) (input as { provider?: string }).provider = providerId;
-    }
   }
 
   const provider = readOptionalNonEmptyString(body, 'provider');
   if (provider instanceof Response) return provider;
   if (provider !== undefined) (input as { provider?: string }).provider = provider;
+
+  if ((model !== undefined) !== (provider !== undefined)) {
+    return Response.json(
+      { error: 'provider and model must be updated together', code: 'INVALID_MODEL_ROUTE' },
+      { status: 400 },
+    );
+  }
 
   const systemPrompt = readOptionalSystemPrompt(body);
   if (systemPrompt instanceof Response) return systemPrompt;
@@ -252,16 +260,8 @@ async function handleDeleteSession(
   return Response.json({ sessionId: session.id, status: session.status });
 }
 
-// ---------------------------------------------------------------------------
-// F13 field normalization helper
-// ---------------------------------------------------------------------------
-
 /**
  * Read the message content from an incoming POST body.
- *
- * F13 normalization: accepts both 'body' and 'content' field names;
- * prefers 'body' when both are present (shared-session canonical field);
- * falls back to 'content' for companion-chat clients that send content.
  * Returns empty string when neither field is present — the caller must
  * check for empty and return 400 INVALID_INPUT.
  *
@@ -296,8 +296,6 @@ async function handlePostMessage(
   if (bodyOrResponse instanceof Response) return bodyOrResponse;
 
   const body = bodyOrResponse as Record<string, unknown>;
-  // F13: accept both 'body' and 'content' field names; prefer 'body' if both are present
-  // (shared-session canonical uses 'body'; companion-chat clients may send 'content').
   const rawContent =
     typeof body['body'] === 'string'
       ? body['body']
@@ -338,9 +336,7 @@ async function handlePostMessage(
 /**
  * Handle GET /api/companion/chat/sessions/:sessionId/messages.
  *
- * F21 restoration: returns the message list for a companion-chat session.
- * Response shape matches the `messages` field of the session-detail endpoint
- * so clients can substitute one for the other.
+ * Response shape matches the `messages` field of the session-detail endpoint.
  */
 async function handleGetMessages(
   sessionId: string,

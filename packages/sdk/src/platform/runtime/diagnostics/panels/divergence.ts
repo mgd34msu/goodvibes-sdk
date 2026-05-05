@@ -14,6 +14,7 @@ import { DivergenceDashboard } from '../../permissions/divergence-dashboard.js';
 import type { ComponentConfig } from '../types.js';
 import { DEFAULT_COMPONENT_CONFIG } from '../types.js';
 import { logger } from '../../../utils/logger.js';
+import { summarizeError } from '../../../utils/error-display.js';
 
 /**
  * DivergencePanel — diagnostics data provider for the divergence dashboard.
@@ -99,8 +100,7 @@ export class DivergencePanel {
       try {
         cb();
       } catch (err) {
-        // Non-fatal: subscriber errors must not crash the panel
-        logger.debug('[DivergencePanel] subscriber error', { err });
+        logger.warn('[DivergencePanel] subscriber error', { error: summarizeError(err) });
       }
     }
   }

@@ -2,7 +2,7 @@
  * McpRegistry — manages all connected MCP servers.
  *
  * Progressive loading strategy:
- *   - On connect: load tool names + descriptions only (F2)
+ *   - On connect: load tool names and descriptions only.
  *   - On first callTool: fetch full JSON schema for that tool and cache it
  *
  * Tool namespace: mcp:<server-name>:<tool-name>
@@ -10,7 +10,12 @@
 import { logger } from '../utils/logger.js';
 import { loadMcpConfig } from './config.js';
 import { McpClient } from './client.js';
-import type { McpProcessSpec } from './client.js';
+import type {
+  McpClientNotification,
+  McpClientServerRequest,
+  McpClientUnhandledResponse,
+  McpProcessSpec,
+} from './client.js';
 import type { McpToolInfo, McpToolSchema } from './client.js';
 import type { McpServerConfig } from './config.js';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
@@ -133,7 +138,7 @@ export class McpRegistry {
 
   /**
    * callTool — Execute a tool by its qualified name.
-   * Fetches full schema on first use (progressive loading — F2).
+   * Fetches the full schema on first use.
    */
   async callTool(qualifiedName: string, args: Record<string, unknown>): Promise<unknown> {
     const parsed = this._parseQualifiedName(qualifiedName);
@@ -172,7 +177,12 @@ export class McpRegistry {
       sessionId: '', timestamp: Date.now(),
       payload: { tool: qualifiedName, args },
     };
-    const preResult = await dispatcher.fire(preEvent).catch(() => ({ ok: true, decision: undefined as string | undefined }));
+    const preResult = await dispatcher.fire(preEvent).catch((error) => {
+      throw new Error(`MCP call '${qualifiedName}' pre-call hook failed: ${summarizeError(error)}`);
+    });
+    if (preResult.ok === false) {
+      throw new Error(`MCP call '${qualifiedName}' pre-call hook failed: ${preResult.error ?? 'unknown error'}`);
+    }
     if (preResult.decision === 'deny') {
       throw new Error(`MCP call '${qualifiedName}' denied by hook: ${(preResult as { reason?: string }).reason ?? 'no reason'}`);
     }
@@ -189,7 +199,7 @@ export class McpRegistry {
         sessionId: '', timestamp: Date.now(),
         payload: { tool: qualifiedName, args },
       };
-      dispatcher.fire(postEvent).catch((err: unknown) => { logger.debug('Post:mcp:call hook error', { error: summarizeError(err) }); });
+      dispatcher.fire(postEvent).catch((err: unknown) => { logger.warn('Post:mcp:call hook error', { error: summarizeError(err) }); });
       return result;
     } catch (err) {
       this.freshness.markFailed(parsed.serverName, summarizeError(err));
@@ -202,7 +212,7 @@ export class McpRegistry {
         sessionId: '', timestamp: Date.now(),
         payload: { tool: qualifiedName, args, error: summarizeError(err) },
       };
-      dispatcher.fire(failEvent).catch((hookErr: unknown) => { logger.debug('Fail:mcp:call hook error', { error: String(hookErr) }); });
+      dispatcher.fire(failEvent).catch((hookErr: unknown) => { logger.warn('Fail:mcp:call hook error', { error: String(hookErr) }); });
       throw err;
     }
   }
@@ -222,7 +232,7 @@ export class McpRegistry {
         sessionId: '', timestamp: Date.now(),
         payload: { server: name },
       };
-      dispatcher.fire(disconnectedEvent).catch((err: unknown) => { logger.debug('Lifecycle:mcp:disconnected hook error', { error: summarizeError(err) }); });
+      dispatcher.fire(disconnectedEvent).catch((err: unknown) => { logger.warn('Lifecycle:mcp:disconnected hook error', { error: summarizeError(err) }); });
     }
     await Promise.allSettled(
       Array.from(this.clients.values()).map((client) => client.disconnect()),
@@ -363,7 +373,12 @@ export class McpRegistry {
       sandboxSessionId = resolved?.sessionId ?? null;
       processSpec = resolved?.processSpec;
     }
-    const client = new McpClient(serverConfig, processSpec ? { processSpec } : undefined);
+    const client = new McpClient(serverConfig, {
+      ...(processSpec ? { processSpec } : {}),
+      onNotification: (notification) => this._handleClientNotification(notification),
+      onServerRequest: (request) => this._handleClientServerRequest(request),
+      onUnhandledResponse: (response) => this._handleClientUnhandledResponse(response),
+    });
     this.freshness.registerServer(name);
     try {
       await client.connect();
@@ -402,7 +417,7 @@ export class McpRegistry {
         sessionId: '', timestamp: Date.now(),
         payload: { server: name },
       };
-      this.hookDispatcher.fire(connectedEvent).catch((err: unknown) => { logger.debug('Lifecycle:mcp:connected hook error', { error: summarizeError(err) }); });
+      this.hookDispatcher.fire(connectedEvent).catch((err: unknown) => { logger.warn('Lifecycle:mcp:connected hook error', { error: summarizeError(err) }); });
     } catch (err) {
       if (sandboxSessionId) {
         this.sandboxSessions.stop(sandboxSessionId);
@@ -473,6 +488,65 @@ export class McpRegistry {
       || serverConfig.role === 'ops'
       || serverConfig.role === 'remote',
     );
+  }
+
+  private _handleClientNotification(notification: McpClientNotification): void {
+    const event: HookEvent = {
+      path: 'Lifecycle:mcp:notification',
+      phase: 'Lifecycle',
+      category: 'mcp',
+      specific: 'notification',
+      sessionId: '',
+      timestamp: Date.now(),
+      payload: {
+        server: notification.serverName,
+        method: notification.method,
+        ...(notification.params !== undefined ? { params: notification.params } : {}),
+      },
+    };
+    this.hookDispatcher.fire(event).catch((err: unknown) => {
+      logger.warn('Lifecycle:mcp:notification hook error', { error: summarizeError(err) });
+    });
+  }
+
+  private _handleClientServerRequest(request: McpClientServerRequest): void {
+    const event: HookEvent = {
+      path: 'Lifecycle:mcp:server_request',
+      phase: 'Lifecycle',
+      category: 'mcp',
+      specific: 'server_request',
+      sessionId: '',
+      timestamp: Date.now(),
+      payload: {
+        server: request.serverName,
+        id: request.id,
+        method: request.method,
+        ...(request.params !== undefined ? { params: request.params } : {}),
+      },
+    };
+    this.hookDispatcher.fire(event).catch((err: unknown) => {
+      logger.warn('Lifecycle:mcp:server_request hook error', { error: summarizeError(err) });
+    });
+  }
+
+  private _handleClientUnhandledResponse(response: McpClientUnhandledResponse): void {
+    const event: HookEvent = {
+      path: 'Lifecycle:mcp:unmatched_response',
+      phase: 'Lifecycle',
+      category: 'mcp',
+      specific: 'unmatched_response',
+      sessionId: '',
+      timestamp: Date.now(),
+      payload: {
+        server: response.serverName,
+        id: response.id,
+        hasError: response.hasError,
+        ...(response.error ? { error: response.error } : {}),
+      },
+    };
+    this.hookDispatcher.fire(event).catch((err: unknown) => {
+      logger.warn('Lifecycle:mcp:unmatched_response hook error', { error: summarizeError(err) });
+    });
   }
 
   /**

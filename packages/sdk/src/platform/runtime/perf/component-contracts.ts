@@ -147,7 +147,7 @@ export const CATEGORY_CONTRACTS: Record<string, Omit<ComponentResourceContract, 
     degradeAfterViolations: 5,
     degradedIntervalMs: 500,
   },
-  /** Fallback for unrecognised categories. */
+  /** Default for unrecognised categories. */
   default: {
     maxUpdatesPerSecond: 5,
     maxRenderMs: 30,

@@ -14,6 +14,17 @@ function defaultSnapshot(): AutomationJobsSnapshot {
   };
 }
 
+function validateSnapshot(snapshot: AutomationJobsSnapshot | null): AutomationJobsSnapshot {
+  if (!snapshot) return defaultSnapshot();
+  if (snapshot.version !== 1 || !Array.isArray(snapshot.jobs)) {
+    throw new Error('Automation jobs store snapshot is invalid.');
+  }
+  return {
+    version: 1,
+    jobs: snapshot.jobs,
+  };
+}
+
 export interface AutomationJobStoreConfig {
   readonly path?: string | undefined;
   readonly configManager?: AutomationStorePathConfig | undefined;
@@ -30,14 +41,7 @@ export class AutomationJobStore {
   }
 
   async load(): Promise<AutomationJobsSnapshot> {
-    const snapshot = await this.store.load();
-    if (!snapshot || !Array.isArray(snapshot.jobs)) {
-      return defaultSnapshot();
-    }
-    return {
-      version: 1,
-      jobs: snapshot.jobs,
-    };
+    return validateSnapshot(await this.store.load());
   }
 
   async save(jobs: readonly AutomationJob[]): Promise<void> {

@@ -69,7 +69,14 @@ export async function handleMatrixSurfaceWebhook(req: Request, context: SurfaceA
     },
   });
   if (!text) {
-    return Response.json({ ok: true, acknowledged: true, bindingId: binding.id });
+    return Response.json({
+      ok: true,
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+    });
   }
 
   const controlCommand = context.parseSurfaceControlCommand(text);

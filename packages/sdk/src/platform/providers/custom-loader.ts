@@ -300,8 +300,21 @@ export async function loadCustomProviders(
     const settled = await Promise.allSettled(ingestionPromises);
     for (let i = 0; i < settled.length; i++) {
       const result = settled[i]!;
-      if (result) {
-        ingestionResults[i] = result.status === 'fulfilled' ? (result.value ?? null) : null;
+      const providerName = validConfigs[i]?.cfg.name ?? '<unknown>';
+      if (result.status === 'fulfilled') {
+        ingestionResults[i] = result.value ?? null;
+        if (result.value === null) {
+          warnings.push(
+            `[custom-loader] No context window data discovered for '${providerName}'; using configured model context windows.`,
+          );
+        }
+      } else {
+        ingestionResults[i] = null;
+        warnings.push(
+          `[custom-loader] Context window ingestion failed for '${providerName}': ${
+            summarizeError(result.reason)
+          }`,
+        );
       }
     }
   }

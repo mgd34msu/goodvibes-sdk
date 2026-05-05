@@ -276,7 +276,7 @@ export function executeNotebookEdit(
         tool: 'edit',
       });
     } catch {
-      // Non-fatal
+      // Undo snapshot failure should not fail the edit.
     }
   }
 

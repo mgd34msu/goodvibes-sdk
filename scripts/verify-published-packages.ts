@@ -1,5 +1,4 @@
 import {
-  getPublicPackageNameOverride,
   getPublishRegistryOverride,
   publicPackageDirs,
   getRootVersion,
@@ -7,34 +6,27 @@ import {
   run,
 } from './release-shared.ts';
 
-// Env-var validation runs only when this script is the entry point so that
-// test discovery or type-checking tools importing the module do not throw.
-if (!import.meta.main) {
-  throw new Error('verify-published-packages.ts must be run as a script, not imported as a module.');
+interface VerifyPublishedOptions {
+  readonly version: string;
+  readonly registry: string;
+  readonly maxAttempts: number;
+  readonly retryDelayMs: number;
 }
 
-const version = process.argv[2] || getRootVersion();
-const registry = getPublishRegistryOverride() || 'https://registry.npmjs.org';
-const rawAttempts = process.env.GOODVIBES_VERIFY_ATTEMPTS || '48';
-const rawDelay = process.env.GOODVIBES_VERIFY_DELAY_MS || '5000';
-if (!/^\d+$/.test(rawAttempts.trim())) {
-  throw new Error(`GOODVIBES_VERIFY_ATTEMPTS must be a positive integer, got: ${rawAttempts}`);
+interface PublishedState {
+  readonly packageName: string;
+  readonly version: string;
+  readonly published: boolean;
 }
-if (!/^\d+$/.test(rawDelay.trim())) {
-  throw new Error(`GOODVIBES_VERIFY_DELAY_MS must be a positive integer, got: ${rawDelay}`);
-}
-const MAX_ATTEMPTS = Number.parseInt(rawAttempts, 10);
-const RETRY_DELAY_MS = Number.parseInt(rawDelay, 10);
-if (!Number.isInteger(MAX_ATTEMPTS) || MAX_ATTEMPTS <= 0) {
-  throw new Error(`GOODVIBES_VERIFY_ATTEMPTS must be a positive integer, got: ${rawAttempts}`);
-}
-if (!Number.isInteger(RETRY_DELAY_MS) || RETRY_DELAY_MS <= 0) {
-  throw new Error(`GOODVIBES_VERIFY_DELAY_MS must be a positive integer, got: ${rawDelay}`);
-}
+
+type CommandError = Error & {
+  readonly stderr?: Buffer | string;
+  readonly stdout?: Buffer | string;
+};
 
 function packageNameForDir(dir: string): string {
   const pkg = readPackage(dir);
-  const name = dir === 'packages/sdk' ? getPublicPackageNameOverride() || pkg.name : pkg.name;
+  const name = pkg.name;
   if (typeof name !== 'string' || !name) throw new Error(`Package ${dir} is missing a string name.`);
   return name;
 }
@@ -46,46 +38,141 @@ function sleep(ms: number) {
   });
 }
 
-async function verifyPublishedVersion(packageName: string) {
+function parsePositiveIntegerEnv(name: string, fallback: string): number {
+  const raw = process.env[name] || fallback;
+  if (!/^\d+$/.test(raw.trim())) {
+    throw new Error(`${name} must be a positive integer, got: ${raw}`);
+  }
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer, got: ${raw}`);
+  }
+  return value;
+}
+
+function readVerifyPublishedOptions(): VerifyPublishedOptions {
+  const versionArg = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
+  const options = {
+    version: versionArg || getRootVersion(),
+    registry: getPublishRegistryOverride() || 'https://registry.npmjs.org',
+    maxAttempts: parsePositiveIntegerEnv('GOODVIBES_VERIFY_ATTEMPTS', '48'),
+    retryDelayMs: parsePositiveIntegerEnv('GOODVIBES_VERIFY_DELAY_MS', '5000'),
+  };
+  return options;
+}
+
+function commandErrorText(error: unknown): string {
+  if (!error || typeof error !== 'object') return String(error);
+  const commandError = error as CommandError;
+  return [
+    commandError.message,
+    commandError.stderr?.toString(),
+    commandError.stdout?.toString(),
+  ].filter(Boolean).join('\n');
+}
+
+function isMissingPublishedVersionError(error: unknown): boolean {
+  const text = commandErrorText(error);
+  return /\b(?:E404|ETARGET)\b/.test(text)
+    || /No match found for version/i.test(text)
+    || /No matching version found/i.test(text)
+    || /is not in this registry/i.test(text);
+}
+
+function readPublishedVersion(packageName: string, options: VerifyPublishedOptions): string | null {
+  try {
+    const publishedVersion = run(
+      'npm',
+      ['view', `${packageName}@${options.version}`, 'version', '--registry', options.registry],
+      process.cwd(),
+      {
+        auth: true,
+        registry: options.registry,
+        packageName,
+        stdio: 'pipe',
+      },
+    ).trim();
+
+    return publishedVersion || null;
+  } catch (error) {
+    if (isMissingPublishedVersionError(error)) {
+      return null;
+    }
+    throw new Error(
+      `Failed to read ${packageName}@${options.version} from ${options.registry}; refusing to treat the registry as empty.\n`
+      + commandErrorText(error),
+    );
+  }
+}
+
+function getPublishedState(options: VerifyPublishedOptions): PublishedState[] {
+  return publicPackageDirs.map((dir) => {
+    const packageName = packageNameForDir(dir);
+    return {
+      packageName,
+      version: options.version,
+      published: readPublishedVersion(packageName, options) === options.version,
+    };
+  });
+}
+
+function assertRegistryEmptyOrComplete(options: VerifyPublishedOptions): void {
+  const states = getPublishedState(options);
+  const published = states.filter((state) => state.published);
+  if (published.length === 0 || published.length === states.length) {
+    const label = published.length === 0 ? 'empty' : 'complete';
+    console.log(`prepublish registry state OK for ${options.registry}: ${label} for ${options.version}`);
+    return;
+  }
+
+  const missing = states.filter((state) => !state.published);
+  throw new Error(
+    `Prepublish registry state is partial for ${options.version} in ${options.registry}.\n`
+    + `Already published: ${published.map((state) => `${state.packageName}@${state.version}`).join(', ')}\n`
+    + `Missing: ${missing.map((state) => `${state.packageName}@${state.version}`).join(', ')}\n`
+    + 'Refusing to publish into a partial monorepo split release state.',
+  );
+}
+
+async function verifyPublishedVersion(packageName: string, options: VerifyPublishedOptions) {
   let lastError: unknown = null;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= options.maxAttempts; attempt += 1) {
     try {
-      const publishedVersion = run(
-        'npm',
-        ['view', `${packageName}@${version}`, 'version', '--registry', registry],
-        process.cwd(),
-        {
-          auth: true,
-          registry,
-          packageName,
-          stdio: 'pipe',
-        },
-      ).trim();
-
-      if (publishedVersion !== version) {
-        throw new Error(`Expected ${packageName}@${version} in ${registry}, got ${publishedVersion || 'missing'}`);
+      const publishedVersion = readPublishedVersion(packageName, options);
+      if (publishedVersion !== options.version) {
+        throw new Error(`Expected ${packageName}@${options.version} in ${options.registry}, got ${publishedVersion || 'missing'}`);
       }
-
-      console.log(`registry verification passed for ${packageName}@${version} in ${registry}`);
+      console.log(`registry verification passed for ${packageName}@${options.version} in ${options.registry}`);
       return;
     } catch (error) {
       lastError = error;
-      if (attempt === MAX_ATTEMPTS) {
+      if (attempt === options.maxAttempts) {
         break;
       }
       console.warn(
-        `registry verification not ready for ${packageName}@${version} in ${registry} `
-        + `(attempt ${attempt}/${MAX_ATTEMPTS}); retrying in ${RETRY_DELAY_MS}ms`,
+        `registry verification not ready for ${packageName}@${options.version} in ${options.registry} `
+        + `(attempt ${attempt}/${options.maxAttempts}); retrying in ${options.retryDelayMs}ms`,
       );
-      await sleep(RETRY_DELAY_MS);
+      await sleep(options.retryDelayMs);
     }
   }
 
   throw lastError instanceof Error
     ? lastError
-    : new Error(`Failed to verify ${packageName}@${version} in ${registry}`);
+    : new Error(`Failed to verify ${packageName}@${options.version} in ${options.registry}`);
 }
 
-for (const dir of publicPackageDirs) {
-  await verifyPublishedVersion(packageNameForDir(dir));
+export async function verifyPublishedPackages(options = readVerifyPublishedOptions()): Promise<void> {
+  for (const dir of publicPackageDirs) {
+    await verifyPublishedVersion(packageNameForDir(dir), options);
+  }
+}
+
+if (import.meta.main) {
+  const options = readVerifyPublishedOptions();
+  if (process.argv.includes('--prepublish-empty-or-complete')) {
+    assertRegistryEmptyOrComplete(options);
+  } else {
+    await verifyPublishedPackages(options);
+  }
 }

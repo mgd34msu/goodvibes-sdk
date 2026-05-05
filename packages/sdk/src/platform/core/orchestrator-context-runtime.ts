@@ -108,7 +108,7 @@ export async function checkContextWindowPreflight(
         timestamp: Date.now(),
         payload: { trigger: 'preflight', estimatedTokens, contextWindow },
       }).catch((err: unknown): HookResult => {
-        logger.debug('Pre:compact:preflight hook error', { error: summarizeError(err) });
+        logger.warn('Pre:compact:preflight hook error', { error: summarizeError(err) });
         return { ok: true };
       });
       if (preResult.decision === 'deny') {
@@ -129,10 +129,10 @@ export async function checkContextWindowPreflight(
         compactionCount: deps.sessionLineageTracker.getCompactionCount(),
         contextWindow,
         trigger: 'auto',
-        extractionModelId: model.id,
+        extractionModelId: model.registryKey,
         extractionProvider: model.provider,
       };
-      await deps.conversation.compact(deps.providerRegistry, model.id, 'auto', model.provider, preflightCtx);
+      await deps.conversation.compact(deps.providerRegistry, model.registryKey, 'auto', model.provider, preflightCtx);
       deps.conversation.addSystemMessage('Context compacted. Retrying request...');
       if (deps.hookDispatcher) {
         deps.hookDispatcher.fire({
@@ -143,7 +143,7 @@ export async function checkContextWindowPreflight(
           sessionId: deps.sessionId,
           timestamp: Date.now(),
           payload: { trigger: 'preflight', estimatedTokens, contextWindow },
-        }).catch((err: unknown) => { logger.debug('Post:compact:preflight hook error', { error: summarizeError(err) }); });
+        }).catch((err: unknown) => { logger.warn('Post:compact:preflight hook error', { error: summarizeError(err) }); });
       }
     } catch (compactErr) {
       const msg = compactErr instanceof Error ? compactErr.message : String(compactErr);
@@ -158,7 +158,7 @@ export async function checkContextWindowPreflight(
           sessionId: deps.sessionId,
           timestamp: Date.now(),
           payload: { trigger: 'preflight', estimatedTokens, contextWindow, error: msg },
-        }).catch((err: unknown) => { logger.debug('Fail:compact:preflight hook error', { error: summarizeError(err) }); });
+        }).catch((err: unknown) => { logger.warn('Fail:compact:preflight hook error', { error: summarizeError(err) }); });
       }
     } finally {
       deps.setIsCompacting(false);
@@ -295,7 +295,7 @@ export async function handlePostTurnContextMaintenance(
         timestamp: Date.now(),
         payload: { trigger: 'auto', usagePct, totalTokens, maxTokens },
       }).catch((err: unknown): HookResult => {
-        logger.debug('Pre:compact:auto hook error', { error: summarizeError(err) });
+        logger.warn('Pre:compact:auto hook error', { error: summarizeError(err) });
         return { ok: true };
       });
       if (preAutoResult.decision === 'deny') {
@@ -335,12 +335,12 @@ export async function handlePostTurnContextMaintenance(
           compactionCount: deps.sessionLineageTracker.getCompactionCount(),
           contextWindow: maxTokens,
           trigger: 'auto',
-          extractionModelId: currentModel.id,
+          extractionModelId: currentModel.registryKey,
           extractionProvider: currentModel.provider,
         };
         void deps.conversation.compact(
           deps.providerRegistry,
-          currentModel.id,
+          currentModel.registryKey,
           'auto',
           currentModel.provider,
           compactionCtx,
@@ -349,7 +349,7 @@ export async function handlePostTurnContextMaintenance(
           deps.setLastWarningBracket(0);
           deps.conversation.addSystemMessage('Context auto-compacted. Conversation history summarized to free context window.');
           deps.requestRender();
-          logger.info('Orchestrator: auto-compact complete', { modelId: currentModel.id, usagePct });
+          logger.info('Orchestrator: auto-compact complete', { modelId: currentModel.registryKey, usagePct });
           if (deps.hookDispatcher) {
             deps.hookDispatcher.fire({
               path: 'Post:compact:auto',
@@ -359,7 +359,7 @@ export async function handlePostTurnContextMaintenance(
               sessionId: deps.sessionId,
               timestamp: Date.now(),
               payload: { trigger: 'auto', usagePct, totalTokens, maxTokens },
-            }).catch((err: unknown) => { logger.debug('Post:compact:auto hook error', { error: summarizeError(err) }); });
+            }).catch((err: unknown) => { logger.warn('Post:compact:auto hook error', { error: summarizeError(err) }); });
           }
         }).catch((err: unknown) => {
           deps.setIsCompacting(false);
@@ -376,7 +376,7 @@ export async function handlePostTurnContextMaintenance(
               sessionId: deps.sessionId,
               timestamp: Date.now(),
               payload: { trigger: 'auto', usagePct, totalTokens, maxTokens, error: msg },
-            }).catch((err: unknown) => { logger.debug('Fail:compact:auto hook error', { error: summarizeError(err) }); });
+            }).catch((err: unknown) => { logger.warn('Fail:compact:auto hook error', { error: summarizeError(err) }); });
           }
         });
       }

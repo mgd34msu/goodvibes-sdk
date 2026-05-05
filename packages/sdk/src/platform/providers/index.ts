@@ -52,9 +52,6 @@ export { AnthropicCompatProvider } from './anthropic-compat.js';
 export {
   AUTO_REGISTER_CATALOG,
   autoRegisterProviders,
-  createProviderFromEntry,
-  isProviderRegistered,
-  resolveApiKey,
 } from './auto-register.js';
 export type { AutoRegisterEntry } from './auto-register.js';
 export {
@@ -65,14 +62,6 @@ export { getDiscoveredTraits } from './discovered-traits.js';
 export {
   SERVER_LEVEL_MODEL_ID,
   discoverContextWindows,
-  _extractOllamaContextLength,
-  _extractOpenAIContextLength,
-  _extractOrigin,
-  _probeLlamaCpp,
-  _probeLMStudio,
-  _probeOllama,
-  _probeOpenAICompat,
-  _probeTGI,
 } from './context-discovery.js';
 export { loadCustomProviders } from './custom-loader.js';
 export { LMStudioProvider } from './lm-studio.js';

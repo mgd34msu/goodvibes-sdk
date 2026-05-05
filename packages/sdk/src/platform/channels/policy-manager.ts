@@ -64,6 +64,117 @@ function commandAllowed(command: string, allowedCommands: readonly string[]): bo
   return allowedCommands.map((entry) => entry.toLowerCase()).includes(command);
 }
 
+const CONVERSATION_POLICIES = new Set(['allow', 'deny', 'inherit']);
+const CONVERSATION_KINDS = new Set<ChannelConversationKind>(['direct', 'group', 'channel', 'thread', 'service']);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function throwInvalidChannelPolicySnapshot(): never {
+  throw new Error('Channel policy store snapshot is invalid.');
+}
+
+function validateOptionalString(value: unknown): void {
+  if (value !== undefined && typeof value !== 'string') throwInvalidChannelPolicySnapshot();
+}
+
+function validateOptionalBoolean(value: unknown): void {
+  if (value !== undefined && typeof value !== 'boolean') throwInvalidChannelPolicySnapshot();
+}
+
+function validateOptionalStringArray(value: unknown): void {
+  if (value !== undefined && !isStringArray(value)) throwInvalidChannelPolicySnapshot();
+}
+
+function validateChannelGroupPolicyRecord(value: unknown): void {
+  if (!isRecord(value) || typeof value['id'] !== 'string') throwInvalidChannelPolicySnapshot();
+  validateOptionalString(value['label']);
+  validateOptionalString(value['groupId']);
+  validateOptionalString(value['channelId']);
+  validateOptionalString(value['workspaceId']);
+  validateOptionalBoolean(value['requireMention']);
+  validateOptionalBoolean(value['allowGroupMessages']);
+  validateOptionalBoolean(value['allowThreadMessages']);
+  validateOptionalBoolean(value['allowTextCommandsWithoutMention']);
+  validateOptionalStringArray(value['allowlistUserIds']);
+  validateOptionalStringArray(value['allowlistChannelIds']);
+  validateOptionalStringArray(value['allowlistGroupIds']);
+  validateOptionalStringArray(value['allowedCommands']);
+  if (value['metadata'] !== undefined && !isRecord(value['metadata'])) throwInvalidChannelPolicySnapshot();
+}
+
+function validateChannelPolicyRecord(value: unknown): void {
+  if (!isRecord(value) || typeof value['surface'] !== 'string') throwInvalidChannelPolicySnapshot();
+  validateOptionalBoolean(value['enabled']);
+  validateOptionalBoolean(value['requireMention']);
+  validateOptionalBoolean(value['allowDirectMessages']);
+  validateOptionalBoolean(value['allowGroupMessages']);
+  validateOptionalBoolean(value['allowThreadMessages']);
+  validateOptionalBoolean(value['allowTextCommandsWithoutMention']);
+  const dmPolicy = value['dmPolicy'];
+  if (dmPolicy !== undefined && (typeof dmPolicy !== 'string' || !CONVERSATION_POLICIES.has(dmPolicy))) {
+    throwInvalidChannelPolicySnapshot();
+  }
+  const groupPolicy = value['groupPolicy'];
+  if (groupPolicy !== undefined && (typeof groupPolicy !== 'string' || !CONVERSATION_POLICIES.has(groupPolicy))) {
+    throwInvalidChannelPolicySnapshot();
+  }
+  validateOptionalStringArray(value['allowlistUserIds']);
+  validateOptionalStringArray(value['allowlistChannelIds']);
+  validateOptionalStringArray(value['allowlistGroupIds']);
+  validateOptionalStringArray(value['allowedCommands']);
+  if (value['groupPolicies'] !== undefined) {
+    if (!Array.isArray(value['groupPolicies'])) throwInvalidChannelPolicySnapshot();
+    for (const groupPolicy of value['groupPolicies']) validateChannelGroupPolicyRecord(groupPolicy);
+  }
+  if (value['updatedAt'] !== undefined && !isFiniteNumber(value['updatedAt'])) throwInvalidChannelPolicySnapshot();
+  if (value['metadata'] !== undefined && !isRecord(value['metadata'])) throwInvalidChannelPolicySnapshot();
+}
+
+function validateChannelPolicyAuditRecord(value: unknown): void {
+  if (
+    !isRecord(value)
+    || typeof value['id'] !== 'string'
+    || typeof value['surface'] !== 'string'
+    || !isFiniteNumber(value['createdAt'])
+    || typeof value['allowed'] !== 'boolean'
+    || typeof value['reason'] !== 'string'
+    || !isRecord(value['metadata'])
+  ) {
+    throwInvalidChannelPolicySnapshot();
+  }
+  validateOptionalString(value['userId']);
+  validateOptionalString(value['channelId']);
+  validateOptionalString(value['groupId']);
+  validateOptionalString(value['threadId']);
+  validateOptionalString(value['matchedGroupPolicyId']);
+  validateOptionalString(value['text']);
+  const conversationKind = value['conversationKind'];
+  if (
+    conversationKind !== undefined
+    && (typeof conversationKind !== 'string' || !CONVERSATION_KINDS.has(conversationKind as ChannelConversationKind))
+  ) {
+    throwInvalidChannelPolicySnapshot();
+  }
+}
+
+function validateChannelPolicySnapshot(snapshot: ChannelPolicySnapshot | null): ChannelPolicySnapshot | null {
+  if (!snapshot) return null;
+  if (!isRecord(snapshot) || !Array.isArray(snapshot.policies) || !Array.isArray(snapshot.audit)) throwInvalidChannelPolicySnapshot();
+  for (const policy of snapshot.policies) validateChannelPolicyRecord(policy);
+  for (const audit of snapshot.audit) validateChannelPolicyAuditRecord(audit);
+  return snapshot;
+}
+
 export class ChannelPolicyManager {
   private readonly store: PersistentStore<ChannelPolicySnapshot>;
   private readonly policies = new Map<ChannelSurface, ChannelPolicyRecord>();
@@ -88,7 +199,7 @@ export class ChannelPolicyManager {
 
   async start(): Promise<void> {
     if (this.loaded) return;
-    const snapshot = await this.store.load();
+    const snapshot = validateChannelPolicySnapshot(await this.store.load());
     this.policies.clear();
     this.audit.length = 0;
     for (const policy of snapshot?.policies ?? []) {

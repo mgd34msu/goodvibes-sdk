@@ -166,7 +166,7 @@ export class SqliteVecMemoryIndex {
   }
 
   stats(): MemoryVectorStats {
-    const provider = this.embeddingRegistry.getDefaultProvider();
+    const provider = this.embeddingRegistry.getDefaultProviderOrNull();
     return {
       backend: 'sqlite-vec',
       enabled: this.enabled,
@@ -174,18 +174,24 @@ export class SqliteVecMemoryIndex {
       path: this.dbPath,
       dimensions: this.dimensions,
       indexedRecords: this.countIndexedRecords(),
-      embeddingProviderId: provider.id,
-      embeddingProviderLabel: provider.label,
-      ...(this.error ? { error: this.error } : {}),
+      embeddingProviderId: provider?.id ?? this.embeddingRegistry.getDefaultProviderId(),
+      embeddingProviderLabel: provider?.label ?? `Unregistered (${this.embeddingRegistry.getDefaultProviderId()})`,
+      ...(this.error ?? !provider
+        ? { error: this.error ?? `Active memory embedding provider '${this.embeddingRegistry.getDefaultProviderId()}' is not registered.` }
+        : {}),
     };
   }
 
   upsert(record: MemoryRecord): void {
     if (!this.db || !this.enabled) return;
 
-    const sourceHash = memoryVectorSourceHash(record);
-    const embedding = this.embedText(buildMemoryEmbeddingText(record), 'record', record.id);
-    this.writeRecord(record, sourceHash, embedding);
+    try {
+      const sourceHash = memoryVectorSourceHash(record);
+      const embedding = this.embedText(buildMemoryEmbeddingText(record), 'record', record.id);
+      this.writeRecord(record, sourceHash, embedding);
+    } catch (err) {
+      this.markEmbeddingUnavailable(err);
+    }
   }
 
   async upsertAsync(record: MemoryRecord): Promise<void> {
@@ -234,7 +240,11 @@ export class SqliteVecMemoryIndex {
         if (!seen.has(stale.record_id)) this.delete(stale.record_id);
       }
     });
-    tx(records);
+    try {
+      tx(records);
+    } catch (err) {
+      this.markEmbeddingUnavailable(err);
+    }
   }
 
   async syncAsync(records: readonly MemoryRecord[], options: { force?: boolean } = {}): Promise<void> {
@@ -293,7 +303,13 @@ export class SqliteVecMemoryIndex {
 
     const requestedLimit = normalizeLimit(filter.limit, 10);
     const vectorLimit = Math.max(requestedLimit, 1);
-    const embedding = this.embedText(trimmed, 'query');
+    let embedding: Float32Array;
+    try {
+      embedding = this.embedText(trimmed, 'query');
+    } catch (err) {
+      this.markEmbeddingUnavailable(err);
+      return [];
+    }
     const where: string[] = ['embedding MATCH ?', 'k = ?'];
     const params: SQLQueryBindings[] = [embedding, vectorLimit];
 
@@ -401,6 +417,14 @@ export class SqliteVecMemoryIndex {
     return normalizeMemoryEmbeddingVector(result.vector, this.dimensions);
   }
 
+  private markEmbeddingUnavailable(error: unknown): void {
+    this.error = summarizeError(error);
+    logger.warn('Memory vector index skipped a synchronous operation because the active embedding provider cannot run synchronously', {
+      providerId: this.embeddingRegistry.getDefaultProviderId(),
+      error: this.error,
+    });
+  }
+
   private writePendingRebuildBatch(entries: Array<{ record: MemoryRecord; sourceHash: string; embedding: Float32Array }>): void {
     if (!this.db || !this.enabled || entries.length === 0) return;
     const tx = this.db.transaction((batch: Array<{ record: MemoryRecord; sourceHash: string; embedding: Float32Array }>) => {
@@ -437,6 +461,7 @@ export class SqliteVecMemoryIndex {
          SET source_hash = ?, updated_at = ?, indexed_at = ?
        WHERE rowid = ?`,
     ).run(sourceHash, record.updatedAt, Date.now(), rowid);
+    this.error = undefined;
   }
 }
 

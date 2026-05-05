@@ -631,11 +631,11 @@ export interface CloudflareApiClient {
 export interface CloudflareControlPlaneOptions {
   readonly configManager: Pick<ConfigManager, 'get' | 'set'>;
   readonly secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
-  readonly authToken?: (() => string | null) | undefined | undefined;
-  readonly createClient?: ((apiToken: string) => Promise<CloudflareApiClient>) | undefined | undefined;
+  readonly authToken?: (() => string | null) | undefined;
+  readonly createClient?: ((apiToken: string) => Promise<CloudflareApiClient>) | undefined;
   readonly fetch?: typeof fetch | undefined;
-  readonly now?: (() => number) | undefined | undefined;
-  readonly randomUUID?: (() => string) | undefined | undefined;
+  readonly now?: (() => number) | undefined;
+  readonly randomUUID?: (() => string) | undefined;
 }
 
 export class CloudflareControlPlaneError extends Error {

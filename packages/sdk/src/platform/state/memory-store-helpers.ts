@@ -64,22 +64,62 @@ export function ensureColumn(
 
 export function rowToRecord(columns: string[], values: unknown[]): MemoryRecord {
   const row = Object.fromEntries(columns.map((column, index) => [column, values[index]!])) as Record<string, unknown>;
+  const id = requireMemoryString(row.id, 'id');
+  const cls = requireMemoryString(row.cls, 'cls') as MemoryRecord['cls'];
+  const summary = requireMemoryString(row.summary, 'summary');
+  const createdAt = requireMemoryTimestamp(row.created_at, 'created_at');
+  const updatedAt = requireMemoryTimestamp(row.updated_at, 'updated_at');
   return {
-    id: String(row.id),
-    scope: normalizeScope(row.scope),
-    cls: String(row.cls) as MemoryRecord['cls'],
-    summary: String(row.summary),
+    id,
+    scope: normalizePersistedScope(row.scope),
+    cls,
+    summary,
     ...(typeof row.detail === 'string' && row.detail.trim() ? { detail: row.detail.trim() } : {}),
-    tags: safeParseJson<string[]>(row.tags, []),
-    provenance: safeParseJson<Array<MemoryRecord['provenance'][number]>>(row.provenance, []),
-    reviewState: normalizeReviewState(row.review_state),
-    confidence: clampConfidence(row.confidence),
-    ...(typeof row.reviewed_at === 'number' ? { reviewedAt: Number(row.reviewed_at) } : {}),
+    tags: parseMemoryJsonField<string[]>(row.tags, 'tags'),
+    provenance: parseMemoryJsonField<Array<MemoryRecord['provenance'][number]>>(row.provenance, 'provenance'),
+    reviewState: normalizePersistedReviewState(row.review_state),
+    confidence: requirePersistedConfidence(row.confidence),
+    ...(row.reviewed_at !== null && row.reviewed_at !== undefined ? { reviewedAt: requireMemoryTimestamp(row.reviewed_at, 'reviewed_at') } : {}),
     ...(typeof row.reviewed_by === 'string' && row.reviewed_by.trim() ? { reviewedBy: row.reviewed_by.trim() } : {}),
     ...(typeof row.stale_reason === 'string' && row.stale_reason.trim() ? { staleReason: row.stale_reason.trim() } : {}),
-    createdAt: Number(row.created_at),
-    updatedAt: Number(row.updated_at),
+    createdAt,
+    updatedAt,
   };
+}
+
+function throwInvalidMemoryRow(fieldName: string, reason: string): never {
+  throw new Error(`Memory record field '${fieldName}' is invalid: ${reason}`);
+}
+
+function requireMemoryString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throwInvalidMemoryRow(fieldName, 'expected a non-empty string');
+  }
+  return value;
+}
+
+function requireMemoryTimestamp(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throwInvalidMemoryRow(fieldName, 'expected a finite timestamp number');
+  }
+  return value;
+}
+
+function normalizePersistedScope(value: unknown): MemoryScope {
+  if (value === 'session' || value === 'project' || value === 'team') return value;
+  throwInvalidMemoryRow('scope', 'expected session, project, or team');
+}
+
+function normalizePersistedReviewState(value: unknown): MemoryReviewState {
+  if (value === 'fresh' || value === 'reviewed' || value === 'stale' || value === 'contradicted') return value;
+  throwInvalidMemoryRow('review_state', 'expected fresh, reviewed, stale, or contradicted');
+}
+
+function requirePersistedConfidence(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+    throwInvalidMemoryRow('confidence', 'expected a finite number from 0 to 100');
+  }
+  return Math.round(value);
 }
 
 export function normalizeReviewState(value: unknown): MemoryReviewState {
@@ -142,12 +182,15 @@ export function recordMatchesPostSqlFilter(record: MemoryRecord, filter: MemoryS
   return true;
 }
 
-export function safeParseJson<T>(raw: unknown, fallback: T): T {
-  if (typeof raw !== 'string') return fallback;
+export function parseMemoryJsonField<T>(raw: unknown, fieldName: string): T {
+  if (typeof raw !== 'string') {
+    throwInvalidMemoryRow(fieldName, 'expected JSON text');
+  }
   try {
     return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throwInvalidMemoryRow(fieldName, `invalid JSON: ${message}`);
   }
 }
 

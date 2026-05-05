@@ -402,7 +402,7 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
       canonicalUri: 'homegraph://passport/lg-tv',
       tags: ['generated-page'],
       status: 'indexed',
-      metadata: { knowledgeSpaceId: spaceId, homeGraphGeneratedPage: true },
+      metadata: { knowledgeSpaceId: spaceId, generatedKnowledgePage: true, generatedProjection: true },
     });
     const official = await store.upsertSource({
       connectorId: 'semantic-gap-repair',

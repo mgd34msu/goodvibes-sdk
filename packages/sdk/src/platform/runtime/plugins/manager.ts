@@ -277,8 +277,11 @@ export class PluginLifecycleManager {
   /**
    * quarantinePlugin — Apply quarantine to a named plugin.
    *
-   * Revokes high-risk capabilities from the live manifest and marks the record
-   * as quarantined. Emits PLUGIN_DEGRADED to signal partial functionality.
+   * Revokes high-risk capabilities from the live manifest, marks the record as
+   * quarantined, and records the reason as the latest degradation. Active
+   * plugins transition to `degraded`; already-degraded plugins stay degraded.
+   * Non-operational plugins keep their current lifecycle state but still emit
+   * PLUGIN_DEGRADED so runtime observers see the quarantine.
    *
    * @returns true if quarantine was applied; false if not tracked or already quarantined.
    */
@@ -292,15 +295,32 @@ export class PluginLifecycleManager {
     const qRecord = this.quarantine.quarantine(name, record.capabilities, reason);
     if (!qRecord) return false;
 
-    record.quarantined = true;
+    const degradationReason = `quarantined: ${reason}`;
+    this.updateRecord(name, {
+      quarantined: true,
+      lastError: degradationReason,
+      errorAt: Date.now(),
+    });
+
+    if (record.state === 'active') {
+      const transitionResult = this.transition(name, 'degraded', degradationReason);
+      if (!transitionResult.ok) {
+        logger.warn(
+          `[plugin-lifecycle] ${name}: quarantine degradation transition failed — ${transitionResult.reason}`,
+        );
+      }
+    } else if (record.state !== 'degraded') {
+      logger.warn(`[plugin-lifecycle] ${name}: quarantined while ${record.state}; lifecycle state unchanged`);
+    }
 
     this.emit({
       type: 'PLUGIN_DEGRADED',
       pluginId: name,
-      reason: `quarantined: ${reason}`,
+      reason: degradationReason,
       affectedCapabilities: qRecord.revokedCapabilities as string[],
     });
 
+    logger.warn(`[plugin-lifecycle] ${name}: degraded — ${degradationReason}`);
     return true;
   }
 
@@ -325,18 +345,33 @@ export class PluginLifecycleManager {
     return lifted;
   }
 
-  /**
-   * Mark a plugin as degraded (partial functionality). Only valid from active.
-   */
+  /** Mark a plugin as degraded (partial functionality) while keeping it operational. */
   degradePlugin(name: string, reason: string, affectedCapabilities: string[] = []): void {
     const record = this.records.get(name);
-    if (!record) return;
+    if (!record) {
+      logger.warn(`[plugin-lifecycle] ${name}: degrade requested but plugin not tracked`);
+      return;
+    }
+
+    if (record.state === 'degraded') {
+      this.updateRecord(name, { lastError: reason, errorAt: Date.now() });
+      this.emit({
+        type: 'PLUGIN_DEGRADED',
+        pluginId: name,
+        reason,
+        affectedCapabilities,
+      });
+      logger.warn(`[plugin-lifecycle] ${name}: degraded — ${reason}`);
+      return;
+    }
 
     const result = this.transition(name, 'degraded', reason);
     if (!result.ok) {
       logger.warn(`[plugin-lifecycle] ${name}: cannot degrade — ${result.reason}`);
       return;
     }
+
+    this.updateRecord(name, { lastError: reason, errorAt: Date.now() });
 
     this.emit({
       type: 'PLUGIN_DEGRADED',
@@ -349,18 +384,25 @@ export class PluginLifecycleManager {
   }
 
   /**
-   * Record a non-fatal error without transitioning state.
-   * If the plugin is active, it may optionally be moved to degraded.
+   * Record a plugin error. Recoverable errors update observability state and emit
+   * PLUGIN_ERROR without changing lifecycle state. Fatal errors move
+   * active/loaded/degraded plugins to `error`.
    */
   recordError(name: string, error: string, fatal: boolean): void {
     const record = this.records.get(name);
-    if (!record) return;
+    if (!record) {
+      logger.warn(`[plugin-lifecycle] ${name}: error recorded for untracked plugin — ${error}`);
+      return;
+    }
 
     this.updateRecord(name, { lastError: error, errorAt: Date.now() });
     this.emit({ type: 'PLUGIN_ERROR', pluginId: name, error, fatal });
 
     if (fatal && (record.state === 'active' || record.state === 'loaded' || record.state === 'degraded')) {
-      this.transition(name, 'error', error);
+      const transitionResult = this.transition(name, 'error', error);
+      if (!transitionResult.ok) {
+        logger.warn(`[plugin-lifecycle] ${name}: fatal error transition failed — ${transitionResult.reason}`);
+      }
     }
 
     logger.error(`[plugin-lifecycle] ${name}: error (fatal=${String(fatal)}) — ${error}`);
@@ -432,6 +474,8 @@ export class PluginLifecycleManager {
     if (patch.errorAt !== undefined) record.errorAt = patch.errorAt;
     if (patch.activatedAt !== undefined) record.activatedAt = patch.activatedAt;
     if (patch.reloading !== undefined) record.reloading = patch.reloading;
+    if (patch.trustTier !== undefined) record.trustTier = patch.trustTier;
+    if (patch.quarantined !== undefined) record.quarantined = patch.quarantined;
   }
 
   private emit(event: PluginEvent): void {
@@ -468,7 +512,11 @@ export class PluginLifecycleManager {
           break;
       }
     } catch (err) {
-      logger.debug(`[plugin-lifecycle] runtime emit failed: ${summarizeError(err)}`);
+      logger.warn('[plugin-lifecycle] runtime emit failed', {
+        pluginId: event.pluginId,
+        eventType: event.type,
+        error: summarizeError(err),
+      });
     }
   }
 }

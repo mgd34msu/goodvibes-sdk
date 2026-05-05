@@ -132,9 +132,9 @@ The output contains:
 ## Decision Records
 
 Decision records should be used for meaningful project choices, not every small
-implementation detail. A decision belongs here when it would be expensive to
-reverse later, a future developer or agent would not understand it from code
-alone, or real alternatives and tradeoffs existed.
+implementation detail. A decision belongs here when reversal would be expensive,
+when maintainers need context beyond the code, or when real alternatives and
+tradeoffs existed.
 
 Stored fields include:
 
@@ -218,4 +218,3 @@ The TUI should use this feature as a passive backing store:
 
 The planning panel can render the same state returned by the SDK. The daemon
 does not own panel state or conversational transitions.
-

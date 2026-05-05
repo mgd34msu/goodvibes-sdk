@@ -760,8 +760,8 @@ export class DeterministicReplayEngine {
       try {
         cb();
       } catch (err) {
-        // Non-fatal: subscriber errors must not crash the engine.
-        logger.debug('[DeterministicReplayEngine] subscriber error', { error: summarizeError(err) });
+        // Subscriber errors must not crash the engine.
+        logger.warn('[DeterministicReplayEngine] subscriber error', { error: summarizeError(err) });
       }
     }
   }

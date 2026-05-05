@@ -127,8 +127,8 @@ export class SharedSessionBroker {
   }
 
   /**
-   * M3: Gracefully stop the broker — clears GC interval, tears down bus subscriptions,
-   * and persists state. Call from DaemonServer.stop().
+   * Gracefully stop the broker by clearing the GC interval, tearing down bus
+   * subscriptions, and persisting state. Call from DaemonServer.stop().
    */
   async stop(): Promise<void> {
     if (this._gcInterval) {
@@ -182,7 +182,7 @@ export class SharedSessionBroker {
       this.inputs.set(sessionId, bucket);
     }
     this.loaded = true;
-    // M2: startup reconciliation — cancel inputs stuck in spawned/delivered from a prior run
+    // Startup reconciliation cancels inputs stuck in spawned/delivered from a prior run.
     const restartReason = 'daemon restart — agent state unknown';
     for (const [sessionId, bucket] of this.inputs.entries()) {
       let changed = false;
@@ -202,7 +202,7 @@ export class SharedSessionBroker {
     }
     await this.persist();
     if (!this._gcInterval) {
-      // M3: .unref() so the GC interval does not keep the process alive past shutdown
+      // .unref() so the GC interval does not keep the process alive past shutdown.
       const iv = setInterval(() => { this.gcSweep(); }, 60_000);
       (iv as unknown as { unref?: () => void }).unref?.();
       this._gcInterval = iv;
@@ -278,7 +278,6 @@ export class SharedSessionBroker {
       await this.routeBindings.patchBinding(input.routeBinding.id, { sessionId: session.id });
     }
     await this.persist();
-    // C-1: update active session gauge
     sessionsActive.set(this.sessions.size);
     this.publishUpdate('session-created', session);
     return session;
@@ -293,7 +292,6 @@ export class SharedSessionBroker {
     const updated = closeSharedSessionRecord(touched);
     this.sessions.set(sessionId, updated);
     await this.persist();
-    // C-1: update active session gauge
     sessionsActive.set(this.sessions.size);
     this.publishUpdate('session-closed', updated);
     return updated;
@@ -391,7 +389,7 @@ export class SharedSessionBroker {
       activeAgentId: (this.sessions.get(sessionId)?.activeAgentId === agentId) ? undefined : this.sessions.get(sessionId)?.activeAgentId,
       lastAgentId: agentId,
       updatedAt: now,
-      lastActivityAt: now, // M4: completeAgent explicitly updates lastActivityAt
+      lastActivityAt: now,
       ...(metadata.status === 'failed' ? { lastError: body } : {}),
     };
     this.sessions.set(sessionId, updated);

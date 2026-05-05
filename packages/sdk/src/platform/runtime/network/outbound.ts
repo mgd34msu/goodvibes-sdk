@@ -104,7 +104,7 @@ function loadCustomCaEntries(configManager: OutboundTlsConfigReader): {
 
 function getBundledCaEntries(): readonly string[] {
   const getCaCertificates = (tls as typeof tls & {
-    getCACertificates?: ((type?: 'default' | 'bundled' | 'system' | 'extra') => string[]) | undefined | undefined;
+    getCACertificates?: ((type?: 'default' | 'bundled' | 'system' | 'extra') => string[]) | undefined;
   }).getCACertificates;
   return getCaCertificates ? getCaCertificates('bundled') : rootCertificates;
 }

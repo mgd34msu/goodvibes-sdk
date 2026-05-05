@@ -133,17 +133,18 @@ function buildQualityInfo(
 }
 
 /**
- * Build the set of model IDs in the current fallback chain.
- * Returns a Map from modelId to its position (0 = primary).
+ * Build the set of registry keys in the current fallback chain.
+ * Returns a Map from registryKey to its position (0 = primary).
  */
 function buildFallbackPositionMap(modelState: ModelDomainState): Map<string, number> {
   const map = new Map<string, number>();
   // Position 0 is always the primary active model
-  map.set(modelState.activeModelId, 0);
+  map.set(modelState.registryKey, 0);
   for (let i = 0; i < modelState.fallbackChain.length; i++) {
     const entry = modelState.fallbackChain[i]!;
-    if (!map.has(entry.modelId)) {
-      map.set(entry.modelId, i + 1);
+    const key = `${entry.providerId}:${entry.modelId}`;
+    if (!map.has(key)) {
+      map.set(key, i + 1);
     }
   }
   return map;
@@ -155,7 +156,7 @@ function buildFallbackPositionMap(modelState: ModelDomainState): Map<string, num
  * @param models - All selectable models from the registry.
  * @param healthState - Current provider health domain state.
  * @param modelState - Current model domain state.
- * @param pinnedIds - Set of pinned/favorited model IDs.
+ * @param pinnedIds - Set of pinned/favorited model registry keys.
  * @returns Sorted, enriched ModelPickerEntry array.
  */
 export function enrichModelEntries(
@@ -177,7 +178,7 @@ export function enrichModelEntries(
     const isProviderUnavailable =
       health.status === 'unavailable' || health.status === 'auth_error';
 
-    const fallbackPosition = fallbackPositions.get(model.id);
+    const fallbackPosition = fallbackPositions.get(model.registryKey);
 
     // Resolve effective context window and determine display source label.
     const effectiveContextWindow = providerRegistry.getContextWindowForModel(model);
@@ -185,10 +186,10 @@ export function enrichModelEntries(
     // for catalog models, if getContextWindowForModel returned more than the
     // static contextWindow it came from OpenRouter, else it's the registry value.
     let contextWindowSource: ModelPickerEntry['contextWindowSource'];
-    if (model.contextWindowProvenance) {
-      contextWindowSource = model.contextWindowProvenance;
-    } else if (effectiveContextWindow !== model.contextWindow) {
+    if (effectiveContextWindow !== model.contextWindow) {
       contextWindowSource = 'openrouter';
+    } else if (model.contextWindowProvenance) {
+      contextWindowSource = model.contextWindowProvenance;
     } else {
       contextWindowSource = 'registry';
     }
@@ -205,8 +206,8 @@ export function enrichModelEntries(
       health,
       contextWindow: effectiveContextWindow,
       contextWindowSource,
-      isPinned: pinnedIds.has(model.id),
-      isActive: model.id === modelState.activeModelId,
+      isPinned: pinnedIds.has(model.registryKey),
+      isActive: model.registryKey === modelState.registryKey,
       isProviderDegraded,
       isProviderUnavailable,
       isInFallbackChain: fallbackPosition !== undefined,

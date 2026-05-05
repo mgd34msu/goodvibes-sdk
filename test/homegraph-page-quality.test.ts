@@ -39,7 +39,7 @@ describe('Home Graph page source quality', () => {
     });
     const generated = source({
       id: 'generated',
-      metadata: { homeGraphGeneratedPage: true },
+      metadata: { generatedKnowledgePage: true, generatedProjection: true },
     });
     const commercial = source({
       id: 'commercial',

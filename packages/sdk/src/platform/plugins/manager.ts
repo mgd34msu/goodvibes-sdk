@@ -473,7 +473,7 @@ export class PluginManager {
       try {
         callback();
       } catch (err) {
-        logger.debug('[plugins] subscriber callback failed', {
+        logger.warn('[plugins] subscriber callback failed', {
           error: summarizeError(err),
         });
       }

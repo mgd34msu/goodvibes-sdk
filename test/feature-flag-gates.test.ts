@@ -32,13 +32,17 @@ import { createTaskManager } from '../packages/sdk/src/platform/runtime/tasks/in
 import { createFeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/index.js';
 import { getSecuritySettingsReport } from '../packages/sdk/src/platform/runtime/security-settings.js';
 import { AgentOrchestrator } from '../packages/sdk/src/platform/agents/orchestrator.js';
+import { resolveContextWindowModelDefinition } from '../packages/sdk/src/platform/agents/orchestrator-runner.js';
 import { AgentMessageBus } from '../packages/sdk/src/platform/agents/message-bus.js';
+import { AgentManager } from '../packages/sdk/src/platform/tools/agent/manager.js';
+import { configureDaemonSessionContinuation } from '../packages/sdk/src/platform/daemon/facade-composition.js';
+import { buildSharedSessionAgentSpawnRoutingInput } from '../packages/sdk/src/platform/control-plane/session-intents.js';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import { WatcherRegistry } from '../packages/sdk/src/platform/watchers/index.js';
 import { PlatformServiceManager } from '../packages/sdk/src/platform/daemon/service-manager.js';
 import { AutomationDeliveryManager, AutomationManager } from '../packages/sdk/src/platform/automation/index.js';
 import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/index.js';
-import { OverflowHandler } from '../packages/sdk/src/platform/tools/shared/overflow.js';
+import { OverflowHandler, createSpillBackend } from '../packages/sdk/src/platform/tools/shared/overflow.js';
 import { ApiTokenAuditor } from '../packages/sdk/src/platform/security/token-audit.js';
 import { ModeManager } from '../packages/sdk/src/platform/state/mode-manager.js';
 import type { Tool, ToolResult } from '../packages/sdk/src/platform/types/tools.js';
@@ -442,6 +446,16 @@ describe('feature flag safe-default gates', () => {
     ]);
   });
 
+  test('feature flag config rejects unknown flags instead of ignoring stale config', () => {
+    const manager = createFeatureFlagManager();
+
+    expect(() => manager.loadFromConfig({
+      flags: {
+        'not-a-real-flag': 'enabled',
+      },
+    })).toThrow(/Unknown flag in config/);
+  });
+
   test('shell-ast-normalization denies command substitution that baseline allows', async () => {
     const command = 'echo $(whoami)';
 
@@ -579,10 +593,10 @@ describe('feature flag safe-default gates', () => {
         return { content: 'ok' };
       },
     };
-    const fallbackProvider: LLMProvider = {
+    const otherProvider: LLMProvider = {
       name: 'anthropic',
       async chat() {
-        return { content: 'fallback' };
+        return { content: 'other' };
       },
     };
     const optimizer = {
@@ -600,7 +614,7 @@ describe('feature flag safe-default gates', () => {
       getForModel(modelId: string, providerId?: string): LLMProvider {
         return providerId === 'openai' && modelId === 'gpt-test'
           ? selectedProvider
-          : fallbackProvider;
+          : otherProvider;
       },
       listModels() {
         return [{
@@ -626,16 +640,472 @@ describe('feature flag safe-default gates', () => {
       resolveProviderForRecord(
         providerRegistry: typeof providerRegistry,
         record: AgentRecord,
-        currentModel: { id: string; provider: string },
+        currentModel: { id: string; provider: string; registryKey: string },
       ): { provider: LLMProvider; modelId: string; requestedModelId: string };
     }).resolveProviderForRecord(providerRegistry, makeAgentRecord(), {
       id: 'claude-test',
       provider: 'anthropic',
+      registryKey: 'anthropic:claude-test',
     });
 
     expect(route.provider).toBe(selectedProvider);
     expect(route.modelId).toBe('gpt-test');
     expect(route.requestedModelId).toBe('openai:gpt-test');
+  });
+
+  test('agent fallback routes honor provider-qualified registry keys', () => {
+    const openaiProvider: LLMProvider = {
+      name: 'openai',
+      async chat() {
+        return { content: 'primary' };
+      },
+    };
+    const anthropicProvider: LLMProvider = {
+      name: 'anthropic',
+      async chat() {
+        return { content: 'fallback' };
+      },
+    };
+    const providerRegistry = {
+      getForModel(modelId: string, providerId?: string): LLMProvider {
+        if (providerId === 'openai' && modelId === 'openai:gpt-test') return openaiProvider;
+        if (providerId === 'anthropic' && modelId === 'anthropic:claude-test') return anthropicProvider;
+        throw new Error(`unresolved ${providerId}:${modelId}`);
+      },
+      listModels() {
+        return [
+          {
+            id: 'gpt-test',
+            provider: 'openai',
+            registryKey: 'openai:gpt-test',
+            displayName: 'GPT Test',
+            description: 'Test model',
+            capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+            contextWindow: 128_000,
+            selectable: true,
+          },
+          {
+            id: 'claude-test',
+            provider: 'anthropic',
+            registryKey: 'anthropic:claude-test',
+            displayName: 'Claude Test',
+            description: 'Test model',
+            capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+            contextWindow: 128_000,
+            selectable: true,
+          },
+        ];
+      },
+    };
+    const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
+    const routes = (orchestrator as unknown as {
+      resolveFallbackModelRoutes(
+        providerRegistry: typeof providerRegistry,
+        record: AgentRecord,
+        currentModel: { id: string; provider: string; registryKey: string },
+        primaryRequestedModelId: string,
+      ): Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }>;
+    }).resolveFallbackModelRoutes(
+      providerRegistry,
+      makeAgentRecord({ fallbackModels: ['anthropic:claude-test'] }),
+      { id: 'gpt-test', provider: 'openai', registryKey: 'openai:gpt-test' },
+      'openai:gpt-test',
+    );
+
+    expect(routes).toHaveLength(1);
+    expect(routes[0]?.provider).toBe(anthropicProvider);
+    expect(routes[0]?.modelId).toBe('claude-test');
+    expect(routes[0]?.requestedModelId).toBe('anthropic:claude-test');
+  });
+
+  test('agent context window lookup scopes same model ids to the active provider', () => {
+    const models = [
+      {
+        id: 'shared-model',
+        provider: 'openai',
+        registryKey: 'openai:shared-model',
+        displayName: 'OpenAI Shared',
+        description: 'OpenAI model',
+        capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+        contextWindow: 8_000,
+        selectable: true,
+      },
+      {
+        id: 'shared-model',
+        provider: 'anthropic',
+        registryKey: 'anthropic:shared-model',
+        displayName: 'Anthropic Shared',
+        description: 'Anthropic model',
+        capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+        contextWindow: 200_000,
+        selectable: true,
+      },
+    ];
+    const model = resolveContextWindowModelDefinition({
+      getCurrentModel: () => models[0]!,
+      listModels: () => models,
+    }, {
+      provider: { name: 'anthropic' },
+      modelId: 'shared-model',
+      requestedModelId: 'anthropic:shared-model',
+    });
+
+    expect(model.provider).toBe('anthropic');
+    expect(model.contextWindow).toBe(200_000);
+  });
+
+  test('agent model overrides reject unqualified registry keys', () => {
+    const providerRegistry = {
+      getForModel(): LLMProvider {
+        throw new Error('provider lookup should not run for unqualified model overrides');
+      },
+      listModels() {
+        return [
+          {
+            id: 'gpt-test',
+            provider: 'openai',
+            registryKey: 'openai:gpt-test',
+            displayName: 'GPT Test',
+            description: 'Test model',
+            capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+            contextWindow: 128_000,
+            selectable: true,
+          },
+        ];
+      },
+    };
+    const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
+    expect(() => (orchestrator as unknown as {
+      resolveProviderForRecord(
+        providerRegistry: typeof providerRegistry,
+        record: AgentRecord,
+        currentModel: { id: string; provider: string; registryKey: string },
+      ): { provider: LLMProvider; modelId: string; requestedModelId: string };
+    }).resolveProviderForRecord(
+      providerRegistry,
+      makeAgentRecord({ model: 'gpt-test' }),
+      { id: 'claude-test', provider: 'anthropic', registryKey: 'anthropic:claude-test' },
+    )).toThrow(/Agent model overrides must be provider-qualified registry keys/);
+  });
+
+  test('agent orchestrator rejects provider-only and conflicting persisted routes', () => {
+    const providerRegistry = {
+      getForModel(): LLMProvider {
+        throw new Error('provider lookup should not run for invalid persisted routes');
+      },
+      listModels() {
+        return [
+          {
+            id: 'gpt-test',
+            provider: 'openai',
+            registryKey: 'openai:gpt-test',
+            displayName: 'GPT Test',
+            description: 'Test model',
+            capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+            contextWindow: 128_000,
+            selectable: true,
+          },
+          {
+            id: 'claude-test',
+            provider: 'anthropic',
+            registryKey: 'anthropic:claude-test',
+            displayName: 'Claude Test',
+            description: 'Test model',
+            capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+            contextWindow: 128_000,
+            selectable: true,
+          },
+        ];
+      },
+    };
+    const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
+    const resolver = orchestrator as unknown as {
+      resolveProviderForRecord(
+        providerRegistry: typeof providerRegistry,
+        record: AgentRecord,
+        currentModel: { id: string; provider: string; registryKey: string },
+      ): { provider: LLMProvider; modelId: string; requestedModelId: string };
+    };
+    const currentModel = { id: 'claude-test', provider: 'anthropic', registryKey: 'anthropic:claude-test' };
+
+    expect(() => resolver.resolveProviderForRecord(
+      providerRegistry,
+      makeAgentRecord({ provider: 'openai' }),
+      currentModel,
+    )).toThrow(/Agent provider routing requires a provider-qualified model/);
+
+    expect(() => resolver.resolveProviderForRecord(
+      providerRegistry,
+      makeAgentRecord({ model: 'openai:gpt-test', provider: 'anthropic' }),
+      currentModel,
+    )).toThrow(/Agent model override 'openai:gpt-test' conflicts with provider 'anthropic'/);
+  });
+
+  test('agent fallback routes reject unqualified registry keys', () => {
+    const providerRegistry = {
+      getForModel(): LLMProvider {
+        throw new Error('provider lookup should not run for unqualified fallback models');
+      },
+      listModels() {
+        return [];
+      },
+    };
+    const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
+    expect(() => (orchestrator as unknown as {
+      resolveFallbackModelRoutes(
+        providerRegistry: typeof providerRegistry,
+        record: AgentRecord,
+        currentModel: { id: string; provider: string; registryKey: string },
+        primaryRequestedModelId: string,
+      ): Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }>;
+    }).resolveFallbackModelRoutes(
+      providerRegistry,
+      makeAgentRecord({ fallbackModels: ['claude-test'] }),
+      { id: 'gpt-test', provider: 'openai', registryKey: 'openai:gpt-test' },
+      'openai:gpt-test',
+    )).toThrow(/Agent fallback models must be provider-qualified registry keys/);
+  });
+
+  test('agent fallback routes reject contradictory failover policy', () => {
+    const providerRegistry = {
+      getForModel(): LLMProvider {
+        throw new Error('provider lookup should not run for contradictory fallback policy');
+      },
+      listModels() {
+        return [];
+      },
+    };
+    const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
+    expect(() => (orchestrator as unknown as {
+      resolveFallbackModelRoutes(
+        providerRegistry: typeof providerRegistry,
+        record: AgentRecord,
+        currentModel: { id: string; provider: string; registryKey: string },
+        primaryRequestedModelId: string,
+      ): Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }>;
+    }).resolveFallbackModelRoutes(
+      providerRegistry,
+      makeAgentRecord({
+        fallbackModels: ['anthropic:claude-test'],
+        routing: { providerFailurePolicy: 'fail' },
+      }),
+      { id: 'gpt-test', provider: 'openai', registryKey: 'openai:gpt-test' },
+      'openai:gpt-test',
+    )).toThrow(/Agent fail routing cannot include fallback models/);
+  });
+
+  test('agent fallback routes reject provider-qualified models absent from the registry', () => {
+    const providerRegistry = {
+      getForModel(): LLMProvider {
+        throw new Error('provider lookup should not run for unknown fallback models');
+      },
+      listModels() {
+        return [{
+          id: 'gpt-test',
+          provider: 'openai',
+          registryKey: 'openai:gpt-test',
+          displayName: 'GPT Test',
+          description: 'Test model',
+          capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+          contextWindow: 128_000,
+          selectable: true,
+        }];
+      },
+    };
+    const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
+    expect(() => (orchestrator as unknown as {
+      resolveFallbackModelRoutes(
+        providerRegistry: typeof providerRegistry,
+        record: AgentRecord,
+        currentModel: { id: string; provider: string; registryKey: string },
+        primaryRequestedModelId: string,
+      ): Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }>;
+    }).resolveFallbackModelRoutes(
+      providerRegistry,
+      makeAgentRecord({ fallbackModels: ['anthropic:claude-test'] }),
+      { id: 'gpt-test', provider: 'openai', registryKey: 'openai:gpt-test' },
+      'openai:gpt-test',
+    )).toThrow(/Agent fallback model 'anthropic:claude-test' is not in registry/);
+  });
+
+  test('agent manager rejects unqualified model routes before enqueueing records', () => {
+    const configManager = { get: () => null };
+    const manager = new AgentManager({
+      configManager,
+      messageBus: { registerAgent() {} },
+      archetypeLoader: { loadArchetype: () => null },
+    });
+
+    expect(() => manager.spawn({
+      mode: 'spawn',
+      task: 'do work',
+      model: 'gpt-test',
+    })).toThrow(/Agent model overrides must be a provider-qualified registry key/);
+
+    expect(() => manager.spawn({
+      mode: 'spawn',
+      task: 'do work',
+      provider: 'openai',
+    })).toThrow(/Agent provider routing requires a provider-qualified model/);
+
+    expect(() => manager.spawn({
+      mode: 'spawn',
+      task: 'do work',
+      model: 'openai:gpt-test',
+      fallbackModels: ['claude-test'],
+    })).toThrow(/Agent fallback models must be a provider-qualified registry key/);
+
+    expect(() => manager.spawn({
+      mode: 'spawn',
+      task: 'do work',
+      model: 'openai:gpt-test',
+      provider: 'anthropic',
+    })).toThrow(/Agent model override 'openai:gpt-test' conflicts with provider 'anthropic'/);
+
+    expect(() => manager.spawn({
+      mode: 'spawn',
+      task: 'do work',
+      model: 'openai:gpt-test',
+      routing: { providerFailurePolicy: 'ordered-fallbacks' },
+    })).toThrow(/Agent ordered fallback routing requires at least one provider-qualified fallback model/);
+
+    expect(() => manager.spawn({
+      mode: 'spawn',
+      task: 'do work',
+      model: 'openai:gpt-test',
+      fallbackModels: ['anthropic:claude-test'],
+      routing: { providerFailurePolicy: 'fail' },
+    })).toThrow(/Agent fail routing cannot include fallback models/);
+
+    const restricted = manager.spawn({
+      mode: 'spawn',
+      task: 'do work',
+      restrictTools: true,
+    });
+    expect(restricted.tools).toEqual([]);
+  });
+
+  test('shared-session continuation preserves provider-qualified failover routing on spawn', async () => {
+    let continuationRunner: ((input: unknown) => Promise<unknown>) | undefined;
+    let spawnedInput: Parameters<AgentManager['spawn']>[0] | undefined;
+    configureDaemonSessionContinuation({
+      sessionBroker: {
+        setContinuationRunner(runner: unknown) {
+          continuationRunner = runner as (input: unknown) => Promise<unknown>;
+        },
+      } as unknown as Parameters<typeof configureDaemonSessionContinuation>[0]['sessionBroker'],
+      trySpawnAgent(input) {
+        spawnedInput = input;
+        return makeAgentRecord({ id: 'agent-spawned' });
+      },
+      queueSurfaceReplyFromBinding() {},
+    });
+
+    if (!continuationRunner) throw new Error('continuation runner was not registered');
+    await continuationRunner({
+      sessionId: 'session-1',
+      task: 'continue the work',
+      routeBinding: undefined,
+      input: {
+        id: 'input-1',
+        sessionId: 'session-1',
+        intent: 'follow-up',
+        state: 'queued',
+        correlationId: 'corr-1',
+        body: 'continue',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        metadata: {},
+        routing: {
+          providerId: 'openai',
+          modelId: 'gpt-test',
+          providerSelection: 'concrete',
+          providerFailurePolicy: 'ordered-fallbacks',
+          fallbackModels: ['anthropic:claude-test'],
+          tools: ['read'],
+          reasoningEffort: 'low',
+        },
+      },
+    });
+
+    expect(spawnedInput?.model).toBe('openai:gpt-test');
+    expect(spawnedInput?.provider).toBe('openai');
+    expect(spawnedInput?.routing?.providerSelection).toBe('concrete');
+    expect(spawnedInput?.routing?.providerFailurePolicy).toBe('ordered-fallbacks');
+    expect(spawnedInput?.routing?.fallbackModels).toEqual(['anthropic:claude-test']);
+    expect(spawnedInput?.tools).toEqual(['read']);
+    expect(spawnedInput?.reasoningEffort).toBe('low');
+  });
+
+  test('shared-session routing builder preserves no-tool restrictions', () => {
+    expect(buildSharedSessionAgentSpawnRoutingInput(undefined, { restrictTools: true })).toEqual({
+      restrictTools: true,
+    });
+    expect(buildSharedSessionAgentSpawnRoutingInput({}, { restrictTools: true })).toMatchObject({
+      restrictTools: true,
+      routing: {
+        providerSelection: 'inherit-current',
+        providerFailurePolicy: 'fail',
+      },
+    });
+  });
+
+  test('shared-session routing builder rejects ambiguous provider/model failover routes', () => {
+    expect(() => buildSharedSessionAgentSpawnRoutingInput({
+      providerId: 'openai',
+    })).toThrow(/Shared-session provider routing requires a provider-qualified model/);
+
+    expect(() => buildSharedSessionAgentSpawnRoutingInput({
+      modelId: 'gpt-test',
+    })).toThrow(/Shared-session routing model 'gpt-test' must be provider-qualified/);
+
+    expect(() => buildSharedSessionAgentSpawnRoutingInput({
+      modelId: 'openai:gpt-test',
+      fallbackModels: ['claude-test'],
+    })).toThrow(/Shared-session fallback model 'claude-test' must be provider-qualified/);
+
+    expect(() => buildSharedSessionAgentSpawnRoutingInput({
+      modelId: 'openai:gpt-test',
+      fallbackModels: ['anthropic:claude-test'],
+      providerFailurePolicy: 'fail',
+    })).toThrow(/Shared-session fail routing cannot include fallback models/);
+  });
+
+  test('shared-session continuation rejects conflicting provider and registry key', async () => {
+    let continuationRunner: ((input: unknown) => Promise<unknown>) | undefined;
+    configureDaemonSessionContinuation({
+      sessionBroker: {
+        setContinuationRunner(runner: unknown) {
+          continuationRunner = runner as (input: unknown) => Promise<unknown>;
+        },
+      } as unknown as Parameters<typeof configureDaemonSessionContinuation>[0]['sessionBroker'],
+      trySpawnAgent() {
+        throw new Error('spawn should not run for conflicting model/provider routing');
+      },
+      queueSurfaceReplyFromBinding() {},
+    });
+
+    if (!continuationRunner) throw new Error('continuation runner was not registered');
+    await expect(continuationRunner({
+      sessionId: 'session-1',
+      task: 'continue the work',
+      routeBinding: undefined,
+      input: {
+        id: 'input-1',
+        sessionId: 'session-1',
+        intent: 'follow-up',
+        state: 'queued',
+        correlationId: 'corr-1',
+        body: 'continue',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        metadata: {},
+        routing: {
+          providerId: 'anthropic',
+          modelId: 'openai:gpt-test',
+        },
+      },
+    })).rejects.toThrow(/conflicts with provider 'anthropic'/);
   });
 
   test('permissions-policy-engine gates permission evaluator factory when supplied', () => {
@@ -730,6 +1200,10 @@ describe('feature flag safe-default gates', () => {
 
     expect(disabled.backendType).toBe('file');
     expect(enabled.backendType).toBe('ledger');
+  }));
+
+  test('overflow spill backend rejects unknown backend types', () => withTempDir((dir) => {
+    expect(() => createSpillBackend('unknown' as never, dir)).toThrow(/Unknown spill backend/);
   }));
 
   test('watcher-framework gates watcher registry operations', () => withTempDir((dir) => {
@@ -880,6 +1354,86 @@ describe('feature flag safe-default gates', () => {
     expect(disabled.listJobs()).toEqual([]);
     await expect(disabled.createJob({} as never)).rejects.toThrow(/automation-domain feature flag is disabled/);
     expect(enabled.listJobs()).toEqual([]);
+  }));
+
+  test('automation jobs require provider-qualified model routes while preserving explicit failover', async () => withTempDir(async (dir) => {
+    const manager = new AutomationManager({
+      configManager: testConfigManager(join(dir, 'config')),
+      routeBindings: {} as RouteBindingManager,
+      sessionBroker: {} as never,
+      featureFlags: flags(['automation-domain']),
+    });
+    const baseInput = {
+      name: 'provider qualified automation',
+      prompt: 'do work',
+      schedule: { kind: 'every', intervalMs: 60_000 } as const,
+    };
+
+    try {
+      await expect(manager.createJob({
+        ...baseInput,
+        model: 'gpt-test',
+      })).rejects.toThrow(/Automation model must be a provider-qualified registry key/);
+
+      await expect(manager.createJob({
+        ...baseInput,
+        provider: 'openai',
+      })).rejects.toThrow(/Automation model routing requires a provider-qualified model/);
+
+      await expect(manager.createJob({
+        ...baseInput,
+        model: 'openai:gpt-test',
+        fallbackModels: ['claude-test'],
+      })).rejects.toThrow(/Automation fallback models must be a provider-qualified registry key/);
+
+      await expect(manager.createJob({
+        ...baseInput,
+        model: 'openai:gpt-test',
+        provider: 'anthropic',
+      })).rejects.toThrow(/Automation model 'openai:gpt-test' conflicts with provider 'anthropic'/);
+
+      await expect(manager.createJob({
+        ...baseInput,
+        model: 'openai:gpt-test',
+        routing: { providerFailurePolicy: 'ordered-fallbacks' },
+      })).rejects.toThrow(/ordered fallback routing requires at least one provider-qualified fallback model/);
+
+      await expect(manager.createJob({
+        ...baseInput,
+        model: 'openai:gpt-test',
+        fallbackModels: ['anthropic:claude-test'],
+        routing: { providerFailurePolicy: 'fail' },
+      })).rejects.toThrow(/Automation fail routing cannot include fallback models/);
+
+      const job = await manager.createJob({
+        ...baseInput,
+        model: 'openai:gpt-test',
+        fallbackModels: ['anthropic:claude-test'],
+      });
+
+      expect(job.execution.modelId).toBe('openai:gpt-test');
+      expect(job.execution.fallbackModels).toEqual(['anthropic:claude-test']);
+      expect(job.execution.routing?.providerFailurePolicy).toBe('ordered-fallbacks');
+
+      await expect(manager.updateJob(job.id, {
+        provider: 'anthropic',
+      })).rejects.toThrow(/Automation model 'openai:gpt-test' conflicts with provider 'anthropic'/);
+
+      const nestedRoutingJob = await manager.createJob({
+        ...baseInput,
+        model: 'openai:gpt-test',
+        fallbackModels: ['anthropic:top-level'],
+        routing: {
+          fallbackModels: ['anthropic:routing-level'],
+          providerFailurePolicy: 'ordered-fallbacks',
+        },
+      });
+
+      expect(nestedRoutingJob.execution.fallbackModels).toEqual(['anthropic:routing-level']);
+      expect(nestedRoutingJob.execution.routing?.fallbackModels).toEqual(['anthropic:routing-level']);
+    } finally {
+      manager.stop();
+    }
   }));
 
   test('unified-runtime-task gates task manager creation and mutation', () => {

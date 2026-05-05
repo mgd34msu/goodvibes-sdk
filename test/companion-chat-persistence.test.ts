@@ -12,10 +12,12 @@
 
 import { describe, expect, test } from 'bun:test';
 import { settleEvents } from './_helpers/test-timeout.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import { CompanionChatPersistence } from '../packages/sdk/src/platform/companion/companion-chat-persistence.js';
+import type { PersistedChatSession } from '../packages/sdk/src/platform/companion/companion-chat-persistence.js';
 import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
@@ -43,6 +45,26 @@ function makeManager(sessionsDir: string): CompanionChatManager {
     sessionsDir,
     rateLimiter: false, // disable rate limiting in tests
   });
+}
+
+function makePersistedSession(id: string): PersistedChatSession {
+  const now = Date.now();
+  return {
+    meta: {
+      id,
+      kind: 'companion-chat',
+      title: 'Chat',
+      model: null,
+      provider: null,
+      systemPrompt: null,
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      closedAt: null,
+      messageCount: 0,
+    },
+    messages: [],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +204,40 @@ describe('P4: sessions directory created if missing', () => {
       manager2.dispose();
     } finally {
       rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// P5: Persistence failures reject instead of pretending success
+// ---------------------------------------------------------------------------
+
+describe('P5: persistence failures are observable', () => {
+  test('save rejects when the atomic rename target cannot be replaced', async () => {
+    const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-'));
+    try {
+      const persistence = new CompanionChatPersistence(sessionsDir);
+      mkdirSync(join(sessionsDir, 'blocked.json'));
+
+      await expect(persistence.save(makePersistedSession('blocked'))).rejects.toThrow(
+        'Companion chat session save failed for blocked',
+      );
+    } finally {
+      rmSync(sessionsDir, { recursive: true, force: true });
+    }
+  });
+
+  test('delete rejects when the session path cannot be unlinked', async () => {
+    const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-'));
+    try {
+      const persistence = new CompanionChatPersistence(sessionsDir);
+      mkdirSync(join(sessionsDir, 'blocked.json'));
+
+      await expect(persistence.delete('blocked')).rejects.toThrow(
+        'Companion chat session delete failed for blocked',
+      );
+    } finally {
+      rmSync(sessionsDir, { recursive: true, force: true });
     }
   });
 });
