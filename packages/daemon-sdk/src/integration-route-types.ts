@@ -21,7 +21,7 @@ export interface IntegrationHelperServiceLike {
   getRouteSnapshot(): unknown;
   getRemoteSnapshot(): unknown;
   getHealthSnapshot(): unknown;
-  getAccountsSnapshot(): Promise<Record<string, unknown>>;
+  getAccountsSnapshot(): Promise<unknown>;
   getSettingsSnapshot(): unknown;
   getSecuritySettingsReport(): unknown;
   getContinuitySnapshot(): unknown;

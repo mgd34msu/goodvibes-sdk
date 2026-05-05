@@ -12,6 +12,7 @@ import type { ProviderRegistry } from '../../providers/registry.js';
 import type { RuntimeStore } from '../store/index.js';
 import type { RuntimeEventBus, RuntimeEventDomain, RuntimeEventEnvelope, AnyRuntimeEvent } from '../events/index.js';
 import { buildProviderAccountSnapshot } from '../provider-accounts/registry.js';
+import type { ProviderAccountSnapshot } from '../provider-accounts/registry.js';
 import type { UserAuthManager } from '../../security/user-auth.js';
 import { getSettingsControlPlaneSnapshot } from '../settings/control-plane.js';
 import { checkRecoveryFile, readLastSessionPointer, type RecoveryFileInfo } from '../session-persistence.js';
@@ -106,7 +107,7 @@ const EVENT_DOMAINS: readonly RuntimeEventDomain[] = [
 function serializeEnvelope(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): Record<string, unknown> {
   return {
     type: envelope.type,
-    timestamp: envelope.ts,
+    ts: envelope.ts,
     traceId: envelope.traceId,
     sessionId: envelope.sessionId,
     source: envelope.source,
@@ -471,37 +472,13 @@ export class IntegrationHelperService {
     };
   }
 
-  async getAccountsSnapshot(): Promise<Record<string, unknown>> {
-    const snapshot = await buildProviderAccountSnapshot({
+  async getAccountsSnapshot(): Promise<ProviderAccountSnapshot> {
+    return await buildProviderAccountSnapshot({
       providerRegistry: this.context.providerRegistry,
       serviceRegistry: this.context.serviceRegistry,
       subscriptionManager: this.context.subscriptionManager,
       secretsManager: this.context.secretsManager,
     });
-    return {
-      capturedAt: snapshot.capturedAt,
-      configuredCount: snapshot.configuredCount,
-      issueCount: snapshot.issueCount,
-      providers: snapshot.providers.map((provider) => ({
-        providerId: provider.providerId,
-        active: provider.active,
-        activeRoute: provider.activeRoute,
-        preferredRoute: provider.preferredRoute,
-        authFreshness: provider.authFreshness,
-        availableRoutes: provider.availableRoutes,
-        modelCount: provider.modelCount,
-        configured: provider.configured,
-        oauthReady: provider.oauthReady,
-        pendingLogin: provider.pendingLogin,
-        expiresAt: provider.expiresAt,
-        fallbackRoute: provider.fallbackRoute,
-        fallbackRisk: provider.fallbackRisk,
-        activeRouteReason: provider.activeRouteReason,
-        issues: provider.issues,
-        recommendedActions: provider.recommendedActions,
-        usageWindows: provider.usageWindows,
-      })),
-    };
   }
 
   getSettingsSnapshot(): SettingsSnapshot {

@@ -245,7 +245,37 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     const url = new URL(getReq.url);
     const getRes = await handlers.getSharedSessionMessages(sessionId, url);
     expect(getRes.status).toBe(200);
-    const getBody = await getRes.json() as { messages: Array<{ body: string; role: string }> };
+    const getBody = await getRes.json() as {
+      session: {
+        id: string;
+        kind: string;
+        title: string;
+        status: string;
+        createdAt: number;
+        updatedAt: number;
+        lastActivityAt: number;
+        messageCount: number;
+        pendingInputCount: number;
+        routeIds: string[];
+        surfaceKinds: string[];
+        participants: unknown[];
+        metadata: Record<string, unknown>;
+      };
+      messages: Array<{ body: string; role: string }>;
+    };
+    expect(getBody.session.id).toBe(sessionId);
+    expect(getBody.session.kind).toBe('tui');
+    expect(getBody.session.status).toBe('active');
+    expect(getBody.session.title).toBe(`Session ${sessionId}`);
+    expect(typeof getBody.session.createdAt).toBe('number');
+    expect(typeof getBody.session.updatedAt).toBe('number');
+    expect(typeof getBody.session.lastActivityAt).toBe('number');
+    expect(getBody.session.messageCount).toBe(1);
+    expect(getBody.session.pendingInputCount).toBe(0);
+    expect(getBody.session.routeIds).toEqual([]);
+    expect(getBody.session.surfaceKinds).toEqual([]);
+    expect(getBody.session.participants).toEqual([]);
+    expect(getBody.session.metadata).toEqual({});
     expect(getBody.messages).toHaveLength(1);
     expect(getBody.messages[0].body).toBe('hello from companion');
     expect(getBody.messages[0].role).toBe('user');

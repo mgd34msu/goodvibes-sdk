@@ -86,15 +86,7 @@ export function createDaemonIntegrationRouteHandlers(
       if (!context.integrationHelpers) {
         return jsonErrorResponse({ error: 'Integration helper service unavailable' }, { status: 503 });
       }
-      const [snapshot, channelAccounts] = await Promise.all([
-        context.integrationHelpers.getAccountsSnapshot(),
-        context.channelPlugins.listAccounts(),
-      ]);
-      return Response.json({
-        ...snapshot,
-        channelCount: channelAccounts.length,
-        channels: channelAccounts,
-      });
+      return Response.json(await context.integrationHelpers.getAccountsSnapshot());
     },
     getProviders: async () => Response.json({ providers: await context.providerRuntime.listSnapshots() }),
     getProvider: async (providerId) => {

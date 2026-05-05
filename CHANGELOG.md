@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.3] - 2026-05-05
+
+### Fixed
+- Aligned `GET /api/accounts` with the strict `accounts.snapshot` contract by returning the canonical provider account snapshot without channel account fields.
+- Fixed `IntegrationHelperService.getAccountsSnapshot()` so provider records keep required `notes` and `routeRecords` fields instead of returning a lossy projection.
+- Added daemon-route and integration-helper regressions for account snapshots matching the published contract shape.
+- Aligned SSE/WebSocket runtime event envelope serialization with the public realtime transport schema by emitting `ts` instead of the stale `timestamp` field.
+- Enforced the current shared-session response shape on daemon session routes so `sessions.messages.list` includes required fields such as `session.kind` and `session.lastActivityAt`.
+
+---
+
 ## [0.33.2] - 2026-05-05
 
 ### Fixed
