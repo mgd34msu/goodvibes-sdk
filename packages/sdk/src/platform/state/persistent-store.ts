@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { promises as fs, existsSync } from 'fs';
-import { join } from 'path';
+import { dirname } from 'path';
 import { summarizeError } from '../utils/error-display.js';
 
 /**
@@ -17,7 +18,7 @@ export class PersistentStore<T extends Record<string, unknown>> {
 
   constructor(filePath: string) {
     this.filePath = filePath;
-    this.dir = join(filePath, '..');
+    this.dir = dirname(filePath);
     this.inMemory = filePath === ':memory:';
   }
 
@@ -42,9 +43,14 @@ export class PersistentStore<T extends Record<string, unknown>> {
       return;
     }
     await fs.mkdir(this.dir, { recursive: true });
-    const tmpPath = `${this.filePath}.tmp`;
+    const tmpPath = `${this.filePath}.tmp.${process.pid}.${randomUUID()}`;
     const content = JSON.stringify(data, null, 2) + '\n';
-    await fs.writeFile(tmpPath, content, 'utf-8');
-    await fs.rename(tmpPath, this.filePath);
+    try {
+      await fs.writeFile(tmpPath, content, 'utf-8');
+      await fs.rename(tmpPath, this.filePath);
+    } catch (error) {
+      await fs.rm(tmpPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
   }
 }
