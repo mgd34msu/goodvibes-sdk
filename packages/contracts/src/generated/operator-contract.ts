@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.1"
+    "version": "0.33.2"
   },
   "auth": {
     "modes": [
@@ -20395,6 +20395,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -20415,6 +20423,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -20509,10 +20520,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -20584,6 +20597,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -20604,6 +20625,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -20698,10 +20722,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -56435,6 +56461,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -56455,6 +56489,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -56549,10 +56586,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -56612,6 +56651,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -56632,6 +56679,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -56726,10 +56776,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -56893,6 +56945,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "id": {
                       "type": "string"
                     },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "tui",
+                        "companion-task",
+                        "companion-chat"
+                      ]
+                    },
                     "title": {
                       "type": "string"
                     },
@@ -56913,6 +56973,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "number"
                     },
                     "closedAt": {
+                      "type": "number"
+                    },
+                    "lastActivityAt": {
                       "type": "number"
                     },
                     "messageCount": {
@@ -57007,10 +57070,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "required": [
                     "id",
+                    "kind",
                     "title",
                     "status",
                     "createdAt",
                     "updatedAt",
+                    "lastActivityAt",
                     "messageCount",
                     "pendingInputCount",
                     "routeIds",
@@ -57385,6 +57450,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -57405,6 +57478,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -57499,10 +57575,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -57901,6 +57979,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -57921,6 +58007,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -58015,10 +58104,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -58382,6 +58473,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "id": {
                     "type": "string"
                   },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "tui",
+                      "companion-task",
+                      "companion-chat"
+                    ]
+                  },
                   "title": {
                     "type": "string"
                   },
@@ -58402,6 +58501,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "type": "number"
                   },
                   "closedAt": {
+                    "type": "number"
+                  },
+                  "lastActivityAt": {
                     "type": "number"
                   },
                   "messageCount": {
@@ -58496,10 +58598,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "required": [
                   "id",
+                  "kind",
                   "title",
                   "status",
                   "createdAt",
                   "updatedAt",
+                  "lastActivityAt",
                   "messageCount",
                   "pendingInputCount",
                   "routeIds",
@@ -58690,6 +58794,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "id": {
                           "type": "string"
                         },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "tui",
+                            "companion-task",
+                            "companion-chat"
+                          ]
+                        },
                         "title": {
                           "type": "string"
                         },
@@ -58710,6 +58822,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "type": "number"
                         },
                         "closedAt": {
+                          "type": "number"
+                        },
+                        "lastActivityAt": {
                           "type": "number"
                         },
                         "messageCount": {
@@ -58804,10 +58919,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       "required": [
                         "id",
+                        "kind",
                         "title",
                         "status",
                         "createdAt",
                         "updatedAt",
+                        "lastActivityAt",
                         "messageCount",
                         "pendingInputCount",
                         "routeIds",
@@ -59190,6 +59307,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -59210,6 +59335,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -59304,10 +59432,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -59447,6 +59577,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -59467,6 +59605,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -59561,10 +59702,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -59731,6 +59874,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "id": {
                       "type": "string"
                     },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "tui",
+                        "companion-task",
+                        "companion-chat"
+                      ]
+                    },
                     "title": {
                       "type": "string"
                     },
@@ -59751,6 +59902,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "number"
                     },
                     "closedAt": {
+                      "type": "number"
+                    },
+                    "lastActivityAt": {
                       "type": "number"
                     },
                     "messageCount": {
@@ -59845,10 +59999,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "required": [
                     "id",
+                    "kind",
                     "title",
                     "status",
                     "createdAt",
                     "updatedAt",
+                    "lastActivityAt",
                     "messageCount",
                     "pendingInputCount",
                     "routeIds",

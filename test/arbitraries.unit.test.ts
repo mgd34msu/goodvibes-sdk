@@ -89,19 +89,16 @@ describe('jsonValueArb — basic soundness', () => {
     );
   });
 
-  test('generated non-Infinity values survive JSON round-trip', () => {
-    // Note: fc.double({ noNaN: true }) can still produce Infinity/-Infinity which
-    // JSON.stringify converts to null (not Infinity). We use fc.pre to skip those
-    // cases by checking that the value has no non-finite numbers.
-    function hasInfinity(v: unknown): boolean {
-      if (typeof v === 'number') return !Number.isFinite(v);
-      if (Array.isArray(v)) return v.some(hasInfinity);
-      if (v !== null && typeof v === 'object') return Object.values(v as object).some(hasInfinity);
+  test('generated values survive JSON round-trip', () => {
+    function hasNonRoundTrippableNumber(v: unknown): boolean {
+      if (typeof v === 'number') return !Number.isFinite(v) || Object.is(v, -0);
+      if (Array.isArray(v)) return v.some(hasNonRoundTrippableNumber);
+      if (v !== null && typeof v === 'object') return Object.values(v as object).some(hasNonRoundTrippableNumber);
       return false;
     }
     fc.assert(
       fc.property(jsonValueArb, (value) => {
-        fc.pre(!hasInfinity(value));
+        expect(hasNonRoundTrippableNumber(value)).toBe(false);
         const serialized = JSON.stringify(value);
         const parsed = JSON.parse(serialized) as unknown;
         expect(parsed).toEqual(value);

@@ -3,7 +3,7 @@
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.1"
+    "version": "0.33.2"
   },
   "auth": {
     "modes": [
@@ -20393,6 +20393,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -20413,6 +20421,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -20507,10 +20518,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -20582,6 +20595,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -20602,6 +20623,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -20696,10 +20720,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -56433,6 +56459,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -56453,6 +56487,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -56547,10 +56584,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -56610,6 +56649,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -56630,6 +56677,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -56724,10 +56774,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -56891,6 +56943,14 @@
                     "id": {
                       "type": "string"
                     },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "tui",
+                        "companion-task",
+                        "companion-chat"
+                      ]
+                    },
                     "title": {
                       "type": "string"
                     },
@@ -56911,6 +56971,9 @@
                       "type": "number"
                     },
                     "closedAt": {
+                      "type": "number"
+                    },
+                    "lastActivityAt": {
                       "type": "number"
                     },
                     "messageCount": {
@@ -57005,10 +57068,12 @@
                   },
                   "required": [
                     "id",
+                    "kind",
                     "title",
                     "status",
                     "createdAt",
                     "updatedAt",
+                    "lastActivityAt",
                     "messageCount",
                     "pendingInputCount",
                     "routeIds",
@@ -57383,6 +57448,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -57403,6 +57476,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -57497,10 +57573,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -57899,6 +57977,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -57919,6 +58005,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -58013,10 +58102,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -58380,6 +58471,14 @@
                   "id": {
                     "type": "string"
                   },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "tui",
+                      "companion-task",
+                      "companion-chat"
+                    ]
+                  },
                   "title": {
                     "type": "string"
                   },
@@ -58400,6 +58499,9 @@
                     "type": "number"
                   },
                   "closedAt": {
+                    "type": "number"
+                  },
+                  "lastActivityAt": {
                     "type": "number"
                   },
                   "messageCount": {
@@ -58494,10 +58596,12 @@
                 },
                 "required": [
                   "id",
+                  "kind",
                   "title",
                   "status",
                   "createdAt",
                   "updatedAt",
+                  "lastActivityAt",
                   "messageCount",
                   "pendingInputCount",
                   "routeIds",
@@ -58688,6 +58792,14 @@
                         "id": {
                           "type": "string"
                         },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "tui",
+                            "companion-task",
+                            "companion-chat"
+                          ]
+                        },
                         "title": {
                           "type": "string"
                         },
@@ -58708,6 +58820,9 @@
                           "type": "number"
                         },
                         "closedAt": {
+                          "type": "number"
+                        },
+                        "lastActivityAt": {
                           "type": "number"
                         },
                         "messageCount": {
@@ -58802,10 +58917,12 @@
                       },
                       "required": [
                         "id",
+                        "kind",
                         "title",
                         "status",
                         "createdAt",
                         "updatedAt",
+                        "lastActivityAt",
                         "messageCount",
                         "pendingInputCount",
                         "routeIds",
@@ -59188,6 +59305,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -59208,6 +59333,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -59302,10 +59430,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -59445,6 +59575,14 @@
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -59465,6 +59603,9 @@
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -59559,10 +59700,12 @@
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -59729,6 +59872,14 @@
                     "id": {
                       "type": "string"
                     },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "tui",
+                        "companion-task",
+                        "companion-chat"
+                      ]
+                    },
                     "title": {
                       "type": "string"
                     },
@@ -59749,6 +59900,9 @@
                       "type": "number"
                     },
                     "closedAt": {
+                      "type": "number"
+                    },
+                    "lastActivityAt": {
                       "type": "number"
                     },
                     "messageCount": {
@@ -59843,10 +59997,12 @@
                   },
                   "required": [
                     "id",
+                    "kind",
                     "title",
                     "status",
                     "createdAt",
                     "updatedAt",
+                    "lastActivityAt",
                     "messageCount",
                     "pendingInputCount",
                     "routeIds",

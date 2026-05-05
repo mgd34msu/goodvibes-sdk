@@ -32,6 +32,7 @@ const INBOUND_SERVER_SURFACE_SCHEMA = enumSchema(['controlPlane', 'httpListener'
 const INBOUND_TLS_MODE_SCHEMA = enumSchema(['off', 'proxy', 'direct']);
 const OUTBOUND_TRUST_MODE_SCHEMA = enumSchema(['bundled', 'bundled+custom', 'custom']);
 const OUTBOUND_CA_STRATEGY_SCHEMA = enumSchema(['bun-default', 'bundled+custom', 'custom']);
+const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'companion-task', 'companion-chat']);
 const SHARED_SESSION_INPUT_INTENT_SCHEMA = enumSchema(['submit', 'steer', 'follow-up']);
 const SHARED_SESSION_INPUT_STATE_SCHEMA = enumSchema(['queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected']);
 const SHARED_SESSION_MESSAGE_MODE_SCHEMA = enumSchema(['spawn', 'continued-live', 'queued-follow-up', 'rejected']);
@@ -68,12 +69,14 @@ export const SHARED_SESSION_MESSAGE_SCHEMA = objectSchema({
 
 export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
+  kind: SHARED_SESSION_KIND_SCHEMA,
   title: STRING_SCHEMA,
   status: enumSchema(['active', 'closed']),
   createdAt: NUMBER_SCHEMA,
   updatedAt: NUMBER_SCHEMA,
   lastMessageAt: NUMBER_SCHEMA,
   closedAt: NUMBER_SCHEMA,
+  lastActivityAt: NUMBER_SCHEMA,
   messageCount: NUMBER_SCHEMA,
   pendingInputCount: NUMBER_SCHEMA,
   routeIds: STRING_LIST_SCHEMA,
@@ -83,7 +86,7 @@ export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   lastAgentId: STRING_SCHEMA,
   lastError: STRING_SCHEMA,
   metadata: METADATA_SCHEMA,
-}, ['id', 'title', 'status', 'createdAt', 'updatedAt', 'messageCount', 'pendingInputCount', 'routeIds', 'surfaceKinds', 'participants', 'metadata']);
+}, ['id', 'kind', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'messageCount', 'pendingInputCount', 'routeIds', 'surfaceKinds', 'participants', 'metadata']);
 
 export const SHARED_SESSION_ROUTING_INTENT_SCHEMA = objectSchema({
   providerId: STRING_SCHEMA,

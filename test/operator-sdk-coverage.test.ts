@@ -16,6 +16,8 @@ import { createOperatorRemoteClient } from '../packages/operator-sdk/src/client-
 import { createHttpTransport } from '../packages/transport-http/dist/index.js';
 import { getOperatorContract } from '../packages/contracts/dist/index.js';
 import { GoodVibesSdkError } from '../packages/errors/dist/index.js';
+import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.js';
+import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
 
 function createJsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -382,6 +384,35 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     const result = await client.sessions.create({ task: 'hello' });
     expect(calls[0]).toContain('/sessions');
     expect(result).toMatchObject({ id: 'session-1', status: 'active' });
+  });
+
+  test('sessions.create validates the shared-session shape returned by daemon routes', async () => {
+    const createdAt = Date.now();
+    const client = createOperatorRemoteClient(
+      makeTransport(async () => createJsonResponse({
+        session: {
+          id: 'sess-1',
+          kind: 'tui',
+          title: 'Test session',
+          status: 'active',
+          createdAt,
+          updatedAt: createdAt,
+          lastActivityAt: createdAt,
+          messageCount: 0,
+          pendingInputCount: 0,
+          routeIds: [],
+          surfaceKinds: [],
+          participants: [],
+          metadata: {},
+        },
+      }, 201)),
+      buildOperatorContract(new GatewayMethodCatalog()),
+    );
+
+    const result = await client.sessions.create({ title: 'Test session' });
+    const session = result.session as Record<string, unknown>;
+    expect(session.kind).toBe('tui');
+    expect(session.lastActivityAt).toBe(createdAt);
   });
 
   test('sessions.get builds path from sessionId', async () => {

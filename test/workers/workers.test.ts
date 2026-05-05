@@ -170,6 +170,9 @@ describe('Workers harness: transport-http round-trip', () => {
     const result = body.result as Record<string, unknown>;
     expect(result).toHaveProperty('totals');
     expect(result).toHaveProperty('sessions');
+    const [session] = result.sessions as [Record<string, unknown>];
+    expect(session.kind).toBe('tui');
+    expect(session.lastActivityAt).toBe(1700000000000);
     // No error on the success path
     expect(body.kind).toBeNull();
     expect(body.ctor).toBeNull();

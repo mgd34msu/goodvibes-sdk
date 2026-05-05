@@ -235,6 +235,9 @@ describe('Workers wrangler: transport-http round-trip', () => {
     const result = b.result as Record<string, unknown>;
     expect(result).toHaveProperty('totals');
     expect(result).toHaveProperty('sessions');
+    const [session] = result.sessions as [Record<string, unknown>];
+    expect(session.kind).toBe('tui');
+    expect(session.lastActivityAt).toBe(1700000000000);
     expect(b.kind).toBeNull();
     expect(b.ctor).toBeNull();
   }, 10_000);
