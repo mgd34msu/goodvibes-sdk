@@ -71,8 +71,22 @@ describe('platform/web-search/providers — behavior smoke', () => {
   });
 
   test('createDuckDuckGoProvider returns correct provider shape and search() returns a Promise', async () => {
-    // DuckDuckGo takes DuckDuckGoProviderOptions ({}), not SearchProviderContext
-    const provider = createDuckDuckGoProvider({}) as MinimalProvider;
+    const provider = createDuckDuckGoProvider({
+      fetcher: async () => ({
+        results: [{
+          status: 200,
+          content: `
+            <td valign="top">1.&nbsp;</td>
+            <a class="result-link" href="https://example.com/result">Example result</a>
+            <td class="result-snippet">Example snippet</td>
+            <span class="link-text">example.com/result</span>
+          `,
+        }, {
+          status: 200,
+          content: JSON.stringify({ AbstractText: 'Example instant answer', AbstractURL: 'https://example.com/answer' }),
+        }],
+      }),
+    }) as MinimalProvider;
     assertProviderShape(provider, 'duckduckgo');
     await assertSearchReturnsPromise(provider);
   });
