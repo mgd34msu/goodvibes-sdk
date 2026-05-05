@@ -1,4 +1,5 @@
-import { promises as fs, existsSync, mkdirSync, renameSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { promises as fs, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -29,9 +30,14 @@ export class JsonFileStore<T> {
   /** Atomically persist data to disk. */
   async save(data: T): Promise<void> {
     mkdirSync(dirname(this.filePath), { recursive: true });
-    const tmpPath = `${this.filePath}.tmp`;
+    const tmpPath = `${this.filePath}.tmp.${process.pid}.${randomUUID()}`;
     const content = JSON.stringify(data, null, 2) + '\n';
-    await fs.writeFile(tmpPath, content, 'utf-8');
-    renameSync(tmpPath, this.filePath);
+    try {
+      await fs.writeFile(tmpPath, content, 'utf-8');
+      await fs.rename(tmpPath, this.filePath);
+    } catch (error) {
+      await fs.rm(tmpPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
   }
 }

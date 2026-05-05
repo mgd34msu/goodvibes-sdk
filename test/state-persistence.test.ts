@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -49,6 +49,38 @@ describe('state persistence failures', () => {
     writeFileSync(file, '{bad', 'utf-8');
 
     await expect(new JsonFileStore(file).load()).rejects.toThrow('JsonFileStore failed to load');
+  });
+
+  test('PersistentStore concurrent saves do not race on a shared tmp path', async () => {
+    const dir = tempDir('persistent-store-concurrent');
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, 'state.json');
+    const store = new PersistentStore<{ readonly value: string }>(file);
+
+    await Promise.all([
+      store.persist({ value: 'first' }),
+      store.persist({ value: 'second' }),
+      store.persist({ value: 'third' }),
+    ]);
+
+    expect(['first', 'second', 'third']).toContain((await store.load())?.value);
+    expect(readdirSync(dir).filter((entry) => entry.includes('.tmp'))).toEqual([]);
+  });
+
+  test('JsonFileStore concurrent saves do not race on a shared tmp path', async () => {
+    const dir = tempDir('json-file-store-concurrent');
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, 'state.json');
+    const store = new JsonFileStore<{ readonly value: string }>(file);
+
+    await Promise.all([
+      store.save({ value: 'first' }),
+      store.save({ value: 'second' }),
+      store.save({ value: 'third' }),
+    ]);
+
+    expect(['first', 'second', 'third']).toContain((await store.load())?.value);
+    expect(readdirSync(dir).filter((entry) => entry.includes('.tmp'))).toEqual([]);
   });
 
   test('ProjectIndex rejects corrupt on-disk indexes instead of treating them as empty', async () => {
