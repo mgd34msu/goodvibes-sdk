@@ -5,6 +5,21 @@ import { describe, expect, test } from 'bun:test';
 import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.js';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
 
+function asRecord(value: unknown, label: string): Record<string, unknown> {
+  expect(value, label).toBeTruthy();
+  expect(typeof value, label).toBe('object');
+  return value as Record<string, unknown>;
+}
+
+function propertySchema(schema: Record<string, unknown>, path: readonly string[]): Record<string, unknown> {
+  let current: Record<string, unknown> = schema;
+  for (const segment of path) {
+    const properties = asRecord(current.properties, `${segment} parent properties`);
+    current = asRecord(properties[segment], `${segment} schema`);
+  }
+  return current;
+}
+
 // ---------------------------------------------------------------------------
 // Helper: create a catalog with known counts
 // ---------------------------------------------------------------------------
@@ -127,5 +142,26 @@ describe('buildOperatorContract preserves static contract fields', () => {
     // Version must be a semver-like string set dynamically by the contract builder.
     expect(typeof contract.product.version).toBe('string');
     expect(contract.product.version).toMatch(/^\d+\.\d+\.\d+/);
+  });
+});
+
+describe('built-in operator contract method schemas', () => {
+  test('sessions.create output matches the shared session record returned by daemon routes', () => {
+    const catalog = new GatewayMethodCatalog();
+    const contract = buildOperatorContract(catalog);
+    const method = contract.operator.methods.find((entry) => entry.id === 'sessions.create');
+    expect(method).toBeTruthy();
+
+    const outputSchema = asRecord(method?.outputSchema, 'sessions.create outputSchema');
+    const sessionSchema = propertySchema(outputSchema, ['session']);
+    const sessionProperties = asRecord(sessionSchema.properties, 'session properties');
+    const required = sessionSchema.required;
+
+    expect(sessionProperties.kind).toMatchObject({
+      type: 'string',
+      enum: ['tui', 'companion-task', 'companion-chat'],
+    });
+    expect(sessionProperties.lastActivityAt).toMatchObject({ type: 'number' });
+    expect(Array.isArray(required) ? required : []).toEqual(expect.arrayContaining(['kind', 'lastActivityAt']));
   });
 });

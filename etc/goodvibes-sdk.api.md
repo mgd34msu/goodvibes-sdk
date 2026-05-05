@@ -1137,7 +1137,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.1";
+    readonly productVersion: "0.33.2";
     readonly operatorMethodCount: 263;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -11371,12 +11371,14 @@ export interface OperatorMethodOutputMap {
     "sessions.close": ({
         session: {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11406,12 +11408,14 @@ export interface OperatorMethodOutputMap {
     "sessions.create": {
         session: {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11439,12 +11443,14 @@ export interface OperatorMethodOutputMap {
     "sessions.followUp": {
         session: null | {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11536,12 +11542,14 @@ export interface OperatorMethodOutputMap {
     "sessions.get": {
         session: {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11634,12 +11642,14 @@ export interface OperatorMethodOutputMap {
     "sessions.inputs.list": {
         session: {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11729,12 +11739,14 @@ export interface OperatorMethodOutputMap {
         };
         sessions: readonly ({
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11762,12 +11774,14 @@ export interface OperatorMethodOutputMap {
     "sessions.messages.create": SharedSessionConversationRouteOutput | {
         session: null | {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11859,12 +11873,14 @@ export interface OperatorMethodOutputMap {
     "sessions.messages.list": {
         session: {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11910,12 +11926,14 @@ export interface OperatorMethodOutputMap {
     "sessions.reopen": ({
         session: {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];
@@ -11945,12 +11963,14 @@ export interface OperatorMethodOutputMap {
     "sessions.steer": {
         session: null | {
             id: string;
+            kind: "companion-chat" | "companion-task" | "tui";
             title: string;
             status: "active" | "closed";
             createdAt: number;
             updatedAt: number;
             lastMessageAt?: number;
             closedAt?: number;
+            lastActivityAt: number;
             messageCount: number;
             pendingInputCount: number;
             routeIds: readonly string[];

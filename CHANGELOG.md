@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.2] - 2026-05-05
+
+### Fixed
+- Aligned the shared-session operator contract with the daemon route/runtime session record by adding required `kind` and `lastActivityAt` fields to generated `sessions.*` response schemas and client types.
+- Added regression coverage for the `sessions.create` contract so the published operator schema accepts the same session payload returned by `POST /api/sessions`.
+
+---
+
 ## [0.33.1] - 2026-05-05
 
 ### Fixed

@@ -20433,6 +20433,14 @@ Return a companion-chat session record together with its full message history.
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -20453,6 +20461,9 @@ Return a companion-chat session record together with its full message history.
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -20547,10 +20558,12 @@ Return a companion-chat session record together with its full message history.
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -20626,6 +20639,14 @@ Update companion-chat session metadata, including session-local `provider` and `
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -20646,6 +20667,9 @@ Update companion-chat session metadata, including session-local `provider` and `
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -20740,10 +20764,12 @@ Update companion-chat session metadata, including session-local `provider` and `
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -57035,6 +57061,14 @@ Mark a shared session as closed.
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -57055,6 +57089,9 @@ Mark a shared session as closed.
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -57149,10 +57186,12 @@ Mark a shared session as closed.
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -57216,6 +57255,14 @@ Create a shared session for a surface, route, or web client.
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -57236,6 +57283,9 @@ Create a shared session for a surface, route, or web client.
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -57330,10 +57380,12 @@ Create a shared session for a surface, route, or web client.
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -57501,6 +57553,14 @@ Queue a deferred follow-up for a shared session so it runs after the current age
             "id": {
               "type": "string"
             },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "tui",
+                "companion-task",
+                "companion-chat"
+              ]
+            },
             "title": {
               "type": "string"
             },
@@ -57521,6 +57581,9 @@ Queue a deferred follow-up for a shared session so it runs after the current age
               "type": "number"
             },
             "closedAt": {
+              "type": "number"
+            },
+            "lastActivityAt": {
               "type": "number"
             },
             "messageCount": {
@@ -57615,10 +57678,12 @@ Queue a deferred follow-up for a shared session so it runs after the current age
           },
           "required": [
             "id",
+            "kind",
             "title",
             "status",
             "createdAt",
             "updatedAt",
+            "lastActivityAt",
             "messageCount",
             "pendingInputCount",
             "routeIds",
@@ -57997,6 +58062,14 @@ Return metadata for a shared session.
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -58017,6 +58090,9 @@ Return metadata for a shared session.
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -58111,10 +58187,12 @@ Return metadata for a shared session.
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -58521,6 +58599,14 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -58541,6 +58627,9 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -58635,10 +58724,12 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -59007,6 +59098,14 @@ Return shared-session integration state.
           "id": {
             "type": "string"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "tui",
+              "companion-task",
+              "companion-chat"
+            ]
+          },
           "title": {
             "type": "string"
           },
@@ -59027,6 +59126,9 @@ Return shared-session integration state.
             "type": "number"
           },
           "closedAt": {
+            "type": "number"
+          },
+          "lastActivityAt": {
             "type": "number"
           },
           "messageCount": {
@@ -59121,10 +59223,12 @@ Return shared-session integration state.
         },
         "required": [
           "id",
+          "kind",
           "title",
           "status",
           "createdAt",
           "updatedAt",
+          "lastActivityAt",
           "messageCount",
           "pendingInputCount",
           "routeIds",
@@ -59319,6 +59423,14 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
                 "id": {
                   "type": "string"
                 },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "companion-task",
+                    "companion-chat"
+                  ]
+                },
                 "title": {
                   "type": "string"
                 },
@@ -59339,6 +59451,9 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
                   "type": "number"
                 },
                 "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
                   "type": "number"
                 },
                 "messageCount": {
@@ -59433,10 +59548,12 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
               },
               "required": [
                 "id",
+                "kind",
                 "title",
                 "status",
                 "createdAt",
                 "updatedAt",
+                "lastActivityAt",
                 "messageCount",
                 "pendingInputCount",
                 "routeIds",
@@ -59823,6 +59940,14 @@ Return message history for a shared session.
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -59843,6 +59968,9 @@ Return message history for a shared session.
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -59937,10 +60065,12 @@ Return message history for a shared session.
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -60084,6 +60214,14 @@ Reopen a previously closed shared session.
         "id": {
           "type": "string"
         },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tui",
+            "companion-task",
+            "companion-chat"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -60104,6 +60242,9 @@ Reopen a previously closed shared session.
           "type": "number"
         },
         "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
           "type": "number"
         },
         "messageCount": {
@@ -60198,10 +60339,12 @@ Reopen a previously closed shared session.
       },
       "required": [
         "id",
+        "kind",
         "title",
         "status",
         "createdAt",
         "updatedAt",
+        "lastActivityAt",
         "messageCount",
         "pendingInputCount",
         "routeIds",
@@ -60372,6 +60515,14 @@ Deliver a live steering message to the active agent for a shared session, option
             "id": {
               "type": "string"
             },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "tui",
+                "companion-task",
+                "companion-chat"
+              ]
+            },
             "title": {
               "type": "string"
             },
@@ -60392,6 +60543,9 @@ Deliver a live steering message to the active agent for a shared session, option
               "type": "number"
             },
             "closedAt": {
+              "type": "number"
+            },
+            "lastActivityAt": {
               "type": "number"
             },
             "messageCount": {
@@ -60486,10 +60640,12 @@ Deliver a live steering message to the active agent for a shared session, option
           },
           "required": [
             "id",
+            "kind",
             "title",
             "status",
             "createdAt",
             "updatedAt",
+            "lastActivityAt",
             "messageCount",
             "pendingInputCount",
             "routeIds",

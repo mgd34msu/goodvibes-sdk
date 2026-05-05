@@ -101,10 +101,12 @@ async function handleTransportSuccess(): Promise<Response> {
     totals: { sessions: 1, active: 1, closed: 0 },
     sessions: [{
       id: 'session-001',
+      kind: 'tui',
       title: 'Test Session',
       status: 'active',
       createdAt: 1700000000000,
       updatedAt: 1700000000000,
+      lastActivityAt: 1700000000000,
       messageCount: 0,
       pendingInputCount: 0,
       routeIds: [],
