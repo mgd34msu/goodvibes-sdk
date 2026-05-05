@@ -11,6 +11,7 @@ import type {
 import {
   createRouteBodySchema,
   createRouteBodySchemaRegistry,
+  isJsonRecord,
   readBoundedPositiveInteger,
   readOptionalStringField,
   readStringArrayField,
@@ -27,13 +28,139 @@ type RuntimeTaskBody = {
   readonly tools?: string[] | undefined;
   readonly routing?: SharedSessionRoutingIntent | undefined;
 };
+type SharedSessionRecordResponse = {
+  readonly id: string;
+  readonly kind: 'tui' | 'companion-task' | 'companion-chat';
+  readonly title: string;
+  readonly status: 'active' | 'closed';
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  readonly lastMessageAt?: number | undefined;
+  readonly closedAt?: number | undefined;
+  readonly lastActivityAt: number;
+  readonly messageCount: number;
+  readonly pendingInputCount: number;
+  readonly routeIds: readonly string[];
+  readonly surfaceKinds: readonly string[];
+  readonly participants: readonly SharedSessionParticipantResponse[];
+  readonly activeAgentId?: string | undefined;
+  readonly lastAgentId?: string | undefined;
+  readonly lastError?: string | undefined;
+  readonly metadata: Record<string, unknown>;
+};
+type SharedSessionParticipantResponse = {
+  readonly surfaceKind: string;
+  readonly surfaceId: string;
+  readonly externalId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly lastSeenAt: number;
+};
 
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 500;
 const MAX_SESSION_TOOL_NAMES = 64;
+const SHARED_SESSION_KINDS = new Set<SharedSessionRecordResponse['kind']>(['tui', 'companion-task', 'companion-chat']);
+const SHARED_SESSION_STATUSES = new Set<SharedSessionRecordResponse['status']>(['active', 'closed']);
 
 function readBoundedLimit(url: URL, key = 'limit'): number {
   return readBoundedPositiveInteger(url.searchParams.get(key), DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT);
+}
+
+function toSharedSessionRecordResponse(
+  sessionId: string,
+  session: unknown,
+  options: {
+    readonly status?: SharedSessionRecordResponse['status'] | undefined;
+    readonly messageCount?: number | undefined;
+    readonly pendingInputCount?: number | undefined;
+  } = {},
+): SharedSessionRecordResponse {
+  const record = isJsonRecord(session) ? session : {};
+  const id = readNonEmptyString(record.id) ?? sessionId;
+  const now = Date.now();
+  const createdAt = readFiniteNumber(record.createdAt) ?? now;
+  const updatedAt = readFiniteNumber(record.updatedAt) ?? createdAt;
+  const lastMessageAt = readFiniteNumber(record.lastMessageAt);
+  const closedAt = readFiniteNumber(record.closedAt);
+  const lastActivityAt = readFiniteNumber(record.lastActivityAt) ?? lastMessageAt ?? updatedAt;
+  const kind = readSessionKind(record.kind);
+  const status = readSessionStatus(record.status) ?? options.status ?? 'active';
+  const activeAgentId = readNonEmptyString(record.activeAgentId);
+  const lastAgentId = readNonEmptyString(record.lastAgentId);
+  const lastError = readNonEmptyString(record.lastError);
+  return {
+    id,
+    kind,
+    title: readNonEmptyString(record.title) ?? `Session ${id}`,
+    status,
+    createdAt,
+    updatedAt,
+    ...(lastMessageAt !== undefined ? { lastMessageAt } : {}),
+    ...(closedAt !== undefined ? { closedAt } : {}),
+    lastActivityAt,
+    messageCount: Math.max(readFiniteNumber(record.messageCount) ?? 0, options.messageCount ?? 0),
+    pendingInputCount: Math.max(readFiniteNumber(record.pendingInputCount) ?? 0, options.pendingInputCount ?? 0),
+    routeIds: readStringArray(record.routeIds),
+    surfaceKinds: readStringArray(record.surfaceKinds),
+    participants: readParticipants(record.participants),
+    ...(activeAgentId ? { activeAgentId } : {}),
+    ...(lastAgentId ? { lastAgentId } : {}),
+    ...(lastError ? { lastError } : {}),
+    metadata: isJsonRecord(record.metadata) ? record.metadata : {},
+  };
+}
+
+function readSessionKind(value: unknown): SharedSessionRecordResponse['kind'] {
+  return typeof value === 'string' && SHARED_SESSION_KINDS.has(value as SharedSessionRecordResponse['kind'])
+    ? value as SharedSessionRecordResponse['kind']
+    : 'tui';
+}
+
+function readSessionStatus(value: unknown): SharedSessionRecordResponse['status'] | undefined {
+  return typeof value === 'string' && SHARED_SESSION_STATUSES.has(value as SharedSessionRecordResponse['status'])
+    ? value as SharedSessionRecordResponse['status']
+    : undefined;
+}
+
+function readNonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function readFiniteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+}
+
+function readParticipants(value: unknown): SharedSessionParticipantResponse[] {
+  if (!Array.isArray(value)) return [];
+  const output: SharedSessionParticipantResponse[] = [];
+  for (const entry of value) {
+    if (!isJsonRecord(entry)) continue;
+    const surfaceKind = readNonEmptyString(entry.surfaceKind);
+    const surfaceId = readNonEmptyString(entry.surfaceId);
+    const lastSeenAt = readFiniteNumber(entry.lastSeenAt);
+    if (!surfaceKind || !surfaceId || lastSeenAt === undefined) continue;
+    const externalId = readNonEmptyString(entry.externalId);
+    const userId = readNonEmptyString(entry.userId);
+    const displayName = readNonEmptyString(entry.displayName);
+    const routeId = readNonEmptyString(entry.routeId);
+    output.push({
+      surfaceKind,
+      surfaceId,
+      ...(externalId ? { externalId } : {}),
+      ...(userId ? { userId } : {}),
+      ...(displayName ? { displayName } : {}),
+      ...(routeId ? { routeId } : {}),
+      lastSeenAt,
+    });
+  }
+  return output;
 }
 
 export function createDaemonRuntimeSessionRouteHandlers(
@@ -102,7 +229,9 @@ async function handleCreateSharedSession(context: DaemonRuntimeRouteContext, req
         }
       : undefined,
   });
-  return context.recordApiResponse(req, '/api/sessions', Response.json({ session }, { status: 201 }));
+  return context.recordApiResponse(req, '/api/sessions', Response.json({
+    session: toSharedSessionRecordResponse(session.id, session),
+  }, { status: 201 }));
 }
 
 async function handlePostTask(context: DaemonRuntimeRouteContext, req: Request): Promise<Response> {
@@ -211,9 +340,10 @@ async function handleGetSharedSession(context: DaemonRuntimeRouteContext, sessio
   if (!session) {
     return jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
   }
+  const messages = context.sessionBroker.getMessages(sessionId, 100);
   return Response.json({
-    session,
-    messages: context.sessionBroker.getMessages(sessionId, 100),
+    session: toSharedSessionRecordResponse(sessionId, session, { messageCount: messages.length }),
+    messages,
   });
 }
 
@@ -227,7 +357,7 @@ async function handleSharedSessionLifecycle(
     ? await context.sessionBroker.closeSession(sessionId)
     : await context.sessionBroker.reopenSession(sessionId);
   return session
-    ? Response.json({ session })
+    ? Response.json({ session: toSharedSessionRecordResponse(sessionId, session, { status: action === 'close' ? 'closed' : 'active' }) })
     : jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
 }
 
@@ -242,9 +372,10 @@ async function handleGetSharedSessionMessages(
     return jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
   }
   const limit = readBoundedLimit(url);
+  const messages = context.sessionBroker.getMessages(sessionId, limit);
   return Response.json({
-    session,
-    messages: context.sessionBroker.getMessages(sessionId, limit),
+    session: toSharedSessionRecordResponse(sessionId, session, { messageCount: messages.length }),
+    messages,
   });
 }
 
@@ -259,9 +390,10 @@ async function handleGetSharedSessionInputs(
     return jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
   }
   const limit = readBoundedLimit(url);
+  const inputs = context.sessionBroker.getInputs(sessionId, limit);
   return Response.json({
-    session,
-    inputs: context.sessionBroker.getInputs(sessionId, limit),
+    session: toSharedSessionRecordResponse(sessionId, session, { pendingInputCount: inputs.length }),
+    inputs,
   });
 }
 
@@ -519,7 +651,7 @@ async function respondToSessionSubmission(
 ): Promise<Response> {
   if (submission.mode === 'continued-live' || submission.mode === 'queued-follow-up') {
     return context.recordApiResponse(req, path, Response.json({
-      session: submission.session,
+      session: toSharedSessionRecordResponse(submission.session.id, submission.session),
       message: submission.userMessage ?? null,
       input: submission.input,
       mode: submission.mode,
@@ -528,7 +660,7 @@ async function respondToSessionSubmission(
   }
   if (submission.mode === 'rejected') {
     return context.recordApiResponse(req, path, Response.json({
-      session: submission.session,
+      session: toSharedSessionRecordResponse(submission.session.id, submission.session),
       message: submission.userMessage ?? null,
       input: submission.input,
       mode: submission.mode,
@@ -554,7 +686,10 @@ async function respondToSessionSubmission(
     sessionId: submission.session.id,
   });
   return context.recordApiResponse(req, path, Response.json({
-    session: context.sessionBroker.getSession(submission.session.id),
+    session: (() => {
+      const session = context.sessionBroker.getSession(submission.session.id);
+      return session ? toSharedSessionRecordResponse(submission.session.id, session) : null;
+    })(),
     message: submission.userMessage ?? null,
     input: {
       ...submission.input,

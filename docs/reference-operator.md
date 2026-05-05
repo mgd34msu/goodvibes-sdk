@@ -48,7 +48,7 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 
 #### `accounts.snapshot`
 
-Return provider and channel account posture.
+Return provider account posture.
 
 - Title: `Accounts Snapshot`
 - Source: `builtin`

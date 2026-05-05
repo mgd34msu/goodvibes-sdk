@@ -166,6 +166,24 @@ describe('zod-validation: schema correctness', () => {
     expect(SerializedEventEnvelopeSchema.safeParse(minimal).success).toBe(true);
   });
 
+  it('SerializedEventEnvelopeSchema accepts ts but rejects timestamp', () => {
+    const current = {
+      type: 'AGENT_SPAWNING',
+      ts: Date.now(),
+      source: 'test',
+      payload: { type: 'AGENT_SPAWNING', agentId: 'agent-1', task: 'inspect' },
+    };
+    const stale = {
+      type: 'AGENT_SPAWNING',
+      timestamp: Date.now(),
+      source: 'test',
+      payload: { type: 'AGENT_SPAWNING', agentId: 'agent-1', task: 'inspect' },
+    };
+
+    expect(SerializedEventEnvelopeSchema.safeParse(current).success).toBe(true);
+    expect(SerializedEventEnvelopeSchema.safeParse(stale).success).toBe(false);
+  });
+
   it('ControlAuthLoginResponseSchema rejects partial body', () => {
     const partial = { authenticated: true }; // missing token, username, expiresAt
     expect(ControlAuthLoginResponseSchema.safeParse(partial).success).toBe(false);

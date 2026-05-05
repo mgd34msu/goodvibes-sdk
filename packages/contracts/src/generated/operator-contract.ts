@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.2"
+    "version": "0.33.3"
   },
   "auth": {
     "modes": [
@@ -265,7 +265,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "accounts.snapshot",
         "title": "Accounts Snapshot",
-        "description": "Return provider and channel account posture.",
+        "description": "Return provider account posture.",
         "category": "accounts",
         "source": "builtin",
         "access": "authenticated",

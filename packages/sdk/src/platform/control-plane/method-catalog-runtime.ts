@@ -184,7 +184,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'accounts.snapshot',
     title: 'Accounts Snapshot',
-    description: 'Return provider and channel account posture.',
+    description: 'Return provider account posture.',
     category: 'accounts',
     scopes: ['read:accounts'],
     http: { method: 'GET', path: '/api/accounts' },

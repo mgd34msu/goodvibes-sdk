@@ -152,6 +152,7 @@ describe('ControlPlaneGateway SSE — real end-to-end', () => {
     expect((frameData['payload'] as Record<string, unknown>)?.['registryKey']).toBe('inception:mercury-2');
     expect((frameData['payload'] as Record<string, unknown>)?.['provider']).toBe('inception');
     expect(typeof frameData['traceId']).toBe('string');
-    expect(typeof frameData['timestamp']).toBe('number');
+    expect(typeof frameData['ts']).toBe('number');
+    expect(Object.hasOwn(frameData, 'timestamp')).toBe(false);
   });
 });

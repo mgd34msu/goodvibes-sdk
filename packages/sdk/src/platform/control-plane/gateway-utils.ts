@@ -62,7 +62,7 @@ const MAX_DISCONNECTED_CLIENTS = 200;
 export function serializeEnvelope(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): Record<string, unknown> {
   return {
     type: envelope.type,
-    timestamp: envelope.ts,
+    ts: envelope.ts,
     traceId: envelope.traceId,
     sessionId: envelope.sessionId,
     source: envelope.source,

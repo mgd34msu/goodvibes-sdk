@@ -13,6 +13,7 @@ import {
   createDaemonIntegrationRouteHandlers,
   createDaemonRuntimeSessionRouteHandlers,
 } from '../packages/daemon-sdk/dist/index.js';
+import { AccountsSnapshotResponseSchema } from '../packages/contracts/dist/index.js';
 import type {
   DaemonSystemRouteContext,
   DaemonIntegrationRouteContext,
@@ -40,6 +41,38 @@ const adminReq = new Request('http://localhost/', {
 const nonAdminReq = new Request('http://localhost/', {
   headers: { authorization: `Bearer ${OTHER_TOKEN}` },
 });
+
+function makeValidAccountsSnapshot() {
+  return {
+    capturedAt: 1_800_000_000_000,
+    providers: [{
+      providerId: 'test-provider',
+      active: true,
+      modelCount: 2,
+      configured: true,
+      oauthReady: true,
+      pendingLogin: false,
+      availableRoutes: ['service-oauth'],
+      preferredRoute: 'service-oauth',
+      activeRoute: 'service-oauth',
+      activeRouteReason: 'Service OAuth is the current usable route.',
+      authFreshness: 'healthy',
+      notes: ['provider note'],
+      usageWindows: [{ label: 'daily', detail: 'Daily usage window.' }],
+      issues: [],
+      recommendedActions: [],
+      routeRecords: [{
+        route: 'service-oauth',
+        usable: true,
+        freshness: 'healthy',
+        detail: 'Service OAuth credential is available for this provider.',
+        issues: [],
+      }],
+    }],
+    configuredCount: 1,
+    issueCount: 0,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // createDaemonSystemRouteHandlers
@@ -218,6 +251,29 @@ describe('createDaemonIntegrationRouteHandlers per-request auth', () => {
     expect(seen[0]).toBe(adminReq);
     expect(seen[1]).toBe(nonAdminReq);
   });
+
+  test('getAccounts returns the strict accounts.snapshot contract shape', async () => {
+    const snapshot = makeValidAccountsSnapshot();
+    const ctx = makeContext();
+    const handlers = createDaemonIntegrationRouteHandlers({
+      ...ctx,
+      integrationHelpers: {
+        ...ctx.integrationHelpers!,
+        getAccountsSnapshot: async () => snapshot,
+      },
+      channelPlugins: {
+        listAccounts: async () => [{ surface: 'test-channel' }],
+      },
+    });
+
+    const response = await handlers.getAccounts();
+    const body = await response.json();
+
+    expect(body).toEqual(snapshot);
+    expect(Object.hasOwn(body, 'channels')).toBe(false);
+    expect(Object.hasOwn(body, 'channelCount')).toBe(false);
+    expect(() => AccountsSnapshotResponseSchema.parse(body)).not.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -231,6 +287,7 @@ describe('createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents auth', 
       sessionBroker: {
         start: async () => {},
         getSession: () => ({ id: 'sess-1' }),
+        getMessages: () => [],
       },
       openSessionEventStream: () => new Response('stream', { status: 200 }),
       parseJsonBody: async () => ({}),
@@ -246,5 +303,38 @@ describe('createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents auth', 
 
     const denied = await handlers.getSharedSessionEvents('sess-1', nonAdminReq);
     expect(denied.status).toBe(403);
+  });
+
+  test('getSharedSessionMessages returns the current shared-session response contract', async () => {
+    const handlers = createDaemonRuntimeSessionRouteHandlers(makeContext());
+    const response = await handlers.getSharedSessionMessages('sess-1', new URL('http://localhost/api/sessions/sess-1/messages?limit=25'));
+    const body = await response.json() as {
+      session: {
+        id: string;
+        kind: string;
+        status: string;
+        lastActivityAt: number;
+        messageCount: number;
+        pendingInputCount: number;
+        routeIds: unknown[];
+        surfaceKinds: unknown[];
+        participants: unknown[];
+        metadata: Record<string, unknown>;
+      };
+      messages: unknown[];
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.session.id).toBe('sess-1');
+    expect(body.session.kind).toBe('tui');
+    expect(body.session.status).toBe('active');
+    expect(typeof body.session.lastActivityAt).toBe('number');
+    expect(body.session.messageCount).toBe(0);
+    expect(body.session.pendingInputCount).toBe(0);
+    expect(body.session.routeIds).toEqual([]);
+    expect(body.session.surfaceKinds).toEqual([]);
+    expect(body.session.participants).toEqual([]);
+    expect(body.session.metadata).toEqual({});
+    expect(body.messages).toEqual([]);
   });
 });
