@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.4] - 2026-05-05
+
+### Fixed
+- Aligned `remote.snapshot` with the strict operator contract by serializing distributed pair requests, peers, work, and audit records as arrays instead of leaking the internal summary-object shape.
+- Normalized persisted shared-session records when loading the session broker store so existing project stores receive required current fields such as `kind`, `lastActivityAt`, and `pendingInputCount` instead of blocking daemon startup.
+
+---
+
 ## [0.33.3] - 2026-05-05
 
 ### Fixed
