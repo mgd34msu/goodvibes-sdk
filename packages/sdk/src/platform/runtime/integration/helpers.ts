@@ -368,20 +368,21 @@ export class IntegrationHelperService {
     const contracts = remoteRegistry.listContracts();
     const pools = remoteRegistry.listPools();
     const artifacts = remoteRegistry.listArtifacts();
+    const acpLastError = [...state.acp.connections.values()].find((connection) => connection.lastError)?.lastError;
     return {
       daemon: {
         transportState: state.daemon.transportState,
         isRunning: state.daemon.isRunning,
         reconnectAttempts: state.daemon.reconnectAttempts,
         runningJobCount: state.daemon.runningJobCount,
-        lastError: state.daemon.lastError,
+        ...(state.daemon.lastError ? { lastError: state.daemon.lastError } : {}),
       },
       acp: {
         transportState: state.acp.managerTransportState,
         activeConnectionIds: state.acp.activeConnectionIds,
         totalSpawned: state.acp.totalSpawned,
         totalFailed: state.acp.totalFailed,
-        lastError: [...state.acp.connections.values()].find((connection) => connection.lastError)?.lastError,
+        ...(acpLastError ? { lastError: acpLastError } : {}),
       },
       registry: {
         pools: pools.length,
@@ -400,15 +401,15 @@ export class IntegrationHelperService {
           runnerId: contract.runnerId,
           label: contract.label,
           template: contract.template,
-          poolId: contract.poolId,
-          taskId: contract.taskId,
+          ...(contract.poolId ? { poolId: contract.poolId } : {}),
+          ...(contract.taskId ? { taskId: contract.taskId } : {}),
           sourceTransport: contract.sourceTransport,
           trustClass: contract.trustClass,
           executionProtocol: contract.capabilityCeiling.executionProtocol,
           reviewMode: contract.capabilityCeiling.reviewMode,
           communicationLane: contract.capabilityCeiling.communicationLane,
           transportState: contract.transport.state,
-          lastError: contract.transport.lastError,
+          ...(contract.transport.lastError ? { lastError: contract.transport.lastError } : {}),
         })),
         artifactEntries: artifacts.map((artifact) => ({
           id: artifact.id,
@@ -416,7 +417,7 @@ export class IntegrationHelperService {
           createdAt: artifact.createdAt,
           status: artifact.task.status,
           summary: artifact.task.summary,
-          error: artifact.task.error,
+          ...(artifact.task.error ? { error: artifact.task.error } : {}),
         })),
       },
       supervisor: {
@@ -428,10 +429,15 @@ export class IntegrationHelperService {
           label: entry.label,
           transportState: entry.transportState,
           heartbeat: entry.heartbeat.status,
-          taskId: entry.taskId,
+          ...(entry.taskId ? { taskId: entry.taskId } : {}),
         })),
       },
-      distributed: this.context.distributedRuntime.getSnapshot(),
+      distributed: {
+        pairRequests: this.context.distributedRuntime.listPairRequests(100),
+        peers: this.context.distributedRuntime.listPeers(undefined, 500),
+        work: this.context.distributedRuntime.listWork(500),
+        audit: this.context.distributedRuntime.listAudit(100),
+      },
     };
   }
 

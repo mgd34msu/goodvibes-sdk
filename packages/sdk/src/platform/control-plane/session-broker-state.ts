@@ -34,51 +34,141 @@ function validateOptionalNumber(value: unknown): void {
   if (value !== undefined && !isFiniteNumber(value)) throwInvalidSessionSnapshot();
 }
 
-function validateSessionParticipant(value: unknown): void {
+function hasSessionRecordPayload(value: Record<string, unknown>): boolean {
+  return [
+    'kind',
+    'title',
+    'status',
+    'createdAt',
+    'updatedAt',
+    'lastActivityAt',
+    'messageCount',
+    'pendingInputCount',
+    'lastMessageAt',
+    'closedAt',
+    'activeAgentId',
+    'lastAgentId',
+    'lastError',
+    'routeIds',
+    'surfaceKinds',
+    'participants',
+    'metadata',
+  ].some((key) => value[key] !== undefined);
+}
+
+function normalizeSessionParticipant(value: unknown): SharedSessionParticipant {
   if (
     !isRecord(value)
     || typeof value['surfaceKind'] !== 'string'
     || typeof value['surfaceId'] !== 'string'
-    || !isFiniteNumber(value['lastSeenAt'])
   ) {
     throwInvalidSessionSnapshot();
   }
-  validateOptionalString(value['externalId']);
-  validateOptionalString(value['userId']);
-  validateOptionalString(value['displayName']);
-  validateOptionalString(value['routeId']);
+  const lastSeenAt = isFiniteNumber(value['lastSeenAt']) ? value['lastSeenAt'] : Date.now();
+  const externalId = typeof value['externalId'] === 'string' ? value['externalId'] : undefined;
+  const userId = typeof value['userId'] === 'string' ? value['userId'] : undefined;
+  const displayName = typeof value['displayName'] === 'string' ? value['displayName'] : undefined;
+  const routeId = typeof value['routeId'] === 'string' ? value['routeId'] : undefined;
+  return {
+    surfaceKind: value['surfaceKind'] as SharedSessionParticipant['surfaceKind'],
+    surfaceId: value['surfaceId'],
+    ...(externalId ? { externalId } : {}),
+    ...(userId ? { userId } : {}),
+    ...(displayName ? { displayName } : {}),
+    ...(routeId ? { routeId } : {}),
+    lastSeenAt,
+  };
 }
 
-function validateSessionRecord(value: unknown): void {
+function normalizeSessionRecord(
+  value: unknown,
+  messages: readonly SharedSessionMessage[],
+  inputs: readonly SharedSessionInputRecord[],
+): SharedSessionRecord {
   if (
     !isRecord(value)
     || typeof value['id'] !== 'string'
-    || typeof value['kind'] !== 'string'
-    || !SESSION_KINDS.has(value['kind'] as SharedSessionRecord['kind'])
-    || typeof value['title'] !== 'string'
-    || typeof value['status'] !== 'string'
-    || !SESSION_STATUSES.has(value['status'] as SharedSessionRecord['status'])
-    || !isFiniteNumber(value['createdAt'])
-    || !isFiniteNumber(value['updatedAt'])
-    || !isFiniteNumber(value['lastActivityAt'])
-    || !isFiniteNumber(value['messageCount'])
-    || !isFiniteNumber(value['pendingInputCount'])
-    || !isStringArray(value['routeIds'])
-    || !isStringArray(value['surfaceKinds'])
-    || !Array.isArray(value['participants'])
-    || !isRecord(value['metadata'])
+    || !hasSessionRecordPayload(value)
   ) {
     throwInvalidSessionSnapshot();
   }
+  if (value['kind'] !== undefined && (typeof value['kind'] !== 'string' || !SESSION_KINDS.has(value['kind'] as SharedSessionRecord['kind']))) {
+    throwInvalidSessionSnapshot();
+  }
+  if (value['status'] !== undefined && (typeof value['status'] !== 'string' || !SESSION_STATUSES.has(value['status'] as SharedSessionRecord['status']))) {
+    throwInvalidSessionSnapshot();
+  }
+  validateOptionalNumber(value['createdAt']);
+  validateOptionalNumber(value['updatedAt']);
+  validateOptionalNumber(value['lastActivityAt']);
+  validateOptionalNumber(value['messageCount']);
+  validateOptionalNumber(value['pendingInputCount']);
   validateOptionalNumber(value['lastMessageAt']);
   validateOptionalNumber(value['closedAt']);
   validateOptionalString(value['activeAgentId']);
   validateOptionalString(value['lastAgentId']);
   validateOptionalString(value['lastError']);
-  for (const participant of value['participants']) validateSessionParticipant(participant);
+  if (value['routeIds'] !== undefined && !isStringArray(value['routeIds'])) throwInvalidSessionSnapshot();
+  if (value['surfaceKinds'] !== undefined && !isStringArray(value['surfaceKinds'])) throwInvalidSessionSnapshot();
+  if (value['participants'] !== undefined && !Array.isArray(value['participants'])) throwInvalidSessionSnapshot();
+  if (value['metadata'] !== undefined && !isRecord(value['metadata'])) throwInvalidSessionSnapshot();
+
+  const now = Date.now();
+  const id = value['id'];
+  const participants = (value['participants'] ?? []).map(normalizeSessionParticipant);
+  const routeIds = isStringArray(value['routeIds']) ? [...new Set(value['routeIds'])] : [];
+  const surfaceKinds = isStringArray(value['surfaceKinds'])
+    ? [...new Set(value['surfaceKinds'])] as SharedSessionRecord['surfaceKinds']
+    : [...new Set(participants.map((participant) => participant.surfaceKind))];
+  const latestMessageAt = messages.reduce<number | undefined>(
+    (latest, message) => latest === undefined || message.createdAt > latest ? message.createdAt : latest,
+    undefined,
+  );
+  const latestInputAt = inputs.reduce<number | undefined>(
+    (latest, input) => latest === undefined || input.updatedAt > latest ? input.updatedAt : latest,
+    undefined,
+  );
+  const createdAt = isFiniteNumber(value['createdAt'])
+    ? value['createdAt']
+    : isFiniteNumber(value['updatedAt'])
+      ? value['updatedAt']
+      : now;
+  const updatedAt = isFiniteNumber(value['updatedAt']) ? value['updatedAt'] : createdAt;
+  const lastMessageAt = isFiniteNumber(value['lastMessageAt']) ? value['lastMessageAt'] : latestMessageAt;
+  const lastActivityAt = isFiniteNumber(value['lastActivityAt'])
+    ? value['lastActivityAt']
+    : Math.max(updatedAt, lastMessageAt ?? 0, latestInputAt ?? 0);
+  const activeAgentId = typeof value['activeAgentId'] === 'string' ? value['activeAgentId'] : undefined;
+  const lastAgentId = typeof value['lastAgentId'] === 'string' ? value['lastAgentId'] : undefined;
+  const lastError = typeof value['lastError'] === 'string' ? value['lastError'] : undefined;
+  const closedAt = isFiniteNumber(value['closedAt']) ? value['closedAt'] : undefined;
+  return {
+    id,
+    kind: typeof value['kind'] === 'string' && SESSION_KINDS.has(value['kind'] as SharedSessionRecord['kind'])
+      ? value['kind'] as SharedSessionRecord['kind']
+      : 'tui',
+    title: typeof value['title'] === 'string' && value['title'].trim().length > 0 ? value['title'] : `Session ${id}`,
+    status: typeof value['status'] === 'string' && SESSION_STATUSES.has(value['status'] as SharedSessionRecord['status'])
+      ? value['status'] as SharedSessionRecord['status']
+      : 'active',
+    createdAt,
+    updatedAt,
+    ...(lastMessageAt !== undefined ? { lastMessageAt } : {}),
+    ...(closedAt !== undefined ? { closedAt } : {}),
+    lastActivityAt,
+    messageCount: Math.max(isFiniteNumber(value['messageCount']) ? value['messageCount'] : 0, messages.length),
+    pendingInputCount: Math.max(isFiniteNumber(value['pendingInputCount']) ? value['pendingInputCount'] : 0, countPendingSessionInputs(inputs)),
+    routeIds,
+    surfaceKinds,
+    participants,
+    ...(activeAgentId ? { activeAgentId } : {}),
+    ...(lastAgentId ? { lastAgentId } : {}),
+    ...(lastError ? { lastError } : {}),
+    metadata: isRecord(value['metadata']) ? value['metadata'] : {},
+  };
 }
 
-function validateSessionMessage(value: unknown): void {
+function normalizeSessionMessage(value: unknown): SharedSessionMessage {
   if (
     !isRecord(value)
     || typeof value['id'] !== 'string'
@@ -87,19 +177,39 @@ function validateSessionMessage(value: unknown): void {
     || !MESSAGE_ROLES.has(value['role'] as SharedSessionMessage['role'])
     || typeof value['body'] !== 'string'
     || !isFiniteNumber(value['createdAt'])
-    || !isRecord(value['metadata'])
   ) {
     throwInvalidSessionSnapshot();
   }
+  if (value['metadata'] !== undefined && !isRecord(value['metadata'])) throwInvalidSessionSnapshot();
   validateOptionalString(value['surfaceKind']);
   validateOptionalString(value['surfaceId']);
   validateOptionalString(value['routeId']);
   validateOptionalString(value['agentId']);
   validateOptionalString(value['userId']);
   validateOptionalString(value['displayName']);
+  const surfaceKind = typeof value['surfaceKind'] === 'string' ? value['surfaceKind'] as SharedSessionMessage['surfaceKind'] : undefined;
+  const surfaceId = typeof value['surfaceId'] === 'string' ? value['surfaceId'] : undefined;
+  const routeId = typeof value['routeId'] === 'string' ? value['routeId'] : undefined;
+  const agentId = typeof value['agentId'] === 'string' ? value['agentId'] : undefined;
+  const userId = typeof value['userId'] === 'string' ? value['userId'] : undefined;
+  const displayName = typeof value['displayName'] === 'string' ? value['displayName'] : undefined;
+  return {
+    id: value['id'],
+    sessionId: value['sessionId'],
+    role: value['role'] as SharedSessionMessage['role'],
+    body: value['body'],
+    createdAt: value['createdAt'],
+    ...(surfaceKind ? { surfaceKind } : {}),
+    ...(surfaceId ? { surfaceId } : {}),
+    ...(routeId ? { routeId } : {}),
+    ...(agentId ? { agentId } : {}),
+    ...(userId ? { userId } : {}),
+    ...(displayName ? { displayName } : {}),
+    metadata: isRecord(value['metadata']) ? value['metadata'] : {},
+  };
 }
 
-function validateSessionInput(value: unknown): void {
+function normalizeSessionInput(value: unknown): SharedSessionInputRecord {
   if (
     !isRecord(value)
     || typeof value['id'] !== 'string'
@@ -112,10 +222,10 @@ function validateSessionInput(value: unknown): void {
     || typeof value['body'] !== 'string'
     || !isFiniteNumber(value['createdAt'])
     || !isFiniteNumber(value['updatedAt'])
-    || !isRecord(value['metadata'])
   ) {
     throwInvalidSessionSnapshot();
   }
+  if (value['metadata'] !== undefined && !isRecord(value['metadata'])) throwInvalidSessionSnapshot();
   validateOptionalString(value['causationId']);
   validateOptionalString(value['routeId']);
   validateOptionalString(value['surfaceKind']);
@@ -127,6 +237,38 @@ function validateSessionInput(value: unknown): void {
   validateOptionalString(value['activeAgentId']);
   validateOptionalString(value['error']);
   if (value['routing'] !== undefined && !isRecord(value['routing'])) throwInvalidSessionSnapshot();
+  const causationId = typeof value['causationId'] === 'string' ? value['causationId'] : undefined;
+  const routeId = typeof value['routeId'] === 'string' ? value['routeId'] : undefined;
+  const surfaceKind = typeof value['surfaceKind'] === 'string' ? value['surfaceKind'] as SharedSessionInputRecord['surfaceKind'] : undefined;
+  const surfaceId = typeof value['surfaceId'] === 'string' ? value['surfaceId'] : undefined;
+  const externalId = typeof value['externalId'] === 'string' ? value['externalId'] : undefined;
+  const threadId = typeof value['threadId'] === 'string' ? value['threadId'] : undefined;
+  const userId = typeof value['userId'] === 'string' ? value['userId'] : undefined;
+  const displayName = typeof value['displayName'] === 'string' ? value['displayName'] : undefined;
+  const activeAgentId = typeof value['activeAgentId'] === 'string' ? value['activeAgentId'] : undefined;
+  const error = typeof value['error'] === 'string' ? value['error'] : undefined;
+  return {
+    id: value['id'],
+    sessionId: value['sessionId'],
+    intent: value['intent'] as SharedSessionInputRecord['intent'],
+    state: value['state'] as SharedSessionInputRecord['state'],
+    correlationId: value['correlationId'],
+    ...(causationId ? { causationId } : {}),
+    body: value['body'],
+    createdAt: value['createdAt'],
+    updatedAt: value['updatedAt'],
+    ...(routeId ? { routeId } : {}),
+    ...(surfaceKind ? { surfaceKind } : {}),
+    ...(surfaceId ? { surfaceId } : {}),
+    ...(externalId ? { externalId } : {}),
+    ...(threadId ? { threadId } : {}),
+    ...(userId ? { userId } : {}),
+    ...(displayName ? { displayName } : {}),
+    ...(activeAgentId ? { activeAgentId } : {}),
+    metadata: isRecord(value['metadata']) ? value['metadata'] : {},
+    ...(isRecord(value['routing']) ? { routing: value['routing'] as SharedSessionInputRecord['routing'] } : {}),
+    ...(error ? { error } : {}),
+  };
 }
 
 export function sortSessions(records: Iterable<SharedSessionRecord>): SharedSessionRecord[] {
@@ -150,31 +292,37 @@ export function loadSessionBrokerState(snapshot: SharedSessionStoreSnapshot | nu
     if (!isRecord(snapshot) || !Array.isArray(snapshot.sessions) || !Array.isArray(snapshot.messages) || !Array.isArray(snapshot.inputs)) {
       throwInvalidSessionSnapshot();
     }
-    for (const session of snapshot.sessions) validateSessionRecord(session);
-    for (const message of snapshot.messages) validateSessionMessage(message);
-    for (const input of snapshot.inputs) validateSessionInput(input);
   }
   const sessions = new Map<string, SharedSessionRecord>();
   const messages = new Map<string, SharedSessionMessage[]>();
   const inputs = new Map<string, SharedSessionInputRecord[]>();
-  for (const session of snapshot?.sessions ?? []) {
-    sessions.set(session.id, session);
-  }
   for (const message of snapshot?.messages ?? []) {
-    const bucket = messages.get(message.sessionId) ?? [];
-    bucket.push(message);
-    messages.set(message.sessionId, bucket);
+    const normalized = normalizeSessionMessage(message);
+    const bucket = messages.get(normalized.sessionId) ?? [];
+    bucket.push(normalized);
+    messages.set(normalized.sessionId, bucket);
   }
   for (const input of snapshot?.inputs ?? []) {
-    const bucket = inputs.get(input.sessionId) ?? [];
-    bucket.push(input);
-    inputs.set(input.sessionId, bucket);
+    const normalized = normalizeSessionInput(input);
+    const bucket = inputs.get(normalized.sessionId) ?? [];
+    bucket.push(normalized);
+    inputs.set(normalized.sessionId, bucket);
   }
   for (const [sessionId, bucket] of messages.entries()) {
     messages.set(sessionId, sortMessages(bucket));
   }
   for (const [sessionId, bucket] of inputs.entries()) {
     inputs.set(sessionId, sortInputs(bucket));
+  }
+  for (const session of snapshot?.sessions ?? []) {
+    if (!isRecord(session) || typeof session.id !== 'string') {
+      throwInvalidSessionSnapshot();
+    }
+    sessions.set(session.id, normalizeSessionRecord(
+      session,
+      messages.get(session.id) ?? [],
+      inputs.get(session.id) ?? [],
+    ));
   }
   return { sessions, messages, inputs };
 }

@@ -282,32 +282,10 @@ export function listDistributedRuntimeAudit(
 export function getDistributedRuntimeSnapshot(state: DistributedRuntimeManagerState): Record<string, unknown> {
   expireDistributedPairRequests(state);
   requeueDistributedExpiredClaims(state);
-  const peers = listDistributedRuntimePeers(state, undefined, 500);
-  const work = listDistributedRuntimeWork(state, 500);
   return {
-    capturedAt: Date.now(),
-    pairRequests: {
-      total: state.pairRequests.size,
-      pending: [...state.pairRequests.values()].filter((request) => request.status === 'pending').length,
-      approved: [...state.pairRequests.values()].filter((request) => request.status === 'approved').length,
-      entries: listDistributedRuntimePairRequests(state, 100),
-    },
-    peers: {
-      total: peers.length,
-      connected: peers.filter((peer) => peer.status === 'connected').length,
-      nodes: peers.filter((peer) => peer.kind === 'node').length,
-      devices: peers.filter((peer) => peer.kind === 'device').length,
-      entries: peers,
-    },
-    work: {
-      total: work.length,
-      queued: work.filter((item) => item.status === 'queued').length,
-      claimed: work.filter((item) => item.status === 'claimed').length,
-      completed: work.filter((item) => item.status === 'completed').length,
-      failed: work.filter((item) => item.status === 'failed').length,
-      cancelled: work.filter((item) => item.status === 'cancelled').length,
-      entries: work.slice(0, 100),
-    },
+    pairRequests: listDistributedRuntimePairRequests(state, 100),
+    peers: listDistributedRuntimePeers(state, undefined, 500),
+    work: listDistributedRuntimeWork(state, 500),
     audit: listDistributedRuntimeAudit(state, 100),
   };
 }
