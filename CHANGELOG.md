@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.1] - 2026-05-05
+
+### Fixed
+- Hardened `PersistentStore` and `JsonFileStore` atomic writes against concurrent saves by giving each save a unique temporary file. This fixes a real automation-job persistence race observed in CI where one save could rename another save's shared `.tmp` file.
+- Added regression coverage for concurrent `PersistentStore.persist()` and `JsonFileStore.save()` calls.
+- Added Node 22 setup to the release validation job before Wrangler tests so the tag release path matches the main CI platform matrix environment.
+
+---
+
 ## [0.33.0] - 2026-05-04
 
 ### Breaking
