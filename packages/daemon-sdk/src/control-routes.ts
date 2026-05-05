@@ -40,8 +40,6 @@ interface ControlRouteContext {
   readonly resolveAuthenticatedPrincipal: (req: Request) => AuthenticatedPrincipal | null;
   readonly gatewayMethods: GatewayMethodCatalogLike;
   readonly getOperatorContract: () => unknown;
-  readonly inspectInboundTls: (surface: 'controlPlane' | 'httpListener') => unknown;
-  readonly inspectOutboundTls: () => unknown;
   readonly invokeGatewayMethodCall: (input: {
     readonly authToken: string;
     readonly methodId: string;
@@ -58,6 +56,7 @@ interface ControlRouteContext {
   readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
   readonly requireAdmin: (req: Request) => Response | null;
   readonly requireAuthenticatedSession: (req: Request) => { username: string; roles: readonly string[] } | null;
+  readonly login?: ((req: Request) => Promise<Response> | Response) | undefined;
 }
 
 type GatewayInvokeBody = {
@@ -85,29 +84,29 @@ const controlBodySchemas = createRouteBodySchemaRegistry({
 
 export function createDaemonControlRouteHandlers(
   context: ControlRouteContext,
-  request: Request,
 ): DaemonControlRouteHandlers {
-  const hasAuthorizationHeader = Boolean(request.headers.get('authorization')?.trim());
-  const sessionCookiePresent = (request.headers.get('cookie') ?? '')
-    .split(';')
-    .some((segment) => segment.trim().startsWith(`${context.sessionCookieName}=`));
-
   return {
-    getStatus: () => Response.json({
-      status: 'running',
-      version: context.version,
-      network: {
-        controlPlane: context.inspectInboundTls('controlPlane'),
-        httpListener: context.inspectInboundTls('httpListener'),
-        outbound: context.inspectOutboundTls(),
-      },
-    }),
+    postLogin: (req) => context.login
+      ? context.login(req)
+      : jsonErrorResponse({ error: 'Login is not configured for this daemon host.' }, { status: 404 }),
+    getStatus: (req) => {
+      const principal = context.resolveAuthenticatedPrincipal(req);
+      if (!principal) return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({
+        status: 'running',
+        version: context.version,
+      });
+    },
     getCurrentAuth: (req) => {
       const token = context.extractAuthToken(req).trim();
       const principal = context.resolveAuthenticatedPrincipal(req);
       const session = principal?.principalKind === 'user'
         ? context.requireAuthenticatedSession(req)
         : null;
+      const authorizationHeaderPresent = Boolean(req.headers.get('authorization')?.trim());
+      const sessionCookiePresent = (req.headers.get('cookie') ?? '')
+        .split(';')
+        .some((segment) => segment.trim().startsWith(`${context.sessionCookieName}=`));
       const authMode = principal
         ? (principal.principalKind === 'token' && principal.principalId === 'shared-token' ? 'shared-token' : 'session')
         : token.length > 0
@@ -117,7 +116,7 @@ export function createDaemonControlRouteHandlers(
         authenticated: principal !== null,
         authMode,
         tokenPresent: token.length > 0,
-        authorizationHeaderPresent: hasAuthorizationHeader,
+        authorizationHeaderPresent,
         sessionCookiePresent,
         principalId: principal?.principalId ?? null,
         principalKind: principal?.principalKind ?? null,
@@ -196,7 +195,7 @@ export function createDaemonControlRouteHandlers(
     createControlPlaneEventStream: (req) => {
       const url = new URL(req.url);
       const rawDomains = url.searchParams.get('domains');
-      // MIN-04: filter unknown domains at the SDK boundary instead of casting unchecked input.
+      // filter unknown domains at the SDK boundary instead of casting unchecked input.
       const domains = (rawDomains ? rawDomains.split(',').map((v) => v.trim()).filter(Boolean) : [])
         .filter(isRuntimeEventDomain) as RuntimeEventDomain[];
       const principal = context.resolveAuthenticatedPrincipal(req);

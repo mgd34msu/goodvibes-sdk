@@ -45,8 +45,8 @@ export function transportErrorFromUnknown(error: unknown, context: string): Erro
     && typeof (error as { readonly code?: unknown }).code === 'string'
     ? (error as { readonly code: string }).code
     : '';
-  // NIT-6: include undici/Bun error codes alongside Node-style errno codes.
-  // MIN-8: recoverable is ONLY set to true for recognized network-layer error codes
+  // Include undici/Bun error codes alongside Node-style errno codes.
+  // recoverable is ONLY set to true for recognized network-layer error codes
   // (errno values, undici codes, and 'fetch failed'). Unknown/unrecognized codes
   // (including programmer errors wrapped as non-Error objects) get recoverable:false
   // so they do not trigger retry loops.

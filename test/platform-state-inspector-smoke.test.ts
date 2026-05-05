@@ -2,7 +2,7 @@
  * Coverage-gap smoke test — platform/runtime/inspection/state-inspector
  * Verifies that createStateInspector constructs a working inspector and
  * its methods return correct observable shapes.
- * Closes coverage gap: platform/runtime/inspection/state-inspector (eighth-review)
+ * Closes coverage gap: platform/runtime/inspection/state-inspector
  */
 
 import { describe, expect, test } from 'bun:test';

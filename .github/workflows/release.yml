@@ -1,7 +1,7 @@
 name: Release
 
 # Default to read-only permissions. Individual jobs elevate as needed.
-# The `production` environment (referenced by publish-npm and publish-github-packages)
+# The `production` environment (referenced by publish-npm)
 # must be configured in GitHub repo settings with required reviewers and deployment
 # branch restrictions (tags only). This YAML alone cannot enforce manual approval;
 # the gate lives in the GitHub UI at Settings > Environments > production.
@@ -48,16 +48,21 @@ jobs:
 
   # Note: each release job runs its own `bun install --frozen-lockfile` (~30 s each)
   # rather than using the .github/actions/setup composite action. The install is
-  # repeated across generate-sbom, validate-release, publish-npm, and
-  # publish-github-packages to keep each job self-contained (the release pipeline
+  # repeated across generate-sbom, validate-release, and publish-npm to keep each
+  # job self-contained (the release pipeline
   # does not use caching to guarantee a pristine install before publish).
-  # Future improvement: migrate to .github/actions/setup with cache + install
-  # consistency to eliminate the 3-4x duplicated installs.
+  # Keep this path uncached and self-contained; publish jobs must prove they can
+  # install from the lockfile without relying on an earlier job's dependency cache.
   generate-sbom:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [verify-tag-version]
-    if: always() && needs.verify-tag-version.result != 'failure'
+    if: >-
+      always() &&
+      (
+        (github.event_name == 'push' && needs.verify-tag-version.result == 'success') ||
+        (github.event_name == 'workflow_dispatch' && needs.verify-tag-version.result == 'skipped')
+      )
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -73,8 +78,8 @@ jobs:
           node-version: "22"
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Generate SBOM (CycloneDX JSON)
-        run: bun run sbom:generate
+      - name: Generate and validate SBOM (CycloneDX JSON)
+        run: bun run sbom:check
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -84,18 +89,23 @@ jobs:
 
   validate-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     needs: [verify-tag-version, generate-sbom]
     # Gate: verify-tag-version runs only on `push` (tag push); it is skipped on
-    # workflow_dispatch (manual dry-runs). Using `!= 'failure'` rather than
-    # `== 'success' || == 'skipped'` makes the intent explicit and avoids
+    # workflow_dispatch (manual dry-runs). Explicit success/skipped checks avoid
     # accidentally accepting unexpected result states (e.g. 'cancelled').
     # The downstream publish steps are each independently gated by
     # `if: github.event_name == 'push'`, so a manual dispatch cannot trigger a
     # real publish even when tag-verification is skipped.
     # WARNING: Removing any inner `github.event_name == 'push'` gate on a publish
     # step would allow manual dispatch to publish without tag verification.
-    if: always() && needs.verify-tag-version.result != 'failure' && needs.generate-sbom.result != 'failure'
+    if: >-
+      always() &&
+      needs.generate-sbom.result == 'success' &&
+      (
+        (github.event_name == 'push' && needs.verify-tag-version.result == 'success') ||
+        (github.event_name == 'workflow_dispatch' && needs.verify-tag-version.result == 'skipped')
+      )
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -107,10 +117,28 @@ jobs:
           bun-version: "1.3.10"
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Reject manual non-dry-run release
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true'
+        run: |
+          echo "workflow_dispatch releases are dry-run only; push a verified v* tag to publish." >&2
+          exit 1
       - name: Validate workspace once before publish jobs
         run: bun run validate
+      - name: Security audit
+        run: bun run security:audit
+      - name: Run Bun test suite
+        run: bun run test
+      - name: Run React Native bundle guard
+        run: bun run test:rn
+      - name: Run Workers tests
+        run: bun run test:workers
+      - name: Run Wrangler Workers tests
+        run: bun run test:workers:wrangler
       - name: Verify generated contract artifacts
         run: bun run contracts:check
+      - name: Release dry run
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+        run: bun run release:dry-run
       - name: Archive workspace build output
         run: tar -czf /tmp/workspace-build-output.tgz packages/*/dist
       - name: Upload workspace build output
@@ -125,10 +153,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [verify-tag-version, generate-sbom, validate-release]
-    if: always() && needs.verify-tag-version.result != 'failure' && needs.generate-sbom.result != 'failure' && needs.validate-release.result == 'success'
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      needs.generate-sbom.result == 'success' &&
+      needs.validate-release.result == 'success' &&
+      needs.verify-tag-version.result == 'success'
     environment:
       name: production
-      url: ${{ format('https://www.npmjs.com/package/{0}', env.GOODVIBES_PUBLIC_PACKAGE_NAME || '@pellux/goodvibes-sdk') }}
+      url: https://www.npmjs.com/package/@pellux/goodvibes-sdk
     permissions:
       contents: read
       id-token: write
@@ -155,83 +188,24 @@ jobs:
           path: /tmp/workspace-build-output
       - name: Restore workspace build output
         run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
-      - name: Release dry run
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
-        run: bun run release:dry-run
+      - name: Verify npm registry is empty or complete for this version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bun scripts/verify-published-packages.ts --prepublish-empty-or-complete
       - name: Publish packages (with provenance)
-        if: github.event_name == 'push'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun run release:publish:ci
       - name: Verify published packages
-        if: github.event_name == 'push'
         env:
-          GOODVIBES_VERIFY_ATTEMPTS: "48"
-          GOODVIBES_VERIFY_DELAY_MS: "5000"
-        run: bun run release:verify:published
-
-  publish-github-packages:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    needs: [verify-tag-version, generate-sbom, validate-release]
-    if: always() && needs.verify-tag-version.result != 'failure' && needs.generate-sbom.result != 'failure' && needs.validate-release.result == 'success'
-    environment:
-      name: production
-      url: https://github.com/orgs/${{ github.repository_owner }}/packages
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-    env:
-      GOODVIBES_PUBLIC_PACKAGE_NAME: ${{ format('@{0}/goodvibes-sdk', github.repository_owner) }}
-      GOODVIBES_PUBLISH_REGISTRY: https://npm.pkg.github.com
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.3.10"
-      - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: "22"
-          registry-url: "https://npm.pkg.github.com"
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: Download workspace build output
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: workspace-build-output
-          path: /tmp/workspace-build-output
-      - name: Restore workspace build output
-        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
-      - name: Release dry run
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
-        env:
-          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bun run release:dry-run
-      - name: Publish GitHub Packages copy
-        if: github.event_name == 'push'
-        env:
-          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bun run release:publish
-      - name: Verify GitHub Packages copy
-        if: github.event_name == 'push'
-        env:
-          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOODVIBES_VERIFY_ATTEMPTS: "48"
           GOODVIBES_VERIFY_DELAY_MS: "5000"
         run: bun run release:verify:published
 
   github-release:
-    # Gate: runs only when publish-npm succeeded (regardless of other job outcomes).
-    # smoke-check and GitHub Packages verify failures must not block the release
-    # artifact — the SBOM must attach whenever the package is published.
+    # Gate: create the GitHub release only after npm publish and SBOM generation succeed.
     if: always() && github.event_name == 'push' && needs.publish-npm.result == 'success' && needs.generate-sbom.result == 'success'
-    needs: [publish-npm, publish-github-packages, generate-sbom]
+    needs: [publish-npm, generate-sbom]
     # Pinned to ubuntu-24.04 (not ubuntu-latest) to prevent BSD awk semantics from
     # silently breaking the changelog extraction step if the runner image changes.
     runs-on: ubuntu-24.04

@@ -31,7 +31,7 @@ export type DomainEvents<
 > = RuntimeEventFeeds<TDomain, TEvent>;
 
 export interface RemoteDomainEventsOptions<TDomain extends string = string> {
-  readonly onConnectionError?: ((error: Error, domain: TDomain) => void) | undefined | undefined;
+  readonly onConnectionError?: ((error: Error, domain: TDomain) => void) | undefined;
 }
 
 function addListener<T>(map: Map<string, Set<T>>, type: string, listener: T): () => void {
@@ -110,7 +110,7 @@ function createRemoteDomainEventFeed<
       if (!eventType) return;
       const payload = envelope.payload;
       const typedEnvelope = toEventEnvelope(envelope);
-      // MAJ-06: snapshot Sets before iterating to prevent skipped listeners
+      // snapshot Sets before iterating to prevent skipped listeners
       // from concurrent subscribe/unsubscribe during dispatch (project pattern: event-bus-snapshot).
       for (const listener of [...(payloadListeners.get(eventType) ?? [])]) {
         listener(payload);
@@ -119,7 +119,7 @@ function createRemoteDomainEventFeed<
         listener(typedEnvelope);
       }
     })).then((cleanup) => {
-      // MAJ-4: when connect() returns a non-function cleanup (void), we have no
+      // when connect() returns a non-function cleanup (void), we have no
       // way to honour a pending disconnect request. Log the gap and bail. Callers
       // must return a cleanup function whenever they establish a real connection.
       if (typeof cleanup !== 'function') {
@@ -200,7 +200,7 @@ export function createRemoteDomainEvents<
  * Unsubscribe handles returned by `on` / `onEnvelope` on the filtered feed
  * correctly remove the underlying listener from the original feed.
  *
- * MIN-16: Uses a single shared envelope listener per event type so that N
+ * Uses a single shared envelope listener per event type so that N
  * subscribers for the same (feed, sessionId, type) triple consume only one
  * envelope-listener slot on the underlying feed instead of N.
  */

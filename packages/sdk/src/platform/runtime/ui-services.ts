@@ -97,7 +97,7 @@ export interface UiRuntimeServices {
 
 export interface UiRuntimeServicesOptions extends UiReadModelOptions {
   readonly forensicsRegistry?: ForensicsRegistry | undefined;
-  readonly getControlPlaneRecentEvents?: ((limit: number) => readonly ControlPlaneRecentEvent[]) | undefined | undefined;
+  readonly getControlPlaneRecentEvents?: ((limit: number) => readonly ControlPlaneRecentEvent[]) | undefined;
 }
 
 export function createUiRuntimeServices(

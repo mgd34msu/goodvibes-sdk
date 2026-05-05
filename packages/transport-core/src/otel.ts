@@ -12,66 +12,22 @@
  * W3C Trace Context spec: https://www.w3.org/TR/trace-context/
  */
 
-interface SpanContext {
-  traceId: string;
-  spanId: string;
-  traceFlags: number;
-  traceState?: { serialize(): string } | null | undefined;
-}
-
-interface Span {
-  spanContext(): SpanContext;
-}
-
-interface OtelApi {
-  trace: {
-    getActiveSpan(): Span | undefined;
-  };
-}
+import {
+  cacheOtelApi,
+  readCachedOtelApi,
+  readOtelModuleOverride,
+  type OtelApi,
+  type SpanContext,
+} from './otel-state.js';
 
 type SyncRequire = (moduleName: string) => unknown;
-
-/** Cached result of OTel detection. `null` = not available. `undefined` = not yet probed. */
-let otelApi: OtelApi | null | undefined = undefined;
-
-/** Internal override value for the test injection seam. */
-let _otelModuleOverride: OtelApi | null | undefined = undefined;
-
-/**
- * Set the OTel module override for testing. Pass `undefined` to clear.
- * Calling this bypasses dynamic import and require-based detection.
- *
- * @internal — for testing only, do NOT use in production code.
- */
-export function setOtelModuleOverride(api: OtelApi | null | undefined): void {
-  _otelModuleOverride = api;
-}
-
-/**
- * Get the current OTel module override (for test inspection).
- * @internal
- */
-export function getOtelModuleOverride(): OtelApi | null | undefined {
-  return _otelModuleOverride;
-}
-
-/**
- * Reset both the module-level cache and the test injection seam.
- * Call this in `afterEach` when using `setOtelModuleOverride` in tests.
- *
- * @internal — for testing only.
- */
-export function __resetOtelCache(): void {
-  otelApi = undefined;
-  _otelModuleOverride = undefined;
-}
 
 /**
  * Dynamic import that is opaque to bundlers.
  * `new Function(...)` is not statically analysed for import() specifiers.
  */
 function dynamicImport(moduleName: string): Promise<unknown> {
-  // NIT-04: `new Function(...)` is intentional — it prevents bundlers (esbuild, Rollup,
+  // `new Function(...)` is intentional: it prevents bundlers (esbuild, Rollup,
   // Miniflare/workerd) from statically analysing the import() specifier and either
   // bundling @opentelemetry/api or raising an unresolvable-specifier error.
   //
@@ -84,45 +40,45 @@ function dynamicImport(moduleName: string): Promise<unknown> {
 }
 
 async function probeOtel(): Promise<OtelApi | null> {
-  // Test injection seam takes highest priority.
-  if (_otelModuleOverride !== undefined) return _otelModuleOverride;
-  if (otelApi !== undefined) return otelApi;
-  // MIN-10: skip dynamic import in browser windows AND Service Workers / workerd
+  const override = readOtelModuleOverride();
+  if (override !== undefined) return override;
+  const cached = readCachedOtelApi();
+  if (cached !== undefined) return cached;
+  // skip dynamic import in browser windows AND Service Workers / workerd
   // (which have no `window` but do have WorkerGlobalScope). The Function constructor
   // used in dynamicImport violates strict `script-src 'self'` CSPs in workers.
   if (typeof window !== 'undefined' || 'WorkerGlobalScope' in globalThis) {
-    otelApi = null;
-    return otelApi;
+    cacheOtelApi(null);
+    return null;
   }
   try {
     const mod = await dynamicImport('@opentelemetry/api');
-    otelApi = mod as OtelApi;
-  } catch (error) {
-    void error;
-    otelApi = null;
+    cacheOtelApi(mod as OtelApi);
+  } catch {
+    cacheOtelApi(null);
   }
-  return otelApi;
+  return readCachedOtelApi() ?? null;
 }
 
 function probeOtelSync(): OtelApi | null {
-  // Test injection seam takes highest priority.
-  if (_otelModuleOverride !== undefined) return _otelModuleOverride;
-  if (otelApi !== undefined) return otelApi;
+  const override = readOtelModuleOverride();
+  if (override !== undefined) return override;
+  const cached = readCachedOtelApi();
+  if (cached !== undefined) return cached;
   try {
     // Use globalThis.require via indirect reference to avoid bundler module resolution.
     const nodeRequire = typeof globalThis !== 'undefined'
       ? (globalThis as { require?: SyncRequire }).require
       : undefined;
     if (typeof nodeRequire === 'function') {
-      otelApi = nodeRequire('@opentelemetry/api') as OtelApi;
+      cacheOtelApi(nodeRequire('@opentelemetry/api') as OtelApi);
     } else {
-      otelApi = null;
+      cacheOtelApi(null);
     }
-  } catch (error) {
-    void error;
-    otelApi = null;
+  } catch {
+    cacheOtelApi(null);
   }
-  return otelApi;
+  return readCachedOtelApi() ?? null;
 }
 
 function buildTraceparent(ctx: SpanContext): string {
@@ -149,9 +105,9 @@ export function injectTraceparent(headers: Record<string, string>): void {
     if (traceState) {
       headers['tracestate'] = traceState;
     }
-  } catch (error) {
-    void error;
+  } catch {
     // Never let OTel errors propagate into transport logic.
+    return;
   }
 }
 
@@ -174,8 +130,8 @@ export async function injectTraceparentAsync(headers: Record<string, string>): P
     if (traceState) {
       headers['tracestate'] = traceState;
     }
-  } catch (error) {
-    void error;
+  } catch {
     // Never let OTel errors propagate into transport logic.
+    return;
   }
 }

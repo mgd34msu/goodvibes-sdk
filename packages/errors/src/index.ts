@@ -11,7 +11,7 @@ export type {
 export { DaemonErrorCategory } from './daemon-error-contract.js';
 
 /**
- * MIN-5: `'contract'` is an SDK-internal category used when the daemon returns
+ * `'contract'` is an SDK-internal category used when the daemon returns
  * a response that violates the expected contract schema. It is NOT part of the
  * daemon wire schema (`DaemonErrorCategory`) and MUST NOT be marshalled over
  * the wire — doing so will cause the daemon to schema-reject the error envelope.
@@ -172,7 +172,7 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth 
  *
  * ### Narrowing pattern
  * ```ts
- * import { GoodVibesSdkError, HttpStatusError, ConfigurationError } from '@pellux/goodvibes-sdk';
+ * import { GoodVibesSdkError, HttpStatusError, ConfigurationError } from '@pellux/goodvibes-errors';
  *
  * try {
  *   await sdk.operator.agents.list();
@@ -312,7 +312,7 @@ function omitUndefined(record: Record<string, unknown>): Record<string, unknown>
  * Category: `'config'`. Kind: `'config'`.
  *
  * @example
- * import { ConfigurationError } from '@pellux/goodvibes-sdk';
+ * import { ConfigurationError } from '@pellux/goodvibes-errors';
  *
  * try {
  *   await sdk.auth.setToken('x');
@@ -324,7 +324,7 @@ function omitUndefined(record: Record<string, unknown>): Record<string, unknown>
  */
 export class ConfigurationError extends GoodVibesSdkError {
   /**
-   * NIT-3: Brand contract — `code` is the source of truth, not the prototype chain.
+   * Brand contract — `code` is the source of truth, not the prototype chain.
    * A `GoodVibesSdkError` constructed directly with `code: 'SDK_CONFIGURATION_ERROR'`
    * will pass `instanceof ConfigurationError` even if its prototype is only
    * `GoodVibesSdkError`. Callers that need strict prototype checking should use
@@ -361,7 +361,7 @@ export class ConfigurationError extends GoodVibesSdkError {
  * Category: `'contract'`. Kind: `'contract'`.
  *
  * @example
- * import { ContractError } from '@pellux/goodvibes-sdk';
+ * import { ContractError } from '@pellux/goodvibes-errors';
  *
  * try {
  *   const result = await sdk.operator.agents.get({ id: agentId });
@@ -374,7 +374,7 @@ export class ConfigurationError extends GoodVibesSdkError {
  */
 export class ContractError extends GoodVibesSdkError {
   /**
-   * NIT-3: Brand contract — `code` is the source of truth, not the prototype chain.
+   * Brand contract — `code` is the source of truth, not the prototype chain.
    * A `GoodVibesSdkError` constructed directly with `code: 'SDK_CONTRACT_ERROR'`
    * will pass `instanceof ContractError` even if its prototype is only
    * `GoodVibesSdkError`. Callers that need strict prototype checking should use
@@ -412,7 +412,7 @@ export class ContractError extends GoodVibesSdkError {
  * - `5xx` → `'service'`
  * - Any other status (or when constructed without a `status`) → `'unknown'`
  *
- * MIN-6: When constructed without a `status` argument (e.g. as a typed
+ * When constructed without a `status` argument (e.g. as a typed
  * wrapper around a structured daemon error that provides its own `category`),
  * the category defaults to `'unknown'`. Callers relying on category-based
  * routing should always prefer the structured-body factory
@@ -423,7 +423,7 @@ export class ContractError extends GoodVibesSdkError {
  * the backoff hint on rate-limit responses.
  *
  * @example
- * import { HttpStatusError } from '@pellux/goodvibes-sdk';
+ * import { HttpStatusError } from '@pellux/goodvibes-errors';
  *
  * try {
  *   await sdk.operator.agents.list();
@@ -439,7 +439,7 @@ export class ContractError extends GoodVibesSdkError {
  */
 export class HttpStatusError extends GoodVibesSdkError {
   /**
-   * NIT-3: Brand contract — `code` is the source of truth, not the prototype chain.
+   * Brand contract — `code` is the source of truth, not the prototype chain.
    * A `GoodVibesSdkError` constructed directly with `code: 'SDK_HTTP_STATUS_ERROR'`
    * will pass `instanceof HttpStatusError` even if its prototype is only
    * `GoodVibesSdkError`. Callers that need strict prototype checking should use

@@ -16,7 +16,7 @@
  *   WORKSPACE_SWAP_STARTED   — before swap begins
  *   WORKSPACE_SWAP_REFUSED   — when swap is rejected
  *   WORKSPACE_SWAP_COMPLETED — after all stores re-rooted
- *   WORKSPACE_SWAP_FAILED    — when mkdir or rerootStores fails (OBS-08)
+ *   WORKSPACE_SWAP_FAILED    — when mkdir or rerootStores fails
  */
 
 import { mkdirSync, existsSync } from 'node:fs';
@@ -118,7 +118,7 @@ export class WorkspaceSwapManager {
       const reason = `Cannot create workspace directory at '${resolved}': ${
         err instanceof Error ? err.message : String(err)
       }`;
-      // OBS-08: emit WORKSPACE_SWAP_FAILED so subscribers that saw STARTED get terminal resolution
+      // emit WORKSPACE_SWAP_FAILED so subscribers that saw STARTED get terminal resolution
       this._emit({ type: 'WORKSPACE_SWAP_FAILED', from, to, code: 'INVALID_PATH', reason });
       return { ok: false, code: 'INVALID_PATH', reason };
     }
@@ -130,12 +130,11 @@ export class WorkspaceSwapManager {
       const reason = `Failed to re-initialize stores at '${resolved}': ${
         err instanceof Error ? err.message : String(err)
       }`;
-      // OBS-08: emit WORKSPACE_SWAP_FAILED so subscribers that saw STARTED get terminal resolution
+      // emit WORKSPACE_SWAP_FAILED so subscribers that saw STARTED get terminal resolution
       this._emit({ type: 'WORKSPACE_SWAP_FAILED', from, to, code: 'REROOT_FAILED', reason });
       return { ok: false, code: 'INVALID_PATH', reason };
     }
 
-    // Update internal state
     this.currentWorkingDir = resolved;
 
     // Persist to daemon settings
@@ -144,7 +143,7 @@ export class WorkspaceSwapManager {
       writeDaemonSetting(this.deps.daemonHomeDir, 'runtime.workingDir', resolved);
       persistedInDaemonSettings = true;
     } catch (err: unknown) {
-      // OBS-09: Non-fatal — swap succeeded but persistence failed. Log so ops can diagnose.
+      // Swap succeeded but persistence failed. Log so ops can diagnose.
       logger.warn('[WorkspaceSwap] daemon settings persistence failed — workingDir will not survive restart', {
         error: summarizeError(err),
         daemonHomeDir: this.deps.daemonHomeDir,
@@ -156,10 +155,6 @@ export class WorkspaceSwapManager {
 
     return { ok: true, previous: from, current: resolved };
   }
-
-  // ---------------------------------------------------------------------------
-  // Internal helpers
-  // ---------------------------------------------------------------------------
 
   private _emit(payload: WorkspaceEvent): void {
     if (!this.deps.runtimeBus) return;

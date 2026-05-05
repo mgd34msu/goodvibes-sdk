@@ -105,15 +105,20 @@ the same generated contract ids underneath.
 
 Shared error types and error-contract helpers.
 
-### `./events` and `./events/*` — `@pellux/goodvibes-sdk/events`
+### `./events` and explicit event-domain subpaths — `@pellux/goodvibes-sdk/events`
 
 **Status:** beta
 
 Runtime event domain types. Use `./events` for the aggregate event-domain
-barrel, or `./events/<domain>` for a single domain such as
+barrel, or an explicit `./events/<domain>` subpath for a single domain such as
 `@pellux/goodvibes-sdk/events/agents`.
 
-> **Contract note:** `./events/*` is a wildcard subpath resolving per-domain files from `dist/events/`. The supported domain identifiers are: `agents`, `automation`, `communication`, `compaction`, `control-plane`, `deliveries`, `forensics`, `knowledge`, `mcp`, `ops`, `orchestration`, `permissions`, `planner`, `plugins`, `providers`, `routes`, `security`, `session`, `surfaces`, `tasks`, `tools`, `transport`, `turn`, `ui`, `watchers`, `workflows`, `workspace`. Internal modules (`domain-map`, `contracts`) are reachable via the wildcard but are considered implementation details; prefer the aggregate `./events` barrel.
+Supported event domain subpaths are: `agents`, `automation`, `communication`,
+`compaction`, `control-plane`, `deliveries`, `forensics`, `knowledge`, `mcp`,
+`ops`, `orchestration`, `permissions`, `planner`, `plugins`, `providers`,
+`routes`, `security`, `session`, `surfaces`, `tasks`, `tools`, `transport`,
+`turn`, `ui`, `watchers`, `workflows`, and `workspace`. Event implementation
+modules are not exported as deep package subpaths.
 
 ### `./transport-core` — `@pellux/goodvibes-sdk/transport-core`
 
@@ -180,12 +185,12 @@ Expo-specific SDK entry built on top of `react-native`.
 
 Granular platform modules exposed through explicit public subpaths. Each path is listed intentionally rather than exposed by a wildcard.
 
-The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package does not export a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported; new paths are added on an as-needed basis.
+The `platform/...` surface is the canonical way for downstream consumers (e.g., the goodvibes-tui) to access platform subsystems. The package does not export a wildcard `./platform/*` pattern; every public platform path is listed intentionally in `package.json`. Paths not listed below should be considered unsupported.
 
-**Stability contract:** the module shape (exported names and their TypeScript signatures) is stable within a minor version. Pre-1.0 releases may still make breaking changes; current behavior is recorded in `CHANGELOG.md`.
+**Stability contract:** exported names and their TypeScript signatures are the current package contract. Pre-1.0 releases may make breaking changes; current behavior is recorded in `CHANGELOG.md`.
 
-The root `@pellux/goodvibes-sdk/platform` entry is a full platform hub for
-Bun/server embedders. Runtime-boundary helpers live at
+There is no root `@pellux/goodvibes-sdk/platform` entry. Runtime-boundary helpers live at
+`@pellux/goodvibes-sdk/platform/node/runtime-boundary`; runtime capability metadata lives at
 `@pellux/goodvibes-sdk/platform/node`; the base knowledge system lives at
 `@pellux/goodvibes-sdk/platform/knowledge`; Home Assistant Home Graph extends
 that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
@@ -197,31 +202,61 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 
 | Subpath | Description | Status |
 |---|---|---|
-| `platform` | Full platform hub for Bun/server embedders | beta |
+| `platform/acp` | Agent Control Protocol connection and manager APIs | beta |
+| `platform/adapters` | Adapter type contracts | beta |
+| `platform/agents` | Agent orchestration, WRFC, session, and messaging APIs | beta |
+| `platform/artifacts` | Artifact store and artifact record types | beta |
+| `platform/automation` | Automation managers, jobs, schedules, routes, and delivery | beta |
+| `platform/batch` | Batch execution manager and types | beta |
+| `platform/bookmarks` | Bookmark manager | beta |
+| `platform/channels` | Channel runtime, routing, policy, and plugin registry | beta |
+| `platform/cloudflare` | Cloudflare worker discovery, config, resources, and status helpers | beta |
+| `platform/companion` | Companion chat sessions, routes, and persistence | beta |
 | `platform/config` | Config manager, secrets, schema, subscriptions | beta |
+| `platform/control-plane` | Control-plane gateway, method catalog, contracts, and session broker | beta |
 | `platform/core` | Orchestrator, transcript events, execution plan | beta |
 | `platform/daemon` | HTTP server, routes, port-in-use checks | beta |
+| `platform/discovery` | Local provider and MCP discovery | beta |
+| `platform/export` | Markdown and session export helpers | beta |
 | `platform/git` | Git service integration | beta |
+| `platform/hooks` | Hook dispatcher, matcher, runner, contracts, and workbench | beta |
 | `platform/integrations` | Delivery, Slack, Discord, Ntfy notifiers | beta |
 | `platform/intelligence` | LSP, tree-sitter, import graph | beta |
 | `platform/knowledge` | Knowledge store and API | beta |
 | `platform/knowledge/extensions` | Knowledge system extension contracts | beta |
 | `platform/knowledge/home-graph` | Home Assistant Home Graph extension | beta |
+| `platform/media` | Media indexing, search, and image-understanding APIs | beta |
+| `platform/mcp` | MCP config, registry, client, and sandbox bridge | beta |
 | `platform/multimodal` | Multimodal input | beta |
-| `platform/node` | Node-like runtime boundary and capability metadata | beta |
+| `platform/node` | Runtime capability metadata plus Node-like runtime-boundary helpers; not a platform aggregate | beta |
 | `platform/node/runtime-boundary` | Client-safe runtime boundary detection (no Bun globals) | beta |
 | `platform/pairing` | Companion token, QR, pairing index | beta |
+| `platform/permissions` | Permission analysis, prompts, briefs, and manager | beta |
+| `platform/plugins` | Plugin API, loader, and manager | beta |
+| `platform/profiles` | Profile manager and profile shape helpers | beta |
 | `platform/providers` | LLM provider registry, catalog, capabilities | beta |
-| `platform/runtime` | Full runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, ui as namespaces. Lower-level subsystems (events, store, lifecycle, tasks, sandbox) are reachable through dedicated subpaths or through ./platform/runtime/state and ./platform/runtime/store. | beta |
+| `platform/runtime` | Curated runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, and UI as namespaces | beta |
 | `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
+| `platform/runtime/sandbox` | Sandbox host status, presets, reviews, and session registry helpers | beta |
+| `platform/runtime/settings` | Managed settings and control-plane settings bundle helpers | beta |
 | `platform/runtime/state` | Runtime state primitives | beta |
 | `platform/runtime/store` | Runtime store and selectors | beta |
 | `platform/runtime/ui` | Curated UI surface (model-picker, provider-health); not a barrel of `runtime/ui/` subdirectory | beta |
+| `platform/scheduler` | Scheduler service | beta |
+| `platform/security` | User auth, token audit, and security helpers | beta |
+| `platform/sessions` | Session manager, change tracking, and orchestration | beta |
+| `platform/state` | Project index, mode, file cache, undo, and KV state | beta |
+| `platform/templates` | Template manager | beta |
 | `platform/tools` | Tool registry, exec, fetch, read, write, edit, agent | beta |
+| `platform/types` | Shared platform type contracts | beta |
 | `platform/utils` | Shared platform utilities | beta |
 | `platform/voice` | Voice provider registry, provider-agnostic TTS/STT/realtime voice types, and streaming TTS primitives | beta |
+| `platform/watchers` | Watcher registry | beta |
+| `platform/web-search` | Web search provider registry, service, and providers | beta |
+| `platform/workflow` | Workflow trigger executor | beta |
+| `platform/workspace` | Daemon home and workspace swap manager | beta |
 
-> **Subsystems available internally via `./platform` and `./platform/node`:** The following subsystems are accessible as namespaces through the aggregate `./platform` or `./platform/node` entry points, but do not have their own dedicated public subpaths: `acp`, `adapters`, `artifacts`, `automation`, `batch`, `channels`, `cloudflare`, `companion`, `control-plane`, `discovery`, `hooks`, `mcp`, `media`, `security`, `state`, `watchers`, `web-search`. Import them via `@pellux/goodvibes-sdk/platform` if you are embedding the full platform surface.
+Subsystems without public subpaths are package implementation. They are consumed by exported domain seams rather than through a catch-all platform import.
 
 ---
 

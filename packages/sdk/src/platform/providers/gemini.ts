@@ -119,13 +119,13 @@ export class GeminiProvider implements LLMProvider {
       return null;
     }
 
-    // Delete old cache if hash changed (fire-and-forget)
+    // Delete the previous cache if the prompt hash changed.
     if (this.cachedContentName && this.cachedContentHash !== hash) {
       const oldName = this.cachedContentName;
       fetchWithTimeout(`${GEMINI_API_BASE}/${oldName}`, {
         method: 'DELETE',
         headers: { 'x-goog-api-key': this.apiKey },
-      }).catch(err => logger.warn('[Gemini] Failed to delete old cache', { error: summarizeError(err) }));
+      }).catch(err => logger.warn('[Gemini] Failed to delete previous cache', { error: summarizeError(err) }));
     }
 
     // Create new cached content
@@ -159,7 +159,7 @@ export class GeminiProvider implements LLMProvider {
           this.uncacheableHashes.add(hash);
           logger.debug('[Gemini] Content below cache minimum', { status: res.status, error: text.slice(0, 200) });
         } else {
-          logger.debug('[Gemini] Cache creation failed', { status: res.status, error: text.slice(0, 200) });
+          logger.warn('[Gemini] Cache creation failed', { status: res.status, error: text.slice(0, 200) });
         }
         return null;
       }
@@ -172,7 +172,7 @@ export class GeminiProvider implements LLMProvider {
       logger.info(`[Gemini] Created cache: ${data.name} (expires ${data.expireTime})`);
       return data.name;
     } catch (err) {
-      logger.debug('[Gemini] Cache creation error', { error: summarizeError(err) });
+      logger.warn('[Gemini] Cache creation error', { error: summarizeError(err) });
       return null;
     }
   }
@@ -305,7 +305,10 @@ export class GeminiProvider implements LLMProvider {
             try {
               chunk = JSON.parse(data) as GeminiResponseBody;
             } catch {
-              logger.debug('Gemini SSE: failed to parse JSON chunk', { data });
+              logger.warn('Gemini SSE: failed to parse JSON chunk', {
+                chunkPreview: data.slice(0, 200),
+                chunkLength: data.length,
+              });
               continue;
             }
 
@@ -353,7 +356,7 @@ export class GeminiProvider implements LLMProvider {
         ? 'tool_call'
         : mapGeminiStopReason(lastFinishReason);
 
-      // Clear old signatures — new ones were captured from this response's functionCall parts
+      // Clear stale signatures; fresh ones were captured from this response's functionCall parts.
       // (kept across calls within a tool-use loop, cleared when no new functionCalls arrive)
       if (toolCalls.length === 0) {
         this.thoughtSignatures.clear();

@@ -14,6 +14,8 @@ import { DEFAULT_COMPONENT_CONFIG, appendBounded, applyFilter } from '../types.j
 import type { DiagnosticFilter } from '../types.js';
 import type { OpsInterventionReason, OpsEvent } from '../../../../events/ops.js';
 import type { UiEventFeed } from '../../ui-events.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 // ---------------------------------------------------------------------------
 // Audit entry
@@ -51,7 +53,7 @@ export interface OpsAuditEntry {
 // OpsPanel
 // ---------------------------------------------------------------------------
 
-/** Internal mutable record (same shape as immutable OpsAuditEntry). */
+/** Mutable record with the same shape as immutable OpsAuditEntry. */
 type MutableAuditRecord = {
   seq: number;
   ts: number;
@@ -148,8 +150,8 @@ export class OpsPanel {
     for (const cb of this._subscribers) {
       try {
         cb();
-      } catch {
-        // Non-fatal — subscriber errors must not crash the panel
+      } catch (error) {
+        logger.warn('[OpsPanel] subscriber error', { error: summarizeError(error) });
       }
     }
   }

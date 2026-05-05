@@ -5,12 +5,12 @@
  * - `isRuntimeEventDomain(value)` — typeguard for the 27 domain names.
  * - `isKnownEventType(value)` — typeguard for the full discriminant union of event types.
  * - `registeredEventTypes()` — enumerates all known event-type strings.
- * - `validateEvent(envelope)` — runtime-validates an envelope's payload against the contract registry.
+ * - `validateKnownEvent(envelope)` — runtime-validates an envelope's payload against the contract registry.
  */
 export type { SessionEvent, SessionEventType } from './session.js';
 export type { TurnEvent, TurnEventType, TurnInputOrigin, TurnStopReason, PartialToolCall } from './turn.js';
 export type { ProviderEvent, ProviderEventType } from './providers.js';
-export type { ToolEvent, ToolEventType } from './tools.js';
+export type { ToolEvent, ToolEventType, ToolResultSummary } from './tools.js';
 export type { TaskEvent, TaskEventType } from './tasks.js';
 export type { AgentEvent, AgentEventType } from './agents.js';
 export type { WorkflowEvent, WorkflowEventType, Constraint, WrfcState } from './workflows.js';
@@ -19,11 +19,11 @@ export type { CommunicationEvent, CommunicationEventType, CommunicationKind, Com
 export type { PlannerEvent, PlannerEventType, PlannerDecision, ExecutionStrategy, StrategyCandidate } from './planner.js';
 export type { PermissionEvent, PermissionEventType } from './permissions.js';
 export type { PluginEvent, PluginEventType } from './plugins.js';
-export type { McpEvent, McpEventType } from './mcp.js';
+export type { McpEvent, McpEventType, McpServerRole, McpTrustMode, QuarantineReason } from './mcp.js';
 export type { TransportEvent, TransportEventType } from './transport.js';
 export type { CompactionEvent, CompactionEventType } from './compaction.js';
 export type { GoodVibesUIEvent, GoodVibesUIEventType } from './ui.js';
-export type { OpsEvent, OpsEventType } from './ops.js';
+export type { OpsEvent, OpsEventType, OpsInterventionReason } from './ops.js';
 export { RUNTIME_EVENT_DOMAINS, isRuntimeEventDomain } from './domain-map.js';
 export type {
   AnyRuntimeEvent,
@@ -67,7 +67,6 @@ export type { WorkspaceEvent, WorkspaceEventType } from './workspace.js';
 export {
   isKnownEventType,
   registeredEventTypes,
-  validateEvent,
   validateKnownEvent,
 } from './contracts.js';
 export type {

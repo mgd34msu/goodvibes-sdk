@@ -43,7 +43,7 @@ export function createDaemonMediaRouteHandlers(
   return {
     getVoiceStatus: async () => Response.json(await context.voiceService.getStatus(Boolean(context.configManager.get('ui.voiceEnabled')))),
     getVoiceProviders: async () => {
-      // MAJ-09: reuse the same status snapshot instead of issuing a second provider-status probe.
+      // reuse the same status snapshot instead of issuing a second provider-status probe.
       const status = await context.voiceService.getStatus(Boolean(context.configManager.get('ui.voiceEnabled')));
       return Response.json({ providers: status.providers });
     },
@@ -197,7 +197,7 @@ async function handleVoiceTts(context: DaemonMediaRouteContext, req: Request): P
   if (admin) return admin;
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
-  // MAJ-10: pass context so defaults from tts.provider/tts.voice config are applied
+  // pass context so defaults from tts.provider/tts.voice config are applied
   // consistently with handleVoiceTtsStream.
   const { providerId, input } = readVoiceSynthesisRequest(body, context);
   if (!input.text.trim()) return jsonErrorResponse({ error: 'Missing text' }, { status: 400 });
@@ -407,7 +407,7 @@ async function handleArtifactContent(context: DaemonMediaRouteContext, artifactI
     });
     const download = new URL(req.url).searchParams.get('download');
     if (record.filename && download !== '0') {
-      // NIT-05: strip non-ASCII bytes so the fallback filename is actually ASCII.
+      // Strip non-ASCII bytes so the ASCII filename parameter stays valid.
       const asciiFallback = record.filename.replace(/[^\x20-\x7E]/g, '_').replace(/[\r\n"]/g, '_');
       headers.set('Content-Disposition', `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(record.filename)}`);
     }

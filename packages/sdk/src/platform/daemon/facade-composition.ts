@@ -1,6 +1,6 @@
 import { AgentManager } from '../tools/agent/index.js';
 import { resolveHostBinding } from './host-resolver.js';
-import { ConfigManager } from '../config/manager.js';
+import type { ConfigManager } from '../config/manager.js';
 import { RuntimeEventBus } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
 import { setTelemetryIncludeRawPrompts } from '../runtime/telemetry/redaction-config.js';
@@ -10,6 +10,7 @@ import {
   ChannelProviderRuntimeManager,
 } from '../channels/index.js';
 import { ControlPlaneGateway } from '../control-plane/index.js';
+import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { KnowledgeGraphqlService } from '../knowledge/index.js';
 import { DaemonControlPlaneHelper } from './control-plane.js';
 import { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
@@ -20,7 +21,6 @@ import { DaemonBatchManager } from '../batch/index.js';
 import { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import type { CompanionLLMProvider, CompanionProviderChunk } from '../companion/companion-chat-manager.js';
 import { findModelDefinition, findModelDefinitionForProvider } from '../providers/registry-models.js';
-import { getBaseModelId } from '../providers/registry-helpers.js';
 import { CATALOG_PROVIDER_NAME_ALIASES } from '../providers/builtin-registry.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
@@ -66,9 +66,12 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
     async *chatStream(messages, options): AsyncIterable<CompanionProviderChunk> {
       let provider: import('../providers/interface.js').LLMProvider;
       try {
-        provider = options.model
-          ? providerRegistry.getForModel(options.model, options.provider ?? undefined)
-          : providerRegistry.getForModel(providerRegistry.getCurrentModel().id);
+        if (options.model) {
+          provider = providerRegistry.getForModel(options.model, options.provider ?? undefined);
+        } else {
+          const current = providerRegistry.getCurrentModel();
+          provider = providerRegistry.getForModel(current.registryKey, current.provider);
+        }
       } catch {
         // No provider is configured or the requested model/provider is unavailable.
         // Yield a structured error so the companion session receives feedback
@@ -89,21 +92,28 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
         };
         return;
       }
-      // Resolve the bare model id from the registry's ModelDefinition.
-      // options.model is the registry key (e.g. "inception:mercury-2"); provider.chat()
-      // needs just the bare id (e.g. "mercury-2") — upstream compat APIs reject the prefix.
-      const bareModelId = ((): string => {
+      // Resolve the provider model id from the registry's ModelDefinition.
+      // options.model is the provider-qualified registry key (for example
+      // "inception:mercury-2"); provider.chat() receives the provider's id.
+      let providerModelId: string;
+      try {
         const modelRegistry = providerRegistry.listModels();
         const def = options.model
           ? (options.provider
               ? findModelDefinitionForProvider(options.model, options.provider, modelRegistry, CATALOG_PROVIDER_NAME_ALIASES)
               : findModelDefinition(options.model, modelRegistry))
-          : undefined;
-        if (def) return def.id;
-        // Fallback: strip provider prefix from registry key (safe for all known formats)
-        if (options.model) return getBaseModelId(options.model);
-        return providerRegistry.getCurrentModel().id;
-      })();
+          : providerRegistry.getCurrentModel();
+        if (!def) {
+          throw new Error(`Model '${options.model}' is not in the provider registry.`);
+        }
+        providerModelId = def.id;
+      } catch (err) {
+        yield {
+          type: 'error' as const,
+          error: err instanceof Error ? err.message : 'Requested companion model is not available',
+        };
+        return;
+      }
       // Queue-based streaming bridge: onDelta pushes into a queue consumed by the generator.
       const queue: CompanionProviderChunk[] = [];
       let resolve: (() => void) | null = null;
@@ -116,7 +126,7 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
         resolve = null;
       };
       const chatPromise = provider.chat({
-        model: bareModelId,
+        model: providerModelId,
         messages: messages.map((m) => {
           if (m.role === 'tool') {
             return {
@@ -179,13 +189,10 @@ export function createCompanionProviderAdapter(providerRegistry: ProviderRegistr
   };
 }
 
-export function resolveDaemonFacadeRuntime(
-  config: DaemonConfig,
-  fallbackConfigManager?: ConfigManager,
-): ResolvedDaemonFacadeRuntime {
+export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemonFacadeRuntime {
   const ownedWorkingDir = config.runtimeServices?.workingDirectory ?? config.workingDir;
   const ownedHomeDirectory = config.runtimeServices?.homeDirectory ?? config.homeDirectory;
-  const configManager = config.configManager ?? fallbackConfigManager ?? config.runtimeServices?.configManager;
+  const configManager = config.configManager ?? config.runtimeServices?.configManager;
   if (!config.runtimeServices && !configManager && (!ownedWorkingDir || !ownedHomeDirectory)) {
     throw new Error('DaemonServer requires explicit runtime services or explicit configManager plus workingDir/homeDirectory ownership.');
   }
@@ -248,10 +255,10 @@ export function resolveDaemonFacadeRuntime(
   const companionChatManager = new CompanionChatManager({
     eventPublisher: controlPlaneGateway,
     provider: createCompanionProviderAdapter(runtimeServices.providerRegistry),
-    // C-2: Explicitly opt into disk persistence for the daemon. Default is
-    // false (safe for tests/embedders); daemon is the only caller that needs it.
+    // Explicitly opt into disk persistence for the daemon. Default is false
+    // for tests and embedded hosts.
     persist: true,
-    // C-3: Wire the full ToolRegistry so LLM-emitted tool calls are executed.
+    // Wire the full ToolRegistry so LLM-emitted tool calls are executed.
     toolRegistry: runtimeServices.agentOrchestrator.getToolRegistry(),
     permissionManager: new PermissionManager(
       undefined,
@@ -332,7 +339,7 @@ export function createDaemonFacadeCollaborators(
 ): DaemonFacadeCollaborators {
   const { runtime } = options;
 
-  // OBS-06: wire telemetry.includeRawPrompts into turn-emitter redaction behavior.
+  // wire telemetry.includeRawPrompts into turn-emitter redaction behavior.
   // Default (false) redacts raw prompt/response content to {length, sha256, first100chars}.
   // Opt-in surfaces a startup WARN (emitted inside setTelemetryIncludeRawPrompts when true).
   setTelemetryIncludeRawPrompts(
@@ -515,9 +522,7 @@ export function configureDaemonSessionContinuation(options: {
     const spawned = options.trySpawnAgent({
       mode: 'spawn',
       task,
-      ...(input.routing?.modelId ? { model: input.routing.modelId } : {}),
-      ...(input.routing?.providerId ? { provider: input.routing.providerId } : {}),
-      ...(input.routing?.tools?.length ? { tools: [...input.routing.tools] } : {}),
+      ...buildSharedSessionAgentSpawnRoutingInput(input.routing),
       context: `shared-session:${sessionId}`,
     }, 'DaemonServer.sharedSessionFollowUp', sessionId);
     if (spawned instanceof Response) {

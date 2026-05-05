@@ -227,7 +227,7 @@ async function handleRegisterWatcher(context: DaemonSystemRouteContext, req: Req
     : label
       ? ((): string => {
           const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-          // NIT-10: if the label consists entirely of special chars the slug will be empty.
+          // If the label consists entirely of special chars the slug will be empty.
           return slug ? `watcher-${slug}` : `watcher-${Date.now()}`;
         })()
       : `watcher-${Date.now()}`;

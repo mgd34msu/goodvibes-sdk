@@ -175,7 +175,7 @@ describe('daemon settings read/write', () => {
   });
 
   test('overwrites an existing setting', () => {
-    writeDaemonSetting(daemonHome, 'runtime.workingDir', '/old');
+    writeDaemonSetting(daemonHome, 'runtime.workingDir', '/previous');
     writeDaemonSetting(daemonHome, 'runtime.workingDir', '/new');
     expect(readDaemonSetting(daemonHome, 'runtime.workingDir')).toBe('/new');
   });
@@ -468,7 +468,7 @@ describe('WorkspaceSwapManager: edge cases', () => {
     expect(result.ok).toBe(true);
     // COMPLETED event must have been emitted
     expect(completedPayloads).toHaveLength(1);
-    // persistedInDaemonSettings must be false (write failed non-fatally)
+    // persistedInDaemonSettings must be false because settings persistence failed.
     expect(completedPayloads[0]!['persistedInDaemonSettings']).toBe(false);
   });
 });

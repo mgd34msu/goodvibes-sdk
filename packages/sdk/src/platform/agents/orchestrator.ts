@@ -12,6 +12,7 @@ import { ProjectIndex } from '../state/project-index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { ToolLLM } from '../config/tool-llm.js';
 import type { LLMProvider } from '../providers/interface.js';
+import type { ModelDefinition } from '../providers/registry-types.js';
 import type { RequestProfile } from '../providers/capabilities.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -27,15 +28,16 @@ import {
   emitOrchestrationNodeFailed,
   emitOrchestrationNodeProgress,
 } from '../runtime/emitters/index.js';
+import { findModelDefinition } from '../providers/registry-models.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { runAgentTask, type AgentOrchestratorRunContext } from './orchestrator-runner.js';
 export { summarizeToolArgs } from './orchestrator-utils.js';
 
 type AgentProviderRoutingPolicy = NonNullable<AgentRecord['routing']>;
+type ActiveModelRef = { id: string; provider: string; registryKey: string };
 type ResolvedAgentProviderRouting = {
   readonly requestedModelId: string;
   readonly providerSelection: NonNullable<AgentProviderRoutingPolicy['providerSelection']>;
-  readonly unresolvedModelPolicy: NonNullable<AgentProviderRoutingPolicy['unresolvedModelPolicy']>;
   readonly providerFailurePolicy: NonNullable<AgentProviderRoutingPolicy['providerFailurePolicy']>;
   readonly providerId?: string | undefined;
   readonly providerOverride?: string | undefined;
@@ -258,13 +260,13 @@ export class AgentOrchestrator {
   private resolveProviderForRecord(
     providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels'>,
     record: AgentRecord,
-    currentModel: { id: string; provider: string },
+    currentModel: ActiveModelRef,
   ): { provider: LLMProvider; modelId: string; requestedModelId: string } {
     const optimizedRoute = this.resolveOptimizedProviderRoute(providerRegistry, record);
     if (optimizedRoute) return optimizedRoute;
 
-    const routing = this.resolveProviderRouting(record, currentModel);
-    const scopedModelId = this.normalizeRequestedModelId(routing.requestedModelId, routing.providerOverride);
+    const routing = this.resolveProviderRouting(record, currentModel, providerRegistry.listModels());
+    const scopedModelId = this.normalizeRequestedModelId(routing.requestedModelId);
 
     try {
       return {
@@ -273,25 +275,6 @@ export class AgentOrchestrator {
         requestedModelId: scopedModelId,
       };
     } catch (err) {
-      if (routing.requestedModelId !== currentModel.id && routing.unresolvedModelPolicy === 'fallback-to-current') {
-        logger.debug(`[AgentOrchestrator] Requested model '${routing.requestedModelId}' not found, falling back to '${currentModel.id}'`);
-        try {
-          return {
-            provider: providerRegistry.getForModel(currentModel.id, currentModel.provider),
-            modelId: this.resolveChatModelId(providerRegistry, currentModel.id, currentModel.provider),
-            requestedModelId: currentModel.id,
-          };
-        } catch (fallbackErr) {
-          throw new Error(
-            `Cannot resolve provider for model '${routing.requestedModelId}' (${
-              summarizeError(err)
-            }) or fallback '${currentModel.id}' (${
-              summarizeError(fallbackErr)
-            })`,
-          );
-        }
-      }
-
       throw new Error(
         `Cannot resolve provider for model '${scopedModelId}': ${
           summarizeError(err)
@@ -340,9 +323,20 @@ export class AgentOrchestrator {
 
   private resolveProviderRouting(
     record: AgentRecord,
-    currentModel: { id: string; provider: string },
+    currentModel: ActiveModelRef,
+    modelRegistry: readonly ModelDefinition[],
   ): ResolvedAgentProviderRouting {
-    const requestedModelId = record.model ?? currentModel.id;
+    const requestedModelId = this.normalizeRequestedModelId(record.model ?? currentModel.registryKey);
+    if (record.model) this.assertProviderQualifiedModel(record.model, 'Agent model overrides');
+    const providerFromRegistryKey = record.model
+      ? findModelDefinition(record.model, modelRegistry)?.provider
+      : undefined;
+    if (record.provider && !record.model) {
+      throw new Error('Agent provider routing requires a provider-qualified model when provider is supplied.');
+    }
+    if (record.provider && providerFromRegistryKey && providerFromRegistryKey !== record.provider) {
+      throw new Error(`Agent model override '${record.model}' conflicts with provider '${record.provider}'.`);
+    }
     const fallbackModels = (
       record.routing?.fallbackModels
       ?? record.fallbackModels
@@ -361,40 +355,42 @@ export class AgentOrchestrator {
     const effectiveProviderId = providerSelection === 'synthetic'
       ? undefined
       : providerSelection === 'concrete'
-        ? (providerId ?? currentModel.provider)
-        : currentModel.provider;
+        ? (providerId ?? providerFromRegistryKey ?? currentModel.provider)
+        : (providerFromRegistryKey ?? currentModel.provider);
     const providerOverride = effectiveProviderId !== 'synthetic'
       ? effectiveProviderId
       : undefined;
-    const unresolvedModelPolicy = record.routing?.unresolvedModelPolicy ?? (
-      providerOverride && providerOverride !== currentModel.provider
-        ? 'fail'
-        : 'fallback-to-current'
+    const providerFailurePolicy = record.routing?.providerFailurePolicy ?? (
+      fallbackModels.length > 0
+        ? 'ordered-fallbacks'
+        : 'fail'
     );
+    if (providerFailurePolicy === 'ordered-fallbacks' && fallbackModels.length === 0) {
+      throw new Error('Agent ordered fallback routing requires at least one provider-qualified fallback model.');
+    }
+    if (providerFailurePolicy === 'fail' && fallbackModels.length > 0) {
+      throw new Error('Agent fail routing cannot include fallback models; use ordered-fallbacks to enable model failover.');
+    }
     return {
       requestedModelId,
       providerSelection,
-      unresolvedModelPolicy,
-      providerFailurePolicy: record.routing?.providerFailurePolicy ?? (
-        fallbackModels.length > 0
-          ? 'ordered-fallbacks'
-          : 'fail'
-      ),
+      providerFailurePolicy,
       providerId,
       providerOverride,
       fallbackModels,
     };
   }
 
-  private normalizeRequestedModelId(
-    requestedModelId: string,
-    providerOverride?: string,
-  ): string {
-    if (!providerOverride || !requestedModelId.includes(':')) {
-      return requestedModelId;
-    }
+  private normalizeRequestedModelId(requestedModelId: string): string {
+    return requestedModelId.trim();
+  }
 
-    return splitModelRegistryKey(requestedModelId).resolvedModelId;
+  private assertProviderQualifiedModel(modelId: string, label: string): void {
+    try {
+      splitModelRegistryKey(modelId.trim());
+    } catch {
+      throw new Error(`${label} must be provider-qualified registry keys; received '${modelId}'.`);
+    }
   }
 
   private resolveChatModelId(
@@ -403,49 +399,42 @@ export class AgentOrchestrator {
     providerOverride?: string,
   ): string {
     const registry = providerRegistry.listModels();
-    const def = requestedModelId.includes(':')
-      ? providerOverride
-        ? registry.find((model) => model.registryKey === requestedModelId && model.provider === providerOverride)
-          ?? registry.find((model) => model.id === splitModelRegistryKey(requestedModelId).resolvedModelId && model.provider === providerOverride)
-        : registry.find((model) => model.registryKey === requestedModelId)
-          ?? registry.find((model) => model.id === requestedModelId)
-          ?? registry.find((model) => model.id === splitModelRegistryKey(requestedModelId).resolvedModelId)
-      : providerOverride
-        ? registry.find((model) => model.id === requestedModelId && model.provider === providerOverride)
-        : registry.find((model) => model.id === requestedModelId);
+    const def = providerOverride
+      ? registry.find((model) =>
+          model.provider === providerOverride &&
+          (model.registryKey === requestedModelId || model.id === requestedModelId))
+      : registry.find((model) => model.registryKey === requestedModelId);
     if (def) return def.id;
-    return requestedModelId;
+    throw new Error(`Model '${requestedModelId}' is not in registry.`);
   }
 
   private resolveFallbackModelRoutes(
     providerRegistry: Pick<ProviderRegistry, 'listModels' | 'getForModel'>,
     record: AgentRecord,
-    currentModel: { id: string; provider: string },
+    currentModel: ActiveModelRef,
     primaryRequestedModelId: string,
   ): Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }> {
-    const routing = this.resolveProviderRouting(record, currentModel);
+    const routing = this.resolveProviderRouting(record, currentModel, providerRegistry.listModels());
     if (routing.providerFailurePolicy !== 'ordered-fallbacks' || routing.fallbackModels.length === 0) {
       return [];
     }
     const seen = new Set([primaryRequestedModelId]);
     const routes: Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }> = [];
+    const modelRegistry = providerRegistry.listModels();
     for (const rawFallback of routing.fallbackModels) {
-      const requestedModelId = this.normalizeRequestedModelId(rawFallback, routing.providerOverride);
+      const requestedModelId = this.normalizeRequestedModelId(rawFallback);
       if (!requestedModelId || seen.has(requestedModelId)) continue;
       seen.add(requestedModelId);
-      try {
-        routes.push({
-          provider: providerRegistry.getForModel(requestedModelId, routing.providerOverride),
-          modelId: this.resolveChatModelId(providerRegistry, requestedModelId, routing.providerOverride),
-          requestedModelId,
-        });
-      } catch (error) {
-        logger.warn('[AgentOrchestrator] Ignoring unresolved fallback model', {
-          agentId: record.id,
-          modelId: requestedModelId,
-          error: summarizeError(error),
-        });
+      this.assertProviderQualifiedModel(requestedModelId, 'Agent fallback models');
+      const fallbackDef = findModelDefinition(requestedModelId, modelRegistry);
+      if (!fallbackDef) {
+        throw new Error(`Agent fallback model '${requestedModelId}' is not in registry.`);
       }
+      routes.push({
+        provider: providerRegistry.getForModel(requestedModelId, fallbackDef.provider),
+        modelId: this.resolveChatModelId(providerRegistry, requestedModelId, fallbackDef.provider),
+        requestedModelId,
+      });
     }
     return routes;
   }

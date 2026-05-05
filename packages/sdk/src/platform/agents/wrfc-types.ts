@@ -51,16 +51,11 @@ export interface WrfcChain {
   bufferedCompletion?: { agentId: string; fullOutput?: string | undefined } | undefined;
   /** Constraints propagated for this chain. Initialized to [] on construction. */
   constraints: Constraint[];
-  /**
-   * Internal bookkeeping flag — true once constraints have been captured and
-   * WORKFLOW_CONSTRAINTS_ENUMERATED has been emitted for this chain.
-   * Prevents duplicate emission on fixer re-runs.
-   */
+  /** True once constraints have been captured and WORKFLOW_CONSTRAINTS_ENUMERATED has been emitted. */
   constraintsEnumerated: boolean;
   /**
    * Synthetic critical issues injected by the controller (e.g. fixer constraint-continuity
    * violations). Prepended to the next review task body, then cleared so they fire once per cycle.
-   * Internal only — not surfaced on events.
    */
   syntheticIssues?: Array<{ severity: 'critical'; description: string }> | undefined;
 }

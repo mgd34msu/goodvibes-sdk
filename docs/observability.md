@@ -54,7 +54,7 @@ Log entries are buffered in memory and written asynchronously to avoid blocking 
 - Buffer flushes immediately when it reaches **10 entries** (hardcoded; `LOG_BUFFER_MAX` is an internal constant, not a public configurable).
 - If `configure()` has not been called, entries are buffered until a log directory is set.
 
-The logger is best-effort: filesystem errors are reported to `stderr` but do not propagate to the caller. Never put secrets or PII in log data.
+Logger filesystem errors are reported to `stderr` but do not propagate to the caller. Never put secrets or PII in log data.
 
 ---
 
@@ -640,7 +640,7 @@ const sdk = createGoodVibesSdk({
 
 The observer is propagated internally to the operator transport, peer transport, auth client, and realtime connectors — all from the single `observer` field on `GoodVibesSdkOptions`. You do not need to wire it separately to each subsystem.
 
-### Error swallowing guarantee
+### Observer Error Isolation
 
 Every observer call site is wrapped in:
 

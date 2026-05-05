@@ -42,7 +42,13 @@ export async function handleNtfySurfacePayload(
   url?: URL,
 ): Promise<Response> {
   if (isGoodVibesNtfyDeliveryEcho(body)) {
-    return Response.json({ acknowledged: true, queued: false, ignored: 'goodvibes-self-echo' });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'goodvibes-self-echo',
+      ignored: 'goodvibes-self-echo',
+    });
   }
   const topic = typeof body.topic === 'string'
     ? body.topic
@@ -63,7 +69,14 @@ export async function handleNtfySurfacePayload(
     return handleNtfyRemoteChatPayload(body, context, topic, message);
   }
   if (topic !== topics.agentTopic) {
-    return Response.json({ acknowledged: true, queued: false, ignored: 'unknown-ntfy-topic', topic });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'unknown-ntfy-topic',
+      ignored: 'unknown-ntfy-topic',
+      topic,
+    });
   }
   return handleNtfyAgentPayload(body, context, topic, message);
 }
@@ -111,7 +124,13 @@ async function handleNtfyChatPayload(
   const denied = await authorizeNtfyPayload(body, context, topic, message);
   if (denied) return denied;
   if (!message) {
-    return Response.json({ acknowledged: true, queued: false, topic });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      topic,
+    });
   }
   if (!context.publishConversationFollowup) {
     return Response.json({ error: 'ntfy chat routing is unavailable in this runtime' }, { status: 503 });
@@ -161,7 +180,13 @@ async function handleNtfyRemoteChatPayload(
   const denied = await authorizeNtfyPayload(body, context, topic, message);
   if (denied) return denied;
   if (!message) {
-    return Response.json({ acknowledged: true, queued: false, topic });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      topic,
+    });
   }
   if (!context.postNtfyRemoteChatMessage) {
     return Response.json({ error: 'ntfy remote chat is unavailable in this runtime' }, { status: 503 });
@@ -201,7 +226,14 @@ async function handleNtfyAgentPayload(
   });
 
   if (!message) {
-    return Response.json({ acknowledged: true, queued: false, bindingId: binding.id });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+      topic,
+    });
   }
 
   const submission = await context.sessionBroker.submitMessage({

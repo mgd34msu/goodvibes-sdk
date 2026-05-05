@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /**
  * A cache entry tracking file read history and content state.
@@ -84,9 +85,11 @@ export class FileStateCache {
     try {
       currentContent = readFileSync(filePath, 'utf-8');
       currentHash = this.hash(currentContent);
-    } catch {
-      // File no longer exists or unreadable
-      return { status: 'miss' };
+    } catch (err) {
+      if (isMissingFileError(err)) {
+        return { status: 'miss' };
+      }
+      throw new Error(`FileStateCache failed to read cached file ${filePath}: ${summarizeError(err)}`);
     }
 
     node.accessAt = Date.now();
@@ -258,6 +261,10 @@ export class FileStateCache {
       logger.debug('FileStateCache: LRU evict', { filePath: node.filePath });
     }
   }
+}
+
+function isMissingFileError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'code' in err && err.code === 'ENOENT';
 }
 
 // ---------------------------------------------------------------------------

@@ -75,7 +75,7 @@ release-history source.
 - [Troubleshooting](./troubleshooting.md)
 - [Testing and validation](./testing-and-validation.md) — commands and CI gates.
 - [Testing architecture](./testing.md) — suite structure and intent.
-- [Release and publishing](./release-and-publishing.md)
+- [Release policy](./release-and-publishing.md)
 - [Semver policy](./semver-policy.md)
 
 ## Generated References

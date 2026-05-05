@@ -103,7 +103,7 @@ export interface CompactionContext {
   /** Whether this compaction was triggered automatically or manually. */
   trigger: 'auto' | 'manual';
 
-  /** Model ID used for LLM extraction calls. */
+  /** Provider-qualified registryKey used for LLM extraction calls. */
   extractionModelId: string;
 
   /** Optional provider name for extraction model disambiguation. */

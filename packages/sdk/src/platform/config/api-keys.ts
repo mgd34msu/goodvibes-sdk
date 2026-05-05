@@ -55,7 +55,7 @@ export function getConfiguredApiKeys(): Record<string, string> {
   };
   for (const [prov, envVar] of Object.entries(mapping)) {
     let value = process.env[envVar];
-    // Fallback env var names
+    // Alternate env var names.
     if (!value && prov === 'gemini') value = process.env['GOOGLE_API_KEY'] ?? process.env['GOOGLE_GEMINI_API_KEY'];
     if (!value && prov === 'openai') value = process.env['OPENAI_KEY'];
     if (!value && prov === 'anthropic') value = process.env['CLAUDE_API_KEY'];

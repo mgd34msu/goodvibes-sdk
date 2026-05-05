@@ -78,20 +78,19 @@ binary-like stream data, so compressed PDF bytes are not stored as searchable
 text, summaries, sections, or wiki page material. If neither parser can produce
 readable text, PDF ingestion fails and the source is marked for retry/review
 instead of indexing placeholder evidence. Other non-HTML extractors are
-format-specific and produce extraction metadata plus best-effort limitations
+format-specific and produce extraction metadata plus explicit limitations
 when specialized parsing is unavailable.
 
 Text-bearing extractors also persist capped `structure.searchText` for
 retrieval. This field is intentionally bounded and separate from the short
 summary/excerpt/section fields so large manuals, PDFs, website snapshots, and
 office documents remain searchable without turning every query into an
-unbounded full-document scan. Home Graph also repairs older artifact-backed
-sources in place: when ask finds a relevant source with missing, stale, or
-stale placeholder extraction text, it re-extracts the stored artifact once and
-saves the improved extraction record for later queries. The general knowledge
-reindex path also re-extracts stored artifacts whose extraction is missing,
-placeholder-only, or from the old placeholder PDF extractor, so existing
-non-Home-Graph PDFs can be repaired without reuploading.
+unbounded full-document scan. Home Graph also repairs artifact-backed sources
+in place: when ask finds a relevant source with missing, stale, or placeholder
+extraction text, it re-extracts the stored artifact once and saves the improved
+extraction record for later queries. The general knowledge reindex path also
+re-extracts stored artifacts whose extraction is missing or placeholder-only,
+so non-Home-Graph PDFs can be repaired without reuploading.
 
 ## Semantic Wiki Loop
 
@@ -124,7 +123,7 @@ extraction have not changed, the SDK skips the source instead of reprocessing it
 on every run. Deterministic enrichment is a lower-quality fallback, not a final
 interpretation: when an LLM becomes available later, ask/reindex can upgrade
 deterministic semantic records for the matched source. Replacement semantic
-records supersede stale facts/pages for that source so old deterministic
+records supersede stale facts/pages for that source so weaker deterministic
 fragments do not remain in maps, pages, or answers beside upgraded facts. Broad
 reindex uses a small provider-backed LLM budget and then continues
 deterministically, so a large knowledge space can refresh without opening
@@ -228,7 +227,7 @@ raw snippet bullets. When matched evidence exists but fact extraction has not
 finished yet, the fallback still returns a synthesized evidence summary plus
 the missing gap instead of raw bullet snippets. Responses include answer text,
 confidence, sources, linked objects, facts, gaps, and ranked search results.
-This is the generic layer used by Home Graph and future knowledge spaces, so
+This is the generic layer used by Home Graph and other knowledge spaces, so
 clients should not implement their own snippet-to-answer logic. Answer
 synthesis has an SDK-owned hard
 timeout; if a provider ignores its own timeout or abort signal, Ask falls back
@@ -306,7 +305,7 @@ sources to the gap with `repairs_gap` edges. Accepted repair sources are then
 semantically re-enriched under the same run budget, and promoted fact nodes are
 linked back to the concrete subject with `describes` edges. Gap repair does not
 invent facts from search snippets. It gives the normal ingest, extraction,
-semantic enrichment, review, and future ask paths more source evidence to work
+semantic enrichment, review, and later ask paths more source evidence to work
 with. When useful extracted evidence is available from an accepted official or
 vendor source, the SDK promotes typed feature/capability/specification facts so
 the official evidence can drive follow-up answers and generated pages instead
@@ -455,7 +454,7 @@ can read the current page index and markdown through
 page content from source inventory locally.
 
 Home Graph reindex repairs existing uploads in place. It re-extracts
-placeholder or old PDF extraction rows, auto-links sources to matching Home
+missing or placeholder extraction rows, auto-links sources to matching Home
 Assistant devices/entities when identity evidence is strong enough, semantically
 enriches changed or forced sources into facts/pages/gaps, and regenerates
 generated pages for devices affected by repaired/newly linked evidence or an
@@ -487,7 +486,7 @@ Unknown-battery checks are limited to plausible battery-powered physical
 devices, and missing-manual checks are limited to likely physical devices that
 do not already have a linked source. Review decisions on Home Graph issues can
 apply semantic facts such as `batteryPowered: false`, `batteryType: "none"`,
-or `manualRequired: false`, and those facts suppress future generated issues
+or `manualRequired: false`, and those facts suppress later generated issues
 for the same subject.
 
 See [Home Assistant integration](./homeassistant-integration.md) for daemon

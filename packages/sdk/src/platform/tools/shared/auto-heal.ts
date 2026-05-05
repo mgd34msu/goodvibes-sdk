@@ -7,7 +7,8 @@
  *   3. ToolLLM: LLM-assisted fix with error context
  *
  * Design constraints:
- *   - Never throws — returns {healed: false, content: originalContent} on any failure
+ *   - Returns {healed: false, content: originalContent} with warnings whenever
+ *     repair cannot safely produce validated replacement content
  *   - Each stage checks if errors are resolved before proceeding to the next
  *   - Uses Bun.which() to detect available tools at runtime
  */
@@ -26,6 +27,12 @@ export interface HealResult {
   healed: boolean;
   content: string;
   method?: 'formatter' | 'linter' | 'llm' | undefined;
+  warnings?: string[] | undefined;
+}
+
+function addWarning(warnings: string[], message: string, error?: unknown): void {
+  const warning = error === undefined ? message : `${message}: ${summarizeError(error)}`;
+  warnings.push(warning);
 }
 
 /**
@@ -51,6 +58,7 @@ export class AutoHealer {
    * @returns            Heal result — healed=true means content was fixed.
    */
   async heal(filePath: string, content: string, errors: string[]): Promise<HealResult> {
+    const warnings: string[] = [];
     try {
       // Config gate: only run when tools.autoHeal is enabled
       if (!this.configManager.get('tools.autoHeal')) {
@@ -64,42 +72,50 @@ export class AutoHealer {
       const ext = extname(filePath) || '.txt';
       const tmpFile = join(tmpdir(), `auto-heal-${randomBytes(6).toString('hex')}${ext}`);
 
+      let result: HealResult = { healed: false, content };
       try {
         // Stage 1: Formatter
-        const formatterResult = await this._tryFormatter(tmpFile, content, errors);
+        const formatterResult = await this._tryFormatter(tmpFile, content, errors, warnings);
         if (formatterResult.healed) {
-          return formatterResult;
+          result = formatterResult;
+        } else {
+          // Stage 2: Linter fix
+          const linterResult = await this._tryLinter(tmpFile, formatterResult.content, errors, warnings);
+          if (linterResult.healed) {
+            result = linterResult;
+          } else {
+            // Stage 3: ToolLLM
+            result = await this._tryLLM(filePath, linterResult.content, errors, warnings);
+          }
         }
-
-        // Stage 2: Linter fix
-        const linterResult = await this._tryLinter(tmpFile, formatterResult.content, errors);
-        if (linterResult.healed) {
-          return linterResult;
-        }
-
-        // Stage 3: ToolLLM
-        const llmResult = await this._tryLLM(filePath, linterResult.content, errors);
-        return llmResult;
       } finally {
         // Clean up temp file
         try {
           if (existsSync(tmpFile)) {
             unlinkSync(tmpFile);
           }
-        } catch {
-          // Ignore cleanup errors
+        } catch (cleanupErr) {
+          addWarning(warnings, `Auto-heal cleanup failed for temporary file '${tmpFile}'`, cleanupErr);
         }
       }
+
+      return warnings.length > 0 ? { ...result, warnings } : result;
     } catch (err) {
-      logger.debug('AutoHealer.heal: unexpected error (non-fatal)', { error: summarizeError(err) });
-      return { healed: false, content };
+      logger.warn('AutoHealer.heal: unexpected error', { error: summarizeError(err) });
+      addWarning(warnings, 'Auto-heal failed unexpectedly', err);
+      return { healed: false, content, warnings };
     }
   }
 
   /**
    * Stage 1: Try formatting with prettier or biome.
    */
-  private async _tryFormatter(tmpFile: string, content: string, errors: string[]): Promise<HealResult> {
+  private async _tryFormatter(
+    tmpFile: string,
+    content: string,
+    errors: string[],
+    warnings: string[],
+  ): Promise<HealResult> {
     try {
       const prettier = Bun.which('prettier');
       const biome = Bun.which('biome');
@@ -125,6 +141,7 @@ export class AutoHealer {
 
       if (proc.exitCode !== 0) {
         logger.debug('AutoHealer: formatter exited non-zero, skipping stage 1');
+        addWarning(warnings, 'Auto-heal formatter exited non-zero; continuing to later repair stages');
         return { healed: false, content };
       }
 
@@ -136,7 +153,7 @@ export class AutoHealer {
       }
 
       // Check if errors appear resolved (heuristic: no syntax errors after format)
-      const resolved = await this._errorsResolved(tmpFile, errors);
+      const resolved = await this._errorsResolved(tmpFile, errors, warnings);
       if (resolved) {
         logger.debug('AutoHealer: errors resolved by formatter');
         return { healed: true, content: formatted, method: 'formatter' };
@@ -145,7 +162,8 @@ export class AutoHealer {
       // Formatter ran but errors remain — pass updated content to next stage
       return { healed: false, content: formatted };
     } catch (err) {
-      logger.debug('AutoHealer: formatter stage failed (non-fatal)', { error: summarizeError(err) });
+      logger.warn('AutoHealer: formatter stage failed', { error: summarizeError(err) });
+      addWarning(warnings, 'Auto-heal formatter stage failed; continuing to later repair stages', err);
       return { healed: false, content };
     }
   }
@@ -153,7 +171,12 @@ export class AutoHealer {
   /**
    * Stage 2: Try linter fix with eslint.
    */
-  private async _tryLinter(tmpFile: string, content: string, errors: string[]): Promise<HealResult> {
+  private async _tryLinter(
+    tmpFile: string,
+    content: string,
+    errors: string[],
+    warnings: string[],
+  ): Promise<HealResult> {
     try {
       const eslint = Bun.which('eslint');
 
@@ -177,7 +200,7 @@ export class AutoHealer {
         return { healed: false, content };
       }
 
-      const resolved = await this._errorsResolved(tmpFile, errors);
+      const resolved = await this._errorsResolved(tmpFile, errors, warnings);
       if (resolved) {
         logger.debug('AutoHealer: errors resolved by linter');
         return { healed: true, content: fixed, method: 'linter' };
@@ -185,7 +208,8 @@ export class AutoHealer {
 
       return { healed: false, content: fixed };
     } catch (err) {
-      logger.debug('AutoHealer: linter stage failed (non-fatal)', { error: summarizeError(err) });
+      logger.warn('AutoHealer: linter stage failed', { error: summarizeError(err) });
+      addWarning(warnings, 'Auto-heal linter stage failed; continuing to LLM repair', err);
       return { healed: false, content };
     }
   }
@@ -193,7 +217,12 @@ export class AutoHealer {
   /**
    * Stage 3: Try ToolLLM with error context.
    */
-  private async _tryLLM(filePath: string, content: string, errors: string[]): Promise<HealResult> {
+  private async _tryLLM(
+    filePath: string,
+    content: string,
+    errors: string[],
+    warnings: string[],
+  ): Promise<HealResult> {
     try {
       const errorList = errors.map((e, i) => `${i + 1}. ${e}`).join('\n');
       const prompt = [
@@ -219,6 +248,7 @@ export class AutoHealer {
 
       if (!response || response.trim() === '') {
         logger.debug('AutoHealer: LLM returned empty response');
+        addWarning(warnings, 'Auto-heal LLM returned an empty response');
         return { healed: false, content };
       }
 
@@ -226,23 +256,25 @@ export class AutoHealer {
       const llmTmpFile = join(tmpdir(), `auto-heal-llm-${randomBytes(6).toString('hex')}${extname(filePath) || '.txt'}`);
       try {
         writeFileSync(llmTmpFile, response, 'utf-8');
-        const resolved = await this._errorsResolved(llmTmpFile, errors);
+        const resolved = await this._errorsResolved(llmTmpFile, errors, warnings);
         if (!resolved) {
           logger.debug('AutoHealer: LLM response did not resolve errors');
+          addWarning(warnings, 'Auto-heal LLM response did not resolve validation errors');
           return { healed: false, content };
         }
       } finally {
         try {
           if (existsSync(llmTmpFile)) unlinkSync(llmTmpFile);
-        } catch {
-          // Ignore cleanup errors
+        } catch (cleanupErr) {
+          addWarning(warnings, `Auto-heal cleanup failed for temporary LLM file '${llmTmpFile}'`, cleanupErr);
         }
       }
 
       logger.debug('AutoHealer: errors resolved by LLM');
       return { healed: true, content: response, method: 'llm' };
     } catch (err) {
-      logger.debug('AutoHealer: LLM stage failed (non-fatal)', { error: summarizeError(err) });
+      logger.warn('AutoHealer: LLM stage failed', { error: summarizeError(err) });
+      addWarning(warnings, 'Auto-heal LLM stage failed', err);
       return { healed: false, content };
     }
   }
@@ -253,7 +285,7 @@ export class AutoHealer {
    * For JS/TS files: uses Bun's built-in transpiler to check for syntax errors.
    * For other files: assumes resolved if formatter/linter succeeded (conservative).
    */
-  private async _errorsResolved(tmpFile: string, _errors: string[]): Promise<boolean> {
+  private async _errorsResolved(tmpFile: string, _errors: string[], warnings: string[]): Promise<boolean> {
     try {
       const ext = extname(tmpFile).toLowerCase();
       const isJsTs = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs'].includes(ext);
@@ -274,9 +306,9 @@ export class AutoHealer {
       } catch {
         return false;
       }
-    } catch {
-      // If we can't check, optimistically assume resolved
-      return true;
+    } catch (err) {
+      addWarning(warnings, `Auto-heal could not verify repaired content in '${tmpFile}'`, err);
+      return false;
     }
   }
 }

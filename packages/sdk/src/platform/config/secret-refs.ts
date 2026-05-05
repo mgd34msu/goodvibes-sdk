@@ -2,6 +2,8 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
+import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 
 export type SecretProviderSource =
   | 'env'
@@ -118,7 +120,7 @@ export type SecretCommandRunner = (
 ) => Promise<SecretCommandRunResult>;
 
 export interface SecretRefResolutionOptions {
-  readonly resolveLocalSecret?: ((key: string) => Promise<string | null>) | undefined | undefined;
+  readonly resolveLocalSecret?: ((key: string) => Promise<string | null>) | undefined;
   readonly runCommand?: SecretCommandRunner | undefined;
   readonly homeDirectory?: string | undefined;
 }
@@ -590,6 +592,11 @@ function stripFinalNewline(value: string): string {
   return value.replace(/\r?\n$/, '');
 }
 
+function summarizeCommandStderr(stderr: string): string {
+  const trimmed = stderr.trim();
+  return trimmed.length > 0 ? `: ${trimmed.slice(0, 500)}` : '';
+}
+
 async function defaultRunCommand(
   command: string,
   args: readonly string[],
@@ -639,7 +646,7 @@ async function runChecked(
   const runner = options.runCommand ?? defaultRunCommand;
   const result = await runner(command, args, runOptions);
   if (result.exitCode !== 0) {
-    throw new Error(`Secret provider ${ref.source} command failed with exit ${result.exitCode}`);
+    throw new Error(`Secret provider ${ref.source} command failed with exit ${result.exitCode}${summarizeCommandStderr(result.stderr)}`);
   }
   return stripFinalNewline(result.stdout);
 }
@@ -844,7 +851,12 @@ export async function resolveSecretInput(
   if (ref) {
     try {
       return (await resolveSecretRef(ref, options)).value;
-    } catch {
+    } catch (error) {
+      logger.warn('Secret reference resolution failed', {
+        source: ref.source,
+        ref: describeSecretRef(ref),
+        error: summarizeError(error),
+      });
       return null;
     }
   }

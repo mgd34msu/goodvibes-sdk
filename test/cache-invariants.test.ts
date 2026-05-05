@@ -58,7 +58,7 @@ function makeMinimalRegistry(): ProviderRegistry {
       record: () => {},
     },
     favoritesStore: {
-      load: async () => ({ favorites: [], pinnedModelId: null }),
+      load: async () => ({ pinned: [], history: [] }),
     },
     benchmarkStore: {
       getBenchmarks: () => [],
@@ -276,18 +276,9 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
     // cannot fire between them, then verify the dispatch carries the LAST
     // event's createdAt timestamp.
     //
-    // Root cause of the CI flake in the previous version: an intermediate
-    // `await setTimeout(5)` between the two rememberEvent calls yielded the
-    // event loop, allowing the setImmediate scheduled by the FIRST
-    // rememberEvent to fire before the second call. The dispatch then
-    // captured the first event's timestamp, not the second's.
-    //
-    // Fix: emit both events synchronously. To distinguish which event's
-    // timestamp was captured we read _lastEventAt directly from the gateway
-    // after the second call and assert the dispatch payload matches it
-    // (not the first event's timestamp which would differ if measured
-    // separately — but since they're in the same synchronous block they
-    // may share a ms. Instead we just assert the payload matches the
+    // Emit both events synchronously. To distinguish which event's timestamp
+    // was captured we read _lastEventAt directly from the gateway after the
+    // second call and assert the dispatch payload matches it.
     // gateway's own _lastEventAt field, which is always the most recent).
     let capturedLastEventAt = -1;
     const mockDispatch = {

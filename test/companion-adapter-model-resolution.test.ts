@@ -1,17 +1,8 @@
 /**
  * companion-adapter-model-resolution.test.ts
  *
- * Regression test for: companion adapter passes compound registry key
- * ("inception:mercury-2") to provider.chat() instead of bare model id
- * ("mercury-2"), causing 400 invalid_request_error from upstream compat APIs.
- *
- * Root cause: createCompanionProviderAdapter() used options.model directly as
- * the `model` field in provider.chat(). options.model is the registry key
- * (with provider prefix); upstream compat APIs (InceptionLabs, Venice,
- * Cerebras, Groq, etc.) only accept bare ids.
- *
- * Fix: resolve the ModelDefinition via the registry and use def.id (bare),
- * with getBaseModelId() as a safe fallback.
+ * Verifies that the companion adapter resolves a registry key to the
+ * provider-local model id before calling provider.chat().
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -22,7 +13,7 @@ import type { LLMProvider, ChatRequest, ChatResponse } from '../packages/sdk/src
 import type { ToolDefinition } from '../packages/sdk/src/platform/types/tools.js';
 
 // ---------------------------------------------------------------------------
-// Stub helpers
+// Test helpers
 // ---------------------------------------------------------------------------
 
 /** Records the model field received by provider.chat() for assertion. */
@@ -56,7 +47,7 @@ function makeModelDef(id: string, provider: string): ModelDefinition {
 }
 
 /**
- * Minimal stub ProviderRegistry that knows about a single model.
+ * Minimal ProviderRegistry implementation that knows about a single model.
  */
 function makeStubRegistry(
   modelDef: ModelDefinition,
@@ -76,12 +67,35 @@ function makeStubRegistry(
   } as unknown as ProviderRegistry;
 }
 
+function makeMultiModelRegistry(
+  modelDefs: readonly ModelDefinition[],
+  providers: Readonly<Record<string, LLMProvider>>,
+): ProviderRegistry {
+  return {
+    getForModel(modelId: string, provider?: string): LLMProvider {
+      const def = provider
+        ? modelDefs.find((model) => (model.registryKey === modelId || model.id === modelId) && model.provider === provider)
+        : modelDefs.find((model) => model.registryKey === modelId);
+      const resolvedProvider = def?.provider ?? provider;
+      const selectedProvider = resolvedProvider ? providers[resolvedProvider] : undefined;
+      if (!selectedProvider) throw new Error('provider not found');
+      return selectedProvider;
+    },
+    listModels(): ModelDefinition[] {
+      return [...modelDefs];
+    },
+    getCurrentModel(): ModelDefinition {
+      return modelDefs[0]!;
+    },
+  } as unknown as ProviderRegistry;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('createCompanionProviderAdapter — model id resolution', () => {
-  test('R1: passes bare model id to provider.chat() when options.model is a registry key', async () => {
+  test('passes provider-local model id to provider.chat() when options.model is a registry key', async () => {
     const modelDef = makeModelDef('mercury-2', 'inceptionlabs');
     const recordingProvider = makeRecordingProvider('inception');
     const registry = makeStubRegistry(modelDef, recordingProvider);
@@ -89,19 +103,19 @@ describe('createCompanionProviderAdapter — model id resolution', () => {
     const adapter = createCompanionProviderAdapter(registry);
     const stream = adapter.chatStream(
       [{ role: 'user', content: 'hello' }],
-      { model: 'inception:mercury-2', provider: 'inceptionlabs' },
+      { model: 'inceptionlabs:mercury-2', provider: 'inceptionlabs' },
     );
 
     // Drain stream
     const chunks = [];
     for await (const chunk of stream) chunks.push(chunk);
 
-    // The adapter must pass bare "mercury-2", NOT "inception:mercury-2"
+    // The adapter must pass provider-local "mercury-2", NOT "inceptionlabs:mercury-2"
     expect(recordingProvider.recordedModel).toBe('mercury-2');
-    expect(recordingProvider.recordedModel).not.toBe('inception:mercury-2');
+    expect(recordingProvider.recordedModel).not.toBe('inceptionlabs:mercury-2');
   });
 
-  test('R2: passes bare model id when options.provider is not supplied (by registryKey lookup)', async () => {
+  test('passes provider-local model id when options.provider is not supplied by registryKey lookup', async () => {
     const modelDef = makeModelDef('mercury-2', 'inceptionlabs');
     const recordingProvider = makeRecordingProvider('inception');
     const registry = makeStubRegistry(modelDef, recordingProvider);
@@ -109,7 +123,7 @@ describe('createCompanionProviderAdapter — model id resolution', () => {
     const adapter = createCompanionProviderAdapter(registry);
     const stream = adapter.chatStream(
       [{ role: 'user', content: 'hello' }],
-      { model: 'inception:mercury-2' },  // no options.provider
+      { model: 'inceptionlabs:mercury-2' },  // no options.provider
     );
 
     const chunks = [];
@@ -118,12 +132,12 @@ describe('createCompanionProviderAdapter — model id resolution', () => {
     expect(recordingProvider.recordedModel).toBe('mercury-2');
   });
 
-  test('R3: fallback split-on-colon when model def is not in registry', async () => {
+  test('unknown registry key returns an error instead of guessing from the prefix', async () => {
     // Registry that returns no model definitions (unknown model)
-    const fallbackProvider = makeRecordingProvider('unknown-provider');
+    const unexpectedProvider = makeRecordingProvider('unknown-provider');
     const modelDef = makeModelDef('unknown-model', 'unknown-provider');
     const emptyRegistry: ProviderRegistry = {
-      getForModel(): LLMProvider { return fallbackProvider; },
+      getForModel(): LLMProvider { return unexpectedProvider; },
       listModels(): ModelDefinition[] { return []; },  // empty — no def found
       getCurrentModel(): ModelDefinition { return modelDef; },
     } as unknown as ProviderRegistry;
@@ -137,28 +151,37 @@ describe('createCompanionProviderAdapter — model id resolution', () => {
     const chunks = [];
     for await (const chunk of stream) chunks.push(chunk);
 
-    // Fallback: split on last ':' gives bare "some-model-id"
-    expect(fallbackProvider.recordedModel).toBe('some-model-id');
+    expect(unexpectedProvider.recordedModel).toBeNull();
+    expect(chunks).toContainEqual({
+      type: 'error',
+      error: "Model 'someprovider:some-model-id' is not in the provider registry.",
+    });
   });
 
-  test('R4: bare model id (no colon) is passed through unchanged', async () => {
-    const modelDef = makeModelDef('gpt-4o', 'openai');
-    const recordingProvider = makeRecordingProvider('openai');
-    const registry = makeStubRegistry(modelDef, recordingProvider);
+  test('provider-qualified registryKey disambiguates duplicate model ids', async () => {
+    const openaiModel = makeModelDef('gpt-4o', 'openai');
+    const azureModel = makeModelDef('gpt-4o', 'azure-openai');
+    const openaiProvider = makeRecordingProvider('openai');
+    const azureProvider = makeRecordingProvider('azure-openai');
+    const registry = makeMultiModelRegistry(
+      [openaiModel, azureModel],
+      { openai: openaiProvider, 'azure-openai': azureProvider },
+    );
 
     const adapter = createCompanionProviderAdapter(registry);
     const stream = adapter.chatStream(
       [{ role: 'user', content: 'hello' }],
-      { model: 'gpt-4o', provider: 'openai' },
+      { model: 'azure-openai:gpt-4o' },
     );
 
     const chunks = [];
     for await (const chunk of stream) chunks.push(chunk);
 
-    expect(recordingProvider.recordedModel).toBe('gpt-4o');
+    expect(azureProvider.recordedModel).toBe('gpt-4o');
+    expect(openaiProvider.recordedModel).toBeNull();
   });
 
-  test('R5: no options.model falls back to getCurrentModel().id (bare)', async () => {
+  test('no options.model selects the current provider-qualified registry key', async () => {
     const modelDef = makeModelDef('claude-sonnet', 'anthropic');
     const recordingProvider = makeRecordingProvider('anthropic');
     const registry = makeStubRegistry(modelDef, recordingProvider);
@@ -172,11 +195,10 @@ describe('createCompanionProviderAdapter — model id resolution', () => {
     const chunks = [];
     for await (const chunk of stream) chunks.push(chunk);
 
-    // getCurrentModel().id is 'claude-sonnet' (bare — no prefix)
     expect(recordingProvider.recordedModel).toBe('claude-sonnet');
   });
 
-  test('R6: forwards companion remote-session tools to provider.chat()', async () => {
+  test('forwards companion remote-session tools to provider.chat()', async () => {
     const modelDef = makeModelDef('gpt-5.4', 'openai');
     const recordingProvider = makeRecordingProvider('openai');
     const registry = makeStubRegistry(modelDef, recordingProvider);

@@ -14,38 +14,30 @@ When a provider streams a response that includes a tool call, the SDK processes 
 
 Each streaming chunk may carry a partial tool name or a partial argument string. Provider adapters (e.g. `anthropic.ts`, `anthropic-compat.ts`, `tool-formats.ts`) accumulate these deltas into a single buffer as they arrive. The accumulation happens inside the provider's stream-processing loop; no parsing occurs at this stage.
 
-### 2. JSON parse with silent fallback
+### 2. JSON parse with malformed-call drop
 
-When the stream signals that a tool call is complete, the accumulated argument string is parsed. All provider adapters use a shared helper pattern:
+When the stream signals that a tool call is complete, the accumulated argument string is parsed. Provider adapters use the shared parser in `tool-formats.ts` for accumulated OpenAI-style calls, text-delimited calls, and streamed Anthropic/Responses-style argument buffers:
 
 ```ts
-// public surface: @pellux/goodvibes-sdk/platform/providers (daemon embedders)
-function parseJson(raw: string): Record<string, unknown> {
+// shared provider parser
+function parseToolCallArguments(raw: string): Record<string, unknown> | undefined {
+  if (raw.trim().length === 0) return {};
   try {
     return JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    logger.warn('tool-formats: failed to parse JSON tool arguments', { error: summarizeError(err) });
-    return {};
+    logger.warn('tool-formats: failed to parse JSON tool arguments; dropping malformed tool call', {
+      error: summarizeError(err),
+    });
+    return undefined;
   }
 }
 ```
 
-Other adapters follow the same pattern inline:
-
-```ts
-// from anthropic.ts and anthropic-compat.ts
-try {
-  parsedInput = JSON.parse(block.args || '{}') as Record<string, unknown>;
-} catch {
-  logger.debug('Anthropic: failed to parse tool args JSON', { name: block.name, args: block.args });
-}
-```
-
-**Key behavior:** if the accumulated argument string is empty, truncated by a network error, or syntactically invalid JSON, the parse silently returns `{}`. A `warn`-level log is emitted (visible in daemon logs), but the tool handler is still called — with an empty argument object.
+**Key behavior:** an empty accumulated argument string is treated as `{}` for no-argument tools. If the accumulated string is truncated or syntactically invalid JSON, the SDK emits a `warn`-level log and drops that malformed tool call. The tool handler is not called with manufactured empty arguments.
 
 ### 3. Handler dispatch
 
-The parsed argument object is passed directly to your tool handler. If the tool was called with malformed arguments, your handler receives `{}`.
+Only successfully parsed tool-call arguments are passed to handlers. If a provider reports a tool-call stop reason but no parseable tool calls remain, the orchestrator treats the response as malformed and emits the existing tool-reconciliation warning path instead of dispatching a handler with `{}`.
 
 All model-originated tool calls should pass through the shared tool execution boundary before a handler is invoked. That boundary applies permission checks, Pre/Post/Fail hooks, runtime tool events, and normalized error handling. TUI/orchestrator turns and companion remote chat use this shared path; embedders that provide a `ToolRegistry` without a `PermissionManager` to companion chat receive denied tool results instead of direct handler execution.
 
@@ -60,18 +52,18 @@ Built-in batch tools also cap fanout to avoid accidental resource exhaustion:
 
 ---
 
-## Why Silent Fallback Matters
+## Why Argument Validation Still Matters
 
 Most tool argument failures fall into two categories:
 
 | Cause | Result |
 |---|---|
-| LLM produces partial/truncated JSON (common with aggressive max-token limits) | Handler receives `{}` |
+| LLM produces partial/truncated JSON (common with aggressive max-token limits) | Malformed tool call is dropped before handler dispatch |
 | LLM produces semantically wrong JSON (wrong keys, wrong types) | Handler receives a structurally valid but incorrect object |
-| Network error mid-stream truncates the argument buffer | Handler receives `{}` |
+| Network error mid-stream truncates the argument buffer | Malformed tool call is dropped before handler dispatch |
 | LLM produces valid JSON with extra or missing fields | Handler receives the object as-is |
 
-In all cases, the SDK does not raise an error before calling your handler. This is intentional — the SDK has no schema for third-party tools and cannot know what is valid. **Validation is the tool author's responsibility.**
+The SDK rejects malformed JSON before tool dispatch, but it does not schema-validate third-party arguments. It cannot know whether a valid JSON object is correct for your tool. **Validation is the tool author's responsibility.**
 
 ---
 
@@ -132,18 +124,18 @@ async function handleSearch(rawArgs: Record<string, unknown>) {
 }
 ```
 
-### Fail loudly, not silently
+### Fail Loudly
 
-Avoiding `throw` in handler code is reasonable (prevents unhandled promise rejections from aborting the turn), but returning a meaningful error payload is always better than silently ignoring missing fields. Returning `{}` or `null` gives the model nothing to act on.
+Avoiding `throw` in handler code is reasonable (prevents unhandled promise rejections from aborting the turn), but returning a meaningful error payload is always better than ignoring missing fields. Returning `{}` or `null` gives the model nothing to act on.
 
 ---
 
-## Detecting Silent Parse Failures
+## Detecting Dropped Parse Failures
 
-When the SDK falls back to `{}` due to a parse error, a log entry is emitted at `warn` level. To catch this in production:
+When the SDK drops a malformed tool call due to a parse error, a log entry is emitted at `warn` level. To catch this in production:
 
-- Configure your observability stack to alert on `tool-formats: failed to parse JSON tool arguments`
-- Review provider-specific debug logs for `failed to parse tool args JSON` messages (Anthropic adapter emits at `debug` level)
+- Configure your observability stack to alert on `tool-formats: failed to parse JSON tool arguments; dropping malformed tool call`
+- Review malformed-stop-reason reconciliation events when a provider reported tool use but no parseable tool calls remained
 - Use `inspect().sessionCount` to correlate with active sessions if diagnosing a regression
 
 ---

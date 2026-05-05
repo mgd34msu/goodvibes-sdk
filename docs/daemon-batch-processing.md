@@ -23,7 +23,7 @@ Live TUI, companion, and daemon chat behavior remains live unless a client uses 
 
 - `off` — reject batch jobs.
 - `explicit` — accept requests sent to the batch job API. This is the intended default when a client exposes a per-message "run as batch" control.
-- `eligible-by-default` — accept batch-capable daemon requests as batch by default. Current SDK-owned batch-capable request path is `/api/batch/jobs`; streaming chat paths do not silently convert to batch because provider Batch APIs are asynchronous and non-streaming.
+- `eligible-by-default` — accept batch-capable daemon requests as batch by default. Current SDK-owned batch-capable request path is `/api/batch/jobs`; streaming chat paths stay live because provider Batch APIs are asynchronous and non-streaming.
 
 `batch.fallback` is published for clients that need a policy decision when a request cannot be batched:
 
@@ -61,7 +61,7 @@ Example:
 ```json
 {
   "provider": "openai",
-  "model": "gpt-5.5",
+  "model": "openai:gpt-5.5",
   "request": {
     "messages": [
       { "role": "user", "content": "Summarize this repository status." }

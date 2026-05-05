@@ -1,12 +1,17 @@
 /**
  * Generic fixed-capacity ring buffer (circular buffer).
  *
- * All writes are O(1). When the buffer is full the oldest entry is silently
- * evicted (FIFO). Reading all entries is O(n) where n ≤ capacity.
+ * All writes are O(1). When the buffer is full the oldest entry is evicted
+ * (FIFO); eviction is observable through `evictedCount` and the optional
+ * `onEvict` callback. Reading all entries is O(n) where n ≤ capacity.
  *
  * This is the canonical ring-buffer utility for the SDK. Prefer this over
  * ad-hoc implementations when bounded-memory queues are needed.
  */
+
+export interface RingBufferOptions<T> {
+  readonly onEvict?: ((item: T) => void) | undefined;
+}
 
 /**
  * A generic ring buffer with a fixed capacity.
@@ -16,13 +21,16 @@
  */
 export class RingBuffer<T> {
   private readonly _buf: (T | undefined)[];
+  private readonly _onEvict: ((item: T) => void) | undefined;
   private _head = 0; // next-write slot
   private _count = 0; // current occupancy (≤ capacity)
+  private _evictedCount = 0;
   readonly capacity: number;
 
-  constructor(capacity: number) {
+  constructor(capacity: number, options: RingBufferOptions<T> = {}) {
     if (capacity < 1) throw new RangeError(`RingBuffer capacity must be >= 1, got ${capacity}`);
     this.capacity = capacity;
+    this._onEvict = options.onEvict;
     this._buf = new Array<T | undefined>(capacity).fill(undefined);
   }
 
@@ -36,13 +44,24 @@ export class RingBuffer<T> {
     return this._count === 0;
   }
 
+  /** Number of entries evicted since construction or the last `clear()`. */
+  get evictedCount(): number {
+    return this._evictedCount;
+  }
+
   /**
    * Push an entry into the buffer.
    *
-   * If the buffer is full the oldest entry is evicted to make room.
+   * If the buffer is full the oldest entry is evicted to make room and
+   * `evictedCount` is incremented.
    * Always O(1).
    */
   push(item: T): void {
+    if (this._count === this.capacity) {
+      const evicted = this._buf[this._head] as T;
+      this._evictedCount++;
+      this._onEvict?.(evicted);
+    }
     this._buf[this._head] = item;
     this._head = (this._head + 1) % this.capacity;
     if (this._count < this.capacity) this._count++;
@@ -96,5 +115,6 @@ export class RingBuffer<T> {
     this._buf.fill(undefined);
     this._head = 0;
     this._count = 0;
+    this._evictedCount = 0;
   }
 }

@@ -1,6 +1,6 @@
 import { ConfigurationError } from '@pellux/goodvibes-errors';
 
-export { forSession } from './_companion-realtime.js';
+export { forSession } from './companion-realtime.js';
 import {
   createRemoteRuntimeEvents,
   createWebSocketConnector,

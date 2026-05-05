@@ -183,7 +183,7 @@ export function verifyBundle<T>(
       .update(canonical, 'utf8')
       .digest();
   } catch (err: unknown) {
-    // OBS-11: Non-fatal — key is malformed; treat as invalid
+    // Malformed key: treat as invalid.
     logger.warn('[PolicySigner] HMAC key error during signature computation', {
       bundleId: bundle.bundleId,
       error: String(err),

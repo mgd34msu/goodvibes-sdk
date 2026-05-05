@@ -1,5 +1,5 @@
 /**
- * Wave 4 — Cloudflare Workers real-runtime harness.
+ * Cloudflare Workers runtime harness.
  *
  * Uses Miniflare (programmatic API, v4) to run the built ./web entry under
  * the actual workerd V8 isolate. Each test dispatches a real HTTP fetch to
@@ -29,15 +29,14 @@ import { fileURLToPath } from 'node:url';
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { Miniflare } from 'miniflare';
 
-// n-2: fileURLToPath alias — __dirname here is a local const, NOT the Node.js
-// global __dirname (which is unavailable in ESM). Named explicitly to reduce
-// confusion when reading this file alongside CJS code.
+// fileURLToPath alias: __dirname here is a local const, not the Node.js global
+// __dirname, which is unavailable in ESM.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_DIST = resolve(__dirname, '../../packages/sdk/dist');
 const WORKER_SOURCE = resolve(__dirname, 'worker.ts');
 
-// m-5: Write to a tmp dir OUTSIDE dist/ to eliminate the dist-race foot-gun.
-// Concurrent builds that clean/rewrite dist/ cannot clobber the staged file.
+// Write to a tmp dir outside dist so concurrent builds that clean/rewrite dist
+// cannot clobber the staged file.
 const TMP_DIR = resolve(__dirname, '../../.test-tmp/workers-harness');
 const WORKER_IN_TMP = resolve(TMP_DIR, '_workers-test-entry.mjs');
 const WORKER_BUNDLED = resolve(TMP_DIR, '_workers-test-bundled.mjs');
@@ -45,10 +44,9 @@ const WORKER_BUNDLED = resolve(TMP_DIR, '_workers-test-bundled.mjs');
 let mf: Miniflare;
 
 beforeAll(async () => {
-  // m-5: Stage a full snapshot of SDK_DIST in a tmp dir OUTSIDE dist/ to
-  // eliminate the dist-race foot-gun. modulesRoot points to TMP_DIR so all
-  // static imports (including subdirs) resolve from a stable
-  // location that concurrent builds cannot race against.
+  // Stage a full snapshot of SDK_DIST in a tmp dir outside dist. modulesRoot
+  // points to TMP_DIR so static imports resolve from a stable location that
+  // concurrent builds cannot race against.
   if (existsSync(TMP_DIR)) {
     rmSync(TMP_DIR, { recursive: true, force: true });
   }
@@ -98,8 +96,8 @@ beforeAll(async () => {
     modulesRules: [
       { type: 'ESModule', include: ['**/*.js', '**/*.mjs'] },
     ],
-    // m-6: compatibilityDate — bump quarterly; pick a date within the last
-    // calendar quarter. Updated from '2024-09-23' to '2026-04-01'.
+    // Worker compatibility date policy: bump quarterly and pick a date within
+    // the last calendar quarter.
     compatibilityDate: '2026-04-01',
     // nodejs_compat lets Miniflare resolve bare node built-in specifiers
     // (fs, path, node:fs, node:path) that esbuild leaves in the bundle when
@@ -177,9 +175,9 @@ describe('Workers harness: transport-http round-trip', () => {
     expect(body.ctor).toBeNull();
   }, 10_000);
 
-  // M-1 (error path): mock returns 5xx. Asserts errorKind === 'service' (exact
+  // Error path: mock returns 5xx. Asserts errorKind === 'service' (exact
   // literal, not regex) — proving SDK error taxonomy works under Workers runtime.
-  // m-2: kind and ctor are returned as SEPARATE fields to avoid conflating
+  // kind and ctor are returned as separate fields to avoid conflating
   // typed SDKErrorKind values with raw constructor names.
   test('error path — mock returns 5xx, errorKind is typed \'service\'', async () => {
     const res = await mf.dispatchFetch('http://workers.test/transport-error');
@@ -191,12 +189,12 @@ describe('Workers harness: transport-http round-trip', () => {
     // result is null because the call threw
     expect(body.result).toBeNull();
 
-    // m-2: assert 'kind' is a typed SDKErrorKind, not a constructor name
+    // Assert 'kind' is a typed SDKErrorKind, not a constructor name.
     const validKinds = ['auth', 'config', 'contract', 'network', 'not-found', 'protocol', 'rate-limit', 'service', 'internal', 'tool', 'validation', 'unknown'];
     expect(body.kind).toBe('service'); // 500 maps to category 'service' -> kind 'service'
     expect(validKinds).toContain(body.kind as string);
 
-    // m-2: assert 'ctor' is a string ending with 'Error' (the constructor name of
+    // Assert 'ctor' is a string ending with 'Error' (the constructor name of
     // the thrown error). esbuild mangles class names with a '_' prefix to avoid
     // collisions, so we cannot assert an exact name — just that it is a named
     // Error subclass (ends with 'Error') and not a raw RuntimeError or string.
@@ -217,7 +215,7 @@ describe('Workers harness: error taxonomy', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(body.ok).toBe(true);
     expect(body.sdkErrorWorks).toBe(true);
-    // m-4: errorClassNames contains only actual Error subclasses
+    // errorClassNames contains only actual Error subclasses.
     const names = body.errorClassNames as string[];
     // Sentinel: GoodVibesSdkError must be present (it IS an Error subclass)
     expect(names).toContain('GoodVibesSdkError');
@@ -259,10 +257,10 @@ describe('Workers harness: globals audit', () => {
     expect(globals.setTimeout).toBe(true);
   }, 10_000);
 
-  // m-1: Assert the ACTUAL observed value, not just typeof.
+  // Assert the actual observed value, not just typeof.
   // Miniflare simulates EventSource; production workerd does NOT.
   // Local verification is impossible — both Miniflare and wrangler dev --local share the Miniflare 4
-  // runtime and inject EventSource. See test/workers/FINDINGS.md for the full gap analysis.
+  // runtime and inject EventSource. See test/workers/NOTES.md for the runtime boundary.
   test('EventSource availability (Miniflare injects it, real Workers does not)', async () => {
     const res = await mf.dispatchFetch('http://workers.test/globals');
     const body = await res.json() as Record<string, unknown>;

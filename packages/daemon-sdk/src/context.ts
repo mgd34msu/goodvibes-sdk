@@ -59,7 +59,8 @@ export interface DaemonTaskOverviewRouteHandlers {
 }
 
 export interface DaemonControlRouteHandlers {
-  getStatus(): MaybeResponse;
+  postLogin(req: Request): MaybeResponse;
+  getStatus(req: Request): MaybeResponse;
   getCurrentAuth(req: Request): MaybeResponse;
   getControlPlaneSnapshot(): MaybeResponse;
   getOperatorContract(): MaybeResponse;

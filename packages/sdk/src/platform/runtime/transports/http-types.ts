@@ -144,7 +144,7 @@ export interface HttpTransportTelemetryStreamReady {
 
 export interface HttpTransportTelemetryStreamHandlers {
   readonly onRecord: (record: TelemetryRecord) => void;
-  readonly onReady?: ((payload: HttpTransportTelemetryStreamReady) => void) | undefined | undefined;
+  readonly onReady?: ((payload: HttpTransportTelemetryStreamReady) => void) | undefined;
 }
 
 export interface HttpTransportTelemetryClient {

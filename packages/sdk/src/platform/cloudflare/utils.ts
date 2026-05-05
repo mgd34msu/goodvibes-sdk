@@ -387,7 +387,7 @@ export async function safeResponseText(response: Response): Promise<string> {
   try {
     return await response.text();
   } catch (err) {
-    logger.debug('safeResponseText: failed to read response text', { error: summarizeError(err) });
+    logger.warn('safeResponseText: failed to read response text', { error: summarizeError(err) });
     return response.statusText;
   }
 }

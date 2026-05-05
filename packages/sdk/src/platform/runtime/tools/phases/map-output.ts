@@ -6,6 +6,7 @@ import type { PhasedTool } from '../adapter.js';
 import type { ToolClass } from '../output-policy.js';
 import { applyOutputPolicy, getPolicy } from '../output-policy.js';
 import { summarizeError } from '../../../utils/error-display.js';
+import { attachVisibleToolWarning } from './warnings.js';
 
 /**
  * mapOutput — Phase 5 of the tool execution pipeline.
@@ -62,6 +63,10 @@ export async function mapOutputPhase(
     const effectiveArgs = record._updatedArgs ?? call.arguments;
     const repairResult = repairToolCall(call.name, effectiveArgs, tool.definition);
 
+    for (const warning of repairResult.warnings ?? []) {
+      attachVisibleToolWarning(record.result, warning);
+    }
+
     if (repairResult.repaired) {
       const repairNote = `[Auto-repaired: ${repairResult.repairs.join(', ')}]`;
       if (typeof record.result.output === 'string') {
@@ -86,13 +91,15 @@ export async function mapOutputPhase(
       ...(spillBackend ? { spillBackend } : {}),
     };
   } catch (err) {
-    // Mapping failure is non-fatal — pass through unmapped result
+    // Mapping problems pass through the original result with a visible warning.
     const message = summarizeError(err);
+    const warning = `Output mapping warning: ${message}`;
+    attachVisibleToolWarning(record.result, warning);
     return {
       phase: 'mapped',
       success: true,
       durationMs: performance.now() - start,
-      error: `Output mapping failed (non-fatal): ${message}`,
+      warnings: [warning],
     };
   }
 }

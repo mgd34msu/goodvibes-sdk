@@ -40,20 +40,21 @@ describe('daemon sdk', () => {
           : null,
       },
       getOperatorContract: () => ({ version: 1, product: { id: 'goodvibes' } }),
-      inspectInboundTls: (surface) => ({ surface, mode: 'off' }),
-      inspectOutboundTls: () => ({ mode: 'system' }),
       invokeGatewayMethodCall: async () => ({ status: 200, ok: true, body: { invoked: true } }),
       parseOptionalJsonBody: async () => null,
       requireAdmin: () => null,
       requireAuthenticatedSession: () => ({ username: 'tester', roles: ['admin'] }),
-    }, new Request('http://127.0.0.1/api/control-plane/auth', {
-      headers: {
-        Authorization: 'Bearer token-123',
-        Cookie: 'goodvibes_session=session-123',
-      },
-    }));
+      login: () => Response.json({
+        authenticated: true,
+        token: 'session-token',
+        username: 'tester',
+        expiresAt: Date.now() + 60_000,
+      }),
+    });
 
-    const statusResponse = await handlers.getStatus();
+    const statusResponse = await handlers.getStatus(new Request('http://127.0.0.1/status', {
+      headers: { Authorization: 'Bearer token-123' },
+    }));
     expect(statusResponse.status).toBe(200);
     const status = await statusResponse.json() as { version: string };
     expect(status.version).toBe(sdkPackage.version);
@@ -68,6 +69,10 @@ describe('daemon sdk', () => {
     const auth = await authResponse.json() as { authenticated: boolean; roles: string[] };
     expect(auth.authenticated).toBe(true);
     expect(auth.roles).toEqual(['admin']);
+
+    const loginResponse = await handlers.postLogin(new Request('http://127.0.0.1/login', { method: 'POST' }));
+    expect(loginResponse.status).toBe(200);
+    expect(await loginResponse.json()).toMatchObject({ authenticated: true, username: 'tester' });
   });
 
   test('dispatches daemon api routes to the matching handler', async () => {

@@ -112,7 +112,9 @@ export async function runKnowledgeSemanticSelfImprovement(
   if (context.gapRepairer) {
     await recoverNoRepairerTasks(context.store, spaceId);
   }
+  if (input.signal?.aborted) return emptySelfImproveResult(spaceId, 'Run was cancelled before intrinsic gap discovery.');
   const createdGaps = gapIdFilter ? 0 : await discoverIntrinsicGaps(context.store, spaceId, sourceIdFilter, objectProfiles);
+  if (input.signal?.aborted) return emptySelfImproveResult(spaceId, 'Run was cancelled after intrinsic gap discovery.');
   const candidates = collectCandidateGaps(context.store, spaceId, sourceIdFilter, gapIdFilter);
   const plan = createSelfImproveRunPlan(candidates, input);
   const state = createSelfImproveRunState(plan);
@@ -295,6 +297,36 @@ function buildSelfImproveResult(
     promotedFactCount: state.promotedFactCount,
     ...(state.nextRepairAttemptAt ? { nextRepairAttemptAt: state.nextRepairAttemptAt } : {}),
     errors: state.errors,
+  };
+}
+
+function emptySelfImproveResult(
+  spaceId: string,
+  reason: string,
+): KnowledgeSemanticSelfImproveResult {
+  return {
+    scannedGaps: 0,
+    candidateGaps: 0,
+    processedGaps: 0,
+    createdGaps: 0,
+    repairableGaps: 0,
+    suppressedGaps: 0,
+    skippedGaps: 0,
+    searched: 0,
+    ingestedSources: 0,
+    linkedRepairs: 0,
+    blockedGaps: 0,
+    closedGaps: 0,
+    queuedTasks: 0,
+    requestedLimit: 0,
+    effectiveLimit: 0,
+    truncated: true,
+    budgetExhausted: true,
+    taskIds: [],
+    ingestedSourceIds: [],
+    acceptedSourceIds: [],
+    promotedFactCount: 0,
+    errors: [{ gapId: spaceId, error: reason }],
   };
 }
 

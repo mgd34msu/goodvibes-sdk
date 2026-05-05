@@ -576,7 +576,7 @@ async function fetchOne(
       : err instanceof Error
         ? err.message
         : summarizeError(err);
-    logger.debug('fetch tool: request failed', { url: urlInput.url, error: message });
+    logger.warn('fetch tool: request failed', { url: urlInput.url, error: message });
     return { url: urlInput.url, error: message, duration_ms: durationMs };
   }
 }

@@ -53,9 +53,12 @@ if (!DRY_RUN && !getAuthToken(REGISTRY)) {
 
 const { tempRoot, publicStages } = await stagePackages();
 
-// Create a single shared auth env for all publish calls in this run so that
-// the temp npmrc directory can be reliably cleaned up in the finally block.
-const sharedAuthEnv: AuthEnv = createAuthEnv({}, { registry: REGISTRY });
+// Create a single shared auth env for real publish calls so that the temp
+// npmrc directory can be reliably cleaned up in the finally block. Dry-runs
+// must not create auth files or consult publish tokens.
+const sharedAuthEnv: AuthEnv | null = DRY_RUN
+  ? null
+  : createAuthEnv({}, { registry: REGISTRY });
 
 try {
   for (const stage of publicStages) {
@@ -64,9 +67,12 @@ try {
     if (typeof packageName !== 'string' || typeof packageVersion !== 'string') {
       throw new Error(`Staged package ${stage.dir} is missing a string name/version.`);
     }
-    if (!DRY_RUN && isPublished(packageName, packageVersion, sharedAuthEnv)) {
-      console.log(`Skipping ${packageName}@${packageVersion}; already published.`);
-      continue;
+    if (!DRY_RUN) {
+      if (!sharedAuthEnv) throw new Error('Publish auth environment was not initialized.');
+      if (isPublished(packageName, packageVersion, sharedAuthEnv)) {
+        console.log(`Skipping ${packageName}@${packageVersion}; already published.`);
+        continue;
+      }
     }
 
     const args = ['publish', '--access', 'public', '--registry', REGISTRY];
@@ -81,13 +87,13 @@ try {
       `${DRY_RUN ? 'Dry-running' : 'Publishing'} ${packageName}@${packageVersion} -> ${REGISTRY}`,
     );
     run('npm', args, stage.stageDir, {
-      auth: true,
+      auth: !DRY_RUN,
       registry: REGISTRY,
       packageName,
-      authEnv: sharedAuthEnv,
+      authEnv: sharedAuthEnv ?? undefined,
     });
   }
 } finally {
-  cleanupAuthEnv(sharedAuthEnv);
+  if (sharedAuthEnv) cleanupAuthEnv(sharedAuthEnv);
   cleanupStage(tempRoot);
 }

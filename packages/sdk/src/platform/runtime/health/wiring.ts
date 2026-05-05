@@ -47,7 +47,7 @@ export class HealthStoreWiring {
    * changes — callers should use `evaluateDomain()` for explicit cascade evaluation.
    *
    * Calling `start()` on an already-started wiring replaces the existing
-   * subscription without leaking the old one.
+   * subscription without leaking the previous one.
    */
   start(): void {
     // Release any existing subscription before re-subscribing

@@ -55,8 +55,11 @@ export function loadPersistedProviders(roots: DiscoveryRoots): DiscoveredServer[
   try {
     if (!existsSync(persistedPath)) return [];
     const raw = readFileSync(persistedPath, 'utf-8');
-    const parsed = JSON.parse(raw) as unknown[];
-    if (!Array.isArray(parsed)) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      logger.warn('[Scanner] loadPersistedProviders ignored invalid discovery cache', { path: persistedPath });
+      return [];
+    }
     // Filter to only valid-shaped entries before trusting persisted data
     return parsed.filter((item): item is DiscoveredServer =>
       typeof item === 'object' && item !== null &&
@@ -64,7 +67,11 @@ export function loadPersistedProviders(roots: DiscoveryRoots): DiscoveredServer[
       typeof (item as Record<string, unknown>).port === 'number' &&
       Array.isArray((item as Record<string, unknown>).models)
     );
-  } catch {
+  } catch (err: unknown) {
+    logger.warn('[Scanner] loadPersistedProviders failed; using empty discovery cache', {
+      path: persistedPath,
+      error: summarizeError(err),
+    });
     return [];
   }
 }
@@ -88,8 +95,18 @@ export function persistProviders(roots: DiscoveryRoots, servers: DiscoveredServe
               typeof (item as Record<string, unknown>).port === 'number' &&
               Array.isArray((item as Record<string, unknown>).models)
           );
+        } else {
+          logger.warn('[Scanner] persistProviders ignored invalid existing discovery cache; overwriting with current scan results', {
+            path: persistedPath,
+          });
         }
-      } catch { existing = []; }
+      } catch (err: unknown) {
+        existing = [];
+        logger.warn('[Scanner] persistProviders could not read existing discovery cache; overwriting with current scan results', {
+          path: persistedPath,
+          error: summarizeError(err),
+        });
+      }
     }
     // Merge: update existing entries, add new ones
     const byKey = new Map(existing.map(s => [`${s.host}:${s.port}`, s]));
@@ -99,8 +116,12 @@ export function persistProviders(roots: DiscoveryRoots, servers: DiscoveredServe
     mkdirSync(dirname(persistedPath), { recursive: true });
     writeFileSync(persistedPath, JSON.stringify([...byKey.values()], null, 2) + '\n', 'utf-8');
   } catch (err: unknown) {
-    // OBS-11: Non-fatal — persistence is best-effort
-    logger.debug('[Scanner] persistProviders failed (non-fatal)', { error: String(err) });
+    // Discovery still returns live results, but the cache was not updated.
+    logger.warn('[Scanner] persistProviders failed; discovery cache was not updated', {
+      path: persistedPath,
+      serverCount: servers.length,
+      error: summarizeError(err),
+    });
   }
 }
 
@@ -111,14 +132,22 @@ export function removePersistedProviders(roots: DiscoveryRoots, toRemove: Array<
   try {
     if (!existsSync(persistedPath)) return;
     const raw = readFileSync(persistedPath, 'utf-8');
-    const current = JSON.parse(raw) as PersistedServer[];
-    if (!Array.isArray(current)) return;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      logger.warn('[Scanner] removePersistedProviders skipped invalid discovery cache', { path: persistedPath });
+      return;
+    }
+    const current = parsed as PersistedServer[];
     const removeKeys = new Set(toRemove.map(s => `${s.host}:${s.port}`));
     const filtered = current.filter(s => !removeKeys.has(`${s.host}:${s.port}`));
     writeFileSync(persistedPath, JSON.stringify(filtered, null, 2) + '\n', 'utf-8');
   } catch (err: unknown) {
-    // OBS-11: Non-fatal — removal from persisted file failed
-    logger.debug('[Scanner] removePersistedProviders failed (non-fatal)', { error: String(err) });
+    // Discovery cleanup should not block the caller, but stale cache entries remain.
+    logger.warn('[Scanner] removePersistedProviders failed; discovery cache was not cleaned up', {
+      path: persistedPath,
+      removeCount: toRemove.length,
+      error: summarizeError(err),
+    });
   }
 }
 
@@ -142,10 +171,6 @@ const KNOWN_PORTS = [
 const PROBE_TIMEOUT_MS = 200;
 const MAX_CONCURRENT_PROBES = 50;
 const METADATA_TIMEOUT_MS = 2000;
-
-// ---------------------------------------------------------------------------
-// Internal Types
-// ---------------------------------------------------------------------------
 
 interface ProbeResult {
   host: string;
@@ -226,7 +251,7 @@ async function probeHost(
     }
   }
 
-  // Port 11434 with only /api/tags (no /v1/models) = old Ollama, can't use as OpenAI-compat provider.
+  // Port 11434 with only /api/tags (no /v1/models) cannot be used as an OpenAI-compatible provider.
   return null;
 }
 
@@ -370,7 +395,7 @@ export async function fetchModelContextWindows(
               }
             }
 
-            // Fallback: check parameters string for num_ctx
+            // Also check the parameters string for num_ctx.
             if (!result[model] && typeof data.parameters === 'string') {
               const match = (data.parameters as string).match(/num_ctx\s+(\d+)/);
               if (match) {
@@ -482,7 +507,7 @@ export async function fetchModelContextWindows(
         })
       );
 
-      // Fallback: try /props (llama.cpp-style) if no context windows found
+      // Try /props (llama.cpp-style) if no context windows were found.
       if (Object.keys(result).length === 0 && models.length > 0) {
         try {
           const res = await instrumentedFetch(`http://${host}:${port}/props`, {
@@ -555,7 +580,7 @@ async function fetchModelOutputLimits(
               }
             }
 
-            // Fallback: check parameters string for num_predict
+            // Also check the parameters string for num_predict.
             if (!result[model] && typeof data.parameters === 'string') {
               const match = (data.parameters as string).match(/num_predict\s+(\d+)/);
               if (match) {
@@ -650,7 +675,7 @@ async function fetchModelOutputLimits(
         })
       );
 
-      // Fallback: try /props (llama.cpp-style) for n_predict if no output limits found
+      // Try /props (llama.cpp-style) for n_predict if no output limits were found.
       if (Object.keys(result).length === 0 && models.length > 0) {
         try {
           const res = await instrumentedFetch(`http://${host}:${port}/props`, {

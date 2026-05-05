@@ -107,11 +107,56 @@ function isWellFormedConstraint(c: unknown): c is Constraint {
 function isWellFormedConstraintFinding(f: unknown): f is ConstraintFinding {
   if (typeof f !== 'object' || f === null) return false;
   const obj = f as Record<string, unknown>;
+  const severity = obj['severity'];
   return (
     typeof obj['constraintId'] === 'string' && obj['constraintId'].length > 0 &&
     typeof obj['satisfied'] === 'boolean' &&
-    typeof obj['evidence'] === 'string' && obj['evidence'].length > 0
+    typeof obj['evidence'] === 'string' && obj['evidence'].length > 0 &&
+    (severity === undefined || severity === 'critical' || severity === 'major' || severity === 'minor')
   );
+}
+
+function filterWellFormed<T>(
+  raw: unknown,
+  guard: (item: unknown) => item is T,
+): { items: T[]; dropped: number; malformedContainer: boolean } {
+  if (raw === undefined) return { items: [], dropped: 0, malformedContainer: false };
+  if (!Array.isArray(raw)) return { items: [], dropped: 0, malformedContainer: true };
+  const items: T[] = [];
+  let dropped = 0;
+  for (const item of raw) {
+    if (guard(item)) {
+      items.push(item);
+    } else {
+      dropped += 1;
+    }
+  }
+  return { items, dropped, malformedContainer: false };
+}
+
+function appendEngineerIssue(report: Record<string, unknown>, issue: string): void {
+  const existing = Array.isArray(report['issues'])
+    ? report['issues'].filter((item): item is string => typeof item === 'string')
+    : [];
+  report['issues'] = [...existing, issue];
+}
+
+function appendReviewerIssue(report: Record<string, unknown>, description: string): void {
+  const existing = Array.isArray(report['issues'])
+    ? report['issues'].filter((item): item is ReviewerReport['issues'][number] =>
+      typeof item === 'object' && item !== null &&
+      typeof (item as { severity?: unknown }).severity === 'string' &&
+      typeof (item as { description?: unknown }).description === 'string' &&
+      typeof (item as { pointValue?: unknown }).pointValue === 'number')
+    : [];
+  report['issues'] = [
+    ...existing,
+    {
+      severity: 'major',
+      description,
+      pointValue: 2,
+    },
+  ];
 }
 
 export function parseCompletionReport(rawOutput: string): CompletionReport | null {
@@ -164,7 +209,7 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
 /**
  * Normalize constraint-related fields on a parsed report:
  * - defaults `constraints` and `constraintFindings` to []
- * - silently filters out malformed entries
+ * - filters malformed entries and records a report issue so drops are observable
  *
  * Pure: returns a new object rather than mutating the input, so callers can
  * share references without surprise writes.
@@ -172,12 +217,22 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
 function applyConstraintDefaults(parsed: Record<string, unknown>): Record<string, unknown> {
   const next: Record<string, unknown> = { ...parsed };
   if (next['archetype'] === 'engineer') {
-    const raw = next['constraints'];
-    next['constraints'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraint) : [];
+    const normalized = filterWellFormed(next['constraints'], isWellFormedConstraint);
+    next['constraints'] = normalized.items;
+    if (normalized.malformedContainer) {
+      appendEngineerIssue(next, 'Malformed constraints field ignored: expected an array.');
+    } else if (normalized.dropped > 0) {
+      appendEngineerIssue(next, `Malformed constraints ignored: ${normalized.dropped} entr${normalized.dropped === 1 ? 'y' : 'ies'}.`);
+    }
   }
   if (next['archetype'] === 'reviewer') {
-    const raw = next['constraintFindings'];
-    next['constraintFindings'] = Array.isArray(raw) ? raw.filter(isWellFormedConstraintFinding) : [];
+    const normalized = filterWellFormed(next['constraintFindings'], isWellFormedConstraintFinding);
+    next['constraintFindings'] = normalized.items;
+    if (normalized.malformedContainer) {
+      appendReviewerIssue(next, 'Malformed constraintFindings field ignored: expected an array.');
+    } else if (normalized.dropped > 0) {
+      appendReviewerIssue(next, `Malformed constraintFindings ignored: ${normalized.dropped} entr${normalized.dropped === 1 ? 'y' : 'ies'}.`);
+    }
   }
   return next;
 }

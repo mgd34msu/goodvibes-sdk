@@ -38,7 +38,6 @@ Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 | T026 | `test/cloudflare-worker-settings.test.ts` |
 | T027 | `test/companion-adapter-model-resolution.test.ts` |
 | T028 | `test/companion-chat-daemon-wire.test.ts` |
-| T029 | `test/companion-chat-f21-messages-get.test.ts` |
 | T030 | `test/companion-chat-lifecycle.test.ts` |
 | T031 | `test/companion-chat-persistence.test.ts` |
 | T032 | `test/companion-chat-rate-limit.test.ts` |
@@ -64,8 +63,7 @@ Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 | T052 | `test/error-kind.test.ts` |
 | T053 | `test/exec-retry.test.ts` |
 | T054 | `test/expo-secure-token-store.test.ts` |
-| T055 | `test/f13-field-normalization.test.ts` |
-| T056 | `test/f15-rate-limiter-env.test.ts` |
+| T056 | `test/companion-rate-limiter-env.test.ts` |
 | T057 | `test/feature-flag-gates.test.ts` |
 | T058 | `test/gateway.test.ts` |
 | T059 | `test/goodvibes-runtime-tools.test.ts` |
@@ -96,26 +94,6 @@ Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 | T084 | `test/live-roundtrip.test.ts` |
 | T085 | `test/lsp-bash-bundled.test.ts` |
 | T086 | `test/ntfy-integration-stream.test.ts` |
-| T087 | `test/obs-01-http-access-log.test.ts` |
-| T088 | `test/obs-02-auth-events.test.ts` |
-| T089 | `test/obs-03-instrumented-fetch.test.ts` |
-| T090 | `test/obs-04-llm-instrumentation.test.ts` |
-| T091 | `test/obs-05-tool-result-summary.test.ts` |
-| T092 | `test/obs-06-prompt-redaction.test.ts` |
-| T093 | `test/obs-07-otlp-logger.test.ts` |
-| T094 | `test/obs-08-workspace-swap-failed.test.ts` |
-| T095 | `test/obs-09-config-audit.test.ts` |
-| T096 | `test/obs-11-silent-catches.test.ts` |
-| T097 | `test/obs-12-runtime-meter.test.ts` |
-| T098 | `test/obs-13-listener-errors.test.ts` |
-| T099 | `test/obs-14-async-event-bus.test.ts` |
-| T100 | `test/obs-15-correlation-ids.test.ts` |
-| T101 | `test/obs-16-error-cause-chain.test.ts` |
-| T102 | `test/obs-18-retry-events.test.ts` |
-| T103 | `test/obs-19-sse-lifecycle.test.ts` |
-| T104 | `test/obs-21-companion-pairing.test.ts` |
-| T105 | `test/obs-22-label-allowlist.test.ts` |
-| T106 | `test/obs-24-bearer-redaction.test.ts` |
 | T107 | `test/observer-coverage.test.ts` |
 | T108 | `test/observer-otel.test.ts` |
 | T109 | `test/openai-compatible-routes.test.ts` |
@@ -129,11 +107,6 @@ Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 | T117 | `test/otlp-ingest-routes.test.ts` |
 | T118 | `test/peer-sdk-coverage.test.ts` |
 | T119 | `test/peer-sdk.test.ts` |
-| T120 | `test/perf-02-rate-limiter-lru.test.ts` |
-| T121 | `test/perf-03-scheduler-history.test.ts` |
-| T122 | `test/perf-07-interval-unref.test.ts` |
-| T123 | `test/perf-10-max-listeners.test.ts` |
-| T124 | `test/perf-12-gateway-ring-buffer.test.ts` |
 | T125 | `test/platform-adapter-contract.test.ts` |
 | T126 | `test/platform-bookmarks-smoke.test.ts` |
 | T127 | `test/platform-discovery-smoke.test.ts` |
@@ -158,8 +131,6 @@ Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 | T146 | `test/project-planning-routes.test.ts` |
 | T147 | `test/project-planning-service.test.ts` |
 | T148 | `test/provider-registry-canonical-api.test.ts` |
-| T149 | `test/provider-routes-secrets-skipped.test.ts` |
-| T150 | `test/provider-routes.test.ts` |
 | T151 | `test/provider-sse-integration.test.ts` |
 | T152 | `test/rn-bundle-node-imports.test.ts` |
 | T153 | `test/router-e2e-automation.test.ts` |
@@ -177,16 +148,6 @@ Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 | T165 | `test/sdk-platforms.test.ts` |
 | T166 | `test/sdk-runtime-boundaries.test.ts` |
 | T167 | `test/sdk-transport-http.test.ts` |
-| T168 | `test/sec-01-user-auth-perms.test.ts` |
-| T169 | `test/sec-02-safecopy-perms.test.ts` |
-| T170 | `test/sec-03-login-ratelimit.test.ts` |
-| T171 | `test/sec-04-input-sanitization.test.ts` |
-| T172 | `test/sec-05-body-size-cap.test.ts` |
-| T173 | `test/sec-06-rate-limiter-lru.test.ts` |
-| T174 | `test/sec-07-origin-defaults.test.ts` |
-| T175 | `test/sec-08-ssrf-filter.test.ts` |
-| T176 | `test/sec-09-permission-normalization.test.ts` |
-| T177 | `test/sec-10-sandbox-boundary.test.ts` |
 | T178 | `test/secret-refs.test.ts` |
 | T179 | `test/session-broker.test.ts` |
 | T180 | `test/session-cookie-auth-roundtrip.test.ts` |
@@ -226,4 +187,3 @@ Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 |---|------|
 | W001 | `test/workers-wrangler/wrangler.test.ts` |
 | W002 | `test/workers/workers.test.ts` |
-

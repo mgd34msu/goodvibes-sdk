@@ -129,7 +129,7 @@ function initProgressFile(cmdStr: string, workingDirectory: string): { path: str
   try {
     mkdirSync(progressDirectory, { recursive: true });
   } catch (err) {
-    logger.debug('initProgressFile: mkdirSync failed (dir may already exist)', { error: summarizeError(err) });
+    logger.warn('initProgressFile: mkdirSync failed', { error: summarizeError(err) });
   }
   const id = `${Date.now()}-${randomUUID().slice(0, 8)}`;
   const filePath = getProgressFilePath(workingDirectory, id);
@@ -137,7 +137,7 @@ function initProgressFile(cmdStr: string, workingDirectory: string): { path: str
   return {
     path: filePath,
     append: (chunk: string) => {
-      try { appendFileSync(filePath, chunk); } catch (err) { logger.debug('initProgressFile: appendFileSync failed', { path: filePath, error: summarizeError(err) }); }
+      try { appendFileSync(filePath, chunk); } catch (err) { logger.warn('initProgressFile: appendFileSync failed', { path: filePath, error: summarizeError(err) }); }
     },
   };
 }
@@ -209,7 +209,7 @@ async function runCommand(
       await sleep(200);
       proc.kill('SIGKILL');
     } catch (err: unknown) {
-      // OBS-11: Non-fatal — process may have already exited before kill
+      // The process may have already exited before kill.
       logger.debug('[ExecRuntime] kill on timeout failed (process may have exited)', { error: String(err) });
     }
     timeoutResolve();
@@ -300,6 +300,7 @@ async function runCommandWithProgress(
 
   let stdoutBuf = '';
   let stderrBuf = '';
+  const warnings: string[] = [];
   const readStdout = async (): Promise<void> => {
     const decoder = new TextDecoder();
     const reader = (proc.stdout as ReadableStream<Uint8Array>).getReader();
@@ -312,7 +313,9 @@ async function runCommandWithProgress(
         progressFile.append(chunk);
       }
     } catch (err: unknown) {
-      logger.debug('[ExecRuntime] stdout stream read ended with error', { error: String(err) });
+      const warning = `stdout stream read failed: ${summarizeError(err)}`;
+      warnings.push(warning);
+      logger.warn('[ExecRuntime] stdout stream read ended with error', { error: summarizeError(err) });
     } finally {
       reader.releaseLock();
     }
@@ -328,7 +331,9 @@ async function runCommandWithProgress(
         stderrBuf += chunk;
       }
     } catch (err: unknown) {
-      logger.debug('[ExecRuntime] stderr stream read ended with error', { error: String(err) });
+      const warning = `stderr stream read failed: ${summarizeError(err)}`;
+      warnings.push(warning);
+      logger.warn('[ExecRuntime] stderr stream read ended with error', { error: summarizeError(err) });
     } finally {
       reader.releaseLock();
     }
@@ -351,10 +356,11 @@ async function runCommandWithProgress(
   }
 
   const ioResult = await ioPromise.catch((error) => {
-    logger.debug('exec progress command IO collection failed', {
+    logger.warn('exec progress command IO collection failed', {
       command: cmdStr,
       error: summarizeError(error),
     });
+    warnings.push(`progress command IO collection failed: ${summarizeError(error)}`);
     return [undefined, undefined, undefined] as [void, void, number | undefined];
   });
   const actualExitCode = (ioResult[2] as number | undefined) ?? await proc.exited;
@@ -368,11 +374,12 @@ async function runCommandWithProgress(
     exit_code: actualExitCode,
     stdout: stdoutResult.text,
     stderr: stderrResult.text,
-    success: actualExitCode === 0,
+    success: actualExitCode === 0 && warnings.length === 0,
     duration_ms: duration,
     cwd,
     env: cmdInput.env,
     progress_file: progressFile.path,
+    ...(warnings.length > 0 && { warnings }),
     ...(stdoutResult.truncated && { stdout_truncated: true }),
     ...(stderrResult.truncated && { stderr_truncated: true }),
   };
@@ -398,6 +405,7 @@ async function runUntil(
   let stdoutBuf = '';
   let stderrBuf = '';
   let matched = false;
+  const warnings: string[] = [];
 
   const readStream = async (stream: ReadableStream<Uint8Array>, isStderr: boolean): Promise<void> => {
     const decoder = new TextDecoder();
@@ -418,7 +426,9 @@ async function runUntil(
         }
       }
     } catch (error) {
-      logger.debug('exec run-until stream read failed', {
+      const warning = `${isStderr ? 'stderr' : 'stdout'} stream read failed: ${summarizeError(error)}`;
+      warnings.push(warning);
+      logger.warn('exec run-until stream read failed', {
         command: cmdStr,
         stream: isStderr ? 'stderr' : 'stdout',
         error: summarizeError(error),
@@ -443,9 +453,10 @@ async function runUntil(
     exit_code: exitCode,
     stdout: stdoutResult.text,
     stderr: stderrResult.text,
-    success: matched,
+    success: matched && warnings.length === 0,
     duration_ms: duration,
     cwd,
+    ...(warnings.length > 0 && { warnings }),
     ...(stdoutResult.truncated && { stdout_truncated: true }),
     ...(stderrResult.truncated && { stderr_truncated: true }),
   };
@@ -637,6 +648,7 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         ...(result.timed_out && { timed_out: true }),
         ...(result.process_id && { process_id: result.process_id, pid: result.pid }),
         ...(result.progress_file && { progress_file: result.progress_file }),
+        ...(result.warnings && { warnings: result.warnings }),
       };
     }
     case 'verbose':
@@ -656,6 +668,7 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         ...(result.stderr_truncated && { stderr_truncated: true }),
         ...(result.retries !== undefined && { retries: result.retries }),
         ...(result.progress_file && { progress_file: result.progress_file }),
+        ...(result.warnings && { warnings: result.warnings }),
       };
   }
 }
@@ -701,8 +714,14 @@ export function createExecTool(
         const failFast = input.fail_fast === true || input.stop_on_error === true;
         const projectRoot = resolve(workingDirectory);
 
-        const { fileOpResults, fileOpError } = await executeFileOperations(input.file_ops, projectRoot);
-        if (fileOpError) return { success: false, error: fileOpError };
+        const { fileOpResults, fileOpError, fileOpWarnings } = await executeFileOperations(input.file_ops, projectRoot);
+        if (fileOpError) {
+          return {
+            success: false,
+            error: fileOpError,
+            ...(fileOpWarnings && fileOpWarnings.length > 0 ? { warnings: fileOpWarnings } : {}),
+          };
+        }
 
         const resolvedCmds: Array<{ cmdStr: string; cmdInput: ExecCommandInput }> = [];
         for (const cmdInput of input.commands) {
@@ -730,8 +749,13 @@ export function createExecTool(
         const allSuccess = results.every((r) => r.success);
         const responseData: Record<string, unknown> = formatted.length === 1 ? { ...formatted[0] } : { commands: formatted, total: formatted.length };
         if (fileOpResults.length > 0) responseData.file_ops = fileOpResults;
+        if (fileOpWarnings && fileOpWarnings.length > 0) responseData.warnings = fileOpWarnings;
 
-        return { success: allSuccess, output: JSON.stringify(responseData) };
+        return {
+          success: allSuccess,
+          output: JSON.stringify(responseData),
+          ...(fileOpWarnings && fileOpWarnings.length > 0 ? { warnings: fileOpWarnings } : {}),
+        };
       } catch (err) {
         const message = summarizeError(err);
         return { success: false, error: message };

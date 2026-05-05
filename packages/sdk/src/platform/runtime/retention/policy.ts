@@ -90,7 +90,7 @@ export class RetentionPolicy {
    *                 Defaults to `Date.now`. Inject a fixed value in tests for
    *                 deterministic time-based assertions.
    * @param pruner - Optional pruner implementation. Defaults to `new SnapshotPruner()`.
-   *                 Inject a mock in tests to avoid file-system I/O.
+   *                 Tests can inject an in-memory implementation for deterministic assertions.
    */
   constructor(
     config?: Partial<RetentionConfig>,
@@ -130,8 +130,9 @@ export class RetentionPolicy {
   /**
    * Register a new checkpoint for retention tracking.
    *
-   * If a record with the same `id` already exists it is silently replaced,
-   * allowing callers to update metadata (e.g. size after write).
+   * If a record with the same `id` already exists it is replaced in-place,
+   * allowing callers to update metadata (e.g. size after write). The updated
+   * metadata is reflected in subsequent stats and prune decisions.
    *
    * @param record - The checkpoint record to track.
    */

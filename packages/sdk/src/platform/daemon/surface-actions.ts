@@ -372,16 +372,23 @@ export class DaemonSurfaceActionHelper {
     const preferred = preferredBucket?.find((entry) => !entry.turnId && entry.body.trim() === normalizedPrompt);
     if (preferred) return { pending: preferred, bucketSessionId: preferredSessionId };
 
-    let fallback: { readonly pending: PendingNtfyChatReply; readonly bucketSessionId: string } | null = null;
+    let crossSessionCandidate: { readonly pending: PendingNtfyChatReply; readonly bucketSessionId: string } | null = null;
     for (const [bucketSessionId, bucket] of this.pendingNtfyChatReplies.entries()) {
       if (bucketSessionId === preferredSessionId) continue;
       const candidate = bucket.find((entry) => !entry.turnId && entry.body.trim() === normalizedPrompt);
       if (!candidate) continue;
-      if (!fallback || candidate.createdAt < fallback.pending.createdAt) {
-        fallback = { pending: candidate, bucketSessionId };
+      if (!crossSessionCandidate || candidate.createdAt < crossSessionCandidate.pending.createdAt) {
+        crossSessionCandidate = { pending: candidate, bucketSessionId };
       }
     }
-    return fallback;
+    if (crossSessionCandidate) {
+      logger.debug('DaemonSurfaceActionHelper: matched pending ntfy chat reply in another session bucket', {
+        preferredSessionId,
+        matchedSessionId: crossSessionCandidate.bucketSessionId,
+        messageId: crossSessionCandidate.pending.messageId,
+      });
+    }
+    return crossSessionCandidate;
   }
 
   private findPendingNtfyChatReplyForMessageId(

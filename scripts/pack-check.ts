@@ -13,13 +13,15 @@ import {
 
 type PackageManifestLike = Record<string, unknown> & {
   readonly dependencies?: Record<string, unknown>;
+  readonly devDependencies?: Record<string, unknown>;
+  readonly exports?: unknown;
   readonly peerDependencies?: Record<string, unknown>;
   readonly optionalDependencies?: Record<string, unknown>;
   readonly scripts?: Record<string, unknown>;
 };
 
 function assertNoWorkspaceRanges(manifest: PackageManifestLike, label: string): void {
-  for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
+  for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
     const group = manifest[field];
     if (!group || typeof group !== 'object') {
       continue;
@@ -56,16 +58,10 @@ function assertBundledBashLspPatchManifest(tarball: string): void {
   }
 }
 
-const sourceOfTruthSpecifiers = [
-  '@pellux/goodvibes-contracts',
-  '@pellux/goodvibes-daemon-sdk',
-  '@pellux/goodvibes-errors',
-  '@pellux/goodvibes-operator-sdk',
-  '@pellux/goodvibes-peer-sdk',
-  '@pellux/goodvibes-transport-core',
-  '@pellux/goodvibes-transport-http',
-  '@pellux/goodvibes-transport-realtime',
-];
+function isSdkPackage(manifest: PackageManifestLike): boolean {
+  return typeof manifest.name === 'string'
+    && (manifest.name === 'goodvibes-sdk' || manifest.name.endsWith('/goodvibes-sdk'));
+}
 
 function assertFlatPackageLayout(tarball: string, files: readonly string[]): void {
   const leakedEntries = files.filter((file) => file.startsWith('package/node_modules/'));
@@ -87,43 +83,79 @@ function assertSecurityMitigationAssets(tarball: string, files: readonly string[
   }
 }
 
+function assertExportTargetsExist(
+  tarball: string,
+  files: readonly string[],
+  manifest: PackageManifestLike,
+): void {
+  for (const target of collectConcreteExportTargets(manifest.exports)) {
+    const packedPath = `package/${target.slice(2)}`;
+    if (!files.includes(packedPath)) {
+      throw new Error(`${tarball} export target ${target} is missing from the packed package`);
+    }
+  }
+}
+
+function collectConcreteExportTargets(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return value.startsWith('./') && !value.includes('*') ? [value] : [];
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return [];
+  }
+  return Object.values(value).flatMap((entry) => collectConcreteExportTargets(entry));
+}
+
 function assertFacadeImportsAreDeclared(
   tarball: string,
   files: readonly string[],
   manifest: PackageManifestLike,
+  packageSpecifiers: readonly string[],
 ): void {
   const distFiles = files.filter(
     (file) => file.startsWith('package/dist/') && (file.endsWith('.js') || file.endsWith('.d.ts')),
   );
   for (const file of distFiles) {
     const content = readPackedText(tarball, file);
-    for (const specifier of sourceOfTruthSpecifiers) {
-      if (content.includes(specifier) && manifest.dependencies?.[specifier] === undefined) {
+    for (const specifier of packageSpecifiers) {
+      if (specifier === manifest.name) continue;
+      if (referencesPackageSpecifier(content, specifier) && manifest.dependencies?.[specifier] === undefined) {
         throw new Error(`${tarball} references source package ${specifier} in ${file} but does not declare it as a dependency`);
       }
     }
   }
 }
 
+function referencesPackageSpecifier(content: string, specifier: string): boolean {
+  const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b(?:from|import)\\s*\\(?\\s*['"]${escaped}(?:/[^'"]*)?['"]`).test(content)
+    || new RegExp(`\\brequire\\(\\s*['"]${escaped}(?:/[^'"]*)?['"]\\s*\\)`).test(content);
+}
+
 const { tempRoot, publicStages } = await stagePackages();
+const packDestination = createSdkTempDir('goodvibes-sdk-pack-');
 
 try {
-  const packDestination = createSdkTempDir('goodvibes-sdk-pack-');
-  const packResults = publicStages
-    .filter((stage) => stage.dir === 'packages/sdk')
-    .map((stage) => packStage(stage.stageDir, packDestination));
+  const packageSpecifiers = publicStages
+    .map((stage) => stage.manifest.name)
+    .filter((name): name is string => typeof name === 'string' && !name.endsWith('/goodvibes-sdk'));
+  const packResults = publicStages.map((stage) => packStage(stage.stageDir, packDestination));
   const tarballs = collectTarballs(packResults, packDestination);
   tarballs.forEach((tarball) => {
     const manifest = inspectPackedManifest(resolve(tarball));
     assertNoWorkspaceRanges(manifest, tarball);
-    assertBundledBashLspMitigationManifest(manifest, tarball);
     const files = listPackedFiles(resolve(tarball));
     assertFlatPackageLayout(tarball, files);
-    assertSecurityMitigationAssets(tarball, files);
-    assertBundledBashLspPatchManifest(resolve(tarball));
-    assertFacadeImportsAreDeclared(tarball, files, manifest);
+    assertExportTargetsExist(tarball, files, manifest);
+    if (isSdkPackage(manifest)) {
+      assertBundledBashLspMitigationManifest(manifest, tarball);
+      assertSecurityMitigationAssets(tarball, files);
+      assertBundledBashLspPatchManifest(resolve(tarball));
+    }
+    assertFacadeImportsAreDeclared(tarball, files, manifest, packageSpecifiers);
   });
   console.log('pack check passed');
 } finally {
+  cleanupStage(packDestination);
   cleanupStage(tempRoot);
 }

@@ -262,7 +262,7 @@ export class SlackIntegration {
     const now = Math.floor(Date.now() / 1000);
     const ts = parseInt(timestamp, 10);
     if (Number.isNaN(ts) || Math.abs(now - ts) > 300) {
-      logger.warn('SlackIntegration.verifySignature: timestamp too old');
+      logger.warn('SlackIntegration.verifySignature: timestamp outside allowed skew');
       return false;
     }
 

@@ -17,7 +17,7 @@ export type PluginEvent =
   | { type: 'PLUGIN_ACTIVE'; pluginId: string }
   /** Plugin is running in degraded mode (partial functionality). */
   | { type: 'PLUGIN_DEGRADED'; pluginId: string; reason: string; affectedCapabilities: string[] }
-  /** Plugin encountered a non-fatal error. */
+  /** Plugin encountered an error; consumers inspect `fatal` to decide whether it disables the plugin. */
   | { type: 'PLUGIN_ERROR'; pluginId: string; error: string; fatal: boolean }
   /** Plugin is being unloaded and cleaned up. */
   | { type: 'PLUGIN_UNLOADING'; pluginId: string; reason?: string | undefined }

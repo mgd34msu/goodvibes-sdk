@@ -6,7 +6,7 @@ export type GatewayMethodAccess = 'public' | 'authenticated' | 'admin' | 'remote
 export type GatewayEventTransport = 'sse' | 'ws' | 'internal';
 export type { RuntimeEventDomain } from './generated/runtime-event-domains.js';
 export type DistributedPeerKind = 'node' | 'device';
-const DISTRIBUTED_WORK_TYPES = [
+export const DISTRIBUTED_WORK_TYPES = [
   'invoke',
   'status.request',
   'location.request',
@@ -40,7 +40,7 @@ export interface OperatorMethodContract {
   /** Whether this method is idempotent. When true, safe to retry on 5xx + network errors. */
   readonly idempotent?: boolean | undefined;
   /**
-   * MIN-3: Intentionally open bag for generator-supplied extension fields (e.g.
+   * Intentionally open bag for generator-supplied extension fields (e.g.
    * plugin manifests, analytics tags, UI hints). Consumers must not rely on any
    * specific key being present — treat as advisory display metadata only.
    * Narrowing this type would require a versioned generator ABI bump.

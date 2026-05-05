@@ -3,7 +3,6 @@ import type { AutomationSurfaceKind } from '../automation/types.js';
 import type {
   ProviderFailurePolicy,
   ProviderRoutingSelection,
-  UnresolvedModelPolicy,
 } from '../automation/types.js';
 import type { ExecutionIntent } from '../runtime/execution-intents.js';
 
@@ -22,7 +21,6 @@ export interface SharedSessionRoutingIntent {
   readonly providerId?: string | undefined;
   readonly modelId?: string | undefined;
   readonly providerSelection?: ProviderRoutingSelection | undefined;
-  readonly unresolvedModelPolicy?: UnresolvedModelPolicy | undefined;
   readonly providerFailurePolicy?: ProviderFailurePolicy | undefined;
   readonly fallbackModels?: readonly string[] | undefined;
   readonly helperModel?: SharedSessionHelperModelOverride | undefined;
@@ -68,6 +66,85 @@ export interface SharedSessionContinuationResult {
 export type SharedSessionContinuationRunner = (
   input: SharedSessionContinuationRequest,
 ) => SharedSessionContinuationResult | Promise<SharedSessionContinuationResult | null> | null;
+
+export interface SharedSessionAgentSpawnRoutingInput {
+  readonly model?: string | undefined;
+  readonly provider?: string | undefined;
+  readonly tools?: string[] | undefined;
+  readonly restrictTools?: boolean | undefined;
+  readonly routing?: {
+    readonly providerSelection?: ProviderRoutingSelection | undefined;
+    readonly providerFailurePolicy?: ProviderFailurePolicy | undefined;
+    readonly fallbackModels?: string[] | undefined;
+  } | undefined;
+  readonly executionIntent?: ExecutionIntent | undefined;
+  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+}
+
+function normalizeSharedSessionModelId(modelId: string | undefined, providerId: string | undefined): string | undefined {
+  const trimmedModelId = modelId?.trim();
+  if (!trimmedModelId) return undefined;
+  const trimmedProviderId = providerId?.trim();
+  const separatorIndex = trimmedModelId.indexOf(':');
+  if (separatorIndex > 0) {
+    const modelProviderId = trimmedModelId.slice(0, separatorIndex);
+    if (trimmedProviderId && trimmedProviderId !== modelProviderId) {
+      throw new Error(`Shared-session routing model '${trimmedModelId}' conflicts with provider '${trimmedProviderId}'.`);
+    }
+    return trimmedModelId;
+  }
+  if (trimmedProviderId) return `${trimmedProviderId}:${trimmedModelId}`;
+  throw new Error(`Shared-session routing model '${trimmedModelId}' must be provider-qualified.`);
+}
+
+function normalizeSharedSessionFallbackModels(models: readonly string[] | undefined): string[] {
+  return (models ?? [])
+    .filter((model): model is string => typeof model === 'string' && model.trim().length > 0)
+    .map((model) => {
+      const trimmed = model.trim();
+      const separatorIndex = trimmed.indexOf(':');
+      if (separatorIndex <= 0 || separatorIndex === trimmed.length - 1) {
+        throw new Error(`Shared-session fallback model '${model}' must be provider-qualified.`);
+      }
+      return trimmed;
+    });
+}
+
+export function buildSharedSessionAgentSpawnRoutingInput(
+  routing: SharedSessionRoutingIntent | undefined,
+  options: { readonly restrictTools?: boolean | undefined } = {},
+): SharedSessionAgentSpawnRoutingInput {
+  if (!routing) return options.restrictTools ? { restrictTools: true } : {};
+  const provider = routing.providerId?.trim();
+  const model = normalizeSharedSessionModelId(routing.modelId, provider);
+  if (provider && !model) {
+    throw new Error('Shared-session provider routing requires a provider-qualified model when provider is supplied.');
+  }
+  const fallbackModels = normalizeSharedSessionFallbackModels(routing.fallbackModels);
+  const providerFailurePolicy = routing.providerFailurePolicy ?? (
+    fallbackModels.length ? 'ordered-fallbacks' : 'fail'
+  );
+  if (providerFailurePolicy === 'ordered-fallbacks' && fallbackModels.length === 0) {
+    throw new Error('Shared-session ordered fallback routing requires at least one provider-qualified fallback model.');
+  }
+  if (providerFailurePolicy === 'fail' && fallbackModels.length > 0) {
+    throw new Error('Shared-session fail routing cannot include fallback models; use ordered-fallbacks to enable model failover.');
+  }
+  const agentRouting = {
+    providerSelection: routing.providerSelection ?? (provider ? 'concrete' : 'inherit-current'),
+    providerFailurePolicy,
+    ...(fallbackModels.length ? { fallbackModels } : {}),
+  };
+  return {
+    ...(model ? { model } : {}),
+    ...(provider ? { provider } : {}),
+    ...(routing.tools?.length ? { tools: [...routing.tools] } : {}),
+    ...(options.restrictTools ? { restrictTools: true } : {}),
+    routing: agentRouting,
+    ...(routing.executionIntent ? { executionIntent: routing.executionIntent } : {}),
+    ...(routing.reasoningEffort ? { reasoningEffort: routing.reasoningEffort } : {}),
+  };
+}
 
 export interface SharedSessionCompletion {
   readonly session: {

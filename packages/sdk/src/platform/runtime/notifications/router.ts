@@ -157,7 +157,7 @@ export class NotificationRouter {
       const batchKey = this.batchPolicy.evaluate(notification);
 
       if (batchKey !== undefined) {
-        // Notification collapsed into a batch group — route silently to panel.
+        // Notification collapsed into a batch group; batchKey/reasonCode expose the routing decision.
         return {
           target: 'panel_only',
           batchKey,

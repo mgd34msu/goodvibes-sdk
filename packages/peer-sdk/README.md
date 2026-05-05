@@ -1,8 +1,8 @@
 # @pellux/goodvibes-peer-sdk
 
-Internal workspace package backing `@pellux/goodvibes-sdk/peer`.
+Public GoodVibes peer package for distributed-runtime peer APIs and work exchange flows.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/peer`. Install this package directly when you only need the peer client subset.
 
 ```ts
 import { createPeerSdk } from '@pellux/goodvibes-sdk/peer';
@@ -15,7 +15,7 @@ const peer = createPeerSdk({
 const work = await peer.work.pull();
 ```
 
-Use this surface for pairing, heartbeat, work pull, and work completion flows without pulling in the broader umbrella SDK.
+Use this surface for pairing, heartbeat, work pull, and work completion flows without pulling in the broader main SDK.
 
 Advanced consumers can also build directly from a preconfigured transport and contract:
 

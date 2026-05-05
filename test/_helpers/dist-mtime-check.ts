@@ -1,5 +1,5 @@
 /**
- * M1 (seventh-review): dist/ staleness sentinel.
+ * Dist staleness sentinel.
  *
  * Import this helper in any test that loads packages from dist/ to get a loud
  * failure when the compiled output is older than the TypeScript source.
@@ -45,7 +45,7 @@ for (const pkg of MONITORED_PACKAGES) {
       stalePackages.push(`${pkg}: dist/index.js (${new Date(distMtime).toISOString()}) is older than src/index.ts (${new Date(srcMtime).toISOString()})`);
     }
   } catch (e) {
-    // MAJ-11 (eighth-review): dist/ absent is strictly worse than stale — fail loudly
+    // dist/ absent is strictly worse than stale — fail loudly
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
       stalePackages.push(`${pkg}: dist/index.js is MISSING — run \`bun run build\``);
     } else {

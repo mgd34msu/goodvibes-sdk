@@ -1,6 +1,10 @@
-import type { KnowledgeEdgeRecord } from '../types.js';
+import type { KnowledgeEdgeRecord, KnowledgeNodeRecord } from '../types.js';
+import { factSourceIds } from './helpers.js';
 
-export function buildSourceLinkIndex(edges: readonly KnowledgeEdgeRecord[]): Map<string, Set<string>> {
+export function buildSourceLinkIndex(
+  edges: readonly KnowledgeEdgeRecord[],
+  nodes: readonly KnowledgeNodeRecord[] = [],
+): Map<string, Set<string>> {
   const links = new Map<string, Set<string>>();
   const factTargets = new Map<string, Set<string>>();
   for (const edge of edges) {
@@ -18,6 +22,11 @@ export function buildSourceLinkIndex(edges: readonly KnowledgeEdgeRecord[]): Map
     if (edge.fromKind !== 'source' || edge.toKind !== 'node' || edge.relation !== 'supports_fact') continue;
     for (const targetId of factTargets.get(edge.toId) ?? []) {
       addSourceLink(links, edge.fromId, targetId);
+    }
+  }
+  for (const fact of nodes) {
+    for (const targetId of factTargets.get(fact.id) ?? []) {
+      for (const sourceId of factSourceIds(fact)) addSourceLink(links, sourceId, targetId);
     }
   }
   return links;

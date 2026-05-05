@@ -9,9 +9,11 @@
  * Maps and Sets are converted to arrays; circular references are replaced
  * with a sentinel string.
  */
-import type { RuntimeStateSnapshot, DomainStateEntry } from '../types.js';
+import type { RuntimeStateSnapshot, DomainStateEntry, DiagnosticPanelIssue } from '../types.js';
 import type { HotspotReport } from '../../inspection/state-inspector/types.js';
 import { serializeSafe } from '../../inspection/state-inspector/serialize.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Minimal interface for a domain state slice used by the inspector.
@@ -43,6 +45,8 @@ export interface HotspotAnalysisView {
   readonly hasChurnHotspots: boolean;
   /** Whether any latency hotspots are above threshold. */
   readonly hasLatencyHotspots: boolean;
+  /** Panel-level warnings/errors for degraded hotspot collection. */
+  readonly issues?: readonly DiagnosticPanelIssue[] | undefined;
 }
 
 /**
@@ -97,16 +101,37 @@ export class StateInspectorPanel {
    * @returns An immutable RuntimeStateSnapshot.
    */
   public getSnapshot(): RuntimeStateSnapshot {
-    const entries: DomainStateEntry[] = this._domains.map((domain) => ({
-      domain: domain.name,
-      revision: domain.getRevision(),
-      lastUpdatedAt: domain.getLastUpdatedAt(),
-      state: serializeSafe(domain.getState()) as Record<string, unknown>,
-    }));
+    const entries: DomainStateEntry[] = [];
+    const issues: DiagnosticPanelIssue[] = [];
+
+    for (const domain of this._domains) {
+      try {
+        entries.push({
+          domain: domain.name,
+          revision: domain.getRevision(),
+          lastUpdatedAt: domain.getLastUpdatedAt(),
+          state: serializeSafe(domain.getState()) as Record<string, unknown>,
+        });
+      } catch (error) {
+        const message = summarizeError(error);
+        issues.push({
+          severity: 'error',
+          code: 'domain_snapshot_failed',
+          message: `Failed to collect state for domain '${domain.name}': ${message}`,
+          source: 'StateInspectorPanel',
+          context: { domain: domain.name },
+        });
+        logger.warn('[StateInspectorPanel] domain snapshot failed', {
+          domain: domain.name,
+          error: message,
+        });
+      }
+    }
 
     return {
       capturedAt: Date.now(),
       domains: entries,
+      ...(issues.length > 0 ? { issues } : {}),
     };
   }
 
@@ -129,7 +154,26 @@ export class StateInspectorPanel {
    * @returns HotspotAnalysisView.
    */
   public getHotspotAnalysis(): HotspotAnalysisView {
-    const report = this._hotspotProvider?.();
+    let report: HotspotReport | undefined;
+    try {
+      report = this._hotspotProvider?.();
+    } catch (error) {
+      const message = summarizeError(error);
+      logger.warn('[StateInspectorPanel] hotspot report failed', { error: message });
+      return {
+        report: undefined,
+        topChurn: [],
+        topLatency: [],
+        hasChurnHotspots: false,
+        hasLatencyHotspots: false,
+        issues: [{
+          severity: 'error',
+          code: 'hotspot_report_failed',
+          message: `Failed to collect hotspot analysis: ${message}`,
+          source: 'StateInspectorPanel',
+        }],
+      };
+    }
 
     if (!report) {
       return {
@@ -178,8 +222,8 @@ export class StateInspectorPanel {
     for (const cb of this._subscribers) {
       try {
         cb();
-      } catch {
-        // Non-fatal: subscriber errors must not crash the provider
+      } catch (error) {
+        logger.warn('[StateInspectorPanel] subscriber error', { error: summarizeError(error) });
       }
     }
   }

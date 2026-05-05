@@ -93,7 +93,10 @@ async function resolveModel(
   const models: readonly ModelDefinition[] = providerRegistry.listModels();
   const resolveCandidate = async () => {
     if (modelId) {
-      const explicit = models.find((model) => model.registryKey === modelId || model.id === modelId);
+      if (!modelId.includes(':')) {
+        throw new Error(`Media analysis model must be a provider-qualified registry key; received '${modelId}'.`);
+      }
+      const explicit = models.find((model) => model.registryKey === modelId);
       if (!explicit) {
         throw new Error(`Unknown model for media analysis: ${modelId}`);
       }
@@ -115,13 +118,11 @@ async function resolveModel(
         return candidate;
       }
     }
-    const fallback = models.find((model) => model.selectable && model.capabilities.multimodal);
-    if (fallback) return fallback;
-    throw new Error('No multimodal model is available for image understanding');
+    throw new Error(`No multimodal model is available for image understanding in scope ${scope.label}`);
   };
 
   const selected = await resolveCandidate();
-  const provider = providerRegistry.getForModel(selected.registryKey ?? selected.id, selected.provider);
+  const provider = providerRegistry.getForModel(selected.registryKey, selected.provider);
   return {
     providerId: selected.provider,
     provider,
@@ -210,7 +211,7 @@ async function analyzeWithScope(
       ...artifact.metadata,
       llmProviderId: selected.providerId,
       modelId: selected.modelId,
-      format: 'plain-text-fallback',
+      format: 'plain-text-response',
     },
   };
 }

@@ -1,5 +1,5 @@
 /**
- * COV-04 (ninth-review): platform/profiles/ smoke test.
+ * platform/profiles/ smoke test.
  * Verifies that profile data conversion functions work correctly.
  */
 import { describe, expect, test } from 'bun:test';

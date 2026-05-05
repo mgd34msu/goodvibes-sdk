@@ -2,6 +2,7 @@ import { CodeIntelligence } from '../../intelligence/index.js';
 import type { OutputOptions, SymbolsQuery, SymbolKind } from './shared.js';
 import {
   collectTextFiles,
+  createFindDiagnostics,
   groupByKey,
   loadFileLines,
   matchesSymbolQuery,
@@ -10,7 +11,10 @@ import {
   toSymbolKind,
   validateSearchPath,
   readTextFile,
+  withFindWarnings,
+  addFindWarning,
 } from './shared.js';
+import { summarizeError } from '../../utils/error-display.js';
 import { compileSafeRegExp } from '../../utils/safe-regex.js';
 
 interface SymbolResult {
@@ -31,6 +35,7 @@ export async function executeSymbolsQuery(
   const basePath = validatedPath;
   const maxResults = output.max_results ?? 100;
   const kindFilter = query.kinds ? new Set(query.kinds) : null;
+  const diagnostics = createFindDiagnostics();
 
   const linePatterns: Array<{
     kind: SymbolKind;
@@ -49,7 +54,7 @@ export async function executeSymbolsQuery(
   ];
 
   const activePatterns = kindFilter ? linePatterns.filter((p) => kindFilter.has(p.kind)) : linePatterns;
-  const files = await collectTextFiles(basePath);
+  const files = await collectTextFiles(basePath, diagnostics);
   const symbols: SymbolResult[] = [];
 
   let queryRegex: RegExp | null = null;
@@ -62,11 +67,13 @@ export async function executeSymbolsQuery(
   }
 
   const ci = new CodeIntelligence({});
+  let treeSitterFiles = 0;
+  let regexFallbackFiles = 0;
 
   for (const file of files) {
     if (symbols.length >= maxResults) break;
 
-    const content = await readTextFile(file);
+    const content = await readTextFile(file, diagnostics);
     if (content === null) continue;
 
     let usedTreeSitter = false;
@@ -74,6 +81,7 @@ export async function executeSymbolsQuery(
       const tsSymbols = await ci.getSymbols(file, content);
       if (tsSymbols.length > 0) {
         usedTreeSitter = true;
+        treeSitterFiles++;
         for (const sym of tsSymbols) {
           if (symbols.length >= maxResults) break;
           const kind = toSymbolKind(sym.kind);
@@ -83,11 +91,12 @@ export async function executeSymbolsQuery(
           symbols.push({ name: sym.name, kind, file, line: sym.line, exported: sym.exported });
         }
       }
-    } catch {
-      // fall back to regex
+    } catch (err) {
+      addFindWarning(diagnostics, `Tree-sitter symbol extraction failed for '${file}'; used regex fallback: ${summarizeError(err)}`);
     }
 
     if (usedTreeSitter) continue;
+    regexFallbackFiles++;
 
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
@@ -108,11 +117,11 @@ export async function executeSymbolsQuery(
   }
 
   if (output.format === 'count_only') {
-    return makeCountResult(symbols.length);
+    return withFindWarnings({ ...makeCountResult(symbols.length), source: symbolSource(treeSitterFiles, regexFallbackFiles) }, diagnostics.warnings);
   }
   if (output.format === 'files_only') {
     const uniqueFiles = [...new Set(symbols.map((s) => s.file))];
-    return makeFilesResult(uniqueFiles, symbols.length);
+    return withFindWarnings({ ...makeFilesResult(uniqueFiles, symbols.length), source: symbolSource(treeSitterFiles, regexFallbackFiles) }, diagnostics.warnings);
   }
 
   if (output.format === 'signatures' || output.format === 'full') {
@@ -170,16 +179,22 @@ export async function executeSymbolsQuery(
     const groupBy = query.group_by ?? 'none';
     const grouped = groupByKey(enriched as Array<{ file: string; kind: string }>, groupBy);
     if (grouped) {
-      return { symbols: grouped, count: symbols.length };
+      return withFindWarnings({ symbols: grouped, count: symbols.length, source: symbolSource(treeSitterFiles, regexFallbackFiles) }, diagnostics.warnings);
     }
-    return { symbols: enriched, count: symbols.length };
+    return withFindWarnings({ symbols: enriched, count: symbols.length, source: symbolSource(treeSitterFiles, regexFallbackFiles) }, diagnostics.warnings);
   }
 
   const groupBy = query.group_by ?? 'none';
   const grouped = groupByKey(symbols, groupBy);
   if (grouped) {
-    return { symbols: grouped, count: symbols.length };
+    return withFindWarnings({ symbols: grouped, count: symbols.length, source: symbolSource(treeSitterFiles, regexFallbackFiles) }, diagnostics.warnings);
   }
 
-  return { symbols, count: symbols.length };
+  return withFindWarnings({ symbols, count: symbols.length, source: symbolSource(treeSitterFiles, regexFallbackFiles) }, diagnostics.warnings);
+}
+
+function symbolSource(treeSitterFiles: number, regexFallbackFiles: number): 'tree_sitter' | 'regex_fallback' | 'mixed' {
+  if (treeSitterFiles > 0 && regexFallbackFiles > 0) return 'mixed';
+  if (treeSitterFiles > 0) return 'tree_sitter';
+  return 'regex_fallback';
 }

@@ -79,7 +79,7 @@ export class CodeIntelligence {
       try {
         await this.treeSitter.initialize();
       } catch (err) {
-        logger.debug('CodeIntelligence: TreeSitterService init error', { error: summarizeError(err) });
+        logger.warn('CodeIntelligence: TreeSitterService init error', { error: summarizeError(err) });
       }
       return;
     }
@@ -104,22 +104,22 @@ export class CodeIntelligence {
         }
       }
     } catch (err) {
-      logger.debug('CodeIntelligence: failed to load language configs', { error: summarizeError(err) });
+      logger.warn('CodeIntelligence: failed to load language configs', { error: summarizeError(err) });
     }
 
     // Initialize tree-sitter WASM loader.
     try {
       await this.treeSitter.initialize();
     } catch (err) {
-      logger.debug('CodeIntelligence: TreeSitterService init error', { error: summarizeError(err) });
+      logger.warn('CodeIntelligence: TreeSitterService init error', { error: summarizeError(err) });
     }
     // LspService has no async init; LSP servers are started on demand.
   }
 
   /** Shutdown all owned services for this facade instance. */
   async dispose(): Promise<void> {
-    try { await this.lsp?.shutdown(); } catch (err) { logger.debug('LSP shutdown error', { error: summarizeError(err) }); }
-    try { this.treeSitter.dispose(); } catch (err) { logger.debug('TreeSitter dispose error', { error: summarizeError(err) }); }
+    try { await this.lsp?.shutdown(); } catch (err) { logger.warn('LSP shutdown error', { error: summarizeError(err) }); }
+    try { this.treeSitter.dispose(); } catch (err) { logger.warn('TreeSitter dispose error', { error: summarizeError(err) }); }
   }
 
   // -------------------------------------------------------------------------
@@ -169,7 +169,7 @@ export class CodeIntelligence {
       if (!parsed) return [];
       return extractSymbols(parsed.tree, parsed.language, parsed.lang);
     } catch (err) {
-      logger.debug('CodeIntelligence.getSymbols error', { filePath, error: summarizeError(err) });
+      logger.warn('CodeIntelligence.getSymbols error', { filePath, error: summarizeError(err) });
       return [];
     }
   }
@@ -184,7 +184,7 @@ export class CodeIntelligence {
       if (!parsed) return [];
       return extractOutline(parsed.tree, parsed.language, parsed.lang);
     } catch (err) {
-      logger.debug('CodeIntelligence.getOutline error', { filePath, error: summarizeError(err) });
+      logger.warn('CodeIntelligence.getOutline error', { filePath, error: summarizeError(err) });
       return [];
     }
   }
@@ -203,7 +203,7 @@ export class CodeIntelligence {
       if (!parsed) return null;
       return findEnclosingScope(parsed.tree, parsed.language, parsed.lang, line);
     } catch (err) {
-      logger.debug('CodeIntelligence.getEnclosingScope error', { filePath, error: summarizeError(err) });
+      logger.warn('CodeIntelligence.getEnclosingScope error', { filePath, error: summarizeError(err) });
       return null;
     }
   }
@@ -219,7 +219,7 @@ export class CodeIntelligence {
     if (!lang) return false;
     try {
       return await this.lsp.isAvailable(lang);
-    } catch (err) { logger.debug('hasLsp error', { error: summarizeError(err) });
+    } catch (err) { logger.warn('hasLsp error', { error: summarizeError(err) });
       return false;
     }
   }
@@ -247,7 +247,7 @@ export class CodeIntelligence {
       if (Array.isArray(result)) return result[0] ?? null;
       return result;
     } catch (err) {
-      logger.debug('CodeIntelligence.getDefinition error', { filePath, error: summarizeError(err) });
+      logger.warn('CodeIntelligence.getDefinition error', { filePath, error: summarizeError(err) });
       return null;
     }
   }
@@ -274,7 +274,7 @@ export class CodeIntelligence {
       });
       return result ?? [];
     } catch (err) {
-      logger.debug('CodeIntelligence.getReferences error', { filePath, error: summarizeError(err) });
+      logger.warn('CodeIntelligence.getReferences error', { filePath, error: summarizeError(err) });
       return [];
     }
   }
@@ -301,7 +301,7 @@ export class CodeIntelligence {
           if (lspSymbols && lspSymbols.length > 0) return lspSymbols;
         }
       } catch (err) {
-        logger.debug('CodeIntelligence.getDocumentSymbols LSP error', { filePath, error: summarizeError(err) });
+        logger.warn('CodeIntelligence.getDocumentSymbols LSP error; falling back to tree-sitter', { filePath, error: summarizeError(err) });
       }
     }
     // Fall back to tree-sitter
@@ -328,7 +328,7 @@ export class CodeIntelligence {
         position: { line, character: column },
       }) ?? null;
     } catch (err) {
-      logger.debug('CodeIntelligence.getHover error', { filePath, error: summarizeError(err) });
+      logger.warn('CodeIntelligence.getHover error', { filePath, error: summarizeError(err) });
       return null;
     }
   }
@@ -336,8 +336,8 @@ export class CodeIntelligence {
   /**
    * Get diagnostics for a file.
    * Returns empty array if LSP not available.
-   * Note: LSP pushes diagnostics via textDocument/publishDiagnostics notifications;
-   * this method is a best-effort pull (not all servers support textDocument/diagnostic).
+   * Checks queued textDocument/publishDiagnostics notifications first, then asks
+   * servers that implement textDocument/diagnostic.
    */
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
     const lang = detectLanguage(filePath);
@@ -346,13 +346,33 @@ export class CodeIntelligence {
       const client = await this.lsp?.getClient(lang);
       if (!client) return [];
       const uri = pathToUri(filePath);
+      const diagnosticNotifications = client.takeNotifications((notification) => {
+        if (notification.method !== 'textDocument/publishDiagnostics') return false;
+        const params = notification.params;
+        return (
+          typeof params === 'object'
+          && params !== null
+          && (params as { uri?: unknown }).uri === uri
+        );
+      });
+      for (const notification of diagnosticNotifications) {
+        const params = notification.params;
+        if (
+          typeof params === 'object'
+          && params !== null
+          && (params as { uri?: unknown }).uri === uri
+          && Array.isArray((params as { diagnostics?: unknown }).diagnostics)
+        ) {
+          return (params as { diagnostics: Diagnostic[] }).diagnostics;
+        }
+      }
       const result = await client.request<{ items: Diagnostic[] } | null>(
         'textDocument/diagnostic',
         { textDocument: { uri } },
       );
       return result?.items ?? [];
     } catch (err) {
-      logger.debug('CodeIntelligence.getDiagnostics error', { filePath, error: summarizeError(err) });
+      logger.warn('CodeIntelligence.getDiagnostics error', { filePath, error: summarizeError(err) });
       return [];
     }
   }

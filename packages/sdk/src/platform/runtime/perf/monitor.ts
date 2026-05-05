@@ -135,7 +135,7 @@ export class PerfMonitor {
     for (const budget of this.budgets) {
       const metric = metrics.find((m) => m.name === budget.metric);
       if (!metric) {
-        // Metric not found — add a warning entry instead of silently passing
+        // Metric not found — add a warning entry to make the missing input visible.
         violations.push({
           budget,
           actual: NaN,

@@ -105,4 +105,18 @@ describe('state tool — runtime.workingDir set', () => {
     // swap manager must not have been called for daemon.homeDir
     expect(calls).toEqual([]);
   });
+
+  test('set rejects reserved KV keys instead of reporting a silent no-op', async () => {
+    const tool = makeStateTool('/abc', '/def');
+    const result = await tool.execute({ mode: 'set', values: { id: 'caller-controlled' } });
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/reserved state key/i);
+  });
+
+  test('clear rejects reserved KV keys instead of reporting a silent no-op', async () => {
+    const tool = makeStateTool('/abc', '/def');
+    const result = await tool.execute({ mode: 'clear', clearKeys: ['started_at'] });
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/reserved state key/i);
+  });
 });

@@ -14,6 +14,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { dispatchDaemonApiRoutes } from '../packages/daemon-sdk/src/api-router.js';
+import { createDaemonControlRouteHandlers } from '../packages/daemon-sdk/src/control-routes.js';
 import { dispatchOperatorRoutes } from '../packages/daemon-sdk/src/operator.js';
 import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js';
 import { makeRequest } from './_helpers/router-requests.js';
@@ -23,14 +25,90 @@ import { makeRequest } from './_helpers/router-requests.js';
 // ---------------------------------------------------------------------------
 
 describe('router-e2e control — GET /status (happy path)', () => {
-  test('returns 200 with ok:true', async () => {
+  test('standalone daemon dispatches /login to the control handler', async () => {
+    const loginRequest = makeRequest('POST', 'http://localhost/login');
+    let capturedRequest: Request | null = null;
+
+    const res = await dispatchDaemonApiRoutes(loginRequest, makeDefaultDaemonHandlerStub({
+      postLogin: (req) => {
+        capturedRequest = req;
+        return Response.json({ authenticated: true });
+      },
+    }));
+
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(200);
+    expect(capturedRequest).toBe(loginRequest);
+    expect(await res!.json()).toEqual({ authenticated: true });
+  });
+
+  test('standalone daemon dispatches /status with request-scoped auth', async () => {
+    const statusRequests: Request[] = [];
+    const handlers = createDaemonControlRouteHandlers({
+      authToken: 'shared-token',
+      version: '0.0.0-test',
+      sessionCookieName: 'goodvibes_session',
+      controlPlaneGateway: {
+        getSnapshot: () => ({}),
+        renderWebUi: () => new Response('', { status: 200 }),
+        listRecentEvents: () => [],
+        listSurfaceMessages: () => [],
+        listClients: () => [],
+        createEventStream: () => new Response('', { status: 200 }),
+      },
+      extractAuthToken: (req) => req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '',
+      resolveAuthenticatedPrincipal: (req) => {
+        statusRequests.push(req);
+        return req.headers.get('authorization') === 'Bearer session-token'
+          ? {
+              principalId: 'tester',
+              principalKind: 'user',
+              admin: false,
+              scopes: ['read:status'],
+            }
+          : null;
+      },
+      gatewayMethods: {
+        list: () => [],
+        listEvents: () => [],
+        get: () => null,
+      },
+      getOperatorContract: () => ({}),
+      invokeGatewayMethodCall: async () => ({ status: 404, ok: false, body: {} }),
+      parseOptionalJsonBody: async () => null,
+      requireAdmin: () => new Response('', { status: 403 }),
+      requireAuthenticatedSession: () => null,
+    });
+
+    const unauthenticatedRequest = makeRequest('GET', 'http://localhost/status');
+    const unauthenticated = await dispatchDaemonApiRoutes(unauthenticatedRequest, handlers as never);
+    expect(unauthenticated).not.toBeNull();
+    expect(unauthenticated!.status).toBe(401);
+    expect(statusRequests[0]).toBe(unauthenticatedRequest);
+
+    const authenticatedRequest = new Request('http://localhost/status', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer session-token' },
+    });
+    const authenticated = await dispatchDaemonApiRoutes(authenticatedRequest, handlers as never);
+    expect(authenticated).not.toBeNull();
+    expect(authenticated!.status).toBe(200);
+    expect(statusRequests[1]).toBe(authenticatedRequest);
+    expect(await authenticated!.json()).toEqual({
+      status: 'running',
+      version: '0.0.0-test',
+    });
+  });
+
+  test('returns the control.status response shape', async () => {
     const handlers = makeDefaultDaemonHandlerStub();
     const req = makeRequest('GET', 'http://localhost/status');
     const res = await dispatchOperatorRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
-    expect(body.ok).toBe(true);
+    expect(body.status).toBe('running');
+    expect(body.version).toBe('0.0.0-test');
   });
 
   test('delegates to getControlPlaneSnapshot for GET /api/control-plane', async () => {

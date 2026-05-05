@@ -1,4 +1,4 @@
-import type { KnowledgeProjectionTarget } from './types.js';
+import type { KnowledgeEdgeRecord, KnowledgeProjectionTarget } from './types.js';
 
 export function slugify(value: string): string {
   return value
@@ -16,11 +16,6 @@ export function quote(value: string | undefined): string | null {
 export function formatDateTime(timestamp: number | undefined): string | null {
   if (!timestamp || !Number.isFinite(timestamp)) return null;
   return new Date(timestamp).toISOString();
-}
-
-export function codeFenceJson(value: Record<string, unknown> | undefined): string | null {
-  if (!value || Object.keys(value).length === 0) return null;
-  return ['```json', JSON.stringify(value, null, 2), '```'].join('\n');
 }
 
 export function joinSections(...sections: Array<string | null | undefined>): string {
@@ -55,4 +50,10 @@ export function materializedTargetReference(target: KnowledgeProjectionTarget): 
     return { kind: target.kind, id: target.itemId };
   }
   return null;
+}
+
+export function isActiveKnowledgeEdge(edge: Pick<KnowledgeEdgeRecord, 'weight' | 'metadata'>): boolean {
+  return edge.weight > 0
+    && edge.metadata.deleted !== true
+    && edge.metadata.linkStatus !== 'unlinked';
 }

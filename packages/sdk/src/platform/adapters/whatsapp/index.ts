@@ -1,5 +1,6 @@
 import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit, verifySha256HmacSignature } from '../helpers.js';
 import type { SurfaceAdapterContext } from '../types.js';
+import { logger } from '../../utils/logger.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
@@ -58,7 +59,16 @@ export async function handleWhatsAppSurfaceWebhook(req: Request, context: Surfac
   const value = readRecord(change?.value);
   const message = value && Array.isArray(value.messages) ? readRecord(value.messages[0]) : null;
   if (!message) {
-    return Response.json({ acknowledged: true, ignored: true });
+    logger.info('handleWhatsAppSurfaceWebhook: payload ignored', {
+      reason: 'no-message-event',
+      provider,
+    });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-message-event',
+    });
   }
   const contact = value && Array.isArray(value.contacts) ? readRecord(value.contacts[0]) : null;
   const from = readString(message.from);
@@ -98,7 +108,18 @@ export async function handleWhatsAppSurfaceWebhook(req: Request, context: Surfac
     },
   });
   if (!text) {
-    return Response.json({ acknowledged: true, queued: false, bindingId: binding.id });
+    logger.info('handleWhatsAppSurfaceWebhook: message acknowledged without queueing', {
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+      messageId: readString(message.id),
+    });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+    });
   }
 
   const submission = await context.sessionBroker.submitMessage({

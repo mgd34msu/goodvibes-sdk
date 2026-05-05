@@ -235,11 +235,10 @@ export interface FetchUrlInput {
 /**
  * Sanitization mode for response content.
  *
- * Re-exported from sanitizer.ts to avoid duplication. `FetchSanitizeMode`
- * is an alias for `SanitizeMode`.
+ * Re-exported from sanitizer.ts to avoid duplication.
  */
 import type { SanitizeMode } from './sanitizer.js';
-/** Sanitization mode alias — re-exported from sanitizer.ts to avoid duplication. */
+/** Sanitization mode re-exported from sanitizer.ts. */
 export type FetchSanitizeMode = SanitizeMode;
 
 /** Full input shape for the fetch tool. */

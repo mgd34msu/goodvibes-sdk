@@ -11,7 +11,7 @@ export interface JsonErrorResponseOptions {
   readonly fallbackMessage?: string | undefined;
   readonly source?: DaemonErrorSource | undefined;
   /**
-   * MAJ-5: when false (default), internal pipeline fields (`provider`,
+   * when false (default), internal pipeline fields (`provider`,
    * `operation`, `phase`, `providerCode`, `providerType`) are stripped from
    * the wire body to prevent information disclosure to unprivileged clients.
    * Pass `true` only for admin/operator-authenticated callers.
@@ -145,7 +145,7 @@ function inferCategory(status?: number, code?: string): DaemonErrorCategory {
 
 const MAX_INFER_MESSAGE_LENGTH = 2_000;
 
-// MIN-6: fast-path exact-code lookup to avoid regex on the hot path for
+// fast-path exact-code lookup to avoid regex on the hot path for
 // well-known error codes that appear frequently in daemon responses.
 const FAST_PATH_CODE_CATEGORIES: ReadonlyMap<string, DaemonErrorCategory> = new Map([
   ['ECONNREFUSED', DaemonErrorCategory.NETWORK],
@@ -158,17 +158,17 @@ const FAST_PATH_CODE_CATEGORIES: ReadonlyMap<string, DaemonErrorCategory> = new 
 ]);
 
 function inferCategoryFromMessage(message: string): DaemonErrorCategory {
-  // MIN-6: check exact code match before falling through to regex.
+  // check exact code match before falling through to regex.
   const fastPath = FAST_PATH_CODE_CATEGORIES.get(message.trim().toUpperCase());
   if (fastPath !== undefined) return fastPath;
-  // m8: cap length before lowercasing to avoid regex on unbounded strings
+  // Cap length before lowercasing to avoid regex on unbounded strings.
   const msg = message.length > MAX_INFER_MESSAGE_LENGTH
     ? message.slice(0, MAX_INFER_MESSAGE_LENGTH).toLowerCase()
     : message.toLowerCase();
   // Order matters: credential/authentication patterns are intentionally checked
   // before generic bad-request wording so provider credential failures remain
   // actionable for clients.
-  // m16: use word boundaries to avoid false positives on 'authority', 'author', etc.
+  // Use word boundaries to avoid false positives on 'authority', 'author', etc.
   if (/api[_\s-]?key|\bauth\b|\btoken\b|credential|\bjwt\b|unauthoriz/.test(msg)) return DaemonErrorCategory.AUTHENTICATION;
   if (/forbidden|access denied|permission denied|not allowed/.test(msg)) return DaemonErrorCategory.AUTHORIZATION;
   if (/billing|payment required|credits?|quota|depleted|insufficient balance/.test(msg)) return DaemonErrorCategory.BILLING;
@@ -279,11 +279,11 @@ export function buildErrorResponseBody(
   error: unknown,
   options: JsonErrorResponseOptions = {},
 ): StructuredDaemonErrorBody {
-  // MAJ-5: only expose internal pipeline fields to privileged callers.
+  // only expose internal pipeline fields to privileged callers.
   const isPrivileged = options.isPrivileged === true;
   if (isStructuredDaemonErrorBody(error)) {
     if (isPrivileged) return error;
-    // CRIT-02: strip pipeline-internal fields before returning to unprivileged callers.
+    // strip pipeline-internal fields before returning to unprivileged callers.
     const safe: StructuredDaemonErrorBody = {
       error: error.error,
       ...(error.hint !== undefined ? { hint: error.hint } : {}),
@@ -324,7 +324,7 @@ export function buildErrorResponseBody(
       ...(normalizeSource(error.source) ? { source: normalizeSource(error.source) } : {}),
       ...(error.recoverable !== undefined ? { recoverable: error.recoverable } : {}),
       ...(status !== undefined ? { status } : {}),
-      // MAJ-5: strip pipeline-internal fields for unprivileged callers.
+      // strip pipeline-internal fields for unprivileged callers.
       ...(isPrivileged && provider ? { provider } : {}),
       ...(isPrivileged && error.operation ? { operation: error.operation } : {}),
       ...(isPrivileged && phase ? { phase } : {}),
@@ -365,7 +365,7 @@ export function buildErrorResponseBody(
       ...(source ? { source } : {}),
       ...(recoverable !== undefined ? { recoverable } : {}),
       ...(status !== undefined ? { status } : {}),
-      // MAJ-5: strip pipeline-internal fields for unprivileged callers.
+      // strip pipeline-internal fields for unprivileged callers.
       ...(isPrivileged && provider ? { provider } : {}),
       ...(isPrivileged && operation ? { operation } : {}),
       ...(isPrivileged && phase ? { phase } : {}),

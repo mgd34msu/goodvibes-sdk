@@ -109,6 +109,81 @@ describe('Home Graph sync and generated pages', () => {
     expect(roomPage.markdown).not.toContain('Living Home Graph room page for Kitchen');
   });
 
+  test('retires snapshot objects and generated pages missing from the latest sync', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'retired-device', name: 'Retired Device', manufacturer: 'Vendor', model: 'RET-1' }],
+      entities: [{
+        id: 'sensor.old_device',
+        entityId: 'sensor.old_device',
+        name: 'Retired Device Sensor',
+        deviceId: 'retired-device',
+      }],
+    });
+
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'new-device', name: 'New Device', manufacturer: 'Vendor', model: 'NEW-1' }],
+      entities: [{
+        id: 'sensor.new_device',
+        entityId: 'sensor.new_device',
+        name: 'New Device Sensor',
+        deviceId: 'new-device',
+      }],
+    });
+
+    const browse = await service.browse({ installationId: 'house-1' });
+    const pages = await service.listPages({ installationId: 'house-1', limit: 20 });
+
+    expect(browse.nodes.some((node) => node.title === 'Retired Device')).toBe(false);
+    expect(browse.nodes.some((node) => node.title === 'Retired Device Sensor')).toBe(false);
+    expect(pages.pages.some((page) => page.source.title === 'Retired Device passport')).toBe(false);
+    expect(pages.pages.some((page) => page.source.title === 'New Device passport')).toBe(true);
+  });
+
+  test('does not retire object groups omitted from a partial snapshot', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'office', name: 'Office' }],
+      devices: [{ id: 'desk-display', name: 'Desk Display', areaId: 'office', manufacturer: 'Vendor', model: 'DSP-1' }],
+    });
+
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      areas: [{ id: 'office', name: 'Office' }],
+    });
+
+    const browse = await service.browse({ installationId: 'house-1' });
+    const pages = await service.listPages({ installationId: 'house-1', limit: 20 });
+
+    expect(browse.nodes.some((node) => node.title === 'Desk Display')).toBe(true);
+    expect(pages.pages.some((page) => page.source.title === 'Desk Display passport')).toBe(true);
+  });
+
+  test('reactivates retired snapshot objects when they reappear', async () => {
+    const { service } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'returning-display', name: 'Returning Display', manufacturer: 'Vendor', model: 'RET-1' }],
+    });
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [],
+    });
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'returning-display', name: 'Returning Display', manufacturer: 'Vendor', model: 'RET-1' }],
+    });
+
+    const browse = await service.browse({ installationId: 'house-1' });
+    const pages = await service.listPages({ installationId: 'house-1', limit: 20 });
+
+    expect(browse.nodes.some((node) => node.title === 'Returning Display')).toBe(true);
+    expect(pages.pages.some((page) => page.source.title === 'Returning Display passport')).toBe(true);
+  });
+
   test('bounds snapshot-time automatic page generation for large spaces', async () => {
     const { service } = createHomeGraphService();
     const devices = Array.from({ length: 48 }, (_, index) => ({
@@ -227,6 +302,197 @@ describe('Home Graph sync and generated pages', () => {
     expect(page.markdown).not.toContain('Garage Opener');
     expect(page.markdown).not.toContain('Garage Door');
     expect(page.markdown).not.toContain('Garage Opener needs source-backed feature details.');
+  });
+
+  test('device passports render only subject-linked facts from accepted sources', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [
+        { id: 'kitchen-sensor', name: 'Kitchen Sensor', manufacturer: 'Acme', model: 'KS-1' },
+        { id: 'garage-opener', name: 'Garage Opener', manufacturer: 'Acme', model: 'GO-1' },
+      ],
+    });
+    const note = await service.ingestNote({
+      installationId: 'house-1',
+      title: 'Shared device evidence',
+      body: 'Kitchen Sensor reports temperature and motion. Garage Opener supports Z-Wave garage door control.',
+      target: { kind: 'device', id: 'kitchen-sensor', relation: 'has_manual' },
+      tags: ['manual'],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const nodes = (await service.browse({ installationId: 'house-1' })).nodes;
+    const kitchenSensor = nodes.find((node) => node.title === 'Kitchen Sensor');
+    const garageOpener = nodes.find((node) => node.title === 'Garage Opener');
+    expect(kitchenSensor).toBeDefined();
+    expect(garageOpener).toBeDefined();
+
+    await store.upsertNode({
+      id: 'fact-kitchen-sensor-capability',
+      kind: 'fact',
+      slug: 'fact-kitchen-sensor-capability',
+      title: 'Sensing capabilities',
+      summary: 'Kitchen Sensor reports temperature and motion.',
+      aliases: [],
+      status: 'active',
+      confidence: 90,
+      sourceId: note.source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'capability',
+        value: 'temperature and motion',
+        sourceId: note.source.id,
+        subjectIds: [kitchenSensor!.id],
+        linkedObjectIds: [kitchenSensor!.id],
+      },
+    });
+    await store.upsertNode({
+      id: 'fact-garage-opener-capability',
+      kind: 'fact',
+      slug: 'fact-garage-opener-capability',
+      title: 'Garage control',
+      summary: 'Garage Opener supports Z-Wave garage door control.',
+      aliases: [],
+      status: 'active',
+      confidence: 90,
+      sourceId: note.source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'capability',
+        value: 'Z-Wave garage door control',
+        sourceId: note.source.id,
+        subjectIds: [garageOpener!.id],
+        linkedObjectIds: [garageOpener!.id],
+      },
+    });
+    for (const factId of ['fact-kitchen-sensor-capability', 'fact-garage-opener-capability']) {
+      await store.upsertEdge({
+        fromKind: 'source',
+        fromId: note.source.id,
+        toKind: 'node',
+        toId: factId,
+        relation: 'supports_fact',
+        weight: 0.95,
+        metadata: { knowledgeSpaceId: spaceId },
+      });
+    }
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: 'fact-kitchen-sensor-capability',
+      toKind: 'node',
+      toId: kitchenSensor!.id,
+      relation: 'describes',
+      weight: 0.95,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: 'fact-garage-opener-capability',
+      toKind: 'node',
+      toId: garageOpener!.id,
+      relation: 'describes',
+      weight: 0.95,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'kitchen-sensor' });
+
+    expect(page.markdown).toContain('Kitchen Sensor reports temperature and motion.');
+    expect(page.markdown).not.toContain('Z-Wave garage door control');
+  });
+
+  test('device passports render source-backed facts associated by fact metadata', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'kitchen-sensor', name: 'Kitchen Sensor', manufacturer: 'Acme', model: 'KS-1' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const device = (await service.browse({ installationId: 'house-1' })).nodes
+      .find((node) => node.title === 'Kitchen Sensor');
+    expect(device).toBeDefined();
+    const source = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'Kitchen Sensor manual',
+      canonicalUri: 'homegraph://house-1/kitchen-sensor-manual',
+      tags: ['homeassistant', 'home-graph', 'manual'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    const fact = await store.upsertNode({
+      kind: 'fact',
+      slug: 'kitchen-sensor-temperature-motion',
+      title: 'Sensing capabilities',
+      summary: 'Kitchen Sensor reports temperature and motion.',
+      status: 'active',
+      confidence: 90,
+      sourceId: source.id,
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        semanticKind: 'fact',
+        factKind: 'capability',
+        value: 'temperature and motion',
+        sourceIds: [source.id],
+        subjectIds: [device!.id],
+        linkedObjectIds: [device!.id],
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'node',
+      fromId: fact.id,
+      toKind: 'node',
+      toId: device!.id,
+      relation: 'describes',
+      weight: 0.95,
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'kitchen-sensor' });
+
+    expect(page.markdown).toContain('Kitchen Sensor reports temperature and motion.');
+    expect(page.markdown).toContain('Kitchen Sensor manual');
+  });
+
+  test('device page profiles do not promote source metadata when extraction text is missing', async () => {
+    const { service, store } = createHomeGraphService();
+    await service.syncSnapshot({
+      installationId: 'house-1',
+      devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
+    });
+    const spaceId = homeAssistantKnowledgeSpaceId('house-1');
+    const device = (await service.browse({ installationId: 'house-1' })).nodes
+      .find((node) => node.title === 'LG webOS Smart TV');
+    expect(device).toBeDefined();
+    const source = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'url',
+      title: 'LG TV source shell',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      summary: 'LG source metadata says Dolby Vision and HDMI eARC.',
+      tags: ['homeassistant', 'home-graph', 'manual'],
+      status: 'indexed',
+      metadata: {
+        knowledgeSpaceId: spaceId,
+        sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: source.id,
+      toKind: 'node',
+      toId: device!.id,
+      relation: 'source_for',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+
+    const page = await service.refreshDevicePassport({ installationId: 'house-1', deviceId: 'lg-tv' });
+
+    expect(page.markdown).toContain('LG TV source shell');
+    expect(page.markdown).not.toContain('Dolby Vision');
+    expect(page.markdown).not.toContain('HDMI eARC');
   });
 
 });

@@ -8,12 +8,20 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+export interface LspNotificationRecord {
+  readonly method: string;
+  readonly params?: unknown | undefined;
+  readonly receivedAt: number;
+}
+
 const DEFAULT_TIMEOUT_MS = 30_000;
+const MAX_QUEUED_NOTIFICATIONS = 500;
 
 export class LspClient {
   private proc: ReturnType<typeof Bun.spawn> | null = null;
   private nextId = 1;
   private pendingRequests: Map<number, PendingRequest> = new Map();
+  private readonly notifications: LspNotificationRecord[] = [];
   private buffer = '';
   private readLoopRunning = false;
 
@@ -89,6 +97,21 @@ export class LspClient {
     }
   }
 
+  takeNotifications(predicate: (notification: LspNotificationRecord) => boolean): LspNotificationRecord[] {
+    const taken: LspNotificationRecord[] = [];
+    const retained: LspNotificationRecord[] = [];
+    for (const notification of this.notifications) {
+      if (predicate(notification)) {
+        taken.push(notification);
+      } else {
+        retained.push(notification);
+      }
+    }
+    this.notifications.length = 0;
+    this.notifications.push(...retained);
+    return taken;
+  }
+
   /** Stop the server process. */
   async stop(): Promise<void> {
     if (!this.proc) return;
@@ -102,11 +125,12 @@ export class LspClient {
       (this.proc.stdin as import('bun').FileSink).end();
       this.proc.kill();
       await this.proc.exited;
-    } catch {
-      // Ignore errors during shutdown
+    } catch (err) {
+      logger.warn('LspClient: shutdown cleanup failed', { err: summarizeError(err) });
     } finally {
       this.proc = null;
       this.buffer = '';
+      this.notifications.length = 0;
       this.readLoopRunning = false;
     }
   }
@@ -143,7 +167,7 @@ export class LspClient {
           this._processBuffer();
         }
       } catch (err) {
-        logger.debug('LspClient: stdout read loop ended', { err: summarizeError(err) });
+        logger.warn('LspClient: stdout read loop failed', { err: summarizeError(err) });
       } finally {
         this.readLoopRunning = false;
         // Reject any remaining pending requests
@@ -193,7 +217,10 @@ export class LspClient {
       return;
     }
 
-    if (typeof msg !== 'object' || msg === null) return;
+    if (typeof msg !== 'object' || msg === null) {
+      logger.warn('LspClient: received malformed JSON-RPC payload', { payloadType: typeof msg });
+      return;
+    }
 
     const response = msg as JsonRpcResponse;
     if ('id' in response && typeof response.id === 'number') {
@@ -206,9 +233,31 @@ export class LspClient {
         } else {
           pending.resolve(response.result);
         }
+      } else {
+        logger.warn('LspClient: received response for unknown request id', { id: response.id });
       }
+      return;
     }
-    // Notifications (no id) are silently ignored for now
+
+    const notification = msg as JsonRpcNotification;
+    if (notification.jsonrpc === '2.0' && typeof notification.method === 'string') {
+      if (this.notifications.length >= MAX_QUEUED_NOTIFICATIONS) {
+        const evicted = this.notifications.shift();
+        logger.warn('LspClient: evicted queued notification after capacity limit', {
+          evictedMethod: evicted?.method,
+          capacity: MAX_QUEUED_NOTIFICATIONS,
+        });
+      }
+      this.notifications.push({
+        method: notification.method,
+        ...(notification.params !== undefined ? { params: notification.params } : {}),
+        receivedAt: Date.now(),
+      });
+      logger.debug('LspClient: received notification', { method: notification.method });
+      return;
+    }
+
+    logger.warn('LspClient: received unrecognized JSON-RPC message', { message: msg });
   }
 
   /** Encode a JSON-RPC frame (Content-Length framing). Exposed for testing. */

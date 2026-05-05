@@ -2,12 +2,13 @@
 
 > Consumer surface map. For internal runtime boundary details see [Runtime Boundary Model](./runtime-surfaces.md).
 
-The `@pellux/goodvibes-sdk` package has two surfaces with different runtime requirements.
+The `@pellux/goodvibes-sdk` package has companion-safe client surfaces and
+Bun-only daemon/platform surfaces.
 
 See also: [Public Surface reference](./public-surface.md) for the full exports
 map and [Channel surfaces](./channel-surfaces.md) for the channel runtime.
 
-## Full surface (Bun-only)
+## Daemon And Platform Surfaces (Bun-only)
 
 The full surface provides the agentic harness: tool execution, LSP and tree-sitter intelligence, MCP client/registry, workflow trigger executor, daemon HTTP server, file-based artifact storage, file state and KV caching, git service integration, ACP connection management, and companion pairing.
 
@@ -19,20 +20,20 @@ webhook ingress, authenticated Assist conversation routes, daemon-owned remote
 sessions with a 20-minute idle TTL, event-bus delivery, setup/manifest
 discovery, and Home Assistant REST-backed tools.
 
-Imported via the root entry (`@pellux/goodvibes-sdk`) and the following subpaths:
+Imported via the following subpaths:
 - `./daemon`
-- `./operator`
 - explicit `./platform/...` entrypoints
 
 This surface makes direct use of Bun runtime APIs, including `Bun.spawn`, `Bun.file`, `Bun.Glob`, `Bun.which`, `Bun.CryptoHasher`, `Bun.Transpiler`, and `Bun.serve`. It cannot be imported or executed outside a Bun runtime. Attempting to use it in Hermes, a browser, or Node.js will fail at runtime.
 
 **Requires a Bun runtime to import and execute.**
 
-## Companion surface (multi-runtime)
+## Root, Operator, And Companion Surfaces (multi-runtime)
 
 The companion surface provides auth, transport (HTTP/SSE/WebSocket), runtime events, contracts, errors, observer hooks, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. It is intentionally runtime-neutral: no Bun globals, no `node:*` imports. Cloudflare account/Queue/Worker provisioning is a daemon route concern under `/api/cloudflare/*`, not companion-side service logic.
 
 Imported via:
+- package root (`@pellux/goodvibes-sdk`) — default daemon-connected client facade
 - `./react-native` — React Native (Hermes)
 - `./browser` — browser environments
 - `./web` — web + service workers (same runtime contract as `./browser`)
@@ -41,6 +42,8 @@ Imported via:
 - `./auth` — auth client, token stores
 - `./errors` — typed error surface
 - `./contracts` — ACP contract types and method IDs
+- `./operator` — operator/control-plane client
+- `./observer` — observer helpers
 - `./transport-core`, `./transport-direct`, `./transport-http`, `./transport-realtime` — transport primitives; see [Transports](./transports.md) for the `./transport-direct` facade description
 - `./peer` — peer ACP client
 

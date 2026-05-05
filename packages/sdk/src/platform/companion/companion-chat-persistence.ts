@@ -57,15 +57,19 @@ export class CompanionChatPersistence {
     return join(this.sessionsDir, `${sessionId}.json`);
   }
 
-  /** Load all persisted sessions from disk. Returns an empty array on failure. */
+  /** Load all persisted sessions from disk. Returns an empty array on directory failure. */
   async loadAll(): Promise<PersistedChatSession[]> {
-    this.ensureDir();
     const results: PersistedChatSession[] = [];
     let entries: string[];
 
     try {
+      this.ensureDir();
       entries = readdirSync(this.sessionsDir).filter((f) => f.endsWith('.json'));
-    } catch {
+    } catch (err) {
+      logger.warn('CompanionChatPersistence: failed to read sessions directory', {
+        dir: this.sessionsDir,
+        error: summarizeError(err),
+      });
       return results;
     }
 
@@ -79,7 +83,7 @@ export class CompanionChatPersistence {
             results.push(parsed);
           }
         } catch (err) {
-          logger.debug('CompanionChatPersistence: failed to load session', {
+          logger.warn('CompanionChatPersistence: failed to load session', {
             file: filePath,
             error: summarizeError(err),
           });
@@ -90,37 +94,42 @@ export class CompanionChatPersistence {
     return results;
   }
 
-  /** Atomically persist a single session to disk. */
+  /** Atomically persist a single session to disk. Rejects when the write fails. */
   async save(session: PersistedChatSession): Promise<void> {
-    this.ensureDir();
     const filePath = this.filePath(session.meta.id);
     const tmpPath = `${filePath}.tmp`;
 
     try {
+      this.ensureDir();
       mkdirSync(dirname(filePath), { recursive: true });
       const content = JSON.stringify(session, null, 2) + '\n';
       await fs.writeFile(tmpPath, content, 'utf-8');
       renameSync(tmpPath, filePath);
     } catch (err) {
-      logger.debug('CompanionChatPersistence: save failed (non-fatal)', {
-        sessionId: session.meta.id,
-        error: summarizeError(err),
-      });
+      if (existsSync(tmpPath)) {
+        try {
+          await fs.unlink(tmpPath);
+        } catch (cleanupErr) {
+          logger.warn('CompanionChatPersistence: failed to remove save tmp file', {
+            sessionId: session.meta.id,
+            tmpPath,
+            error: summarizeError(cleanupErr),
+          });
+        }
+      }
+      throw new Error(`Companion chat session save failed for ${session.meta.id}: ${summarizeError(err)}`);
     }
   }
 
-  /** Delete a session file from disk (called when a closed session is GC'd). */
+  /** Delete a session file from disk (called when a closed session is GC'd). Rejects on unlink failure. */
   async delete(sessionId: string): Promise<void> {
     const filePath = this.filePath(sessionId);
-    if (!existsSync(filePath)) return;
 
     try {
       await fs.unlink(filePath);
     } catch (err) {
-      logger.debug('CompanionChatPersistence: delete failed (non-fatal)', {
-        sessionId,
-        error: summarizeError(err),
-      });
+      if (isNodeErrorCode(err, 'ENOENT')) return;
+      throw new Error(`Companion chat session delete failed for ${sessionId}: ${summarizeError(err)}`);
     }
   }
 }
@@ -137,5 +146,14 @@ function isPersistedChatSession(value: unknown): value is PersistedChatSession {
     v['meta'] !== null &&
     typeof (v['meta'] as Record<string, unknown>)['id'] === 'string' &&
     Array.isArray(v['messages'])
+  );
+}
+
+function isNodeErrorCode(value: unknown, code: string): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'code' in value &&
+    (value as { code?: unknown }).code === code
   );
 }

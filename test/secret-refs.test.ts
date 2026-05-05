@@ -3,6 +3,7 @@ import {
   getSecretRefSource,
   isSecretRefInput,
   normalizeSecretRef,
+  resolveSecretInput,
   resolveSecretRef,
 } from '../packages/sdk/src/platform/config/secret-refs.js';
 
@@ -126,5 +127,39 @@ describe('GoodVibes SecretRef URI syntax', () => {
       if (previous === undefined) delete process.env['GV_SECRET_REF_TEST'];
       else process.env['GV_SECRET_REF_TEST'] = previous;
     }
+  });
+
+  test('reports secret provider stderr without exposing stdout on command failure', async () => {
+    let message = '';
+    try {
+      await resolveSecretRef(
+        { source: 'exec', command: 'secret-tool' },
+        {
+          runCommand: async () => ({
+            exitCode: 2,
+            stdout: 'secret-value',
+            stderr: 'provider unavailable',
+          }),
+        },
+      );
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toBe('Secret provider exec command failed with exit 2: provider unavailable');
+    expect(message).not.toContain('secret-value');
+  });
+
+  test('resolveSecretInput returns null when secret resolution fails', async () => {
+    await expect(resolveSecretInput(
+      { source: 'exec', command: 'secret-tool' },
+      {
+        runCommand: async () => ({
+          exitCode: 2,
+          stdout: 'secret-value',
+          stderr: 'provider unavailable',
+        }),
+      },
+    )).resolves.toBeNull();
   });
 });

@@ -27,11 +27,11 @@ export type WorkflowEvent =
       chainId: string;
       score: number;
       passed: boolean;
-      /** Number of constraints that were satisfied (optional; populated in Phase 2+). */
+      /** Number of satisfied constraint findings. Present when the chain has constraints. */
       constraintsSatisfied?: number | undefined;
-      /** Total number of constraints evaluated (optional; populated in Phase 2+). */
+      /** Total constraint findings evaluated. Present when the chain has constraints. */
       constraintsTotal?: number | undefined;
-      /** IDs of constraints that were NOT satisfied (optional; populated in Phase 2+). */
+      /** IDs of constraints that were not satisfied. Present when the chain has constraints. */
       unsatisfiedConstraintIds?: string[] | undefined;
     }
   | {
@@ -39,7 +39,7 @@ export type WorkflowEvent =
       chainId: string;
       attempt: number;
       maxAttempts: number;
-      /** Constraint IDs this fix iteration is targeting (optional; populated in Phase 2+). */
+      /** Constraint IDs this fix iteration is targeting. Present when unresolved constraints are being addressed. */
       targetConstraintIds?: string[] | undefined;
     }
   | { type: 'WORKFLOW_GATE_RESULT'; chainId: string; gate: string; passed: boolean }

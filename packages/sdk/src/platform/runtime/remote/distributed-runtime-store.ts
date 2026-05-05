@@ -15,6 +15,7 @@ import {
   normalizeAudit,
   normalizePairRequest,
   normalizePeer,
+  normalizeToken,
   normalizeWork,
   sanitizePairRequest,
   sanitizePeer,
@@ -26,6 +27,178 @@ import {
 const MAX_AUDIT = 500;
 const MAX_WORK_HISTORY = 500;
 const MAX_PAIR_REQUESTS = 250;
+const DISTRIBUTED_PEER_KINDS = new Set<DistributedPeerKind>(['node', 'device']);
+const PAIR_REQUEST_STATUSES = new Set<DistributedRuntimePairRequest['status']>([
+  'pending',
+  'approved',
+  'verified',
+  'rejected',
+  'expired',
+]);
+const PAIR_REQUEST_ACTORS = new Set<DistributedRuntimePairRequest['requestedBy']>(['remote', 'operator']);
+const PEER_STATUSES = new Set<DistributedPeerRecord['status']>(['paired', 'connected', 'idle', 'disconnected', 'revoked']);
+const WORK_TYPES = new Set<DistributedPendingWork['type']>([
+  'invoke',
+  'status.request',
+  'location.request',
+  'session.message',
+  'automation.run',
+]);
+const WORK_PRIORITIES = new Set<DistributedPendingWork['priority']>(['default', 'normal', 'high']);
+const WORK_STATUSES = new Set<DistributedPendingWork['status']>(['queued', 'claimed', 'completed', 'failed', 'cancelled', 'expired']);
+const AUDIT_ACTIONS = new Set<DistributedRuntimeAuditRecord['action']>([
+  'pair-requested',
+  'pair-approved',
+  'pair-rejected',
+  'pair-verified',
+  'pair-expired',
+  'token-rotated',
+  'token-revoked',
+  'peer-connected',
+  'peer-disconnected',
+  'work-queued',
+  'work-claimed',
+  'work-completed',
+  'work-failed',
+  'work-cancelled',
+  'work-expired',
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function throwInvalidDistributedRuntimeSnapshot(): never {
+  throw new Error('Distributed runtime store snapshot is invalid.');
+}
+
+function validateOptionalNumber(value: unknown): void {
+  if (value !== undefined && !isFiniteNumber(value)) throwInvalidDistributedRuntimeSnapshot();
+}
+
+function validateOptionalRecord(value: unknown): void {
+  if (value !== undefined && !isRecord(value)) throwInvalidDistributedRuntimeSnapshot();
+}
+
+function validateOptionalString(value: unknown): void {
+  if (value !== undefined && typeof value !== 'string') throwInvalidDistributedRuntimeSnapshot();
+}
+
+function validateOptionalStringArray(value: unknown): void {
+  if (value !== undefined && !isStringArray(value)) throwInvalidDistributedRuntimeSnapshot();
+}
+
+function validateOptionalEnum<T extends string>(value: unknown, allowed: ReadonlySet<T>): void {
+  if (value !== undefined && (typeof value !== 'string' || !allowed.has(value as T))) throwInvalidDistributedRuntimeSnapshot();
+}
+
+function validateDistributedRuntimePairRequest(record: unknown): void {
+  if (!isRecord(record)) return;
+  validateOptionalEnum(record['peerKind'], DISTRIBUTED_PEER_KINDS);
+  validateOptionalEnum(record['requestedBy'], PAIR_REQUEST_ACTORS);
+  validateOptionalEnum(record['status'], PAIR_REQUEST_STATUSES);
+  validateOptionalStringArray(record['capabilities']);
+  validateOptionalStringArray(record['commands']);
+  validateOptionalString(record['challengeHash']);
+  validateOptionalNumber(record['createdAt']);
+  validateOptionalNumber(record['updatedAt']);
+  validateOptionalNumber(record['approvedAt']);
+  validateOptionalNumber(record['verifiedAt']);
+  validateOptionalNumber(record['rejectedAt']);
+  validateOptionalNumber(record['expiresAt']);
+  validateOptionalRecord(record['metadata']);
+}
+
+function validateDistributedRuntimePeer(record: unknown): void {
+  if (!isRecord(record)) return;
+  validateOptionalEnum(record['kind'], DISTRIBUTED_PEER_KINDS);
+  validateOptionalEnum(record['status'], PEER_STATUSES);
+  validateOptionalStringArray(record['capabilities']);
+  validateOptionalStringArray(record['commands']);
+  validateOptionalRecord(record['permissions']);
+  validateOptionalNumber(record['pairedAt']);
+  validateOptionalNumber(record['verifiedAt']);
+  validateOptionalNumber(record['lastSeenAt']);
+  validateOptionalNumber(record['lastConnectedAt']);
+  validateOptionalNumber(record['lastDisconnectedAt']);
+  validateOptionalRecord(record['metadata']);
+}
+
+function validateDistributedRuntimePeerTokens(peer: unknown): void {
+  if (!isRecord(peer)) return;
+  if (peer['tokens'] === undefined) return;
+  if (!Array.isArray(peer['tokens'])) throwInvalidDistributedRuntimeSnapshot();
+  for (const token of peer['tokens']) {
+    if (isRecord(token)) validateOptionalStringArray(token['scopes']);
+    if (!normalizeToken(token)) throwInvalidDistributedRuntimeSnapshot();
+  }
+}
+
+function validateDistributedRuntimeWork(record: unknown): void {
+  if (!isRecord(record)) return;
+  validateOptionalEnum(record['peerKind'], DISTRIBUTED_PEER_KINDS);
+  validateOptionalEnum(record['type'], WORK_TYPES);
+  validateOptionalEnum(record['priority'], WORK_PRIORITIES);
+  validateOptionalEnum(record['status'], WORK_STATUSES);
+  validateOptionalNumber(record['createdAt']);
+  validateOptionalNumber(record['updatedAt']);
+  validateOptionalNumber(record['claimedAt']);
+  validateOptionalNumber(record['leaseExpiresAt']);
+  validateOptionalNumber(record['completedAt']);
+  validateOptionalNumber(record['timeoutMs']);
+  validateOptionalRecord(record['metadata']);
+}
+
+function validateDistributedRuntimeAudit(record: unknown): void {
+  if (!isRecord(record)) return;
+  validateOptionalEnum(record['action'], AUDIT_ACTIONS);
+  validateOptionalNumber(record['createdAt']);
+  validateOptionalRecord(record['metadata']);
+}
+
+function validateDistributedRuntimeSnapshot(snapshot: DistributedRuntimeSnapshotStore | null): DistributedRuntimeSnapshotStore | null {
+  if (!snapshot) return null;
+  if (
+    !isRecord(snapshot)
+    || !Array.isArray(snapshot.pairRequests)
+    || !Array.isArray(snapshot.peers)
+    || !Array.isArray(snapshot.work)
+    || !Array.isArray(snapshot.audit)
+  ) {
+    throwInvalidDistributedRuntimeSnapshot();
+  }
+  for (const request of snapshot.pairRequests) {
+    validateDistributedRuntimePairRequest(request);
+    requireDistributedRuntimeRecord(normalizePairRequest(request));
+  }
+  for (const peer of snapshot.peers) {
+    validateDistributedRuntimePeer(peer);
+    validateDistributedRuntimePeerTokens(peer);
+    requireDistributedRuntimeRecord(normalizePeer(peer));
+  }
+  for (const item of snapshot.work) {
+    validateDistributedRuntimeWork(item);
+    requireDistributedRuntimeRecord(normalizeWork(item));
+  }
+  for (const record of snapshot.audit) {
+    validateDistributedRuntimeAudit(record);
+    requireDistributedRuntimeRecord(normalizeAudit(record));
+  }
+  return snapshot;
+}
+
+function requireDistributedRuntimeRecord<T>(record: T | null): T {
+  if (!record) throwInvalidDistributedRuntimeSnapshot();
+  return record;
+}
 
 export function attachDistributedRuntime(
   state: DistributedRuntimeManagerState,
@@ -44,26 +217,26 @@ export function attachDistributedRuntime(
 
 export async function startDistributedRuntime(state: DistributedRuntimeManagerState): Promise<void> {
   if (state.loaded) return;
-  const snapshot = await state.store.load();
+  const snapshot = validateDistributedRuntimeSnapshot(await state.store.load());
   state.pairRequests.clear();
   state.peers.clear();
   state.work.clear();
   state.audit.length = 0;
   for (const request of snapshot?.pairRequests ?? []) {
-    const normalized = normalizePairRequest(request);
-    if (normalized) state.pairRequests.set(normalized.id, normalized);
+    const normalized = requireDistributedRuntimeRecord(normalizePairRequest(request));
+    state.pairRequests.set(normalized.id, normalized);
   }
   for (const peer of snapshot?.peers ?? []) {
-    const normalized = normalizePeer(peer);
-    if (normalized) state.peers.set(normalized.id, normalized);
+    const normalized = requireDistributedRuntimeRecord(normalizePeer(peer));
+    state.peers.set(normalized.id, normalized);
   }
   for (const item of snapshot?.work ?? []) {
-    const normalized = normalizeWork(item);
-    if (normalized) state.work.set(normalized.id, normalized);
+    const normalized = requireDistributedRuntimeRecord(normalizeWork(item));
+    state.work.set(normalized.id, normalized);
   }
   for (const record of snapshot?.audit ?? []) {
-    const normalized = normalizeAudit(record);
-    if (normalized) state.audit.push(normalized);
+    const normalized = requireDistributedRuntimeRecord(normalizeAudit(record));
+    state.audit.push(normalized);
   }
   state.loaded = true;
   await pruneAndPersistDistributedRuntime(state);

@@ -66,7 +66,7 @@ export class TreeSitterService {
     // not installed — return null rather than throwing.
     const wasmPath = GRAMMAR_WASM[langId]!;
     if (!wasmPath) {
-      logger.debug('TreeSitterService: grammar WASM not embedded', { langId });
+      logger.warn('TreeSitterService: grammar WASM not embedded', { langId });
       return null;
     }
 
@@ -91,7 +91,7 @@ export class TreeSitterService {
     langId?: string,
   ): Promise<Tree | null> {
     if (!this.initialized || !this.parser) {
-      logger.debug('TreeSitterService: not initialized, skipping parse', { filePath });
+      logger.warn('TreeSitterService: not initialized, skipping parse', { filePath });
       return null;
     }
 

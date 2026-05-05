@@ -34,9 +34,7 @@ interface DomainCache {
   source: string;
 }
 
-// ── Internal mutable subscription type ───────────────────────────────────────
-
-/** Internal mutable version of SubscriptionInfo, also carries the callback. */
+/** Mutable version of SubscriptionInfo that also carries the callback. */
 interface MutableSubscriptionInfo {
   id: string;
   label: string;
@@ -419,7 +417,7 @@ export class StateInspectorProvider {
         sub.notificationCount++;
         sub.lastNotifiedAt = now;
       } catch (err) {
-        // Non-fatal: subscriber errors must not crash the provider
+        // Subscriber errors must not crash the provider.
         sub.errorCount = (sub.errorCount ?? 0) + 1;
         sub.lastError = summarizeError(err);
       }

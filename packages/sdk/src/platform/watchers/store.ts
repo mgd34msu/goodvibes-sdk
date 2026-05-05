@@ -29,17 +29,19 @@ export function loadWatcherSnapshot(storePath: string): WatcherStoreSnapshot | n
 
 export function loadWatcherSnapshotFromPath(storePath: string): WatcherStoreSnapshot | null {
   if (!existsSync(storePath)) return null;
-  try {
-    const raw = readFileSync(storePath, 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<WatcherStoreSnapshot>;
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.watchers)) return null;
-    return {
-      version: 1,
-      watchers: parsed.watchers.filter((record): record is WatcherRecord => Boolean(record && typeof record.id === 'string')),
-    };
-  } catch {
-    return null;
+  const raw = readFileSync(storePath, 'utf-8');
+  const parsed = JSON.parse(raw) as Partial<WatcherStoreSnapshot>;
+  if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.watchers)) {
+    throw new Error(`Watcher store snapshot is malformed: ${storePath}`);
   }
+  const watchers = parsed.watchers.filter((record): record is WatcherRecord => Boolean(record && typeof record.id === 'string'));
+  if (watchers.length !== parsed.watchers.length) {
+    throw new Error(`Watcher store snapshot contains malformed watcher records: ${storePath}`);
+  }
+  return {
+    version: 1,
+    watchers,
+  };
 }
 
 export function saveWatcherSnapshot(watchers: readonly WatcherRecord[], storePath: string): void {

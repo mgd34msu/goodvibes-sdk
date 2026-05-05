@@ -22,11 +22,7 @@ set -euo pipefail
 #    requested command on the host using the provided workspace root. This is
 #    useful for bring-up, testing, and validating the bridge contract.
 #
-# 2. qemu mode
-#    Replace the placeholder section below with your real guest transport and
-#    keep the same environment contract.
-#
-# 3. ssh-guest mode
+# 2. ssh-guest mode
 #    Set GV_SANDBOX_WRAPPER_MODE=ssh-guest and provide:
 #      GV_SANDBOX_GUEST_HOST
 #      GV_SANDBOX_GUEST_PORT
@@ -34,7 +30,7 @@ set -euo pipefail
 #      GV_SANDBOX_GUEST_WORKSPACE
 #    The wrapper will execute the requested command inside the guest over SSH.
 #
-# 4. launch-qemu-ssh mode
+# 3. launch-qemu-ssh mode
 #    Set GV_SANDBOX_WRAPPER_MODE=launch-qemu-ssh and provide the same guest SSH
 #    settings. The wrapper will launch QEMU with the provided binary/args/image,
 #    wait for the forwarded SSH endpoint, project the workspace, execute the
@@ -224,17 +220,7 @@ fi
 
 cat >&2 <<'EOF'
 GoodVibes QEMU wrapper scaffold is installed, but guest command execution is not wired to a guest yet.
-Update this script to:
-  1. launch or attach to a guest using:
-       $GV_SANDBOX_QEMU_BINARY
-       $GV_SANDBOX_QEMU_ARGS
-       $GV_SANDBOX_QEMU_IMAGE
-  2. project the workspace from:
-       $GV_SANDBOX_WORKSPACE_ROOT
-  3. run the guest command:
-       $GV_SANDBOX_GUEST_COMMAND
-       $GV_SANDBOX_GUEST_ARGS
-Or set:
+Set:
   GV_SANDBOX_WRAPPER_MODE=host-exec
 to validate the bridge contract on the host before wiring a real guest.
 Or set:

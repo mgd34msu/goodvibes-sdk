@@ -141,6 +141,8 @@ export type {
 } from './artifact-upload.js';
 export { createDaemonControlRouteHandlers } from './control-routes.js';
 export { createDaemonTelemetryRouteHandlers } from './telemetry-routes.js';
+export { decodeOtlpProtobuf } from './otlp-protobuf.js';
+export type { OtlpProtobufKind } from './otlp-protobuf.js';
 export { createDaemonChannelRouteHandlers } from './channel-routes.js';
 export { createDaemonIntegrationRouteHandlers } from './integration-routes.js';
 export { createDaemonSystemRouteHandlers } from './system-routes.js';

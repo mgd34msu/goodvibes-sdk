@@ -114,7 +114,7 @@ export class AgentWorktree {
       return count > 0;
     } catch (err) {
       // If rev-list fails (e.g. brand-new worktree with no commits), treat as no changes
-      logger.debug('AgentWorktree._hasChanges: rev-list failed, treating as no changes', { branch, worktreeDir: worktreePath, error: summarizeError(err) });
+      logger.warn('AgentWorktree._hasChanges: rev-list failed, treating as no changes', { branch, worktreeDir: worktreePath, error: summarizeError(err) });
       return false;
     }
   }
@@ -146,8 +146,7 @@ export class AgentWorktree {
       const wgit = simpleGit({ baseDir: this.git.getCwd() });
       await wgit.raw(['branch', '-D', branch]);
     } catch (err) {
-      // Branch may not exist — that's fine
-      logger.debug('AgentWorktree._deleteBranch: ignored error', { branch, error: summarizeError(err) });
+      logger.warn('AgentWorktree._deleteBranch failed during cleanup', { branch, error: summarizeError(err) });
     }
   }
 }

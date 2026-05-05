@@ -6,8 +6,7 @@
  * - SloCollector for SLO p95 measurements
  * - scoreScenario() for dimension scoring
  *
- * The runner does not mock any dependencies — it exercises the real
- * production code paths that gate CI.
+ * The runner exercises the production code paths that gate CI.
  */
 
 import type { EvalScenario, EvalRawResult, EvalResult, EvalSuiteResult, EvalGateResult, EvalBaseline, RegressionEntry } from './types.js';
@@ -116,8 +115,6 @@ export class EvalRunner {
       regressions,
     };
   }
-
-  // ── Internal ────────────────────────────────────────────────────────────────
 
   private async _runScenario(scenario: EvalScenario): Promise<EvalResult> {
     const startedAt = Date.now();

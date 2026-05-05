@@ -155,6 +155,15 @@ describe('createIOSKeychainTokenStore (real factory + mock module)', () => {
     expect(opts['accessible']).toBe(WHEN_UNLOCKED);
   });
 
+  it('rejects unsupported accessible constants instead of using platform defaults', async () => {
+    const loader = () => Promise.resolve({
+      ...mockKeychain,
+      ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY },
+    });
+    const ts = createIOSKeychainTokenStore({ service: 'com.test.gv', accessible: 'WHEN_UNLOCKED' }, loader);
+    await expect(ts.setToken('ios-tok-wu')).rejects.toThrow(/does not expose ACCESSIBLE.WHEN_UNLOCKED/);
+  });
+
   it('setTokenEntry with null token clears storage', async () => {
     const ts = createIOSKeychainTokenStore({ service: 'com.test.gv', accessible: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY' }, mockLoader);
     await ts.setToken('ios-tok-before');
@@ -170,6 +179,17 @@ describe('createIOSKeychainTokenStore (real factory + mock module)', () => {
     await ts2.setToken('tok-app2');
     expect(await ts1.getToken()).toBe('tok-app1');
     expect(await ts2.getToken()).toBe('tok-app2');
+  });
+
+  it('clears and reports corrupt stored payloads', async () => {
+    const ts = createIOSKeychainTokenStore({ service: 'com.test.gv', accessible: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY' }, mockLoader);
+    keychainStore.set('com.test.gv', { username: 'goodvibes', password: '{not-json' });
+
+    await expect(ts.getToken()).rejects.toMatchObject({
+      code: 'SDK_TOKEN_STORE_CORRUPT',
+      recoverable: true,
+    });
+    expect(keychainStore.has('com.test.gv')).toBe(false);
   });
 });
 

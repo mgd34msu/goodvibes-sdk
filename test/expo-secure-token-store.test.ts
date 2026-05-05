@@ -9,7 +9,7 @@
  *   - getToken/setToken/clearToken round-trip
  *   - expiresAt preserved via setTokenEntry/getTokenEntry
  *   - Graceful SDKError when native module is missing
- *   - Options (key, keychainService, accessible) passed through correctly
+ *   - Options (key, keychainService, keychainAccessible) passed through correctly
  */
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
@@ -21,17 +21,17 @@ import { createExpoSecureTokenStore } from '../packages/sdk/src/client-auth/expo
 
 const store: Map<string, string> = new Map();
 
-const WHEN_UNLOCKED_THIS_DEVICE_ONLY = 'WUDT';
-const AFTER_FIRST_UNLOCK = 'AFU';
+const WHEN_UNLOCKED_THIS_DEVICE_ONLY = 1;
+const AFTER_FIRST_UNLOCK = 2;
 
 const mockSecureStore = {
   WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   AFTER_FIRST_UNLOCK,
-  ALWAYS: 'ALWAYS',
-  WHEN_UNLOCKED: 'WU',
-  ALWAYS_THIS_DEVICE_ONLY: 'ATDO',
-  AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 'AFUTDO',
-  WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 'WPSTDO',
+  ALWAYS: 3,
+  WHEN_UNLOCKED: 4,
+  ALWAYS_THIS_DEVICE_ONLY: 5,
+  AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 6,
+  WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 7,
   setItemAsync: mock(async (key: string, value: string, _opts?: unknown) => {
     store.set(key, value);
   }),
@@ -131,7 +131,17 @@ describe('createExpoSecureTokenStore (real factory + mock module)', () => {
     const ts = createExpoSecureTokenStore({ key: 'gv-token', accessible: 'AFTER_FIRST_UNLOCK' }, mockLoader);
     await ts.setToken('tok-afu');
     const opts = mockSecureStore.setItemAsync.mock.calls[0]![2] as Record<string, unknown>;
-    expect(opts['accessible']).toBe(AFTER_FIRST_UNLOCK);
+    expect(opts['keychainAccessible']).toBe(AFTER_FIRST_UNLOCK);
+  });
+
+  it('rejects unsupported accessible constants instead of using platform defaults', async () => {
+    const { AFTER_FIRST_UNLOCK: _omitted, ...secureStoreWithoutAfterFirstUnlock } = mockSecureStore;
+    const loader = () => Promise.resolve({
+      ...secureStoreWithoutAfterFirstUnlock,
+      WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    const ts = createExpoSecureTokenStore({ key: 'gv-token', accessible: 'AFTER_FIRST_UNLOCK' }, loader);
+    await expect(ts.setToken('tok-afu')).rejects.toThrow(/does not expose AFTER_FIRST_UNLOCK/);
   });
 
   it('setTokenEntry with null token clears storage', async () => {
@@ -140,6 +150,17 @@ describe('createExpoSecureTokenStore (real factory + mock module)', () => {
     await ts.setTokenEntry(null);
     const token = await ts.getToken();
     expect(token).toBeNull();
+  });
+
+  it('clears and reports corrupt stored payloads', async () => {
+    const ts = createExpoSecureTokenStore({ key: 'gv-token', accessible: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY' }, mockLoader);
+    store.set('gv-token', '{not-json');
+
+    await expect(ts.getToken()).rejects.toMatchObject({
+      code: 'SDK_TOKEN_STORE_CORRUPT',
+      recoverable: true,
+    });
+    expect(store.has('gv-token')).toBe(false);
   });
 });
 

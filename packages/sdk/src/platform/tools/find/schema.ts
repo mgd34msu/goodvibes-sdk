@@ -233,7 +233,7 @@ export const findSchema: ToolDefinition = {
               'Expand each content match to its enclosing scope. ' +
               "'function' expands to the enclosing function/method, 'class' to the enclosing class. " +
               'Adds startLine and endLine fields to each match. ' +
-              'Requires tree-sitter grammar for the file language; silently ignored otherwise. ' +
+              'Requires tree-sitter grammar for the file language; results remain unexpanded when unavailable. ' +
               "'line' and 'block' are accepted but currently behave the same as no expansion.",
           },
           max_results: {

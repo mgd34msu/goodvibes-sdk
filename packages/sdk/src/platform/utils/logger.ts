@@ -46,7 +46,7 @@ class ActivityLogger {
     const chunk = this.buffer.splice(0).join('');
     appendFile(this.logPath, chunk, (err) => {
       if (err) {
-        // Best-effort: cannot log the logger's own error without recursion
+        // Cannot log the logger's own error without recursion.
         process.stderr.write(`[ActivityLogger] flush error: ${err.message}\n`);
       }
     });

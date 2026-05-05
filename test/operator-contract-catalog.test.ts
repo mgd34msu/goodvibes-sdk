@@ -1,12 +1,5 @@
 /**
- * D2 regression test: buildOperatorContract must use the catalog parameter.
- *
- * Root cause: buildOperatorContract contained `void catalog;` — it accepted
- * the catalog but immediately discarded it, always returning the static
- * pre-baked artifact regardless of what was registered. This meant
- * plugin-registered methods/events were never reflected in the contract,
- * and TUI tests had to loosen assertions from exact catalog counts to generic
- * non-empty checks.
+ * buildOperatorContract must use the catalog parameter.
  */
 import { describe, expect, test } from 'bun:test';
 import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.js';
@@ -131,7 +124,7 @@ describe('buildOperatorContract preserves static contract fields', () => {
   test('version is set to current SDK VERSION string', () => {
     const catalog = makeMinimalCatalog({ methods: 0, events: 0 });
     const contract = buildOperatorContract(catalog);
-    // Version must be a semver-like string set dynamically, not the old static value
+    // Version must be a semver-like string set dynamically by the contract builder.
     expect(typeof contract.product.version).toBe('string');
     expect(contract.product.version).toMatch(/^\d+\.\d+\.\d+/);
   });

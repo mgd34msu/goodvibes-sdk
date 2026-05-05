@@ -36,7 +36,6 @@ const SHARED_SESSION_INPUT_INTENT_SCHEMA = enumSchema(['submit', 'steer', 'follo
 const SHARED_SESSION_INPUT_STATE_SCHEMA = enumSchema(['queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected']);
 const SHARED_SESSION_MESSAGE_MODE_SCHEMA = enumSchema(['spawn', 'continued-live', 'queued-follow-up', 'rejected']);
 const PROVIDER_SELECTION_SCHEMA = enumSchema(['inherit-current', 'concrete', 'synthetic']);
-const UNRESOLVED_MODEL_POLICY_SCHEMA = enumSchema(['fallback-to-current', 'fail']);
 const PROVIDER_FAILURE_POLICY_SCHEMA = enumSchema(['ordered-fallbacks', 'fail']);
 const EXECUTION_RISK_CLASS_SCHEMA = enumSchema(['safe', 'elevated', 'dangerous']);
 const EXECUTION_NETWORK_POLICY_SCHEMA = enumSchema(['inherit', 'allow', 'deny', 'scoped']);
@@ -90,7 +89,6 @@ export const SHARED_SESSION_ROUTING_INTENT_SCHEMA = objectSchema({
   providerId: STRING_SCHEMA,
   modelId: STRING_SCHEMA,
   providerSelection: PROVIDER_SELECTION_SCHEMA,
-  unresolvedModelPolicy: UNRESOLVED_MODEL_POLICY_SCHEMA,
   providerFailurePolicy: PROVIDER_FAILURE_POLICY_SCHEMA,
   fallbackModels: STRING_LIST_SCHEMA,
   helperModel: objectSchema({
@@ -377,7 +375,7 @@ const PROVIDER_RUNTIME_METADATA_SCHEMA = objectSchema({
     embeddingModel: STRING_SCHEMA,
     embeddingDimensions: NUMBER_SCHEMA,
     aliases: STRING_LIST_SCHEMA,
-    suppressedModels: STRING_LIST_SCHEMA,
+    suppressedModelRegistryKeys: STRING_LIST_SCHEMA,
   }, ['models'], { additionalProperties: true }),
   usage: objectSchema({
     streaming: BOOLEAN_SCHEMA,
@@ -424,7 +422,7 @@ export const PROVIDER_RUNTIME_SNAPSHOT_SCHEMA = objectSchema({
 export const PROVIDER_USAGE_SNAPSHOT_SCHEMA = objectSchema({
   providerId: STRING_SCHEMA,
   active: BOOLEAN_SCHEMA,
-  currentModelId: STRING_SCHEMA,
+  currentModelRegistryKey: STRING_SCHEMA,
   pricingSource: enumSchema(['catalog', 'provider', 'none']),
   models: arraySchema(PROVIDER_MODEL_SNAPSHOT_SCHEMA),
   usage: objectSchema({

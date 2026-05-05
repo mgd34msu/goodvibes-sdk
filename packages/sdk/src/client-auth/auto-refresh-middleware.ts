@@ -2,7 +2,7 @@
  * Auto-refresh transport middleware.
  *
  * Integrates `AutoRefreshCoordinator` at the transport boundary so that ALL
- * typed operator/peer SDK calls benefit from silent token refresh — not only
+ * typed operator/peer SDK calls benefit from automatic token refresh — not only
  * `auth.current()`.
  *
  * Responsibilities:
@@ -27,7 +27,7 @@ import type { GoodVibesTokenStore } from './types.js';
 import type { AutoRefreshCoordinator } from './auto-refresh.js';
 import { is401Error } from './auto-refresh.js';
 
-/** Internal flag key — never conflicts with public HttpJsonRequestOptions fields. */
+/** Request-local flag key that never conflicts with public HttpJsonRequestOptions fields. */
 const ATTEMPTED_FLAG = '__gv_ar_attempted';
 
 /**
@@ -74,12 +74,23 @@ export function createAutoRefreshMiddleware(
     }
 
     // ── Pre-flight refresh ───────────────────────────────────────────────────
-    // Silently refreshes the token when it is within the leeway window.
+    // Refresh the token before dispatch when it is within the leeway window.
     // After refresh, update ctx.headers.Authorization with the fresh token so
     // consumer middleware (which runs after this one in the chain) sees the
     // current Bearer token, not the stale one that was set when ctx was built.
-    await coordinator.ensureFreshToken();
-    const freshToken = await tokenStore.getToken();
+    try {
+      await coordinator.ensureFreshToken();
+    } catch (error) {
+      ctx.error = error;
+      return;
+    }
+    let freshToken: string | null;
+    try {
+      freshToken = await tokenStore.getToken();
+    } catch (error) {
+      ctx.error = error;
+      return;
+    }
     if (freshToken) {
       ctx.headers['Authorization'] = `Bearer ${freshToken}`;
     }
@@ -125,7 +136,7 @@ export function createAutoRefreshMiddleware(
 
     // Delegate to coordinator.refreshAndRetryOnce — this refreshes the token
     // exactly once and executes the retry fn once. If the retry also returns
-    // 401, it throws GoodVibesSdkError{kind:'auth'} (Wave 6 three-part message).
+    // 401, it throws GoodVibesSdkError{kind:'auth'} with the standard three-part message.
     //
     // IMPORTANT: we place terminal errors onto ctx.error instead of re-throwing
     // them. This bypasses the transport's middleware-error-wrapping path

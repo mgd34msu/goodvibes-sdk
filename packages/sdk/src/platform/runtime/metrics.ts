@@ -1,5 +1,5 @@
 /**
- * OBS-12: RuntimeMeter production wiring for the goodvibes-sdk platform.
+ * RuntimeMeter production wiring for the goodvibes-sdk platform.
  *
  * Exposes named metric instruments used across the platform:
  * - HTTP request counters and histograms
@@ -57,13 +57,13 @@ export const transportRetriesTotal = platformMeter.counter('transport.retries_to
 /** Gauge: fill level of the telemetry buffer (0..1). */
 export const telemetryBufferFill = platformMeter.gauge('telemetry.buffer.fill');
 
-// ── Listener error metrics (OBS-13) ──────────────────────────────────────────
+// ── Listener error metrics ──────────────────────────────────────────
 
 /** Counter: total listener errors caught during event dispatch. */
 export const listenerErrorsTotal = platformMeter.counter('listener_errors_total');
 
 /**
- * MAJ-04: Reset all metric instruments on the singleton platform meter.
+ * Reset all metric instruments on the singleton platform meter.
  * Use in afterEach() hooks to prevent singleton state from bleeding between tests.
  */
 export function resetMetrics(): void {
@@ -71,10 +71,8 @@ export function resetMetrics(): void {
 }
 
 /**
- * OBS-12: Snapshot all metric instruments as a JSON-serialisable object.
+ * Snapshot all metric instruments as a JSON-serialisable object.
  * Used by the GET /api/runtime/metrics endpoint.
- *
- * C-3: includes histograms section with count/sum/min/max/mean per instrument.
  */
 export function snapshotMetrics(): Record<string, unknown> {
   const httpRequestsSnapshot = {

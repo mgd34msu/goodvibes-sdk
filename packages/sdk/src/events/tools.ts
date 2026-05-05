@@ -7,7 +7,7 @@
  */
 
 /**
- * OBS-05: Structured summary of a tool result — avoids leaking raw `unknown` payloads
+ * Structured summary of a tool result — avoids leaking raw `unknown` payloads
  * into the event stream while still providing enough context for observability.
  */
 export interface ToolResultSummary {

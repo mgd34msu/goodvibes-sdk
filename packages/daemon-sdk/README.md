@@ -1,8 +1,8 @@
 # @pellux/goodvibes-daemon-sdk
 
-Internal workspace package backing `@pellux/goodvibes-sdk/daemon`.
+Public GoodVibes daemon package for embeddable route contracts, dispatchers, handler builders, and daemon-side helpers.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/daemon`. Install this package directly when you only need the daemon embedding subset.
 
 Consumer import:
 

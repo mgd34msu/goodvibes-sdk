@@ -145,7 +145,7 @@ const remoteBodySchemas = createRouteBodySchemaRegistry({
     }
     return { requestId, challenge, metadata: readRemoteMetadata(body.metadata) };
   }),
-  peerHeartbeat: createRouteBodySchema<RemotePeerHeartbeatBody>('POST /api/remote/peers/heartbeat', (body) => {
+  peerHeartbeat: createRouteBodySchema<RemotePeerHeartbeatBody>('POST /api/remote/heartbeat', (body) => {
     const capabilities = readStringArrayField(body, 'capabilities', MAX_REMOTE_CAPABILITIES);
     const commands = readStringArrayField(body, 'commands', MAX_REMOTE_COMMANDS);
     const version = readOptionalStringField(body, 'version');
@@ -324,9 +324,8 @@ export async function handleRemotePeerWorkComplete(
     : jsonErrorResponse({ error: 'Unknown or unclaimed remote work item' }, { status: 404 });
 }
 
-// m9: returns undefined for non-numeric or non-finite input; callers use optional
-// spread (`...(maxItems !== undefined ? { maxItems } : {})`) so the field is simply
-// omitted from the downstream call, letting the service apply its own default.
+// Non-numeric input is omitted from downstream calls so services can apply
+// their own defaults.
 function boundedPositiveNumber(value: unknown, min: number, max: number): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   return Math.max(min, Math.min(max, Math.trunc(value)));
@@ -381,10 +380,10 @@ export function estimateJsonByteLengthWithinLimit(
   value: unknown,
   maxBytes: number,
 ): { readonly kind: 'ok'; readonly byteLength: number } | { readonly kind: 'invalid' } {
-  // MAJ-08: walk the value with a counting replacer so we never allocate
+  // walk the value with a counting replacer so we never allocate
   // the full encoded string. The replacer throws a sentinel when the running
   // byte total exceeds maxBytes, preventing peak allocation before the cap.
-  // MIN-01 (carry-forward): switched from `val.length * 6` worst-case to exact
+  // switched from `val.length * 6` worst-case to exact
   // jsonStringByteLength() count — same allocation profile, much tighter near the cap.
   let byteCount = 0;
   const OVER_LIMIT = Symbol('over-limit');

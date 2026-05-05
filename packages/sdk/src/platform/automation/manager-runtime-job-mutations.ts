@@ -6,11 +6,14 @@ import {
   buildDefaultDelivery,
   buildDefaultExecution,
   buildDefaultFailurePolicy,
+  assertProviderMatchesModel,
+  assertProviderHasModel,
   buildDefaultSource,
   computeNextRun,
-  normalizeProviderRoutingPolicy,
   normalizeOptionalString,
-  normalizeStringList,
+  normalizeProviderQualifiedModel,
+  normalizeProviderQualifiedModelList,
+  normalizeProviderRoutingPolicy,
 } from './manager-runtime-helpers.js';
 
 interface AutomationJobMutationContext {
@@ -103,16 +106,27 @@ export async function updateAutomationJobRecord(
   const nextEnabled = patch.enabled ?? job.enabled;
   const prompt = patch.prompt ?? job.execution.prompt ?? job.description ?? job.name;
   const updatedAt = Date.now();
-  const fallbackModelsPatch = patch.fallbackModels !== undefined || patch.fallbacks !== undefined
-    ? normalizeStringList(patch.fallbackModels ?? patch.fallbacks)
+  const fallbackModelsPatch = patch.fallbackModels !== undefined
+    ? normalizeProviderQualifiedModelList(patch.fallbackModels, 'Automation fallback models')
     : undefined;
   const thinkingPatch = normalizeOptionalString(patch.thinking);
   const nextSchedule = patch.schedule ?? job.schedule;
-  const nextModelProvider = patch.provider ?? job.execution.modelProvider;
-  const nextFallbackModels = fallbackModelsPatch
-    ?? normalizeStringList(patch.routing?.fallbackModels)
-    ?? job.execution.fallbackModels
-    ?? job.execution.routing?.fallbackModels;
+  const nextModelProvider = patch.provider !== undefined
+    ? normalizeOptionalString(patch.provider)
+    : job.execution.modelProvider;
+  const nextModelId = patch.model !== undefined
+    ? normalizeProviderQualifiedModel(patch.model, 'Automation model')
+    : job.execution.modelId;
+  assertProviderHasModel(nextModelId, nextModelProvider, 'Automation model routing');
+  assertProviderMatchesModel(nextModelId, nextModelProvider, 'Automation model');
+  const routingFallbackModelsPatch = patch.routing?.fallbackModels !== undefined
+    ? normalizeProviderQualifiedModelList(patch.routing.fallbackModels, 'Automation fallback models')
+    : undefined;
+  const nextFallbackModels = routingFallbackModelsPatch
+    ?? fallbackModelsPatch
+    ?? (patch.routing?.providerFailurePolicy === 'fail'
+      ? undefined
+      : job.execution.fallbackModels ?? job.execution.routing?.fallbackModels);
   const updated: AutomationJob = {
     ...job,
     name: patch.name ?? job.name,
@@ -125,7 +139,7 @@ export async function updateAutomationJobRecord(
       prompt,
       template: patch.template ?? job.execution.template,
       target: patch.target ?? job.execution.target,
-      modelId: patch.model ?? job.execution.modelId,
+      modelId: nextModelId,
       modelProvider: nextModelProvider,
       fallbackModels: nextFallbackModels,
       routing: normalizeProviderRoutingPolicy({

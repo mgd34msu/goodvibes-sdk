@@ -57,7 +57,13 @@ export async function handleSignalSurfaceWebhook(req: Request, context: SurfaceA
     metadata: { ...payload },
   });
   if (!message) {
-    return Response.json({ acknowledged: true, queued: false, bindingId: binding.id });
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
+      bindingId: binding.id,
+    });
   }
 
   const submission = await context.sessionBroker.submitMessage({

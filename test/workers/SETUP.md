@@ -1,8 +1,8 @@
-# Workers Test Harness — Orchestrator Setup Guide
+# Workers Test Harness Setup Guide
 
 ## Summary
 
-This directory contains the Wave 4 Cloudflare Workers real-runtime test harness for `@pellux/goodvibes-sdk`. It proves the `./web` entry runs cleanly under the workerd V8 isolate via Miniflare's programmatic API.
+This directory contains the Cloudflare Workers runtime test harness for `@pellux/goodvibes-sdk`. It proves the `./web` entry runs cleanly under the workerd V8 isolate via Miniflare's programmatic API.
 
 **Result: `./web` entry is sufficient for normal Worker-hosted operator HTTP clients. `./workers` now exists separately for the optional GoodVibes Worker bridge.**
 
@@ -101,7 +101,7 @@ Full proposed diff context:
 - Consuming queue messages and allowing retries/DLQ handling
 - Running scheduled ticks against the daemon
 
-See `FINDINGS.md` for the full Workers runtime gap analysis.
+See `NOTES.md` for the Workers runtime capability notes.
 
 ---
 
@@ -151,7 +151,7 @@ Cleanup:
 await mf.dispose();
 ```
 
-**Miniflare simulation note**: Miniflare 4 injects `EventSource` in its local runtime (as of `4.20260415.0`). This is a Miniflare simulation artifact. The production Workers runtime does NOT expose `EventSource`. Tests account for this — see `FINDINGS.md` section 1.
+**Miniflare simulation note**: Miniflare 4 injects `EventSource` in its local runtime (as of `4.20260415.0`). This is a Miniflare simulation artifact. The production Workers runtime does NOT expose `EventSource`. Tests account for this; see `NOTES.md`.
 
 ---
 

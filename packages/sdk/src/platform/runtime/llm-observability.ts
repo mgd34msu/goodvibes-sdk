@@ -1,5 +1,5 @@
 /**
- * OBS-04/OBS-06: LLM observability utilities.
+ * LLM observability utilities.
  *
  * Provides:
  * - Prompt/response content summarization for redaction-by-default telemetry
@@ -26,7 +26,7 @@ export interface PromptSummary {
 }
 
 /**
- * OBS-06: Summarize prompt/response content for telemetry emission.
+ * Summarize prompt/response content for telemetry emission.
  * When includeRawPrompts is true, returns the raw string.
  * Default (false): returns a PromptSummary with length, sha256, first100chars.
  */
@@ -43,7 +43,7 @@ export function summarizePromptContent(
 }
 
 /**
- * OBS-04: Result from an instrumented LLM call.
+ * Result from an instrumented LLM call.
  * Adds durationMs and retries tracking to the provider response.
  */
 export interface InstrumentedLlmResult<T> {
@@ -53,7 +53,7 @@ export interface InstrumentedLlmResult<T> {
 }
 
 /**
- * OBS-04: Wrap any LLM provider call to track duration, retry count, and
+ * Wrap any LLM provider call to track duration, retry count, and
  * record platformMeter instruments (llmRequestsTotal, llmRequestDurationMs,
  * llmTokensInput, llmTokensOutput).
  *
@@ -68,7 +68,7 @@ export interface InstrumentedLlmResult<T> {
  * ```
  */
 /**
- * OBS-04: Emit LLM_REQUEST_STARTED metric at the llm-observability layer.
+ * Emit LLM_REQUEST_STARTED metric at the llm-observability layer.
  *
  * Records the llmRequestsStarted counter so callers without bus access still
  * get per-provider/model observability. Callers that also hold a RuntimeEventBus
@@ -93,10 +93,10 @@ export async function instrumentedLlmCall<T>(
     /** Extract token usage from a successful result to record histogram instruments. */
     extractTokens?: (result: T) => { inputTokens?: number; outputTokens?: number } | undefined;
     /**
-     * M-2: Optional callback invoked on entry before the first attempt.
+     * Optional callback invoked on entry before the first attempt.
      * Callers that have bus/ctx access can wire emitLlmRequestStarted here.
      */
-    onStarted?: (() => void) | undefined | undefined;
+    onStarted?: (() => void) | undefined;
   }
 ): Promise<InstrumentedLlmResult<T>> {
   const maxRetries = opts?.maxRetries ?? 0;
@@ -104,7 +104,6 @@ export async function instrumentedLlmCall<T>(
   const startedAt = Date.now();
   // Auto-emit LLM_REQUEST_STARTED metric on entry (no bus required)
   recordLlmRequestStartedMetric({ provider: opts?.provider, model: opts?.model });
-  // M-2: fire onStarted callback if provided (e.g. to emit LLM_REQUEST_STARTED on the event bus)
   opts?.onStarted?.();
   let lastError: unknown;
 
@@ -112,7 +111,6 @@ export async function instrumentedLlmCall<T>(
     try {
       const result = await fn();
       const durationMs = Date.now() - startedAt;
-      // C-1: record LLM metric instruments
       if (opts?.provider !== undefined || opts?.model !== undefined) {
         const labels: Record<string, string> = {};
         if (opts.provider) labels.provider = opts.provider;

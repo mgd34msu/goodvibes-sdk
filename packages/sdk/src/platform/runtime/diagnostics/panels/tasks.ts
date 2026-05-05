@@ -18,11 +18,13 @@ import {
   applyFilter,
   appendBounded,
 } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 /** Task state as tracked internally while a task is in progress. */
 type MutableTaskState = TaskEntry['state'];
 
-/** Internal mutable task record used while the task is in progress. */
+/** Mutable task record used while the task is in progress. */
 interface MutableTaskRecord {
   taskId: string;
   agentId?: string | undefined;
@@ -243,8 +245,8 @@ export class TasksPanel {
     for (const cb of this._subscribers) {
       try {
         cb();
-      } catch {
-        // Non-fatal: subscriber errors must not crash the provider
+      } catch (error) {
+        logger.warn('[TasksPanel] subscriber error', { error: summarizeError(error) });
       }
     }
   }

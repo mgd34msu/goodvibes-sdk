@@ -83,14 +83,22 @@ export function readPackage(dir: string): PackageManifest {
   return value as PackageManifest;
 }
 
-export function getPublicPackageNameOverride(): string | null {
-  const value = process.env.GOODVIBES_PUBLIC_PACKAGE_NAME?.trim();
-  return value ? value : null;
-}
-
 export function getPublishRegistryOverride(): string | null {
   const value = process.env.GOODVIBES_PUBLISH_REGISTRY?.trim();
-  return value ? value.replace(/\/+$/, '') : null;
+  if (!value) return null;
+  const registry = value.replace(/\/+$/, '');
+  assertAllowedPublishRegistry(registry);
+  return registry;
+}
+
+function assertAllowedPublishRegistry(registry: string): void {
+  const hostname = getRegistryHostname(registry);
+  if (hostname === 'registry.npmjs.org' || hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+    return;
+  }
+  throw new Error(
+    `Unsupported publish registry host: ${hostname}. Publish overrides are limited to npmjs.org or local Verdaccio dry-runs.`,
+  );
 }
 
 export function isPublicPackageDir(dir: string): boolean {
@@ -191,7 +199,6 @@ export function createSdkTempDir(prefix: string): string {
 export async function stagePackages(): Promise<{ readonly tempRoot: string; readonly stages: readonly PackageStage[]; readonly publicStages: readonly PackageStage[] }> {
   return withWorkspaceLock('stage packages', () => {
     const rootVersion = getRootVersion();
-    const publicPackageNameOverride = getPublicPackageNameOverride();
     const tempRoot = createSdkTempDir('goodvibes-sdk-release-');
     const stages: PackageStage[] = [];
     for (const dir of packageDirs) {
@@ -202,9 +209,6 @@ export async function stagePackages(): Promise<{ readonly tempRoot: string; read
         stageSdkSecurityMitigationAssets(stageDir);
       }
       const manifest = normalizeManifest(readPackage(dir), rootVersion);
-      if (dir === 'packages/sdk' && publicPackageNameOverride) {
-        manifest.name = publicPackageNameOverride;
-      }
       if (dir === 'packages/sdk') {
         Object.assign(manifest, applySdkVendorMitigations(manifest));
       }
@@ -225,17 +229,17 @@ export function getRegistryHost(registryUrl: string): string {
   return new URL(normalized).host;
 }
 
-export function getAuthToken(registryUrl = 'https://registry.npmjs.org'): string | null {
-  const host = getRegistryHost(registryUrl);
-  if (host === 'npm.pkg.github.com') {
-    return process.env.GITHUB_PACKAGES_TOKEN
-      || process.env.GH_PACKAGES_TOKEN
-      || process.env.GITHUB_TOKEN
-      || process.env.NODE_AUTH_TOKEN
-      || process.env.NPM_TOKEN
-      || null;
-  }
-  return process.env.NODE_AUTH_TOKEN || process.env.NPM_TOKEN || null;
+function getRegistryHostname(registryUrl: string): string {
+  const normalized = (registryUrl || 'https://registry.npmjs.org').replace(/\/+$/, '');
+  return new URL(normalized).hostname;
+}
+
+export function getAuthToken(
+  registryUrl = 'https://registry.npmjs.org',
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  assertAllowedPublishRegistry(registryUrl);
+  return env.NODE_AUTH_TOKEN || env.NPM_TOKEN || null;
 }
 
 function getPackageScope(packageName: unknown): string | null {
@@ -256,7 +260,7 @@ export interface AuthEnv {
 export function createAuthEnv(extraEnv: NodeJS.ProcessEnv = {}, options: { readonly registry?: string; readonly packageName?: string } = {}): AuthEnv {
   const merged: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
   const registry = options.registry || 'https://registry.npmjs.org';
-  const token = getAuthToken(registry);
+  const token = getAuthToken(registry, merged);
   if (!token) {
     return { env: merged };
   }
@@ -288,18 +292,25 @@ export function cleanupAuthEnv(authEnv: AuthEnv): void {
 // NODE_PATH, npm_config_*, or PATH, the child process will inherit it. This is acceptable for
 // developer-facing release tooling (not a public API), but callers must not pass untrusted env.
 export function run(command: string, args: readonly string[], cwd: string, options: RunOptions = {}): string {
-  const childEnv = options.auth
-    ? (options.authEnv ?? createAuthEnv(options.env, {
+  const ownedAuthEnv = options.auth && !options.authEnv
+    ? createAuthEnv(options.env, {
       registry: options.registry,
       packageName: options.packageName,
-    })).env
+    })
+    : undefined;
+  const childEnv = options.auth
+    ? (options.authEnv?.env ?? ownedAuthEnv!.env)
     : { ...process.env, ...options.env };
-  return execFileSync(command, args, {
-    cwd,
-    env: childEnv,
-    stdio: options.stdio ?? 'inherit',
-    encoding: options.encoding ?? 'utf8',
-  });
+  try {
+    return execFileSync(command, args, {
+      cwd,
+      env: childEnv,
+      stdio: options.stdio ?? 'inherit',
+      encoding: options.encoding ?? 'utf8',
+    });
+  } finally {
+    if (ownedAuthEnv) cleanupAuthEnv(ownedAuthEnv);
+  }
 }
 
 export function packStage(stageDir: string, packDestination: string): { readonly filename: string } {

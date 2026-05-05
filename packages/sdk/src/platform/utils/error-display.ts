@@ -197,7 +197,7 @@ function extractErrorMessage(error: unknown): string {
 }
 
 export function normalizeError(error: unknown, options: ErrorNormalizationOptions = {}): NormalizedError {
-  // OBS-24: Redact Bearer tokens and API keys before any further processing.
+  // Redact Bearer tokens and API keys before any further processing.
   const rawMessage = redactSensitiveData(extractErrorMessage(error));
   const statusCode = error instanceof AppError
     ? error.statusCode

@@ -46,7 +46,6 @@ export type AutomationExecutionKind = 'isolated' | 'current' | 'pinned' | 'backg
 export type AutomationExecutionTargetKind = AutomationExecutionKind | 'session' | 'route';
 export type AutomationDeliveryKind = 'none' | 'webhook' | 'surface' | 'integration' | 'link';
 export type ProviderRoutingSelection = 'inherit-current' | 'concrete' | 'synthetic';
-export type UnresolvedModelPolicy = 'fallback-to-current' | 'fail';
 export type ProviderFailurePolicy = 'ordered-fallbacks' | 'fail';
 export type AutomationExecutionMode = 'spawn' | 'shared-session' | 'continued-live' | 'background';
 export type AutomationSessionPolicy = 'create-or-bind' | 'continue-existing' | 'require-existing';
@@ -55,7 +54,6 @@ export type AutomationDeliveryGuarantee = 'best-effort' | 'at-least-once';
 
 export interface ProviderModelRoutingPolicy {
   readonly providerSelection?: ProviderRoutingSelection | undefined;
-  readonly unresolvedModelPolicy?: UnresolvedModelPolicy | undefined;
   readonly providerFailurePolicy?: ProviderFailurePolicy | undefined;
   readonly fallbackModels?: readonly string[] | undefined;
 }

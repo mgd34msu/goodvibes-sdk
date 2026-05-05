@@ -6,10 +6,10 @@ import {
   collectTarballs,
   createSdkTempDir,
   getAuthToken,
-  getPublicPackageNameOverride,
   getPublishRegistryOverride,
   getRootVersion,
   packStage,
+  publicPackageDirs,
   readPackage,
   run,
   stagePackages,
@@ -17,13 +17,26 @@ import {
 
 const REGISTRY_MODE = process.argv.includes('--registry');
 const PUBLIC_PACKAGE_DIR = 'packages/sdk';
-const PUBLIC_PACKAGE_NAME = getPublicPackageNameOverride() || requirePackageName(PUBLIC_PACKAGE_DIR);
+const PUBLIC_PACKAGE_NAME = packageNameForDir(PUBLIC_PACKAGE_DIR);
+const CONTRACTS_PACKAGE_NAME = packageNameForDir('packages/contracts');
+const ERRORS_PACKAGE_NAME = packageNameForDir('packages/errors');
+const DAEMON_SDK_PACKAGE_NAME = packageNameForDir('packages/daemon-sdk');
+const TRANSPORT_CORE_PACKAGE_NAME = packageNameForDir('packages/transport-core');
+const TRANSPORT_HTTP_PACKAGE_NAME = packageNameForDir('packages/transport-http');
+const TRANSPORT_REALTIME_PACKAGE_NAME = packageNameForDir('packages/transport-realtime');
+const OPERATOR_SDK_PACKAGE_NAME = packageNameForDir('packages/operator-sdk');
+const PEER_SDK_PACKAGE_NAME = packageNameForDir('packages/peer-sdk');
 
 function requirePackageName(dir: string): string {
   const name = readPackage(dir).name;
   if (typeof name !== 'string' || !name) throw new Error(`Package ${dir} is missing a string name.`);
   return name;
 }
+
+function packageNameForDir(dir: string): string {
+  return requirePackageName(dir);
+}
+
 const WEB_ENTRY = `${PUBLIC_PACKAGE_NAME}/web`;
 const NATIVE_ENTRY = `${PUBLIC_PACKAGE_NAME}/react-native`;
 const AUTH_ENTRY = `${PUBLIC_PACKAGE_NAME}/auth`;
@@ -53,6 +66,14 @@ const contracts = await import('${CONTRACTS_ENTRY}');
 const runtimeEvents = await import('${REALTIME_ENTRY}');
 const runtime = await import('${RUNTIME_ENTRY}');
 const runtimeObservability = await import('${RUNTIME_OBSERVABILITY_ENTRY}');
+const contractsPackage = await import('${CONTRACTS_PACKAGE_NAME}');
+const errorsPackage = await import('${ERRORS_PACKAGE_NAME}');
+const daemonSdkPackage = await import('${DAEMON_SDK_PACKAGE_NAME}');
+const transportCorePackage = await import('${TRANSPORT_CORE_PACKAGE_NAME}');
+const transportHttpPackage = await import('${TRANSPORT_HTTP_PACKAGE_NAME}');
+const transportRealtimePackage = await import('${TRANSPORT_REALTIME_PACKAGE_NAME}');
+const operatorSdkPackage = await import('${OPERATOR_SDK_PACKAGE_NAME}');
+const peerSdkPackage = await import('${PEER_SDK_PACKAGE_NAME}');
 
 const sdk = root.createGoodVibesSdk({ baseUrl: 'http://127.0.0.1:3210' });
 if (!sdk?.operator || !sdk?.peer || !sdk?.realtime) throw new Error('sdk entrypoint missing expected surfaces');
@@ -67,6 +88,14 @@ if (typeof runtimeObservability.TimelineBuffer !== 'function') throw new Error('
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');
+if (!contractsPackage.OPERATOR_METHOD_IDS || !contractsPackage.PEER_ENDPOINT_IDS) throw new Error('contracts package export missing');
+if (typeof errorsPackage.GoodVibesSdkError !== 'function') throw new Error('errors package export missing');
+if (typeof daemonSdkPackage.createDaemonControlRouteHandlers !== 'function') throw new Error('daemon-sdk package export missing');
+if (typeof transportCorePackage.createDirectClientTransport !== 'function') throw new Error('transport-core package export missing');
+if (typeof transportHttpPackage.createHttpTransport !== 'function') throw new Error('transport-http package export missing');
+if (typeof transportRealtimePackage.createRemoteRuntimeEvents !== 'function') throw new Error('transport-realtime package export missing');
+if (typeof operatorSdkPackage.createOperatorSdk !== 'function') throw new Error('operator-sdk package export missing');
+if (typeof peerSdkPackage.createPeerSdk !== 'function') throw new Error('peer-sdk package export missing');
 const packageRoot = dirname(require.resolve('${PUBLIC_PACKAGE_NAME}/package.json'));
 const nestedInternalRoot = join(packageRoot, 'node_modules', '@pellux');
 if (existsSync(nestedInternalRoot)) {
@@ -176,7 +205,7 @@ async function installWithBun(specs: readonly string[]): Promise<void> {
 
 function buildRegistrySpecs(): string[] {
   const version = getRootVersion();
-  return [`${PUBLIC_PACKAGE_NAME}@${version}`];
+  return publicPackageDirs.map((dir) => `${packageNameForDir(dir)}@${version}`);
 }
 
 async function buildTarballSpecs() {

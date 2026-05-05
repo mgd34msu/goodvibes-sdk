@@ -6,9 +6,10 @@ import { scan, loadPersistedProviders, persistProviders, removePersistedProvider
 import type { McpRegistry } from '../mcp/registry.js';
 import type { ShellPathService } from './shell-paths.js';
 import { summarizeError } from '../utils/error-display.js';
+import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 
 const FALLBACK_MODEL = {
-  model: 'openrouter/free',
+  model: 'openrouter:openrouter/free',
   provider: 'openrouter',
 } as const;
 
@@ -27,7 +28,7 @@ export interface BackgroundProviderDiscoveryOptions {
   providerRegistry: ProviderRegistry;
   runtime: RuntimeSelectionState;
   requestRender: () => void;
-  restoreRuntimeModel: (providerRegistry: ProviderRegistry, savedModel: string, savedProvider: string, runtime: RuntimeSelectionState) => void;
+  restoreRuntimeModel: (providerRegistry: ProviderRegistry, savedModel: string, runtime: RuntimeSelectionState) => void;
   systemMessageRouter: HostSystemMessageSink;
   shellPaths: Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'>;
   surfaceRoot: string;
@@ -67,7 +68,6 @@ export function startBackgroundProviderDiscovery(
       restoreRuntimeModel(
         providerRegistry,
         configManager.get('provider.model') as string,
-        configManager.get('provider.provider') as string,
         runtime,
       );
       for (const server of persisted) {
@@ -77,7 +77,7 @@ export function startBackgroundProviderDiscovery(
       }
       requestRender();
     } catch (err) {
-      logger.debug('[bootstrap] Non-fatal error during persisted provider registration', {
+      logger.warn('[bootstrap] Persisted provider registration failed', {
         error: summarizeError(err),
       });
     }
@@ -97,11 +97,10 @@ export function startBackgroundProviderDiscovery(
         restoreRuntimeModel(
           providerRegistry,
           configManager.get('provider.model') as string,
-          configManager.get('provider.provider') as string,
           runtime,
         );
       } catch (err) {
-        logger.debug('[bootstrap] Non-fatal error during scan provider registration', {
+        logger.warn('[bootstrap] Scan provider registration failed', {
           error: summarizeError(err),
         });
       }
@@ -119,16 +118,16 @@ export function startBackgroundProviderDiscovery(
         systemMessageRouter.low(
           `[Scan] ${server.name} at ${server.host}:${server.port} is no longer reachable — removed`,
         );
-        const wasActive = server.models.includes(currentModel);
+        const currentModelBareId = splitModelRegistryKey(currentModel).resolvedModelId;
+        const wasActive = server.models.includes(currentModelBareId);
         if (wasActive) {
           configManager.set('provider.model', FALLBACK_MODEL.model);
-          configManager.set('provider.provider', FALLBACK_MODEL.provider);
           try {
             providerRegistry.setCurrentModel(FALLBACK_MODEL.model);
             runtime.model = FALLBACK_MODEL.model;
             runtime.provider = FALLBACK_MODEL.provider;
           } catch (err) {
-            logger.debug('[bootstrap] Non-fatal error switching model after server removal', {
+            logger.warn('[bootstrap] Model switch after server removal failed', {
               error: summarizeError(err),
             });
           }
@@ -148,7 +147,7 @@ export function startBackgroundProviderDiscovery(
     }
   }).catch((error: unknown) => {
     if (stopped) return;
-    logger.debug('[bootstrap] provider discovery scan failed', {
+    logger.warn('[bootstrap] Provider discovery scan failed', {
       error: summarizeError(error),
     });
   });
@@ -186,7 +185,7 @@ export function scheduleBackgroundMcpDiscovery(options: BackgroundMcpDiscoveryOp
 
   mcpRegistry.connectAll(shellPaths).catch((err) => {
     if (stopped) return;
-    logger.debug('MCP auto-connect failed (non-fatal)', { error: summarizeError(err) });
+    logger.warn('MCP auto-connect failed', { error: summarizeError(err) });
   });
 
   scanTimer = setTimeout(() => {
@@ -204,7 +203,7 @@ export function scheduleBackgroundMcpDiscovery(options: BackgroundMcpDiscoveryOp
       requestRender();
     }).catch((err) => {
       if (stopped) return;
-      logger.debug('MCP auto-discovery scan failed (non-fatal)', { error: summarizeError(err) });
+      logger.warn('MCP auto-discovery scan failed', { error: summarizeError(err) });
     });
   }, 2000);
   scanTimer.unref?.();

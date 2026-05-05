@@ -59,7 +59,7 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
         usageWindows: z.ZodArray<z.ZodObject<{
             label: z.ZodString;
             detail: z.ZodString;
-        }, z.core.$strip>>;
+        }, z.core.$strict>>;
         issues: z.ZodArray<z.ZodString>;
         recommendedActions: z.ZodArray<z.ZodString>;
         routeRecords: z.ZodArray<z.ZodObject<{
@@ -79,11 +79,11 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
             }>;
             detail: z.ZodString;
             issues: z.ZodArray<z.ZodString>;
-        }, z.core.$strip>>;
-    }, z.core.$catchall<z.ZodUnknown>>>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
     configuredCount: z.ZodNumber;
     issueCount: z.ZodNumber;
-}, z.core.$strip>;
+}, z.core.$strict>;
 
 // @public
 export type AgentEvent =
@@ -172,112 +172,6 @@ export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEve
 // @public
 export function applyPerMethodPolicy(base: ResolvedHttpRetryPolicy, methodId: string): ResolvedHttpRetryPolicy;
 
-// @public (undocumented)
-export interface ApprovalBrokerLike {
-    // (undocumented)
-    cancelApproval(approvalId: string, actor: string, actorSurface: string, note?: string): Promise<unknown | null>;
-    // (undocumented)
-    claimApproval(approvalId: string, actor: string, actorSurface: string, note?: string): Promise<unknown | null>;
-    // (undocumented)
-    resolveApproval(approvalId: string, input: {
-        readonly approved: boolean;
-        readonly remember: boolean;
-        readonly actor: string;
-        readonly actorSurface: string;
-        readonly note?: string | undefined;
-    }): Promise<unknown | null>;
-}
-
-// @public (undocumented)
-export type ArtifactKind = string;
-
-// @public (undocumented)
-export interface ArtifactStoreLike {
-    // (undocumented)
-    create(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    get(artifactId: string): unknown | null;
-    // (undocumented)
-    list(): readonly unknown[];
-    // (undocumented)
-    readContent(artifactId: string): Promise<{
-        readonly record: {
-            readonly mimeType: string;
-            readonly filename?: string;
-        };
-        readonly buffer: ArrayBuffer | Uint8Array;
-    }>;
-}
-
-// @public (undocumented)
-export interface ArtifactStoreUploadLike {
-    // (undocumented)
-    create(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    createFromStream?(input: {
-        readonly stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array | Buffer | string> | Iterable<Uint8Array | Buffer | string>;
-        readonly kind?: string | undefined;
-        readonly mimeType?: string | undefined;
-        readonly filename?: string | undefined;
-        readonly sourceUri?: string | undefined;
-        readonly sizeBytes?: number | undefined;
-        readonly retentionMs?: number | undefined;
-        readonly acquisitionMode?: string | undefined;
-        readonly fetchMode?: string | undefined;
-        readonly metadata?: Record<string, unknown> | undefined;
-    }): Promise<unknown>;
-    // (undocumented)
-    getMaxBytes?(): number;
-}
-
-// @public (undocumented)
-export type ArtifactUploadFieldMap = Record<string, unknown>;
-
-// @public (undocumented)
-export interface ArtifactUploadResult {
-    // (undocumented)
-    readonly artifact: unknown;
-    // (undocumented)
-    readonly artifactId: string;
-    // (undocumented)
-    readonly fields: ArtifactUploadFieldMap;
-}
-
-// @public (undocumented)
-export interface AuthenticatedPrincipal {
-    // (undocumented)
-    readonly admin: boolean;
-    // (undocumented)
-    readonly principalId: string;
-    // (undocumented)
-    readonly principalKind: AuthenticatedPrincipalKind;
-    // (undocumented)
-    readonly scopes: readonly string[];
-}
-
-// @public (undocumented)
-export type AuthenticatedPrincipalKind = 'user' | 'bot' | 'service' | 'token';
-
-// @public (undocumented)
-export interface AuthenticatedPrincipalLike {
-    // (undocumented)
-    readonly admin: boolean;
-    // (undocumented)
-    readonly principalId: string;
-    // (undocumented)
-    readonly principalKind: string;
-    // (undocumented)
-    readonly scopes: readonly string[];
-}
-
-// @public (undocumented)
-export interface AuthenticatedPrincipalResolver {
-    // (undocumented)
-    readonly describeAuthenticatedPrincipal: (token: string) => AuthenticatedPrincipal | null;
-    // (undocumented)
-    readonly extractAuthToken: (req: Request) => string;
-}
-
 // @public
 export type AuthStateKind = 'anonymous' | 'session' | 'token';
 
@@ -288,6 +182,9 @@ export type AuthTokenInput = string | {
 
 // @public (undocumented)
 export type AuthTokenResolver = () => MaybePromise<string | null | undefined>;
+
+// @public (undocumented)
+export type AuthTokenSource = string | null | undefined | AuthTokenResolver;
 
 // @public
 export interface AuthTransitionInfo {
@@ -307,9 +204,6 @@ export const AUTOMATION_RUN_OUTCOMES: readonly ["success", "partial", "failed", 
 
 // @public
 export const AUTOMATION_SCHEDULE_KINDS: readonly ["at", "every", "cron"];
-
-// @public (undocumented)
-export type AutomationDeliveryGuarantee = string;
 
 // @public (undocumented)
 export type AutomationEvent = {
@@ -382,33 +276,43 @@ export type AutomationEventType = AutomationEvent['type'];
 export type AutomationExecutionMode = 'isolated' | 'current' | 'pinned' | 'background';
 
 // @public (undocumented)
-export type AutomationRouteBindingKind = string;
-
-// @public (undocumented)
 export type AutomationRunOutcome = (typeof AUTOMATION_RUN_OUTCOMES)[number];
-
-// @public (undocumented)
-export type AutomationScheduleDefinition = unknown;
 
 // @public (undocumented)
 export type AutomationScheduleKind = (typeof AUTOMATION_SCHEDULE_KINDS)[number];
 
 // @public (undocumented)
-export type AutomationSessionPolicy = string;
-
-// @public (undocumented)
-export type AutomationSurfaceKind = string;
-
-// @public (undocumented)
-export type AutomationThreadPolicy = string;
-
-// @public (undocumented)
 export class AutoRefreshCoordinator {
-    // Warning: (ae-forgotten-export) The symbol "AutoRefreshCoordinatorOptions" needs to be exported by the entry point index.d.ts
     constructor(options: AutoRefreshCoordinatorOptions);
     ensureFreshToken(): Promise<void>;
     refreshAndRetryOnce<T>(fn: () => Promise<T>): Promise<T>;
     withRetryOn401<T>(fn: () => Promise<T>): Promise<T>;
+}
+
+// @public (undocumented)
+export interface AutoRefreshCoordinatorOptions {
+    // (undocumented)
+    readonly autoRefresh: boolean;
+    // (undocumented)
+    readonly observer?: SDKObserver | undefined;
+    readonly refresh?: (() => Promise<{
+        token: string;
+        expiresAt?: number | undefined;
+    }>) | undefined;
+    // (undocumented)
+    readonly refreshLeewayMs: number;
+    // (undocumented)
+    readonly tokenStore: GoodVibesTokenStore;
+}
+
+// @public (undocumented)
+export interface AutoRefreshOptions {
+    readonly autoRefresh?: boolean | undefined;
+    readonly refresh?: (() => Promise<{
+        token: string;
+        expiresAt?: number;
+    }>) | undefined;
+    readonly refreshLeewayMs?: number | undefined;
 }
 
 // @public (undocumented)
@@ -421,16 +325,6 @@ export interface BackoffPolicy {
     readonly maxAttempts?: number | undefined;
     // (undocumented)
     readonly maxDelayMs?: number | undefined;
-}
-
-// @public (undocumented)
-export interface BoundedIntegerOptions {
-    // (undocumented)
-    readonly fallback: number;
-    // (undocumented)
-    readonly max?: number | undefined;
-    // (undocumented)
-    readonly min?: number | undefined;
 }
 
 // @public
@@ -452,166 +346,13 @@ export interface BrowserTokenStoreOptions {
 }
 
 // @public (undocumented)
-export function buildErrorResponseBody(error: unknown, options?: JsonErrorResponseOptions): StructuredDaemonErrorBody;
-
-// @public (undocumented)
 export function buildEventSourceUrl(baseUrl: string, domain: RuntimeEventDomain): string;
-
-// @public (undocumented)
-export function buildMissingScopeBody(target: string, requiredScopes: readonly string[], grantedScopes: readonly string[] | undefined): {
-    readonly error: string;
-    readonly requiredScopes: readonly string[];
-    readonly grantedScopes: readonly string[];
-    readonly missingScopes: readonly string[];
-} | null;
 
 // @public (undocumented)
 export function buildUrl(baseUrl: string, path: string): string;
 
 // @public (undocumented)
 export function buildWebSocketUrl(baseUrl: string, domains: readonly RuntimeEventDomain[]): string;
-
-// @public (undocumented)
-export interface ChannelAccountRegistryLike {
-    // (undocumented)
-    listAccounts(): Promise<unknown[]>;
-}
-
-// @public (undocumented)
-export interface ChannelAgentToolDefinitionLike {
-    // (undocumented)
-    readonly definition: unknown;
-}
-
-// @public (undocumented)
-export interface ChannelAllowlistInput {
-    // (undocumented)
-    readonly add?: readonly string[] | undefined;
-    // (undocumented)
-    readonly channelId?: string | undefined;
-    // (undocumented)
-    readonly groupId?: string | undefined;
-    // (undocumented)
-    readonly kind?: 'user' | 'channel' | 'group' | undefined;
-    // (undocumented)
-    readonly metadata?: Record<string, unknown> | undefined;
-    // (undocumented)
-    readonly remove?: readonly string[] | undefined;
-    // (undocumented)
-    readonly workspaceId?: string | undefined;
-}
-
-// @public (undocumented)
-export interface ChannelAuthorizeActionInput {
-    // (undocumented)
-    readonly accountId?: string | undefined;
-    // (undocumented)
-    readonly actionId: string;
-    // (undocumented)
-    readonly actorId?: string | undefined;
-    // (undocumented)
-    readonly metadata?: Record<string, unknown> | undefined;
-    // (undocumented)
-    readonly target?: unknown | undefined;
-}
-
-// @public (undocumented)
-export type ChannelConversationKind = 'direct' | 'group' | 'channel' | 'thread' | 'service';
-
-// @public (undocumented)
-export interface ChannelDirectoryQuery {
-    // (undocumented)
-    readonly groupId?: string | undefined;
-    // (undocumented)
-    readonly limit?: number | undefined;
-    // (undocumented)
-    readonly live?: boolean | undefined;
-    // (undocumented)
-    readonly query: string;
-    // (undocumented)
-    readonly scope?: ChannelDirectoryScope | undefined;
-}
-
-// @public (undocumented)
-export type ChannelDirectoryScope = string;
-
-// @public (undocumented)
-export type ChannelLifecycleAction = 'inspect' | 'setup' | 'retest' | 'connect' | 'disconnect' | 'start' | 'stop' | 'login' | 'logout' | 'wait_login';
-
-// @public (undocumented)
-export interface ChannelPluginServiceLike {
-    // (undocumented)
-    authorizeActorAction(surface: ChannelSurface, input: ChannelAuthorizeActionInput): Promise<unknown | null>;
-    // (undocumented)
-    doctor(surface: ChannelSurface, accountId?: string): Promise<unknown | null>;
-    // (undocumented)
-    editAllowlist(surface: ChannelSurface, input: ChannelAllowlistInput): Promise<unknown | null>;
-    // (undocumented)
-    getAccount(surface: ChannelSurface, accountId: string): Promise<unknown | null>;
-    // (undocumented)
-    getLifecycleState(surface: ChannelSurface, accountId?: string): Promise<unknown | null>;
-    // (undocumented)
-    getSetupSchema(surface: ChannelSurface, accountId?: string): Promise<unknown | null>;
-    // (undocumented)
-    listAccounts(surface?: ChannelSurface): Promise<readonly unknown[]>;
-    // (undocumented)
-    listAgentTools(surface?: ChannelSurface): readonly ChannelAgentToolDefinitionLike[];
-    // (undocumented)
-    listCapabilities(surface?: ChannelSurface): Promise<readonly unknown[]>;
-    // (undocumented)
-    listOperatorActions(surface?: ChannelSurface): Promise<readonly unknown[]>;
-    // (undocumented)
-    listRepairActions(surface: ChannelSurface, accountId?: string): Promise<readonly unknown[]>;
-    // (undocumented)
-    listStatus(): Promise<readonly unknown[]>;
-    // (undocumented)
-    listTools(surface?: ChannelSurface): Promise<readonly unknown[]>;
-    // (undocumented)
-    queryDirectory(surface: ChannelSurface, query: ChannelDirectoryQuery): Promise<readonly unknown[]>;
-    // (undocumented)
-    resolveAllowlist(surface: ChannelSurface, input: ChannelAllowlistInput): Promise<unknown | null>;
-    // (undocumented)
-    resolveTarget(surface: ChannelSurface, input: ChannelTargetResolutionInput): Promise<unknown | null>;
-    // (undocumented)
-    runAccountAction(surface: ChannelSurface, action: ChannelLifecycleAction, accountId: string | undefined, input?: JsonRecord): Promise<unknown | null>;
-    // (undocumented)
-    runOperatorAction(surface: ChannelSurface, actionId: string, input?: JsonRecord): Promise<unknown | null>;
-    // (undocumented)
-    runTool(surface: ChannelSurface, toolId: string, input?: JsonRecord): Promise<unknown | null>;
-}
-
-// @public (undocumented)
-export interface ChannelPolicyServiceLike {
-    // (undocumented)
-    listAudit(limit: number): readonly unknown[];
-    // (undocumented)
-    listPolicies(): readonly unknown[];
-    // (undocumented)
-    upsertPolicy(surface: ChannelSurface, input: Record<string, unknown>): Promise<unknown>;
-}
-
-// @public (undocumented)
-export type ChannelSurface = string;
-
-// @public (undocumented)
-export interface ChannelTargetResolutionInput {
-    // (undocumented)
-    readonly accountId?: string | undefined;
-    // (undocumented)
-    readonly createIfMissing?: boolean | undefined;
-    // (undocumented)
-    readonly input: string;
-    // (undocumented)
-    readonly live?: boolean | undefined;
-    // (undocumented)
-    readonly metadata?: Record<string, unknown> | undefined;
-    // (undocumented)
-    readonly preferredKind?: ChannelConversationKind | undefined;
-    // (undocumented)
-    readonly sessionId?: string | undefined;
-    // (undocumented)
-    readonly threadId?: string | undefined;
-}
 
 // @public
 export function clientInputRecord<TInput>(input: TInput | undefined): Record<string, unknown> | undefined;
@@ -907,6 +648,33 @@ export const ControlAuthLoginResponseSchema: z.ZodObject<{
     expiresAt: z.ZodNumber;
 }, z.core.$strip>;
 
+// @public
+export type ControlPlaneAuthMode = 'anonymous' | 'invalid' | 'session' | 'shared-token';
+
+// @public (undocumented)
+export interface ControlPlaneAuthSnapshot {
+    // (undocumented)
+    readonly admin: boolean;
+    // (undocumented)
+    readonly authenticated: boolean;
+    // (undocumented)
+    readonly authMode: ControlPlaneAuthMode;
+    // (undocumented)
+    readonly authorizationHeaderPresent: boolean;
+    // (undocumented)
+    readonly principalId: string | null;
+    // (undocumented)
+    readonly principalKind: 'user' | 'bot' | 'service' | 'token' | null;
+    // (undocumented)
+    readonly roles: readonly string[];
+    // (undocumented)
+    readonly scopes: readonly string[];
+    // (undocumented)
+    readonly sessionCookiePresent: boolean;
+    // (undocumented)
+    readonly tokenPresent: boolean;
+}
+
 // @public (undocumented)
 export type ControlPlaneClientKind = (typeof CONTROL_PLANE_CLIENT_KINDS)[number];
 
@@ -959,23 +727,7 @@ export type ControlStatusResponse = z.infer<typeof ControlStatusResponseSchema>;
 export const ControlStatusResponseSchema: z.ZodObject<{
     status: z.ZodString;
     version: z.ZodString;
-}, z.core.$strip>;
-
-// @public
-export interface ConversationMessageEnvelope {
-    // (undocumented)
-    readonly body: string;
-    // (undocumented)
-    readonly messageId: string;
-    readonly metadata?: Readonly<Record<string, unknown>> | undefined;
-    // (undocumented)
-    readonly source: string;
-    // (undocumented)
-    readonly timestamp: number;
-}
-
-// @public (undocumented)
-export function createArtifactFromUploadRequest(artifactStore: ArtifactStoreUploadLike, req: Request): Promise<ArtifactUploadResult | Response>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export function createBrowserGoodVibesSdk(options?: BrowserGoodVibesSdkOptions): GoodVibesSdk;
@@ -990,57 +742,11 @@ export function createClientTransport<TKind extends string, TOperator, TPeer>(ki
 export function createConsoleObserver(options?: ConsoleObserverOptions): SDKObserver;
 
 // @public (undocumented)
-export function createDaemonChannelRouteHandlers(context: DaemonChannelRouteContext): DaemonChannelRouteHandlers;
-
-// Warning: (ae-forgotten-export) The symbol "ControlRouteContext" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export function createDaemonControlRouteHandlers(context: ControlRouteContext, request: Request): DaemonControlRouteHandlers;
-
-// @public (undocumented)
-export function createDaemonIntegrationRouteHandlers(context: DaemonIntegrationRouteContext): DaemonIntegrationRouteHandlers;
-
-// @public (undocumented)
-export function createDaemonKnowledgeRefinementRouteHandlers(context: DaemonKnowledgeRouteContext): DaemonKnowledgeRefinementRouteHandlers;
-
-// @public (undocumented)
-export function createDaemonKnowledgeRouteHandlers(context: DaemonKnowledgeRouteContext): DaemonKnowledgeRouteHandlers;
-
-// @public (undocumented)
-export function createDaemonMediaRouteHandlers(context: DaemonMediaRouteContext): DaemonMediaRouteHandlers;
-
-// Warning: (ae-forgotten-export) The symbol "DaemonRemoteRouteContext" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export function createDaemonRemoteRouteHandlers(context: DaemonRemoteRouteContext): DaemonRemoteManagementRouteHandlers;
-
-// @public (undocumented)
-export function createDaemonRuntimeAutomationRouteHandlers(context: DaemonRuntimeRouteContext): DaemonRuntimeAutomationRouteHandlers;
-
-// @public (undocumented)
-export function createDaemonRuntimeRouteHandlers(context: DaemonRuntimeRouteContext): DaemonRuntimeRouteHandlers;
-
-// Warning: (ae-forgotten-export) The symbol "DaemonRuntimeTaskRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export function createDaemonRuntimeSessionRouteHandlers(context: DaemonRuntimeRouteContext): DaemonRuntimeSessionRouteHandlers & DaemonRuntimeTaskRouteHandlers;
-
-// @public (undocumented)
-export function createDaemonSystemRouteHandlers(context: DaemonSystemRouteContext): DaemonSystemRouteHandlers;
-
-// Warning: (ae-forgotten-export) The symbol "TelemetryRouteContext" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export function createDaemonTelemetryRouteHandlers(context: TelemetryRouteContext): DaemonTelemetryRouteHandlers;
-
-// @public (undocumented)
 export function createDirectClientTransport<TOperator, TPeer>(operator: TOperator, peer: TPeer): DirectClientTransport<TOperator, TPeer>;
 
 // @public (undocumented)
 export function createEventEnvelope<TType extends string, TPayload>(type: TType, payload: TPayload, context: EventEnvelopeContext): EventEnvelope<TType, TPayload>;
 
-// Warning: (ae-forgotten-export) The symbol "AuthTokenSource" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function createEventSourceConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(baseUrl: string, token: AuthTokenSource, fetchImpl: typeof fetch, options?: RuntimeEventConnectorOptions): DomainEventConnector<RuntimeEventDomain, TEvent>;
 
@@ -1050,8 +756,6 @@ export function createExpoGoodVibesSdk(options: ExpoGoodVibesSdkOptions): ReactN
 // @public (undocumented)
 export function createFetch(fetchImpl?: typeof fetch, fallbackFetch?: typeof fetch): typeof fetch;
 
-// Warning: (ae-forgotten-export) The symbol "AutoRefreshOptions" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function createGoodVibesAuthClient(operator: OperatorSdk, tokenStore: GoodVibesTokenStore | null, getAuthToken?: AuthTokenResolver, observer?: SDKObserver | undefined, autoRefreshOptions?: AutoRefreshOptions,
 existingCoordinator?: AutoRefreshCoordinator | null): GoodVibesAuthClient;
@@ -1102,12 +806,6 @@ export function createRemoteDomainEvents<TDomain extends string, TEvent extends 
 export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(connect: DomainEventConnector<RuntimeEventDomain, TEvent>, options?: RemoteRuntimeEventsOptions): RemoteRuntimeEvents<TEvent>;
 
 // @public (undocumented)
-export function createRouteBodySchema<T>(routeId: string, parse: (body: JsonRecord) => T | Response): RouteBodySchema<T>;
-
-// @public (undocumented)
-export function createRouteBodySchemaRegistry<const TSchemaMap extends Record<string, RouteBodySchema<unknown>>>(schemas: TSchemaMap): TSchemaMap;
-
-// @public (undocumented)
 export function createRuntimeEventFeed<TEvent extends EventLike>(subscribe: EnvelopeSubscriber<TEvent>): RuntimeEventFeed<TEvent>;
 
 // @public (undocumented)
@@ -1134,7 +832,7 @@ export const CurrentModelResponseSchema: z.ZodObject<{
         registryKey: z.ZodString;
         provider: z.ZodString;
         id: z.ZodString;
-    }, z.core.$strip>>;
+    }, z.core.$strict>>;
     configured: z.ZodBoolean;
     configuredVia: z.ZodOptional<z.ZodEnum<{
         anonymous: "anonymous";
@@ -1167,133 +865,8 @@ export const CurrentModelResponseSchema: z.ZodObject<{
         serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
         providerId: z.ZodOptional<z.ZodString>;
         repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    }, z.core.$strip>>>;
-}, z.core.$strip>;
-
-// @public (undocumented)
-export type DaemonApiClientKind = 'web' | 'slack' | 'discord' | 'ntfy' | 'webhook' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix' | 'daemon';
-
-// @public
-export type DaemonApiRouteExtension = (req: Request) => Promise<Response | null> | Response | null;
-
-// @public (undocumented)
-export interface DaemonApiRouteHandlers extends DaemonRemoteDispatchRouteHandlers, DaemonOperatorRouteHandlers, DaemonAutomationRouteHandlers, DaemonSessionRouteHandlers, DaemonTaskRouteHandlers, DaemonRuntimeRouteHandlers {
-}
-
-// Warning: (ae-forgotten-export) The symbol "DaemonAutomationOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonDeliveryRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export interface DaemonAutomationRouteHandlers extends DaemonAutomationOverviewRouteHandlers, DaemonRuntimeAutomationRouteHandlers, DaemonDeliveryRouteHandlers {
-}
-
-// @public (undocumented)
-export interface DaemonChannelRouteContext {
-    // (undocumented)
-    readonly channelPlugins: ChannelPluginServiceLike;
-    // (undocumented)
-    readonly channelPolicy: ChannelPolicyServiceLike;
-    // (undocumented)
-    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-    // (undocumented)
-    readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
-    // (undocumented)
-    readonly requireAdmin: (req: Request) => Response | null;
-    // (undocumented)
-    readonly surfaceRegistry: SurfaceRegistryLike;
-}
-
-// @public (undocumented)
-export interface DaemonChannelRouteHandlers {
-    // (undocumented)
-    getChannelAccount(surface: string, accountId: string): MaybeResponse;
-    // (undocumented)
-    getChannelAccounts(): MaybeResponse;
-    // (undocumented)
-    getChannelActions(): MaybeResponse;
-    // (undocumented)
-    getChannelAgentTools(): MaybeResponse;
-    // (undocumented)
-    getChannelCapabilities(): MaybeResponse;
-    // (undocumented)
-    getChannelDirectory(surface: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getChannelDoctor(surface: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getChannelLifecycle(surface: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getChannelPolicies(): MaybeResponse;
-    // (undocumented)
-    getChannelPolicyAudit(limit: number): MaybeResponse;
-    // (undocumented)
-    getChannelRepairActions(surface: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getChannelSetupSchema(surface: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getChannelStatus(): MaybeResponse;
-    // (undocumented)
-    getChannelSurfaceAccounts(surface: string): MaybeResponse;
-    // (undocumented)
-    getChannelSurfaceActions(surface: string): MaybeResponse;
-    // (undocumented)
-    getChannelSurfaceAgentTools(surface: string): MaybeResponse;
-    // (undocumented)
-    getChannelSurfaceCapabilities(surface: string): MaybeResponse;
-    // (undocumented)
-    getChannelSurfaceTools(surface: string): MaybeResponse;
-    // (undocumented)
-    getChannelTools(): MaybeResponse;
-    // (undocumented)
-    getSurfaces(): MaybeResponse;
-    // (undocumented)
-    patchChannelPolicy(surface: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelAccountAction(surface: string, accountId: string | null, action: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelAction(surface: string, actionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelAllowlistEdit(surface: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelAllowlistResolve(surface: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelAuthorize(surface: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelPolicy(surface: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelResolveTarget(surface: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postChannelTool(surface: string, toolId: string, req: Request): MaybeResponse;
-}
-
-// @public (undocumented)
-export interface DaemonControlRouteHandlers {
-    // (undocumented)
-    createControlPlaneEventStream(req: Request): MaybeResponse;
-    // (undocumented)
-    getControlPlaneClients(): MaybeResponse;
-    // (undocumented)
-    getControlPlaneMessages(): MaybeResponse;
-    // (undocumented)
-    getControlPlaneRecentEvents(limit: number): MaybeResponse;
-    // (undocumented)
-    getControlPlaneSnapshot(): MaybeResponse;
-    // (undocumented)
-    getControlPlaneWeb(): MaybeResponse;
-    // (undocumented)
-    getCurrentAuth(req: Request): MaybeResponse;
-    // (undocumented)
-    getGatewayEvents(url: URL): MaybeResponse;
-    // (undocumented)
-    getGatewayMethod(methodId: string): MaybeResponse;
-    // (undocumented)
-    getGatewayMethods(url: URL): MaybeResponse;
-    // (undocumented)
-    getOperatorContract(): MaybeResponse;
-    // (undocumented)
-    getStatus(): MaybeResponse;
-    // (undocumented)
-    invokeGatewayMethod(methodId: string, req: Request): MaybeResponse;
-}
+    }, z.core.$strict>>>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type DaemonErrorCategory = 'authentication' | 'authorization' | 'billing' | 'rate_limit' | 'timeout' | 'network' | 'bad_request' | 'not_found' | 'permission' | 'tool' | 'config' | 'protocol' | 'service' | 'internal' | 'unknown';
@@ -1319,673 +892,6 @@ export const DaemonErrorCategory: {
 
 // @public (undocumented)
 export type DaemonErrorSource = 'provider' | 'tool' | 'transport' | 'config' | 'permission' | 'runtime' | 'render' | 'acp' | 'unknown';
-
-// @public (undocumented)
-export interface DaemonIntegrationRouteContext {
-    // (undocumented)
-    readonly channelPlugins: ChannelAccountRegistryLike;
-    // (undocumented)
-    readonly integrationHelpers: IntegrationHelperServiceLike | null;
-    // (undocumented)
-    readonly memoryEmbeddingRegistry: MemoryEmbeddingRegistryLike;
-    // (undocumented)
-    readonly memoryRegistry: MemoryRegistryLike;
-    // (undocumented)
-    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-    // (undocumented)
-    readonly providerRuntime: ProviderRuntimeSnapshotServiceLike;
-    // (undocumented)
-    readonly requireAdmin: (req: Request) => Response | null;
-    // (undocumented)
-    readonly userAuth: UserAuthManagerLike;
-}
-
-// Warning: (ae-forgotten-export) The symbol "DaemonIntegrationOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonRouteSnapshotRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonRemoteOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonPlatformStatusRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonMemoryRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonLocalAuthAdminRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonPanelRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonEventLogRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export interface DaemonIntegrationRouteHandlers extends DaemonIntegrationOverviewRouteHandlers, DaemonDeliveryRouteHandlers, DaemonRouteSnapshotRouteHandlers, DaemonRemoteOverviewRouteHandlers, DaemonPlatformStatusRouteHandlers, DaemonMemoryRouteHandlers, DaemonLocalAuthAdminRouteHandlers, DaemonPanelRouteHandlers, DaemonEventLogRouteHandlers {
-}
-
-// @public (undocumented)
-export interface DaemonKnowledgeRefinementRouteHandlers {
-    // (undocumented)
-    getKnowledgeRefinementTask(taskId: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeRefinementTasks(url: URL): MaybeResponse;
-    // (undocumented)
-    postKnowledgeCancelRefinementTask(taskId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeRunRefinement(req: Request): MaybeResponse;
-}
-
-// @public (undocumented)
-export interface DaemonKnowledgeRouteContext {
-    // (undocumented)
-    readonly artifactStore: ArtifactStoreUploadLike;
-    // (undocumented)
-    readonly configManager: {
-        get(key: string): unknown;
-    };
-    // (undocumented)
-    readonly inspectGraphqlAccess: (query: string, operationName?: string) => KnowledgeGraphqlAccessLike;
-    // (undocumented)
-    readonly knowledgeGraphqlService: KnowledgeGraphqlServiceLike;
-    // (undocumented)
-    readonly knowledgeService: KnowledgeServiceLike;
-    // (undocumented)
-    readonly normalizeAtSchedule: (at: number) => AutomationScheduleDefinition;
-    // (undocumented)
-    readonly normalizeCronSchedule: (expression: string, timezone?: string, staggerMs?: unknown) => AutomationScheduleDefinition;
-    // (undocumented)
-    readonly normalizeEverySchedule: (interval: number | string, anchorAt?: number) => AutomationScheduleDefinition;
-    // (undocumented)
-    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-    // (undocumented)
-    readonly parseJsonText: (raw: string) => JsonRecord | Response;
-    // (undocumented)
-    readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
-    // (undocumented)
-    readonly requireAdmin: (req: Request) => Response | null;
-    // (undocumented)
-    readonly resolveAuthenticatedPrincipal: (req: Request) => AuthenticatedPrincipalLike | null;
-}
-
-// @public (undocumented)
-export interface DaemonKnowledgeRouteHandlers extends DaemonKnowledgeRefinementRouteHandlers {
-    // (undocumented)
-    deleteKnowledgeSchedule(id: string, req: Request): MaybeResponse;
-    // (undocumented)
-    executeKnowledgeGraphql(req: Request): MaybeResponse;
-    // (undocumented)
-    getKnowledgeCandidate(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeCandidates(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeConnector(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeConnectorDoctor(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeConnectors(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeExtraction(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeExtractions(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeGraphqlSchema(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeIssues(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeItem(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeJob(jobId: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeJobRuns(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeJobs(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeMap(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeNodes(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeProjectionTargets(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeReport(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeReports(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSchedule(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSchedules(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSourceExtraction(id: string): MaybeResponse;
-    // (undocumented)
-    getKnowledgeSources(url: URL): MaybeResponse;
-    // (undocumented)
-    getKnowledgeStatus(): MaybeResponse;
-    // (undocumented)
-    getKnowledgeUsage(url: URL): MaybeResponse;
-    // (undocumented)
-    postKnowledgeAsk(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeDecideCandidate(id: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeImportBookmarks(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeImportUrls(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeIngestArtifact(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeIngestConnector(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeIngestUrl(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeLint(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeMaterializeProjection(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgePacket(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeReindex(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeRenderProjection(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeReviewIssue(id: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeRunJob(jobId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeSaveSchedule(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeSearch(req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeSetScheduleEnabled(id: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postKnowledgeSyncBrowserHistory(req: Request): MaybeResponse;
-}
-
-// @public (undocumented)
-export interface DaemonMediaRouteContext {
-    // (undocumented)
-    readonly artifactStore: ArtifactStoreLike;
-    // Warning: (ae-forgotten-export) The symbol "ConfigManagerLike" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    readonly configManager: ConfigManagerLike;
-    // (undocumented)
-    readonly mediaProviders: MediaProviderRegistryLike;
-    // (undocumented)
-    readonly multimodalService: MultimodalServiceLike;
-    // (undocumented)
-    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-    // (undocumented)
-    readonly requireAdmin: (req: Request) => Response | null;
-    // (undocumented)
-    readonly voiceService: VoiceServiceLike;
-    // (undocumented)
-    readonly webSearchService: WebSearchServiceLike;
-}
-
-// Warning: (ae-forgotten-export) The symbol "DaemonVoiceRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonWebSearchRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonArtifactRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonMediaProviderRouteHandlers" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "DaemonMultimodalRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export interface DaemonMediaRouteHandlers extends DaemonVoiceRouteHandlers, DaemonWebSearchRouteHandlers, DaemonArtifactRouteHandlers, DaemonMediaProviderRouteHandlers, DaemonMultimodalRouteHandlers {
-}
-
-// Warning: (ae-forgotten-export) The symbol "DaemonOperatorRuntimeRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export interface DaemonOperatorRouteHandlers extends DaemonControlRouteHandlers, DaemonTelemetryRouteHandlers, DaemonChannelRouteHandlers, DaemonIntegrationRouteHandlers, DaemonSystemRouteHandlers, DaemonRemoteManagementRouteHandlers, DaemonKnowledgeRouteHandlers, DaemonMediaRouteHandlers, DaemonOperatorRuntimeRouteHandlers {
-}
-
-// @public (undocumented)
-export interface DaemonRemoteDispatchRouteHandlers extends DaemonRemoteOverviewRouteHandlers, DaemonRemoteManagementRouteHandlers {
-}
-
-// @public (undocumented)
-export interface DaemonRemoteManagementRouteHandlers {
-    // (undocumented)
-    approveRemotePairRequest(requestId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    cancelRemoteWork(workId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    disconnectRemotePeer(peerId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    getRemoteNodeHostContract(): MaybeResponse;
-    // (undocumented)
-    getRemotePairRequests(): MaybeResponse;
-    // (undocumented)
-    getRemotePeers(): MaybeResponse;
-    // (undocumented)
-    getRemoteWork(): MaybeResponse;
-    // (undocumented)
-    invokeRemotePeer(peerId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    rejectRemotePairRequest(requestId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    revokeRemotePeerToken(peerId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    rotateRemotePeerToken(peerId: string, req: Request): MaybeResponse;
-}
-
-// @public (undocumented)
-export interface DaemonRuntimeAutomationRouteHandlers {
-    // (undocumented)
-    automationRunAction(runId: string, action: 'cancel' | 'retry', req: Request): MaybeResponse;
-    // (undocumented)
-    deleteAutomationJob(jobId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    deleteSchedule(scheduleId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    getAutomationHeartbeat(): MaybeResponse;
-    // (undocumented)
-    getAutomationJobs(): MaybeResponse;
-    // (undocumented)
-    getAutomationRun(runId: string): MaybeResponse;
-    // (undocumented)
-    getAutomationRuns(): MaybeResponse;
-    // (undocumented)
-    getSchedulerCapacity(req: Request): MaybeResponse;
-    // (undocumented)
-    getSchedules(): MaybeResponse;
-    // (undocumented)
-    patchAutomationJob(jobId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postAutomationHeartbeat(req: Request): MaybeResponse;
-    // (undocumented)
-    postAutomationJob(req: Request): MaybeResponse;
-    // (undocumented)
-    postSchedule(req: Request): MaybeResponse;
-    // (undocumented)
-    runAutomationJobNow(jobId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    runScheduleNow(scheduleId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    setAutomationJobEnabled(jobId: string, enabled: boolean, req: Request): MaybeResponse;
-    // (undocumented)
-    setScheduleEnabled(scheduleId: string, enabled: boolean, req: Request): MaybeResponse;
-}
-
-// @public (undocumented)
-export interface DaemonRuntimeRouteContext {
-    // (undocumented)
-    readonly agentManager: {
-        getStatus(agentId: string): AgentRecordLike | null;
-        cancel(agentId: string): void;
-    };
-    // (undocumented)
-    readonly automationManager: {
-        listJobs(): AutomationJobLike[];
-        listRuns(): AutomationRunLike[];
-        getRun(runId: string): AutomationRunLike | null | undefined;
-        triggerHeartbeat(input: {
-            source: string;
-        }): Promise<unknown>;
-        cancelRun(runId: string, reason: string): Promise<unknown | null>;
-        retryRun(runId: string): Promise<unknown>;
-        createJob(input: Record<string, unknown>): Promise<AutomationJobLike>;
-        updateJob(jobId: string, input: Record<string, unknown>): Promise<AutomationJobLike | null>;
-        removeJob(jobId: string): Promise<void>;
-        setEnabled(jobId: string, enabled: boolean): Promise<AutomationJobLike | null>;
-        runNow(jobId: string): Promise<{
-            id: string;
-            agentId?: string;
-            status: string;
-        }>;
-        getSchedulerCapacity(): {
-            slotsTotal: number;
-            slotsInUse: number;
-            queueDepth: number;
-            oldestQueuedAgeMs: number | null;
-        };
-    };
-    // (undocumented)
-    readonly configManager: {
-        get(key: string): unknown;
-    };
-    // (undocumented)
-    readonly normalizeAtSchedule: (at: number) => unknown;
-    // (undocumented)
-    readonly normalizeCronSchedule: (expression: string, timezone?: string, staggerMs?: unknown) => unknown;
-    // (undocumented)
-    readonly normalizeEverySchedule: (interval: string | number, anchorAt?: number) => unknown;
-    readonly openSessionEventStream: (req: Request, sessionId: string) => Response;
-    // (undocumented)
-    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-    // (undocumented)
-    readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
-    readonly publishConversationFollowup: (sessionId: string, envelope: Omit<ConversationMessageEnvelope, 'sessionId'>) => void;
-    // (undocumented)
-    readonly queueSurfaceReplyFromBinding: (binding: AutomationRouteBinding | undefined, input: {
-        readonly agentId: string;
-        readonly task: string;
-        readonly sessionId?: string;
-    }) => void;
-    // (undocumented)
-    readonly recordApiResponse: (req: Request, path: string, response: Response) => Response;
-    // (undocumented)
-    readonly requireAdmin: (req: Request) => Response | null;
-    // (undocumented)
-    readonly routeBindings: {
-        start(): Promise<void>;
-        getBinding(id: string): AutomationRouteBinding | undefined;
-    };
-    // (undocumented)
-    readonly runtimeDispatch: {
-        transitionRuntimeTask(taskId: string, status: string, patch: Record<string, unknown>, source: string): void;
-    } | null;
-    // (undocumented)
-    readonly runtimeStore: {
-        getState(): {
-            tasks: RuntimeTaskStateLike;
-        };
-    } | null;
-    // (undocumented)
-    readonly sessionBroker: {
-        start(): Promise<void>;
-        submitMessage(input: {
-            sessionId?: string | undefined;
-            routeId?: string | undefined;
-            surfaceKind: string;
-            surfaceId: string;
-            externalId?: string | undefined;
-            threadId?: string | undefined;
-            userId?: string | undefined;
-            displayName?: string | undefined;
-            title?: string | undefined;
-            body: string;
-            metadata?: Record<string, unknown> | undefined;
-            routing?: SharedSessionRoutingIntent | undefined;
-        }): Promise<{
-            mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
-            input: {
-                id: string;
-                routing?: SharedSessionRoutingIntent;
-            };
-            session: {
-                id: string;
-                status: string;
-            };
-            routeBinding?: AutomationRouteBinding | undefined;
-            task?: string | undefined;
-            activeAgentId?: string | null | undefined;
-            userMessage?: unknown | undefined;
-        }>;
-        steerMessage(input: {
-            sessionId?: string | undefined;
-            routeId?: string | undefined;
-            surfaceKind: string;
-            surfaceId: string;
-            externalId?: string | undefined;
-            threadId?: string | undefined;
-            userId?: string | undefined;
-            displayName?: string | undefined;
-            title?: string | undefined;
-            body: string;
-            metadata?: Record<string, unknown> | undefined;
-            routing?: SharedSessionRoutingIntent | undefined;
-            allowSpawnFallback?: boolean | undefined;
-        }): Promise<{
-            mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
-            input: {
-                id: string;
-                state: string;
-                routing?: SharedSessionRoutingIntent;
-            };
-            session: {
-                id: string;
-                status: string;
-            };
-            routeBinding?: AutomationRouteBinding | undefined;
-            task?: string | undefined;
-            activeAgentId?: string | null | undefined;
-            userMessage?: unknown | undefined;
-        }>;
-        followUpMessage(input: {
-            sessionId?: string | undefined;
-            routeId?: string | undefined;
-            surfaceKind: string;
-            surfaceId: string;
-            externalId?: string | undefined;
-            threadId?: string | undefined;
-            userId?: string | undefined;
-            displayName?: string | undefined;
-            title?: string | undefined;
-            body: string;
-            metadata?: Record<string, unknown> | undefined;
-            routing?: SharedSessionRoutingIntent | undefined;
-        }): Promise<{
-            mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
-            input: {
-                id: string;
-                state: string;
-                routing?: SharedSessionRoutingIntent;
-            };
-            session: {
-                id: string;
-                status: string;
-            };
-            routeBinding?: AutomationRouteBinding | undefined;
-            task?: string | undefined;
-            activeAgentId?: string | null | undefined;
-            userMessage?: unknown | undefined;
-        }>;
-        bindAgent(sessionId: string, agentId: string): Promise<unknown>;
-        createSession(input: {
-            id?: string | undefined;
-            title?: string | undefined;
-            metadata?: Record<string, unknown> | undefined;
-            routeBinding?: AutomationRouteBinding | undefined;
-            participant?: {
-                surfaceKind: string;
-                surfaceId: string;
-                externalId?: string | undefined;
-                userId?: string | undefined;
-                displayName?: string | undefined;
-                routeId?: string | undefined;
-                lastSeenAt: number;
-            } | undefined;
-        }): Promise<{
-            id: string;
-        }>;
-        getSession(sessionId: string): {
-            id: string;
-            status: string;
-            messageCount: number;
-            activeAgentId?: string;
-        } | null;
-        getMessages(sessionId: string, limit: number): unknown[];
-        getInputs(sessionId: string, limit: number): unknown[];
-        closeSession(sessionId: string): Promise<{
-            id: string;
-        } | null>;
-        reopenSession(sessionId: string): Promise<{
-            id: string;
-        } | null>;
-        cancelInput(sessionId: string, inputId: string): Promise<unknown | null>;
-        completeAgent(sessionId: string, agentId: string, message: string, meta: {
-            status: string;
-            routeId?: string;
-        }): Promise<void>;
-        appendCompanionMessage(sessionId: string, input: {
-            readonly messageId: string;
-            readonly body: string;
-            readonly timestamp: number;
-            readonly source: string;
-        }): Promise<unknown>;
-    };
-    // (undocumented)
-    readonly snapshotMetrics: () => Record<string, unknown>;
-    // (undocumented)
-    readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
-    // (undocumented)
-    readonly syncFinishedAgentTask: (record: AgentRecordLike) => void;
-    // (undocumented)
-    readonly syncSpawnedAgentTask: (record: AgentRecordLike, sessionId?: string) => void;
-    // (undocumented)
-    readonly trySpawnAgent: (input: {
-        mode: 'spawn';
-        task: string;
-        model?: string | undefined;
-        tools?: string[] | readonly string[] | undefined;
-        provider?: string | undefined;
-        context?: string | undefined;
-        executionIntent?: ExecutionIntent | undefined;
-        executionProtocol?: 'direct' | 'gather-plan-apply' | undefined;
-        reviewMode?: 'none' | 'wrfc' | undefined;
-        communicationLane?: 'parent-only' | 'parent-and-children' | 'cohort' | 'direct' | undefined;
-        dangerously_disable_wrfc?: boolean | undefined;
-    }, logLabel: string, sessionId?: string) => AgentRecordLike | Response;
-}
-
-// Warning: (ae-forgotten-export) The symbol "DaemonRuntimeMetricsRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export interface DaemonRuntimeRouteHandlers extends DaemonRuntimeSessionRouteHandlers, DaemonRuntimeTaskRouteHandlers, DaemonRuntimeAutomationRouteHandlers, DaemonRuntimeMetricsRouteHandlers {
-}
-
-// @public (undocumented)
-export interface DaemonRuntimeSessionRouteHandlers {
-    // (undocumented)
-    cancelSharedSessionInput(sessionId: string, inputId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    closeSharedSession(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    createSharedSession(req: Request): MaybeResponse;
-    // (undocumented)
-    getSharedSession(sessionId: string): MaybeResponse;
-    // (undocumented)
-    getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
-    // (undocumented)
-    getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
-    // (undocumented)
-    postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    reopenSharedSession(sessionId: string, req: Request): MaybeResponse;
-}
-
-// Warning: (ae-forgotten-export) The symbol "DaemonSessionOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export interface DaemonSessionRouteHandlers extends DaemonSessionOverviewRouteHandlers, DaemonRuntimeSessionRouteHandlers {
-}
-
-// @public (undocumented)
-export interface DaemonSystemConfigManagerLike {
-    // (undocumented)
-    get(key: string): unknown;
-    // (undocumented)
-    getAll(): Record<string, unknown>;
-    // (undocumented)
-    setDynamic(key: string, value: unknown): void;
-}
-
-// @public (undocumented)
-export interface DaemonSystemRouteContext {
-    // (undocumented)
-    readonly approvalBroker: ApprovalBrokerLike;
-    // (undocumented)
-    readonly configManager: DaemonSystemConfigManagerLike;
-    // (undocumented)
-    readonly inspectInboundTls: (surface: 'controlPlane' | 'httpListener') => unknown;
-    // (undocumented)
-    readonly inspectOutboundTls: () => unknown;
-    // (undocumented)
-    readonly integrationHelpers: IntegrationApprovalSnapshotSourceLike | null;
-    // (undocumented)
-    readonly isValidConfigKey: (key: string) => boolean;
-    // (undocumented)
-    readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
-    // (undocumented)
-    readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
-    // (undocumented)
-    readonly platformServiceManager: PlatformServiceManagerLike;
-    // (undocumented)
-    readonly recordApiResponse: (req: Request, path: string, response: Response, clientKind?: DaemonApiClientKind) => Response;
-    // (undocumented)
-    readonly requireAdmin: (req: Request) => Response | null;
-    // (undocumented)
-    readonly requireAuthenticatedSession: (req: Request) => {
-        username: string;
-        roles: readonly string[];
-    } | null;
-    // (undocumented)
-    readonly routeBindings: RouteBindingManagerLike;
-    readonly swapManager: WorkspaceSwapManagerLike | null;
-    // (undocumented)
-    readonly watcherRegistry: WatcherRegistryLike;
-}
-
-// @public (undocumented)
-export interface DaemonSystemRouteHandlers {
-    // (undocumented)
-    approvalAction(approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request): MaybeResponse;
-    // (undocumented)
-    deleteRouteBinding(bindingId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    deleteWatcher(watcherId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    getApprovals(): MaybeResponse;
-    // (undocumented)
-    getConfig(req: Request): MaybeResponse;
-    // (undocumented)
-    getRouteBindings(req: Request): MaybeResponse;
-    // (undocumented)
-    getServiceStatus(): MaybeResponse;
-    // (undocumented)
-    getWatchers(): MaybeResponse;
-    // (undocumented)
-    installService(req: Request): MaybeResponse;
-    // (undocumented)
-    patchRouteBinding(bindingId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    patchWatcher(watcherId: string, req: Request): MaybeResponse;
-    // (undocumented)
-    postConfig(req: Request): MaybeResponse;
-    // (undocumented)
-    postRouteBinding(req: Request): MaybeResponse;
-    // (undocumented)
-    postWatcher(req: Request): MaybeResponse;
-    // (undocumented)
-    restartService(req: Request): MaybeResponse;
-    // (undocumented)
-    startService(req: Request): MaybeResponse;
-    // (undocumented)
-    stopService(req: Request): MaybeResponse;
-    // (undocumented)
-    uninstallService(req: Request): MaybeResponse;
-    // (undocumented)
-    watcherAction(watcherId: string, action: 'start' | 'stop' | 'run', req: Request): MaybeResponse;
-}
-
-// Warning: (ae-forgotten-export) The symbol "DaemonTaskOverviewRouteHandlers" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export interface DaemonTaskRouteHandlers extends DaemonTaskOverviewRouteHandlers, DaemonRuntimeTaskRouteHandlers {
-}
-
-// @public (undocumented)
-export interface DaemonTelemetryRouteHandlers {
-    // (undocumented)
-    createTelemetryEventStream(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryErrors(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryEvents(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryMetrics(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryOtlpLogs(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryOtlpMetrics(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryOtlpTraces(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetrySnapshot(req: Request): MaybeResponse;
-    // (undocumented)
-    getTelemetryTraces(req: Request): MaybeResponse;
-    // (undocumented)
-    postTelemetryOtlpLogs(req: Request): MaybeResponse;
-    // (undocumented)
-    postTelemetryOtlpMetrics(req: Request): MaybeResponse;
-    // (undocumented)
-    postTelemetryOtlpTraces(req: Request): MaybeResponse;
-}
 
 // @public (undocumented)
 export const DEFAULT_HTTP_RETRY_POLICY: ResolvedHttpRetryPolicy;
@@ -2060,22 +966,16 @@ export function describeUnknownTransportError(error: unknown): string;
 export type DirectClientTransport<TOperator, TPeer> = ClientTransport<'direct', TOperator, TPeer>;
 
 // @public (undocumented)
-export function dispatchAutomationRoutes(req: Request, handlers: DaemonAutomationRouteHandlers): Promise<Response | null>;
+export const DISTRIBUTED_WORK_TYPES: readonly ["invoke", "status.request", "location.request", "session.message", "automation.run"];
 
 // @public (undocumented)
-export function dispatchDaemonApiRoutes(req: Request, handlers: DaemonApiRouteHandlers, extensions?: readonly DaemonApiRouteExtension[]): Promise<Response | null>;
-
-// @public
-export function dispatchOperatorRoutes(req: Request, handlers: DaemonOperatorRouteHandlers): Promise<Response | null>;
+export type DistributedPeerKind = 'node' | 'device';
 
 // @public (undocumented)
-export function dispatchRemoteRoutes(req: Request, handlers: DaemonRemoteDispatchRouteHandlers): Promise<Response | null>;
+export type DistributedWorkStatus = 'queued' | 'claimed' | 'completed' | 'failed' | 'cancelled' | 'expired';
 
 // @public (undocumented)
-export function dispatchSessionRoutes(req: Request, handlers: DaemonSessionRouteHandlers): Promise<Response | null>;
-
-// @public (undocumented)
-export function dispatchTaskRoutes(req: Request, handlers: DaemonTaskRouteHandlers): Promise<Response | null>;
+export type DistributedWorkType = (typeof DISTRIBUTED_WORK_TYPES)[number];
 
 // @public (undocumented)
 export type DomainEventConnector<TDomain extends string, TEvent extends EventLike = EventLike> = (domain: TDomain, onEnvelope: (envelope: SerializedEventEnvelope<TEvent>) => void) => void | Promise<() => void>;
@@ -2114,16 +1014,6 @@ export type DomainEventMap = {
 // @public (undocumented)
 export type DomainEvents<TDomain extends string, TEvent extends EventLike = EventLike> = RuntimeEventFeeds<TDomain, TEvent>;
 
-// @public (undocumented)
-export interface ElevatedPrivateHostFetchConfig extends PrivateHostFetchConfig {
-    // (undocumented)
-    readonly req: Request;
-    // (undocumented)
-    readonly requireElevatedAccess: (req: Request) => Response | null;
-}
-
-// Warning: (ae-forgotten-export) The symbol "EventForType" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export type EnvelopeSubscriber<TEvent extends EventLike> = <TType extends TEvent['type']>(type: TType, listener: (envelope: EventEnvelope<TType, EventForType<TEvent, TType>>) => void) => () => void;
 
@@ -2185,6 +1075,11 @@ export interface EventEnvelopeShape {
     readonly traceId: string;
 }
 
+// @public (undocumented)
+export type EventForType<TEvent extends EventLike, TType extends TEvent['type']> = Extract<TEvent, {
+    type: TType;
+}>;
+
 // @public
 export type EventLike = {
     readonly type: string;
@@ -2195,9 +1090,6 @@ export type ExecutionStrategy = 'auto' | 'single' | 'cohort' | 'background' | 'r
 
 // @public (undocumented)
 export type ExpoGoodVibesSdkOptions = ReactNativeGoodVibesSdkOptions;
-
-// @public (undocumented)
-export type FetchExtractMode = string;
 
 // @public (undocumented)
 export type FieldKind = 'string' | 'number' | 'boolean' | 'string[]' | 'enum' | 'object';
@@ -2245,11 +1137,23 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.30.5";
+    readonly productVersion: "0.33.0";
     readonly operatorMethodCount: 263;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
 };
+
+// @public (undocumented)
+export type GatewayEventTransport = 'sse' | 'ws' | 'internal';
+
+// @public (undocumented)
+export type GatewayMethodAccess = 'public' | 'authenticated' | 'admin' | 'remote-peer';
+
+// @public (undocumented)
+export type GatewayMethodSource = 'builtin' | 'plugin';
+
+// @public (undocumented)
+export type GatewayMethodTransport = 'http' | 'ws' | 'internal';
 
 // @public
 export function generateIdempotencyKey(): string;
@@ -2586,21 +1490,6 @@ export type GoodVibesUIEvent =
 export type GoodVibesUIEventType = GoodVibesUIEvent['type'];
 
 // @public (undocumented)
-export function handleRemotePairRequest(context: Pick<DaemonRemoteRouteContext, 'parseJsonBody' | 'distributedRuntime'>, req: Request): Promise<Response>;
-
-// @public (undocumented)
-export function handleRemotePairVerify(context: Pick<DaemonRemoteRouteContext, 'parseJsonBody' | 'distributedRuntime'>, req: Request): Promise<Response>;
-
-// @public (undocumented)
-export function handleRemotePeerHeartbeat(context: Pick<DaemonRemoteRouteContext, 'parseJsonBody' | 'requireRemotePeer' | 'distributedRuntime'>, req: Request): Promise<Response>;
-
-// @public (undocumented)
-export function handleRemotePeerWorkComplete(context: Pick<DaemonRemoteRouteContext, 'parseJsonBody' | 'requireRemotePeer' | 'distributedRuntime'>, workId: string, req: Request): Promise<Response>;
-
-// @public (undocumented)
-export function handleRemotePeerWorkPull(context: Pick<DaemonRemoteRouteContext, 'parseJsonBody' | 'requireRemotePeer' | 'distributedRuntime'>, req: Request): Promise<Response>;
-
-// @public (undocumented)
 export type HeaderResolver = () => MaybePromise<HeadersInit | undefined>;
 
 // @public (undocumented)
@@ -2703,85 +1592,22 @@ export function injectTraceparent(headers: Record<string, string>): void;
 export function injectTraceparentAsync(headers: Record<string, string>): Promise<void>;
 
 // @public (undocumented)
-export interface IntegrationApprovalSnapshotSourceLike {
-    // (undocumented)
-    getApprovalSnapshot(): unknown;
-}
-
-// @public (undocumented)
-export interface IntegrationHelperServiceLike {
-    // (undocumented)
-    buildReview(): unknown;
-    // (undocumented)
-    createEventStream(req: Request, domains: readonly RuntimeEventDomain[]): Response | Promise<Response>;
-    // (undocumented)
-    getAccountsSnapshot(): Promise<Record<string, unknown>>;
-    // (undocumented)
-    getAutomationSnapshot(): unknown;
-    // (undocumented)
-    getContinuitySnapshot(): unknown;
-    // (undocumented)
-    getDeliverySnapshot(): unknown;
-    // (undocumented)
-    getHealthSnapshot(): unknown;
-    // (undocumented)
-    getIntelligenceSnapshot(): unknown;
-    // (undocumented)
-    getLocalAuthSnapshot(): unknown;
-    // (undocumented)
-    getRemoteSnapshot(): unknown;
-    // (undocumented)
-    getRouteSnapshot(): unknown;
-    // (undocumented)
-    getRuntimeStore(): IntegrationRuntimeStoreLike | null;
-    // (undocumented)
-    getSecuritySettingsReport(): unknown;
-    // (undocumented)
-    getSessionBrokerSnapshot(): unknown;
-    // (undocumented)
-    getSessionSnapshot(): unknown;
-    // (undocumented)
-    getSettingsSnapshot(): unknown;
-    // (undocumented)
-    getTaskSnapshot(): unknown;
-    // (undocumented)
-    getWorktreeSnapshot(): unknown;
-    // (undocumented)
-    listPanels(): readonly unknown[];
-    // (undocumented)
-    openPanel(panelId: string, pane: 'top' | 'bottom'): boolean;
-}
-
-// @public (undocumented)
-export interface IntegrationRuntimeStoreLike {
-    // (undocumented)
-    getState(): {
-        readonly deliveries: {
-            readonly deliveryAttempts: Map<string, unknown>;
-        };
-    };
-}
-
-// @public (undocumented)
 export function invokeContractRoute<T = unknown>(transport: HttpTransport, route: ContractRouteDefinition & ContractRouteLike, input?: Record<string, unknown>, options?: ContractInvokeOptions): Promise<T>;
 
 // @public
-export function invokeObserver(fn: () => void): void;
+export function invokeObserver(fn: () => void, options?: InvokeObserverOptions): ObserverInvocationResult;
+
+// @public (undocumented)
+export interface InvokeObserverOptions {
+    readonly label?: string | undefined;
+    readonly report?: boolean | undefined;
+}
 
 // @public
-export function invokeTransportObserver(fn: () => void): void;
+export function invokeTransportObserver(fn: () => void, onObserverError?: ((err: Error) => void) | undefined): void;
 
 // @public (undocumented)
 export function isAbortError(error: unknown): boolean;
-
-// @public (undocumented)
-export function isArtifactUploadRequest(req: Request): boolean;
-
-// @public (undocumented)
-export function isJsonContentType(contentType: string | null): boolean;
-
-// @public (undocumented)
-export function isJsonRecord(value: unknown): value is JsonRecord;
 
 // @public (undocumented)
 export function isKnownEventType(type: unknown): type is string;
@@ -2805,29 +1631,12 @@ export function isRuntimeEventDomain(value: string): value is RuntimeEventDomain
 export function isStructuredDaemonErrorBody(value: unknown): value is StructuredDaemonErrorBody;
 
 // @public (undocumented)
-export type JsonBody = JsonRecord;
-
-// @public (undocumented)
-export function jsonErrorResponse(error: unknown, options?: JsonErrorResponseOptions): Response;
-
-// @public (undocumented)
-export interface JsonErrorResponseOptions {
-    // (undocumented)
-    readonly fallbackMessage?: string | undefined;
-    readonly isPrivileged?: boolean | undefined;
-    // (undocumented)
-    readonly source?: DaemonErrorSource | undefined;
-    // (undocumented)
-    readonly status?: number | undefined;
-}
-
-// @public (undocumented)
 export type JsonObject = {
     readonly [key: string]: JsonValue;
 };
 
 // @public (undocumented)
-export type JsonRecord = Record<string, unknown>;
+export type JsonPrimitive = string | number | boolean | null;
 
 // @public (undocumented)
 export type JsonSchema = Record<string, unknown>;
@@ -2842,8 +1651,6 @@ export interface JsonSchemaValidationFailure {
     readonly received: string;
 }
 
-// Warning: (ae-forgotten-export) The symbol "JsonPrimitive" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export type JsonValue = JsonPrimitive | {
     readonly [key: string]: JsonValue;
@@ -2926,163 +1733,19 @@ export type KnowledgeEvent = {
 export type KnowledgeEventType = KnowledgeEvent['type'];
 
 // @public (undocumented)
-export interface KnowledgeGraphqlAccessLike {
-    // (undocumented)
-    readonly adminRequired?: boolean | undefined;
-    // (undocumented)
-    readonly requiredScopes: readonly string[];
-}
+export type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<PeerEndpointInput<TEndpointId>, PeerRemoteClientInvokeOptions>;
 
 // @public (undocumented)
-export interface KnowledgeGraphqlResultLike {
-    // (undocumented)
-    readonly data?: unknown | undefined;
-    // (undocumented)
-    readonly errors?: readonly unknown[] | undefined;
-}
+export type KnownMethodArgs<TMethodId extends OperatorTypedMethodId> = MethodArgs<OperatorMethodInput<TMethodId>, OperatorRemoteClientInvokeOptions>;
 
 // @public (undocumented)
-export interface KnowledgeGraphqlServiceLike {
-    // (undocumented)
-    execute(input: {
-        readonly query: string;
-        readonly operationName?: string | undefined;
-        readonly variables?: Record<string, unknown> | undefined;
-        readonly admin: boolean;
-        readonly scopes: readonly string[];
-    }): Promise<KnowledgeGraphqlResultLike>;
-    // (undocumented)
-    readonly schemaText: string;
-}
+export type KnownPathEndpointArgs<TEndpointId extends PeerTypedEndpointId, TKeys extends PropertyKey> = MethodArgs<WithoutKeys<PeerEndpointInput<TEndpointId>, TKeys>, PeerRemoteClientInvokeOptions>;
 
 // @public (undocumented)
-export type KnowledgePacketDetail = string;
+export type KnownPathMethodArgs<TMethodId extends OperatorTypedMethodId, TKeys extends PropertyKey> = MethodArgs<WithoutKeys<OperatorMethodInput<TMethodId>, TKeys>, OperatorRemoteClientInvokeOptions>;
 
 // @public (undocumented)
-export type KnowledgeProjectionTargetKind = 'overview' | 'bundle' | 'source' | 'node' | 'issue' | 'dashboard' | 'rollup';
-
-// @public (undocumented)
-export interface KnowledgeServiceLike {
-    // (undocumented)
-    ask(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    buildPacket(task: string, writeScope: readonly string[], limit: number, options: {
-        detail?: KnowledgePacketDetail;
-        budgetLimit?: number;
-    }): Promise<unknown> | unknown;
-    // (undocumented)
-    cancelRefinementTask(id: string): Promise<unknown | null>;
-    // (undocumented)
-    decideConsolidationCandidate(id: string, decision: 'accept' | 'reject' | 'supersede', input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    deleteSchedule(id: string): Promise<boolean>;
-    // (undocumented)
-    doctorConnector(id: string): Promise<unknown | null>;
-    // (undocumented)
-    getConnector(id: string): unknown | null;
-    // (undocumented)
-    getConsolidationCandidate(id: string): unknown | null;
-    // (undocumented)
-    getConsolidationReport(id: string): unknown | null;
-    // (undocumented)
-    getExtraction(id: string): unknown | null;
-    // (undocumented)
-    getItem(id: string): unknown | null;
-    // (undocumented)
-    getJob(jobId: string): unknown | null;
-    // (undocumented)
-    getRefinementTask(id: string): unknown | null;
-    // (undocumented)
-    getSchedule(id: string): unknown | null;
-    // (undocumented)
-    getSourceExtraction(id: string): unknown | null;
-    // (undocumented)
-    getStatus(): Promise<unknown>;
-    // (undocumented)
-    importBookmarksFromFile(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    importUrlsFromFile(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    ingestArtifact(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    ingestConnectorInput(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    ingestUrl(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    lint(): Promise<readonly unknown[]>;
-    // (undocumented)
-    listConnectors(): readonly unknown[];
-    // (undocumented)
-    listConsolidationCandidates(limit: number, filter: {
-        status?: KnowledgeCandidateStatus;
-        subjectKind?: 'source' | 'node' | 'issue';
-        subjectId?: string;
-    }): readonly unknown[];
-    // (undocumented)
-    listConsolidationReports(limit: number): readonly unknown[];
-    // (undocumented)
-    listExtractions(limit: number, sourceId?: string): readonly unknown[];
-    // (undocumented)
-    listIssues(limit: number): readonly unknown[];
-    // (undocumented)
-    listJobRuns(limit: number, jobId?: string): readonly unknown[];
-    // (undocumented)
-    listJobs(): readonly unknown[];
-    // (undocumented)
-    listNodes(limit: number): readonly unknown[];
-    // (undocumented)
-    listProjectionTargets(limit: number): Promise<readonly unknown[]>;
-    // (undocumented)
-    listRefinementTasks(limit: number, filter: Record<string, unknown>): readonly unknown[];
-    // (undocumented)
-    listSchedules(limit: number): readonly unknown[];
-    // (undocumented)
-    listSources(limit: number): readonly unknown[];
-    // (undocumented)
-    listUsageRecords(limit: number, filter: {
-        targetKind?: 'source' | 'node' | 'issue';
-        targetId?: string;
-        usageKind?: KnowledgeUsageKind;
-    }): readonly unknown[];
-    // (undocumented)
-    map(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    materializeProjection(input: {
-        kind: KnowledgeProjectionTargetKind;
-        id?: string | undefined;
-        limit?: number | undefined;
-        filename?: string | undefined;
-    }): Promise<unknown>;
-    // (undocumented)
-    reindex(): Promise<unknown>;
-    // (undocumented)
-    renderProjection(input: {
-        kind: KnowledgeProjectionTargetKind;
-        id?: string;
-        limit?: number;
-    }): Promise<unknown>;
-    // (undocumented)
-    reviewIssue(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    runJob(jobId: string, input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    runRefinement(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    saveSchedule(input: {
-        readonly id?: string | undefined;
-        readonly jobId: string;
-        readonly schedule: AutomationScheduleDefinition;
-        readonly label?: string | undefined;
-        readonly enabled?: boolean | undefined;
-        readonly metadata?: Record<string, unknown> | undefined;
-    }): Promise<unknown>;
-    // (undocumented)
-    search(query: string, limit: number): readonly unknown[];
-    // (undocumented)
-    setScheduleEnabled(id: string, enabled: boolean): Promise<unknown | null>;
-    // (undocumented)
-    syncBrowserHistory(input: Record<string, unknown>): Promise<unknown>;
-}
+export type KnownStreamArgs<TMethodId extends OperatorStreamMethodId> = MethodArgs<OperatorMethodInput<TMethodId>, OperatorRemoteClientStreamOptions>;
 
 // @public (undocumented)
 export function listOperatorMethods(): readonly OperatorMethodContract[];
@@ -3091,10 +1754,10 @@ export function listOperatorMethods(): readonly OperatorMethodContract[];
 export function listPeerEndpoints(): readonly PeerEndpointContract[];
 
 // @public (undocumented)
-export type ListProvidersResponse = z.infer<typeof ListProvidersResponseSchema>;
+export type ListProviderModelsResponse = z.infer<typeof ListProviderModelsResponseSchema>;
 
 // @public (undocumented)
-export const ListProvidersResponseSchema: z.ZodObject<{
+export const ListProviderModelsResponseSchema: z.ZodObject<{
     providers: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
         label: z.ZodString;
@@ -3131,37 +1794,46 @@ export const ListProvidersResponseSchema: z.ZodObject<{
             serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
             providerId: z.ZodOptional<z.ZodString>;
             repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
-        }, z.core.$strip>>>;
+        }, z.core.$strict>>>;
         models: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
             registryKey: z.ZodString;
             provider: z.ZodString;
             label: z.ZodOptional<z.ZodString>;
             contextWindow: z.ZodOptional<z.ZodNumber>;
-        }, z.core.$strip>>;
-    }, z.core.$strip>>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
     currentModel: z.ZodNullable<z.ZodObject<{
         registryKey: z.ZodString;
         provider: z.ZodString;
         id: z.ZodString;
-    }, z.core.$strip>>;
-    secretsResolutionSkipped: z.ZodOptional<z.ZodBoolean>;
-}, z.core.$strip>;
+    }, z.core.$strict>>;
+    secretsResolutionSkipped: z.ZodBoolean;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type LocalAuthStatusResponse = z.infer<typeof LocalAuthStatusResponseSchema>;
 
-// @public
+// @public (undocumented)
 export const LocalAuthStatusResponseSchema: z.ZodObject<{
-    enabled: z.ZodOptional<z.ZodBoolean>;
-    bootstrapped: z.ZodOptional<z.ZodBoolean>;
-}, z.core.$catchall<z.ZodUnknown>>;
+    userStorePath: z.ZodString;
+    bootstrapCredentialPath: z.ZodString;
+    bootstrapCredentialPresent: z.ZodBoolean;
+    userCount: z.ZodNumber;
+    sessionCount: z.ZodNumber;
+    users: z.ZodArray<z.ZodObject<{
+        username: z.ZodString;
+        roles: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>;
+    sessions: z.ZodArray<z.ZodObject<{
+        tokenFingerprint: z.ZodString;
+        username: z.ZodString;
+        expiresAt: z.ZodNumber;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type MaybePromise<T> = T | Promise<T>;
-
-// @public (undocumented)
-export type MaybeResponse = Response | Promise<Response>;
 
 // @public
 export type McpEvent =
@@ -3250,42 +1922,11 @@ export type McpEvent =
 // @public
 export type McpEventType = McpEvent['type'];
 
-// @public (undocumented)
-export type MediaArtifact = Record<string, unknown>;
+// @public
+export type McpServerRole = 'general' | 'docs' | 'filesystem' | 'git' | 'database' | 'browser' | 'automation' | 'ops' | 'remote' | 'search' | 'communication' | 'devops' | 'analytics' | 'custom';
 
-// @public (undocumented)
-export interface MediaProviderLike {
-    // (undocumented)
-    analyze?(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    generate?(input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    transform?(input: Record<string, unknown>): Promise<unknown>;
-}
-
-// @public (undocumented)
-export interface MediaProviderRegistryLike {
-    // (undocumented)
-    findProvider(capability: 'understand' | 'transform' | 'generate', providerId?: string): MediaProviderLike | null;
-    // (undocumented)
-    status(): Promise<unknown>;
-}
-
-// @public (undocumented)
-export interface MemoryEmbeddingRegistryLike {
-    // (undocumented)
-    setDefaultProvider(providerId: string): void;
-}
-
-// @public (undocumented)
-export interface MemoryRegistryLike {
-    // (undocumented)
-    doctor(): Promise<unknown>;
-    // (undocumented)
-    rebuildVectorsAsync(): Promise<unknown>;
-    // (undocumented)
-    vectorStats(): unknown;
-}
+// @public
+export type McpTrustMode = 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked';
 
 // @public
 export function mergeClientInput<TInput>(fixed: Record<string, unknown>, input: TInput | undefined): Record<string, unknown>;
@@ -3302,9 +1943,6 @@ TInput
 ] extends [undefined] ? [input?: undefined, options?: TOptions] : TInput extends object ? [RequiredKeys<TInput>] extends [never] ? [input?: TInput, options?: TOptions] : [input: TInput, options?: TOptions] : [input: TInput, options?: TOptions];
 
 // @public (undocumented)
-export function missingScopes(grantedScopes: readonly string[] | undefined, requiredScopes: readonly string[]): string[];
-
-// @public (undocumented)
 export type ModelChangedEvent = z.infer<typeof ModelChangedEventSchema>;
 
 // @public
@@ -3315,28 +1953,8 @@ export const ModelChangedEventSchema: z.ZodObject<{
     previous: z.ZodOptional<z.ZodObject<{
         registryKey: z.ZodString;
         provider: z.ZodString;
-    }, z.core.$strip>>;
-}, z.core.$strip>;
-
-// @public (undocumented)
-export type MultimodalAnalysisResult = unknown;
-
-// @public (undocumented)
-export type MultimodalDetail = string;
-
-// @public (undocumented)
-export interface MultimodalServiceLike {
-    // (undocumented)
-    analyze(input: Record<string, unknown>): Promise<MultimodalAnalysisResult>;
-    // (undocumented)
-    buildPacket(analysis: MultimodalAnalysisResult, detail: MultimodalDetail, budgetLimit?: number): unknown;
-    // (undocumented)
-    getStatus(): Promise<unknown>;
-    // (undocumented)
-    listProviders(): Promise<readonly unknown[]>;
-    // (undocumented)
-    writeBackAnalysis(analysis: MultimodalAnalysisResult, input: Record<string, unknown>): Promise<unknown>;
-}
+    }, z.core.$strict>>;
+}, z.core.$strict>;
 
 // @public
 export function normalizeAuthToken(input: AuthTokenInput): AuthTokenResolver;
@@ -3355,6 +1973,14 @@ export function normalizeStreamReconnectPolicy(policy?: StreamReconnectPolicy): 
 
 // @public (undocumented)
 export function normalizeTransportError(error: unknown): Error;
+
+// @public
+export type ObserverInvocationResult = {
+    readonly ok: true;
+} | {
+    readonly ok: false;
+    readonly error: unknown;
+};
 
 // @public (undocumented)
 export function openContractRouteStream(transport: HttpTransport, route: ContractRouteDefinition, input: Record<string, unknown> | undefined, options: ContractStreamOptions): Promise<() => void>;
@@ -3466,14 +2092,10 @@ export interface OperatorEventContract {
     readonly pluginId?: string | undefined;
     // (undocumented)
     readonly scopes: readonly string[];
-    // Warning: (ae-forgotten-export) The symbol "GatewayMethodSource" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly source: GatewayMethodSource;
     // (undocumented)
     readonly title: string;
-    // Warning: (ae-forgotten-export) The symbol "GatewayEventTransport" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly transport: readonly GatewayEventTransport[];
     // (undocumented)
@@ -3660,8 +2282,6 @@ export interface OperatorInvokeOptions extends OperatorRemoteClientInvokeOptions
 
 // @public (undocumented)
 export interface OperatorMethodContract {
-    // Warning: (ae-forgotten-export) The symbol "GatewayMethodAccess" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly access: GatewayMethodAccess;
     // (undocumented)
@@ -3692,8 +2312,6 @@ export interface OperatorMethodContract {
     readonly source: GatewayMethodSource;
     // (undocumented)
     readonly title: string;
-    // Warning: (ae-forgotten-export) The symbol "GatewayMethodTransport" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly transport: readonly GatewayMethodTransport[];
 }
@@ -5133,7 +3751,6 @@ export interface OperatorMethodInputMap {
             providerId?: string;
             modelId?: string;
             providerSelection?: "concrete" | "inherit-current" | "synthetic";
-            unresolvedModelPolicy?: "fail" | "fallback-to-current";
             providerFailurePolicy?: "fail" | "ordered-fallbacks";
             fallbackModels?: readonly string[];
             helperModel?: {
@@ -5180,7 +3797,6 @@ export interface OperatorMethodInputMap {
             providerId?: string;
             modelId?: string;
             providerSelection?: "concrete" | "inherit-current" | "synthetic";
-            unresolvedModelPolicy?: "fail" | "fallback-to-current";
             providerFailurePolicy?: "fail" | "ordered-fallbacks";
             fallbackModels?: readonly string[];
             helperModel?: {
@@ -5218,7 +3834,6 @@ export interface OperatorMethodInputMap {
             providerId?: string;
             modelId?: string;
             providerSelection?: "concrete" | "inherit-current" | "synthetic";
-            unresolvedModelPolicy?: "fail" | "fallback-to-current";
             providerFailurePolicy?: "fail" | "ordered-fallbacks";
             fallbackModels?: readonly string[];
             helperModel?: {
@@ -5256,7 +3871,6 @@ export interface OperatorMethodInputMap {
             providerId?: string;
             modelId?: string;
             providerSelection?: "concrete" | "inherit-current" | "synthetic";
-            unresolvedModelPolicy?: "fail" | "fallback-to-current";
             providerFailurePolicy?: "fail" | "ordered-fallbacks";
             fallbackModels?: readonly string[];
             helperModel?: {
@@ -6095,7 +4709,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -6326,7 +4939,6 @@ export interface OperatorMethodOutputMap {
             fallbackModels?: readonly string[];
             routing?: {
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
             };
@@ -6494,7 +5106,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -6641,7 +5252,6 @@ export interface OperatorMethodOutputMap {
             fallbackModels?: readonly string[];
             routing?: {
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
             };
@@ -6826,7 +5436,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -7012,7 +5621,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -7217,7 +5825,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -7403,7 +6010,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -10774,7 +9380,7 @@ export interface OperatorMethodOutputMap {
                 embeddingModel?: string;
                 embeddingDimensions?: number;
                 aliases?: readonly string[];
-                suppressedModels?: readonly string[];
+                suppressedModelRegistryKeys?: readonly string[];
             } & {
                 readonly [key: string]: unknown;
             });
@@ -10863,7 +9469,7 @@ export interface OperatorMethodOutputMap {
                     embeddingModel?: string;
                     embeddingDimensions?: number;
                     aliases?: readonly string[];
-                    suppressedModels?: readonly string[];
+                    suppressedModelRegistryKeys?: readonly string[];
                 } & {
                     readonly [key: string]: unknown;
                 });
@@ -10921,7 +9527,7 @@ export interface OperatorMethodOutputMap {
     "providers.usage.get": ({
         providerId: string;
         active: boolean;
-        currentModelId?: string;
+        currentModelRegistryKey?: string;
         pricingSource: "catalog" | "none" | "provider";
         models: readonly (({
             id: string;
@@ -11900,7 +10506,6 @@ export interface OperatorMethodOutputMap {
             fallbackModels?: readonly string[];
             routing?: {
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
             };
@@ -12068,7 +10673,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -12228,7 +10832,6 @@ export interface OperatorMethodOutputMap {
                 fallbackModels?: readonly string[];
                 routing?: {
                     providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    unresolvedModelPolicy?: "fail" | "fallback-to-current";
                     providerFailurePolicy?: "fail" | "ordered-fallbacks";
                     fallbackModels?: readonly string[];
                 };
@@ -12909,7 +11512,6 @@ export interface OperatorMethodOutputMap {
                 providerId?: string;
                 modelId?: string;
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
                 helperModel?: {
@@ -13010,7 +11612,6 @@ export interface OperatorMethodOutputMap {
                 providerId?: string;
                 modelId?: string;
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
                 helperModel?: {
@@ -13088,7 +11689,6 @@ export interface OperatorMethodOutputMap {
                 providerId?: string;
                 modelId?: string;
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
                 helperModel?: {
@@ -13158,8 +11758,6 @@ export interface OperatorMethodOutputMap {
             });
         })[];
     };
-    // Warning: (ae-forgotten-export) The symbol "SharedSessionConversationRouteOutput" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     "sessions.messages.create": SharedSessionConversationRouteOutput | {
         session: null | {
@@ -13237,7 +11835,6 @@ export interface OperatorMethodOutputMap {
                 providerId?: string;
                 modelId?: string;
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
                 helperModel?: {
@@ -13421,7 +12018,6 @@ export interface OperatorMethodOutputMap {
                 providerId?: string;
                 modelId?: string;
                 providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                unresolvedModelPolicy?: "fail" | "fallback-to-current";
                 providerFailurePolicy?: "fail" | "ordered-fallbacks";
                 fallbackModels?: readonly string[];
                 helperModel?: {
@@ -14568,7 +13164,7 @@ export interface OperatorMethodOutputMap {
             paused: number;
             kept: number;
             discard: number;
-            cleanupPending: number;
+            pendingCleanup: number;
             sessionAttached: number;
             taskAttached: number;
             agentOwned: number;
@@ -14578,7 +13174,7 @@ export interface OperatorMethodOutputMap {
         records: readonly ({
             path: string;
             kind: "agent" | "manual" | "orchestrator";
-            state: "active" | "cleanup-pending" | "discard" | "kept" | "paused";
+            state: "active" | "pending-cleanup" | "discard" | "kept" | "paused";
             ownerId?: string;
             sessionId?: string;
             taskId?: string;
@@ -14623,8 +13219,6 @@ export interface OperatorRemoteClient {
     };
     // (undocumented)
     getOperation(methodId: string): OperatorMethodContract;
-    // Warning: (ae-forgotten-export) The symbol "KnownMethodArgs" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     invoke<TMethodId extends OperatorTypedMethodId>(methodId: TMethodId, ...args: KnownMethodArgs<TMethodId>): Promise<OperatorMethodOutput<TMethodId>>;
     // (undocumented)
@@ -14658,8 +13252,6 @@ export interface OperatorRemoteClient {
         close(sessionId: string, ...args: KnownPathMethodArgs<'sessions.close', 'sessionId'>): Promise<OperatorMethodOutput<'sessions.close'>>;
         reopen(sessionId: string, ...args: KnownPathMethodArgs<'sessions.reopen', 'sessionId'>): Promise<OperatorMethodOutput<'sessions.reopen'>>;
     };
-    // Warning: (ae-forgotten-export) The symbol "KnownStreamArgs" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     stream<TMethodId extends OperatorStreamMethodId>(methodId: TMethodId, ...args: KnownStreamArgs<TMethodId>): Promise<() => void>;
     // (undocumented)
@@ -14696,7 +13288,7 @@ export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions
 // @public (undocumented)
 export interface OperatorRemoteClientOptions {
     // (undocumented)
-    readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined | undefined;
+    readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined;
     readonly validateResponses?: boolean | undefined;
 }
 
@@ -14827,6 +13419,9 @@ export type OpsEvent =
 
 // @public
 export type OpsEventType = OpsEvent['type'];
+
+// @public
+export type OpsInterventionReason = 'user_requested' | 'ops_cancel' | 'ops_pause' | 'ops_resume' | 'ops_retry' | 'ops_agent_cancel';
 
 // @public (undocumented)
 export type OrchestrationEvent = {
@@ -14980,7 +13575,7 @@ export type PatchCurrentModelBody = z.infer<typeof PatchCurrentModelBodySchema>;
 // @public (undocumented)
 export const PatchCurrentModelBodySchema: z.ZodObject<{
     registryKey: z.ZodString;
-}, z.core.$strip>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type PatchCurrentModelError = z.infer<typeof PatchCurrentModelErrorSchema>;
@@ -14995,18 +13590,18 @@ export const PatchCurrentModelErrorSchema: z.ZodObject<{
         SET_MODEL_FAILED: "SET_MODEL_FAILED";
     }>;
     missingEnvVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
-}, z.core.$strip>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type PatchCurrentModelResponse = z.infer<typeof PatchCurrentModelResponseSchema>;
 
-// @public
+// @public (undocumented)
 export const PatchCurrentModelResponseSchema: z.ZodObject<{
     model: z.ZodNullable<z.ZodObject<{
         registryKey: z.ZodString;
         provider: z.ZodString;
         id: z.ZodString;
-    }, z.core.$strip>>;
+    }, z.core.$strict>>;
     configured: z.ZodBoolean;
     configuredVia: z.ZodOptional<z.ZodEnum<{
         anonymous: "anonymous";
@@ -15039,9 +13634,9 @@ export const PatchCurrentModelResponseSchema: z.ZodObject<{
         serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
         providerId: z.ZodOptional<z.ZodString>;
         repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    }, z.core.$strip>>>;
+    }, z.core.$strict>>>;
     persisted: z.ZodBoolean;
-}, z.core.$strip>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export const PEER_CONTRACT: PeerContractManifest;
@@ -15057,8 +13652,6 @@ export interface PeerContractManifest {
     readonly endpoints: readonly PeerEndpointContract[];
     // (undocumented)
     readonly metadata: Record<string, unknown>;
-    // Warning: (ae-forgotten-export) The symbol "DistributedPeerKind" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly peerKinds: readonly DistributedPeerKind[];
     // (undocumented)
@@ -15071,12 +13664,8 @@ export interface PeerContractManifest {
     readonly scopes: readonly string[];
     // (undocumented)
     readonly transport: 'http-json';
-    // Warning: (ae-forgotten-export) The symbol "DistributedWorkStatus" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly workCompletionStatuses: readonly DistributedWorkStatus[];
-    // Warning: (ae-forgotten-export) The symbol "DistributedWorkType" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly workTypes: readonly DistributedWorkType[];
 }
@@ -15673,8 +14262,6 @@ export interface PeerRemoteClient {
     readonly contract: PeerContractManifest;
     // (undocumented)
     getOperation(endpointId: string): PeerEndpointContract;
-    // Warning: (ae-forgotten-export) The symbol "KnownEndpointArgs" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     invoke<TEndpointId extends PeerTypedEndpointId>(endpointId: TEndpointId, ...args: KnownEndpointArgs<TEndpointId>): Promise<PeerEndpointOutput<TEndpointId>>;
     // (undocumented)
@@ -15723,8 +14310,11 @@ export type PeerSdk = Omit<PeerRemoteClient, 'getOperation'> & {
     [Symbol.asyncDispose](): Promise<void>;
 };
 
-// Warning: (ae-forgotten-export) The symbol "PeerSdkBehaviorOptions" needs to be exported by the entry point index.d.ts
-//
+// @public (undocumented)
+export interface PeerSdkBehaviorOptions {
+    readonly validateResponses?: boolean | undefined;
+}
+
 // @public (undocumented)
 export type PeerSdkOptions = HttpTransportOptions & PeerSdkBehaviorOptions;
 
@@ -15820,7 +14410,6 @@ export type PermissionEventType = PermissionEvent['type'];
 
 // @public (undocumented)
 export class PermissionResolver {
-    // Warning: (ae-forgotten-export) The symbol "ControlPlaneAuthSnapshot" needs to be exported by the entry point index.d.ts
     constructor(snapshot: ControlPlaneAuthSnapshot);
     get authenticated(): boolean;
     hasAllRoles(roles: readonly string[]): boolean;
@@ -15870,22 +14459,6 @@ export type PlannerEvent = ({
 // @public (undocumented)
 export type PlannerEventType = PlannerEvent['type'];
 
-// @public (undocumented)
-export interface PlatformServiceManagerLike {
-    // (undocumented)
-    install(): unknown;
-    // (undocumented)
-    restart(): unknown;
-    // (undocumented)
-    start(): unknown;
-    // (undocumented)
-    status(): Record<string, unknown>;
-    // (undocumented)
-    stop(): unknown;
-    // (undocumented)
-    uninstall(): unknown;
-}
-
 // @public
 export type PluginEvent =
 /** Plugin has been found during discovery scan. */
@@ -15920,7 +14493,7 @@ export type PluginEvent =
     reason: string;
     affectedCapabilities: string[];
 }
-/** Plugin encountered a non-fatal error. */
+/** Plugin encountered an error; consumers inspect `fatal` to decide whether it disables the plugin. */
 | {
     type: 'PLUGIN_ERROR';
     pluginId: string;
@@ -15944,62 +14517,35 @@ export type PluginEvent =
 export type PluginEventType = PluginEvent['type'];
 
 // @public (undocumented)
-export interface PrivateHostFetchConfig {
-    // (undocumented)
-    readonly configManager: {
-        get(key: string): unknown;
-    };
-}
+export type ProviderAuthRouteDescriptor = z.infer<typeof ProviderAuthRouteDescriptorSchema>;
 
 // @public (undocumented)
-export type ProviderEntry = z.infer<typeof ProviderEntrySchema>;
-
-// @public (undocumented)
-export const ProviderEntrySchema: z.ZodObject<{
-    id: z.ZodString;
+export const ProviderAuthRouteDescriptorSchema: z.ZodObject<{
+    route: z.ZodEnum<{
+        none: "none";
+        anonymous: "anonymous";
+        "api-key": "api-key";
+        "service-oauth": "service-oauth";
+        "secret-ref": "secret-ref";
+        "subscription-oauth": "subscription-oauth";
+    }>;
     label: z.ZodString;
     configured: z.ZodBoolean;
-    configuredVia: z.ZodOptional<z.ZodEnum<{
-        anonymous: "anonymous";
-        subscription: "subscription";
-        secrets: "secrets";
-        env: "env";
+    usable: z.ZodOptional<z.ZodBoolean>;
+    freshness: z.ZodOptional<z.ZodEnum<{
+        expired: "expired";
+        unconfigured: "unconfigured";
+        healthy: "healthy";
+        expiring: "expiring";
+        pending: "pending";
     }>>;
-    envVars: z.ZodArray<z.ZodString>;
-    routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
-        route: z.ZodEnum<{
-            none: "none";
-            anonymous: "anonymous";
-            "api-key": "api-key";
-            "service-oauth": "service-oauth";
-            "secret-ref": "secret-ref";
-            "subscription-oauth": "subscription-oauth";
-        }>;
-        label: z.ZodString;
-        configured: z.ZodBoolean;
-        usable: z.ZodOptional<z.ZodBoolean>;
-        freshness: z.ZodOptional<z.ZodEnum<{
-            expired: "expired";
-            unconfigured: "unconfigured";
-            healthy: "healthy";
-            expiring: "expiring";
-            pending: "pending";
-        }>>;
-        detail: z.ZodOptional<z.ZodString>;
-        envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
-        secretKeys: z.ZodOptional<z.ZodArray<z.ZodString>>;
-        serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
-        providerId: z.ZodOptional<z.ZodString>;
-        repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    }, z.core.$strip>>>;
-    models: z.ZodArray<z.ZodObject<{
-        id: z.ZodString;
-        registryKey: z.ZodString;
-        provider: z.ZodString;
-        label: z.ZodOptional<z.ZodString>;
-        contextWindow: z.ZodOptional<z.ZodNumber>;
-    }, z.core.$strip>>;
-}, z.core.$strip>;
+    detail: z.ZodOptional<z.ZodString>;
+    envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    secretKeys: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    providerId: z.ZodOptional<z.ZodString>;
+    repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}, z.core.$strict>;
 
 // @public
 export type ProviderEvent = {
@@ -16038,7 +14584,57 @@ export const ProviderModelEntrySchema: z.ZodObject<{
     provider: z.ZodString;
     label: z.ZodOptional<z.ZodString>;
     contextWindow: z.ZodOptional<z.ZodNumber>;
-}, z.core.$strip>;
+}, z.core.$strict>;
+
+// @public (undocumented)
+export type ProviderModelProvider = z.infer<typeof ProviderModelProviderSchema>;
+
+// @public (undocumented)
+export const ProviderModelProviderSchema: z.ZodObject<{
+    id: z.ZodString;
+    label: z.ZodString;
+    configured: z.ZodBoolean;
+    configuredVia: z.ZodOptional<z.ZodEnum<{
+        anonymous: "anonymous";
+        subscription: "subscription";
+        secrets: "secrets";
+        env: "env";
+    }>>;
+    envVars: z.ZodArray<z.ZodString>;
+    routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        route: z.ZodEnum<{
+            none: "none";
+            anonymous: "anonymous";
+            "api-key": "api-key";
+            "service-oauth": "service-oauth";
+            "secret-ref": "secret-ref";
+            "subscription-oauth": "subscription-oauth";
+        }>;
+        label: z.ZodString;
+        configured: z.ZodBoolean;
+        usable: z.ZodOptional<z.ZodBoolean>;
+        freshness: z.ZodOptional<z.ZodEnum<{
+            expired: "expired";
+            unconfigured: "unconfigured";
+            healthy: "healthy";
+            expiring: "expiring";
+            pending: "pending";
+        }>>;
+        detail: z.ZodOptional<z.ZodString>;
+        envVars: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        secretKeys: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        serviceNames: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        providerId: z.ZodOptional<z.ZodString>;
+        repairHints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>>>;
+    models: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        registryKey: z.ZodString;
+        provider: z.ZodString;
+        label: z.ZodOptional<z.ZodString>;
+        contextWindow: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type ProviderModelRef = z.infer<typeof ProviderModelRefSchema>;
@@ -16048,17 +14644,10 @@ export const ProviderModelRefSchema: z.ZodObject<{
     registryKey: z.ZodString;
     provider: z.ZodString;
     id: z.ZodString;
-}, z.core.$strip>;
+}, z.core.$strict>;
 
-// @public (undocumented)
-export interface ProviderRuntimeSnapshotServiceLike {
-    // (undocumented)
-    getSnapshot(providerId: string): Promise<unknown | null>;
-    // (undocumented)
-    getUsageSnapshot(providerId: string): Promise<unknown | null>;
-    // (undocumented)
-    listSnapshots(): Promise<readonly unknown[]>;
-}
+// @public
+export type QuarantineReason = 'stale_threshold' | 'unsupported' | 'operator_flagged' | 'incompatible';
 
 // @public (undocumented)
 export interface RawServerSentEventOptions {
@@ -16096,31 +14685,7 @@ export interface ReactNativeGoodVibesSdkOptions extends GoodVibesSdkOptions {
 }
 
 // @public (undocumented)
-export function readBoundedBodyInteger(value: unknown, fallback: number, max: number, min?: number): number;
-
-// @public (undocumented)
-export function readBoundedInteger(raw: string | null, options: BoundedIntegerOptions): number;
-
-// @public (undocumented)
-export function readBoundedPositiveInteger(raw: string | null, fallback: number, max?: number): number;
-
-// @public (undocumented)
-export function readChannelConversationKind(value: unknown): ChannelConversationKind | null;
-
-// @public (undocumented)
-export function readChannelLifecycleAction(value: unknown): ChannelLifecycleAction | null;
-
-// @public (undocumented)
 export function readJsonBody(response: Response): Promise<unknown>;
-
-// @public (undocumented)
-export function readOptionalBoundedInteger(raw: string | null, min: number, max: number): number | undefined;
-
-// @public (undocumented)
-export function readOptionalStringField(body: JsonRecord, key: string): string | undefined;
-
-// @public (undocumented)
-export function readStringArrayField(body: JsonRecord, key: string, max?: number): string[] | undefined;
 
 // @public (undocumented)
 export function registeredEventTypes(): readonly string[];
@@ -16128,7 +14693,7 @@ export function registeredEventTypes(): readonly string[];
 // @public (undocumented)
 export interface RemoteDomainEventsOptions<TDomain extends string = string> {
     // (undocumented)
-    readonly onConnectionError?: ((error: Error, domain: TDomain) => void) | undefined | undefined;
+    readonly onConnectionError?: ((error: Error, domain: TDomain) => void) | undefined;
 }
 
 // @public (undocumented)
@@ -16139,7 +14704,7 @@ export interface RemoteRuntimeEventsOptions {
     // (undocumented)
     readonly observer?: TransportObserver | undefined;
     // (undocumented)
-    readonly onError?: ((error: Error, domain: RuntimeEventDomain) => void) | undefined | undefined;
+    readonly onError?: ((error: Error, domain: RuntimeEventDomain) => void) | undefined;
 }
 
 // @public
@@ -16152,9 +14717,6 @@ export function requireContractRoute<TRoute extends ContractRouteLike>(routes: r
 export type RequiredKeys<T extends object> = {
     [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
 }[keyof T];
-
-// @public (undocumented)
-export function resolveAuthenticatedPrincipal(req: Request, resolver: AuthenticatedPrincipalResolver): AuthenticatedPrincipal | null;
 
 // @public
 export function resolveAuthToken(authToken: string | null | undefined, getAuthToken?: AuthTokenResolver): Promise<string | null>;
@@ -16205,12 +14767,6 @@ export function resolveHeaders(headers: HeadersInit | undefined, getHeaders?: He
 export function resolveHttpRetryPolicy(defaultPolicy?: HttpRetryPolicy, override?: false | HttpRetryPolicy): ResolvedHttpRetryPolicy;
 
 // @public (undocumented)
-export function resolvePrivateHostFetchOptions(requested: unknown, context: PrivateHostFetchConfig | ElevatedPrivateHostFetchConfig): {
-    allowPrivateHosts: true;
-    fetchMode: 'allow-private-hosts';
-} | Record<string, never> | Response;
-
-// @public (undocumented)
 export const RETRYABLE_STATUS_CODES: readonly number[];
 
 // @public
@@ -16220,84 +14776,6 @@ export { ROUTE_SURFACE_KINDS as SURFACE_KINDS }
 
 // @public (undocumented)
 export const ROUTE_TARGET_KINDS: readonly ["session", "run", "job", "task", "message"];
-
-// @public (undocumented)
-export interface RouteBindingManagerLike {
-    // (undocumented)
-    listBindings(): readonly unknown[];
-    // (undocumented)
-    patchBinding(bindingId: string, input: RouteBindingPatchInput): Promise<unknown | null>;
-    // (undocumented)
-    removeBinding(bindingId: string): Promise<boolean>;
-    // (undocumented)
-    upsertBinding(input: RouteBindingRecordInput): Promise<unknown>;
-}
-
-// @public (undocumented)
-export interface RouteBindingPatchInput {
-    // (undocumented)
-    readonly channelId?: string | undefined;
-    // (undocumented)
-    readonly deliveryGuarantee?: AutomationDeliveryGuarantee | undefined;
-    // (undocumented)
-    readonly jobId?: string | null | undefined;
-    // (undocumented)
-    readonly metadata?: Record<string, unknown> | undefined;
-    // (undocumented)
-    readonly runId?: string | null | undefined;
-    // (undocumented)
-    readonly sessionId?: string | null | undefined;
-    // (undocumented)
-    readonly sessionPolicy?: AutomationSessionPolicy | undefined;
-    // (undocumented)
-    readonly threadId?: string | undefined;
-    // (undocumented)
-    readonly threadPolicy?: AutomationThreadPolicy | undefined;
-    // (undocumented)
-    readonly title?: string | undefined;
-}
-
-// @public (undocumented)
-export interface RouteBindingRecordInput {
-    // (undocumented)
-    readonly channelId?: string | undefined;
-    // (undocumented)
-    readonly deliveryGuarantee?: AutomationDeliveryGuarantee | undefined;
-    // (undocumented)
-    readonly externalId: string;
-    // (undocumented)
-    readonly id?: string | undefined;
-    // (undocumented)
-    readonly jobId?: string | null | undefined;
-    // (undocumented)
-    readonly kind: AutomationRouteBindingKind;
-    // (undocumented)
-    readonly metadata: Record<string, unknown>;
-    // (undocumented)
-    readonly runId?: string | null | undefined;
-    // (undocumented)
-    readonly sessionId?: string | null | undefined;
-    // (undocumented)
-    readonly sessionPolicy?: AutomationSessionPolicy | undefined;
-    // (undocumented)
-    readonly surfaceId: string;
-    // (undocumented)
-    readonly surfaceKind: AutomationSurfaceKind;
-    // (undocumented)
-    readonly threadId?: string | undefined;
-    // (undocumented)
-    readonly threadPolicy?: AutomationThreadPolicy | undefined;
-    // (undocumented)
-    readonly title?: string | undefined;
-}
-
-// @public (undocumented)
-export interface RouteBodySchema<T> {
-    // (undocumented)
-    readonly parse: (body: JsonRecord) => T | Response;
-    // (undocumented)
-    readonly routeId: string;
-}
 
 // @public (undocumented)
 export type RouteEvent = {
@@ -16519,21 +14997,19 @@ export type RuntimeDomainEventType<TDomain extends RuntimeEventTypedDomain> = ke
 export interface RuntimeEventConnectorOptions {
     // (undocumented)
     readonly observer?: TransportObserver | undefined;
-    readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined | undefined;
+    readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined;
     // (undocumented)
-    readonly onError?: ((error: unknown) => void) | undefined | undefined;
+    readonly onError?: ((error: unknown) => void) | undefined;
     // (undocumented)
-    readonly onOpen?: (() => void) | undefined | undefined;
+    readonly onOpen?: (() => void) | undefined;
     // (undocumented)
-    readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined | undefined;
+    readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined;
     // (undocumented)
     readonly reconnect?: StreamReconnectPolicy | undefined;
 }
 
 // @public (undocumented)
-type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
-export { RuntimeEventDomain as DaemonRuntimeEventDomain }
-export { RuntimeEventDomain }
+export type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
 
 // @public (undocumented)
 export interface RuntimeEventFeed<TEvent extends EventLike = EventLike> {
@@ -16568,9 +15044,6 @@ export const RuntimeEventRecordSchema: z.ZodObject<{
 
 // @public (undocumented)
 export type RuntimeEventTypedDomain = keyof RuntimeDomainEventPayloadMap & string;
-
-// @public (undocumented)
-export function scopeMatches(granted: string, required: string): boolean;
 
 // @public
 export type SDKErrorKind = 'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown';
@@ -16684,7 +15157,7 @@ export const SerializedEventEnvelopeSchema: z.ZodObject<{
     sessionId: z.ZodOptional<z.ZodString>;
     source: z.ZodOptional<z.ZodString>;
     payload: z.ZodUnknown;
-}, z.core.$strip>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type SerializedEventEnvelopeShape = z.infer<typeof SerializedEventEnvelopeSchema>;
@@ -16788,6 +15261,13 @@ export class SessionManager {
 }
 
 // @public (undocumented)
+export type SharedSessionConversationRouteOutput = {
+    messageId: string;
+    routedTo: "conversation";
+    sessionId: string;
+};
+
+// @public (undocumented)
 export function sleepWithSignal(delayMs: number, signal?: AbortSignal): Promise<void>;
 
 // @public
@@ -16845,9 +15325,6 @@ export interface StructuredDaemonErrorBody {
 }
 
 // @public (undocumented)
-export function summarizeErrorForRecord(error: unknown, options?: JsonErrorResponseOptions): string;
-
-// @public (undocumented)
 export type SurfaceEvent = {
     type: 'SURFACE_ENABLED';
     surfaceKind: SurfaceKind;
@@ -16883,12 +15360,6 @@ export type SurfaceEventType = SurfaceEvent['type'];
 
 // @public (undocumented)
 export type SurfaceKind = RouteSurfaceKind;
-
-// @public (undocumented)
-export interface SurfaceRegistryLike {
-    // (undocumented)
-    list(): readonly unknown[];
-}
 
 // @public
 export type TaskEvent =
@@ -17091,6 +15562,13 @@ export type ToolEvent =
 export type ToolEventType = ToolEvent['type'];
 
 // @public
+export interface ToolResultSummary {
+    byteSize: number;
+    kind: string;
+    preview?: string | undefined;
+}
+
+// @public
 export interface TransportActivityInfo {
     readonly direction: 'send' | 'recv';
     readonly durationMs?: number | undefined;
@@ -17172,7 +15650,7 @@ export type TransportEvent =
     transportId: string;
     error: string;
 }
-/** OBS-18: A retry has been scheduled after a transient failure. */
+/** A retry has been scheduled after a transient failure. */
 | {
     type: 'TRANSPORT_RETRY_SCHEDULED';
     transportId: string;
@@ -17181,21 +15659,21 @@ export type TransportEvent =
     backoffMs: number;
     reason: string;
 }
-/** OBS-18: A scheduled retry is now being executed. */
+/** A scheduled retry is now being executed. */
 | {
     type: 'TRANSPORT_RETRY_EXECUTED';
     transportId: string;
     attempt: number;
     maxAttempts: number;
 }
-/** OBS-19: An SSE subscriber connected to the event stream. */
+/** An SSE subscriber connected to the event stream. */
 | {
     type: 'STREAM_SUBSCRIBER_CONNECTED';
     streamId: string;
     subscriberId: string;
     streamType: string;
 }
-/** OBS-19: An SSE subscriber disconnected from the event stream. */
+/** An SSE subscriber disconnected from the event stream. */
 | {
     type: 'STREAM_SUBSCRIBER_DISCONNECTED';
     streamId: string;
@@ -17229,6 +15707,7 @@ export type TransportMiddleware = (ctx: TransportContext, next: () => Promise<vo
 // @public
 export interface TransportObserver {
     onError?(err: Error): void;
+    onObserverError?(err: Error): void;
     onTransportActivity?(activity: TransportActivityInfo): void;
 }
 
@@ -17339,7 +15818,7 @@ export type TurnEvent =
     scope?: 'provider';
     terminal?: false;
 }
-/** OBS-04: An LLM request is about to be dispatched to the provider. */
+/** An LLM request is about to be dispatched to the provider. */
 | {
     type: 'LLM_REQUEST_STARTED';
     turnId: string;
@@ -17441,67 +15920,13 @@ export const TypedSerializedEventEnvelopeSchema: z.ZodObject<{
     payload: z.ZodObject<{
         type: z.ZodString;
     }, z.core.$catchall<z.ZodUnknown>>;
-}, z.core.$strip>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type TypedSerializedEventEnvelopeShape = z.infer<typeof TypedSerializedEventEnvelopeSchema>;
 
-// @public (undocumented)
-export interface UserAuthManagerLike {
-    // (undocumented)
-    addUser(username: string, password: string, roles: readonly string[]): unknown;
-    // (undocumented)
-    clearBootstrapCredentialFile(): boolean;
-    // (undocumented)
-    deleteUser(username: string): boolean;
-    // (undocumented)
-    revokeSession(sessionId: string): boolean;
-    // (undocumented)
-    rotatePassword(username: string, password: string): void;
-}
-
-// @public @deprecated
-export function validateEvent(event: unknown): ContractResult;
-
 // @public
 export function validateKnownEvent(event: unknown): ContractResult;
-
-// @public (undocumented)
-export type VoiceAudioArtifact = Record<string, unknown>;
-
-// @public (undocumented)
-export interface VoiceServiceLike {
-    // (undocumented)
-    getStatus(enabled: boolean): Promise<{
-        providers: readonly unknown[];
-    }>;
-    // (undocumented)
-    listVoices(providerId?: string): Promise<readonly unknown[]>;
-    // (undocumented)
-    openRealtimeSession(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    synthesize(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
-    // (undocumented)
-    synthesizeStream(providerId: string | undefined, input: Record<string, unknown>): Promise<VoiceSynthesisStreamLike>;
-    // (undocumented)
-    transcribe(providerId: string | undefined, input: Record<string, unknown>): Promise<unknown>;
-}
-
-// @public (undocumented)
-export interface VoiceSynthesisStreamLike {
-    // (undocumented)
-    readonly chunks: AsyncIterable<{
-        readonly data: Uint8Array;
-    }>;
-    // (undocumented)
-    readonly format: string;
-    // (undocumented)
-    readonly metadata: Record<string, unknown>;
-    // (undocumented)
-    readonly mimeType: string;
-    // (undocumented)
-    readonly providerId: string;
-}
 
 // @public
 export const WATCHER_SOURCE_KINDS: readonly ["poll", "webhook", "tail", "file", "api", "stream"];
@@ -17540,76 +15965,10 @@ export type WatcherEvent = {
 export type WatcherEventType = WatcherEvent['type'];
 
 // @public (undocumented)
-export type WatcherKind = string;
-
-// @public (undocumented)
-export interface WatcherRecord {
-    // (undocumented)
-    readonly id: string;
-    // (undocumented)
-    readonly intervalMs?: number | undefined;
-    // (undocumented)
-    readonly kind: WatcherKind;
-    // (undocumented)
-    readonly label: string;
-    // (undocumented)
-    readonly metadata: Record<string, unknown>;
-    // Warning: (ae-forgotten-export) The symbol "WatcherSourceRecord" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    readonly source: WatcherSourceRecord;
-}
-
-// @public (undocumented)
-export interface WatcherRegistryLike {
-    // (undocumented)
-    getWatcher(watcherId: string): WatcherRecord | null;
-    // (undocumented)
-    list(): readonly unknown[];
-    // (undocumented)
-    registerWatcher(input: {
-        readonly id: string;
-        readonly label: string;
-        readonly kind: WatcherKind;
-        readonly source: WatcherSourceRecord;
-        readonly intervalMs: number;
-        readonly metadata: Record<string, unknown>;
-        readonly run?: (() => string) | undefined | undefined;
-    }): WatcherRecord;
-    // (undocumented)
-    removeWatcher(watcherId: string): boolean;
-    // (undocumented)
-    runWatcherNow(watcherId: string): Promise<WatcherRecord | null>;
-    // (undocumented)
-    startWatcher(watcherId: string): WatcherRecord | null;
-    // (undocumented)
-    stopWatcher(watcherId: string, reason: string): WatcherRecord | null;
-}
-
-// @public (undocumented)
 export type WatcherSourceKind = (typeof WATCHER_SOURCE_KINDS)[number];
 
 // @public
 export type WebGoodVibesSdkOptions = BrowserGoodVibesSdkOptions;
-
-// @public (undocumented)
-export type WebSearchSafeSearch = string;
-
-// @public (undocumented)
-export interface WebSearchServiceLike {
-    // (undocumented)
-    getStatus(): Promise<{
-        providers: readonly unknown[];
-    }>;
-    // (undocumented)
-    search(input: Record<string, unknown>): Promise<unknown>;
-}
-
-// @public (undocumented)
-export type WebSearchTimeRange = string;
-
-// @public (undocumented)
-export type WebSearchVerbosity = string;
 
 // @public (undocumented)
 export class WebSocketTransportError extends GoodVibesSdkError {
@@ -17705,7 +16064,7 @@ export type WorkspaceEvent =
 /**
 * Emitted when a workspace swap fails (mkdir or rerootStores threw).
 * Any subscriber that saw WORKSPACE_SWAP_STARTED without a subsequent
-* WORKSPACE_SWAP_COMPLETED should watch for this event. (OBS-08)
+* WORKSPACE_SWAP_COMPLETED should watch for this event.
 */
 | {
     type: 'WORKSPACE_SWAP_FAILED';
@@ -17719,47 +16078,7 @@ export type WorkspaceEvent =
 export type WorkspaceEventType = WorkspaceEvent['type'];
 
 // @public (undocumented)
-export interface WorkspaceSwapManagerLike {
-    // (undocumented)
-    getCurrentWorkingDir(): string;
-    // (undocumented)
-    requestSwap(newWorkingDir: string): Promise<{
-        ok: true;
-        previous: string;
-        current: string;
-    } | {
-        ok: false;
-        code: 'WORKSPACE_BUSY';
-        reason: string;
-        retryAfter: number;
-    } | {
-        ok: false;
-        code: 'INVALID_PATH';
-        reason: string;
-    }>;
-}
-
-// @public (undocumented)
 export type WrfcState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'awaiting_gates' | 'gating' | 'passed' | 'failed' | 'committing';
-
-// Warnings were encountered during analysis:
-//
-// packages/daemon-sdk/src/knowledge-route-types.ts:54:76 - (ae-forgotten-export) The symbol "KnowledgeUsageKind" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/knowledge-route-types.ts:58:15 - (ae-forgotten-export) The symbol "KnowledgeCandidateStatus" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:94:7 - (ae-forgotten-export) The symbol "SharedSessionRoutingIntent" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:99:7 - (ae-forgotten-export) The symbol "AutomationRouteBinding" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:180:5 - (ae-forgotten-export) The symbol "AgentRecordLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:184:5 - (ae-forgotten-export) The symbol "AutomationJobLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:185:5 - (ae-forgotten-export) The symbol "AutomationRunLike" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:211:5 - (ae-forgotten-export) The symbol "ExecutionIntent" needs to be exported by the entry point index.d.ts
-// packages/daemon-sdk/src/runtime-route-types.ts:227:42 - (ae-forgotten-export) The symbol "RuntimeTaskStateLike" needs to be exported by the entry point index.d.ts
-// packages/operator-sdk/src/client-core.ts:77:5 - (ae-forgotten-export) The symbol "KnownPathMethodArgs" needs to be exported by the entry point index.d.ts
-// packages/peer-sdk/src/client-core.ts:64:5 - (ae-forgotten-export) The symbol "KnownPathEndpointArgs" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/events/mcp.ts:15:82 - (ae-forgotten-export) The symbol "McpServerRole" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/events/mcp.ts:15:104 - (ae-forgotten-export) The symbol "McpTrustMode" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/events/mcp.ts:34:57 - (ae-forgotten-export) The symbol "QuarantineReason" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/events/ops.ts:47:7 - (ae-forgotten-export) The symbol "OpsInterventionReason" needs to be exported by the entry point index.d.ts
-// packages/sdk/src/events/tools.ts:38:97 - (ae-forgotten-export) The symbol "ToolResultSummary" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

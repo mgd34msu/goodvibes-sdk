@@ -8,7 +8,7 @@
  *   - per-session: max M messages/minute for a given sessionId regardless of client.
  *
  * When a limit is exceeded, throws GoodVibesSdkError with kind='rate-limit',
- * including an actionable message following the Wave 6 three-part standard:
+ * including an actionable message following the standard three-part format:
  *   [what happened] · [why] · [what to do]
  */
 
@@ -26,7 +26,7 @@ export const DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION = 10;
  * Maximum number of distinct clientId/sessionId buckets to track concurrently.
  * A slow attacker sending requests with distinct IDs would otherwise grow the
  * Map without bound between cleanup() cycles. LRU eviction caps the attack
- * surface at O(MAX_BUCKETS) entries per map (SEC-06).
+ * surface at O(MAX_BUCKETS) entries per map.
  */
 export const MAX_RATE_LIMITER_BUCKETS = 10_000;
 
@@ -62,12 +62,12 @@ export interface CompanionChatRateLimiterOptions {
    * Max messages per 60-second window per sessionId. Default: 10.
    *
    * **Startup-time env var**: `GOODVIBES_CHAT_LIMITER_THRESHOLD` is read **once** at
-   * constructor time and used as a fallback when this option is not provided. It
+   * constructor time and used when this option is not provided. It
    * cannot be changed at runtime without a daemon restart.
    *
    * **Runtime config key**: `runtime.companionChatLimiter.perSessionLimit` is read
    * on every `check()` call (when a `configManager` is provided) and takes
-   * precedence over the env-var-captured fallback.
+   * precedence over the env-var-captured default.
    */
   readonly perSessionLimit?: number | undefined;
   /** Window size in ms. Default: 60000 (1 minute). */
@@ -208,7 +208,7 @@ export class CompanionChatRateLimiter {
   ): Bucket {
     let bucket = map.get(key);
     if (!bucket) {
-      // SEC-06: LRU eviction — evict the least-recently-used entry when the map
+      // LRU eviction — evict the least-recently-used entry when the map
       // is at capacity. JS Map preserves insertion order; the first key is LRU.
       if (map.size >= MAX_RATE_LIMITER_BUCKETS) {
         const lruKey = map.keys().next().value as string;

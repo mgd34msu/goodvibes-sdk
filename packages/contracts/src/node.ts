@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 
-// NIT-6: these helpers resolve artifact paths relative to the bundled
+// These helpers resolve artifact paths relative to the bundled
 // import.meta.url. This works when consumers import from the published npm
 // package (artifacts are copied alongside dist/). It breaks when a bundler
 // inlines this module without copying the artifact files. We validate the

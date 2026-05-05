@@ -124,22 +124,47 @@ function updateTaskIndexes(tasks: Map<string, RuntimeTask>) {
   return { queuedIds, runningIds, blockedIds };
 }
 
+function isTerminalTaskStatus(status: TaskLifecycleState): boolean {
+  return status === 'completed' || status === 'failed' || status === 'cancelled';
+}
+
+function countTaskTransition(
+  domain: TaskDomainState,
+  previous: RuntimeTask | undefined,
+  task: RuntimeTask,
+): Pick<TaskDomainState, 'totalCreated' | 'totalCompleted' | 'totalFailed' | 'totalCancelled'> {
+  let { totalCreated, totalCompleted, totalFailed, totalCancelled } = domain;
+  if (!previous) totalCreated += 1;
+  if (previous?.status !== task.status) {
+    if (task.status === 'completed') totalCompleted += 1;
+    else if (task.status === 'failed') totalFailed += 1;
+    else if (task.status === 'cancelled') totalCancelled += 1;
+  }
+  return { totalCreated, totalCompleted, totalFailed, totalCancelled };
+}
+
 export function updateTaskState(domain: TaskDomainState, event: TaskEvent): TaskDomainState {
   const tasks = new Map(domain.tasks);
   const existing = tasks.get(event.taskId);
   const timestamp = now();
-  const task: RuntimeTask =
-    existing ??
-    {
-      id: event.taskId,
-      kind: 'agentId' in event && event.agentId ? 'agent' : 'exec',
-      title: 'description' in event ? event.description : `task:${event.taskId}`,
-      status: 'queued',
-      owner: event.agentId ?? 'runtime',
-      cancellable: true,
-      childTaskIds: [],
-      queuedAt: timestamp,
-    };
+  if (!existing && event.type !== 'TASK_CREATED') return domain;
+
+  const task: RuntimeTask = existing ?? {
+    id: event.taskId,
+    kind: 'agentId' in event && event.agentId ? 'agent' : 'exec',
+    title: 'description' in event ? event.description : `task:${event.taskId}`,
+    description: 'description' in event ? event.description : undefined,
+    status: 'queued',
+    owner: event.agentId ?? 'runtime',
+    cancellable: true,
+    childTaskIds: [],
+    queuedAt: timestamp,
+  };
+
+  if (existing && isTerminalTaskStatus(existing.status) && event.type !== 'TASK_CREATED') {
+    return domain;
+  }
+
   switch (event.type) {
     case 'TASK_CREATED':
       tasks.set(event.taskId, task);
@@ -163,15 +188,15 @@ export function updateTaskState(domain: TaskDomainState, event: TaskEvent): Task
       tasks.set(event.taskId, { ...task, status: 'cancelled', endedAt: timestamp, error: event.reason });
       break;
   }
+  const updated = tasks.get(event.taskId);
+  if (!updated) return domain;
   const indexes = updateTaskIndexes(tasks);
+  const counts = countTaskTransition(domain, existing, updated);
   return {
     ...updateDomainMetadata(domain, event.type),
     tasks,
     ...indexes,
-    totalCreated: domain.totalCreated + (event.type === 'TASK_CREATED' ? 1 : 0),
-    totalCompleted: domain.totalCompleted + (event.type === 'TASK_COMPLETED' ? 1 : 0),
-    totalFailed: domain.totalFailed + (event.type === 'TASK_FAILED' ? 1 : 0),
-    totalCancelled: domain.totalCancelled + (event.type === 'TASK_CANCELLED' ? 1 : 0),
+    ...counts,
   };
 }
 
@@ -180,16 +205,9 @@ function updateTaskDomainFromRecord(domain: TaskDomainState, task: RuntimeTask, 
   const previous = tasks.get(task.id);
   tasks.set(task.id, task);
   const indexes = updateTaskIndexes(tasks);
+  const counts = countTaskTransition(domain, previous, task);
 
-  let { totalCreated, totalCompleted, totalFailed, totalCancelled } = domain;
-  if (!previous) totalCreated += 1;
-  if (previous?.status !== task.status) {
-    if (task.status === 'completed') totalCompleted += 1;
-    else if (task.status === 'failed') totalFailed += 1;
-    else if (task.status === 'cancelled') totalCancelled += 1;
-  }
-
-  return { ...updateDomainMetadata(domain, source), tasks, ...indexes, totalCreated, totalCompleted, totalFailed, totalCancelled };
+  return { ...updateDomainMetadata(domain, source), tasks, ...indexes, ...counts };
 }
 
 function transitionTaskDomainRecord(
@@ -204,29 +222,56 @@ function transitionTaskDomainRecord(
   return updateTaskDomainFromRecord(domain, { ...existing, ...patch, status }, source);
 }
 
+function agentStatusForEvent(event: AgentEvent): AgentLifecycleState {
+  switch (event.type) {
+    case 'AGENT_SPAWNING':
+      return 'spawning';
+    case 'AGENT_RUNNING':
+    case 'AGENT_PROGRESS':
+    case 'AGENT_STREAM_DELTA':
+      return 'running';
+    case 'AGENT_AWAITING_MESSAGE':
+      return 'awaiting_message';
+    case 'AGENT_AWAITING_TOOL':
+      return 'awaiting_tool';
+    case 'AGENT_FINALIZING':
+      return 'finalizing';
+    case 'AGENT_COMPLETED':
+      return 'completed';
+    case 'AGENT_FAILED':
+      return 'failed';
+    case 'AGENT_CANCELLED':
+      return 'cancelled';
+  }
+  return assertNeverAgentEvent(event);
+}
+
+function assertNeverAgentEvent(event: never): never {
+  throw new Error(`Unhandled agent event type: ${String((event as { type?: unknown }).type)}`);
+}
+
+function isTerminalAgentStatus(status: AgentLifecycleState): boolean {
+  return status === 'completed' || status === 'failed' || status === 'cancelled';
+}
+
 export function updateAgentState(domain: AgentDomainState, event: AgentEvent): AgentDomainState {
   const agents = new Map(domain.agents);
   const timestamp = now();
   const existing = agents.get(event.agentId);
-  const statusMap: Partial<Record<AgentEvent['type'], AgentLifecycleState>> = {
-    AGENT_SPAWNING: 'spawning',
-    AGENT_RUNNING: 'running',
-    AGENT_PROGRESS: 'running',
-    AGENT_STREAM_DELTA: 'running',
-    AGENT_AWAITING_MESSAGE: 'awaiting_message',
-    AGENT_AWAITING_TOOL: 'awaiting_tool',
-    AGENT_FINALIZING: 'finalizing',
-    AGENT_COMPLETED: 'completed',
-    AGENT_FAILED: 'failed',
-    AGENT_CANCELLED: 'cancelled',
-  };
+  if (!existing && event.type !== 'AGENT_SPAWNING') return domain;
+
+  const nextStatus = agentStatusForEvent(event);
+  if (existing && isTerminalAgentStatus(existing.status) && nextStatus !== existing.status) {
+    return domain;
+  }
+
   const agent: RuntimeAgent =
     existing ??
     {
       id: event.agentId,
       label: 'task' in event ? event.task : event.agentId,
       role: 'subagent',
-      status: statusMap[event.type] ?? 'running',
+      status: nextStatus,
       providerId: 'unknown',
       modelId: 'unknown',
       childAgentIds: [],
@@ -238,7 +283,7 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
     };
   agents.set(event.agentId, {
     ...agent,
-    status: statusMap[event.type] ?? agent.status,
+    status: nextStatus,
     taskId: event.taskId ?? agent.taskId,
     latestProgress:
       event.type === 'AGENT_PROGRESS'
@@ -275,9 +320,9 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
     ...updateDomainMetadata(domain, event.type),
     agents,
     activeAgentIds,
-    totalSpawned: domain.totalSpawned + (event.type === 'AGENT_SPAWNING' ? 1 : 0),
-    totalCompleted: domain.totalCompleted + (event.type === 'AGENT_COMPLETED' ? 1 : 0),
-    totalFailed: domain.totalFailed + (event.type === 'AGENT_FAILED' ? 1 : 0),
+    totalSpawned: domain.totalSpawned + (!existing && event.type === 'AGENT_SPAWNING' ? 1 : 0),
+    totalCompleted: domain.totalCompleted + (existing?.status !== 'completed' && nextStatus === 'completed' ? 1 : 0),
+    totalFailed: domain.totalFailed + (existing?.status !== 'failed' && nextStatus === 'failed' ? 1 : 0),
     peakConcurrency: Math.max(domain.peakConcurrency, activeAgentIds.length),
   };
 }

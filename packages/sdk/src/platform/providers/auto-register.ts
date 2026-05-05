@@ -285,13 +285,11 @@ export const AUTO_REGISTER_CATALOG: AutoRegisterEntry[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Internal helpers (exported for testing)
+// Provider auto-registration helpers
 // ---------------------------------------------------------------------------
 
 /**
  * Check whether a provider ID is already registered in the provider registry.
- *
- * @internal Exported for testing.
  */
 export function isProviderRegistered(
   providerRegistry: Pick<ProviderRegistry, 'has'>,
@@ -303,8 +301,6 @@ export function isProviderRegistered(
 /**
  * Resolve the API key to use for a provider entry.
  * Returns the first non-empty env var value, or empty string.
- *
- * @internal Exported for testing.
  */
 export function resolveApiKey(entry: AutoRegisterEntry): string {
   for (const varName of entry.envVars) {
@@ -319,8 +315,6 @@ export function resolveApiKey(entry: AutoRegisterEntry): string {
 /**
  * Create an LLMProvider instance from an AutoRegisterEntry.
  * Routes to the correct provider class based on apiFormat.
- *
- * @internal Exported for testing.
  */
 export function createProviderFromEntry(entry: AutoRegisterEntry, apiKey: string): LLMProvider {
   const models = entry.seedModels ?? [entry.defaultModel];

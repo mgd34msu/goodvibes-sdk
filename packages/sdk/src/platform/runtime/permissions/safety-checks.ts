@@ -130,7 +130,7 @@ function extractPrimaryArg(args: Record<string, unknown>): string | null {
   for (const key of candidates) {
     if (typeof args[key]! === 'string') return args[key]! as string;
   }
-  // Fallback: first string value
+  // Otherwise use the first string value.
   for (const value of Object.values(args)) {
     if (typeof value === 'string' && value.length > 0) return value;
   }

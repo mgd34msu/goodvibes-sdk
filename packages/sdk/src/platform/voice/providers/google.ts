@@ -119,7 +119,7 @@ async function deleteGoogleFile(baseUrl: string, apiKey: string, name: string): 
       },
     });
   } catch {
-    // Best-effort cleanup only.
+    // Cleanup failure does not block the caller.
   }
 }
 

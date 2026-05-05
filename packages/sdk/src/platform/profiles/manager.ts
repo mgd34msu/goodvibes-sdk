@@ -98,7 +98,7 @@ export class ProfileManager {
     try {
       files = readdirSync(this.profilesDir).filter(f => f.endsWith('.json'));
     } catch (err) {
-      logger.debug('ProfileManager: failed to list profiles directory', { error: summarizeError(err) });
+      logger.warn('ProfileManager: failed to list profiles directory', { dir: this.profilesDir, error: summarizeError(err) });
       return [];
     }
     const profiles: ProfileInfo[] = [];
@@ -111,7 +111,7 @@ export class ProfileManager {
         const record = JSON.parse(raw) as Record<string, unknown>;
         timestamp = Number(record.timestamp ?? 0);
       } catch (err) {
-        logger.debug('ProfileManager: skipping unreadable profile file', { file, error: summarizeError(err) });
+        logger.warn('ProfileManager: skipping unreadable profile file', { file, error: summarizeError(err) });
         continue;
       }
       profiles.push({ name, timestamp, filePath });
@@ -141,7 +141,7 @@ export class ProfileManager {
       unlinkSync(filePath);
       return true;
     } catch (err) {
-      logger.debug('ProfileManager: failed to delete profile', { error: summarizeError(err) });
+      logger.warn('ProfileManager: failed to delete profile', { filePath, error: summarizeError(err) });
       return false;
     }
   }

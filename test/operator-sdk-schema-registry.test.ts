@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { OPERATOR_METHOD_IDS } from '../packages/contracts/dist/index.js';
 import * as ContractZodSchemas from '../packages/contracts/dist/index.js';
-import { __internal__ } from '../packages/operator-sdk/src/client.js';
-
-const { buildSchemaRegistry, methodIdToSchemaName } = __internal__;
+import { buildSchemaRegistry, methodIdToSchemaName } from '../packages/operator-sdk/src/schema-registry.js';
 
 describe('operator-sdk schema registry', () => {
   describe('methodIdToSchemaName', () => {
@@ -18,8 +16,8 @@ describe('operator-sdk schema registry', () => {
     });
 
     test('converts snake_case namespace segments correctly', () => {
-      // This was the broken case: the old PascalCase→dot transform produced
-      // "local.auth.status" instead of the canonical "local_auth.status"
+      // Preserve the canonical "local_auth.status" namespace rather than
+      // splitting snake_case segments into extra dots.
       expect(methodIdToSchemaName('local_auth.status')).toBe('LocalAuthStatusResponseSchema');
     });
   });
@@ -48,7 +46,7 @@ describe('operator-sdk schema registry', () => {
     }
 
     test('does not register non-contract schemas under wrong keys', () => {
-      // The old broken derivation of local_auth.status was "local.auth.status" —
+      // The incorrect derivation of local_auth.status was "local.auth.status" -
       // verify that key is absent from the registry.
       expect(registry['local.auth.status']).toBeUndefined();
     });

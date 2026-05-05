@@ -16,8 +16,6 @@ export { ConfigError } from '../types/errors.js';
 import { readFileSync } from 'fs';
 import { ConfigManager } from './manager.js';
 import type { GoodVibesConfig } from './schema.js';
-import { logger } from '../utils/logger.js';
-import { summarizeError } from '../utils/error-display.js';
 
 export function getConfigSnapshot(configManager: Pick<ConfigManager, 'getRaw'>): Readonly<GoodVibesConfig> {
   return configManager.getRaw();
@@ -25,10 +23,6 @@ export function getConfigSnapshot(configManager: Pick<ConfigManager, 'getRaw'>):
 
 export function getConfiguredModelId(configManager: Pick<ConfigManager, 'get'>): string {
   return configManager.get('provider.model');
-}
-
-export function getConfiguredProviderId(configManager: Pick<ConfigManager, 'get'>): string {
-  return configManager.get('provider.provider');
 }
 
 export function getConfiguredEmbeddingProviderId(configManager: Pick<ConfigManager, 'get'>): string {
@@ -46,18 +40,13 @@ export function getWorkingDirectory(configManager: Pick<ConfigManager, 'getWorki
 export function getConfiguredSystemPrompt(configManager: Pick<ConfigManager, 'get'>): string | undefined {
   const file = configManager.get('provider.systemPromptFile');
   if (!file) return undefined;
-  try {
-    return readFileSync(file, 'utf-8');
-  } catch (err) {
-    logger.debug('systemPrompt file read failed (non-fatal)', { file, error: summarizeError(err) });
-    return undefined;
-  }
+  return readFileSync(file, 'utf-8');
 }
 
 export { getConfiguredApiKeys, resolveApiKeys } from './api-keys.js';
 export { createOAuthLocalListener } from './oauth-local-listener.js';
 export type { OAuthLocalListener, OAuthLocalListenerConfig } from './oauth-local-listener.js';
-export { HelperModel, HelperRouter } from './helper-model.js';
+export { HelperModel, HelperModelUnavailableError, HelperRouter } from './helper-model.js';
 export type {
   HelperChatOptions,
   HelperModelDeps,
@@ -98,7 +87,7 @@ export type {
 } from './subscriptions.js';
 export * from './subscription-auth.js';
 export * from './subscription-providers.js';
-export { resolveToolLLM, ToolLLM } from './tool-llm.js';
+export { resolveToolLLM, ToolLLM, ToolLLMUnavailableError } from './tool-llm.js';
 export type {
   ResolvedToolLLM,
   ToolLLMChatOptions,

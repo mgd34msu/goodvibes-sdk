@@ -6,7 +6,7 @@ const RISKY_SCHEMA_PATTERN_CHECKS: readonly RegExp[] = [
   /(^|[^\\])\\[1-9]/,
   /\((?:[^()\\]|\\.)*[+*{][^)]*\)\s*[+*{]/,
   /\.\*(?:[^|)]{0,64})\.\*/,
-  // NIT-7: lookbehind assertions (?<=...) can also produce pathological backtracking.
+  // Lookbehind assertions (?<=...) can also produce pathological backtracking.
   /\(\?<[=!]/,
 ];
 
@@ -47,7 +47,7 @@ export function splitClientArgs<TInput, TOptions>(
   if (args.length > 2) {
     throw new ContractError(`Contract client helper expected at most 2 arguments but received ${args.length}.`);
   }
-  // MAJ-11: drop misleading non-null assertions — args[0]/args[1] may be undefined.
+  // drop misleading non-null assertions — args[0]/args[1] may be undefined.
   return [args[0] as TInput | undefined, args[1] as TOptions | undefined];
 }
 
@@ -84,7 +84,7 @@ export function firstJsonSchemaFailure(
   root: Record<string, unknown> = schema,
   _depth = 0,
 ): JsonSchemaValidationFailure | undefined {
-  // NIT-8: guard against cyclic $ref chains.
+  // Guard against cyclic $ref chains.
   if (_depth >= MAX_SCHEMA_WALK_DEPTH) return undefined;
   if (typeof schema.$ref === 'string') {
     const resolved = resolveLocalSchemaRef(root, schema.$ref);
@@ -144,7 +144,7 @@ export function firstJsonSchemaFailure(
     const itemSchema = schema.items;
     if (itemSchema && typeof itemSchema === 'object' && !Array.isArray(itemSchema)) {
       for (let index = 0; index < value.length; index++) {
-        // MIN-2: pass _depth + 1 so depth-reset through array items is prevented.
+        // pass _depth + 1 so depth-reset through array items is prevented.
         const failure = firstJsonSchemaFailure(itemSchema as Record<string, unknown>, value[index], `${path}[${index}]`, root, _depth + 1);
         if (failure) return failure;
       }
@@ -166,7 +166,7 @@ export function firstJsonSchemaFailure(
       for (const [key, propertySchema] of Object.entries(properties as Record<string, unknown>)) {
         if (!(key in objectValue)) continue;
         if (!propertySchema || typeof propertySchema !== 'object' || Array.isArray(propertySchema)) continue;
-        // MIN-2: pass _depth + 1 so nested property recursion respects the walk depth limit.
+        // pass _depth + 1 so nested property recursion respects the walk depth limit.
         const failure = firstJsonSchemaFailure(propertySchema as Record<string, unknown>, objectValue[key], `${path}.${key}`, root, _depth + 1);
         if (failure) return failure;
       }

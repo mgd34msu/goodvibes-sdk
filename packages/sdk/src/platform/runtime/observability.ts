@@ -1,5 +1,5 @@
 // ── Diagnostics ──────────────────────────────────────────────────────────────
-// MIN-05: This barrel uses ONLY named re-exports (no `export *`) so the public
+// This barrel uses ONLY named re-exports (no `export *`) so the public
 // observability surface is a curated allowlist; sub-barrels contain symbols not
 // intended for the public api.md. See bundle-budgets.README.md for context.
 export type {
@@ -172,10 +172,6 @@ export {
   createInitialPanelHealthState,
   ComponentHealthMonitor,
 } from './perf/index.js';
-// PanelHealthMonitor is an alias for ComponentHealthMonitor, preserved for backwards-compat.
-// The 'Component' prefix was renamed to 'Panel' at the public surface to better reflect its
-// role as a runtime panel health tracker. Both names resolve to the same implementation.
-export { ComponentHealthMonitor as PanelHealthMonitor } from './perf/index.js';
 // DiagnosticsProviderConfig and DiagnosticPanelName are included via the diagnostics block above.
 export {
   RuntimeHealthAggregator,

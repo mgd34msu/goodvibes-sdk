@@ -1,9 +1,9 @@
 /**
- * OBS-06: Telemetry prompt/response redaction configuration.
+ * Telemetry prompt/response redaction configuration.
  *
  * Privacy model (what actually ships):
  *
- * - Internal RuntimeEventBus carries RAW prompt/response strings. Internal
+ * - RuntimeEventBus carries raw prompt/response strings. In-process
  *   consumers (conversation reducer, channel reply pipeline, stream UI)
  *   require raw content to render and advance state.
  *

@@ -321,11 +321,12 @@ export function buildGateFailureTask(
   chainId: string,
   task: string,
   failedGates: readonly QualityGateResult[],
+  constraints: readonly Constraint[] = [],
 ): string {
   const gateFailureSummary = failedGates
     .map((result) => `- ${result.gate}: ${result.output.slice(0, 300)}`)
     .join('\n');
-  return [
+  const base = [
     `WRFC Gate Failure Fix`,
     `Parent Chain ID: ${chainId}`,
     ``,
@@ -339,4 +340,25 @@ export function buildGateFailureTask(
     `2. Ensure typecheck, lint, and test gates pass.`,
     `3. Return a structured EngineerReport in your final response.`,
   ].join('\n');
+
+  if (constraints.length === 0) {
+    return base;
+  }
+
+  const visible = constraints.slice(0, CONSTRAINTS_TASK_LIMIT);
+  const overflow = constraints.length - visible.length;
+  const constraintLines = visible.map((constraint) => `- ${constraint.id}: ${constraint.text}`);
+  if (overflow > 0) {
+    constraintLines.push(`(+${overflow} more)`);
+  }
+
+  const constraintSection = [
+    `## Inherited constraints`,
+    ``,
+    `These constraints passed through from the parent WRFC chain and remain binding while fixing gate failures. Return them in your EngineerReport constraints[] with source "inherited". Do not add, rename, or drop constraints while repairing gates.`,
+    ``,
+    ...constraintLines,
+  ].join('\n');
+
+  return base + '\n\n---\n\n' + constraintSection;
 }

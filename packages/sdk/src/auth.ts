@@ -85,6 +85,7 @@ export interface GoodVibesAuthClient {
  */
 export type { AutoRefreshOptions };
 export type { AutoRefreshCoordinatorOptions } from './client-auth/index.js';
+export type { ControlPlaneAuthMode, ControlPlaneAuthSnapshot } from './client-auth/control-plane-auth-snapshot.js';
 
 function requireStorage(storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   const resolved = storage ?? globalThis.localStorage;
@@ -313,13 +314,14 @@ export function createGoodVibesAuthClient(
       const priorToken = await ts?.getToken();
       const result = await sm.login(input, options);
       // Notify observer of the auth state transition. Observer errors are
-      // swallowed so they never disrupt SDK logic.
+      // isolated and reported by invokeObserver.
       invokeObserver(() =>
         observer?.onAuthTransition?.({
           from: priorToken ? 'token' : 'anonymous',
           to: 'token',
           reason: 'login',
         }),
+        { label: 'onAuthTransition' },
       );
       return result;
     },
@@ -339,6 +341,7 @@ export function createGoodVibesAuthClient(
           to: token ? 'token' : 'anonymous',
           reason: token ? 'refresh' : 'logout',
         }),
+        { label: 'onAuthTransition' },
       );
     },
     async clearToken(): Promise<void> {
@@ -349,13 +352,14 @@ export function createGoodVibesAuthClient(
       await store.clearToken();
       // Notify observer of the auth state transition. Always fire — even for
       // anonymous→anonymous — so callers that explicitly call clearToken receive
-      // the expected transition event. Observer errors are swallowed.
+      // the expected transition event.
       invokeObserver(() =>
         observer?.onAuthTransition?.({
           from: currentToken ? 'token' : 'anonymous',
           to: 'anonymous',
           reason: 'logout',
         }),
+        { label: 'onAuthTransition' },
       );
     },
   };

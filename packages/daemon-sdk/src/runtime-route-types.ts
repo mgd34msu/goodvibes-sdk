@@ -16,10 +16,8 @@ export interface ConversationMessageEnvelope {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
 }
 
-// AutomationSurfaceKind: daemon-sdk cannot import the full union from the SDK platform layer
-// (circular dep). Kept as a string alias because the public-surface field RouteBindingRecordInput.surfaceKind
-// references it directly; promoting to @public eliminates the api-extractor incompatible-release-tags warning
-// without leaking platform internals (the alias is widened to string, hiding the underlying union).
+// Boundary type kept intentionally wide so daemon-sdk does not depend on
+// runtime implementation unions from higher-level packages.
 /** @public */
 export type AutomationSurfaceKind = string;
 export interface SharedSessionRoutingIntent {
@@ -31,12 +29,8 @@ export interface SharedSessionRoutingIntent {
 interface AutomationRouteBinding {
   readonly id?: string | undefined;
 }
-// ExecutionIntent: daemon-sdk cannot import the structured ExecutionIntent interface from
-// the SDK platform layer (circular dep). Kept as `unknown` because the public-surface fields
-// SharedSessionRoutingIntent.executionIntent and downstream session/automation routes reference
-// it directly; promoting to @public eliminates the api-extractor incompatible-release-tags warning
-// without leaking platform internals (the alias is widened to unknown, hiding the underlying interface).
-// Same pattern as AutomationSurfaceKind above.
+// Boundary type kept intentionally opaque so daemon-sdk can carry execution
+// intent metadata without depending on higher-level runtime interfaces.
 /** @public */
 export type ExecutionIntent = unknown;
 type AgentRecordLike = {

@@ -342,7 +342,6 @@ export class ReconnectEngine {
           this._replay.maxReplayCount,
         );
       } catch (err) {
-        // Replay failure is non-fatal — degraded mode, not terminal
         logger.warn('ReconnectEngine: replay request failed (degraded mode)', {
           err: summarizeError(err),
         });

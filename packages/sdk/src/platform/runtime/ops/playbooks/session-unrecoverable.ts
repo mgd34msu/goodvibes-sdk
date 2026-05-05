@@ -87,8 +87,8 @@ export function createSessionUnrecoverablePlaybook(
         }),
     },
     {
-      id: 'session.event-bus-silent',
-      label: 'Event bus silent after cascade',
+      id: 'session.event-bus-inactive',
+      label: 'Event bus inactive after cascade',
       description: 'Verifies that no further domain events are being processed after SESSION_UNRECOVERABLE.',
       run: async (): Promise<DiagnosticCheckResult> =>
         safeCheck(async () => {

@@ -1,7 +1,7 @@
 /**
  * companion-chat-session-create-provider-resolution.test.ts
  *
- * Tests for F16b — resolveDefaultProviderModel callback in handleCreateSession.
+ * Tests for the resolveDefaultProviderModel callback in handleCreateSession.
  *
  * Happy path: callback returns {provider, model} → session created with those values
  * Failure path: callback returns null → HTTP 400 NO_MODEL_CONFIGURED, no session row
@@ -89,7 +89,7 @@ function makePostRequest(body?: unknown): Request {
 // Happy path: resolver returns {provider, model} → session created
 // ---------------------------------------------------------------------------
 
-describe('F16b — companion-chat session-create: resolver happy path', () => {
+describe('companion-chat session-create: resolver happy path', () => {
   let manager: CompanionChatManager;
 
   beforeEach(() => {
@@ -139,7 +139,7 @@ describe('F16b — companion-chat session-create: resolver happy path', () => {
 // Failure path: resolver returns null → HTTP 400 NO_MODEL_CONFIGURED
 // ---------------------------------------------------------------------------
 
-describe('F16b — companion-chat session-create: resolver returns null → 400', () => {
+describe('companion-chat session-create: resolver returns null → 400', () => {
   let manager: CompanionChatManager;
 
   beforeEach(() => {
@@ -164,16 +164,16 @@ describe('F16b — companion-chat session-create: resolver returns null → 400'
     expect(manager.sessions.size).toBe(sessionsBefore);
   });
 
-  test('resolver returns null with partial body (only model supplied) → 400 NO_MODEL_CONFIGURED', async () => {
+  test('partial explicit route (only model supplied) → 400 INVALID_MODEL_ROUTE', async () => {
     const resolver = () => null;
     const ctx = makeContext(manager, resolver);
     const res = await dispatchCompanionChatRoutes(
-      makePostRequest({ model: 'mercury-2' }), // provider missing
+      makePostRequest({ model: 'mercury-2' }),
       ctx,
     );
     expect(res!.status).toBe(400);
     const body = await res!.json() as Record<string, unknown>;
-    expect(body['code']).toBe('NO_MODEL_CONFIGURED');
+    expect(body['code']).toBe('INVALID_MODEL_ROUTE');
   });
 });
 
@@ -181,7 +181,7 @@ describe('F16b — companion-chat session-create: resolver returns null → 400'
 // Missing resolver path: callback absent and no explicit provider/model → HTTP 400
 // ---------------------------------------------------------------------------
 
-describe('F16b — companion-chat session-create: missing resolver', () => {
+describe('companion-chat session-create: missing resolver', () => {
   test('no resolver and no body provider/model → 400 NO_MODEL_CONFIGURED', async () => {
     const manager = makeManager();
     const ctx = makeContext(manager); // no resolver injected

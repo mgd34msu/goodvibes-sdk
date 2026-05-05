@@ -9,10 +9,6 @@ import type { RuntimeEventBus } from '../events/index.js';
 import type { SessionEvent } from '../../../events/session.js';
 import type { EmitterContext } from './index.js';
 
-// ---------------------------------------------------------------------------
-// Internal helper
-// ---------------------------------------------------------------------------
-
 /**
  * Creates a typed session event envelope, reducing boilerplate across the
  * 7 public wrapper functions below.

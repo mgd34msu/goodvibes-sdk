@@ -1,8 +1,8 @@
 # @pellux/goodvibes-contracts
 
-Internal workspace package backing `@pellux/goodvibes-sdk/contracts`.
+Public runtime-neutral GoodVibes contract package for operator and peer artifacts, generated ids, lookup helpers, and schema exports.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/contracts`. Install this package directly when you only need the contracts subset.
 
 Consumer import:
 

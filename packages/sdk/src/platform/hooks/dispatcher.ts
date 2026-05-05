@@ -85,8 +85,11 @@ export class HookDispatcher {
             { filePath },
           );
         }
-      } catch {
-        // Stat failure is non-fatal; proceed with load
+      } catch (err) {
+        logger.warn('HookDispatcher: failed to inspect hooks.json permissions; continuing with load', {
+          filePath,
+          error: summarizeError(err),
+        });
       }
 
       const raw = readFileSync(filePath, 'utf-8');
@@ -322,10 +325,11 @@ export class HookDispatcher {
     if (updatedInput) aggregated.updatedInput = updatedInput;
     if (contextParts.length > 0) aggregated.additionalContext = contextParts.join('\n');
 
-    // Fire matching triggers (fire-and-forget)
+    // Trigger dispatch is asynchronous; failures are logged and do not change
+    // the hook result returned to the caller.
     if (this.triggerManager) {
       fireTriggers(event, this.triggerManager).catch((err) => {
-        logger.debug('HookDispatcher: trigger fire error', {
+        logger.warn('HookDispatcher: trigger dispatch failed', {
           path: event.path,
           error: summarizeError(err),
         });

@@ -122,7 +122,7 @@ async function scanProjectMcpDir(roots: McpDiscoveryRoots, knownNames: Set<strin
       }
     }
   } catch (err) {
-    logger.debug('[mcp-scanner] Failed to read project .mcp/ directory', { error: summarizeError(err) });
+    logger.warn('[mcp-scanner] Failed to read project .mcp/ directory', { error: summarizeError(err) });
   }
 
   return suggestions;
@@ -171,7 +171,7 @@ async function scanGoodvibesMcpDir(roots: McpDiscoveryRoots, knownNames: Set<str
       }
     }
   } catch (err) {
-    logger.debug('[mcp-scanner] Failed to read surface MCP directory', { error: summarizeError(err) });
+    logger.warn('[mcp-scanner] Failed to read surface MCP directory', { error: summarizeError(err) });
   }
 
   return suggestions;

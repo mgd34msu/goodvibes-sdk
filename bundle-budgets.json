@@ -1,8 +1,8 @@
 {
-  "_comment": "See bundle-budgets.README.md for methodology, exclusions, and update procedure. Each entry's `rationale` field documents the per-entry headroom math and dominant symbols at a specific commit.",
+  "notes": "See bundle-budgets.README.md for methodology, exclusions, and update procedure. Each entry's `rationale` field documents the per-entry headroom math and dominant symbols at a specific commit.",
   ".": {
-    "gzip_bytes": 633,
-    "rationale": "full SDK re-export entry — re-exports all sub-entries; measured 527 B gzip @ commit 4e5a5e2; headroom max(ceil(527*1.2)=633, 527+50=577) → 633 (1.2x dominates by 56 B)"
+    "gzip_bytes": 1170,
+    "rationale": "re-anchored after intentional public seam/runtime export expansion; measured 975 B gzip @ v0.33.0 release verification; headroom max(ceil(975*1.2)=1170, 975+50=1025) -> 1170 (1.2x dominates)"
   },
   "./auth": {
     "gzip_bytes": 3459,
@@ -36,13 +36,145 @@
     "gzip_bytes": 374,
     "rationale": "public facade; measured 311 B gzip @ commit 4e5a5e2; headroom max(ceil(311*1.2)=374, 311+50=361) → 374 (1.2x dominates by 13 B)",
     "domains": [
-      "agents", "automation", "communication", "compaction", "contracts",
-      "control-plane", "deliveries", "domain-map", "forensics", "knowledge",
-      "mcp", "mcp-types", "ops", "orchestration", "permissions", "planner",
-      "plugins", "providers", "routes", "security", "session", "surfaces",
-      "tasks", "tools", "transport", "turn", "ui", "watchers", "workflows",
+      "agents",
+      "automation",
+      "communication",
+      "compaction",
+      "contracts",
+      "control-plane",
+      "deliveries",
+      "domain-map",
+      "forensics",
+      "knowledge",
+      "mcp",
+      "mcp-types",
+      "ops",
+      "orchestration",
+      "permissions",
+      "planner",
+      "plugins",
+      "providers",
+      "routes",
+      "security",
+      "session",
+      "surfaces",
+      "tasks",
+      "tools",
+      "transport",
+      "turn",
+      "ui",
+      "watchers",
+      "workflows",
       "workspace"
     ]
+  },
+  "./events/agents": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/automation": {
+    "gzip_bytes": 316,
+    "rationale": "new public package export budget; measured 263 B gzip @ v0.33.0 release verification; headroom max(ceil(263*1.2)=316, 263+50=313) -> 316 (1.2x dominates)"
+  },
+  "./events/communication": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/compaction": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/control-plane": {
+    "gzip_bytes": 477,
+    "rationale": "new public package export budget; measured 397 B gzip @ v0.33.0 release verification; headroom max(ceil(397*1.2)=477, 397+50=447) -> 477 (1.2x dominates)"
+  },
+  "./events/deliveries": {
+    "gzip_bytes": 219,
+    "rationale": "new public package export budget; measured 169 B gzip @ v0.33.0 release verification; headroom max(ceil(169*1.2)=203, 169+50=219) -> 219 (+50 B floor dominates)"
+  },
+  "./events/forensics": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/knowledge": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/mcp": {
+    "gzip_bytes": 81,
+    "rationale": "new public package export budget; measured 31 B gzip @ v0.33.0 release verification; headroom max(ceil(31*1.2)=38, 31+50=81) -> 81 (+50 B floor dominates)"
+  },
+  "./events/ops": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/orchestration": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/permissions": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/planner": {
+    "gzip_bytes": 165,
+    "rationale": "new public package export budget; measured 115 B gzip @ v0.33.0 release verification; headroom max(ceil(115*1.2)=138, 115+50=165) -> 165 (+50 B floor dominates)"
+  },
+  "./events/plugins": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/providers": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/routes": {
+    "gzip_bytes": 413,
+    "rationale": "new public package export budget; measured 344 B gzip @ v0.33.0 release verification; headroom max(ceil(344*1.2)=413, 344+50=394) -> 413 (1.2x dominates)"
+  },
+  "./events/security": {
+    "gzip_bytes": 278,
+    "rationale": "new public package export budget; measured 228 B gzip @ v0.33.0 release verification; headroom max(ceil(228*1.2)=274, 228+50=278) -> 278 (+50 B floor dominates)"
+  },
+  "./events/session": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/surfaces": {
+    "gzip_bytes": 212,
+    "rationale": "new public package export budget; measured 162 B gzip @ v0.33.0 release verification; headroom max(ceil(162*1.2)=195, 162+50=212) -> 212 (+50 B floor dominates)"
+  },
+  "./events/tasks": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/tools": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/transport": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
+  },
+  "./events/turn": {
+    "gzip_bytes": 201,
+    "rationale": "new public package export budget; measured 151 B gzip @ v0.33.0 release verification; headroom max(ceil(151*1.2)=182, 151+50=201) -> 201 (+50 B floor dominates)"
+  },
+  "./events/ui": {
+    "gzip_bytes": 262,
+    "rationale": "new public package export budget; measured 212 B gzip @ v0.33.0 release verification; headroom max(ceil(212*1.2)=255, 212+50=262) -> 262 (+50 B floor dominates)"
+  },
+  "./events/watchers": {
+    "gzip_bytes": 289,
+    "rationale": "new public package export budget; measured 239 B gzip @ v0.33.0 release verification; headroom max(ceil(239*1.2)=287, 239+50=289) -> 289 (+50 B floor dominates)"
+  },
+  "./events/workflows": {
+    "gzip_bytes": 159,
+    "rationale": "new public package export budget; measured 109 B gzip @ v0.33.0 release verification; headroom max(ceil(109*1.2)=131, 109+50=159) -> 159 (+50 B floor dominates)"
+  },
+  "./events/workspace": {
+    "gzip_bytes": 161,
+    "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
   },
   "./expo": {
     "gzip_bytes": 289,
@@ -60,13 +192,53 @@
     "gzip_bytes": 114,
     "rationale": "peer SDK client re-export entry; measured 64 B gzip @ commit 4e5a5e2; headroom max(ceil(64*1.2)=77, 64+50=114) → 114 (+50 B floor dominates by 37 B)"
   },
-  "./platform": {
-    "gzip_bytes": 638,
-    "rationale": "platform namespace facade; measured 531 B gzip @ commit c0e5910; headroom max(ceil(531*1.2)=638, 531+50=581) → 638 (1.2x dominates by 57 B)"
+  "./platform/acp": {
+    "gzip_bytes": 156,
+    "rationale": "new public package export budget; measured 106 B gzip @ v0.33.0 release verification; headroom max(ceil(106*1.2)=128, 106+50=156) -> 156 (+50 B floor dominates)"
+  },
+  "./platform/adapters": {
+    "gzip_bytes": 465,
+    "rationale": "new public package export budget; measured 387 B gzip @ v0.33.0 release verification; headroom max(ceil(387*1.2)=465, 387+50=437) -> 465 (1.2x dominates)"
+  },
+  "./platform/agents": {
+    "gzip_bytes": 250,
+    "rationale": "new public package export budget; measured 200 B gzip @ v0.33.0 release verification; headroom max(ceil(200*1.2)=240, 200+50=250) -> 250 (+50 B floor dominates)"
+  },
+  "./platform/artifacts": {
+    "gzip_bytes": 205,
+    "rationale": "new public package export budget; measured 155 B gzip @ v0.33.0 release verification; headroom max(ceil(155*1.2)=186, 155+50=205) -> 205 (+50 B floor dominates)"
+  },
+  "./platform/automation": {
+    "gzip_bytes": 383,
+    "rationale": "new public package export budget; measured 319 B gzip @ v0.33.0 release verification; headroom max(ceil(319*1.2)=383, 319+50=369) -> 383 (1.2x dominates)"
+  },
+  "./platform/batch": {
+    "gzip_bytes": 133,
+    "rationale": "new public package export budget; measured 83 B gzip @ v0.33.0 release verification; headroom max(ceil(83*1.2)=100, 83+50=133) -> 133 (+50 B floor dominates)"
+  },
+  "./platform/bookmarks": {
+    "gzip_bytes": 100,
+    "rationale": "new public package export budget; measured 50 B gzip @ v0.33.0 release verification; headroom max(ceil(50*1.2)=60, 50+50=100) -> 100 (+50 B floor dominates)"
+  },
+  "./platform/channels": {
+    "gzip_bytes": 309,
+    "rationale": "new public package export budget; measured 257 B gzip @ v0.33.0 release verification; headroom max(ceil(257*1.2)=309, 257+50=307) -> 309 (1.2x dominates)"
+  },
+  "./platform/cloudflare": {
+    "gzip_bytes": 217,
+    "rationale": "new public package export budget; measured 167 B gzip @ v0.33.0 release verification; headroom max(ceil(167*1.2)=201, 167+50=217) -> 217 (+50 B floor dominates)"
+  },
+  "./platform/companion": {
+    "gzip_bytes": 208,
+    "rationale": "new public package export budget; measured 158 B gzip @ v0.33.0 release verification; headroom max(ceil(158*1.2)=190, 158+50=208) -> 208 (+50 B floor dominates)"
   },
   "./platform/config": {
     "gzip_bytes": 992,
     "rationale": "config facade with secrets, services, subscriptions, helper model, and tool LLM; measured 826 B gzip @ commit 4e5a5e2; headroom max(ceil(826*1.2)=992, 826+50=876) → 992 (1.2x dominates by 116 B)"
+  },
+  "./platform/control-plane": {
+    "gzip_bytes": 452,
+    "rationale": "new public package export budget; measured 376 B gzip @ v0.33.0 release verification; headroom max(ceil(376*1.2)=452, 376+50=426) -> 452 (1.2x dominates)"
   },
   "./platform/core": {
     "gzip_bytes": 342,
@@ -76,9 +248,21 @@
     "gzip_bytes": 414,
     "rationale": "platform daemon facade; measured 345 B gzip @ commit 4e5a5e2; headroom max(ceil(345*1.2)=414, 345+50=395) → 414 (1.2x dominates by 19 B)"
   },
+  "./platform/discovery": {
+    "gzip_bytes": 194,
+    "rationale": "new public package export budget; measured 144 B gzip @ v0.33.0 release verification; headroom max(ceil(144*1.2)=173, 144+50=194) -> 194 (+50 B floor dominates)"
+  },
+  "./platform/export": {
+    "gzip_bytes": 116,
+    "rationale": "new public package export budget; measured 66 B gzip @ v0.33.0 release verification; headroom max(ceil(66*1.2)=80, 66+50=116) -> 116 (+50 B floor dominates)"
+  },
   "./platform/git": {
     "gzip_bytes": 109,
     "rationale": "public facade; measured 59 B gzip @ commit 4e5a5e2; headroom max(ceil(59*1.2)=71, 59+50=109) → 109 (+50 B floor dominates by 38 B)"
+  },
+  "./platform/hooks": {
+    "gzip_bytes": 352,
+    "rationale": "new public package export budget; measured 293 B gzip @ v0.33.0 release verification; headroom max(ceil(293*1.2)=352, 293+50=343) -> 352 (1.2x dominates)"
   },
   "./platform/integrations": {
     "gzip_bytes": 477,
@@ -100,6 +284,14 @@
     "gzip_bytes": 192,
     "rationale": "public facade; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) → 192 (+50 B floor dominates by 21 B)"
   },
+  "./platform/mcp": {
+    "gzip_bytes": 166,
+    "rationale": "new public package export budget; measured 116 B gzip @ v0.33.0 release verification; headroom max(ceil(116*1.2)=140, 116+50=166) -> 166 (+50 B floor dominates)"
+  },
+  "./platform/media": {
+    "gzip_bytes": 209,
+    "rationale": "new public package export budget; measured 159 B gzip @ v0.33.0 release verification; headroom max(ceil(159*1.2)=191, 159+50=209) -> 209 (+50 B floor dominates)"
+  },
   "./platform/multimodal": {
     "gzip_bytes": 116,
     "rationale": "public facade; measured 66 B gzip @ commit 4e5a5e2; headroom max(ceil(66*1.2)=80, 66+50=116) → 116 (+50 B floor dominates by 36 B)"
@@ -116,6 +308,18 @@
     "gzip_bytes": 238,
     "rationale": "public facade; measured 188 B gzip @ commit 4e5a5e2; headroom max(ceil(188*1.2)=226, 188+50=238) → 238 (+50 B floor dominates by 12 B)"
   },
+  "./platform/permissions": {
+    "gzip_bytes": 157,
+    "rationale": "new public package export budget; measured 107 B gzip @ v0.33.0 release verification; headroom max(ceil(107*1.2)=129, 107+50=157) -> 157 (+50 B floor dominates)"
+  },
+  "./platform/plugins": {
+    "gzip_bytes": 114,
+    "rationale": "new public package export budget; measured 64 B gzip @ v0.33.0 release verification; headroom max(ceil(64*1.2)=77, 64+50=114) -> 114 (+50 B floor dominates)"
+  },
+  "./platform/profiles": {
+    "gzip_bytes": 110,
+    "rationale": "new public package export budget; measured 60 B gzip @ v0.33.0 release verification; headroom max(ceil(60*1.2)=72, 60+50=110) -> 110 (+50 B floor dominates)"
+  },
   "./platform/providers": {
     "gzip_bytes": 1206,
     "rationale": "provider registry surface; measured 1005 B gzip @ commit 4e5a5e2; headroom max(ceil(1005*1.2)=1206, 1005+50=1055) → 1206 (1.2x dominates by 151 B); dominated by ProviderRegistry + autoRegisterProviders (~450 B), LLMProvider/ChatRequest/ChatResponse/ProviderApi types (~300 B), AnthropicCompatProvider + createProviderApi (~250 B)"
@@ -127,6 +331,14 @@
   "./platform/runtime/observability": {
     "gzip_bytes": 1265,
     "rationale": "public runtime seam; replaced 5 export* wildcards with 84 named re-exports across diagnostics/eval/forensics/idempotency/perf sections (per surface NIT-01); measured 1054 B gzip @ commit 32e7909; headroom max(ceil(1054*1.2)=1265, 1054+50=1104) → 1265 (1.2x dominates by 161 B); budget bumped from 692 to 1265 to accommodate the named-export expansion"
+  },
+  "./platform/runtime/sandbox": {
+    "gzip_bytes": 270,
+    "rationale": "new public package export budget; measured 220 B gzip @ v0.33.0 release verification; headroom max(ceil(220*1.2)=264, 220+50=270) -> 270 (+50 B floor dominates)"
+  },
+  "./platform/runtime/settings": {
+    "gzip_bytes": 125,
+    "rationale": "new public package export budget; measured 75 B gzip @ v0.33.0 release verification; headroom max(ceil(75*1.2)=90, 75+50=125) -> 125 (+50 B floor dominates)"
   },
   "./platform/runtime/state": {
     "gzip_bytes": 423,
@@ -140,9 +352,33 @@
     "gzip_bytes": 834,
     "rationale": "public runtime seam; measured 695 B gzip @ commit c0e5910; headroom max(ceil(695*1.2)=834, 695+50=745) → 834 (1.2x dominates by 89 B)"
   },
+  "./platform/scheduler": {
+    "gzip_bytes": 102,
+    "rationale": "new public package export budget; measured 52 B gzip @ v0.33.0 release verification; headroom max(ceil(52*1.2)=63, 52+50=102) -> 102 (+50 B floor dominates)"
+  },
+  "./platform/security": {
+    "gzip_bytes": 287,
+    "rationale": "new public package export budget; measured 237 B gzip @ v0.33.0 release verification; headroom max(ceil(237*1.2)=285, 237+50=287) -> 287 (+50 B floor dominates)"
+  },
+  "./platform/sessions": {
+    "gzip_bytes": 138,
+    "rationale": "new public package export budget; measured 88 B gzip @ v0.33.0 release verification; headroom max(ceil(88*1.2)=106, 88+50=138) -> 138 (+50 B floor dominates)"
+  },
+  "./platform/state": {
+    "gzip_bytes": 617,
+    "rationale": "new public package export budget; measured 514 B gzip @ v0.33.0 release verification; headroom max(ceil(514*1.2)=617, 514+50=564) -> 617 (1.2x dominates)"
+  },
+  "./platform/templates": {
+    "gzip_bytes": 100,
+    "rationale": "new public package export budget; measured 50 B gzip @ v0.33.0 release verification; headroom max(ceil(50*1.2)=60, 50+50=100) -> 100 (+50 B floor dominates)"
+  },
   "./platform/tools": {
     "gzip_bytes": 2766,
     "rationale": "tool registry surface; measured 2305 B gzip @ commit 4e5a5e2; headroom max(ceil(2305*1.2)=2766, 2305+50=2355) → 2766 (1.2x dominates by 411 B); dominated by registerAllTools (~1400 B), registerToolWithContractGate + tool registration logic (~600 B), ToolRegistry type imports (~300 B)"
+  },
+  "./platform/types": {
+    "gzip_bytes": 225,
+    "rationale": "new public package export budget; measured 175 B gzip @ v0.33.0 release verification; headroom max(ceil(175*1.2)=210, 175+50=225) -> 225 (+50 B floor dominates)"
   },
   "./platform/utils": {
     "gzip_bytes": 277,
@@ -151,6 +387,22 @@
   "./platform/voice": {
     "gzip_bytes": 168,
     "rationale": "public facade; measured 118 B gzip @ commit 4e5a5e2; headroom max(ceil(118*1.2)=142, 118+50=168) → 168 (+50 B floor dominates by 26 B)"
+  },
+  "./platform/watchers": {
+    "gzip_bytes": 182,
+    "rationale": "new public package export budget; measured 132 B gzip @ v0.33.0 release verification; headroom max(ceil(132*1.2)=159, 132+50=182) -> 182 (+50 B floor dominates)"
+  },
+  "./platform/web-search": {
+    "gzip_bytes": 247,
+    "rationale": "new public package export budget; measured 197 B gzip @ v0.33.0 release verification; headroom max(ceil(197*1.2)=237, 197+50=247) -> 247 (+50 B floor dominates)"
+  },
+  "./platform/workflow": {
+    "gzip_bytes": 109,
+    "rationale": "new public package export budget; measured 59 B gzip @ v0.33.0 release verification; headroom max(ceil(59*1.2)=71, 59+50=109) -> 109 (+50 B floor dominates)"
+  },
+  "./platform/workspace": {
+    "gzip_bytes": 131,
+    "rationale": "new public package export budget; measured 81 B gzip @ v0.33.0 release verification; headroom max(ceil(81*1.2)=98, 81+50=131) -> 131 (+50 B floor dominates)"
   },
   "./react-native": {
     "gzip_bytes": 1601,

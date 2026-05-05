@@ -19,8 +19,10 @@ import {
   applyFilter,
   appendBounded,
 } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
-/** Internal mutable agent record for in-progress agents. */
+/** Mutable agent record for in-progress agents. */
 interface MutableAgentRecord {
   agentId: string;
   taskId?: string | undefined;
@@ -244,8 +246,8 @@ export class AgentsPanel {
     for (const cb of this._subscribers) {
       try {
         cb();
-      } catch {
-        // Non-fatal: subscriber errors must not crash the provider
+      } catch (error) {
+        logger.warn('[AgentsPanel] subscriber error', { error: summarizeError(error) });
       }
     }
   }

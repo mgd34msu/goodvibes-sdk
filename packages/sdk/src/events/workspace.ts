@@ -35,7 +35,7 @@ export type WorkspaceEvent =
   /**
    * Emitted when a workspace swap fails (mkdir or rerootStores threw).
    * Any subscriber that saw WORKSPACE_SWAP_STARTED without a subsequent
-   * WORKSPACE_SWAP_COMPLETED should watch for this event. (OBS-08)
+   * WORKSPACE_SWAP_COMPLETED should watch for this event.
    */
   | {
       type: 'WORKSPACE_SWAP_FAILED';

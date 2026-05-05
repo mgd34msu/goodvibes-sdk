@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /**
  * BookmarkEntry - Metadata for a saved bookmark.
@@ -98,7 +99,7 @@ export class BookmarkManager {
         .map(f => join(this.saveDir, f))
         .sort();
     } catch (err) {
-      logger.debug('BookmarkManager: failed to list saved files', { error: String(err) });
+      logger.warn('BookmarkManager: failed to list saved files', { dir: this.saveDir, error: summarizeError(err) });
       return [];
     }
   }
@@ -117,7 +118,7 @@ export class BookmarkManager {
     try {
       return readFileSync(filePath, 'utf-8');
     } catch (err) {
-      logger.debug('BookmarkManager: failed to read saved file', { error: String(err) });
+      logger.warn('BookmarkManager: failed to read saved file', { filePath, error: summarizeError(err) });
       return null;
     }
   }

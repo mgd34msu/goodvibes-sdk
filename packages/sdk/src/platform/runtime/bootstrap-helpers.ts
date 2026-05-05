@@ -73,21 +73,17 @@ export async function synchronizeConfiguredServices(
 export function restoreRuntimeModel(
   providerRegistry: ProviderRegistry,
   savedModel: string,
-  savedProvider: string,
   runtime: RuntimeModelSelectionState,
 ): void {
   const registry = providerRegistry.listModels();
-  const modelDef = savedModel.includes(':')
-    ? (registry.find((m) => m.registryKey === savedModel) ?? registry.find((m) => m.id === savedModel))
-    : registry.find((m) => m.id === savedModel && (!savedProvider || m.provider === savedProvider))
-      ?? registry.find((m) => m.id === savedModel);
+  const modelDef = registry.find((m) => m.registryKey === savedModel);
   if (!modelDef) return;
   try {
-    const key = modelDef.registryKey ?? `${modelDef.provider}:${modelDef.id}`;
+    const key = modelDef.registryKey;
     providerRegistry.setCurrentModel(key);
     runtime.model = key;
     runtime.provider = modelDef.provider;
   } catch (err) {
-    logger.debug('Model restore failed (non-fatal)', { error: summarizeError(err) });
+    logger.warn('Model restore failed', { error: summarizeError(err) });
   }
 }

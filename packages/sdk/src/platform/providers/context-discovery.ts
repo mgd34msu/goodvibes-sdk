@@ -43,7 +43,7 @@ function extractOrigin(baseURL: string): string {
   try {
     return new URL(baseURL).origin;
   } catch {
-    // Fallback: strip everything after the third slash component
+    // If URL parsing fails, strip everything after the third slash component.
     const match = baseURL.match(/^(https?:\/\/[^/]+)/);
     return match ? match[1]! : baseURL;
   }
@@ -95,10 +95,14 @@ async function probe(
 /**
  * Safely parse JSON from a Response. Returns null on parse error.
  */
-async function parseJSON<T>(response: Response): Promise<T | null> {
+async function parseJSON<T>(response: Response, url: string): Promise<T | null> {
   try {
     return (await response.json()) as T;
-  } catch {
+  } catch (error) {
+    logger.warn('[context-discovery] Probe returned invalid JSON', {
+      url,
+      error: summarizeError(error),
+    });
     return null;
   }
 }
@@ -129,7 +133,7 @@ async function probeLMStudio(
   const response = await probe(url, { apiKey });
   if (!response) return null;
 
-  const json = await parseJSON<LMStudioModelsResponse>(response);
+  const json = await parseJSON<LMStudioModelsResponse>(response, url);
   if (!Array.isArray(json?.models)) return null;
 
   const result = new Map<string, number>();
@@ -183,7 +187,7 @@ function extractOllamaContextLength(show: OllamaShowResponse): number | null {
     }
   }
 
-  // Fallback: parse num_ctx from modelfile
+  // Parse num_ctx from modelfile when structured metadata is absent.
   if (typeof show.modelfile === 'string') {
     const match = show.modelfile.match(/^\s*PARAMETER\s+num_ctx\s+(\d+)/im);
     if (match) {
@@ -207,7 +211,7 @@ async function probeOllama(
   const tagsResponse = await probe(tagsUrl, { apiKey });
   if (!tagsResponse) return null;
 
-  const tagsJson = await parseJSON<OllamaTagsResponse>(tagsResponse);
+  const tagsJson = await parseJSON<OllamaTagsResponse>(tagsResponse, tagsUrl);
   if (!Array.isArray(tagsJson?.models)) return null;
 
   const result = new Map<string, number>();
@@ -228,7 +232,7 @@ async function probeOllama(
         });
         if (!showResponse) return;
 
-        const showJson = await parseJSON<OllamaShowResponse>(showResponse);
+        const showJson = await parseJSON<OllamaShowResponse>(showResponse, showUrl);
         if (!showJson) return;
 
         const ctx = extractOllamaContextLength(showJson);
@@ -238,10 +242,10 @@ async function probeOllama(
       }),
     );
 
-    // Log any individual show failures at debug level only
+    // Rejections here are unexpected; ordinary probe failures return null.
     for (const r of batchResults) {
       if (r.status === 'rejected') {
-        logger.debug('[context-discovery] Ollama /api/show error', { error: String(r.reason) });
+        logger.warn('[context-discovery] Ollama /api/show error', { error: summarizeError(r.reason) });
       }
     }
   }
@@ -302,7 +306,7 @@ async function probeOpenAICompat(
   const response = await probe(url, { apiKey });
   if (!response) return null;
 
-  const json = await parseJSON<OpenAICompatResponse>(response);
+  const json = await parseJSON<OpenAICompatResponse>(response, url);
   if (!Array.isArray(json?.data)) return null;
 
   const result = new Map<string, number>();
@@ -340,7 +344,7 @@ async function probeLlamaCpp(
   const response = await probe(url, { apiKey });
   if (!response) return null;
 
-  const json = await parseJSON<LlamaCppProps>(response);
+  const json = await parseJSON<LlamaCppProps>(response, url);
   if (typeof json?.n_ctx !== 'number' || json.n_ctx <= 0) return null;
 
   logger.debug('[context-discovery] llama.cpp /props probe succeeded', { url, n_ctx: json.n_ctx });
@@ -370,7 +374,7 @@ async function probeTGI(
   const response = await probe(url, { apiKey });
   if (!response) return null;
 
-  const json = await parseJSON<TGIInfo>(response);
+  const json = await parseJSON<TGIInfo>(response, url);
   if (!json) return null;
 
   const ctx =
@@ -458,18 +462,3 @@ export async function discoverContextWindows(
 
   return result;
 }
-
-// ---------------------------------------------------------------------------
-// Exports for testing
-// ---------------------------------------------------------------------------
-
-export {
-  probeLMStudio as _probeLMStudio,
-  probeOllama as _probeOllama,
-  probeOpenAICompat as _probeOpenAICompat,
-  probeLlamaCpp as _probeLlamaCpp,
-  probeTGI as _probeTGI,
-  extractOrigin as _extractOrigin,
-  extractOllamaContextLength as _extractOllamaContextLength,
-  extractOpenAIContextLength as _extractOpenAIContextLength,
-};

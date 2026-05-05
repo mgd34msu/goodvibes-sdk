@@ -432,7 +432,7 @@ export async function importRemoteArtifact(
   try {
     return await registry.importArtifact(path);
   } catch (error) {
-    logger.debug('RemoteRunnerRegistry.importArtifact failed', { path, error: summarizeError(error) });
+    logger.warn('RemoteRunnerRegistry.importArtifact failed', { path, error: summarizeError(error) });
     throw error;
   }
 }

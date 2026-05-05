@@ -50,7 +50,7 @@ export function applyModeContextPolicy(
   tag: NotificationTag | undefined,
   verbosity: DomainVerbosity
 ): RoutingReasonCode | undefined {
-  // panel_only is already silent — suppression is a no-op.
+  // panel_only is already panel-scoped; extra suppression would not change delivery.
   if (target === 'panel_only') {
     return undefined;
   }

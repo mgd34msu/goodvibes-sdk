@@ -17,6 +17,7 @@ import { toProviderError } from '../utils/error-display.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import { mapCodexStopReason } from './stop-reason-maps.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { parseToolCallArguments } from './tool-formats.js';
 
 const OPENAI_CODEX_BASE_URL = 'https://chatgpt.com/backend-api';
 const OPENAI_CODEX_PROVIDER_NAME = 'openai-subscriber';
@@ -305,19 +306,17 @@ export async function chatWithOpenAICodex(
             ? record['arguments']
             : (toolArgs.get(callId) ?? '{}');
           if (!callId || !name) return;
-          try {
-            toolCalls.set(callId, {
-              id: callId,
-              name,
-              arguments: JSON.parse(argumentsText) as Record<string, unknown>,
-            });
-          } catch {
-            toolCalls.set(callId, {
-              id: callId,
-              name,
-              arguments: {},
-            });
-          }
+          const parsedArguments = parseToolCallArguments(argumentsText, {
+            provider: OPENAI_CODEX_PROVIDER_NAME,
+            toolName: name,
+            callId,
+          });
+          if (parsedArguments === undefined) return;
+          toolCalls.set(callId, {
+            id: callId,
+            name,
+            arguments: parsedArguments,
+          });
           return;
         }
 

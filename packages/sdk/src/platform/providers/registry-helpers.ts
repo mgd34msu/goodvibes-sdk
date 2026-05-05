@@ -5,18 +5,15 @@ export function withRegistryKey(model: ModelDefinition): ModelDefinition {
 }
 
 export function splitModelRegistryKey(modelId: string): { providerId: string; resolvedModelId: string } {
-  if (!modelId.includes(':')) {
-    return { providerId: modelId, resolvedModelId: modelId };
+  const separatorIndex = modelId.indexOf(':');
+  if (separatorIndex <= 0 || separatorIndex === modelId.length - 1) {
+    throw new Error(`Model registry keys must be provider-qualified; received '${modelId}'.`);
   }
 
   return {
-    providerId: modelId.split(':')[0] ?? 'unknown',
-    resolvedModelId: modelId.split(':').slice(1).join(':'),
+    providerId: modelId.slice(0, separatorIndex),
+    resolvedModelId: modelId.slice(separatorIndex + 1),
   };
-}
-
-export function getBaseModelId(modelId: string): string {
-  return modelId.includes(':') ? modelId.split(':').slice(1).join(':') : modelId;
 }
 
 /**

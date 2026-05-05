@@ -334,7 +334,7 @@ export interface CloudflareConfig {
 
 export interface TelemetryConfig {
   /**
-   * OBS-06: when true, raw prompt/response content remains visible in
+   * when true, raw prompt/response content remains visible in
    * telemetry events (and view='raw' is permitted for operators).
    * Default false: prompt/response fields in events are redacted via the
    * standard sanitizer at safe-view egress. Set true only in non-production
@@ -356,8 +356,7 @@ export interface GoodVibesConfig {
   };
   provider: {
     reasoningEffort: 'instant' | 'low' | 'medium' | 'high'; // default: 'medium'
-    model: string;              // default: 'openrouter/free'
-    provider: string;           // default: 'openrouter'
+    model: string;              // default: 'openrouter:openrouter/free'
     embeddingProvider: string;  // default: 'hashed-local'
     systemPromptFile: string;   // default: ''
   };
@@ -468,7 +467,7 @@ export interface ConfigSetting {
   default: unknown;
   description: string;
   enumValues?: string[] | undefined;
-  validate?: ((value: unknown) => boolean) | undefined | undefined;
+  validate?: ((value: unknown) => boolean) | undefined;
 }
 
 /** Dot-path config keys for all settings. */
@@ -483,7 +482,6 @@ export type ConfigKey =
   | 'display.showToolPreview'
   | 'provider.reasoningEffort'
   | 'provider.model'
-  | 'provider.provider'
   | 'provider.embeddingProvider'
   | 'provider.systemPromptFile'
   | 'behavior.autoApprove'
@@ -742,7 +740,6 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'display.showToolPreview' ? boolean :
   K extends 'provider.reasoningEffort' ? 'instant' | 'low' | 'medium' | 'high' :
   K extends 'provider.model' ? string :
-  K extends 'provider.provider' ? string :
   K extends 'provider.embeddingProvider' ? string :
   K extends 'provider.systemPromptFile' ? string :
   K extends 'behavior.autoApprove' ? boolean :

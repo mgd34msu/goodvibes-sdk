@@ -6,6 +6,8 @@
  */
 import type { ReadableSpan, SpanExporter } from '../types.js';
 import { SpanStatusCode } from '../types.js';
+import { summarizeError } from '../../../utils/error-display.js';
+import { logger } from '../../../utils/logger.js';
 
 /** Verbosity level for console output. */
 export type ConsoleVerbosity = 'minimal' | 'standard' | 'verbose';
@@ -40,15 +42,27 @@ export class ConsoleExporter implements SpanExporter {
   /** Export spans by printing formatted summaries to stderr. */
   async export(spans: ReadableSpan[]): Promise<void> {
     for (const span of spans) {
+      let line: string;
       try {
-        process.stderr.write(this._format(span) + '\n');
-      } catch {
-        // Writing to stderr should not throw but swallow any OS-level errors.
+        line = this._format(span);
+      } catch (err) {
+        this._logSpanFailure('[ConsoleExporter] span formatting failed', span, err);
+        continue;
+      }
+
+      try {
+        process.stderr.write(line + '\n', (err?: Error | null) => {
+          if (err) {
+            this._logSpanFailure('[ConsoleExporter] stderr write failed', span, err);
+          }
+        });
+      } catch (err) {
+        this._logSpanFailure('[ConsoleExporter] stderr write failed', span, err);
       }
     }
   }
 
-  /** Flush is a no-op for synchronous stderr writes. */
+  /** Flush is a no-op because this exporter does not own buffering. */
   async flush(): Promise<void> {
     // Nothing buffered.
   }
@@ -110,5 +124,14 @@ export class ConsoleExporter implements SpanExporter {
     }
 
     return base + attrStr + eventsStr;
+  }
+
+  private _logSpanFailure(message: string, span: ReadableSpan, error: unknown): void {
+    logger.warn(message, {
+      error: summarizeError(error),
+      spanName: span.name,
+      traceId: span.spanContext.traceId,
+      spanId: span.spanContext.spanId,
+    });
   }
 }

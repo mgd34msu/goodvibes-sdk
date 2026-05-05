@@ -115,6 +115,8 @@ export async function handleGenericWebhookSurface(req: Request, context: Generic
     return Response.json({
       acknowledged: true,
       queued: false,
+      outcome: 'ignored',
+      reason: 'no-actionable-text',
       bindingId: binding.id,
     });
   }
@@ -154,6 +156,7 @@ export async function handleGenericWebhookSurface(req: Request, context: Generic
   );
   if (spawnResult instanceof Response) return spawnResult;
   await context.sessionBroker.bindAgent(submission.session.id, spawnResult.id);
+  let callbackDelivery: Record<string, unknown>;
   if (callbackUrl && context.surfaceDeliveryEnabled('webhook')) {
     context.queueWebhookReply({
       agentId: spawnResult.id,
@@ -166,6 +169,12 @@ export async function handleGenericWebhookSurface(req: Request, context: Generic
         ? body.callbackSignature as 'shared-secret' | 'hmac-sha256'
         : undefined,
     });
+    callbackDelivery = { status: 'queued' };
+  } else {
+    callbackDelivery = {
+      status: 'skipped',
+      reason: callbackUrl ? 'webhook-delivery-disabled' : 'no-callback-url',
+    };
   }
 
   return Response.json({
@@ -176,5 +185,6 @@ export async function handleGenericWebhookSurface(req: Request, context: Generic
     agentId: spawnResult.id,
     callbackUrl: callbackUrl ?? null,
     correlationId: correlationId ?? null,
+    callbackDelivery,
   });
 }

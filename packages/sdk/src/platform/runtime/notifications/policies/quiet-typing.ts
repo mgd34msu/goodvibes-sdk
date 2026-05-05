@@ -39,7 +39,7 @@ export function applyQuietTypingPolicy(
   }
 
   // Only suppress notifications that would appear above panel_only.
-  // panel_only notifications are already silent; suppressing them is a no-op.
+  // panel_only notifications are already panel-scoped; suppressing them is a no-op.
   if (target === 'panel_only') {
     return undefined;
   }

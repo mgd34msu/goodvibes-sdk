@@ -1,8 +1,8 @@
 # @pellux/goodvibes-transport-core
 
-Internal workspace package backing `@pellux/goodvibes-sdk/transport-core`.
+Public GoodVibes transport-core package for shared transport, event-feed, observer, and middleware primitives.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/transport-core`. Install this package directly when you only need the transport primitives.
 
 Use this surface only when you are composing your own transport/client abstraction.
 

@@ -56,6 +56,125 @@ function sortApprovals(records: Iterable<SharedApprovalRecord>): SharedApprovalR
   return [...records].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
 }
 
+const APPROVAL_STATUSES = new Set<SharedApprovalStatus>(['pending', 'claimed', 'approved', 'denied', 'cancelled', 'expired']);
+const APPROVAL_AUDIT_ACTIONS = new Set<SharedApprovalAuditRecord['action']>([
+  'created',
+  'claimed',
+  'approved',
+  'denied',
+  'cancelled',
+  'expired',
+  'updated',
+]);
+const PERMISSION_CATEGORIES = new Set(['read', 'write', 'execute', 'delegate']);
+const PERMISSION_RISK_LEVELS = new Set(['low', 'medium', 'high', 'critical']);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function throwInvalidApprovalSnapshot(): never {
+  throw new Error('Shared approval store snapshot is invalid.');
+}
+
+function validateOptionalString(value: unknown): void {
+  if (value !== undefined && typeof value !== 'string') throwInvalidApprovalSnapshot();
+}
+
+function validateOptionalNumber(value: unknown): void {
+  if (value !== undefined && !isFiniteNumber(value)) throwInvalidApprovalSnapshot();
+}
+
+function validatePermissionPromptRequestSnapshot(value: unknown): void {
+  if (!isRecord(value)) throwInvalidApprovalSnapshot();
+  const category = value['category'];
+  if (
+    typeof value['callId'] !== 'string'
+    || typeof value['tool'] !== 'string'
+    || !isRecord(value['args'])
+    || typeof category !== 'string'
+    || !PERMISSION_CATEGORIES.has(category)
+  ) {
+    throwInvalidApprovalSnapshot();
+  }
+  const analysis = value['analysis'];
+  if (!isRecord(analysis)) throwInvalidApprovalSnapshot();
+  const riskLevel = analysis['riskLevel'];
+  if (
+    typeof analysis['classification'] !== 'string'
+    || typeof riskLevel !== 'string'
+    || !PERMISSION_RISK_LEVELS.has(riskLevel)
+    || typeof analysis['summary'] !== 'string'
+    || !isStringArray(analysis['reasons'])
+  ) {
+    throwInvalidApprovalSnapshot();
+  }
+  validateOptionalString(value['workingDirectory']);
+}
+
+function validateApprovalAuditRecord(value: unknown): void {
+  if (!isRecord(value)) throwInvalidApprovalSnapshot();
+  if (
+    typeof value['id'] !== 'string'
+    || typeof value['action'] !== 'string'
+    || !APPROVAL_AUDIT_ACTIONS.has(value['action'] as SharedApprovalAuditRecord['action'])
+    || typeof value['actor'] !== 'string'
+    || !isFiniteNumber(value['createdAt'])
+  ) {
+    throwInvalidApprovalSnapshot();
+  }
+  validateOptionalString(value['actorSurface']);
+  validateOptionalString(value['note']);
+}
+
+function validateApprovalRecord(value: unknown): void {
+  if (!isRecord(value)) throwInvalidApprovalSnapshot();
+  if (
+    typeof value['id'] !== 'string'
+    || typeof value['callId'] !== 'string'
+    || typeof value['status'] !== 'string'
+    || !APPROVAL_STATUSES.has(value['status'] as SharedApprovalStatus)
+    || !isFiniteNumber(value['createdAt'])
+    || !isFiniteNumber(value['updatedAt'])
+    || !isRecord(value['metadata'])
+    || !Array.isArray(value['audit'])
+  ) {
+    throwInvalidApprovalSnapshot();
+  }
+  validatePermissionPromptRequestSnapshot(value['request']);
+  validateOptionalString(value['sessionId']);
+  validateOptionalString(value['routeId']);
+  validateOptionalString(value['claimedBy']);
+  validateOptionalNumber(value['claimedAt']);
+  validateOptionalNumber(value['resolvedAt']);
+  validateOptionalString(value['resolvedBy']);
+  if (value['decision'] !== undefined) {
+    const decision = value['decision'];
+    if (!isRecord(decision) || typeof decision['approved'] !== 'boolean') {
+      throwInvalidApprovalSnapshot();
+    }
+    if (decision['remember'] !== undefined && typeof decision['remember'] !== 'boolean') {
+      throwInvalidApprovalSnapshot();
+    }
+  }
+  for (const audit of value['audit']) validateApprovalAuditRecord(audit);
+}
+
+function validateApprovalSnapshot(snapshot: SharedApprovalStoreSnapshot | null): SharedApprovalStoreSnapshot | null {
+  if (!snapshot) return null;
+  if (!isRecord(snapshot) || !Array.isArray(snapshot.approvals)) throwInvalidApprovalSnapshot();
+  for (const approval of snapshot.approvals) validateApprovalRecord(approval);
+  return snapshot;
+}
+
 function buildAudit(action: SharedApprovalAuditRecord['action'], actor: string, actorSurface?: string, note?: string): SharedApprovalAuditRecord {
   return {
     id: `apra-${randomUUID().slice(0, 8)}`,
@@ -104,7 +223,7 @@ export class ApprovalBroker {
 
   async start(): Promise<void> {
     if (this.loaded) return;
-    const snapshot = await this.store.load();
+    const snapshot = validateApprovalSnapshot(await this.store.load());
     this.approvals.clear();
     for (const approval of snapshot?.approvals ?? []) {
       this.approvals.set(approval.id, approval);
@@ -354,7 +473,7 @@ export class ApprovalBroker {
       try {
         listener(approval);
       } catch {
-        // Best-effort observer channel.
+        // Listener failures do not block approval creation.
       }
     }
   }

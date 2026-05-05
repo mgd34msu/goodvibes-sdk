@@ -14,7 +14,7 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
     return { ok: false, error: 'http hook missing "url" field' };
   }
 
-  // SEC-08: SSRF tier filter — block requests to internal/private hosts unless
+  // SSRF tier filter — block requests to internal/private hosts unless
   // the hook definition opts in with allowInternal: true.
   if (!hook.allowInternal) {
     const hostname = extractHostname(url);

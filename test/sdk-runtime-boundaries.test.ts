@@ -27,18 +27,20 @@ function sdkExportKey(entrypoint: string): string {
 }
 
 describe('SDK runtime boundaries and export map', () => {
-  test('uses explicit platform exports instead of the old wildcard API surface', () => {
+  test('uses explicit platform exports without catch-all platform surfaces', () => {
     const packageJson = JSON.parse(readFileSync(SDK_PACKAGE_JSON, 'utf8')) as {
       readonly exports: Record<string, unknown>;
     };
     const exports = packageJson.exports;
 
     expect(exports['./platform/*']).toBeUndefined();
-    expect(exports['./platform']).not.toBeUndefined(); // presence-only: export key existence
+    expect(exports['./platform']).toBeUndefined();
     expect(exports['./platform/knowledge']).not.toBeUndefined(); // presence-only: export key existence
     expect(exports['./platform/knowledge/home-graph']).not.toBeUndefined(); // presence-only: export key existence
     expect(exports['./platform/node']).not.toBeUndefined(); // presence-only: export key existence
     expect(exports['./platform/node/runtime-boundary']).not.toBeUndefined(); // presence-only: export key existence
+    expect(exports['./platform/runtime/sandbox/*']).toBeUndefined();
+    expect(exports['./platform/runtime/settings/*']).toBeUndefined();
     for (const entrypoint of GOODVIBES_CLIENT_SAFE_ENTRYPOINTS) {
       expect(exports[sdkExportKey(entrypoint)]).not.toBeUndefined(); // presence-only: export key existence
     }
@@ -56,6 +58,17 @@ describe('SDK runtime boundaries and export map', () => {
       expect(isNodeRuntimeGoodVibesEntrypoint(entrypoint)).toBe(true);
       expect(isClientSafeGoodVibesEntrypoint(entrypoint)).toBe(false);
     }
+  });
+
+  test('keeps aggregate runtime and node source barrels narrow', () => {
+    const runtimeSource = readFileSync(join(SDK_SOURCE_DIR, 'platform/runtime/index.ts'), 'utf8');
+    const nodeSource = readFileSync(join(SDK_SOURCE_DIR, 'platform/node/index.ts'), 'utf8');
+    const sandboxSource = readFileSync(join(SDK_SOURCE_DIR, 'platform/runtime/sandbox.ts'), 'utf8');
+
+    expect(runtimeSource).not.toContain("export * as sandbox from './sandbox.js'");
+    expect(runtimeSource).not.toContain("export * as settings from './settings.js'");
+    expect(nodeSource).not.toMatch(/export \* as \w+ from '\.\.\//);
+    expect(sandboxSource).not.toMatch(/export \* from '\.\/sandbox\/(backend|provisioning|qemu-wrapper-template)\.js'/);
   });
 
   test('keeps client capabilities free of node-only requirements', () => {

@@ -68,8 +68,7 @@ export class ReplayPanel {
       try {
         cb();
       } catch (err) {
-        // Non-fatal: subscriber errors must not crash the panel.
-        logger.debug('[ReplayPanel] subscriber error', { err: summarizeError(err) });
+        logger.warn('[ReplayPanel] subscriber error', { error: summarizeError(err) });
       }
     }
   }

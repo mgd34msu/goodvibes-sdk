@@ -1,10 +1,9 @@
 /**
- * Phase 5: Parser tolerance tests for `applyConstraintDefaults` via
- * `parseCompletionReport`.
+ * Parser tolerance tests for `applyConstraintDefaults` via `parseCompletionReport`.
  *
  * Verifies:
  * - Missing constraint fields default to [].
- * - Malformed entries are filtered, well-formed entries pass through.
+ * - Malformed entries are filtered, well-formed entries pass through, and drops are reported.
  * - Parser is pure: does not mutate the caller's object.
  */
 
@@ -44,7 +43,7 @@ const BASE_REVIEWER: Record<string, unknown> = {
   issues: [],
 };
 
-describe('D1: Engineer report — missing constraints field', () => {
+describe('Engineer report — missing constraints field', () => {
   test('missing constraints defaults to []', () => {
     const raw = asJsonBlock({ ...BASE_ENGINEER }); // no constraints field
     const result = parseCompletionReport(raw);
@@ -55,7 +54,7 @@ describe('D1: Engineer report — missing constraints field', () => {
   });
 });
 
-describe('D2: Engineer report — malformed constraints not an array', () => {
+describe('Engineer report — malformed constraints not an array', () => {
   test('constraints: string defaults to []', () => {
     const raw = asJsonBlock({ ...BASE_ENGINEER, constraints: 'not-an-array' });
     const result = parseCompletionReport(raw) as EngineerReport;
@@ -94,11 +93,11 @@ describe('D3: Engineer report — mixed well-formed and malformed constraint ent
     });
     const result = parseCompletionReport(raw) as EngineerReport;
     expect(result).not.toBeNull();
-    // Only the one well-formed entry should remain
     expect(result.constraints).toHaveLength(1);
     expect(result.constraints![0]?.id).toBe('c1');
     expect(result.constraints![0]?.text).toBe('must be pure');
     expect(result.constraints![0]?.source).toBe('prompt');
+    expect(result.issues).toContain('Malformed constraints ignored: 7 entries.');
   });
 
   test('empty text string is filtered out', () => {
@@ -108,6 +107,7 @@ describe('D3: Engineer report — mixed well-formed and malformed constraint ent
     });
     const result = parseCompletionReport(raw) as EngineerReport;
     expect(result.constraints).toEqual([]);
+    expect(result.issues).toContain('Malformed constraints ignored: 1 entry.');
   });
 
   test('empty id string is filtered out', () => {
@@ -163,6 +163,19 @@ describe('D5: Reviewer report — malformed constraintFindings', () => {
     const result = parseCompletionReport(raw) as ReviewerReport;
     expect(result.constraintFindings).toHaveLength(1);
     expect(result.constraintFindings![0]?.constraintId).toBe('c1');
+    expect(result.issues.some((issue) => issue.description === 'Malformed constraintFindings ignored: 4 entries.')).toBe(true);
+  });
+
+  test('malformed finding severity is dropped and reported', () => {
+    const raw = asJsonBlock({
+      ...BASE_REVIEWER,
+      constraintFindings: [
+        { constraintId: 'c1', satisfied: false, evidence: 'bad', severity: 'blocker' },
+      ],
+    });
+    const result = parseCompletionReport(raw) as ReviewerReport;
+    expect(result.constraintFindings).toEqual([]);
+    expect(result.issues.some((issue) => issue.description === 'Malformed constraintFindings ignored: 1 entry.')).toBe(true);
   });
 });
 

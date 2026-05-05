@@ -1,13 +1,13 @@
 # Provider & Model API Reference
 
-**Base path**: provider routes are under `/api/providers`; companion remote-session routes are under `/api/companion/chat`
+**Base path**: model catalog routes are under `/api/models`; runtime provider metadata remains under `/api/providers`; companion remote-session routes are under `/api/companion/chat`
 **Authentication**: all routes require the standard daemon bearer token (`Authorization: Bearer <token>` or the operator session cookie).
 
 ---
 
 ## Endpoints
 
-### `GET /api/providers`
+### `GET /api/models`
 
 List all registered providers and their models. Returns configured status, auth routes, and environment variable names for each provider.
 
@@ -79,7 +79,7 @@ List all registered providers and their models. Returns configured status, auth 
 | `providers[].envVars` | `string[]` | Environment variable names that configure this provider |
 | `providers[].routes` | `ProviderAuthRouteDescriptor[] \| undefined` | Runtime auth routes declared by the provider, such as `"api-key"`, `"secret-ref"`, `"service-oauth"`, `"subscription-oauth"`, or `"anonymous"`. Each route includes `configured`, optional `usable`, optional `freshness`, and repair metadata when available. |
 | `providers[].models` | `ProviderModelEntry[]` | All models exposed by this provider |
-| `providers[].models[].registryKey` | `string` | Compound key for model selection. Use it with `PATCH /api/providers/current` for shared/TUI model selection, or store it on a companion chat session for a remote-session-local selection. |
+| `providers[].models[].registryKey` | `string` | Provider-qualified model identity. Use it with `PATCH /api/models/current` for shared/TUI model selection, or store it as the companion chat session's `model` for remote-session-local selection. Do not use bare model ids for selection because different providers can expose the same `id`. |
 | `currentModel` | `ProviderModelRef \| null` | Daemon/TUI currently-selected model; `null` if none configured |
 | `secretsResolutionSkipped` | `boolean` | `true` when no `SecretsManager` was available during this response; `false` when a secrets manager was consulted regardless of whether it resolved any keys. Always present. |
 
@@ -87,12 +87,12 @@ List all registered providers and their models. Returns configured status, auth 
 
 ```bash
 curl -H "Authorization: Bearer $GV_TOKEN" \
-  http://127.0.0.1:3421/api/providers | jq .  # default control-plane port; configurable via controlPlane.port
+  http://127.0.0.1:3421/api/models | jq .  # default control-plane port; configurable via controlPlane.port
 ```
 
 ---
 
-### `GET /api/providers/current`
+### `GET /api/models/current`
 
 Return the daemon/TUI currently-selected model and its configured status.
 
@@ -123,12 +123,12 @@ When no model is configured:
 
 ```bash
 curl -H "Authorization: Bearer $GV_TOKEN" \
-  http://127.0.0.1:3421/api/providers/current | jq .
+  http://127.0.0.1:3421/api/models/current | jq .
 ```
 
 ---
 
-### `PATCH /api/providers/current`
+### `PATCH /api/models/current`
 
 Switch the active model live — no daemon restart required. Persists the selection to config and emits a `MODEL_CHANGED` event to all subscribers.
 
@@ -142,9 +142,9 @@ This route is intentionally global. Use it for the live TUI/shared-session model
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `registryKey` | `string` | The `registryKey` from `GET /api/providers` (format: `provider:modelId`) |
+| `registryKey` | `string` | The `registryKey` from `GET /api/models` (format: `provider:modelId`) |
 
-**Response `200 OK`** — same shape as `GET /api/providers/current` with the new model, plus `persisted`.
+**Response `200 OK`** — same shape as `GET /api/models/current` with the new model, plus `persisted`.
 
 ```json
 {
@@ -190,21 +190,21 @@ curl -X PATCH \
   -H "Authorization: Bearer $GV_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"registryKey":"inception:mercury-2"}' \
-  http://127.0.0.1:3421/api/providers/current
+  http://127.0.0.1:3421/api/models/current
 
 # Switch to OpenAI GPT-4o
 curl -X PATCH \
   -H "Authorization: Bearer $GV_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"registryKey":"openai:gpt-4o"}' \
-  http://127.0.0.1:3421/api/providers/current
+  http://127.0.0.1:3421/api/models/current
 ```
 
 ---
 
 ## SSE: `model.changed` event
 
-When a `PATCH /api/providers/current` succeeds, or when the model is changed via any other codepath (e.g. TUI settings), a `MODEL_CHANGED` event is emitted on the `providers` RuntimeEventBus domain.
+When a `PATCH /api/models/current` succeeds, or when the model is changed via any other codepath (e.g. TUI settings), a `MODEL_CHANGED` event is emitted on the `providers` RuntimeEventBus domain.
 
 **Companion SSE subscribers** receive this event automatically on their existing event stream (`GET /api/companion/chat/sessions/:id/events`) when the providers domain is part of the stream.
 
@@ -232,7 +232,7 @@ Importable from `@pellux/goodvibes-sdk/contracts`:
 
 ```typescript
 import {
-  ListProvidersResponseSchema,
+  ListProviderModelsResponseSchema,
   CurrentModelResponseSchema,
   PatchCurrentModelBodySchema,
   PatchCurrentModelErrorSchema,
@@ -241,7 +241,7 @@ import {
 } from '@pellux/goodvibes-sdk/contracts';
 
 // Validate a response body at runtime:
-const result = ListProvidersResponseSchema.safeParse(responseBody);
+const result = ListProviderModelsResponseSchema.safeParse(responseBody);
 ```
 
 ---
@@ -250,7 +250,7 @@ const result = ListProvidersResponseSchema.safeParse(responseBody);
 
 ```typescript
 async function switchModel(registryKey: string, token: string): Promise<void> {
-  const res = await fetch('/api/providers/current', {
+  const res = await fetch('/api/models/current', {
     method: 'PATCH',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -295,9 +295,9 @@ The error arrives on the existing SSE `companion-chat.turn_error` event.
 
 Use different selection flows for shared sessions and true remote sessions:
 
-1. On startup, call `GET /api/providers` to populate a model picker UI.
-2. For a shared TUI session, display `currentModel` as the selected item and call `PATCH /api/providers/current` when the user changes it. This intentionally changes the daemon/TUI current model and emits `MODEL_CHANGED`.
-3. For a true companion remote chat session, create or update the companion chat session with its own `provider` and `model`. Do not call `PATCH /api/providers/current`.
+1. On startup, call `GET /api/models` to populate a model picker UI.
+2. For a shared TUI session, display `currentModel` as the selected item and call `PATCH /api/models/current` when the user changes it. This intentionally changes the daemon/TUI current model and emits `MODEL_CHANGED`.
+3. For a true companion remote chat session, create or update the companion chat session with its own `provider` and `model`. Do not call `PATCH /api/models/current`.
 4. On `409` from the global route, show the `missingEnvVars` hint. For remote chat turns, unconfigured-provider errors arrive on the companion session event stream.
 5. Subscribe to the `providers` domain SSE stream only for shared/TUI model pickers. A remote session picker should track its own session record.
 
@@ -307,14 +307,14 @@ Remote session-local selection:
 POST /api/companion/chat/sessions
 Content-Type: application/json
 
-{ "title": "Mobile chat", "provider": "openai", "model": "gpt-5.5" }
+{ "title": "Mobile chat", "provider": "openai", "model": "openai:gpt-5.5" }
 ```
 
 ```http
 PATCH /api/companion/chat/sessions/{sessionId}
 Content-Type: application/json
 
-{ "provider": "anthropic", "model": "claude-sonnet-4-5" }
+{ "provider": "anthropic", "model": "anthropic:claude-sonnet-4-5" }
 ```
 
 `PATCH /api/companion/chat/sessions/{sessionId}` updates only that companion chat session. The daemon still hosts the turn and supplies runtime context such as working directory and tool/runtime services, but it does not mutate the TUI's current provider/model.

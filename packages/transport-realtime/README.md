@@ -1,8 +1,8 @@
 # @pellux/goodvibes-transport-realtime
 
-Internal workspace package backing `@pellux/goodvibes-sdk/transport-realtime`.
+Public GoodVibes realtime transport package for event-domain connectors over SSE and WebSocket.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/transport-realtime`. Install this package directly when you only need realtime connectors.
 
 Consumer import:
 
@@ -17,4 +17,4 @@ const events = createRemoteRuntimeEvents(
 );
 ```
 
-Use this surface when you want runtime-event subscriptions without pulling in the full umbrella SDK.
+Use this surface when you want runtime-event subscriptions without pulling in the full main SDK.

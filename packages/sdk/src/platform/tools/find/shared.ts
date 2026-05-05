@@ -1,7 +1,9 @@
 import { resolve, relative, join } from 'node:path';
 import { stat as statAsync } from 'node:fs/promises';
-import { statSync, lstatSync, existsSync, readFileSync, realpathSync } from 'node:fs';
+import { statSync, lstatSync, existsSync, readFileSync, realpathSync, readdirSync, type Dirent } from 'node:fs';
 import { walkDir, WALK_SKIP_DIRS as SKIP_DIRS } from '../../utils/walk-dir.js';
+import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 
 export type OutputFormat = 'count_only' | 'files_only' | 'locations' | 'matches' | 'context' | 'with_stats' | 'with_preview' | 'signatures' | 'full';
 export type SymbolKind = 'function' | 'class' | 'interface' | 'type' | 'variable' | 'constant' | 'enum';
@@ -114,6 +116,10 @@ interface CacheValue {
   fileMtimes: Map<string, number>;
 }
 
+export interface FindDiagnostics {
+  warnings: string[];
+}
+
 export interface ContentMatch {
   file: string;
   line: number;
@@ -122,6 +128,37 @@ export interface ContentMatch {
   endLine?: number | undefined;
   context_before?: string[] | undefined;
   context_after?: string[] | undefined;
+}
+
+const MAX_FIND_WARNINGS = 20;
+
+export function createFindDiagnostics(): FindDiagnostics {
+  return { warnings: [] };
+}
+
+export function addFindWarning(diagnostics: FindDiagnostics | undefined, warning: string): void {
+  if (!diagnostics) return;
+  if (diagnostics.warnings.includes(warning)) return;
+  if (diagnostics.warnings.length < MAX_FIND_WARNINGS) {
+    diagnostics.warnings.push(warning);
+    return;
+  }
+  const cappedWarning = `Additional find warnings suppressed after ${MAX_FIND_WARNINGS} entries.`;
+  if (!diagnostics.warnings.includes(cappedWarning)) diagnostics.warnings.push(cappedWarning);
+}
+
+export function withFindWarnings<T extends Record<string, unknown>>(
+  result: T,
+  warnings: readonly string[],
+): T {
+  if (warnings.length === 0) return result;
+  const existingWarnings = Array.isArray(result.warnings)
+    ? result.warnings.filter((warning): warning is string => typeof warning === 'string')
+    : [];
+  return {
+    ...result,
+    warnings: [...existingWarnings, ...warnings],
+  } as T;
 }
 
 export function makeCountResult(count: number, source?: string, fileCount?: number): CountResult {
@@ -149,7 +186,7 @@ export function shouldSkipRelativePath(relativePath: string, includeHidden: bool
   return relativePath.split('/').some((segment) => isHiddenOrSkippedSegment(segment, includeHidden));
 }
 
-export async function isBinary(filePath: string): Promise<boolean> {
+export async function isBinary(filePath: string, diagnostics?: FindDiagnostics): Promise<boolean> {
   try {
     const file = Bun.file(filePath);
     const size = file.size;
@@ -160,25 +197,27 @@ export async function isBinary(filePath: string): Promise<boolean> {
       if (byte === 0) return true;
     }
     return false;
-  } catch {
+  } catch (err) {
+    addFindWarning(diagnostics, `Skipped '${filePath}' because binary detection failed: ${summarizeError(err)}`);
     return true;
   }
 }
 
-export async function collectTextFiles(dirPath: string): Promise<string[]> {
+export async function collectTextFiles(dirPath: string, diagnostics?: FindDiagnostics): Promise<string[]> {
   const files: string[] = [];
   for await (const filePath of walkDir(dirPath)) {
-    if (!(await isBinary(filePath))) {
+    if (!(await isBinary(filePath, diagnostics))) {
       files.push(filePath);
     }
   }
   return files;
 }
 
-export async function readTextFile(filePath: string): Promise<string | null> {
+export async function readTextFile(filePath: string, diagnostics?: FindDiagnostics): Promise<string | null> {
   try {
     return await Bun.file(filePath).text();
-  } catch {
+  } catch (err) {
+    addFindWarning(diagnostics, `Skipped unreadable file '${filePath}': ${summarizeError(err)}`);
     return null;
   }
 }
@@ -188,12 +227,20 @@ export async function collectGlobFiles(
   patterns: string[],
   includeHidden: boolean,
   followSymlinks: boolean,
+  diagnostics?: FindDiagnostics,
 ): Promise<Set<string>> {
   const matchedFiles = new Set<string>();
   const visitedRealPaths = new Set<string>();
 
   for (const pattern of patterns) {
-    const glob = new Bun.Glob(pattern);
+    let glob: InstanceType<typeof Bun.Glob>;
+    try {
+      glob = new Bun.Glob(pattern);
+    } catch (err) {
+      addFindWarning(diagnostics, `Skipped invalid glob pattern '${pattern}': ${summarizeError(err)}`);
+      continue;
+    }
+
     try {
       for await (const file of glob.scan({ cwd: basePath, onlyFiles: true, absolute: true, followSymlinks })) {
         if (followSymlinks) {
@@ -201,7 +248,8 @@ export async function collectGlobFiles(
             const real = realpathSync(file);
             if (visitedRealPaths.has(real)) continue;
             visitedRealPaths.add(real);
-          } catch {
+          } catch (err) {
+            addFindWarning(diagnostics, `Skipped '${file}' because symlink resolution failed: ${summarizeError(err)}`);
             continue;
           }
         }
@@ -210,8 +258,8 @@ export async function collectGlobFiles(
         if (shouldSkipRelativePath(rel, includeHidden)) continue;
         matchedFiles.add(file);
       }
-    } catch {
-      // Pattern scan failure — skip
+    } catch (err) {
+      addFindWarning(diagnostics, `Glob scan failed for pattern '${pattern}': ${summarizeError(err)}`);
     }
   }
 
@@ -267,12 +315,13 @@ export function validateSearchPath(
   return resolved;
 }
 
-export function buildGitignoreMatcher(gitignorePath: string): ((rel: string) => boolean) | null {
+export function buildGitignoreMatcher(gitignorePath: string, diagnostics?: FindDiagnostics): ((rel: string) => boolean) | null {
   if (!existsSync(gitignorePath)) return null;
   let raw: string;
   try {
     raw = readFileSync(gitignorePath, 'utf8');
-  } catch {
+  } catch (err) {
+    addFindWarning(diagnostics, `Could not read root .gitignore '${gitignorePath}': ${summarizeError(err)}`);
     return null;
   }
 
@@ -295,8 +344,8 @@ export function buildGitignoreMatcher(gitignorePath: string): ((rel: string) => 
 
     try {
       rules.push({ negate, glob: new Bun.Glob(pat) });
-    } catch {
-      // Skip malformed patterns
+    } catch (err) {
+      addFindWarning(diagnostics, `Skipped malformed .gitignore pattern '${line}': ${summarizeError(err)}`);
     }
   }
 
@@ -313,14 +362,46 @@ export function buildGitignoreMatcher(gitignorePath: string): ((rel: string) => 
   };
 }
 
+export function findNestedGitignoreFiles(basePath: string, rootGitignorePath: string): string[] {
+  const nested: string[] = [];
+  const maxNested = 5;
+
+  const visit = (dir: string): void => {
+    if (nested.length >= maxNested) return;
+
+    let entries: Dirent[];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (nested.length >= maxNested) return;
+      if (SKIP_DIRS.has(entry.name)) continue;
+
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(full);
+      } else if (entry.isFile() && entry.name === '.gitignore' && full !== rootGitignorePath) {
+        nested.push(full);
+      }
+    }
+  };
+
+  visit(basePath);
+  return nested;
+}
+
 export async function collectFilesForSearch(
   basePath: string,
   queryGlob: string | undefined,
+  diagnostics?: FindDiagnostics,
 ): Promise<string[]> {
   if (!queryGlob) {
-    return collectTextFiles(basePath);
+    return collectTextFiles(basePath, diagnostics);
   }
-  return Array.from(await collectGlobFiles(basePath, [queryGlob], false, false));
+  return Array.from(await collectGlobFiles(basePath, [queryGlob], false, false, diagnostics));
 }
 
 const SEARCH_CACHE_MAX = 50;
@@ -333,6 +414,7 @@ function makeSearchCacheKey(key: CacheKey): string {
 export interface ImportGraphLike {
   findImports(file: string): string[];
   findDependents(file: string): string[];
+  getWarnings?(): string[];
 }
 
 export class FindRuntimeService {
@@ -385,8 +467,20 @@ export class FindRuntimeService {
     };
     try {
       await graph.build(projectRoot);
-    } catch {
-      // Import graph build failure is non-fatal.
+    } catch (err) {
+      const warning = `Import graph build failed; relationship results may be incomplete: ${summarizeError(err)}`;
+      logger.warn('[find] Import graph build failed', { projectRoot, error: summarizeError(err) });
+      const degradedGraph = {
+        findImports: (file: string) => graph.findImports(file),
+        findDependents: (file: string) => graph.findDependents(file),
+        getWarnings: () => [
+          warning,
+          ...(graph.getWarnings?.() ?? []),
+        ],
+      } satisfies ImportGraphLike;
+      this.importGraph = degradedGraph;
+      this.importGraphBuiltAt = now;
+      return degradedGraph;
     }
     this.importGraph = graph;
     this.importGraphBuiltAt = now;

@@ -13,6 +13,7 @@ import type {
   AutomationExecutionTargetKind,
   ProviderModelRoutingPolicy,
 } from './types.js';
+import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { getNextAutomationOccurrence } from './schedules.js';
 
 export interface CreateAutomationJobInput {
@@ -23,7 +24,6 @@ export interface CreateAutomationJobInput {
   readonly model?: string | undefined;
   readonly provider?: string | undefined;
   readonly fallbackModels?: readonly string[] | undefined;
-  readonly fallbacks?: readonly string[] | undefined;
   readonly routing?: ProviderModelRoutingPolicy | undefined;
   readonly executionIntent?: ExecutionIntent | undefined;
   readonly template?: string | undefined;
@@ -51,7 +51,6 @@ export interface UpdateAutomationJobInput {
   readonly model?: string | undefined;
   readonly provider?: string | undefined;
   readonly fallbackModels?: readonly string[] | undefined;
-  readonly fallbacks?: readonly string[] | undefined;
   readonly routing?: ProviderModelRoutingPolicy | undefined;
   readonly executionIntent?: ExecutionIntent | undefined;
   readonly template?: string | undefined;
@@ -138,6 +137,40 @@ export function normalizeStringList(value: readonly string[] | undefined): reado
     .map((entry) => entry.trim());
 }
 
+export function normalizeProviderQualifiedModel(value: string | undefined, label: string): string | undefined {
+  if (value === undefined) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  try {
+    splitModelRegistryKey(trimmed);
+  } catch {
+    throw new Error(`${label} must be a provider-qualified registry key; received '${value}'.`);
+  }
+  return trimmed;
+}
+
+export function assertProviderMatchesModel(modelId: string | undefined, providerId: string | undefined, label: string): void {
+  if (!modelId || !providerId) return;
+  const modelProviderId = splitModelRegistryKey(modelId).providerId;
+  if (modelProviderId !== providerId) {
+    throw new Error(`${label} '${modelId}' conflicts with provider '${providerId}'.`);
+  }
+}
+
+export function assertProviderHasModel(modelId: string | undefined, providerId: string | undefined, label: string): void {
+  if (!providerId || modelId) return;
+  throw new Error(`${label} requires a provider-qualified model when provider is supplied.`);
+}
+
+export function normalizeProviderQualifiedModelList(value: readonly string[] | undefined, label: string): readonly string[] | undefined {
+  const normalized = normalizeStringList(value);
+  if (normalized === undefined) return undefined;
+  for (const model of normalized) {
+    normalizeProviderQualifiedModel(model, label);
+  }
+  return normalized;
+}
+
 export function normalizeOptionalString(value: string | undefined): string | undefined {
   if (value === undefined) return undefined;
   const trimmed = value.trim();
@@ -148,15 +181,25 @@ export function normalizeProviderRoutingPolicy(input: {
   readonly provider?: string | undefined;
   readonly modelProvider?: string | undefined;
   readonly fallbackModels?: readonly string[] | undefined;
-  readonly fallbacks?: readonly string[] | undefined;
   readonly routing?: ProviderModelRoutingPolicy | undefined;
 }): ProviderModelRoutingPolicy {
-  const providerId = input.modelProvider ?? input.provider;
-  const fallbackModels = normalizeStringList(
+  const providerId = normalizeOptionalString(input.modelProvider ?? input.provider);
+  const fallbackModels = normalizeProviderQualifiedModelList(
     input.routing?.fallbackModels
-      ?? input.fallbackModels
-      ?? input.fallbacks,
+      ?? input.fallbackModels,
+    'Automation fallback models',
   );
+  const providerFailurePolicy = input.routing?.providerFailurePolicy ?? (
+    fallbackModels && fallbackModels.length > 0
+      ? 'ordered-fallbacks'
+      : 'fail'
+  );
+  if (providerFailurePolicy === 'ordered-fallbacks' && (!fallbackModels || fallbackModels.length === 0)) {
+    throw new Error('Automation ordered fallback routing requires at least one provider-qualified fallback model.');
+  }
+  if (providerFailurePolicy === 'fail' && fallbackModels && fallbackModels.length > 0) {
+    throw new Error('Automation fail routing cannot include fallback models; use ordered-fallbacks to enable model failover.');
+  }
   return {
     providerSelection: input.routing?.providerSelection ?? (
       providerId === 'synthetic'
@@ -165,14 +208,7 @@ export function normalizeProviderRoutingPolicy(input: {
           ? 'concrete'
           : 'inherit-current'
     ),
-    ...(input.routing?.unresolvedModelPolicy
-      ? { unresolvedModelPolicy: input.routing.unresolvedModelPolicy }
-      : {}),
-    providerFailurePolicy: input.routing?.providerFailurePolicy ?? (
-      fallbackModels && fallbackModels.length > 0
-        ? 'ordered-fallbacks'
-        : 'fail'
-    ),
+    providerFailurePolicy,
     ...(fallbackModels !== undefined ? { fallbackModels } : {}),
   };
 }
@@ -186,10 +222,14 @@ export function buildAutomationExecutionIntent(
 }
 
 export function buildDefaultExecution(input: CreateAutomationJobInput, configManager: ConfigManager): AutomationExecutionPolicy {
-  const fallbackModels = normalizeStringList(
-    input.fallbackModels
-      ?? input.fallbacks
-      ?? input.routing?.fallbackModels,
+  const modelId = normalizeProviderQualifiedModel(input.model, 'Automation model');
+  const provider = normalizeOptionalString(input.provider);
+  assertProviderHasModel(modelId, provider, 'Automation model routing');
+  assertProviderMatchesModel(modelId, provider, 'Automation model');
+  const fallbackModels = normalizeProviderQualifiedModelList(
+    input.routing?.fallbackModels
+      ?? input.fallbackModels,
+    'Automation fallback models',
   );
   const thinking = normalizeOptionalString(input.thinking);
   return {
@@ -199,11 +239,11 @@ export function buildDefaultExecution(input: CreateAutomationJobInput, configMan
       kind: 'isolated',
       createIfMissing: true,
     },
-    ...(input.model ? { modelId: input.model } : {}),
-    ...(input.provider ? { modelProvider: input.provider } : {}),
+    ...(modelId ? { modelId } : {}),
+    ...(provider ? { modelProvider: provider } : {}),
     ...(fallbackModels !== undefined ? { fallbackModels } : {}),
     routing: normalizeProviderRoutingPolicy({
-      provider: input.provider,
+      provider,
       fallbackModels,
       routing: input.routing,
     }),

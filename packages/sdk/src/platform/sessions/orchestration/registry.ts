@@ -274,7 +274,7 @@ export class CrossSessionTaskRegistry {
 
   /**
    * Load the persisted graph from disk and hydrate the in-memory graph.
-   * Non-fatal: if the file is missing or malformed, the graph starts empty.
+   * If the file is missing or malformed, the graph starts empty.
    */
   private _load(): void {
     if (!existsSync(this._graphPath)) return;
@@ -296,8 +296,8 @@ export class CrossSessionTaskRegistry {
         path: this._graphPath,
       });
     } catch (e) {
-      // Non-fatal: malformed or missing graph file — start with empty graph
-      logger.debug('CrossSessionTaskRegistry: could not load task graph', {
+      // Malformed or unreadable graph file: start with an empty in-memory graph and surface the persistence fault.
+      logger.warn('CrossSessionTaskRegistry: could not load task graph', {
         path: this._graphPath,
         error: summarizeError(e),
       });
@@ -306,7 +306,7 @@ export class CrossSessionTaskRegistry {
 
   /**
    * Flush the current graph snapshot to disk.
-   * Non-fatal: if the write fails, logs a debug message and continues.
+   * If the write fails, logs a warning and continues with the in-memory graph.
    */
   private _flush(): void {
     this._scheduledFlush();
@@ -343,8 +343,8 @@ export class CrossSessionTaskRegistry {
       const snap = this._graph.snapshot();
       writeFileSync(this._graphPath, JSON.stringify(snap, null, 2), 'utf-8');
     } catch (e) {
-      // Non-fatal: failed to persist graph — in-memory graph remains authoritative
-      logger.debug('CrossSessionTaskRegistry: failed to flush task graph', {
+      // Failed persistence leaves the in-memory graph authoritative.
+      logger.warn('CrossSessionTaskRegistry: failed to flush task graph', {
         path: this._graphPath,
         error: summarizeError(e),
       });

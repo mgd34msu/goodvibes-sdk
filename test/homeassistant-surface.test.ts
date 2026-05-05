@@ -349,8 +349,8 @@ describe('Home Assistant channel surface', () => {
   });
 
   test('expires idle Home Assistant remote sessions before accepting a later turn', async () => {
-    const oldSession = {
-      id: 'session-old',
+    const previousSession = {
+      id: 'session-previous',
       kind: 'companion-chat',
       title: 'Home Assistant',
       provider: 'openai',
@@ -362,7 +362,7 @@ describe('Home Assistant channel surface', () => {
       closedAt: null,
       messageCount: 1,
     };
-    const sessions = new Map<string, Record<string, unknown>>([['session-old', oldSession]]);
+    const sessions = new Map<string, Record<string, unknown>>([['session-previous', previousSession]]);
     let closedSessionId = '';
 
     const routes = new HomeAssistantConversationRoutes({
@@ -390,7 +390,7 @@ describe('Home Assistant channel surface', () => {
           lastSeenAt: Date.now(),
           metadata: {
             ...(input.metadata ?? {}),
-            homeAssistantChatSessionId: 'session-old',
+            homeAssistantChatSessionId: 'session-previous',
           },
         } as AutomationRouteBinding),
         patchBinding: async () => null,
@@ -400,7 +400,7 @@ describe('Home Assistant channel surface', () => {
         getSession: (sessionId: string) => sessions.get(sessionId) as never,
         createSession: (input: Record<string, unknown>) => {
           const session = {
-            ...oldSession,
+            ...previousSession,
             id: 'session-new',
             provider: input.provider ?? null,
             model: input.model ?? null,
@@ -436,7 +436,7 @@ describe('Home Assistant channel surface', () => {
     expect(payload.sessionExpired).toBe(true);
     expect(payload.newSession).toBe(true);
     expect(payload.sessionId).toBe('session-new');
-    expect(closedSessionId).toBe('session-old');
+    expect(closedSessionId).toBe('session-previous');
   });
 
   test('rejects Home Assistant webhook requests without the shared secret', async () => {

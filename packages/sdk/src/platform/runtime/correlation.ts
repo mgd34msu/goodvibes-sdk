@@ -1,5 +1,5 @@
 /**
- * OBS-15: AsyncLocalStorage-based correlation context for request/session/turn/run scoping.
+ * AsyncLocalStorage-based correlation context for request/session/turn/run scoping.
  *
  * Seed at HTTP entry points and session/turn creation so downstream events can
  * automatically attach the correct IDs without explicit threading.

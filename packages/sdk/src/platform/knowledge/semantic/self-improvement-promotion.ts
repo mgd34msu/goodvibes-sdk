@@ -20,12 +20,13 @@ import {
   sourceAuthority,
   type RepairFactClassification,
 } from './repair-fact-selection.js';
+import { sourceAuthorityBoostForAnswer } from './answer-source-ranking.js';
 import {
   normalizeWhitespace,
   readRecord,
   readString,
   readStringArray,
-  semanticHash,
+  semanticFactId,
   semanticMetadata,
   semanticSlug,
   sourceSemanticText,
@@ -255,31 +256,94 @@ async function upsertPromotedRepairFact(input: {
   readonly evidence: string;
   readonly classification: RepairFactClassification | RepairProfileFact;
 }): Promise<number> {
+  await upsertSourceLinkedRepairProfileFact({
+    store: input.store,
+    spaceId: input.spaceId,
+    source: input.source,
+    subjects: input.subjects,
+    authority: input.authority,
+    title: input.title,
+    summary: input.summary,
+    evidence: input.evidence,
+    classification: input.classification,
+    extractor: 'repair-promotion',
+    factMetadata: {
+      gapId: input.gap.id,
+      sourceDiscovery: readRecord(input.source.metadata.sourceDiscovery),
+    },
+    edgeMetadata: {
+      linkedBy: 'semantic-gap-repair',
+      gapId: input.gap.id,
+    },
+  });
+  return 1;
+}
+
+export async function upsertSourceLinkedRepairProfileFact(input: {
+  readonly store: KnowledgeStore;
+  readonly spaceId: string;
+  readonly source: KnowledgeSourceRecord;
+  readonly subjects: readonly KnowledgeNodeRecord[];
+  readonly authority: 'official-vendor' | 'vendor' | 'secondary';
+  readonly title: string;
+  readonly summary: string;
+  readonly evidence: string;
+  readonly classification: RepairFactClassification | RepairProfileFact;
+  readonly extractor: string;
+  readonly confidence?: number | undefined;
+  readonly supportWeight?: number | undefined;
+  readonly describesWeight?: number | undefined;
+  readonly factMetadata?: Record<string, unknown> | undefined;
+  readonly edgeMetadata?: Record<string, unknown> | undefined;
+  readonly metadataBuilder?: ((metadata: Record<string, unknown>) => Record<string, unknown>) | undefined;
+}): Promise<KnowledgeNodeRecord> {
+  const subjectIds = input.subjects.map((subject) => subject.id);
+  const factId = semanticFactId({
+    spaceId: input.spaceId,
+    kind: input.classification.kind,
+    title: input.title,
+    value: input.classification.value,
+    summary: input.summary,
+    subjectIds,
+    fallbackScope: input.source.id,
+  });
+  const existingFact = input.store.getNode(factId);
+  const sourceIds = uniqueStrings([
+    ...readStringArray(existingFact?.metadata.sourceIds),
+    readString(existingFact?.metadata.sourceId),
+    existingFact?.sourceId,
+    input.source.id,
+  ]);
+  const primarySourceId = preferredRepairFactSourceId(input.store, sourceIds, input.source.id);
+  const metadataBuilder = input.metadataBuilder ?? ((metadata: Record<string, unknown>) => semanticMetadata(input.spaceId, metadata));
+  const confidence = input.confidence ?? (input.authority === 'official-vendor' ? 90 : input.authority === 'vendor' ? 82 : 76);
+  const supportWeight = input.supportWeight ?? (input.authority === 'official-vendor' ? 0.96 : 0.84);
+  const describesWeight = input.describesWeight ?? (input.authority === 'official-vendor' ? 0.95 : 0.82);
   const fact = await input.store.upsertNode({
-    id: `sem-fact-${semanticHash(input.spaceId, input.source.id, input.gap.id, input.title, input.summary)}`,
+    id: factId,
     kind: 'fact',
     slug: semanticSlug(`${input.spaceId}-${input.title}-${input.summary}-${input.source.id}`),
     title: input.title,
     summary: input.summary,
     aliases: input.classification.aliases,
     status: 'active',
-    confidence: input.authority === 'official-vendor' ? 90 : input.authority === 'vendor' ? 82 : 76,
-    sourceId: input.source.id,
-    metadata: semanticMetadata(input.spaceId, {
+    confidence,
+    sourceId: primarySourceId,
+    metadata: metadataBuilder({
       semanticKind: 'fact',
       factKind: input.classification.kind,
       value: input.classification.value,
       evidence: input.evidence,
       labels: input.classification.labels,
-      sourceId: input.source.id,
-      gapId: input.gap.id,
+      sourceId: primarySourceId,
+      sourceIds,
       subject: input.subjects[0]?.title,
-      subjectIds: input.subjects.map((subject) => subject.id),
+      subjectIds,
       targetHints: repairSubjectHints(input.subjects),
-      linkedObjectIds: input.subjects.map((subject) => subject.id),
-      extractor: 'repair-promotion',
+      linkedObjectIds: subjectIds,
+      extractor: input.extractor,
       sourceAuthority: input.authority,
-      sourceDiscovery: readRecord(input.source.metadata.sourceDiscovery),
+      ...(input.factMetadata ?? {}),
     }),
   });
   await input.store.upsertEdge({
@@ -288,11 +352,8 @@ async function upsertPromotedRepairFact(input: {
     toKind: 'node',
     toId: fact.id,
     relation: 'supports_fact',
-    weight: input.authority === 'official-vendor' ? 0.96 : 0.84,
-    metadata: semanticMetadata(input.spaceId, {
-      linkedBy: 'semantic-gap-repair',
-      gapId: input.gap.id,
-    }),
+    weight: supportWeight,
+    metadata: metadataBuilder(input.edgeMetadata ?? {}),
   });
   for (const subject of input.subjects) {
     await input.store.upsertEdge({
@@ -301,16 +362,15 @@ async function upsertPromotedRepairFact(input: {
       toKind: 'node',
       toId: subject.id,
       relation: 'describes',
-      weight: input.authority === 'official-vendor' ? 0.95 : 0.82,
-      metadata: semanticMetadata(input.spaceId, {
-        linkedBy: 'semantic-gap-repair',
+      weight: describesWeight,
+      metadata: metadataBuilder({
+        ...(input.edgeMetadata ?? {}),
         repairedAt: Date.now(),
         sourceId: input.source.id,
-        gapId: input.gap.id,
       }),
     });
   }
-  return 1;
+  return fact;
 }
 
 async function linkPromotedFactsToRepairSubjects(
@@ -350,6 +410,12 @@ async function linkPromotedFactsToRepairSubjects(
               ...targetHints,
             ]),
             sourceId: fact.sourceId ?? sourceId,
+            sourceIds: uniqueStrings([
+              ...readStringArray(fact.metadata.sourceIds),
+              readString(fact.metadata.sourceId),
+              fact.sourceId,
+              sourceId,
+            ]),
             linkedBy: readString(fact.metadata.linkedBy) ?? 'semantic-gap-repair',
           }),
         });
@@ -409,10 +475,18 @@ function countUsableRepairFacts(
   subjectIds: ReadonlySet<string>,
 ): number {
   const sources = new Set(sourceIds);
-  return [...buildKnowledgeSemanticGraphIndex(store, spaceId).nodesById.values()]
+  const graph = buildKnowledgeSemanticGraphIndex(store, spaceId);
+  const sourceIdsByFactId = new Map<string, Set<string>>();
+  for (const edge of graph.edges) {
+    if (edge.fromKind !== 'source' || edge.toKind !== 'node' || edge.relation !== 'supports_fact') continue;
+    const current = sourceIdsByFactId.get(edge.toId) ?? new Set<string>();
+    current.add(edge.fromId);
+    sourceIdsByFactId.set(edge.toId, current);
+  }
+  return [...graph.nodesById.values()]
     .filter((node) => node.kind === 'fact' && node.status !== 'stale')
     .filter((node) => getKnowledgeSpaceId(node) === spaceId)
-    .filter((node) => node.sourceId && sources.has(node.sourceId))
+    .filter((node) => factSourceIds(node, sourceIdsByFactId).some((sourceId) => sources.has(sourceId)))
     .filter(isUsableRepairFact)
     .filter((node) => {
       if (subjectIds.size === 0) return true;
@@ -423,6 +497,37 @@ function countUsableRepairFacts(
       return linkedIds.some((id) => subjectIds.has(id));
     })
     .length;
+}
+
+function factSourceIds(
+  fact: KnowledgeNodeRecord,
+  sourceIdsByFactId: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
+): string[] {
+  return uniqueStrings([
+    ...readStringArray(fact.metadata.sourceIds),
+    readString(fact.metadata.sourceId),
+    fact.sourceId,
+    ...(sourceIdsByFactId.get(fact.id) ?? []),
+  ]);
+}
+
+function preferredRepairFactSourceId(
+  store: KnowledgeStore,
+  sourceIds: readonly string[],
+  fallbackSourceId: string,
+): string {
+  const candidates = uniqueStrings(sourceIds)
+    .map((sourceId) => store.getSource(sourceId))
+    .filter((source): source is KnowledgeSourceRecord => Boolean(source && source.status !== 'stale'));
+  if (candidates.length === 0) return fallbackSourceId;
+  return candidates
+    .sort((left, right) => repairFactSourceQuality(right) - repairFactSourceQuality(left) || left.id.localeCompare(right.id))[0]!.id;
+}
+
+function repairFactSourceQuality(source: KnowledgeSourceRecord): number {
+  return sourceAuthorityBoostForAnswer(source)
+    + (source.status === 'indexed' ? 40 : source.status === 'pending' ? 5 : 0)
+    + (source.sourceType === 'manual' || source.sourceType === 'document' ? 12 : source.sourceType === 'url' ? 8 : 0);
 }
 
 function isUsableRepairFact(node: KnowledgeNodeRecord): boolean {

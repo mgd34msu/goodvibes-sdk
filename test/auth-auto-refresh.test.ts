@@ -1,10 +1,7 @@
 /**
  * auth-auto-refresh.test.ts
  *
- * Tests for silent token auto-refresh with in-flight request queuing.
- *
- * Wave 6/8 discipline: exact literal assertions, no regex unions, no auto-pass,
- * no `.catch(() => {})`.
+ * Tests for automatic token refresh with in-flight request queuing.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
@@ -170,8 +167,8 @@ describe('in-flight queuing: concurrent refreshes collapse to one', () => {
     let refreshCount = 0;
     const store = createMemoryTokenStore('token', Date.now() + 10_000);
 
-    // We inject a custom refresh function via a workaround:
-    // create the coordinator directly to verify the queue behaviour.
+    // Create the coordinator directly to verify the queue behaviour with a
+    // custom refresh function.
     const { AutoRefreshCoordinator } = await import(
       '../packages/sdk/src/client-auth/auto-refresh.js'
     );
@@ -272,7 +269,7 @@ describe('reactive 401 terminal: double 401 throws auth error', () => {
     expect(sdkErr.status).toBe(401);
     expect(sdkErr.recoverable).toBe(false);
     expect(typeof sdkErr.message).toBe('string');
-    // Wave 6 three-part message format: [what] · [why] · [what to do]
+    // Three-part message format: [what] · [why] · [what to do]
     expect(sdkErr.message).toContain('Authentication failed');
   });
 
@@ -310,6 +307,47 @@ describe('reactive 401 terminal: double 401 throws auth error', () => {
     expect(threw).toBe(true);
     expect(observedErrors).toHaveLength(1);
     expect(observedErrors[0].kind).toBe('auth');
+  });
+
+  it('reports failed refresh attempts before clearing to anonymous', async () => {
+    const store = createMemoryTokenStore('expiring-token', Date.now() + 10_000);
+    const observedErrors: GoodVibesSdkError[] = [];
+    const transitions: unknown[] = [];
+
+    const observer: SDKObserver = {
+      onError(err) {
+        observedErrors.push(err);
+      },
+      onAuthTransition(transition) {
+        transitions.push(transition);
+      },
+    };
+
+    const { AutoRefreshCoordinator } = await import(
+      '../packages/sdk/src/client-auth/auto-refresh.js'
+    );
+
+    const coordinator = new AutoRefreshCoordinator({
+      tokenStore: store,
+      autoRefresh: true,
+      refreshLeewayMs: 60_000,
+      refresh: async () => {
+        throw new Error('refresh backend unavailable');
+      },
+      observer,
+    });
+
+    await coordinator.ensureFreshToken();
+
+    expect(await store.getToken()).toBeNull();
+    expect(observedErrors).toHaveLength(1);
+    expect(observedErrors[0].code).toBe('SDK_AUTH_REFRESH_FAILED');
+    expect(observedErrors[0].recoverable).toBe(true);
+    expect(transitions).toContainEqual({
+      from: 'token',
+      to: 'anonymous',
+      reason: 'expire',
+    });
   });
 });
 
@@ -401,8 +439,8 @@ describe('opt-out: autoRefresh:false disables refresh and bubbles 401', () => {
 // ---------------------------------------------------------------------------
 
 describe('observer: onAuthTransition emitted on successful refresh', () => {
-  it('emits reason=refresh on successful silent refresh', async () => {
-    const store = createMemoryTokenStore('old-token');
+  it('emits reason=refresh on successful automatic refresh', async () => {
+    const store = createMemoryTokenStore('stale-token');
     const transitions: Array<{ from: string; to: string; reason: string }> = [];
 
     const observer: SDKObserver = {
@@ -442,8 +480,8 @@ describe('observer: onAuthTransition emitted on successful refresh', () => {
     expect(refreshTransition!.reason).toBe('refresh');
   });
 
-  it('emits reason=expired when refresh fails (fallback to anonymous)', async () => {
-    const store = createMemoryTokenStore('old-token', Date.now() + 10_000);
+  it('emits reason=expired when refresh fails and user becomes anonymous', async () => {
+    const store = createMemoryTokenStore('stale-token', Date.now() + 10_000);
     const transitions: Array<{ from: string; to: string; reason: string }> = [];
 
     const observer: SDKObserver = {
@@ -522,12 +560,12 @@ describe('createMemoryTokenStore: expiresAt persistence', () => {
 
 
 // ---------------------------------------------------------------------------
-// 8. Consumer-provided refresh callback — MAJOR 2
+// 8. Consumer-provided refresh callback
 // ---------------------------------------------------------------------------
 
 describe('consumer refresh callback: pre-flight leeway trigger', () => {
   it('consumer-provided refresh is invoked on pre-flight leeway trigger', async () => {
-    const store = createMemoryTokenStore('old-token', Date.now() + 5_000); // within 60s leeway
+    const store = createMemoryTokenStore('stale-token', Date.now() + 5_000); // within 60s leeway
     let refreshCallCount = 0;
 
     const { AutoRefreshCoordinator } = await import(
@@ -551,7 +589,7 @@ describe('consumer refresh callback: pre-flight leeway trigger', () => {
 
   it('consumer refresh persists returned token+expiry via setTokenEntry', async () => {
     const expiry = Date.now() + 3_600_000;
-    const store = createMemoryTokenStore('old-token', Date.now() + 5_000);
+    const store = createMemoryTokenStore('stale-token', Date.now() + 5_000);
 
     const { AutoRefreshCoordinator } = await import(
       '../packages/sdk/src/client-auth/auto-refresh.js'
@@ -576,7 +614,7 @@ describe('consumer refresh callback: pre-flight leeway trigger', () => {
 
 describe('consumer refresh callback: reactive 401 path', () => {
   it('consumer-provided refresh is invoked on 401 reactive retry', async () => {
-    const store = createMemoryTokenStore('old-token');
+    const store = createMemoryTokenStore('stale-token');
     let refreshCallCount = 0;
     let attempt = 0;
 
@@ -605,7 +643,7 @@ describe('consumer refresh callback: reactive 401 path', () => {
   });
 
   it('returned token+expiry from consumer refresh is persisted via setTokenEntry after 401', async () => {
-    const store = createMemoryTokenStore('old-token');
+    const store = createMemoryTokenStore('stale-token');
     const newExpiry = Date.now() + 7_200_000;
     let attempt = 0;
 
@@ -635,7 +673,7 @@ describe('consumer refresh callback: reactive 401 path', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. Broadened is401Error shapes — MINOR 2
+// 9. Broadened is401Error shapes
 // ---------------------------------------------------------------------------
 
 describe('is401Error: broadened error shapes', () => {

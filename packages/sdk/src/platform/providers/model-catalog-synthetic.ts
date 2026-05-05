@@ -2,6 +2,7 @@ import { logger } from '../utils/logger.js';
 import type { BenchmarkEntry } from './model-benchmarks.js';
 import { compositeScore } from './model-benchmarks.js';
 import type { CatalogModel } from './model-catalog.js';
+import type { ContextWindowProvenance } from './registry-types.js';
 import type { SyntheticBackend, CanonicalModel, SyntheticTier } from './synthetic.js';
 
 export interface MinimalModelDefinition {
@@ -17,6 +18,7 @@ export interface MinimalModelDefinition {
     multimodal: boolean;
   };
   contextWindow: number;
+  contextWindowProvenance?: ContextWindowProvenance | undefined;
   selectable: boolean;
   tier: 'free' | 'standard' | 'premium' | 'subscription';
   reasoningEffort?: string[] | undefined;
@@ -175,6 +177,7 @@ export function getSyntheticModelDefinitions(
     const displayName = catalogMatch?.name ?? canonical.id;
     const hasReasoning = catalogMatch?.reasoning === true;
 
+    const hasCatalogContextWindow = bestBackend?.contextWindow != null;
     return {
       id: canonical.id,
       provider: 'synthetic',
@@ -187,7 +190,8 @@ export function getSyntheticModelDefinitions(
         reasoning: hasReasoning,
         multimodal: false,
       },
-      contextWindow: bestBackend?.contextWindow ?? 128_000,
+      contextWindow: hasCatalogContextWindow ? bestBackend.contextWindow! : 128_000,
+      ...(!hasCatalogContextWindow ? { contextWindowProvenance: 'fallback' as const } : {}),
       selectable: true,
       tier: canonical.tier === 'free' ? 'free' : canonical.tier === 'subscription' ? 'subscription' : 'standard',
       ...(hasReasoning ? { reasoningEffort: ['instant', 'low', 'medium', 'high'] } : {}),

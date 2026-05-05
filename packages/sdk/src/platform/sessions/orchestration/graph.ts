@@ -477,7 +477,7 @@ export class SessionTaskGraph {
 
   /**
    * Resolve a set of ref keys to their corresponding CrossSessionTaskRef objects.
-   * Silently skips any keys that are no longer present in the map.
+   * Skips keys that are no longer present in the map.
    */
   private _refsForKeys(keys: Set<string>): CrossSessionTaskRef[] {
     const result: CrossSessionTaskRef[] = [];

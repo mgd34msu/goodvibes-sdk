@@ -4,7 +4,7 @@ The transport packages are source-of-truth packages re-exported through the SDK
 facade.
 
 - `transport-core`: shared direct transport primitives, event/error helpers,
-  UUID fallback, and common transport utilities.
+  UUID helpers, and common transport utilities.
 - `transport-direct`: SDK facade name for in-process direct transport backed by
   `transport-core`. It is a package export subpath only; there is no separate
   `packages/transport-direct` workspace package.

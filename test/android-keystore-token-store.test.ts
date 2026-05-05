@@ -170,6 +170,27 @@ describe('createAndroidKeystoreTokenStore (real factory + mock module)', () => {
     expect(opts['accessible']).toBe('AFU');
   });
 
+  it('rejects unsupported accessible constants instead of using platform defaults', async () => {
+    const loader = () => Promise.resolve({
+      ...mockKeychain,
+      ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY },
+    });
+    const ts = createAndroidKeystoreTokenStore({ service: 'com.test.gv', accessible: 'AFTER_FIRST_UNLOCK' }, loader);
+    await expect(ts.setToken('and-tok-afu')).rejects.toThrow(/does not expose ACCESSIBLE.AFTER_FIRST_UNLOCK/);
+  });
+
+  it('rejects unsupported access-control constants instead of using platform defaults', async () => {
+    const loader = () => Promise.resolve({
+      ...mockKeychain,
+      ACCESS_CONTROL: { BIOMETRY_ANY },
+    });
+    const ts = createAndroidKeystoreTokenStore(
+      { service: 'com.test.gv', accessible: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY', accessControl: 'DEVICE_PASSCODE' },
+      loader,
+    );
+    await expect(ts.setToken('and-tok-pc')).rejects.toThrow(/does not expose ACCESS_CONTROL.DEVICE_PASSCODE/);
+  });
+
   it('setTokenEntry with null token clears storage', async () => {
     const ts = createAndroidKeystoreTokenStore({ service: 'com.test.gv', accessible: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY' }, mockLoader);
     await ts.setToken('and-tok-before');
@@ -185,6 +206,17 @@ describe('createAndroidKeystoreTokenStore (real factory + mock module)', () => {
     await ts2.setToken('tok-and-app2');
     expect(await ts1.getToken()).toBe('tok-and-app1');
     expect(await ts2.getToken()).toBe('tok-and-app2');
+  });
+
+  it('clears and reports corrupt stored payloads', async () => {
+    const ts = createAndroidKeystoreTokenStore({ service: 'com.test.gv', accessible: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY' }, mockLoader);
+    keychainStore.set('com.test.gv', { username: 'goodvibes', password: '{not-json' });
+
+    await expect(ts.getToken()).rejects.toMatchObject({
+      code: 'SDK_TOKEN_STORE_CORRUPT',
+      recoverable: true,
+    });
+    expect(keychainStore.has('com.test.gv')).toBe(false);
   });
 });
 

@@ -32,7 +32,6 @@ import {
   recordMatchesPostSqlFilter,
   reviewQueueScore,
   rowToRecord,
-  safeParseJson,
   scoreRecord,
 } from './memory-store-helpers.js';
 
@@ -749,7 +748,7 @@ export class MemoryStore {
 
   private persist(): void {
     void this.save().catch((err) => {
-      logger.debug('MemoryStore: autosave failed', { error: summarizeError(err) });
+      logger.warn('MemoryStore: autosave failed', { error: summarizeError(err) });
     });
   }
 }

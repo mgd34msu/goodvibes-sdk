@@ -11,7 +11,8 @@
  *   - `getDivergenceReport()` returns aggregated stats.
  *
  * Simulation modes:
- *   - `simulation-only`    — Actual decision enforced; divergence logged silently.
+ *   - `simulation-only`    — Actual decision enforced; divergence recorded for
+ *                            reports without warning emission.
  *   - `warn-on-divergence` — Actual decision enforced; divergence emits a warning.
  *   - `enforce`            — Simulated decision becomes authoritative; blocked if
  *                           divergence gate fails (rate > threshold).

@@ -30,9 +30,8 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 
 | Entry point | Use it when |
 |---|---|
-| `@pellux/goodvibes-sdk/platform` | You are embedding or extending the full GoodVibes platform surface from a server/runtime host |
-| `@pellux/goodvibes-sdk/platform/node` | You need Node-like runtime capability checks or boundary metadata before loading full-platform modules |
-| `@pellux/goodvibes-sdk/platform/runtime` | You are wiring runtime services, events, diagnostics, tasks, stores, or host lifecycle behavior |
+| `@pellux/goodvibes-sdk/platform/node` | You need runtime capability metadata or Node-like runtime-boundary checks before loading server-side modules |
+| `@pellux/goodvibes-sdk/platform/runtime` | You are wiring runtime bootstrap, observability, operations, security, shell, state, transport, or UI behavior |
 | `@pellux/goodvibes-sdk/platform/knowledge` | You are using the base self-improving knowledge/wiki system directly |
 | `@pellux/goodvibes-sdk/platform/knowledge/home-graph` | You are extending the knowledge system for Home Assistant Home Graph behavior |
 | `@pellux/goodvibes-sdk/platform/providers` | You are working with provider registries, model catalogs, capabilities, or provider-specific runtime helpers |
@@ -40,14 +39,15 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 | `@pellux/goodvibes-sdk/platform/pairing` | You need QR code generation, companion token management, and connection info formatting |
 | `@pellux/goodvibes-sdk/platform/daemon` | You need daemon HTTP host helpers, including port-in-use checking |
 
-The platform surface is explicit. There is no public
+The platform surface is explicit. There is no root
+`@pellux/goodvibes-sdk/platform` entry and no public
 `@pellux/goodvibes-sdk/platform/*` wildcard export. Import only subpaths listed
 in `package.json` and [Public surface](./public-surface.md).
 
 Treat `platform/...` modules as full-platform/server-side unless a specific
 document marks the entry point as companion-safe. Today the full surface is
-Bun-oriented; `platform/node` documents and guards Node-like runtime boundaries
-without making the full platform a supported Node consumer surface. Do not
+Bun-oriented; `platform/node` exposes capability metadata and runtime-boundary
+helpers without aggregating the full platform. Do not
 bypass the package export map from applications; repository file layout is not
 the consumer contract.
 

@@ -212,23 +212,6 @@ const EVENT_VALIDATORS: Record<string, (v: unknown) => import('./contracts/share
 /**
  * Validate a runtime event against its registered schema contract.
  *
- * NOTE: This function only validates event types that have a registered
- * validator (approximately 54 of 219 total event types). For unknown types
- * it returns `{ valid: false, violations: ["unknown event type: '...'"]}` —
- * use `isKnownEventType` to guard before calling if you want permissive
- * pass-through for unregistered types.
- *
- * @deprecated Prefer `validateKnownEvent` which makes the partial-coverage
- * contract explicit in its name. This alias is retained for backwards
- * compatibility.
- */
-export function validateEvent(event: unknown): import('./contracts/shared.js').ContractResult {
-  return validateKnownEvent(event);
-}
-
-/**
- * Validate a runtime event against its registered schema contract.
- *
  * Returns `{ valid: false }` for unknown event types — no validator is
  * registered for approximately 165 of 219 total event types. Use
  * `isKnownEventType` to distinguish "unknown type" from "validation failed".

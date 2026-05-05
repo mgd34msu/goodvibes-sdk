@@ -51,12 +51,11 @@ function worklistsPath(storageRoot: string, surfaceRoot?: string): string {
 function loadWorklists(storageRoot: string, surfaceRoot?: string): WorklistRecord[] {
   const path = worklistsPath(storageRoot, surfaceRoot);
   if (!existsSync(path)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as WorklistFile;
-    return parsed?.version === 1 && Array.isArray(parsed.worklists) ? [...parsed.worklists] : [];
-  } catch {
-    return [];
+  const parsed = JSON.parse(readFileSync(path, 'utf-8')) as WorklistFile;
+  if (parsed?.version !== 1 || !Array.isArray(parsed.worklists)) {
+    throw new Error(`Worklist store is malformed: ${path}`);
   }
+  return [...parsed.worklists];
 }
 
 function saveWorklists(storageRoot: string, worklists: readonly WorklistRecord[], surfaceRoot?: string): void {

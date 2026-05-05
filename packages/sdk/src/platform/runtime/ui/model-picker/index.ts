@@ -35,7 +35,7 @@ import { ModelPickerDataProvider } from './data-provider.js';
  * @param models - All selectable models from the registry.
  * @param healthState - Current provider health domain state.
  * @param modelState - Current model domain state.
- * @param pinnedIds - Set of pinned/favorited model IDs.
+ * @param pinnedIds - Set of pinned/favorited model registry keys.
  * @returns Immutable ModelPickerData snapshot.
  */
 export function createModelPickerData(

@@ -220,7 +220,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: HTTP route wiring', () => {
   test('non-200 pass-through via dispatcher: handler returning 403 is plumbed through by dispatcher', async () => {
     // Simulates a non-200 response scenario: the handler returns a 403 Response.
     // Verifies the dispatcher faithfully plumbs through non-200 responses
-    // without swallowing or overriding them.
+    // without replacing or overriding them.
     const forbidden = new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
     const handlers = {
       getSchedulerCapacity: () => forbidden,

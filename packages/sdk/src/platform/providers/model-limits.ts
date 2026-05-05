@@ -53,12 +53,34 @@ export function getModelLimitsCachePath(cacheDir: string): string {
   return join(cacheDir, 'model-limits.json');
 }
 
+function validateModelLimitsCache(value: unknown): { cache: ModelLimitsCache | null; reason?: string } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { cache: null, reason: 'root value is not an object' };
+  }
+  const parsed = value as Partial<ModelLimitsCache>;
+  if (parsed.version !== 1) return { cache: null, reason: 'unsupported cache version' };
+  if (typeof parsed.fetchedAt !== 'number' || !Number.isFinite(parsed.fetchedAt)) {
+    return { cache: null, reason: 'fetchedAt must be a finite number' };
+  }
+  if (typeof parsed.ttlMs !== 'number' || !Number.isFinite(parsed.ttlMs)) {
+    return { cache: null, reason: 'ttlMs must be a finite number' };
+  }
+  if (!parsed.models || typeof parsed.models !== 'object' || Array.isArray(parsed.models)) {
+    return { cache: null, reason: 'models must be an object' };
+  }
+  return { cache: parsed as ModelLimitsCache };
+}
+
 function loadCachedLimits(cachePath: string): ModelLimitsCache | null {
   try {
     const raw = readFileSync(cachePath, 'utf-8');
-    const parsed = JSON.parse(raw) as ModelLimitsCache;
-    if (parsed.version !== 1) return null;
-    return parsed;
+    const parsed = JSON.parse(raw) as unknown;
+    const { cache, reason } = validateModelLimitsCache(parsed);
+    if (!cache) {
+      logger.warn('[model-limits] Ignoring malformed cache', { cachePath, reason: reason ?? 'unknown' });
+      return null;
+    }
+    return cache;
   } catch (error) {
     const message = summarizeError(error);
     if (message.includes('ENOENT') || message.includes('no such file')) {
@@ -75,7 +97,7 @@ function saveCachedLimits(cache: ModelLimitsCache, cachePath: string): void {
     mkdirSync(dirname(cachePath), { recursive: true });
     writeFileSync(cachePath, JSON.stringify(cache, null, 2), 'utf-8');
   } catch (error) {
-    logger.debug('[model-limits] Cache write failed', { error: summarizeError(error) });
+    logger.warn('[model-limits] Cache write failed', { error: summarizeError(error) });
   }
 }
 
@@ -275,7 +297,7 @@ export class ModelLimitsService {
     this.cachedOrMap = this.cachedData ? buildOrMap(this.cachedData) : null;
     if (!this.cachedData || isCacheStale(this.cachedData)) {
       void this.refresh().catch((error) => {
-        logger.debug('[model-limits] Background refresh failed', { error: summarizeError(error) });
+        logger.warn('[model-limits] Background refresh failed', { error: summarizeError(error) });
       });
     }
   }

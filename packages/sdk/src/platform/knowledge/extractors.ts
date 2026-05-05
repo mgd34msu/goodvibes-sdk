@@ -125,6 +125,7 @@ function extractLinksFromHtml(html: string): string[] {
 
 function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
   const html = buffer.toString('utf-8');
+  let readabilityWarning: string | undefined;
   try {
     const readable = extractReadableHtml(html);
     if (readable) {
@@ -153,6 +154,7 @@ function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
       };
     }
   } catch (error) {
+    readabilityWarning = `Readability extraction failed; used lightweight HTML fallback: ${summarizeError(error)}`;
     logger.debug('Knowledge extraction: readability extraction failed; using lightweight HTML extractor', {
       error: summarizeError(error),
     });
@@ -186,6 +188,8 @@ function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
     },
     metadata: {
       paragraphSamples: paragraphs.slice(0, 4),
+      extractionPath: 'lightweight-html',
+      ...(readabilityWarning ? { warnings: [readabilityWarning] } : {}),
     },
   };
 }
@@ -252,10 +256,18 @@ function extractJson(buffer: Buffer): KnowledgeExtractionResult {
       metadata: {},
     };
   } catch (error) {
+    const parseWarning = `JSON parsing failed; used text fallback: ${summarizeError(error)}`;
     logger.debug('Knowledge extraction: JSON parse failed; using text fallback', {
       error: summarizeError(error),
     });
-    return extractTextLike(buffer, 'json', 'json-fallback');
+    const fallback = extractTextLike(buffer, 'json', 'json-fallback');
+    return {
+      ...fallback,
+      metadata: {
+        ...fallback.metadata,
+        warnings: [parseWarning],
+      },
+    };
   }
 }
 

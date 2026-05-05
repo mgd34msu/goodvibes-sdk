@@ -56,13 +56,13 @@ export interface HttpJsonTransportOptions {
   /** Middleware chain applied to every HTTP request/response cycle. */
   readonly middleware?: readonly TransportMiddleware[] | undefined;
   /**
-   * COV-01..04: Optional callback invoked when the retry loop decides to back off.
+   * Optional callback invoked when the retry loop decides to back off.
    * Fires immediately before the sleep delay. Use this to emit TRANSPORT_RETRY_SCHEDULED.
    */
   readonly onRetryScheduled?: ((info: { attempt: number; maxAttempts: number; backoffMs: number; reason: string }) => void) | undefined;
   /**
-   * COV-01..04: Optional callback invoked when the sleep delay completes and the next
-   * attempt is about to start. Fires immediately after the sleep. Use to emit TRANSPORT_RETRY_EXECUTED.
+   * Optional callback invoked when the sleep delay completes and the next attempt is
+   * about to start. Fires immediately after the sleep. Use to emit TRANSPORT_RETRY_EXECUTED.
    */
   readonly onRetryExecuted?: ((info: { attempt: number; maxAttempts: number }) => void) | undefined;
 }
@@ -170,7 +170,7 @@ export function createNetworkTransportError(
     ? error.message.trim()
     : `Transport request failed before receiving a response for ${url}`;
   const hint = `Transport could not reach ${url}. Verify the baseUrl is reachable.`;
-  // MIN-14: only mark network/connection errors as recoverable (i.e. fetch-thrown).
+  // only mark network/connection errors as recoverable (i.e. fetch-thrown).
   // TypeError or other programmer errors should not trigger retries.
   const isNetworkError = error instanceof TypeError
     || (error instanceof Error && /^(?:EAI_AGAIN|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EPIPE|ECONNABORTED)$/.test((error as { code?: string }).code ?? ''))
@@ -211,9 +211,9 @@ function addQueryValue(url: URL, key: string, value: unknown): void {
     return;
   }
   if (typeof value === 'object') {
-    // MIN-5: object query values cannot be reliably round-tripped through URL
+    // object query values cannot be reliably round-tripped through URL
     // query strings (no daemon route parses JSON-stringified query params).
-    // Throw a ContractError instead of silently serialising — callers must
+    // Throw a ContractError instead of implicitly serialising; callers must
     // decompose objects into primitive fields before passing as query parameters.
     throw new ContractError(
       `Contract query parameter "${key}" is an object, which cannot be safely serialised as a URL query value. Decompose it into primitive fields.`,
@@ -232,12 +232,12 @@ function splitContractInput(path: string, input: Record<string, unknown> = {}): 
   readonly remaining: Record<string, unknown>;
 } {
   const remaining = { ...input };
-  // MIN-7: forbid '.' in path-param names to prevent ambiguous flat-key lookup.
+  // forbid '.' in path-param names to prevent ambiguous flat-key lookup.
   // Contract generators must not emit dotted param names like {foo.bar}.
   const interpolatedPath = path.replace(/\{([A-Za-z_][A-Za-z0-9_-]*)\}/g, (_match, key: string) => {
     const value = toStringValue(remaining[key], key);
     delete remaining[key];
-    // MIN-15: encodeURIComponent leaves RFC 3986 sub-delimiters (!'()*~) unencoded.
+    // encodeURIComponent leaves RFC 3986 sub-delimiters (!'()*~) unencoded.
     // If the server uses regex routing, an unencoded `!`, `(`, `)`, `*`, `~`, or
     // `'` in a path segment could match against a route pattern unexpectedly.
     // Encode those characters explicitly after the standard percent-encoding pass.
@@ -286,7 +286,7 @@ const MAX_RETRY_AFTER_MS = 10 * 60 * 1000; // 10 minutes
 function parseRetryAfterMs(headers: Headers): number | undefined {
   const retryAfter = headers.get('retry-after');
   if (!retryAfter) return undefined;
-  // Numeric seconds — MAJ-02: cap to prevent hostile/buggy huge values.
+  // Numeric seconds — cap to prevent hostile/buggy huge values.
   const seconds = Number(retryAfter);
   if (!Number.isNaN(seconds) && seconds > 0) {
     return Math.min(Math.ceil(seconds * 1000), MAX_RETRY_AFTER_MS);
@@ -305,8 +305,7 @@ export async function readJsonBody(response: Response): Promise<unknown> {
   if (!text.trim()) return null;
   try {
     return JSON.parse(text) as unknown;
-  } catch (error) {
-    void error;
+  } catch {
     return text;
   }
 }
@@ -367,13 +366,13 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
     // Determine idempotency: non-GET mutations without an explicit idempotent flag do NOT retry.
     // This is enforced below by gating the retry check on method type.
     const isMutatingMethod = IDEMPOTENCY_KEY_METHODS.has(method.toUpperCase());
-    // MIN-11: pin traceparent once before the retry loop so all retries share one trace span.
+    // pin traceparent once before the retry loop so all retries share one trace span.
     const pinnedTraceHeaders: Record<string, string> = {};
     await injectTraceparentAsync(pinnedTraceHeaders);
-    // MAJ-3: only generate an idempotency key when the call is actually idempotent
+    // only generate an idempotency key when the call is actually idempotent
     // (contract-marked or has a per-method policy override). Sending keys on all
-    // mutating methods would silently de-duplicate a non-retried request if a proxy
-    // retries it, without the SDK ever knowing.
+    // mutating methods could cause duplicate suppression for a non-retried request
+    // if a proxy retries it outside the SDK's control.
     const hasPerMethodOverride = methodId !== undefined && resolveHttpRetryPolicy(retryPolicy, requestOptions.retry).perMethodPolicy[methodId] !== undefined;
     const idempotencyKey = isMutatingMethod && (contractIdempotent || hasPerMethodOverride)
       ? generateIdempotencyKey()
@@ -397,7 +396,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         mergedHeaders['Content-Type'] = 'application/json';
       }
 
-      // MIN-11: merge pre-pinned traceparent headers (captured once before the retry loop)
+      // merge pre-pinned traceparent headers (captured once before the retry loop)
       // so all retry attempts share a single logical trace span.
       for (const [k, v] of Object.entries(pinnedTraceHeaders)) {
         mergedHeaders[k] = v;
@@ -409,7 +408,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
       }
 
       // Notify observer before dispatching the request.
-      invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'http' }));
+      invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'http' }), observer?.onObserverError);
       const sendAt = Date.now();
 
       // Build the middleware context for this attempt.
@@ -422,7 +421,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         signal: requestOptions.signal,
       };
 
-      // MAJ-03: stash parsed body here so the no-middleware fast path avoids re-parsing.
+      // stash parsed body here so the no-middleware fast path avoids re-parsing.
       let _parsedBodyCache: unknown = undefined;
 
       // Build the inner fetch that middleware wraps (and also used directly without middleware).
@@ -445,7 +444,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           const retryAfterMs = parseRetryAfterMs(response.headers);
           throw createTransportError(response.status, c.url, c.method, body, retryAfterMs);
         }
-        // MAJ-03: stash the already-parsed body so the no-middleware fast path can
+        // stash the already-parsed body so the no-middleware fast path can
         // read it directly without a JSON.stringify → JSON.parse round-trip.
         _parsedBodyCache = body;
         // Also expose on ctx so middleware callers can read parsedBody directly.
@@ -473,20 +472,20 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
               method,
             });
           }
-          // MAJ-03: use parsedBody stashed by innerFetch to avoid a JSON round-trip.
+          // use parsedBody stashed by innerFetch to avoid a JSON round-trip.
           const result = (ctx.parsedBody !== undefined ? ctx.parsedBody : await ctx.response.json()) as T;
           invokeTransportObserver(() => observer?.onTransportActivity?.({
             direction: 'recv',
             url,
             kind: 'http',
             durationMs: ctx.durationMs,
-          }));
+          }), observer?.onObserverError);
           return result;
         }
 
         // No-middleware fast path — directly invoke innerFetch with ctx.
         await innerFetch(ctx);
-        // MAJ-03: use the cached parsed body (set by innerFetch) to avoid JSON round-trip.
+        // use the cached parsed body (set by innerFetch) to avoid JSON round-trip.
         const result = _parsedBodyCache as T;
         // Notify observer after a successful response.
         invokeTransportObserver(() => observer?.onTransportActivity?.({
@@ -494,7 +493,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           url,
           kind: 'http',
           durationMs: Date.now() - sendAt,
-        }));
+        }), observer?.onObserverError);
         return result;
       } catch (error) {
         // Wrap middleware errors as SDKError{kind:'unknown'} with middleware identity in cause.
@@ -516,7 +515,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           return error;
         })();
         // Notify observer of the transport error before deciding to retry or rethrow.
-        invokeTransportObserver(() => observer?.onError?.(transportErrorFromUnknown(wrappedError, 'HTTP transport error')));
+        invokeTransportObserver(() => observer?.onError?.(transportErrorFromUnknown(wrappedError, 'HTTP transport error')), observer?.onObserverError);
         const status = typeof wrappedError === 'object' && wrappedError !== null && 'transport' in wrappedError
           ? (wrappedError as { readonly transport?: { readonly status?: unknown } }).transport?.status
           : undefined;
@@ -534,10 +533,10 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         }
         const backoffMs = getHttpRetryDelay(attempt, resolvedRetry);
         const retryReason = typeof status === 'number' && status > 0 ? `http-${status}` : 'network-error';
-        // COV-01..04: notify caller that retry is scheduled (before sleep).
+        // Notify callers before the retry sleep starts.
         onRetryScheduled?.({ attempt, maxAttempts: resolvedRetry.maxAttempts, backoffMs, reason: retryReason });
         await sleepWithSignal(backoffMs, requestOptions.signal);
-        // COV-01..04: notify caller that retry is executing (after sleep).
+        // Notify callers after the retry sleep completes.
         onRetryExecuted?.({ attempt, maxAttempts: resolvedRetry.maxAttempts });
       }
     }

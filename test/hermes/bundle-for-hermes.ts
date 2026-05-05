@@ -7,7 +7,7 @@
  * Uses esbuild (bundled with Bun) with target=es2019 to ensure:
  *   - Private class fields (#field) are downleveled to WeakMap equivalents
  *   - async/await is preserved (supported in Hermes runtimes embedded in RN 0.64+;
- *     rejected by the standalone CLI binary, see FINDINGS.md F1)
+ *     some standalone CLI tarballs reject it and are useful only for syntax probes)
  *   - No node: builtins leak in (matches Metro/Expo bundler constraints)
  *
  * Usage (from repo root):
@@ -16,9 +16,8 @@
  * Output:
  *   test/hermes/dist/hermes-test-bundle.js
  *
- * NOTE: If you see "async functions are unsupported" from the Hermes CLI binary,
- * you have a very old standalone Hermes binary (pre-0.11). See SETUP.md for
- * guidance on obtaining a modern Hermes binary.
+ * NOTE: If the standalone Hermes CLI reports "async functions are unsupported",
+ * use a React Native embedded Hermes binary for runtime checks instead.
  */
 
 import { spawnSync } from 'bun';
@@ -35,9 +34,8 @@ mkdirSync(outDir, { recursive: true });
 
 // Use esbuild CLI via bunx so we can specify --target=es2019:
 //   es2019 = no private class fields (#field), no logical-assignment ops
-//   These features were not in Hermes 0.12/0.13 standalone CLI.
-//   Modern Hermes (RN 0.73+) supports ES2021+ but the CLI binary from
-//   github.com/facebook/hermes releases does not.
+//   Some standalone CLI tarballs reject newer syntax even when React Native
+//   embedded Hermes runtimes support it.
 //
 // The bundle is IIFE format so it runs in Hermes without module plumbing.
 const result = spawnSync([

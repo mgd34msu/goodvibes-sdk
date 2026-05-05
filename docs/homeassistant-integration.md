@@ -90,7 +90,7 @@ config flow setup. The most useful endpoints are:
 | `POST /api/homeassistant/home-graph/link` | Attach a source or fact to an HA object. |
 | `POST /api/homeassistant/home-graph/unlink` | Mark a source/object link inactive without deleting history. |
 | `POST /api/homeassistant/home-graph/ask` | Ask source-backed questions over only the HA knowledge space; responses use the shared semantic wiki answer layer instead of raw snippet dumps. |
-| `POST /api/homeassistant/home-graph/reindex` | Reparse already-stored HA Home Graph artifacts whose extraction is missing, placeholder-only, or from the old placeholder PDF extractor, then refresh semantic facts/pages/gaps. |
+| `POST /api/homeassistant/home-graph/reindex` | Reparse already-stored HA Home Graph artifacts whose extraction is missing or placeholder-only, then refresh semantic facts/pages/gaps. |
 | `POST /api/homeassistant/home-graph/device-passport` | Refresh and materialize a device passport page. |
 | `POST /api/homeassistant/home-graph/room-page` | Generate a room/area page as markdown artifact. |
 | `POST /api/homeassistant/home-graph/packet` | Generate guest, sitter, emergency, contractor, network, or custom packets. |
@@ -199,7 +199,7 @@ limit automatic work:
 
 Home Graph routes return JSON errors for validation or sync failures. Clients
 should treat non-2xx responses as daemon API errors and read the JSON `error`
-field; they should not receive Bun fallback HTML for handled route failures.
+field; they should not receive Bun's default HTML error page for handled route failures.
 
 `POST /api/homeassistant/home-graph/ingest/artifact` is not limited to JSON.
 The Home Assistant integration can forward uploads through its own authenticated
@@ -266,8 +266,8 @@ and broad reindex uses a small LLM budget before continuing deterministically,
 so Home Assistant panels should not add host-side wrappers to avoid hung provider
 requests. If a source was previously enriched deterministically because no LLM
 was available or the LLM budget was exhausted, the SDK can upgrade that source
-during a later ask/reindex and supersede the old deterministic semantic
-facts/pages instead of returning both old and new interpretations.
+during a later ask/reindex and supersede weaker deterministic semantic
+facts/pages instead of returning both previous and current interpretations.
 Repair tasks that are blocked until a retry window include top-level
 `nextRepairAttemptAt` in addition to trace/metadata details, so Home Assistant
 panels can show retry timing without parsing SDK trace details.
@@ -286,12 +286,13 @@ large manual instead of being limited to the first parsed chunks. This is still
 bounded by the SDK search caps and does not rescan whole documents on every
 question.
 
-Older Home Graph artifact sources do not need to be uploaded again. When ask
-finds a relevant linked source with missing, placeholder, or old PDF extraction
-data, the SDK re-extracts the already-stored artifact and saves the
-new extraction record before ranking the answer. Later questions reuse that
-stored extraction instead of parsing the manual on every request. Clients that
-want to repair the whole Home Assistant knowledge space immediately can call
+Home Graph artifact sources do not need to be uploaded again after extraction
+quality improves. When ask finds a relevant linked source with missing or
+placeholder extraction data, the SDK re-extracts the already-stored artifact and
+saves the new extraction record before ranking the answer. Later questions
+reuse that stored extraction instead of parsing the manual on every request.
+Clients that want to repair the whole Home Assistant knowledge space
+immediately can call
 `POST /api/homeassistant/home-graph/reindex`. Reindex reparses stale stored
 artifacts, auto-links matching manuals and documents to Home Assistant devices
 or entities when model/entity/source identity is strong enough, refreshes
@@ -502,13 +503,13 @@ values present in the graph, with counts. Panels should build filter controls
 from those facets and send selected filters back to the SDK; they should not
 fetch the whole graph and implement graph filtering locally. The route also
 accepts a trailing slash and JSON `POST` input with the same fields so panel
-bridges can use either query-string or JSON dispatch without route fallback
+bridges can use either query-string or JSON dispatch without router catch-all
 errors.
 
 Home Graph quality issues are generated from the current graph but review
 decisions are durable. When a user or LLM resolves/rejects an issue through
 `POST /api/homeassistant/home-graph/facts/review`, the SDK records review and
-suppression metadata separately from the generated issue row. Future sync or
+suppression metadata separately from the generated issue row. Later sync or
 quality refreshes do not reopen that issue unless the subject fingerprint
 changes. For known quality issues, semantic review values can also update the
 underlying node facts:
@@ -603,7 +604,7 @@ Home Graph operator methods match the HTTP routes:
 - `homeassistant.homeGraph.map`
 - `homeassistant.homeGraph.pages.list`
 
-Additional browse/export methods are available for source inventory and future
+Additional browse/export methods are available for source inventory and
 knowledge UIs: `homeassistant.homeGraph.sources.list`,
 `homeassistant.homeGraph.browse`, `homeassistant.homeGraph.export`, and
 `homeassistant.homeGraph.import`.
@@ -680,9 +681,9 @@ The daemon creates Home Assistant conversations as isolated remote-chat
 sessions, not shared TUI sessions. It reuses the isolated chat session for the
 same Home Assistant conversation until
 `surfaces.homeassistant.remoteSessionTtlMs` elapses with no activity. The
-default is 20 minutes. After TTL expiry the daemon closes the old chat session
+default is 20 minutes. After TTL expiry the daemon closes the previous chat session
 and starts a fresh one, preventing stale Home Assistant turns from inheriting
-an old, long transcript.
+a prior long transcript.
 
 For an SSE transport, use:
 
@@ -737,13 +738,15 @@ Canonical prompt body:
   "displayName": "Home Assistant",
   "messageId": "ha-msg-123",
   "providerId": "openai",
-  "modelId": "gpt-5.5",
+  "modelId": "openai:gpt-5.5",
   "tools": ["homeassistant_state", "homeassistant_call_service"]
 }
 ```
 
 `message`, `prompt`, `text`, or `task` can carry the prompt text. `providerId`,
 `modelId`, and `tools` are optional; if omitted, daemon/session defaults apply.
+When supplied, `modelId` should be the provider-qualified registry key from
+`GET /api/models`.
 The adapter creates or updates a route binding with
 `surfaceKind: "homeassistant"`, posts the prompt through an isolated
 remote-chat session, and publishes the final reply through the Home Assistant

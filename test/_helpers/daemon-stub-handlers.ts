@@ -19,7 +19,8 @@ function jsonStub<T>(value: T): () => Response {
 
 function controlPlaneStubs(): HandlerStubs {
   return {
-    getStatus: jsonStub({ ok: true, version: '0.0.0-test', uptime: 0 }),
+    postLogin: jsonStub({ authenticated: true, token: 'session-token', username: 'tester', expiresAt: Date.now() + 60_000 }),
+    getStatus: jsonStub({ status: 'running', version: '0.0.0-test' }),
     getCurrentAuth: jsonStub({ authenticated: false }),
     getControlPlaneSnapshot: jsonStub({
       totals: { clients: 0, activeClients: 0, surfaceMessages: 0, recentEvents: 0, requests: 0, errors: 0 },

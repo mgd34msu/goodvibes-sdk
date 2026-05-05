@@ -12,6 +12,11 @@ export interface FileOpResult {
   dry_run?: boolean | undefined;
   would_delete?: string[] | undefined;
   updated_imports?: string[] | undefined;
+  warnings?: string[] | undefined;
+}
+
+function appendFileOpWarning(result: FileOpResult, warning: string): void {
+  result.warnings = [...(result.warnings ?? []), warning];
 }
 
 function resolveFileOpPath(p: string, op: 'copy' | 'move' | 'delete', projectRoot: string): string {
@@ -21,17 +26,18 @@ function resolveFileOpPath(p: string, op: 'copy' | 'move' | 'delete', projectRoo
   return resolve(p);
 }
 
-function collectPaths(p: string, acc: string[] = []): string[] {
+function collectPaths(p: string, acc: string[] = [], warnings: string[] = []): string[] {
   try {
     const st = statSync(p);
     if (st.isDirectory()) {
       for (const entry of readdirSync(p)) {
-        collectPaths(join(p, entry), acc);
+        collectPaths(join(p, entry), acc, warnings);
       }
     } else {
       acc.push(p);
     }
-  } catch {
+  } catch (err) {
+    warnings.push(`Could not inspect '${p}' while collecting delete preview: ${summarizeError(err)}`);
     acc.push(p);
   }
   return acc;
@@ -47,17 +53,23 @@ function computeRelativeImportPath(fromFile: string, toFile: string): string {
   return rel.endsWith('/') ? rel + base : rel + '/' + base;
 }
 
-async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoot: string): Promise<string[]> {
+async function updateImportsAfterMove(
+  oldSrc: string,
+  newDst: string,
+  projectRoot: string,
+): Promise<{ updated: string[]; warnings: string[] }> {
   const TS_EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
   const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', '.next', '.nuxt', '.cache', '__pycache__']);
   const allFiles: string[] = [];
+  const warnings: string[] = [];
 
   function walkDir(dir: string): void {
     let entries: string[];
     try {
       entries = readdirSync(dir);
     } catch (error) {
-      logger.debug('file move import update: failed to read directory', {
+      warnings.push(`Import update could not read directory '${dir}': ${summarizeError(error)}`);
+      logger.warn('file move import update: failed to read directory', {
         dir,
         error: summarizeError(error),
       });
@@ -72,7 +84,8 @@ async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoo
         const ext = full.slice(full.lastIndexOf('.'));
         if (TS_EXTS.has(ext)) allFiles.push(full);
       } catch (error) {
-        logger.debug('file move import update: failed to stat path', {
+        warnings.push(`Import update could not stat '${full}': ${summarizeError(error)}`);
+        logger.warn('file move import update: failed to stat path', {
           path: full,
           error: summarizeError(error),
         });
@@ -88,7 +101,8 @@ async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoo
     try {
       content = readFileSync(file, 'utf-8');
     } catch (error) {
-      logger.debug('file move import update: failed to read file', {
+      warnings.push(`Import update could not read '${file}': ${summarizeError(error)}`);
+      logger.warn('file move import update: failed to read file', {
         file,
         error: summarizeError(error),
       });
@@ -112,7 +126,8 @@ async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoo
         writeFileSync(file, newContent, 'utf-8');
         updated.push(file);
       } catch (err) {
-        logger.debug('exec file_ops update_imports: write failed (non-fatal)', {
+        warnings.push(`Import update could not write '${file}': ${summarizeError(err)}`);
+        logger.warn('exec file_ops update_imports: write failed', {
           file,
           error: summarizeError(err),
         });
@@ -120,7 +135,7 @@ async function updateImportsAfterMove(oldSrc: string, newDst: string, projectRoo
     }
   }
 
-  return updated;
+  return { updated, warnings };
 }
 
 export function executeFileOp(op: ExecFileOp, projectRoot: string): FileOpResult {
@@ -129,8 +144,12 @@ export function executeFileOp(op: ExecFileOp, projectRoot: string): FileOpResult
 
   if (op.op === 'delete') {
     if (op.dry_run) {
+      const warnings: string[] = [];
       result.dry_run = true;
-      result.would_delete = collectPaths(src);
+      result.would_delete = collectPaths(src, [], warnings);
+      if (warnings.length > 0) {
+        result.warnings = warnings;
+      }
       return result;
     }
     if (op.recursive) {
@@ -163,7 +182,11 @@ export function executeFileOp(op: ExecFileOp, projectRoot: string): FileOpResult
   if (op.op === 'move') {
     try {
       renameSync(src, dst);
-    } catch {
+    } catch (err) {
+      appendFileOpWarning(
+        result,
+        `file_ops move used copy/delete fallback after rename failed from '${src}' to '${dst}': ${summarizeError(err)}`,
+      );
       if (op.recursive) {
         cpSync(src, dst, { recursive: true });
         rmSync(src, { recursive: true, force: true });
@@ -180,9 +203,10 @@ export function executeFileOp(op: ExecFileOp, projectRoot: string): FileOpResult
 export async function executeFileOperations(
   fileOps: ExecFileOp[] | undefined,
   projectRoot: string,
-): Promise<{ fileOpResults: FileOpResult[]; fileOpError?: string }> {
+): Promise<{ fileOpResults: FileOpResult[]; fileOpError?: string; fileOpWarnings?: string[] }> {
   const fileOpResults: FileOpResult[] = [];
   const pendingImportUpdates: Array<{ src: string; dst: string }> = [];
+  const fileOpWarnings: string[] = [];
 
   if (!fileOps || fileOps.length === 0) {
     return { fileOpResults };
@@ -192,22 +216,38 @@ export async function executeFileOperations(
     try {
       const opResult = executeFileOp(op, projectRoot);
       fileOpResults.push(opResult);
+      fileOpWarnings.push(...(opResult.warnings ?? []));
       if (op.op === 'move' && op.update_imports && opResult.destination) {
         pendingImportUpdates.push({ src: opResult.source, dst: opResult.destination });
       }
     } catch (err) {
       const msg = summarizeError(err);
-      return { fileOpResults, fileOpError: `file_ops failed: ${msg}` };
+      return {
+        fileOpResults,
+        fileOpError: `file_ops failed: ${msg}`,
+        ...(fileOpWarnings.length > 0 ? { fileOpWarnings } : {}),
+      };
     }
   }
 
   for (const { src, dst } of pendingImportUpdates) {
+    const matchingResult = fileOpResults.find((r) => r.source === src && r.destination === dst);
     try {
-      const updated = await updateImportsAfterMove(src, dst, projectRoot);
-      const matchingResult = fileOpResults.find((r) => r.source === src && r.destination === dst);
-      if (matchingResult) matchingResult.updated_imports = updated;
+      const updateResult = await updateImportsAfterMove(src, dst, projectRoot);
+      if (matchingResult) {
+        matchingResult.updated_imports = updateResult.updated;
+        for (const warning of updateResult.warnings) {
+          appendFileOpWarning(matchingResult, warning);
+        }
+      }
+      fileOpWarnings.push(...updateResult.warnings);
     } catch (err) {
-      logger.debug('exec file_ops: update_imports failed (non-fatal)', {
+      const warning = `file_ops update_imports failed after moving '${src}' to '${dst}': ${summarizeError(err)}`;
+      if (matchingResult) {
+        appendFileOpWarning(matchingResult, warning);
+      }
+      fileOpWarnings.push(warning);
+      logger.warn('exec file_ops: update_imports failed', {
         src,
         dst,
         error: summarizeError(err),
@@ -215,5 +255,8 @@ export async function executeFileOperations(
     }
   }
 
-  return { fileOpResults };
+  return {
+    fileOpResults,
+    ...(fileOpWarnings.length > 0 ? { fileOpWarnings } : {}),
+  };
 }

@@ -6,13 +6,10 @@
     "lib": [
       "ES2024",
       // DOM is intentionally included for this package:
-      // packages/sdk/src includes both browser/RN client code (needs DOM globals
-      // like WebSocket, fetch, EventSource, URLSearchParams) and Node/Bun daemon
-      // code. Splitting into separate tsconfig.node.json would require duplicating
-      // references and paths across multiple configs with no compile-time benefit
-      // because daemon-side files already exclude DOM-only APIs by convention.
-      // Acceptable trade-off until the browser and daemon entrypoints are separated
-      // into distinct sub-packages.
+      // packages/sdk/src intentionally contains browser/RN clients plus Node/Bun
+      // daemon entrypoints. Public package exports and metadata checks keep
+      // runtime boundaries explicit while the umbrella SDK keeps every GoodVibes
+      // capability available from one package.
       "DOM"
     ],
     "types": [

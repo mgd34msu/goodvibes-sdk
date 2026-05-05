@@ -77,8 +77,7 @@ function isStale(): boolean {
 
 // Note: runBuild() uses execFileSync directly rather than the run() helper from
 // release-shared.ts because bundle-budget.ts is a standalone script that must
-// not import release pipeline code. A shared lightweight exec helper could be
-// extracted to scripts/_runtime.ts in a future cleanup pass.
+// not import release pipeline code.
 function runBuild(): void {
   console.log('Running bun run build …');
   execFileSync('bun', ['run', 'build'], {
@@ -136,8 +135,17 @@ function loadBudgets(): BudgetConfig {
   }
   const raw = JSON.parse(readFileSync(BUDGETS_PATH, 'utf8')) as Record<string, unknown>;
   return Object.fromEntries(
-    Object.entries(raw).filter(([key]) => !key.startsWith('_')),
+    Object.entries(raw).filter(([, value]) => isBudgetEntry(value)),
   ) as BudgetConfig;
+}
+
+function isBudgetEntry(value: unknown): value is BudgetEntry {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    typeof (value as { gzip_bytes?: unknown }).gzip_bytes === 'number',
+  );
 }
 
 function loadExports(): Record<string, ExportValue> {
@@ -234,11 +242,10 @@ for (const { entry, distRel } of entries) {
 
 // ─── Table output ─────────────────────────────────────────────────────────────
 
-// NIT-04 + NIT-12: drift check for the `./events` aggregate `domains` array.
 // The aggregate `./events` budget entry carries a `domains` array enumerating
 // the in-scope event-domain identifiers. The list is documentation-only for
 // human readers, but stale entries (a domain was removed but the list wasn't
-// updated, or a new domain was added without listing it) silently skew
+// updated, or a new domain was added without listing it) can skew
 // expectations. This check asserts the list matches dist/events/<domain>.js
 // exactly. Single source of truth for the domain inventory remains the dist
 // filesystem; this gate just keeps the readable list in lockstep.

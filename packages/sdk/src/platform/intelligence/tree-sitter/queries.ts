@@ -374,7 +374,7 @@ export function extractSymbols(
     if (langId === 'python') {
       return extractPythonSymbols(root);
     }
-    logger.debug('extractSymbols: unsupported language', { langId });
+    logger.warn('extractSymbols: unsupported language', { langId });
     return [];
   } catch (err) {
     logger.error('extractSymbols: failed', { langId, error: summarizeError(err) });
@@ -441,7 +441,7 @@ export function findEnclosingScope(
         : null;
 
   if (!scopeTypes) {
-    logger.debug('findEnclosingScope: unsupported language', { langId });
+    logger.warn('findEnclosingScope: unsupported language', { langId });
     return null;
   }
 

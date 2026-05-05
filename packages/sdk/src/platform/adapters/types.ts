@@ -92,7 +92,7 @@ export interface SurfaceAdapterContext {
     sessionId: string,
     envelope: Omit<ConversationMessageEnvelope, 'sessionId'>,
   ) => void;
-  readonly queueNtfyChatReply?: ((input: QueueNtfyChatReplyInput) => void) | undefined | undefined;
+  readonly queueNtfyChatReply?: ((input: QueueNtfyChatReplyInput) => void) | undefined;
   readonly postNtfyRemoteChatMessage?: (input: {
     readonly topic: string;
     readonly body: string;

@@ -199,8 +199,8 @@ export const EXEC_TOOL_SCHEMA = {
           update_imports: {
             type: 'boolean',
             description:
-              'After a move, find all TypeScript/JavaScript files that import from the old path '
-              + 'and rewrite their import statements to use the new path (move only). Default: false.',
+              'After a move, find all TypeScript/JavaScript files that import from the previous path '
+              + 'and rewrite their import statements to use the new path for this move. Default: false.',
             default: false,
           },
         },
@@ -308,6 +308,8 @@ export interface ExecCommandResult {
   skipped?: boolean | undefined;
   /** Path to the pollable progress file when progress tracking is enabled. */
   progress_file?: string | undefined;
+  /** Tool-level warnings for degraded command collection or side effects. */
+  warnings?: string[] | undefined;
 }
 
 // BackgroundProcess is defined in shared/process-manager and re-exported here for consumers of this schema module.

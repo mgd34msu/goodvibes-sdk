@@ -3,9 +3,9 @@
  *
  * Integration tests for the auto-refresh transport middleware wired into
  * createGoodVibesSdk. Verifies that ALL typed operator/peer calls benefit
- * from silent token refresh — not only auth.current().
+ * from automatic token refresh — not only auth.current().
  *
- * Wave 6/8 discipline: exact literal assertions, no regex unions, no auto-pass,
+ * Assertion discipline: exact literal assertions, no regex unions, no auto-pass,
  * no `.catch(() => {})`, no skipped tests, no todo tests.
  */
 
@@ -138,7 +138,7 @@ describe('transport integration: failed refresh produces terminal auth error', (
     expect(sdkErr.category).toBe('authentication');
     expect(sdkErr.status).toBe(401);
     expect(sdkErr.recoverable).toBe(false);
-    // Wave 6 three-part message: contains "Authentication failed"
+    // Three-part message: contains "Authentication failed"
     expect(sdkErr.message).toContain('Authentication failed');
   });
 });

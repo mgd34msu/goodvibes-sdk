@@ -29,9 +29,6 @@ import {
   type SerializedEventEnvelope,
 } from './domain-events.js';
 
-// RuntimeEventRecord is imported from @pellux/goodvibes-contracts (canonical structural constraint).
-// This eliminates the RuntimeEventRecord_2 api-extractor rename collision.
-
 export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = RuntimeEventRecord> =
   SerializedEventEnvelope<TEvent>;
 
@@ -39,7 +36,7 @@ export type RemoteRuntimeEvents<TEvent extends RuntimeEventRecord = RuntimeEvent
   DomainEvents<RuntimeEventDomain, TEvent>;
 
 export interface RemoteRuntimeEventsOptions {
-  readonly onError?: ((error: Error, domain: RuntimeEventDomain) => void) | undefined | undefined;
+  readonly onError?: ((error: Error, domain: RuntimeEventDomain) => void) | undefined;
   readonly observer?: TransportObserver | undefined;
 }
 
@@ -73,19 +70,19 @@ export { forSession as forSessionRuntime } from './domain-events.js';
 
 export interface RuntimeEventConnectorOptions {
   readonly reconnect?: StreamReconnectPolicy | undefined;
-  readonly onError?: ((error: unknown) => void) | undefined | undefined;
-  readonly onOpen?: (() => void) | undefined | undefined;
-  readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined | undefined;
+  readonly onError?: ((error: unknown) => void) | undefined;
+  readonly onOpen?: (() => void) | undefined;
+  readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined;
   readonly observer?: TransportObserver | undefined;
   /**
    * Called once the WebSocket connector is set up, providing an `emitLocal`
    * function the caller can use to send messages over this connection.
    * Primarily for tests and local harnesses that need to inject outbound frames.
    */
-  readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined | undefined;
+  readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined;
 }
 
-type AuthTokenSource = string | null | undefined | AuthTokenResolver;
+export type AuthTokenSource = string | null | undefined | AuthTokenResolver;
 type TimeoutHandle = ReturnType<typeof setTimeout> & { unref?: () => void };
 
 /** Default max reconnect attempts for WebSocket connections (finite to prevent infinite auth loops). */
@@ -117,7 +114,7 @@ export class WebSocketTransportError extends GoodVibesSdkError {
    * `WS_EVENT_ERROR`, `WS_QUEUE_OVERFLOW`, `WS_REMOTE_ERROR`, and
    * `WS_FRAME_TOO_LARGE`.
    *
-   * MAJ-4: override Symbol.hasInstance to enable cross-realm instanceof checks.
+   * Overrides Symbol.hasInstance to enable cross-realm instanceof checks.
    * Without this, `instanceof WebSocketTransportError` in a different realm
    * (e.g. a Cloudflare Worker or cross-frame context) falls through to the base
    * GoodVibesSdkError brand only and cannot distinguish WS errors from other
@@ -132,7 +129,7 @@ export class WebSocketTransportError extends GoodVibesSdkError {
     }
     // Require the base SDK brand AND a WS-specific code prefix to prevent plain
     // objects like { code: 'WEBSOCKET_TRANSPORT_ERROR' } from passing.
-    // MIN-3: use an explicit allowlist of canonical WS codes rather than
+    // Use an explicit allowlist of canonical WS codes rather than
     // the open-ended 'WS_' prefix check which would match any hand-crafted
     // GoodVibesSdkError with a WS_* code.
     const CANONICAL_WS_CODES = new Set([
@@ -148,7 +145,6 @@ export class WebSocketTransportError extends GoodVibesSdkError {
       && CANONICAL_WS_CODES.has(String((value as Record<PropertyKey, unknown>).code));
   }
 
-  // NIT-9: code is required — all call sites pass an explicit sub-code.
   // Use one of: WS_CLOSE_ABNORMAL, WS_EVENT_ERROR, WS_QUEUE_OVERFLOW, WS_REMOTE_ERROR, WS_FRAME_TOO_LARGE.
   constructor(message: string, options: { readonly cause?: unknown; readonly hint?: string; readonly code: string }) {
     super(message, {
@@ -169,7 +165,7 @@ export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = Ru
 ): RemoteRuntimeEvents<TEvent> {
   const domainOptions: RemoteDomainEventsOptions<RuntimeEventDomain> = {
     onConnectionError: (error, domain) => {
-      invokeTransportObserver(() => options.observer?.onError?.(error));
+      invokeTransportObserver(() => options.observer?.onError?.(error), options.observer?.onObserverError);
       options.onError?.(error, domain);
     },
   };
@@ -193,7 +189,7 @@ export function buildWebSocketUrl(
   baseUrl: string,
   domains: readonly RuntimeEventDomain[],
 ): string {
-  // MIN-4: protocol validation and error messaging here mirrors normalizeBaseUrl in
+  // protocol validation and error messaging here mirrors normalizeBaseUrl in
   // transport-http/src/paths.ts. These two code paths enforce the same rule with
   // different error messages. If the supported protocol set ever changes, update both.
   const url = new URL('/api/control-plane/ws', normalizeBaseUrl(baseUrl));
@@ -245,7 +241,7 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
     const sseHeaders: Record<string, string> = {};
     await injectTraceparentAsync(sseHeaders);
     // Notify observer of outbound SSE connection attempt.
-    invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'sse' }));
+    invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'sse' }), observer?.onObserverError);
     try {
       return await openServerSentEventStream(fetchImpl, url, {
         onEvent: (eventName, payload) => {
@@ -259,11 +255,11 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
             if (envelope.payload) {
               (observer as { onEvent?: (e: unknown) => void } | undefined)?.onEvent?.(envelope.payload);
             }
-          });
+          }, observer?.onObserverError);
         },
         onError: (err) => {
           const streamError = transportErrorFromUnknown(err, 'SSE runtime event stream error');
-          invokeTransportObserver(() => observer?.onError?.(streamError));
+          invokeTransportObserver(() => observer?.onError?.(streamError), observer?.onObserverError);
           handleError?.(streamError);
         },
       }, {
@@ -273,7 +269,7 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
       });
     } catch (error) {
       const connectionError = transportErrorFromUnknown(error, 'SSE runtime event connection failed');
-      invokeTransportObserver(() => observer?.onError?.(connectionError));
+      invokeTransportObserver(() => observer?.onError?.(connectionError), observer?.onObserverError);
       handleError?.(connectionError);
       throw connectionError;
     }
@@ -308,7 +304,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     const outboundQueue: Array<{ readonly data: string; readonly sizeBytes: number }> = [];
     let outboundQueueBytes = 0;
     let droppedOutboundCount = 0;
-    // MIN-17: track overflow notification count so we fire on every overflow burst
+    // track overflow notification count so we fire on every overflow burst
     // rather than once per connection lifetime. queueOverflowNotified is reset in
     // flushOutboundQueue when the connection restores.
     let queueOverflowNotified = false;
@@ -339,8 +335,8 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       if (sizeBytes > MAX_OUTBOUND_MESSAGE_BYTES) {
         droppedOutboundCount += 1;
         overflowEventCount += 1;
-        // MIN-17: fire on first overflow and every 10th thereafter so bursts between
-        // reconnects are observable rather than silently swallowed after the first.
+        // fire on first overflow and every 10th thereafter so bursts between
+        // reconnects stay observable after the first.
         if (overflowEventCount === 1 || overflowEventCount % 10 === 0) {
           queueOverflowNotified = true;
           options.onError?.(new WebSocketTransportError(
@@ -362,7 +358,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         outboundQueueBytes -= dropped.sizeBytes;
         droppedOutboundCount += 1;
         overflowEventCount += 1;
-        // MIN-17: fire on first overflow and every 10th thereafter.
+        // fire on first overflow and every 10th thereafter.
         if (overflowEventCount === 1 || overflowEventCount % 10 === 0) {
           queueOverflowNotified = true;
           options.onError?.(new WebSocketTransportError(
@@ -383,7 +379,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 
     const closeSocket = () => {
       if (!socket) return;
-      // MIN-18: clear any pending reconnect timer so close() cannot schedule
+      // clear any pending reconnect timer so close() cannot schedule
       // a second reconnect while one is already pending.
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
@@ -409,7 +405,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         reconnectTimer = null;
         void connect().catch((error) => {
           const connectionError = transportErrorFromUnknown(error, 'WebSocket runtime event reconnect failed');
-          invokeTransportObserver(() => observer?.onError?.(connectionError));
+          invokeTransportObserver(() => observer?.onError?.(connectionError), observer?.onObserverError);
           options.onError?.(connectionError);
           scheduleReconnect();
         });
@@ -419,7 +415,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     };
 
     const flushOutboundQueue = (ws: WebSocket) => {
-      // MAJ-2: re-check socket open before each send so queued messages are not
+      // re-check socket open before each send so queued messages are not
       // lost when the socket closes between the auth frame and the drain loop.
       // Messages that cannot be sent are left in the queue for the next reconnect cycle.
       while (outboundQueue.length > 0) {
@@ -444,8 +440,8 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         : socket;
       try {
         const authToken = (await getAuthToken()) ?? null;
-        // MAJ-05: surface a diagnostic error when the token resolver returns null
-        // instead of silently entering a reconnect loop.
+        // surface a diagnostic error when the token resolver returns null
+        // before a reconnect loop is scheduled.
         if (authToken === null || authToken === undefined) {
           options.onError?.(new ConfigurationError(
             'WebSocket auth token resolver returned null. Check transport options.authToken / options.getAuthToken.',
@@ -456,7 +452,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         }
         if (!openedSocket || stopped || socket !== openedSocket) return;
         // Notify observer of outbound WS connection.
-        invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }));
+        invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'ws' }), observer?.onObserverError);
         // Send auth frame first, then drain any messages buffered during resolution.
         // Inject traceparent into the auth frame for W3C Trace Context propagation over WebSocket.
         const wsTraceHeaders: Record<string, string> = {};
@@ -473,7 +469,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         options.onOpen?.();
       } catch (error) {
         const sendError = transportErrorFromUnknown(error, 'WebSocket send failed');
-        invokeTransportObserver(() => observer?.onError?.(sendError));
+        invokeTransportObserver(() => observer?.onError?.(sendError), observer?.onObserverError);
         options.onError?.(sendError);
         closeSocket();
         scheduleReconnect();
@@ -485,7 +481,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         if (typeof event.data !== 'string') {
           throw new WebSocketTransportError('WebSocket runtime event frame was not a string payload.', { code: 'WS_EVENT_ERROR' });
         }
-        // MAJ-6: cheap pre-check (1 byte per char worst case) avoids allocating
+        // cheap pre-check (1 byte per char worst case) avoids allocating
         // the full UTF-8 buffer for clearly-oversized frames. Only fall through
         // to textEncoder.encode when within the fast bound.
         if (event.data.length > MAX_INBOUND_FRAME_BYTES) {
@@ -522,7 +518,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
             if (wsPayload.payload) {
               (observer as { onEvent?: (e: unknown) => void } | undefined)?.onEvent?.(wsPayload.payload);
             }
-          });
+          }, observer?.onObserverError);
         }
       } catch (error) {
         const malformed = new GoodVibesSdkError(`Malformed WebSocket runtime event frame: ${transportErrorFromUnknown(error, 'parse error').message}`, {
@@ -531,7 +527,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           recoverable: true,
           cause: error,
         });
-        invokeTransportObserver(() => observer?.onError?.(malformed));
+        invokeTransportObserver(() => observer?.onError?.(malformed), observer?.onObserverError);
         options.onError?.(malformed);
       }
     };
@@ -540,7 +536,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       hasReceivedMessage = false;
       if (!stopped && event.code !== 1000 && event.code !== 1005) {
         const closeError = webSocketCloseError(event);
-        invokeTransportObserver(() => observer?.onError?.(closeError));
+        invokeTransportObserver(() => observer?.onError?.(closeError), observer?.onObserverError);
         options.onError?.(closeError);
       }
       closeSocket();
@@ -549,7 +545,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 
     const onError = (event: Event) => {
       const streamError = webSocketEventError(event, socket, url);
-      invokeTransportObserver(() => observer?.onError?.(streamError));
+      invokeTransportObserver(() => observer?.onError?.(streamError), observer?.onObserverError);
       options.onError?.(streamError);
     };
 
@@ -564,7 +560,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       nextSocket.addEventListener('error', onError);
     };
 
-    // MAJ-1: connect() is async but new WebSocket() does not throw synchronously;
+    // connect() is async but new WebSocket() does not throw synchronously;
     // transport-level failures surface through onError/onClose. The try/catch
     // here was dead code. Remove it and rely entirely on those event handlers.
     void connect();
@@ -574,7 +570,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         clearTimeout(reconnectTimer);
       }
       closeSocket();
-      // MAJ-3: reset the outbound buffer on disposal so a future reconnect
+      // reset the outbound buffer on disposal so a future reconnect
       // (or re-use of the returned cleanup path in tests) does not accumulate
       // stale byte totals. Both must be reset together to prevent accounting drift.
       outboundQueue.length = 0;
@@ -584,7 +580,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 }
 
 function webSocketCloseError(event: CloseEvent): Error {
-  // NIT-03: cap reason length to prevent oversized error messages.
+  // Cap reason length to prevent oversized error messages.
   const rawReason = typeof event.reason === 'string' ? event.reason.trim() : '';
   const reason = rawReason.length > 256 ? `${rawReason.slice(0, 256)}…` : rawReason;
   const code = typeof event.code === 'number' ? event.code : 1005;
@@ -601,7 +597,7 @@ function webSocketCloseError(event: CloseEvent): Error {
 }
 
 function webSocketEventError(event: Event, socket: WebSocket | null, url: string): Error {
-  // MIN-20: We cast to ErrorEvent to access `error`/`message` fields.
+  // We cast to ErrorEvent to access `error`/`message` fields.
   // Per the WHATWG spec, WebSocket `error` events are plain Events — not ErrorEvents
   // — so `candidate.error` and `candidate.message` may be undefined in compliant
   // browsers. The safe-extract path below handles both cases: if `candidate.error`
@@ -609,7 +605,7 @@ function webSocketEventError(event: Event, socket: WebSocket | null, url: string
   // if not, we fall through to the generic `describeUnknownTransportError` branch.
   // Using `socket.onerror` directly instead would lose the envelope-unwrap logic here.
   const candidate = event as ErrorEvent;
-  // MIN-19: avoid retaining the raw event.error (which may hold currentTarget/target
+  // avoid retaining the raw event.error (which may hold currentTarget/target
   // back-references to the WebSocket, creating retention chains over many reconnects).
   // Capture only name+message from Error instances; stringify anything else.
   const safeError = candidate.error instanceof Error

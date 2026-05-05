@@ -61,11 +61,13 @@ export async function prehookPhase(
     };
   } catch (err) {
     // Hook infrastructure failure — allow execution to proceed
-    logger.debug('prehook infrastructure failure', { error: summarizeError(err) });
+    const message = summarizeError(err);
+    logger.warn('prehook infrastructure failure; allowing tool execution', { error: message });
     return {
       phase: 'prehooked',
       success: true,
       durationMs: performance.now() - start,
+      warnings: [`Pre-hook warning: ${message}`],
     };
   }
 }

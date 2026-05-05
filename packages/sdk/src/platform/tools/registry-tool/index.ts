@@ -215,7 +215,7 @@ export function createRegistryTool(toolRegistry: ToolRegistry, roots: RegistryTo
       }
     } catch (err) {
       const message = summarizeError(err);
-      logger.debug('registry tool: unexpected error', { error: message });
+      logger.error('registry tool: unexpected error', { error: message });
       return { success: false, error: `Unexpected error: ${message}` };
     }
   }
@@ -342,12 +342,7 @@ function runRecommend(
       task,
       scope,
       count: sorted.length,
-      results: sorted.map(({ score: _score, ...item }: { score?: number } & RegistryMatch) => {
-        // strip internal score if present (from fallback path)
-        const { score: _s, ...rest } = { score: undefined, ...item };
-        void _s;
-        return rest;
-      }),
+      results: sorted.map(({ score: _score, ...item }: { score?: number } & RegistryMatch) => item),
     }),
   });
 }

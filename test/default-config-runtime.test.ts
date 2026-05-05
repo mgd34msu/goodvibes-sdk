@@ -1,11 +1,6 @@
 /**
- * D1 regression test: DEFAULT_CONFIG must include a `runtime` section so that
+ * DEFAULT_CONFIG must include a `runtime` section so that
  * ConfigManager.resolvePath('runtime.*') never throws "section 'runtime' does not exist".
- *
- * Root cause: runtime.companionChatLimiter.perSessionLimit was added to CONFIG_SCHEMA
- * in 0.21.21 but DEFAULT_CONFIG was never given a corresponding `runtime` key.
- * buildResolvedEntries() calls configManager.get(setting.key) for every schema entry,
- * which caused a 500 on /api/settings and cascaded through 9 TUI test files.
  */
 import { describe, expect, test } from 'bun:test';
 import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.js';

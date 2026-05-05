@@ -133,6 +133,22 @@ function buildNameIndex(entries: readonly BenchmarkEntry[]): Map<string, Benchma
   return index;
 }
 
+function validateBenchmarksCache(value: unknown): { cache: BenchmarksCache | null; reason?: string } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { cache: null, reason: 'root value is not an object' };
+  }
+  const parsed = value as Partial<BenchmarksCache>;
+  if (parsed.version !== 1) return { cache: null, reason: 'unsupported cache version' };
+  if (typeof parsed.fetchedAt !== 'number' || !Number.isFinite(parsed.fetchedAt)) {
+    return { cache: null, reason: 'fetchedAt must be a finite number' };
+  }
+  if (typeof parsed.ttlMs !== 'number' || !Number.isFinite(parsed.ttlMs)) {
+    return { cache: null, reason: 'ttlMs must be a finite number' };
+  }
+  if (!Array.isArray(parsed.entries)) return { cache: null, reason: 'entries must be an array' };
+  return { cache: parsed as BenchmarksCache };
+}
+
 export function compositeScore(benchmarks: ModelBenchmarks): number | null {
   let total = 0;
   let weight = 0;
@@ -189,7 +205,7 @@ export class BenchmarkStore {
     this.nameIndex = this.cache ? buildNameIndex(this.cache.entries) : null;
     if (!this.cache || this.isCacheStale(this.cache)) {
       void this.refreshBenchmarks().catch((err) => {
-        logger.debug('[model-benchmarks] Background refresh failed', { error: summarizeError(err) });
+        logger.warn('[model-benchmarks] Background refresh failed', { error: summarizeError(err) });
       });
     }
   }
@@ -308,9 +324,16 @@ export class BenchmarkStore {
 
   private loadCache(): BenchmarksCache | null {
     try {
-      const parsed = JSON.parse(readFileSync(this.getCachePath(), 'utf-8')) as BenchmarksCache;
-      if (parsed.version !== 1 || !Array.isArray(parsed.entries)) return null;
-      return parsed;
+      const parsed = JSON.parse(readFileSync(this.getCachePath(), 'utf-8')) as unknown;
+      const { cache, reason } = validateBenchmarksCache(parsed);
+      if (!cache) {
+        logger.warn('[model-benchmarks] Ignoring malformed cache', {
+          cachePath: this.getCachePath(),
+          reason: reason ?? 'unknown',
+        });
+        return null;
+      }
+      return cache;
     } catch (err) {
       const message = summarizeError(err);
       if (message.includes('ENOENT') || message.includes('no such file')) {

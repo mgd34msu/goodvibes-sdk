@@ -647,11 +647,19 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     const calls: string[] = [];
     const client = makeSrcClient(async (input) => {
       calls.push(String(input));
-      return createJsonResponse({ enabled: false });
+      return createJsonResponse({
+        userStorePath: '/tmp/auth-users.json',
+        bootstrapCredentialPath: '/tmp/auth-bootstrap.txt',
+        bootstrapCredentialPresent: false,
+        userCount: 0,
+        sessionCount: 0,
+        users: [],
+        sessions: [],
+      });
     });
     const result = await client.localAuth.status();
     expect(calls[0]).toContain('auth');
-    expect(result).toMatchObject({ enabled: false });
+    expect(result).toMatchObject({ userCount: 0, sessionCount: 0 });
   });
 
   test('control.snapshot invokes control.snapshot route', async () => {
@@ -669,7 +677,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     const calls: string[] = [];
     const client = makeSrcClient(async (input) => {
       calls.push(String(input));
-      return createJsonResponse({ version: '0.19.7' });
+      return createJsonResponse({ status: 'running', version: '0.19.7' });
     });
     const result = await client.control.status();
     expect(calls).toHaveLength(1); // route was called

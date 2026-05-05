@@ -26,9 +26,24 @@ export type DependentsMap = Map<string, Set<string>>;
 /** Absolute path → set of absolute paths it imports */
 export type ImportsMap = Map<string, Set<string>>;
 
+interface ImportGraphDiagnostics {
+  warnings: string[];
+}
+
 const SUPPORTED_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', '.next', '.nuxt', '.cache', '__pycache__']);
 const MAX_FILES = 5_000;
+const MAX_WARNINGS = 20;
+
+function addImportGraphWarning(diagnostics: ImportGraphDiagnostics, warning: string): void {
+  if (diagnostics.warnings.includes(warning)) return;
+  if (diagnostics.warnings.length < MAX_WARNINGS) {
+    diagnostics.warnings.push(warning);
+    return;
+  }
+  const cappedWarning = `Additional import graph warnings suppressed after ${MAX_WARNINGS} entries.`;
+  if (!diagnostics.warnings.includes(cappedWarning)) diagnostics.warnings.push(cappedWarning);
+}
 
 // ---------------------------------------------------------------------------
 // Import extraction (line-by-line, no catastrophic backtracking)
@@ -83,11 +98,21 @@ function resolveSpecifierFromKnownFiles(
   return null;
 }
 
-function resolveSpecifier(fromFile: string, spec: string): string | null {
+function resolveSpecifier(fromFile: string, spec: string, diagnostics: ImportGraphDiagnostics): string | null {
   return resolveSpecifierFromKnownFiles(
     fromFile,
     spec,
-    (candidate) => existsSync(candidate) && statSync(candidate).isFile(),
+    (candidate) => {
+      try {
+        return existsSync(candidate) && statSync(candidate).isFile();
+      } catch (err) {
+        addImportGraphWarning(
+          diagnostics,
+          `Could not stat import candidate '${candidate}' while resolving '${spec}' from '${fromFile}': ${summarizeError(err)}`,
+        );
+        return false;
+      }
+    },
   );
 }
 
@@ -104,14 +129,15 @@ export function resolveSpecifierForTest(
 // File collection
 // ---------------------------------------------------------------------------
 
-function collectSourceFiles(dir: string, results: string[] = []): string[] {
+function collectSourceFiles(dir: string, diagnostics: ImportGraphDiagnostics, results: string[] = []): string[] {
   if (results.length >= MAX_FILES) return results;
 
   let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true }) as unknown as Dirent[];
   } catch (err) {
-    logger.debug('[import-graph] Skipping unreadable directory', { dir, error: summarizeError(err) });
+    logger.warn('[import-graph] Skipping unreadable directory', { dir, error: summarizeError(err) });
+    addImportGraphWarning(diagnostics, `Skipped unreadable directory '${dir}' while building import graph: ${summarizeError(err)}`);
     return results;
   }
 
@@ -121,7 +147,7 @@ function collectSourceFiles(dir: string, results: string[] = []): string[] {
 
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      collectSourceFiles(full, results);
+      collectSourceFiles(full, diagnostics, results);
     } else if (entry.isFile() && SUPPORTED_EXTENSIONS.has(extname(entry.name))) {
       results.push(full);
     }
@@ -147,6 +173,9 @@ export class ImportGraph {
   /** Whether graph is stale and needs a rebuild */
   private dirty = true;
 
+  /** Warnings from the most recent graph build. */
+  private warnings: string[] = [];
+
   constructor() {}
 
   /**
@@ -164,7 +193,11 @@ export class ImportGraph {
   async build(projectRoot: string): Promise<void> {
     if (!this.dirty && this.scannedRoot === projectRoot) return;
 
-    const files = collectSourceFiles(projectRoot);
+    const diagnostics: ImportGraphDiagnostics = { warnings: [] };
+    const files = collectSourceFiles(projectRoot, diagnostics);
+    if (files.length >= MAX_FILES) {
+      addImportGraphWarning(diagnostics, `Import graph scan stopped after ${MAX_FILES} source files; relationships may be incomplete.`);
+    }
     const imports: ImportsMap = new Map();
     const dependents: DependentsMap = new Map();
 
@@ -179,13 +212,14 @@ export class ImportGraph {
       try {
         content = readFileSync(filePath, 'utf-8');
       } catch (err) {
-        logger.debug('[import-graph] Skipping unreadable file', { file: filePath, error: summarizeError(err) });
+        logger.warn('[import-graph] Skipping unreadable file', { file: filePath, error: summarizeError(err) });
+        addImportGraphWarning(diagnostics, `Skipped unreadable file '${filePath}' while building import graph: ${summarizeError(err)}`);
         continue;
       }
 
       const specs = extractRelativeSpecifiers(content);
       for (const spec of specs) {
-        const resolved = resolveSpecifier(filePath, spec);
+        const resolved = resolveSpecifier(filePath, spec, diagnostics);
         if (!resolved) continue;
 
         // Forward
@@ -210,12 +244,12 @@ export class ImportGraph {
     this.dependents = dependents;
     this.scannedRoot = projectRoot;
     this.dirty = false;
+    this.warnings = diagnostics.warnings;
   }
 
   /**
    * Build the graph from an in-memory file map for deterministic tests.
    * Keys must be absolute file paths.
-   * @internal
    */
   buildFromFilesForTest(files: Record<string, string>): void {
     const knownFiles = new Set(Object.keys(files));
@@ -242,6 +276,7 @@ export class ImportGraph {
     this.dependents = dependents;
     this.scannedRoot = null;
     this.dirty = false;
+    this.warnings = [];
   }
 
   /**
@@ -275,7 +310,6 @@ export class ImportGraph {
 
   /**
    * Return the set of files `filePath` directly imports.
-   * @internal
    */
   findImports(filePath: string): string[] {
     return Array.from(this.imports.get(filePath) ?? []);
@@ -283,7 +317,6 @@ export class ImportGraph {
 
   /**
    * Return graph statistics.
-   * @internal
    */
   stats(): { files: number; edges: number; scannedRoot: string | null; dirty: boolean } {
     let edges = 0;
@@ -294,9 +327,15 @@ export class ImportGraph {
   }
 
   /**
+   * Return warnings from the most recent graph build.
+   */
+  getWarnings(): string[] {
+    return [...this.warnings];
+  }
+
+  /**
    * Export as a plain object keyed by relative paths (relative to `projectRoot`).
    * Useful for serialization and the analyze tool's `dependencies` mode.
-   * @internal
    */
   toRelativeGraph(projectRoot: string): Record<string, string[]> {
     const result: Record<string, string[]> = {};

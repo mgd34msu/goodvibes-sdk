@@ -99,9 +99,7 @@ export interface OrchestratorTurnLoopContext {
 export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopContext): Promise<void> {
   const helperModel = context.helperModel;
   const model = context.providerRegistry.getCurrentModel();
-  const provider: LLMProvider = model.provider
-    ? context.providerRegistry.require(model.provider)
-    : context.providerRegistry.getForModel(model.id);
+  const provider: LLMProvider = context.providerRegistry.getForModel(model.registryKey, model.provider);
   const toolDefinitions = context.toolRegistry.getToolDefinitions();
   const streamEnabled = context.configManager.get('display.stream') as boolean;
 
@@ -286,7 +284,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       usage: context.normalizeUsage(response.usage),
     };
 
-    void context.favoritesStore?.recordUsage(model.id);
+    void context.favoritesStore?.recordUsage(model.registryKey);
     context.usage.input += response.usage.inputTokens;
     context.usage.output += response.usage.outputTokens;
     context.usage.cacheRead += response.usage.cacheReadTokens ?? 0;

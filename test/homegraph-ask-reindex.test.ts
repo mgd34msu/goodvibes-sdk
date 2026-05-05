@@ -681,7 +681,8 @@ describe('Home Graph ask, source repair, and reindex', () => {
       artifactId: 'artifact-missing-generated-page',
       metadata: {
         knowledgeSpaceId: spaceId,
-        homeGraphGeneratedPage: true,
+        generatedKnowledgePage: true,
+        generatedProjection: true,
         projectionKind: 'device-passport',
       },
     });

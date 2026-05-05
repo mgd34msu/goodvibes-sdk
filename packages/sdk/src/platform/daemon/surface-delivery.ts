@@ -127,7 +127,7 @@ export class DaemonSurfaceDeliveryHelper {
             pending.lastProgress = progress;
             pending.lastProgressAt = Date.now();
           } catch (error) {
-            logger.debug('DaemonServer: progress delivery failed', {
+            logger.warn('DaemonServer: progress delivery failed', {
               surface: pending.surfaceKind,
               agentId: pending.agentId,
               error: summarizeError(error),

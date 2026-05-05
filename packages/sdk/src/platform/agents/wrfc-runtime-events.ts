@@ -73,7 +73,7 @@ export function emitWrfcCascadeAbort(
 
 /**
  * Thin wrapper for WORKFLOW_CONSTRAINTS_ENUMERATED.
- * Wired in Phase 2 — emitted once per chain on initial engineer completion.
+ * Emitted once per chain when the controller captures the authoritative constraints.
  */
 export function emitWrfcConstraintsEnumerated(
   runtimeBus: RuntimeEventBus,

@@ -39,6 +39,8 @@ export interface ToolResult {
   success: boolean;
   output?: string | undefined;
   error?: string | undefined;
+  /** Non-failing issues the caller should surface with the result. */
+  warnings?: readonly string[] | undefined;
 }
 
 /** A registered tool with its definition and executor. */

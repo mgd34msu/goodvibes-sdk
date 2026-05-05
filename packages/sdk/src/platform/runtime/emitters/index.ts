@@ -21,7 +21,7 @@ import type { EnvelopeContext } from '../events/envelope.js';
  *
  * Extends EnvelopeContext by narrowing `traceId` from optional to required.
  * Emitter callsites always possess a trace context (e.g. from the active turn
- * or session), so requiring it here prevents accidental fallback to a generated
+ * or session), so requiring it here prevents accidental use of a generated
  * UUID that breaks cross-boundary trace correlation. Compare to EnvelopeContext
  * where `traceId` is optional to support low-level envelope construction without
  * a pre-existing trace.

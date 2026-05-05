@@ -67,5 +67,3 @@ export {
   applyModeContextPolicy,
   BurstPolicy,
 } from './notifications/policies/index.js';
-export * from './settings/control-plane.js';
-export * from './settings/control-plane-store.js';

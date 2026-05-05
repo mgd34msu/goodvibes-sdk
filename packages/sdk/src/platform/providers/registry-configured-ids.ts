@@ -2,6 +2,8 @@ import type { LLMProvider } from './interface.js';
 import { getConfiguredApiKeys } from '../config/index.js';
 import type { CatalogModel } from './model-catalog.js';
 
+type ConfiguredApiKeyLoader = () => Record<string, string>;
+
 /**
  * Compute the set of provider IDs that are currently configured
  * (have an API key in env, config, or self-report as configured).
@@ -12,11 +14,13 @@ import type { CatalogModel } from './model-catalog.js';
  * @param catalogModels - Current catalog model list (read-only).
  * @param providers - Live provider map (read-only).
  * @param getSyntheticBackendModelIds - Delegate to check synthetic model count.
+ * @param loadConfiguredApiKeys - API-key loader; failures are authoritative and propagate.
  */
 export function computeConfiguredProviderIds(
   catalogModels: readonly CatalogModel[],
   providers: ReadonlyMap<string, LLMProvider>,
   getSyntheticBackendModelIds: () => Set<string>,
+  loadConfiguredApiKeys: ConfiguredApiKeyLoader = getConfiguredApiKeys,
 ): string[] {
   const configured = new Set<string>();
   const providerEnvMap = new Map<string, string[]>();
@@ -38,16 +42,12 @@ export function computeConfiguredProviderIds(
     }
   }
 
-  try {
-    const configApiKeys = getConfiguredApiKeys();
-    const configToCatalog: Record<string, string> = { gemini: 'google', inceptionlabs: 'inception' };
-    for (const [configName, key] of Object.entries(configApiKeys)) {
-      if (key) {
-        configured.add(configToCatalog[configName] ?? configName);
-      }
+  const configApiKeys = loadConfiguredApiKeys();
+  const configToCatalog: Record<string, string> = { gemini: 'google', inceptionlabs: 'inception' };
+  for (const [configName, key] of Object.entries(configApiKeys)) {
+    if (key) {
+      configured.add(configToCatalog[configName] ?? configName);
     }
-  } catch {
-    // non-fatal
   }
 
   if (getSyntheticBackendModelIds().size > 0) {

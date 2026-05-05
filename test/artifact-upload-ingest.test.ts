@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/store.ts';
@@ -83,6 +83,22 @@ describe('artifact uploads and ingest', () => {
     expect(artifact.sizeBytes).toBe(data.byteLength);
     expect(artifact.filename).toBe('bun-upload.txt');
     expect(artifact.mimeType).toBe('text/plain');
+  });
+
+  test('ArtifactStore removes spooled content when metadata persistence fails', async () => {
+    const root = tempDir('metadata-failure');
+    const store = new ArtifactStore({ rootDir: root });
+
+    await expect(store.createFromStream({
+      stream: ['artifact body'],
+      filename: 'bad-metadata.txt',
+      mimeType: 'text/plain',
+      metadata: { invalidJson: 1n } as never,
+    })).rejects.toThrow();
+
+    expect(store.list()).toHaveLength(0);
+    expect(readdirSync(root).filter((entry) => entry.endsWith('.data'))).toHaveLength(0);
+    expect(readdirSync(root).filter((entry) => entry.endsWith('.json'))).toHaveLength(0);
   });
 
   test('POST /api/artifacts accepts multipart file uploads without JSON parsing', async () => {

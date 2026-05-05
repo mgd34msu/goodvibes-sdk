@@ -27,14 +27,6 @@ const TERMINAL_STATES: ReadonlySet<AgentLifecycleState> = new Set([
   'cancelled',
 ]);
 
-/** Active (non-terminal, non-queued) agent states that map to 'running'. */
-const RUNNING_STATES: ReadonlySet<AgentLifecycleState> = new Set([
-  'running',
-  'awaiting_message',
-  'awaiting_tool',
-  'finalizing',
-]);
-
 /**
  * Maps an agent lifecycle state string to a RuntimeTask lifecycle state.
  *
@@ -44,12 +36,26 @@ const RUNNING_STATES: ReadonlySet<AgentLifecycleState> = new Set([
 function mapAgentStateToTask(
   state: AgentLifecycleState,
 ): 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' {
-  if (state === 'spawning') return 'queued';
-  if (RUNNING_STATES.has(state)) return 'running';
-  if (state === 'completed') return 'completed';
-  if (state === 'failed') return 'failed';
-  if (state === 'cancelled') return 'cancelled';
-  return 'running'; // fallback for unknown states
+  switch (state) {
+    case 'spawning':
+      return 'queued';
+    case 'running':
+    case 'awaiting_message':
+    case 'awaiting_tool':
+    case 'finalizing':
+      return 'running';
+    case 'completed':
+      return 'completed';
+    case 'failed':
+      return 'failed';
+    case 'cancelled':
+      return 'cancelled';
+  }
+  return assertNeverAgentState(state);
+}
+
+function assertNeverAgentState(state: never): never {
+  throw new Error(`Unhandled agent lifecycle state: ${String(state)}`);
 }
 
 /**
@@ -70,7 +76,7 @@ export class AgentTaskAdapter {
   private readonly _taskToAgent = new Map<string, string>();
 
   private readonly _dispatch: DomainDispatch;
-  /** m3: idempotency guard — prevent double-wiring the bus */
+  /** Prevent double-wiring the runtime bus. */
   private _busAttached = false;
 
   constructor(private readonly _store: RuntimeStore) {
@@ -99,7 +105,6 @@ export class AgentTaskAdapter {
     const onCompleted = bus.on<{ type: 'AGENT_COMPLETED'; agentId: string; taskId?: string; durationMs: number; output?: string }>(
       'AGENT_COMPLETED',
       (envelope) => {
-        // m2: runtime type guard
         if (typeof envelope.payload?.agentId !== 'string') return;
         const taskId = this._agentToTask.get(envelope.payload.agentId);
         if (taskId === undefined) return; // not a tracked agent — no-op
@@ -109,7 +114,6 @@ export class AgentTaskAdapter {
     const onFailed = bus.on<{ type: 'AGENT_FAILED'; agentId: string; taskId?: string; error: string; durationMs: number }>(
       'AGENT_FAILED',
       (envelope) => {
-        // m2: runtime type guard
         if (typeof envelope.payload?.agentId !== 'string') return;
         const taskId = this._agentToTask.get(envelope.payload.agentId);
         if (taskId === undefined) return;
@@ -119,7 +123,6 @@ export class AgentTaskAdapter {
     const onCancelled = bus.on<{ type: 'AGENT_CANCELLED'; agentId: string; taskId?: string; reason?: string }>(
       'AGENT_CANCELLED',
       (envelope) => {
-        // m2: runtime type guard
         if (typeof envelope.payload?.agentId !== 'string') return;
         const taskId = this._agentToTask.get(envelope.payload.agentId);
         if (taskId === undefined) return;
@@ -135,13 +138,11 @@ export class AgentTaskAdapter {
   }
 
   /**
-   * M2: Reconcile adapter state on daemon restart.
+   * Reconcile adapter state on daemon restart.
    *
-   * Any task in the runtime store with status 'running' at startup is marked
-   * 'aborted' (mapped to 'cancelled') with reason 'daemon-restart', since
-   * we cannot know if the backing agent is still alive.
-   *
-   * Call this from composition after attaching the bus.
+   * Any task in the runtime store with status 'running' at startup is mapped to
+   * 'cancelled' with reason 'daemon-restart', since we cannot know if the
+   * backing agent is still alive.
    */
   reconcileOnRestart(): void {
     const tasks = this._store.getState().tasks.tasks;

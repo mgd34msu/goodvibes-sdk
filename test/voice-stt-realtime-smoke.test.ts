@@ -1,7 +1,7 @@
 /**
  * Coverage-gap smoke test — platform/voice (STT, realtime providers)
  * Verifies VoiceProviderRegistry can register a mock provider and query it.
- * Closes coverage gap: platform/voice/stt and realtime (eighth-review)
+ * Closes coverage gap: platform/voice/stt and realtime
  */
 
 import { describe, expect, test } from 'bun:test';

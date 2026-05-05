@@ -14,6 +14,17 @@ function defaultSnapshot(): AutomationSourcesSnapshot {
   };
 }
 
+function validateSnapshot(snapshot: AutomationSourcesSnapshot | null): AutomationSourcesSnapshot {
+  if (!snapshot) return defaultSnapshot();
+  if (snapshot.version !== 1 || !Array.isArray(snapshot.sources)) {
+    throw new Error('Automation sources store snapshot is invalid.');
+  }
+  return {
+    version: 1,
+    sources: snapshot.sources,
+  };
+}
+
 export interface AutomationSourceStoreConfig {
   readonly path?: string | undefined;
   readonly configManager?: AutomationStorePathConfig | undefined;
@@ -30,14 +41,7 @@ export class AutomationSourceStore {
   }
 
   async load(): Promise<AutomationSourcesSnapshot> {
-    const snapshot = await this.store.load();
-    if (!snapshot || !Array.isArray(snapshot.sources)) {
-      return defaultSnapshot();
-    }
-    return {
-      version: 1,
-      sources: snapshot.sources,
-    };
+    return validateSnapshot(await this.store.load());
   }
 
   async save(sources: readonly AutomationSourceRecord[]): Promise<void> {

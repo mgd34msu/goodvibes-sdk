@@ -50,8 +50,9 @@ export async function runHomeGraphSyncSelfImprovementPump(
       force: round > 0,
       signal,
     });
+    if (signal.aborted) return;
     if ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0) {
-      await refreshHomeGraphDevicePagesForSourceIds(runtime, spaceId, installationId, result.acceptedSourceIds ?? []);
+      await refreshHomeGraphDevicePagesForSourceIds(runtime, spaceId, installationId, result.acceptedSourceIds ?? [], signal);
     }
     if (!shouldContinueHomeGraphSyncSelfImprovement(result)) return;
     await sleep(Math.min(
@@ -107,9 +108,12 @@ export async function refreshHomeGraphDevicePagesForSourceIds(
   spaceId: string,
   installationId: string,
   sourceIds: readonly string[],
+  signal?: AbortSignal | undefined,
 ): Promise<void> {
+  if (signal?.aborted) return;
   const wanted = new Set(sourceIds.filter(Boolean));
   const state = readHomeGraphState(runtime.store, spaceId);
+  if (signal?.aborted) return;
   const nodesById = new Map(state.nodes.map((node) => [node.id, node]));
   const factIds = new Set<string>();
   const deviceNodeIds = new Set<string>();
@@ -139,10 +143,12 @@ export async function refreshHomeGraphDevicePagesForSourceIds(
     }
   }
   for (const [index, deviceNodeId] of [...deviceNodeIds].slice(0, MAX_DEVICE_PAGE_REPAIRS_PER_REFRESH).entries()) {
+    if (signal?.aborted) return;
     const device = nodesById.get(deviceNodeId);
     if (!device) continue;
     const deviceId = readHomeAssistantMetadataString(device, 'objectId', 'deviceId') ?? device.id;
     try {
+      if (signal?.aborted) return;
       await refreshHomeGraphDevicePassport({
         store: runtime.store,
         artifactStore: runtime.artifactStore,
@@ -153,8 +159,11 @@ export async function refreshHomeGraphDevicePagesForSourceIds(
           deviceId,
           metadata: { automation: 'semantic-repair-refresh' },
         },
+        signal,
       });
+      if (signal?.aborted) return;
     } catch (error) {
+      if (signal?.aborted) return;
       runtime.reportBackgroundError('homegraph-refresh-device-page', error, {
         spaceId,
         installationId,

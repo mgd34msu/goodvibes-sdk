@@ -88,7 +88,7 @@ async function handleAuth(): Promise<Response> {
  * Workers concern: setTimeout used in backoff retry is request-scoped.
  * For this test we do NOT retry (maxAttempts: 1) to avoid any
  * cross-request timer issues. Long-running retries with persistent
- * timers across request boundaries would break — documented in FINDINGS.md.
+ * timers across request boundaries would break; see NOTES.md.
  *
  * fetch is native in Workers — no polyfill needed.
  *
@@ -264,7 +264,7 @@ async function handleCrypto(): Promise<Response> {
 /**
  * /globals — audit Workers global availability.
  *
- * Documents which globals are present/absent for the FINDINGS.md record.
+ * Reports the globals that define the Workers runtime boundary.
  */
 function handleGlobals(): Response {
   return json({

@@ -9,6 +9,8 @@ import type {
 import {
   configureWorkerSchedule,
   configureWorkerSubdomain,
+  disableWorkerSchedule,
+  disableWorkerSubdomain,
   uploadWorker,
 } from '../packages/sdk/src/platform/cloudflare/worker-settings.js';
 
@@ -104,6 +106,50 @@ describe('Cloudflare Worker settings provisioning', () => {
 
     expect(scheduleUpdates).toBe(0);
     expect(steps.map((step) => step.message).join('\n')).toContain('Using existing Worker cron */5 * * * *.');
+  });
+
+  test('surfaces cron state read failures while still clearing schedules on disable', async () => {
+    const steps: CloudflareProvisionStep[] = [];
+    let updatedBody: readonly { readonly cron: string }[] | undefined;
+    const client = workerSettingsClient({
+      readSchedule: async () => {
+        throw new Error('schedule get denied');
+      },
+      updateSchedule: async (body) => {
+        updatedBody = body;
+        return { schedules: body };
+      },
+    });
+
+    await disableWorkerSchedule(client, 'acct-1', 'goodvibes-batch-worker', steps);
+
+    expect(updatedBody).toEqual([]);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe('warning');
+    expect(steps[0]?.message).toContain('existing schedule state could not be read first');
+    expect(steps[0]?.message).toContain('schedule get denied');
+  });
+
+  test('surfaces workers.dev state read failures while still deleting on disable', async () => {
+    const steps: CloudflareProvisionStep[] = [];
+    let scriptSubdomainDeletes = 0;
+    const client = workerSettingsClient({
+      readScriptSubdomain: async () => {
+        throw new Error('subdomain get denied');
+      },
+      deleteScriptSubdomain: async () => {
+        scriptSubdomainDeletes += 1;
+        return { enabled: false };
+      },
+    });
+
+    await disableWorkerSubdomain(client, 'acct-1', 'goodvibes-batch-worker', steps);
+
+    expect(scriptSubdomainDeletes).toBe(1);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.status).toBe('warning');
+    expect(steps[0]?.message).toContain('existing workers.dev route state could not be read first');
+    expect(steps[0]?.message).toContain('subdomain get denied');
   });
 
   test('creates a Durable Object SQLite class migration only on first Worker upload', async () => {
@@ -234,6 +280,7 @@ function workerSettingsClient(overrides: {
   readonly updateAccountSubdomain?: (subdomain: string) => Promise<{ readonly subdomain: string }>;
   readonly readScriptSubdomain?: (scriptName: string) => Promise<{ readonly enabled: boolean }>;
   readonly createScriptSubdomain?: (scriptName: string) => Promise<{ readonly enabled: boolean }>;
+  readonly deleteScriptSubdomain?: (scriptName: string) => Promise<{ readonly enabled: boolean }>;
   readonly readSchedule?: () => Promise<{ readonly schedules: readonly { readonly cron: string }[] }>;
   readonly updateSchedule?: (body: readonly { readonly cron: string }[]) => Promise<{ readonly schedules: readonly { readonly cron: string }[] }>;
 }): CloudflareApiClient {
@@ -254,7 +301,7 @@ function workerSettingsClient(overrides: {
         subdomain: {
           get: async (scriptName) => overrides.readScriptSubdomain?.(scriptName) ?? { enabled: false },
           create: async (scriptName) => overrides.createScriptSubdomain?.(scriptName) ?? { enabled: true },
-          delete: async () => ({ enabled: false }),
+          delete: async (scriptName) => overrides.deleteScriptSubdomain?.(scriptName) ?? { enabled: false },
         },
         schedules: {
           get: async () => overrides.readSchedule?.() ?? { schedules: [] },

@@ -2,8 +2,9 @@ import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
 import type { KnowledgeObjectProfilePolicy } from '../extensions.js';
 import { getKnowledgeSpaceId, isHomeAssistantKnowledgeSpace, normalizeKnowledgeSpaceId } from '../spaces.js';
+import { isActiveKnowledgeEdge } from '../projection-utils.js';
 import { isBroadKnowledgeSpaceAlias } from './answer-common.js';
-import { readRecord, readString, scoreSemanticText, sourceSemanticText, tokenizeSemanticQuery, uniqueStrings } from './utils.js';
+import { readRecord, readString, readStringArray, scoreSemanticText, sourceSemanticText, tokenizeSemanticQuery, uniqueStrings } from './utils.js';
 
 export interface AnswerObjectScope {
   readonly anchorNodeIds: ReadonlySet<string>;
@@ -56,7 +57,7 @@ export function inferAnswerObjectScope(
     .filter((entry) => entry.score >= Math.max(1, topScore - 12))
     .slice(0, singularObjectQuery ? 1 : 8);
   const anchorNodeIds = new Set(selectedAnchors.map((entry) => entry.node.id));
-  const linkedSourceIds = sourceIdsLinkedToAnchors(store, anchorNodeIds);
+  const linkedSourceIds = sourceIdsLinkedToAnchors(store, spaceId, anchorNodeIds);
   const anchorText = selectedAnchors.map((entry) => objectNodeText(entry.node));
   return { anchorNodeIds, linkedSourceIds, anchorText };
 }
@@ -79,24 +80,30 @@ export function nodeInAnswerObjectScope(
 ): boolean {
   if (!scope || scope.anchorNodeIds.size === 0) return true;
   if (scope.anchorNodeIds.has(node.id)) return true;
-  const sourceId = readString(node.metadata.sourceId) ?? node.sourceId;
-  return Boolean(sourceId && scope.linkedSourceIds.has(sourceId));
+  return nodeSourceIds(node).some((sourceId) => scope.linkedSourceIds.has(sourceId));
 }
 
-function sourceIdsLinkedToAnchors(store: KnowledgeStore, anchorNodeIds: ReadonlySet<string>): Set<string> {
+function sourceIdsLinkedToAnchors(store: KnowledgeStore, spaceId: string, anchorNodeIds: ReadonlySet<string>): Set<string> {
   const sourceIds = new Set<string>();
   if (anchorNodeIds.size === 0) return sourceIds;
+  const activeSourceIds = new Set(listObjectScopeSources(store, spaceId).map((source) => source.id));
   const edges = store.listEdges();
   const factIds = new Set<string>();
   for (const edge of edges) {
-    if (edge.fromKind === 'source' && edge.toKind === 'node' && anchorNodeIds.has(edge.toId)) sourceIds.add(edge.fromId);
-    if (edge.fromKind === 'node' && anchorNodeIds.has(edge.fromId) && edge.toKind === 'source') sourceIds.add(edge.toId);
+    if (!edgeIsActive(edge)) continue;
+    if (edge.fromKind === 'source' && edge.toKind === 'node' && anchorNodeIds.has(edge.toId) && activeSourceIds.has(edge.fromId)) sourceIds.add(edge.fromId);
+    if (edge.fromKind === 'node' && anchorNodeIds.has(edge.fromId) && edge.toKind === 'source' && activeSourceIds.has(edge.toId)) sourceIds.add(edge.toId);
     if (edge.fromKind === 'node' && edge.toKind === 'node' && anchorNodeIds.has(edge.toId) && edge.relation === 'describes') {
       factIds.add(edge.fromId);
     }
   }
   for (const edge of edges) {
-    if (edge.fromKind === 'source' && edge.toKind === 'node' && factIds.has(edge.toId) && edge.relation === 'supports_fact') {
+    if (!edgeIsActive(edge)) continue;
+    if (edge.fromKind === 'source'
+      && edge.toKind === 'node'
+      && factIds.has(edge.toId)
+      && edge.relation === 'supports_fact'
+      && activeSourceIds.has(edge.fromId)) {
       sourceIds.add(edge.fromId);
     }
   }
@@ -107,6 +114,7 @@ function linkedSourceQualityByAnchor(store: KnowledgeStore, spaceId: string): Ma
   const sourcesById = new Map(listObjectScopeSources(store, spaceId).map((source) => [source.id, source]));
   const scores = new Map<string, number>();
   for (const edge of store.listEdges()) {
+    if (!edgeIsActive(edge)) continue;
     const source = edge.fromKind === 'source'
       ? sourcesById.get(edge.fromId)
       : edge.toKind === 'source'
@@ -122,6 +130,7 @@ function linkedSourceQualityByAnchor(store: KnowledgeStore, spaceId: string): Ma
   }
   const describingFacts = new Map<string, Set<string>>();
   for (const edge of store.listEdges()) {
+    if (!edgeIsActive(edge)) continue;
     if (edge.fromKind === 'node' && edge.toKind === 'node' && edge.relation === 'describes') {
       const current = describingFacts.get(edge.fromId) ?? new Set<string>();
       current.add(edge.toId);
@@ -129,6 +138,7 @@ function linkedSourceQualityByAnchor(store: KnowledgeStore, spaceId: string): Ma
     }
   }
   for (const edge of store.listEdges()) {
+    if (!edgeIsActive(edge)) continue;
     if (edge.fromKind !== 'source' || edge.toKind !== 'node' || edge.relation !== 'supports_fact') continue;
     const source = sourcesById.get(edge.fromId);
     if (!source) continue;
@@ -140,14 +150,30 @@ function linkedSourceQualityByAnchor(store: KnowledgeStore, spaceId: string): Ma
   return scores;
 }
 
+function edgeIsActive(edge: { readonly weight: number; readonly metadata: Record<string, unknown> }): boolean {
+  return isActiveKnowledgeEdge(edge);
+}
+
+function nodeSourceIds(node: KnowledgeNodeRecord): string[] {
+  return uniqueStrings([
+    ...readStringArray(node.metadata.sourceIds),
+    readString(node.metadata.sourceId),
+    node.sourceId,
+  ]);
+}
+
 function listObjectScopeSources(store: KnowledgeStore, spaceId: string): KnowledgeSourceRecord[] {
-  if (isBroadKnowledgeSpaceAlias(spaceId)) return store.listSources(Number.MAX_SAFE_INTEGER);
-  return store.listSourcesInSpace(spaceId);
+  const sources = isBroadKnowledgeSpaceAlias(spaceId)
+    ? store.listSources(Number.MAX_SAFE_INTEGER)
+    : store.listSourcesInSpace(spaceId);
+  return sources.filter((source) => source.status !== 'stale');
 }
 
 function listObjectScopeNodes(store: KnowledgeStore, spaceId: string): KnowledgeNodeRecord[] {
-  if (isBroadKnowledgeSpaceAlias(spaceId)) return store.listNodes(Number.MAX_SAFE_INTEGER);
-  return store.listNodesInSpace(spaceId);
+  const nodes = isBroadKnowledgeSpaceAlias(spaceId)
+    ? store.listNodes(Number.MAX_SAFE_INTEGER)
+    : store.listNodesInSpace(spaceId);
+  return nodes.filter((node) => node.status !== 'stale');
 }
 
 function objectScopeRecordBelongsToSpace(

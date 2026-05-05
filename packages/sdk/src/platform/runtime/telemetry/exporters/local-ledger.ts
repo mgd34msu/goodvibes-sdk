@@ -2,8 +2,8 @@
  * LocalLedgerExporter — append-only JSON lines span exporter.
  *
  * Writes completed spans to a rotating JSON Lines (.jsonl) file.
- * Writes are fire-and-forget (non-blocking). Export failures are
- * logged but never thrown — they must not block the runtime.
+ * Export failures are isolated from the runtime and reported through
+ * structured logger entries.
  *
  * Also provides typed event ledger recording for deterministic replay.
  * Call `recordEvent()` to append a `LedgerEntry` to the ledger file.
@@ -80,42 +80,62 @@ export class LocalLedgerExporter implements SpanExporter {
   }
 
   /**
-   * Export a batch of spans as JSON lines (fire-and-forget).
+   * Export a batch of spans as JSON lines.
    *
-   * Intentionally not awaited by the tracer — failures are swallowed here
-   * and logged to avoid any runtime impact.
+   * Failures are logged and isolated from callers so exporter I/O cannot break
+   * runtime work.
    */
   async export(spans: ReadableSpan[]): Promise<void> {
     if (spans.length === 0) return;
 
-    // Build the JSON lines payload synchronously (cheap, in-memory).
-    const lines = spans
-      .map((span) => {
-        try {
-          return JSON.stringify(span);
-        } catch {
-          return null;
-        }
-      })
-      .filter((line): line is string => line !== null)
-      .join('\n') + '\n';
+    const lines: string[] = [];
+    let droppedSpans = 0;
+    for (const span of spans) {
+      try {
+        lines.push(JSON.stringify(span));
+      } catch (err) {
+        droppedSpans++;
+        logger.warn('[local-ledger] span serialization failed', {
+          error: summarizeError(err),
+          spanName: span.name,
+          traceId: span.spanContext.traceId,
+          spanId: span.spanContext.spanId,
+        });
+      }
+    }
+
+    if (lines.length === 0) {
+      logger.warn('[local-ledger] export produced no serializable spans', {
+        spanCount: spans.length,
+        droppedSpans,
+      });
+      return;
+    }
+
+    const payload = `${lines.join('\n')}\n`;
 
     // All I/O in a microtask to keep the call non-blocking.
     await Promise.resolve().then(() => {
       try {
         this._rotateIfNeeded();
-        appendFileSync(this.filePath, lines, 'utf8');
+        appendFileSync(this.filePath, payload, 'utf8');
       } catch (err) {
-        logger.debug(`[local-ledger] export failed: ${summarizeError(err)}`);
+        logger.warn('[local-ledger] export failed', {
+          error: summarizeError(err),
+          filePath: this.filePath,
+          spanCount: spans.length,
+          writtenSpans: lines.length,
+          droppedSpans,
+        });
       }
     });
   }
 
   /**
-   * Record a typed event entry to the ledger file (fire-and-forget).
+   * Record a typed event entry to the ledger file.
    *
    * Used by the deterministic replay engine to build a per-run event log.
-   * Failures are logged but never thrown.
+   * Failures are logged and isolated from callers.
    *
    * @param entry - The ledger entry to append.
    *
@@ -131,8 +151,13 @@ export class LocalLedgerExporter implements SpanExporter {
       const line = JSON.stringify(entry) + '\n';
       appendFileSync(this.ledgerFilePath, line, 'utf8');
     } catch (err) {
-      // Non-fatal — ledger recording must not block the runtime.
-      logger.debug(`[local-ledger] ledger write failed: ${summarizeError(err)}`);
+      logger.warn('[local-ledger] ledger write failed', {
+        error: summarizeError(err),
+        ledgerFilePath: this.ledgerFilePath,
+        runId: entry.runId,
+        rev: entry.rev,
+        eventName: entry.eventName,
+      });
     }
   }
 
@@ -153,7 +178,11 @@ export class LocalLedgerExporter implements SpanExporter {
     try {
       raw = readFileSync(this.ledgerFilePath, 'utf8');
     } catch (err) {
-      logger.debug(`[local-ledger] ledger read failed: ${summarizeError(err)}`);
+      logger.warn('[local-ledger] ledger read failed', {
+        error: summarizeError(err),
+        ledgerFilePath: this.ledgerFilePath,
+        runId,
+      });
       return [];
     }
 
@@ -183,7 +212,10 @@ export class LocalLedgerExporter implements SpanExporter {
     try {
       raw = readFileSync(this.ledgerFilePath, 'utf8');
     } catch (err) {
-      logger.debug(`[local-ledger] ledger read failed: ${summarizeError(err)}`);
+      logger.warn('[local-ledger] ledger read failed', {
+        error: summarizeError(err),
+        ledgerFilePath: this.ledgerFilePath,
+      });
       return [];
     }
 
@@ -224,8 +256,18 @@ export class LocalLedgerExporter implements SpanExporter {
         writeFileSync(this.filePath, '', 'utf8');
         logger.debug(`[local-ledger] rotated ${this.filePath}`);
       }
-    } catch {
-      // File may not exist yet — first write will create it via appendFileSync.
+    } catch (err) {
+      if (isNodeErrorCode(err, 'ENOENT')) {
+        return;
+      }
+      logger.warn('[local-ledger] rotation check failed', {
+        error: summarizeError(err),
+        filePath: this.filePath,
+      });
     }
   }
+}
+
+function isNodeErrorCode(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === code;
 }

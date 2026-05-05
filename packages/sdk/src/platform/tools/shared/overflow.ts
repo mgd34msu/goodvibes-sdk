@@ -131,7 +131,7 @@ export class FileBackend implements SpillBackend {
         backendType: 'file',
       };
     } catch (error) {
-      logger.debug('OverflowHandler: failed to write spill file', {
+      logger.warn('OverflowHandler: failed to write spill file', {
         path: target,
         error: summarizeError(error),
       });
@@ -145,7 +145,7 @@ export class FileBackend implements SpillBackend {
     try {
       return readFileSync(target, 'utf-8');
     } catch (error) {
-      logger.debug('OverflowHandler: failed to read spill file', {
+      logger.warn('OverflowHandler: failed to read spill file', {
         path: target,
         error: summarizeError(error),
       });
@@ -160,7 +160,7 @@ export class FileBackend implements SpillBackend {
     try {
       files = readdirSync(this.overflowDir);
     } catch (error) {
-      logger.debug('OverflowHandler: failed to read overflow directory during cleanup', {
+      logger.warn('OverflowHandler: failed to read overflow directory during cleanup', {
         path: this.overflowDir,
         error: summarizeError(error),
       });
@@ -175,7 +175,7 @@ export class FileBackend implements SpillBackend {
         const s = statSync(p);
         entries.push({ file, path: p, mtimeMs: s.mtimeMs, size: s.size });
       } catch (error) {
-        logger.debug('OverflowHandler: failed to stat spill file during cleanup', {
+        logger.warn('OverflowHandler: failed to stat spill file during cleanup', {
           path: p,
           error: summarizeError(error),
         });
@@ -199,7 +199,7 @@ export class FileBackend implements SpillBackend {
       try {
         unlinkSync(p);
       } catch (error) {
-        logger.debug('OverflowHandler: failed to delete spill file', {
+        logger.warn('OverflowHandler: failed to delete spill file', {
           path: p,
           error: summarizeError(error),
         });
@@ -213,7 +213,7 @@ export class FileBackend implements SpillBackend {
     try {
       files = readdirSync(this.overflowDir);
     } catch (error) {
-      logger.debug('OverflowHandler: failed to read overflow directory during list', {
+      logger.warn('OverflowHandler: failed to read overflow directory during list', {
         path: this.overflowDir,
         error: summarizeError(error),
       });
@@ -228,14 +228,14 @@ export class FileBackend implements SpillBackend {
         try {
           content = readFileSync(p, 'utf-8');
         } catch (error) {
-          logger.debug('OverflowHandler: failed to read spill file during list', {
+          logger.warn('OverflowHandler: failed to read spill file during list', {
             path: p,
             error: summarizeError(error),
           });
         }
         result.push({ id: file, filename: file, content, sizeBytes: s.size, createdAt: s.mtimeMs, backendType: 'file' });
       } catch (error) {
-        logger.debug('OverflowHandler: failed to list spill file metadata', {
+        logger.warn('OverflowHandler: failed to list spill file metadata', {
           path: p,
           error: summarizeError(error),
         });
@@ -340,7 +340,7 @@ export class DiagnosticsBackend implements SpillBackend {
 // ─── Backend Factory ─────────────────────────────────────────────────────────
 
 /**
- * Create a spill backend by type. Defaults to `'file'`.
+ * Create a spill backend by type.
  */
 export function createSpillBackend(type: SpillBackendType = 'file', baseDir?: string): SpillBackend {
   switch (type) {
@@ -349,11 +349,8 @@ export function createSpillBackend(type: SpillBackendType = 'file', baseDir?: st
       return new FileBackend(baseDir);
     case 'ledger':      return new LedgerBackend();
     case 'diagnostics': return new DiagnosticsBackend();
-    default: {
-      logger.info(`[overflow] Unknown spill backend "${String(type)}", falling back to file`);
-      if (!baseDir) throw new Error('File spill backend requires an explicit baseDir');
-      return new FileBackend(baseDir);
-    }
+    default:
+      throw new Error(`Unknown spill backend: ${String(type)}`);
   }
 }
 

@@ -93,10 +93,11 @@ import {
   DEFAULT_PACKET_LIMIT,
   tokenize,
 } from './shared.js';
+import { isGeneratedKnowledgeSource } from './generated-projections.js';
 
 export interface KnowledgeServiceConfig {
   readonly configManager?: {
-    getControlPlaneConfigDir?: (() => string) | undefined | undefined;
+    getControlPlaneConfigDir?: (() => string) | undefined;
   };
   readonly memoryRegistry: Pick<MemoryRegistry, 'add' | 'getAll' | 'getStore'>;
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
@@ -550,6 +551,7 @@ export class KnowledgeService {
   async reindex(): Promise<{ status: KnowledgeStatus; issues: readonly KnowledgeIssueRecord[] }> {
     await this.store.init();
     for (const source of this.store.listSources(Number.MAX_SAFE_INTEGER)) {
+      if (isGeneratedKnowledgeSource(source)) continue;
       await recompileKnowledgeSource(this.getIngestContext(), source);
     }
     await this.semanticService.reindex({ force: false });

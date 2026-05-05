@@ -26,7 +26,7 @@ function fireHook(
     sessionId: options.runtime.sessionId,
     timestamp: Date.now(),
     payload,
-  }).catch((err: unknown) => logger.debug('Hook bridge fire error', { path, error: summarizeError(err) }));
+  }).catch((err: unknown) => logger.warn('Hook bridge fire error', { path, error: summarizeError(err) }));
 }
 
 export interface HookBridgeRegistrationOptions {

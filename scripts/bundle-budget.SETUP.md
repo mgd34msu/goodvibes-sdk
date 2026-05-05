@@ -47,7 +47,7 @@ The file lives at the **repo root**: `bundle-budgets.json`.
 
 ```json
 {
-  "_comment": ["optional string array — ignored by the script"],
+  "<note-key>": ["optional string array — ignored by the script"],
   "<export-key>": {
     "gzip_bytes": <number>,
     "rationale": "<string — optional, human-readable explanation>"
@@ -78,7 +78,7 @@ After a legitimate dependency or implementation change increases bundle size:
 
 1. Run `bun run bundle:check` locally to see current actual sizes in the table.
 2. For any entry that changed, set `gzip_bytes` to `Math.ceil(actual * 1.2)`.
-3. Keep `_comment` generic; do not add wave/date-specific rationale.
+3. Keep note entries generic; do not add wave/date-specific rationale.
 4. Commit the updated `bundle-budgets.json`.
 
 ### Adding a new entry-point

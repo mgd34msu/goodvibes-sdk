@@ -313,9 +313,8 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
 /**
  * Handles kind='message' companion main-chat messages.
  *
- * Extracted from handlePostSharedSessionMessage to eliminate inline duplication of
- * session-resolution logic (m1). Short-circuits BEFORE sessionBroker.submitMessage() to
- * avoid the buildContinuationTask WRFC engineer-chain spawn path — this is by design.
+ * Short-circuits before sessionBroker.submitMessage() so conversation messages
+ * are routed to the existing session instead of spawning continuation work.
  */
 async function handleCompanionMessageKind(
   context: DaemonRuntimeRouteContext,
@@ -340,12 +339,9 @@ async function handleCompanionMessageKind(
     source: 'companion-followup',
     timestamp,
   });
-  // Notify the TUI's in-process subscriber via the conversation follow-up event.
-  // appendCompanionMessage persists the message and publishConversationFollowup emits
-  // COMPANION_MESSAGE_RECEIVED on the runtime bus. The TUI's bootstrap-core.ts
-  // COMPANION_MESSAGE_RECEIVED subscriber delegates to orchestrator.handleUserInput(),
-  // which adds the user message to the conversation view and fires a real LLM turn
-  // whose events stream to both TUI and companion SSE.
+  // Notify in-process subscribers via the conversation follow-up event. The
+  // runtime subscriber turns this persisted message into a normal conversation
+  // turn whose events stream to both local and remote clients.
   context.publishConversationFollowup(sessionId, {
     messageId,
     body: message,
@@ -376,9 +372,8 @@ async function handleGetSharedSessionEvents(
   if (!session) {
     return jsonErrorResponse({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
   }
-  // m20: stream lifetime is tied to the request connection; the SSE stream is
-  // cleaned up when the response body closes. No explicit Symbol.dispose is exposed
-  // here because the lifetime boundary is the HTTP response, not a held reference.
+  // Stream lifetime is tied to the request connection; cleanup happens when
+  // the response body closes.
   return context.openSessionEventStream(req, sessionId);
 }
 
@@ -423,7 +418,7 @@ async function handleCancelSharedSessionInput(context: DaemonRuntimeRouteContext
   if (inputRecord.state !== 'queued' && inputRecord.state !== 'cancelled') {
     // Use Response.json directly so the `input` field is preserved in the
     // response body. jsonErrorResponse strips unknown fields via its structured
-    // error serializer, which would silently drop `input`.
+    // error serializer, which would remove `input`.
     return Response.json(
       { error: `Cannot cancel input in state '${inputRecord.state}'`, code: 'CANCEL_NOT_ALLOWED', input },
       { status: 409 },

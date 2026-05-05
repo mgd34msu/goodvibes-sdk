@@ -30,8 +30,8 @@ export async function permissionPhase(
 
   const resolvePermissionResult = async (): Promise<PermissionCheckResult> => {
     const manager = context.permissionManager as unknown as {
-      checkDetailed?: ((toolName: string, args: Record<string, unknown>) => Promise<PermissionCheckResult>) | undefined | undefined;
-      check?: ((toolName: string, args: Record<string, unknown>) => Promise<boolean>) | undefined | undefined;
+      checkDetailed?: ((toolName: string, args: Record<string, unknown>) => Promise<PermissionCheckResult>) | undefined;
+      check?: ((toolName: string, args: Record<string, unknown>) => Promise<boolean>) | undefined;
       getCategory: (toolName: string) => string;
     };
 

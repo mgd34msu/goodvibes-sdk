@@ -432,7 +432,7 @@ describe('WrfcController — escalation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Phase 5 integration: constraint propagation anchors
+// Constraint propagation anchors
 // ---------------------------------------------------------------------------
 
 /** Encode a JSON report in a ```json block for the parser. */
@@ -479,7 +479,7 @@ function makeReviewerOutput(
   });
 }
 
-describe('WrfcController — Phase 5 constraint integration', () => {
+describe('WrfcController — constraint integration', () => {
   test('C1: full chain with constraints ending in pass', async () => {
     const h = createHarness();
 
@@ -518,7 +518,7 @@ describe('WrfcController — Phase 5 constraint integration', () => {
     h.controller.dispose();
   });
 
-  test('C2: full chain without constraints (regression anchor)', async () => {
+  test('C2: full chain without constraints', async () => {
     const h = createHarness();
 
     const engRecord = h.addAgent('eng-c2', 'implement unconstrained feature');
@@ -555,7 +555,7 @@ describe('WrfcController — Phase 5 constraint integration', () => {
     h.controller.dispose();
   });
 
-  test('C3: constraint-forced fail → fix → pass — full state sequence', async () => {
+  test('constraint-forced fail → fix → pass — full state sequence', async () => {
     const h = createHarness({ maxFixAttempts: 3 });
 
     const engRecord = h.addAgent('eng-c3', 'implement with one constraint');

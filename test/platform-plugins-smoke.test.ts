@@ -1,5 +1,5 @@
 /**
- * COV-03 (ninth-review): platform/plugins/ smoke test.
+ * platform/plugins/ smoke test.
  * Security-relevant: plugin loader/manager has a trust boundary.
  * Verifies core functions are exported with correct arity.
  */

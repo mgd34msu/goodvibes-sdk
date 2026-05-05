@@ -172,7 +172,7 @@ describe('transport realtime', () => {
       sessionEvents.alpha.on('ALPHA_READY', (payload) => received.push(payload));
 
       await Promise.resolve();
-      // Wrong session — should be silently dropped.
+      // Wrong session — should be filtered out.
       dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
       // No sessionId — also dropped.
       dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
@@ -201,7 +201,7 @@ describe('transport realtime', () => {
       // Trigger one that matches.
       await Promise.resolve();
       dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: { ok: true } });
-      // Trigger one that does NOT match — should be silently dropped.
+      // Trigger one that does NOT match — should be filtered out.
       dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
       // Trigger one with no sessionId — also dropped.
       dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
@@ -352,9 +352,6 @@ describe('transport realtime', () => {
     expect(payloads).toEqual([{ id: 'a1' }]);
   });
 
-  // ---------------------------------------------------------------------------
-  // F-CONC-02: Default maxAttempts is finite (not POSITIVE_INFINITY)
-  // ---------------------------------------------------------------------------
   test('WebSocket connector: DEFAULT_WS_MAX_ATTEMPTS is finite and positive', () => {
     expect(DEFAULT_WS_MAX_ATTEMPTS).toBe(10);
   });
@@ -393,9 +390,6 @@ describe('transport realtime', () => {
     stop();
   });
 
-  // ---------------------------------------------------------------------------
-  // F-CONC-02: reconnectAttempt resets on first successful message
-  // ---------------------------------------------------------------------------
   test('WebSocket connector: reconnectAttempt resets on first successful message, not just open', async () => {
     const { MockWebSocket, instances } = createMockWebSocketClass();
 
@@ -430,9 +424,6 @@ describe('transport realtime', () => {
     stop();
   });
 
-  // ---------------------------------------------------------------------------
-  // F-CONC-03: Auth frame is guaranteed first — outbound queue flushed after auth
-  // ---------------------------------------------------------------------------
   test('WebSocket connector: auth frame is written before other outbound writes', async () => {
     let resolveToken!: () => void;
     const tokenPromise = new Promise<void>((res) => { resolveToken = res; });
@@ -462,9 +453,8 @@ describe('transport realtime', () => {
     // Trigger onOpen, which starts async token resolution but doesn't resolve yet.
     ws.simulateOpen();
 
-    // At this point token hasn't resolved. In the old code, a daemon push arriving
-    // before auth was race-prone; with buffering we don't queue outbound here but
-    // the auth frame must be the FIRST message sent once the token resolves.
+    // The token has not resolved yet; outbound frames must stay buffered until
+    // the auth frame can be written first.
     expect(ws.sentMessages).toHaveLength(0); // auth not sent yet
 
     // Now resolve the token.
@@ -479,9 +469,6 @@ describe('transport realtime', () => {
     expect(authFrame.domains).toContain('agents');
   });
 
-  // ---------------------------------------------------------------------------
-  // F-DRY-03: SSE and WS produce identical backoff schedules for equivalent inputs
-  // ---------------------------------------------------------------------------
   test('SSE and WS backoff schedules are identical for equivalent policy inputs', () => {
     // Both connectors call getStreamReconnectDelay with a 1-based attempt counter.
     // WS: nextAttempt = reconnectAttempt + 1, then getStreamReconnectDelay(nextAttempt, policy).

@@ -5,7 +5,7 @@
  *
  * Note: raw prompt/response content is carried on the event bus as-is so
  * internal consumers (conversation reducer, reply pipeline, stream UI) can
- * render and advance state. OBS-06 redaction happens at the telemetry
+ * render and advance state. Redaction happens at the telemetry
  * boundary (TelemetryApiService) where events become externally observable.
  */
 import { createEventEnvelope } from '../events/envelope.js';
@@ -72,7 +72,7 @@ export function emitStreamEnd(
   bus.emit('turn', createEventEnvelope('STREAM_END', { type: 'STREAM_END', scope: 'provider', terminal: false, ...data }, ctx));
 }
 
-/** OBS-04: Emit LLM_REQUEST_STARTED when a provider chat request is about to be dispatched. */
+/** Emit LLM_REQUEST_STARTED when a provider chat request is about to be dispatched. */
 export function emitLlmRequestStarted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
@@ -100,7 +100,7 @@ export function emitLlmResponseReceived(
     outputTokens: number;
     cacheReadTokens?: number | undefined;
     cacheWriteTokens?: number | undefined;
-    /** OBS-04 enrichments */
+    /** LLM request enrichments */
     durationMs?: number | undefined;
     retries?: number | undefined;
     costUsdCents?: number | undefined;

@@ -16,45 +16,82 @@ const IMAGE_MIME_TYPES: { mime: string; mediaType: string }[] = [
   { mime: 'image/gif', mediaType: 'image/gif' },
 ];
 
+type ClipboardAttempt = {
+  readonly command: string;
+  readonly exitCode: number | null;
+  readonly stderr?: string | undefined;
+};
+
+function bytesToString(value: unknown): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value instanceof Uint8Array) return Buffer.from(value).toString('utf-8');
+  return String(value);
+}
+
+function recordClipboardAttempt(
+  attempts: ClipboardAttempt[],
+  command: string,
+  result: { readonly exitCode: number | null; readonly stderr?: unknown },
+): void {
+  if (attempts.length >= 8) return;
+  const stderr = bytesToString(result.stderr).trim();
+  attempts.push({
+    command,
+    exitCode: result.exitCode,
+    stderr: stderr ? stderr.slice(0, 300) : undefined,
+  });
+}
+
+function logClipboardAttempts(message: string, attempts: readonly ClipboardAttempt[]): void {
+  if (attempts.length === 0) return;
+  logger.debug(message, { attempts: [...attempts] });
+}
+
 /**
  * pasteFromClipboard - Attempts to read from system clipboard using platform tools.
  */
 export function pasteFromClipboard(): string {
+  const attempts: ClipboardAttempt[] = [];
   try {
     if (process.platform === 'linux') {
       // Try wl-paste (Wayland) then xclip (X11)
       const wl = Bun.spawnSync(['wl-paste', '--no-newline'], {
         stdin: 'ignore',
         stdout: 'pipe',
-        stderr: 'ignore',
+        stderr: 'pipe',
         timeout: 3000,
       });
       if (wl.exitCode === 0 && wl.stdout) {
         return Buffer.from(wl.stdout).toString();
       }
+      recordClipboardAttempt(attempts, 'wl-paste', wl);
       const xclip = Bun.spawnSync(['xclip', '-selection', 'clipboard', '-o'], {
         stdin: 'ignore',
         stdout: 'pipe',
-        stderr: 'ignore',
+        stderr: 'pipe',
         timeout: 3000,
       });
       if (xclip.exitCode === 0 && xclip.stdout) {
         return Buffer.from(xclip.stdout).toString();
       }
+      recordClipboardAttempt(attempts, 'xclip', xclip);
     } else if (process.platform === 'darwin') {
       const pb = Bun.spawnSync(['pbpaste'], {
         stdin: 'ignore',
         stdout: 'pipe',
-        stderr: 'ignore',
+        stderr: 'pipe',
         timeout: 3000,
       });
       if (pb.exitCode === 0 && pb.stdout) {
         return Buffer.from(pb.stdout).toString();
       }
+      recordClipboardAttempt(attempts, 'pbpaste', pb);
     }
   } catch (err: unknown) {
     logger.error('Clipboard: Paste failed', { error: summarizeError(err) });
   }
+  logClipboardAttempts('Clipboard text read returned no data', attempts);
   return '';
 }
 
@@ -63,6 +100,7 @@ export function pasteFromClipboard(): string {
  * Returns base64-encoded image data and mediaType, or null if no image is available.
  */
 export function pasteImageFromClipboard(): { data: string; mediaType: string } | null {
+  const attempts: ClipboardAttempt[] = [];
   try {
     if (process.platform === 'linux') {
       // Try wl-paste (Wayland) for each supported MIME type
@@ -70,7 +108,7 @@ export function pasteImageFromClipboard(): { data: string; mediaType: string } |
         const wl = Bun.spawnSync(['wl-paste', '--type', mime, '--no-newline'], {
           stdin: 'ignore',
           stdout: 'pipe',
-          stderr: 'ignore',
+          stderr: 'pipe',
           timeout: 3000,
         });
         if (wl.exitCode === 0 && wl.stdout) {
@@ -79,13 +117,14 @@ export function pasteImageFromClipboard(): { data: string; mediaType: string } |
             return { data: buf.toString('base64'), mediaType };
           }
         }
+        recordClipboardAttempt(attempts, `wl-paste ${mime}`, wl);
       }
       // Try xclip (X11) for each supported MIME type
       for (const { mime, mediaType } of IMAGE_MIME_TYPES) {
         const xclip = Bun.spawnSync(['xclip', '-selection', 'clipboard', '-t', mime, '-o'], {
           stdin: 'ignore',
           stdout: 'pipe',
-          stderr: 'ignore',
+          stderr: 'pipe',
           timeout: 3000,
         });
         if (xclip.exitCode === 0 && xclip.stdout) {
@@ -94,13 +133,14 @@ export function pasteImageFromClipboard(): { data: string; mediaType: string } |
             return { data: buf.toString('base64'), mediaType };
           }
         }
+        recordClipboardAttempt(attempts, `xclip ${mime}`, xclip);
       }
     } else if (process.platform === 'darwin') {
       // macOS: try pngpaste first (brew install pngpaste), then fall back to osascript
       const pp = Bun.spawnSync(['pngpaste', '-'], {
         stdin: 'ignore',
         stdout: 'pipe',
-        stderr: 'ignore',
+        stderr: 'pipe',
         timeout: 3000,
       });
       if (pp.exitCode === 0 && pp.stdout) {
@@ -109,14 +149,15 @@ export function pasteImageFromClipboard(): { data: string; mediaType: string } |
           return { data: ppBuf.toString('base64'), mediaType: 'image/png' };
         }
       }
-      // Fallback: osascript — reads clipboard as PNG hex data
+      recordClipboardAttempt(attempts, 'pngpaste', pp);
+      // Next try osascript, which reads clipboard as PNG hex data.
       // Output format: «data PNGf<hex>» — extract hex after 'PNGf'
       const osa = Bun.spawnSync(
         ['osascript', '-e', 'the clipboard as «class PNGf»'],
         {
           stdin: 'ignore',
           stdout: 'pipe',
-          stderr: 'ignore',
+          stderr: 'pipe',
           timeout: 5000,
         },
       );
@@ -131,9 +172,11 @@ export function pasteImageFromClipboard(): { data: string; mediaType: string } |
           }
         }
       }
+      recordClipboardAttempt(attempts, 'osascript PNGf', osa);
     }
   } catch (err: unknown) {
-    logger.debug('Clipboard image access failed', { error: summarizeError(err) });
+    logger.warn('Clipboard image access failed', { error: summarizeError(err) });
   }
+  logClipboardAttempts('Clipboard image read returned no data', attempts);
   return null;
 }

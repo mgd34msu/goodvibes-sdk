@@ -19,6 +19,7 @@ import type {
 import { readRecord, readString, readStringArray, sourceSemanticHash, sourceSemanticText } from './utils.js';
 import { uniqueStrings } from './utils.js';
 import { runKnowledgeSemanticSelfImprovement } from './self-improvement.js';
+import { isGeneratedKnowledgeSource } from '../generated-projections.js';
 
 export interface KnowledgeSemanticServiceOptions {
   readonly llm?: KnowledgeSemanticLlm | null | undefined;
@@ -305,8 +306,12 @@ export class KnowledgeSemanticService {
   private async runSelfImproveUnlocked(input: KnowledgeSemanticSelfImproveInput): Promise<KnowledgeSemanticSelfImproveResult> {
     if (!input.knowledgeSpaceId && !input.sourceIds?.length && !input.gapIds?.length) {
       const spaces = uniqueStrings([
-        ...this.store.listSources(Number.MAX_SAFE_INTEGER).map((source) => getKnowledgeSpaceId(source)),
-        ...this.store.listNodes(Number.MAX_SAFE_INTEGER).map((node) => getKnowledgeSpaceId(node)),
+        ...this.store.listSources(Number.MAX_SAFE_INTEGER)
+          .filter((source) => source.status !== 'stale')
+          .map((source) => getKnowledgeSpaceId(source)),
+        ...this.store.listNodes(Number.MAX_SAFE_INTEGER)
+          .filter((node) => node.status !== 'stale')
+          .map((node) => getKnowledgeSpaceId(node)),
       ]);
       let combined = emptySelfImproveResult();
       for (const [index, spaceId] of spaces.entries()) {
@@ -367,13 +372,17 @@ function listSemanticSources(
   store: KnowledgeStore,
   spaceId: string | undefined,
 ): KnowledgeSourceRecord[] {
-  if (!spaceId) return store.listSources(Number.MAX_SAFE_INTEGER);
+  if (!spaceId) return store.listSources(Number.MAX_SAFE_INTEGER).filter(isSemanticSourceCandidate);
   const normalized = normalizeKnowledgeSpaceId(spaceId);
   if (normalized === 'homeassistant') {
     return store.listSources(Number.MAX_SAFE_INTEGER)
-      .filter((source) => isHomeAssistantKnowledgeSpace(normalizeKnowledgeSpaceId(getKnowledgeSpaceId(source))));
+      .filter((source) => isSemanticSourceCandidate(source) && isHomeAssistantKnowledgeSpace(normalizeKnowledgeSpaceId(getKnowledgeSpaceId(source))));
   }
-  return store.listSourcesInSpace(normalized);
+  return store.listSourcesInSpace(normalized).filter(isSemanticSourceCandidate);
+}
+
+function isSemanticSourceCandidate(source: KnowledgeSourceRecord): boolean {
+  return source.status !== 'stale' && !isGeneratedKnowledgeSource(source);
 }
 
 function answerRepairSpaceId(answer: KnowledgeSemanticAnswerResult): string {

@@ -9,6 +9,8 @@ export interface RepairResult {
   fixed: Record<string, unknown>;
   /** Human-readable list of what was fixed. */
   repairs: string[];
+  /** Repair failures callers can surface as warning metadata. */
+  warnings?: string[] | undefined;
 }
 
 /**
@@ -26,10 +28,11 @@ export function repairToolCall(
   args: Record<string, unknown>,
   schema: ToolDefinition,
 ): RepairResult {
-  const fixed: Record<string, unknown> = structuredClone(args);
+  let fixed: Record<string, unknown>;
   const repairs: string[] = [];
 
   try {
+    fixed = structuredClone(args);
     const params = schema.parameters as Record<string, unknown> | undefined;
     const properties = (params?.properties ?? {}) as Record<string, Record<string, unknown>>;
     const required = (params?.required ?? []) as string[];
@@ -121,11 +124,12 @@ export function repairToolCall(
     }
   } catch (err) {
     // Never let repair logic crash the caller
-    logger.debug('repairToolCall: unexpected error (non-fatal)', {
+    const warning = `Auto-repair skipped for tool '${toolName}': ${summarizeError(err)}`;
+    logger.warn('repairToolCall: unexpected error produced warning result', {
       toolName,
       error: summarizeError(err),
     });
-    return { repaired: false, original: args, fixed: args, repairs: [] };
+    return { repaired: false, original: args, fixed: args, repairs: [], warnings: [warning] };
   }
 
   const repaired = repairs.length > 0;

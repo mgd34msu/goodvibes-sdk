@@ -1,12 +1,12 @@
 /**
- * ARCH-03 Error Hierarchy Regression Test
+ * Error hierarchy invariants.
  *
  * Verifies that every platform-layer error class:
  *   1. Passes instanceof GoodVibesSdkError (hierarchy is intact)
  *   2. Passes instanceof Error (transitively, always)
  *   3. Exposes populated .code, .category, .source, .recoverable fields
  *
- * This test guards against field-shadowing regressions (e.g. `public readonly`
+ * This test guards against field shadowing (e.g. `public readonly`
  * parameter properties on derived classes that reset base-class fields to undefined).
  */
 

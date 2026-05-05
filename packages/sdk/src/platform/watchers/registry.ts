@@ -29,7 +29,7 @@ export interface RegisterWatcherInput {
   readonly source: AutomationSourceRecord;
   readonly intervalMs?: number | undefined;
   readonly metadata?: Record<string, unknown> | undefined;
-  readonly run?: (() => Promise<string | void> | string | void) | undefined | undefined;
+  readonly run?: (() => Promise<string | void> | string | void) | undefined;
 }
 
 export interface RegisterPollingWatcherInput {

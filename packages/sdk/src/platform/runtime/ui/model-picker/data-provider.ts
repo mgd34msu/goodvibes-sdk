@@ -19,7 +19,7 @@ import type { ModelPickerData, ModelPickerEntry } from './types.js';
 /** Options for constructing a ModelPickerDataProvider. */
 export interface ModelPickerDataProviderOptions {
   /**
-   * Initial set of pinned model IDs.
+   * Initial set of pinned model registry keys.
    * Call updatePinnedIds() to update at runtime.
    */
   readonly pinnedIds?: ReadonlySet<string> | undefined;
@@ -115,7 +115,7 @@ export class ModelPickerDataProvider {
   }
 
   /**
-   * Update the pinned/favorites model ID set.
+   * Update the pinned/favorites model registry-key set.
    * Triggers a snapshot rebuild and notifies subscribers.
    */
   public updatePinnedIds(pinnedIds: ReadonlySet<string>): void {
@@ -165,7 +165,7 @@ export class ModelPickerDataProvider {
       groups,
       degradedProviderIds,
       unavailableProviderIds,
-      activeModelId: this._modelState.activeModelId,
+      activeModelId: this._modelState.registryKey,
       snapshotAt: Date.now(),
     };
   }
@@ -175,7 +175,7 @@ export class ModelPickerDataProvider {
       try {
         cb();
       } catch {
-        // Non-fatal: subscriber errors must not crash the provider
+        // Subscriber errors must not crash the provider.
       }
     }
   }

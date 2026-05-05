@@ -48,7 +48,7 @@ async function completeWithCurrentModel(
   input.signal?.addEventListener('abort', abortFromParent, { once: true });
   try {
     const current = providerRegistry.getCurrentModel();
-    const provider = providerRegistry.getForModel(current.id, current.provider);
+    const provider = providerRegistry.getForModel(current.registryKey, current.provider);
     const chatPromise = provider.chat({
       model: current.id,
       messages: [{ role: 'user', content: input.prompt }],
@@ -70,7 +70,7 @@ async function completeWithCurrentModel(
     });
     const response = await Promise.race([chatPromise, timeoutPromise]);
     if (response === timeoutSentinel) {
-      logger.debug('Knowledge semantic LLM request timed out', {
+      logger.warn('Knowledge semantic LLM request timed out', {
         purpose: input.purpose,
         timeoutMs,
       });
@@ -80,7 +80,7 @@ async function completeWithCurrentModel(
     const content = response.content?.trim() ?? '';
     return content.length > 0 ? content : null;
   } catch (error) {
-    logger.debug('Knowledge semantic LLM request failed', {
+    logger.warn('Knowledge semantic LLM request failed', {
       purpose: input.purpose,
       error: summarizeError(error),
     });

@@ -293,6 +293,7 @@ ${truncatedDiff}`;
   const { summary, impact, risk } = llmResponse
     ? parseSemanticDiffResponse(llmResponse, changedFiles)
     : fallback;
+  const source = llmResponse ? 'llm' : 'deterministic_fallback';
 
   return {
     before,
@@ -300,6 +301,7 @@ ${truncatedDiff}`;
     summary,
     impact,
     risk,
+    source,
     changed_files: changedFiles,
   };
 }

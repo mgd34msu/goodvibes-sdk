@@ -3,7 +3,7 @@
  * Constructs each web-search provider with minimal context and asserts
  * both the provider shape and that search() returns a Promise that
  * resolves or rejects with the expected result shape.
- * Closes coverage gap: platform/web-search/providers per-provider (eighth-review, MIN-2 fix)
+ * Closes coverage gap: platform/web-search/providers per-provider
  */
 
 import { describe, expect, test } from 'bun:test';

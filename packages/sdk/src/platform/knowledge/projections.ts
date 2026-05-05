@@ -7,7 +7,6 @@ import {
 } from './generated-projections.js';
 import {
   buildBulletList,
-  codeFenceJson,
   dedupe,
   formatDateTime,
   joinSections,
@@ -30,7 +29,7 @@ import type {
 } from './types.js';
 
 export interface KnowledgeProjectionServiceOptions {
-  readonly connectors?: (() => readonly KnowledgeConnector[]) | undefined | undefined;
+  readonly connectors?: (() => readonly KnowledgeConnector[]) | undefined;
 }
 
 export class KnowledgeProjectionService {
@@ -524,14 +523,6 @@ export class KnowledgeProjectionService {
         '## Issues',
         buildBulletList(issues.map((issue) => this.linkToTarget(this.createIssueTarget(issue), `${issue.severity.toUpperCase()} ${issue.code}: ${issue.message}`))),
       ].join('\n'),
-      [
-        '## Metadata JSON',
-        codeFenceJson(source.metadata),
-      ].filter(Boolean).join('\n'),
-      extraction ? [
-        '## Extraction Structure',
-        codeFenceJson(extraction.structure),
-      ].filter(Boolean).join('\n') : null,
     );
     return {
       path: target.defaultPath,
@@ -588,10 +579,6 @@ export class KnowledgeProjectionService {
           .filter((issue) => issue.nodeId === node.id)
           .map((issue) => this.linkToTarget(this.createIssueTarget(issue), `${issue.severity.toUpperCase()} ${issue.code}: ${issue.message}`))),
       ].join('\n'),
-      [
-        '## Metadata JSON',
-        codeFenceJson(node.metadata),
-      ].filter(Boolean).join('\n'),
     );
     return {
       path: target.defaultPath,
@@ -634,10 +621,6 @@ export class KnowledgeProjectionService {
           ...(node ? [this.linkToTarget(this.createNodeTarget(node), `node: ${node.title}`)] : []),
         ]),
       ].join('\n'),
-      [
-        '## Metadata JSON',
-        codeFenceJson(issue.metadata),
-      ].filter(Boolean).join('\n'),
     );
     return {
       path: target.defaultPath,
@@ -688,10 +671,6 @@ export class KnowledgeProjectionService {
         '## Related Nodes',
         buildBulletList(sortByTitle(dedupe(linkedNodes, (entry) => entry.id)).map((entry) => this.linkToTarget(this.createNodeTarget(entry), `${entry.title} (${entry.kind})`))),
       ].join('\n'),
-      [
-        '## Metadata JSON',
-        codeFenceJson(node.metadata),
-      ].filter(Boolean).join('\n'),
     );
     return {
       path: target.defaultPath,

@@ -24,7 +24,7 @@ function defaultTestArgs(): readonly string[] {
       integrationArgs = ['test/integration'];
     }
   } catch {
-    // integration directory does not exist — skip silently
+    // Integration tests are optional in package-only checkouts.
   }
   return [...rootTestFiles, ...integrationArgs];
 }

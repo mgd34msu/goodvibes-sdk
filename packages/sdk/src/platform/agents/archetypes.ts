@@ -45,8 +45,7 @@ export interface AgentArchetype {
 }
 
 // ---------------------------------------------------------------------------
-// Built-in fallback templates
-// Mirrors the AGENT_TEMPLATES in src/tools/agent/index.ts so that
+// Built-in archetypes mirror AGENT_TEMPLATES in src/tools/agent/index.ts so
 // archetypes.ts has no circular dependency on the tool module.
 // ---------------------------------------------------------------------------
 
@@ -210,7 +209,7 @@ function validateArchetype(archetype: Omit<AgentArchetype, 'validationIssues'>):
  * Progressive loading:
  *  - `listArchetypes()` returns all known archetypes (frontmatter only);
  *    full body (system_prompt) is populated on first call to `loadArchetype()`.
- *  - Falls back to built-in templates when no .md file is found.
+ *  - Built-in archetypes are available when no local .md file is found.
  */
 export class ArchetypeLoader {
   /** Map from archetype name -> AgentArchetype (may be partially loaded) */
@@ -236,7 +235,7 @@ export class ArchetypeLoader {
     if (this.scanned) return;
     this.scanned = true;
 
-    // Seed with built-ins first so they act as fallbacks
+    // Seed built-ins first; local markdown files override matching names.
     for (const builtin of BUILT_IN_ARCHETYPES) {
       this.cache.set(builtin.name, { ...builtin });
     }

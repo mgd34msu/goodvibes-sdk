@@ -86,7 +86,7 @@ export class SQLiteStore {
       logger.error('SQLiteStore: failed to save', {
         error: summarizeError(err),
       });
-      return false;
+      throw err;
     }
   }
 

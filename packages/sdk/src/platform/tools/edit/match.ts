@@ -6,6 +6,16 @@ import { summarizeError } from '../../utils/error-display.js';
 import { assertSafeRegexInput, compileSafeRegExp, safeRegExpExec } from '../../utils/safe-regex.js';
 
 type AstGrepModule = typeof import('@ast-grep/napi');
+type EditComputationResult =
+  | { newContent: string; occurrencesReplaced: number; warning?: string | undefined }
+  | { error: string };
+
+function withExactFallbackWarning(
+  result: { newContent: string; occurrencesReplaced: number } | { error: string },
+  warning: string,
+): EditComputationResult {
+  return 'error' in result ? result : { ...result, warning };
+}
 
 export function decodeBase64(value: string): string {
   return Buffer.from(value, 'base64').toString('utf-8');
@@ -353,7 +363,7 @@ export function computeAstEdit(
   fileContent: string,
   item: EditItem,
   filePath: string,
-): Promise<{ newContent: string; occurrencesReplaced: number } | { error: string }> {
+): Promise<EditComputationResult> {
   const findStr = item.find_base64 ? decodeBase64(item.find_base64) : item.find;
   const replaceStr = item.replace_base64 ? decodeBase64(item.replace_base64) : item.replace;
   let intel: CodeIntelligence;
@@ -361,11 +371,17 @@ export function computeAstEdit(
     intel = new CodeIntelligence({});
   } catch (e) {
     logger.debug('CodeIntelligence instance not available', { error: summarizeError(e) });
-    return Promise.resolve(computeExactEdit(fileContent, item));
+    return Promise.resolve(withExactFallbackWarning(
+      computeExactEdit(fileContent, item),
+      'AST match unavailable; used exact match instead.',
+    ));
   }
 
   if (!intel.hasTreeSitter(filePath)) {
-    return Promise.resolve(computeExactEdit(fileContent, item));
+    return Promise.resolve(withExactFallbackWarning(
+      computeExactEdit(fileContent, item),
+      'AST match unavailable for this file type; used exact match instead.',
+    ));
   }
 
   return intel.getSymbols(filePath, fileContent).then((symbols) => {
@@ -389,7 +405,10 @@ export function computeAstEdit(
     }
 
     if (positions.length === 0) {
-      return computeExactEdit(fileContent, item);
+      return withExactFallbackWarning(
+        computeExactEdit(fileContent, item),
+        'AST match found no symbols; used exact match instead.',
+      );
     }
 
     const selResult = selectOccurrences(positions, item.occurrence);
@@ -397,27 +416,36 @@ export function computeAstEdit(
 
     const newContent = applyReplacements(fileContent, selResult.selected, findStr, replaceStr, 'exact', true);
     return { newContent, occurrencesReplaced: selResult.selected.length };
-  }).catch(() => computeExactEdit(fileContent, item));
+  }).catch((err) => withExactFallbackWarning(
+    computeExactEdit(fileContent, item),
+    `AST match failed (${summarizeError(err)}); used exact match instead.`,
+  ));
 }
 
 export async function computeAstPatternEdit(
   fileContent: string,
   item: EditItem,
   filePath: string,
-): Promise<{ newContent: string; occurrencesReplaced: number } | { error: string }> {
+): Promise<EditComputationResult> {
   const findStr = item.find_base64 ? decodeBase64(item.find_base64) : item.find;
   const replaceStr = item.replace_base64 ? decodeBase64(item.replace_base64) : item.replace;
 
   let astGrep: AstGrepModule;
   try {
     astGrep = await loadAstGrep();
-  } catch {
-    return computeExactEdit(fileContent, item);
+  } catch (err) {
+    return withExactFallbackWarning(
+      computeExactEdit(fileContent, item),
+      `ast_pattern unavailable (${summarizeError(err)}); used exact match instead.`,
+    );
   }
 
   const parser = getAstGrepLang(astGrep, filePath);
   if (!parser) {
-    return computeExactEdit(fileContent, item);
+    return withExactFallbackWarning(
+      computeExactEdit(fileContent, item),
+      'ast_pattern unavailable for this file type; used exact match instead.',
+    );
   }
 
   let root: ReturnType<AstGrepParser['parse']>;
@@ -425,7 +453,10 @@ export async function computeAstPatternEdit(
     root = parser.parse(fileContent);
   } catch (e) {
     logger.debug('AST pattern parse failed', { error: summarizeError(e) });
-    return computeExactEdit(fileContent, item);
+    return withExactFallbackWarning(
+      computeExactEdit(fileContent, item),
+      `ast_pattern parse failed (${summarizeError(e)}); used exact match instead.`,
+    );
   }
 
   let matches: AstGrepNode[];

@@ -199,7 +199,7 @@ class FeatureFlagManagerImpl {
   /**
    * Applies flag state overrides from the user config layer.
    *
-   * - Missing flag ids are silently ignored (avoids crashes on stale configs).
+   * - Unknown flag ids are rejected so stale configs cannot hide misspelled gates.
    * - Skips non-toggleable flags if the current state is already non-default
    *   (allows startup-only flags to be seeded via config without error).
    * - A config-level `'killed'` state is applied without a reason string;
@@ -210,7 +210,9 @@ class FeatureFlagManagerImpl {
   loadFromConfig(config: FlagConfig): void {
     for (const [id, desiredState] of Object.entries(config.flags)) {
       const flag = FEATURE_FLAG_MAP.get(id);
-      if (flag === undefined) continue; // unknown flag — ignore
+      if (flag === undefined) {
+        throw new Error(`[FeatureFlagManager] Unknown flag in config: "${id}"`);
+      }
 
       const current = this._states.get(id) as FlagState;
       if (current === desiredState) continue; // already correct — skip
@@ -283,12 +285,10 @@ class FeatureFlagManagerImpl {
     };
     this._transitions.push(entry);
 
-    // Notify subscribers — guard against throwing callbacks
     for (const subscriber of this._subscribers) {
       try {
         subscriber(flagId, next, previous);
       } catch (err) {
-        // Subscribers must not crash the manager
         process.stderr.write(
           `[FeatureFlagManager] Subscriber error for flag "${flagId}": ${
             summarizeError(err)

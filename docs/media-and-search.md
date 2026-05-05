@@ -3,7 +3,9 @@
 GoodVibes exposes media, voice, multimodal analysis, artifact, and web-search
 features through the daemon control plane and SDK platform modules.
 
-Accessible via the aggregate `@pellux/goodvibes-sdk/platform` namespace (as `platform.media.*`) and the dedicated `@pellux/goodvibes-sdk/platform/multimodal` subpath for daemon embedders. Consumer apps interact through operator methods documented below.
+Daemon embedders use the dedicated `@pellux/goodvibes-sdk/platform/multimodal`
+subpath and explicit daemon/runtime wiring. Consumer apps interact through
+operator methods documented below.
 
 ## Artifacts
 
@@ -31,12 +33,12 @@ providers, session export, and channel delivery.
   artifact MIME type and pass metadata through query parameters, for example
   `?filename=manual.pdf&metadata=%7B%22source%22%3A%22homeassistant%22%7D`.
 
-The old small-body JSON path is still supported, but it is not the right shape
-for PDFs, photos, website snapshots, or other large artifacts. Large clients
-should send multipart or raw binary uploads so the daemon can stream/spool the
-payload outside the JSON parser. Raw binary is the most memory-stable option for
-very large payloads; multipart is available for browser panels and form-based
-clients.
+Small JSON control bodies are intended for inline text, daemon-local paths, and
+remote URI references. PDFs, photos, website snapshots, and other large
+artifacts should use multipart or raw binary uploads so the daemon can
+stream/spool the payload outside the JSON parser. Raw binary is the most
+memory-stable option for very large payloads; multipart is available for browser
+panels and form-based clients.
 
 Artifact storage defaults to `storage.artifacts.maxBytes = 536870912`
 (`512 MiB`). Hosts can raise that setting up to the schema limit when they have

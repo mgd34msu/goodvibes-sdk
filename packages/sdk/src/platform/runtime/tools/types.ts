@@ -46,6 +46,8 @@ export interface PhaseResult {
   durationMs: number;
   /** Human-readable error message if the phase failed. */
   error?: string | undefined;
+  /** Human-readable warnings when a phase completed but degraded the result. */
+  warnings?: readonly string[] | undefined;
   /**
    * If true, the executor will skip all remaining phases and return
    * the current result immediately (e.g. permission denied).

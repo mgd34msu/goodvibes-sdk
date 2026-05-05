@@ -10,6 +10,7 @@ import type { HookDispatcher } from '../hooks/index.js';
 import type { HookCategory, HookEventPath, HookPhase } from '../hooks/types.js';
 import type { ConfigManager } from '../config/manager.js';
 import { summarizeError } from '../utils/error-display.js';
+import { logger } from '../utils/logger.js';
 import type {
   PermissionCategory,
   PermissionCheckResult,
@@ -247,7 +248,7 @@ export class PermissionManager {
     if (typeof args['command'] === 'string') {
       return `${toolName}:${args['command']}`;
     }
-    // Generic fallback: key only on tool name ("always allow this tool")
+    // Generic key: tool name only ("always allow this tool").
     return toolName;
   }
 
@@ -359,8 +360,14 @@ export class PermissionManager {
         timestamp: Date.now(),
         payload,
       });
-    } catch {
-      // Permission hooks are best-effort observability surfaces.
+    } catch (error) {
+      // Permission hooks are observability-only. Dispatch failures are logged
+      // but do not alter permission decisions or prompt flow.
+      logger.warn('PermissionManager: permission hook dispatch failed', {
+        path,
+        callId: typeof payload['callId'] === 'string' ? payload['callId'] : undefined,
+        error: summarizeError(error),
+      });
     }
   }
 }

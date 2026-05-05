@@ -22,7 +22,7 @@ const DEFAULT_BURST_THRESHOLD = 3;
 /** Default cooldown period after the last burst event before the group resets. */
 const DEFAULT_COOLDOWN_MS = 3_000;
 
-/** Internal tracking record for a single burst group. */
+/** Tracking record for a single burst group. */
 interface BurstEntry {
   /** Timestamps of arrivals within the current observation window. */
   timestamps: number[];

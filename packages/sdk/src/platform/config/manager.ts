@@ -19,7 +19,6 @@ export type DeepReadonly<T> = {
 /** Constructor overrides for CLI args and programmatic instantiation. */
 interface ConfigCliOverrides {
   model?: string | undefined;
-  provider?: string | undefined;
   autoApprove?: boolean | undefined;
   systemPromptFile?: string | undefined;
   workingDir?: string | undefined;
@@ -65,10 +64,6 @@ function cloneDefaultConfig(): GoodVibesConfig {
 
 function sanitizeConfigShape(config: GoodVibesConfig): GoodVibesConfig {
   const sanitized = structuredClone(config) as GoodVibesConfig;
-  const lineNumbers = (sanitized.display as Record<string, unknown>).lineNumbers;
-  if (typeof lineNumbers === 'boolean') {
-    sanitized.display.lineNumbers = lineNumbers ? 'all' : 'off';
-  }
   for (const key of Object.keys(sanitized.permissions.tools)) {
     if (!PERMISSION_TOOL_KEYS.has(key)) {
       delete (sanitized.permissions.tools as Record<string, unknown>)[key];
@@ -96,11 +91,7 @@ function requireAbsoluteOwnedPath(path: string | undefined, name: string): strin
 function ensureSharedConfig(sharedPath: string): void {
   if (!existsSync(sharedPath)) {
     mkdirSync(dirname(sharedPath), { recursive: true });
-    try {
-      writeFileSync(sharedPath, '{}\n', 'utf-8');
-    } catch (err) {
-      logger.debug('Could not create shared surface config (non-fatal)', { error: summarizeError(err) });
-    }
+    writeFileSync(sharedPath, '{}\n', 'utf-8');
   }
 }
 
@@ -152,9 +143,6 @@ export class ConfigManager {
     // Apply constructor overrides (CLI args, etc.) after load
     if (overrides.model !== undefined) {
       this.config.provider.model = overrides.model;
-    }
-    if (overrides.provider !== undefined) {
-      this.config.provider.provider = overrides.provider;
     }
     if (overrides.autoApprove !== undefined) {
       this.config.behavior.autoApprove = overrides.autoApprove;
@@ -229,7 +217,12 @@ export class ConfigManager {
     const { parent, field } = this.resolvePath(key);
     const previousValue = parent[field]!;
     parent[field] = value;
-    this.save();
+    try {
+      this.save();
+    } catch (error) {
+      parent[field] = previousValue;
+      throw error;
+    }
     this.notifyListeners(key, previousValue, value);
     this.emitConfigHook(key, previousValue, value);
   }
@@ -327,12 +320,8 @@ export class ConfigManager {
 
   /** Persist current config to global TUI settings file. */
   save(): void {
-    try {
-      mkdirSync(dirname(this.configPath), { recursive: true });
-      writeFileSync(this.configPath, JSON.stringify(this.config, null, 2) + '\n', 'utf-8');
-    } catch (err) {
-      logger.debug('Config save failed (non-fatal)', { error: summarizeError(err) });
-    }
+    mkdirSync(dirname(this.configPath), { recursive: true });
+    writeFileSync(this.configPath, JSON.stringify(this.config, null, 2) + '\n', 'utf-8');
   }
 
   /** Persist current config to the project-level surface settings file. */
@@ -340,12 +329,8 @@ export class ConfigManager {
     if (!this.projectConfigPath) {
       throw new Error('ConfigManager.saveProject requires an explicit workingDir.');
     }
-    try {
-      mkdirSync(dirname(this.projectConfigPath), { recursive: true });
-      writeFileSync(this.projectConfigPath, JSON.stringify(this.config, null, 2) + '\n', 'utf-8');
-    } catch (err) {
-      logger.debug('Project config save failed (non-fatal)', { error: summarizeError(err) });
-    }
+    mkdirSync(dirname(this.projectConfigPath), { recursive: true });
+    writeFileSync(this.projectConfigPath, JSON.stringify(this.config, null, 2) + '\n', 'utf-8');
   }
 
   /** Load config from disk: global then project (project wins). Deep-merges with defaults. */
@@ -358,7 +343,7 @@ export class ConfigManager {
 
         this.config = sanitizeConfigShape(deepMerge(cloneDefaultConfig(), parsed) as GoodVibesConfig);
       } catch (err) {
-        logger.debug('Global config load failed (non-fatal, using defaults)', { error: summarizeError(err) });
+        throw new ConfigError(`Global config load failed for ${this.configPath}: ${summarizeError(err)}`);
       }
     }
 
@@ -369,7 +354,7 @@ export class ConfigManager {
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         this.config = sanitizeConfigShape(deepMerge(this.config, parsed) as GoodVibesConfig);
       } catch (err) {
-        logger.debug('Project config load failed (non-fatal)', { error: summarizeError(err) });
+        throw new ConfigError(`Project config load failed for ${this.projectConfigPath}: ${summarizeError(err)}`);
       }
     }
   }

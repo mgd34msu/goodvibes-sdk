@@ -1,5 +1,5 @@
 /**
- * COV-01 (ninth-review): platform/bookmarks/ smoke test.
+ * platform/bookmarks/ smoke test.
  * Verifies BookmarkManager is instantiable and core methods are callable.
  */
 import { mkdtempSync, rmSync } from 'node:fs';

@@ -14,14 +14,19 @@ Runtime Zod v4 schemas derived from the GoodVibes contract definitions.
 | `SerializedEventEnvelopeSchema` | SSE/WS envelope | `events.ts` |
 | `TypedSerializedEventEnvelopeSchema` | SSE/WS typed envelope | `events.ts` |
 
-## Deferred
+## Contract-Typed Surfaces
 
-The following surfaces are deferred pending type stabilization:
+The following surfaces are validated through their generated TypeScript
+contract definitions and the transport envelope instead of dedicated reusable
+Zod exports:
 
-- `sessions.create` / `sessions.get` / `sessions.list` — session output shapes vary by surface configuration; will be added post-1.0 once session shape is locked.
-- `control.snapshot` — large nested shape with many optional fields; correctness requires generated schema tooling.
-- `control.contract` — describes the contract manifest itself; circular definition risk; deferred to Wave 8.
-- All `automation.*`, `knowledge.*`, `channels.*` outputs — plugin-generated shapes that may diverge from typed contracts; deferred to Wave 8 schema coverage pass.
+- `sessions.create` / `sessions.get` / `sessions.list` — session output
+  shapes vary by surface configuration.
+- `control.snapshot` — large nested shape with many optional fields.
+- `control.contract` — describes the contract manifest itself.
+- `automation.*`, `knowledge.*`, and `channels.*` outputs — extension and
+  plugin-driven shapes that stay aligned through the generated contract
+  artifacts.
 
 ## Import Path
 

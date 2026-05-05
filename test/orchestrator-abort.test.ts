@@ -29,7 +29,6 @@ class MockOrchestrator {
 
   abort(): void {
     this.abortCalled = true;
-    // The fix under test: clear animInterval in abort()
     if (this.animInterval !== null) {
       clearInterval(this.animInterval);
       this.animInterval = null;

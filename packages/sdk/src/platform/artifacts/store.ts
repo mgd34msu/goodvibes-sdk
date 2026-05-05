@@ -26,8 +26,8 @@ import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 export interface ArtifactStoreConfig {
   readonly rootDir?: string | undefined;
   readonly configManager?: {
-    getControlPlaneConfigDir?: (() => string) | undefined | undefined;
-    get?: ((key: ConfigKey) => unknown) | undefined | undefined;
+    getControlPlaneConfigDir?: (() => string) | undefined;
+    get?: ((key: ConfigKey) => unknown) | undefined;
   };
   readonly maxBytes?: number | undefined;
   readonly defaultRetentionMs?: number | undefined;
@@ -181,7 +181,7 @@ async function* iterateWebStream(stream: ReadableStream<Uint8Array>): AsyncItera
     try {
       reader.releaseLock();
     } catch (error) {
-      logger.debug('[artifacts] Ignored upload stream reader release failure', {
+      logger.warn('[artifacts] upload stream reader release failed', {
         error: summarizeError(error),
       });
     }
@@ -363,7 +363,13 @@ export class ArtifactStore {
       contentPath,
       metadataPath,
     };
-    await writeFile(metadataPath, `${JSON.stringify(record, null, 2)}\n`, 'utf-8');
+    try {
+      await writeFile(metadataPath, `${JSON.stringify(record, null, 2)}\n`, 'utf-8');
+    } catch (error) {
+      rmSync(contentPath, { force: true });
+      rmSync(metadataPath, { force: true });
+      throw error;
+    }
     this.records.set(id, record);
     return this.toDescriptor(record);
   }
@@ -509,7 +515,7 @@ export class ArtifactStore {
         }
         this.records.set(parsed.id, parsed);
       } catch (error) {
-        logger.debug('[artifacts] skipping unreadable artifact metadata', {
+        logger.warn('[artifacts] skipping unreadable artifact metadata', {
           path: metadataPath,
           error: summarizeError(error),
         });
@@ -533,7 +539,7 @@ export class ArtifactStore {
       if (existsSync(contentPath)) rmSync(contentPath, { force: true });
       if (existsSync(metadataPath)) rmSync(metadataPath, { force: true });
     } catch (error) {
-      logger.debug('[artifacts] failed to prune expired artifact files', {
+      logger.warn('[artifacts] failed to prune expired artifact files', {
         artifactId: record.id,
         error: summarizeError(error),
       });
@@ -660,7 +666,7 @@ export class ArtifactStore {
     try {
       return decodeURIComponent(match[1].replace(/^"|"$/g, ''));
     } catch (err) {
-      logger.debug('filenameFromContentDisposition: failed to decode URI component', { error: summarizeError(err) });
+      logger.warn('filenameFromContentDisposition: failed to decode URI component', { error: summarizeError(err) });
       return match[1].replace(/^"|"$/g, '');
     }
   }

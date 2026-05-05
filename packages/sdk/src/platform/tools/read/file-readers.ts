@@ -233,7 +233,7 @@ async function readImageFile(
 
   const magicResult = validateMagicBytes(imgBuffer, extname(target.resolvedPath));
   if (!magicResult.valid) {
-    logger.debug('[read] image magic bytes mismatch', {
+    logger.warn('[read] image magic bytes mismatch', {
       path: target.resolvedPath,
       expected: extname(target.resolvedPath),
       detected: magicResult.detectedType ?? 'unknown',
@@ -360,7 +360,7 @@ async function readTextFile(target: ReadTarget, context: ReadExecutionContext, f
     fullBuf = readFileSync(target.resolvedPath);
   } catch (err) {
     const message = summarizeError(err);
-    logger.debug('read tool: file read failed', { path: target.resolvedPath, error: message });
+    logger.warn('read tool: file read failed', { path: target.resolvedPath, error: message });
     return createReadErrorResult(target, `Cannot read file: ${message}`);
   }
 
@@ -374,7 +374,7 @@ async function readTextFile(target: ReadTarget, context: ReadExecutionContext, f
     rawContent = fullBuf.toString('utf-8');
   } catch (err) {
     const message = summarizeError(err);
-    logger.debug('read tool: utf-8 decode failed', { path: target.resolvedPath, error: message });
+    logger.warn('read tool: utf-8 decode failed', { path: target.resolvedPath, error: message });
     return createReadErrorResult(target, `Cannot decode file as UTF-8: ${message}`, fullBuf.length);
   }
 
@@ -442,7 +442,7 @@ export async function readOneFile(
     resolvedPath = resolveAndValidatePath(fileInput.path, projectIndex.baseDir);
   } catch (err) {
     const message = summarizeError(err);
-    logger.debug('read tool: path validation failed', { path: fileInput.path, error: message });
+    logger.warn('read tool: path validation failed', { path: fileInput.path, error: message });
     return createReadErrorResult({ fileInput, resolvedPath: fileInput.path, extract }, message);
   }
 

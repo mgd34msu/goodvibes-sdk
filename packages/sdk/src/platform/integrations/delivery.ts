@@ -71,7 +71,7 @@ export function classifyDeliveryError(error: unknown): DeliveryFailureClass {
       return 'terminal';
     }
   }
-  // Default: retryable (never silently drop)
+  // Default: retryable; delivery failures remain observable.
   return 'retryable';
 }
 
@@ -177,10 +177,6 @@ const DEFAULT_CONFIG: DeliveryQueueConfig = {
   maxDlqSize: 500,
   sloEnforced: false,
 };
-
-// ---------------------------------------------------------------------------
-// Pending retry entry (internal)
-// ---------------------------------------------------------------------------
 
 interface PendingEntry {
   id: string;
@@ -353,10 +349,6 @@ export class DeliveryQueue {
     this._pending.clear();
   }
 
-  // -------------------------------------------------------------------------
-  // Internal retry logic
-  // -------------------------------------------------------------------------
-
   private async _attempt(entry: PendingEntry): Promise<DeliveryOutcome> {
     entry.attempts += 1;
     this._totalAttempts += 1;
@@ -464,7 +456,7 @@ export class DeliveryQueue {
       try {
         listener(dlqEntry);
       } catch (err) {
-        logger.debug('[delivery] listener error:', {
+        logger.warn('[delivery] listener error:', {
           error: summarizeError(err),
           entryId: dlqEntry.id,
         });

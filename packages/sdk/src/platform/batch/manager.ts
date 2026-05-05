@@ -21,6 +21,12 @@ const TERMINAL_JOB_STATUSES = new Set<DaemonBatchJob['status']>([
   'expired',
   'dead_lettered',
 ]);
+const BATCH_JOB_STATUSES = new Set<DaemonBatchJob['status']>([
+  'queued',
+  'submitted',
+  'running',
+  ...TERMINAL_JOB_STATUSES,
+]);
 
 function now(): number {
   return Date.now();
@@ -32,6 +38,59 @@ function makeEmptyStore(): DaemonBatchStoreData {
 
 function estimateJsonBytes(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function throwInvalidBatchStore(): never {
+  throw new DaemonBatchError('Daemon batch store snapshot is invalid.', 'BATCH_STORE_INVALID', 500);
+}
+
+function validateBatchJob(jobId: string, value: unknown): void {
+  if (!isRecord(value)) throwInvalidBatchStore();
+  const job = value as Partial<DaemonBatchJob>;
+  if (
+    typeof job.id !== 'string'
+    || job.id !== jobId
+    || typeof job.provider !== 'string'
+    || typeof job.model !== 'string'
+    || typeof job.status !== 'string'
+    || !BATCH_JOB_STATUSES.has(job.status as DaemonBatchJob['status'])
+    || !isFiniteNumber(job.createdAt)
+    || !isFiniteNumber(job.updatedAt)
+    || !isFiniteNumber(job.attempts)
+    || !isRecord(job.request)
+    || !Array.isArray(job.request.messages)
+    || job.request.messages.length === 0
+  ) {
+    throwInvalidBatchStore();
+  }
+  for (const message of job.request.messages) {
+    if (!isRecord(message) || typeof message['role'] !== 'string') throwInvalidBatchStore();
+  }
+  if (job.request.tools !== undefined && !Array.isArray(job.request.tools)) throwInvalidBatchStore();
+  if (job.metadata !== undefined && !isRecord(job.metadata)) throwInvalidBatchStore();
+  if (job.source !== undefined && !isRecord(job.source)) throwInvalidBatchStore();
+  if (job.error !== undefined && (!isRecord(job.error) || typeof job.error.message !== 'string')) {
+    throwInvalidBatchStore();
+  }
+}
+
+function validateBatchStoreData(snapshot: DaemonBatchStoreData | null): DaemonBatchStoreData {
+  if (!snapshot) return makeEmptyStore();
+  if (!isRecord(snapshot) || snapshot.version !== 1 || !isRecord(snapshot.jobs)) {
+    throwInvalidBatchStore();
+  }
+  for (const [jobId, job] of Object.entries(snapshot.jobs)) {
+    validateBatchJob(jobId, job);
+  }
+  return snapshot;
 }
 
 export class DaemonBatchManager {
@@ -419,8 +478,7 @@ export class DaemonBatchManager {
 
   private async load(): Promise<DaemonBatchStoreData> {
     if (this.data) return this.data;
-    this.data = await this.store.load() ?? makeEmptyStore();
-    if (this.data.version !== 1 || !this.data.jobs) this.data = makeEmptyStore();
+    this.data = validateBatchStoreData(await this.store.load());
     return this.data;
   }
 

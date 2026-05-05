@@ -47,7 +47,7 @@ class CounterImpl implements Counter {
     return this._values.get(labelKey(labels)) ?? 0;
   }
 
-  /** MAJ-04: reset all accumulated values (for test isolation). */
+  /** reset all accumulated values (for test isolation). */
   _clear(): void {
     this._values.clear();
   }
@@ -93,7 +93,7 @@ class HistogramImpl implements Histogram {
     };
   }
 
-  /** MAJ-04: reset all accumulated values (for test isolation). */
+  /** reset all accumulated values (for test isolation). */
   _clear(): void {
     this._accumulators.clear();
   }
@@ -113,7 +113,7 @@ class GaugeImpl implements Gauge {
     return this._values.get(labelKey(labels)) ?? 0;
   }
 
-  /** MAJ-04: reset all accumulated values (for test isolation). */
+  /** reset all accumulated values (for test isolation). */
   _clear(): void {
     this._values.clear();
   }
@@ -191,7 +191,7 @@ export class RuntimeMeter {
   }
 
   /**
-   * MAJ-04: Reset all accumulated values on every registered instrument.
+   * Reset all accumulated values on every registered instrument.
    * Intended for test isolation only — clears counter sums, histogram accumulators,
    * and gauge values on the singleton meter so tests do not bleed state.
    */

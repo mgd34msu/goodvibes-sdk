@@ -37,7 +37,7 @@ export class WrfcWorkmap {
       }
       appendFileSync(this.filePath, JSON.stringify(entry) + '\n', 'utf-8');
     } catch (err) {
-      logger.debug('WrfcWorkmap: append failed', { error: summarizeError(err) });
+      logger.warn('WrfcWorkmap: append failed', { error: summarizeError(err) });
     }
   }
 
@@ -50,14 +50,14 @@ export class WrfcWorkmap {
         try {
           return JSON.parse(line) as WorkmapEntry;
         } catch (error) {
-          logger.debug('WrfcWorkmap: malformed JSONL line skipped', { error: summarizeError(error) });
+          logger.warn('WrfcWorkmap: malformed JSONL line skipped', { error: summarizeError(error) });
           return null;
         }
       }).filter((e): e is WorkmapEntry => e !== null);
       if (wrfcId) return entries.filter(e => e.wrfcId === wrfcId);
       return entries;
     } catch (error) {
-      logger.debug('WrfcWorkmap: read failed', { error: summarizeError(error) });
+      logger.warn('WrfcWorkmap: read failed', { error: summarizeError(error) });
       return [];
     }
   }
@@ -89,7 +89,7 @@ export class WrfcWorkmap {
         .sort((a: { mtime: number }, b: { mtime: number }) => b.mtime - a.mtime);
       return files.length > 0 ? join(dir, files[0]?.name ?? '') : null;
     } catch (error) {
-      logger.debug('WrfcWorkmap: latest file discovery failed', { error: summarizeError(error) });
+      logger.warn('WrfcWorkmap: latest file discovery failed', { error: summarizeError(error) });
       return null;
     }
   }

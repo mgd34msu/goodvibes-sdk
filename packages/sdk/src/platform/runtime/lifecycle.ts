@@ -18,7 +18,7 @@ import { summarizeError } from '../utils/error-display.js';
 
 /**
  * Fire the session:start lifecycle hook.
- * Non-fatal: errors are logged and swallowed.
+ * Hook failures are logged and do not block startup.
  */
 export function fireSessionStart(
   sessionId: string,
@@ -35,10 +35,10 @@ export function fireSessionStart(
       timestamp: Date.now(),
       payload: { sessionId },
     }).catch((err: unknown) => {
-      logger.debug('fireSessionStart hook error (non-fatal)', { error: summarizeError(err) });
+      logger.warn('fireSessionStart hook failed', { error: summarizeError(err) });
     });
   } catch (err) {
-    logger.debug('fireSessionStart sync error (non-fatal)', { error: summarizeError(err) });
+    logger.warn('fireSessionStart hook dispatch failed', { error: summarizeError(err) });
   }
 }
 
@@ -75,9 +75,18 @@ export async function shutdownRuntime(
   persistenceOptions?: SessionPersistenceOptions,
 ): Promise<void> {
   // Step 1: persist conversation
-  saveSession(sessionId, sessionData, model, provider, title, persistenceOptions);
+  let shutdownError: Error | null = null;
+  try {
+    saveSession(sessionId, sessionData, model, provider, title, persistenceOptions);
+  } catch (error) {
+    const message = summarizeError(error);
+    logger.warn('saveSession failed during shutdown', { error: message });
+    shutdownError = new Error(`shutdownRuntime failed to persist session: ${message}`, {
+      cause: error,
+    });
+  }
 
-  // Step 2: lifecycle hooks (fire-and-forget, best-effort before process exit)
+  // Step 2: lifecycle hooks are started without waiting for async handlers.
   const fireHook = (specific: string): void => {
     if (!hookDispatcher) return;
     try {
@@ -89,19 +98,48 @@ export async function shutdownRuntime(
         sessionId,
         timestamp: Date.now(),
         payload: { sessionId },
-      }).catch((err: unknown) => { logger.debug('shutdownRuntime hook fire error (non-fatal)', { specific, error: summarizeError(err) }); });
-    } catch (err) { logger.debug('shutdownRuntime hook sync error (non-fatal)', { specific, error: summarizeError(err) }); }
+      }).catch((err: unknown) => {
+        logger.warn('shutdownRuntime lifecycle hook failed', {
+          specific,
+          error: summarizeError(err),
+        });
+      });
+    } catch (err) {
+      logger.warn('shutdownRuntime lifecycle hook dispatch failed', {
+        specific,
+        error: summarizeError(err),
+      });
+    }
   };
 
   fireHook('end');
   fireHook('save');
 
   // Step 3: stop ScheduleManager
-  try { scheduleManager?.destroy(); } catch (err) { logger.debug('ScheduleManager.destroy failed (non-fatal)', { error: summarizeError(err) }); }
+  try {
+    scheduleManager?.destroy();
+  } catch (err) {
+    logger.warn('ScheduleManager.destroy failed during shutdown', {
+      error: summarizeError(err),
+    });
+  }
 
   // Step 4: stop provider registry watcher
-  try { providerRegistry?.stopWatching(); } catch (err) { logger.debug('providerRegistry.stopWatching failed (non-fatal)', { error: summarizeError(err) }); }
+  try {
+    providerRegistry?.stopWatching();
+  } catch (err) {
+    logger.warn('providerRegistry.stopWatching failed during shutdown', {
+      error: summarizeError(err),
+    });
+  }
 
   // Step 5: dispose cross-session orchestration registry if it is app-owned in this runtime
-  try { sessionOrchestration?.dispose(); } catch (err) { logger.debug('sessionOrchestration.dispose failed (non-fatal)', { error: summarizeError(err) }); }
+  try {
+    sessionOrchestration?.dispose();
+  } catch (err) {
+    logger.warn('sessionOrchestration.dispose failed during shutdown', {
+      error: summarizeError(err),
+    });
+  }
+  if (shutdownError) throw shutdownError;
 }

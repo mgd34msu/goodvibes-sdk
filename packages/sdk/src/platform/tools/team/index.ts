@@ -48,12 +48,11 @@ function teamsPath(storageRoot: string, surfaceRoot?: string): string {
 function loadTeams(storageRoot: string, surfaceRoot?: string): TeamRecord[] {
   const path = teamsPath(storageRoot, surfaceRoot);
   if (!existsSync(path)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as TeamFile;
-    return parsed?.version === 1 && Array.isArray(parsed.teams) ? [...parsed.teams] : [];
-  } catch {
-    return [];
+  const parsed = JSON.parse(readFileSync(path, 'utf-8')) as TeamFile;
+  if (parsed?.version !== 1 || !Array.isArray(parsed.teams)) {
+    throw new Error(`Team store is malformed: ${path}`);
   }
+  return [...parsed.teams];
 }
 
 function saveTeams(storageRoot: string, teams: readonly TeamRecord[], surfaceRoot?: string): void {

@@ -50,6 +50,81 @@ interface StoreData extends Record<string, unknown> {
   history: TaskRunRecord[];
 }
 
+const TASK_RUN_STATUSES = new Set<TaskRunRecord['status']>(['running', 'completed', 'failed']);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function throwInvalidSchedulerStore(): never {
+  throw new Error('TaskScheduler store snapshot is invalid.');
+}
+
+function validateOptionalString(value: unknown): void {
+  if (value !== undefined && typeof value !== 'string') throwInvalidSchedulerStore();
+}
+
+function validateOptionalNumber(value: unknown): void {
+  if (value !== undefined && !isFiniteNumber(value)) throwInvalidSchedulerStore();
+}
+
+function validateScheduledTaskRecord(value: unknown): void {
+  if (!isRecord(value)) throwInvalidSchedulerStore();
+  const task = value as Partial<ScheduledTask>;
+  if (
+    typeof task.id !== 'string'
+    || typeof task.name !== 'string'
+    || typeof task.cron !== 'string'
+    || typeof task.prompt !== 'string'
+    || typeof task.enabled !== 'boolean'
+    || !isFiniteNumber(task.runCount)
+    || !isFiniteNumber(task.createdAt)
+  ) {
+    throwInvalidSchedulerStore();
+  }
+  try {
+    parseCron(task.cron);
+    if (task.timezone !== undefined) {
+      if (typeof task.timezone !== 'string') throwInvalidSchedulerStore();
+      validateTimezone(task.timezone);
+    }
+  } catch {
+    throwInvalidSchedulerStore();
+  }
+  validateOptionalString(task.model);
+  validateOptionalString(task.template);
+  validateOptionalNumber(task.lastRun);
+  validateOptionalNumber(task.nextRun);
+  validateOptionalNumber(task.missedRuns);
+}
+
+function validateTaskRunRecord(value: unknown): void {
+  if (!isRecord(value)) throwInvalidSchedulerStore();
+  const record = value as Partial<TaskRunRecord>;
+  if (
+    typeof record.taskId !== 'string'
+    || !isFiniteNumber(record.startedAt)
+    || typeof record.agentId !== 'string'
+    || typeof record.status !== 'string'
+    || !TASK_RUN_STATUSES.has(record.status as TaskRunRecord['status'])
+  ) {
+    throwInvalidSchedulerStore();
+  }
+  validateOptionalString(record.error);
+}
+
+function validateSchedulerStoreData(data: StoreData | null): StoreData | null {
+  if (!data) return null;
+  if (!isRecord(data) || !Array.isArray(data.tasks) || !Array.isArray(data.history)) throwInvalidSchedulerStore();
+  for (const task of data.tasks) validateScheduledTaskRecord(task);
+  for (const record of data.history) validateTaskRunRecord(record);
+  return data;
+}
+
 interface TaskSchedulerConfig {
   readonly storePath?: string | undefined;
   readonly spawnTask?: (input: {
@@ -221,8 +296,8 @@ function fieldMatches(field: CronField, value: number): boolean {
 
 /**
  * Extract calendar components (minute, hour, dom, month, dow) from a UTC
- * timestamp as seen in the given IANA timezone.  Falls back to local time
- * when `timezone` is undefined or the timezone is not recognised.
+ * timestamp as seen in the given IANA timezone. Uses local time only when
+ * `timezone` is undefined.
  */
 function getCalendarParts(
   ts: number,
@@ -259,20 +334,8 @@ function getCalendarParts(
       month: parseInt(parts['month'] ?? '1', 10),
       dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts['weekday'] ?? 'Sun'),
     };
-  } catch (err: unknown) {
-    // OBS-11: Unknown timezone — fall back to local time; log at debug so misconfigured schedules surface
-    logger.debug('[Scheduler] timezone decomposition failed, falling back to local time', {
-      error: String(err),
-    });
-    // fall back to local time
-    const d = new Date(ts);
-    return {
-      minute: d.getMinutes(),
-      hour: d.getHours(),
-      dom: d.getDate(),
-      month: d.getMonth() + 1,
-      dow: d.getDay(),
-    };
+  } catch {
+    throw new Error(`Invalid timezone: "${timezone}". Use an IANA name like "America/New_York" or "Europe/London".`);
   }
 }
 
@@ -411,7 +474,7 @@ export class TaskScheduler {
   private timers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   /**
    * Per-task run history indexed by taskId — O(1) push + trim per task run.
-   * The flat `history` array is derived from this on persist (PERF-03).
+   * The flat `history` array is derived from this on persist.
    */
   private historyByTask: Map<string, TaskRunRecord[]> = new Map();
   private store: PersistentStore<StoreData>;
@@ -421,7 +484,7 @@ export class TaskScheduler {
     readonly template?: string | undefined;
   }) => string) | undefined;
   private running = false;
-  /** Debounce handle for coalescing rapid successive save() calls (PERF-03). */
+  /** Debounce handle for coalescing rapid successive save() calls. */
   private _saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: string | TaskSchedulerConfig) {
@@ -442,8 +505,8 @@ export class TaskScheduler {
   /** Load tasks from disk and start timers. */
   async start(): Promise<void> {
     if (this.running) return;
-    this.running = true;
     await this.load();
+    this.running = true;
     for (const task of this.tasks.values()) {
       if (task.enabled) {
         this.scheduleNext(task);
@@ -572,10 +635,6 @@ export class TaskScheduler {
     return result;
   }
 
-  // -------------------------------------------------------------------------
-  // Internal scheduling
-  // -------------------------------------------------------------------------
-
   private scheduleNext(task: ScheduledTask): void {
     this.cancelTimer(task.id);
 
@@ -673,7 +732,7 @@ export class TaskScheduler {
   }
 
   /**
-   * O(1) per-task history push + trim (PERF-03).
+   * O(1) per-task history push + trim.
    * The Map index makes both the push and the cap check O(1) instead of O(n) global filter.
    */
   private pushHistory(record: TaskRunRecord): void {
@@ -710,7 +769,7 @@ export class TaskScheduler {
 
   /**
    * Debounced save: coalesces multiple rapid calls into a single disk write
-   * that fires SAVE_DEBOUNCE_MS after the last call (PERF-03).
+   * that fires SAVE_DEBOUNCE_MS after the last call.
    */
   private scheduleSave(): void {
     if (this._saveDebounceTimer !== null) return;
@@ -722,7 +781,7 @@ export class TaskScheduler {
   }
 
   private async load(): Promise<void> {
-    const data = await this.store.load();
+    const data = validateSchedulerStoreData(await this.store.load());
     if (!data) return;
 
     const now = Date.now();
@@ -747,11 +806,11 @@ export class TaskScheduler {
           }
         }
 
-        // Recompute nextRun on load so stale values are replaced
+        // Recompute nextRun on load so stale values are replaced.
         try {
           t.nextRun = computeNextRun(t.cron, new Date(), t.timezone).getTime();
-        } catch {
-          t.enabled = false; // Disable tasks with invalid cron
+        } catch (err) {
+          throw new Error(`TaskScheduler store snapshot is invalid: task '${t.id}' schedule cannot be restored: ${summarizeError(err)}`);
         }
 
         // Detect if a run was missed during the gap (lastRun → now)
@@ -777,7 +836,7 @@ export class TaskScheduler {
       for (const record of data.history) {
         const bucket = this.historyByTask.get(record.taskId) ?? [];
         bucket.push(record);
-        // Maintain cap on restore (PERF-03).
+        // Maintain cap on restore.
         if (bucket.length > MAX_HISTORY_PER_TASK) {
           bucket.splice(0, bucket.length - MAX_HISTORY_PER_TASK);
         }

@@ -94,7 +94,7 @@ export interface TokenScopeAuditResult {
 export interface TokenRotationAuditResult {
   tokenId: string;
   outcome: RotationAuditOutcome;
-  /** How old the token is in ms. */
+  /** Token age in ms. */
   ageMs: number;
   /** The configured rotation cadence in ms. */
   cadenceMs: number;
@@ -225,7 +225,7 @@ export class ApiTokenAuditor {
   }
 
   /**
-   * Deregister a token (e.g. on rotation — remove the old registration,
+   * Deregister a token (e.g. on rotation - remove the previous registration,
    * then registerToken with the new metadata).
    */
   deregisterToken(tokenId: string): boolean {
@@ -259,10 +259,6 @@ export class ApiTokenAuditor {
     if (!policy) return null;
     return this._auditRotationFor(token, policy, now);
   }
-
-  // -------------------------------------------------------------------------
-  // Internal audit helpers (avoid map lookups + non-null assertions in auditAll)
-  // -------------------------------------------------------------------------
 
   private _auditScopeFor(
     token: ApiTokenMetadata,

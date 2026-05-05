@@ -163,7 +163,13 @@ export interface Gauge {
 export interface SpanExporter {
   /** Name for logging/identification. */
   readonly name: string;
-  /** Export a batch of completed spans. Must not throw — swallow and log on failure. */
+  /**
+   * Export a batch of completed spans.
+   *
+   * Runtime exporters should isolate their own transport or write failures, but
+   * those failures must stay observable through logs, returned rejections, or
+   * exporter-owned result state.
+   */
   export(spans: ReadableSpan[]): Promise<void>;
   /** Flush any buffered spans. */
   flush(): Promise<void>;

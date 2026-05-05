@@ -1,7 +1,18 @@
 import { join, relative } from 'node:path';
 import { statSync, lstatSync } from 'node:fs';
 import type { FilesQuery, OutputOptions } from './shared.js';
-import { buildGitignoreMatcher, collectGlobFiles, makeCountResult, makeFilesResult, matchesGlob, validateSearchPath } from './shared.js';
+import {
+  addFindWarning,
+  buildGitignoreMatcher,
+  collectGlobFiles,
+  createFindDiagnostics,
+  findNestedGitignoreFiles,
+  makeCountResult,
+  makeFilesResult,
+  matchesGlob,
+  validateSearchPath,
+  withFindWarnings,
+} from './shared.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
 
@@ -15,11 +26,19 @@ export async function executeFilesQuery(
   const basePath = validatedPath;
   const patterns = query.patterns ?? ['**/*'];
   const excludePatterns = query.exclude ?? [];
-  const compiledExcludes = excludePatterns.map((p) => new Bun.Glob(p));
   const maxResults = output.max_results ?? 100;
   const includeHidden = query.include_hidden ?? false;
   const followSymlinks = query.follow_symlinks ?? false;
   const respectGitignore = query.respect_gitignore !== false;
+  const diagnostics = createFindDiagnostics();
+  const compiledExcludes: Array<InstanceType<typeof Bun.Glob>> = [];
+  for (const pattern of excludePatterns) {
+    try {
+      compiledExcludes.push(new Bun.Glob(pattern));
+    } catch (err) {
+      addFindWarning(diagnostics, `Skipped invalid exclude glob '${pattern}': ${summarizeError(err)}`);
+    }
+  }
 
   const modifiedAfterMs = query.modified_after ? new Date(query.modified_after).getTime() : undefined;
   if (modifiedAfterMs !== undefined && Number.isNaN(modifiedAfterMs)) {
@@ -31,8 +50,18 @@ export async function executeFilesQuery(
   }
 
   const gitignoreMatcher = respectGitignore
-    ? buildGitignoreMatcher(join(projectRoot, '.gitignore'))
+    ? buildGitignoreMatcher(join(projectRoot, '.gitignore'), diagnostics)
     : null;
+  if (respectGitignore) {
+    const rootGitignorePath = join(projectRoot, '.gitignore');
+    const nestedGitignores = findNestedGitignoreFiles(basePath, rootGitignorePath);
+    if (nestedGitignores.length > 0) {
+      addFindWarning(
+        diagnostics,
+        `Nested .gitignore files are not applied by find files; ${nestedGitignores.length} nested file(s) detected, including '${nestedGitignores[0]}'.`,
+      );
+    }
+  }
 
   let hasContentRegex: RegExp | undefined;
   if (query.has_content) {
@@ -44,10 +73,13 @@ export async function executeFilesQuery(
   }
 
   const SCAN_CEILING = 50_000;
-  const scannedFiles = await collectGlobFiles(basePath, patterns, includeHidden, followSymlinks);
+  const scannedFiles = await collectGlobFiles(basePath, patterns, includeHidden, followSymlinks, diagnostics);
   const matchedFiles = new Set<string>();
   for (const file of scannedFiles) {
-    if (matchedFiles.size >= SCAN_CEILING) break;
+    if (matchedFiles.size >= SCAN_CEILING) {
+      addFindWarning(diagnostics, `File scan stopped after ${SCAN_CEILING} matches; results may be incomplete.`);
+      break;
+    }
     const rel = relative(basePath, file);
     if (gitignoreMatcher && gitignoreMatcher(rel)) continue;
     const excluded = compiledExcludes.some((excl) => matchesGlob(excl, file, basePath));
@@ -81,8 +113,8 @@ export async function executeFilesQuery(
         const s = followSymlinks ? statSync(entry.path) : lstatSync(entry.path);
         entry.size = s.size;
         entry.mtimeMs = s.mtimeMs;
-      } catch {
-        // ignore stat errors
+      } catch (err) {
+        addFindWarning(diagnostics, `Could not stat '${entry.path}'; filters and sorting may be incomplete: ${summarizeError(err)}`);
       }
 
       if (query.min_size !== undefined && (entry.size ?? 0) < query.min_size) continue;
@@ -105,8 +137,8 @@ export async function executeFilesQuery(
       try {
         const text = await Bun.file(entry.path).text();
         if (safeRegExpTest(hasContentRegex, text, { operation: 'find files has_content', maxInputChars: 500_000 })) filtered.push(entry);
-      } catch {
-        // unreadable file
+      } catch (err) {
+        addFindWarning(diagnostics, `Could not read '${entry.path}' for has_content filtering: ${summarizeError(err)}`);
       }
     }
     entries = filtered;
@@ -124,7 +156,7 @@ export async function executeFilesQuery(
 
   const format = output.format ?? 'files_only';
   if (format === 'count_only') {
-    return makeCountResult(entries.length);
+    return withFindWarnings(makeCountResult(entries.length), diagnostics.warnings);
   }
   if (format === 'with_stats') {
     const result = entries.map((e) => ({
@@ -132,7 +164,7 @@ export async function executeFilesQuery(
       size: e.size,
       modified: e.mtimeMs !== undefined ? new Date(e.mtimeMs).toISOString() : undefined,
     }));
-    return { files: result, count: result.length };
+    return withFindWarnings({ files: result, count: result.length }, diagnostics.warnings);
   }
   if (format === 'with_preview') {
     const previewLines = output.preview_lines ?? 3;
@@ -142,13 +174,13 @@ export async function executeFilesQuery(
       try {
         const text = await Bun.file(entry.path).text();
         preview = text.split('\n').slice(0, previewLines);
-      } catch {
-        // unreadable
+      } catch (err) {
+        addFindWarning(diagnostics, `Could not read '${entry.path}' for preview: ${summarizeError(err)}`);
       }
       result.push({ file: entry.path, preview });
     }
-    return { files: result, count: result.length };
+    return withFindWarnings({ files: result, count: result.length }, diagnostics.warnings);
   }
 
-  return makeFilesResult(entries.map((e) => e.path), entries.length);
+  return withFindWarnings(makeFilesResult(entries.map((e) => e.path), entries.length), diagnostics.warnings);
 }

@@ -438,6 +438,11 @@ export class HomeGraphService {
   }
 
   async resetSpace(input: HomeGraphResetInput): Promise<HomeGraphResetResult> {
+    await this.store.init();
+    const { spaceId } = resolveReadableHomeGraphSpace(this.store, input);
+    if (input.dryRun !== true) {
+      this.cancelSyncSelfImprovement(spaceId);
+    }
     return resetHomeGraphSpace(this.store, this.artifactStore, input);
   }
 

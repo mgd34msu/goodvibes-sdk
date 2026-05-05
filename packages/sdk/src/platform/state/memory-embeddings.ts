@@ -1,7 +1,5 @@
 import { ConfigManager, getConfiguredEmbeddingProviderId } from '../config/index.js';
-import { logger } from '../utils/logger.js';
 import { createBuiltinMemoryEmbeddingProviders } from './memory-embedding-http.js';
-import { summarizeError } from '../utils/error-display.js';
 
 export const DEFAULT_MEMORY_EMBEDDING_DIMS = 384;
 
@@ -127,8 +125,8 @@ export class MemoryEmbeddingProviderRegistry {
     const registered = { ...provider, id };
     this.providers.set(id, registered);
     if (options.makeDefault) {
-      this.activeProviderId = id;
       persistDefaultEmbeddingProviderId(this.configManager, id);
+      this.activeProviderId = id;
     }
     return () => {
       if (this.providers.get(id) === registered) this.unregister(id);
@@ -146,8 +144,20 @@ export class MemoryEmbeddingProviderRegistry {
     persistDefaultEmbeddingProviderId(this.configManager, id);
   }
 
+  getDefaultProviderId(): string {
+    return this.activeProviderId;
+  }
+
+  getDefaultProviderOrNull(): MemoryEmbeddingProvider | null {
+    return this.providers.get(this.activeProviderId) ?? null;
+  }
+
   getDefaultProvider(): MemoryEmbeddingProvider {
-    return this.providers.get(this.activeProviderId) ?? HASHED_MEMORY_EMBEDDING_PROVIDER;
+    const provider = this.getDefaultProviderOrNull();
+    if (!provider) {
+      throw new Error(`Active memory embedding provider '${this.activeProviderId}' is not registered.`);
+    }
+    return provider;
   }
 
   get(id: string): MemoryEmbeddingProvider | null {
@@ -161,25 +171,18 @@ export class MemoryEmbeddingProviderRegistry {
   embedSync(request: MemoryEmbeddingRequest): MemoryEmbeddingResult {
     const provider = this.getDefaultProvider();
     if (provider.embedSync) return provider.embedSync(request);
-    return HASHED_MEMORY_EMBEDDING_PROVIDER.embedSync!(request);
+    throw new Error(`Active memory embedding provider '${provider.id}' does not support synchronous embeddings.`);
   }
 
   async embedAsync(request: MemoryEmbeddingRequest): Promise<MemoryEmbeddingResult> {
     const provider = this.getDefaultProvider();
     if (provider.embed) {
-      try {
-        return await provider.embed(request);
-      } catch (error) {
-        logger.warn('Memory embedding provider failed; falling back to hashed local embeddings', {
-          providerId: provider.id,
-          error: summarizeError(error),
-        });
-      }
+      return await provider.embed(request);
     }
     if (provider.embedSync) {
       return provider.embedSync(request);
     }
-    return HASHED_MEMORY_EMBEDDING_PROVIDER.embedSync!(request);
+    throw new Error(`Active memory embedding provider '${provider.id}' does not provide embeddings.`);
   }
 
   async status(): Promise<MemoryEmbeddingProviderStatus[]> {
@@ -210,7 +213,7 @@ export class MemoryEmbeddingProviderRegistry {
         state: 'unconfigured',
         dimensions: DEFAULT_MEMORY_EMBEDDING_DIMS,
         configured: false,
-        detail: `Persisted embedding provider '${this.activeProviderId}' is not registered; sqlite-vec will use '${HASHED_MEMORY_EMBEDDING_PROVIDER.id}' until it returns.`,
+        detail: `Persisted embedding provider '${this.activeProviderId}' is not registered; embedding operations will fail until it is registered or the default provider is changed.`,
         metadata: {
           local: true,
           hasSyncEmbed: false,
@@ -226,24 +229,24 @@ export class MemoryEmbeddingProviderRegistry {
     const providers = await this.status();
     const syncProviders = this.list().filter((provider) => typeof provider.embedSync === 'function').map((provider) => provider.id);
     const asyncProviders = this.list().filter((provider) => typeof provider.embed === 'function').map((provider) => provider.id);
-    const active = this.getDefaultProvider();
-    const activeStatus = providers.find((provider) => provider.id === active.id);
+    const active = this.getDefaultProviderOrNull();
+    const activeStatus = active ? providers.find((provider) => provider.id === active.id) : undefined;
     const warnings: string[] = [];
     if (!this.providers.has(this.activeProviderId)) {
-      warnings.push(`Persisted embedding provider '${this.activeProviderId}' is not currently registered; falling back to '${HASHED_MEMORY_EMBEDDING_PROVIDER.id}'.`);
+      warnings.push(`Persisted embedding provider '${this.activeProviderId}' is not currently registered; embedding operations will fail until it is registered or the default provider is changed.`);
     }
-    if (activeStatus && !activeStatus.configured) {
+    if (active && activeStatus && !activeStatus.configured) {
       warnings.push(`Active embedding provider '${active.id}' is not fully configured: ${activeStatus.detail ?? 'configuration is incomplete'}`);
     }
-    if (!active.embedSync) {
+    if (active && !active.embedSync) {
       if (active.embed) {
-        warnings.push(`Active embedding provider '${active.id}' is async-only; sqlite-vec indexing will fall back to '${HASHED_MEMORY_EMBEDDING_PROVIDER.id}' for live writes and can be rebuilt asynchronously.`);
+        warnings.push(`Active embedding provider '${active.id}' is async-only; sqlite-vec live writes will skip vector updates until an async rebuild completes.`);
       } else {
-        warnings.push(`Active embedding provider '${active.id}' has no sync embed path; sqlite-vec indexing will fall back to '${HASHED_MEMORY_EMBEDDING_PROVIDER.id}'.`);
+        warnings.push(`Active embedding provider '${active.id}' has no sync embed path; sqlite-vec live writes cannot update vectors.`);
       }
     }
-    const activeDimensions = active.dimensions;
-    if (activeDimensions !== DEFAULT_MEMORY_EMBEDDING_DIMS) {
+    const activeDimensions = active?.dimensions;
+    if (active && activeDimensions !== DEFAULT_MEMORY_EMBEDDING_DIMS) {
       warnings.push(`Active embedding provider '${active.id}' advertises ${active.dimensions} dimensions; vectors are normalized to ${DEFAULT_MEMORY_EMBEDDING_DIMS} dimensions for sqlite-vec storage.`);
     }
     return {
@@ -257,11 +260,7 @@ export class MemoryEmbeddingProviderRegistry {
 }
 
 function persistDefaultEmbeddingProviderId(configManager: ConfigManager, providerId: string): void {
-  try {
-    configManager.set('provider.embeddingProvider', providerId, { bypassManagedLock: true });
-  } catch {
-    // Persistence is best-effort; runtime selection still takes effect immediately.
-  }
+  configManager.set('provider.embeddingProvider', providerId, { bypassManagedLock: true });
 }
 
 export const HASHED_MEMORY_EMBEDDING_PROVIDER: MemoryEmbeddingProvider = {

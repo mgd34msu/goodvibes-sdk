@@ -3,7 +3,7 @@
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.30.5"
+    "version": "0.33.0"
   },
   "auth": {
     "modes": [
@@ -3419,13 +3419,6 @@
                               "synthetic"
                             ]
                           },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
-                            ]
-                          },
                           "providerFailurePolicy": {
                             "type": "string",
                             "enum": [
@@ -5029,13 +5022,6 @@
                         "synthetic"
                       ]
                     },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
-                      ]
-                    },
                     "providerFailurePolicy": {
                       "type": "string",
                       "enum": [
@@ -5998,13 +5984,6 @@
                               "inherit-current",
                               "concrete",
                               "synthetic"
-                            ]
-                          },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
                             ]
                           },
                           "providerFailurePolicy": {
@@ -7289,13 +7268,6 @@
                         "synthetic"
                       ]
                     },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
-                      ]
-                    },
                     "providerFailurePolicy": {
                       "type": "string",
                       "enum": [
@@ -8357,13 +8329,6 @@
                             "synthetic"
                           ]
                         },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
-                          ]
-                        },
                         "providerFailurePolicy": {
                           "type": "string",
                           "enum": [
@@ -9346,13 +9311,6 @@
                             "inherit-current",
                             "concrete",
                             "synthetic"
-                          ]
-                        },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
                           ]
                         },
                         "providerFailurePolicy": {
@@ -10432,13 +10390,6 @@
                               "synthetic"
                             ]
                           },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
-                            ]
-                          },
                           "providerFailurePolicy": {
                             "type": "string",
                             "enum": [
@@ -11424,13 +11375,6 @@
                             "synthetic"
                           ]
                         },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
-                          ]
-                        },
                         "providerFailurePolicy": {
                           "type": "string",
                           "enum": [
@@ -12108,7 +12052,7 @@
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules"
+          "path": "/api/automation/schedules"
         },
         "inputSchema": {
           "type": "object",
@@ -12667,13 +12611,6 @@
                         "inherit-current",
                         "concrete",
                         "synthetic"
-                      ]
-                    },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
                       ]
                     },
                     "providerFailurePolicy": {
@@ -13270,7 +13207,7 @@
         ],
         "http": {
           "method": "DELETE",
-          "path": "/schedules/{scheduleId}"
+          "path": "/api/automation/schedules/{scheduleId}"
         },
         "inputSchema": {
           "type": "object",
@@ -13318,7 +13255,7 @@
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules/{scheduleId}/disable"
+          "path": "/api/automation/schedules/{scheduleId}/disable"
         },
         "inputSchema": {
           "type": "object",
@@ -13366,7 +13303,7 @@
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules/{scheduleId}/enable"
+          "path": "/api/automation/schedules/{scheduleId}/enable"
         },
         "inputSchema": {
           "type": "object",
@@ -13414,7 +13351,7 @@
         ],
         "http": {
           "method": "GET",
-          "path": "/schedules"
+          "path": "/api/automation/schedules"
         },
         "inputSchema": {
           "type": "object",
@@ -13626,13 +13563,6 @@
                               "inherit-current",
                               "concrete",
                               "synthetic"
-                            ]
-                          },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
                             ]
                           },
                           "providerFailurePolicy": {
@@ -14504,13 +14434,6 @@
                               "synthetic"
                             ]
                           },
-                          "unresolvedModelPolicy": {
-                            "type": "string",
-                            "enum": [
-                              "fallback-to-current",
-                              "fail"
-                            ]
-                          },
                           "providerFailurePolicy": {
                             "type": "string",
                             "enum": [
@@ -15190,7 +15113,7 @@
         ],
         "http": {
           "method": "POST",
-          "path": "/schedules/{scheduleId}/run"
+          "path": "/api/automation/schedules/{scheduleId}/run"
         },
         "inputSchema": {
           "type": "object",
@@ -49069,7 +48992,7 @@
                         "type": "string"
                       }
                     },
-                    "suppressedModels": {
+                    "suppressedModelRegistryKeys": {
                       "type": "array",
                       "items": {
                         "type": "string"
@@ -49407,7 +49330,7 @@
                               "type": "string"
                             }
                           },
-                          "suppressedModels": {
+                          "suppressedModelRegistryKeys": {
                             "type": "array",
                             "items": {
                               "type": "string"
@@ -49634,7 +49557,7 @@
             "active": {
               "type": "boolean"
             },
-            "currentModelId": {
+            "currentModelRegistryKey": {
               "type": "string"
             },
             "pricingSource": {
@@ -56869,13 +56792,6 @@
                     "synthetic"
                   ]
                 },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
-                  ]
-                },
                 "providerFailurePolicy": {
                   "type": "string",
                   "enum": [
@@ -57296,13 +57212,6 @@
                         "inherit-current",
                         "concrete",
                         "synthetic"
-                      ]
-                    },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
                       ]
                     },
                     "providerFailurePolicy": {
@@ -57841,13 +57750,6 @@
                         "synthetic"
                       ]
                     },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
-                      ]
-                    },
                     "providerFailurePolicy": {
                       "type": "string",
                       "enum": [
@@ -58236,13 +58138,6 @@
                           "inherit-current",
                           "concrete",
                           "synthetic"
-                        ]
-                      },
-                      "unresolvedModelPolicy": {
-                        "type": "string",
-                        "enum": [
-                          "fallback-to-current",
-                          "fail"
                         ]
                       },
                       "providerFailurePolicy": {
@@ -58670,13 +58565,6 @@
                     "inherit-current",
                     "concrete",
                     "synthetic"
-                  ]
-                },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
                   ]
                 },
                 "providerFailurePolicy": {
@@ -59121,13 +59009,6 @@
                             "inherit-current",
                             "concrete",
                             "synthetic"
-                          ]
-                        },
-                        "unresolvedModelPolicy": {
-                          "type": "string",
-                          "enum": [
-                            "fallback-to-current",
-                            "fail"
                           ]
                         },
                         "providerFailurePolicy": {
@@ -59746,13 +59627,6 @@
                     "synthetic"
                   ]
                 },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
-                  ]
-                },
                 "providerFailurePolicy": {
                   "type": "string",
                   "enum": [
@@ -60176,13 +60050,6 @@
                         "inherit-current",
                         "concrete",
                         "synthetic"
-                      ]
-                    },
-                    "unresolvedModelPolicy": {
-                      "type": "string",
-                      "enum": [
-                        "fallback-to-current",
-                        "fail"
                       ]
                     },
                     "providerFailurePolicy": {
@@ -61030,13 +60897,6 @@
                     "inherit-current",
                     "concrete",
                     "synthetic"
-                  ]
-                },
-                "unresolvedModelPolicy": {
-                  "type": "string",
-                  "enum": [
-                    "fallback-to-current",
-                    "fail"
                   ]
                 },
                 "providerFailurePolicy": {
@@ -67256,7 +67116,7 @@
                 "discard": {
                   "type": "number"
                 },
-                "cleanupPending": {
+                "pendingCleanup": {
                   "type": "number"
                 },
                 "sessionAttached": {
@@ -67281,7 +67141,7 @@
                 "paused",
                 "kept",
                 "discard",
-                "cleanupPending",
+                "pendingCleanup",
                 "sessionAttached",
                 "taskAttached",
                 "agentOwned",
@@ -67313,7 +67173,7 @@
                       "paused",
                       "kept",
                       "discard",
-                      "cleanup-pending"
+                      "pending-cleanup"
                     ]
                   },
                   "ownerId": {

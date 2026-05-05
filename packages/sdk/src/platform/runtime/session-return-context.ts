@@ -177,7 +177,7 @@ export async function maybeAssistReturnContextSummary(
     `Tool results: ${summary.toolResultCount}`,
   ].join('\n');
 
-  const response = (await helperModel.chat('tool_summarize', prompt, { maxTokens: 80, helperOnly: true })).trim();
+  const response = (await helperModel.chat('tool_summarize', prompt, { maxTokens: 80, helperOnly: true }) ?? '').trim();
   if (!response) return summary;
   return {
     ...summary,

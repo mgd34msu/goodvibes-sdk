@@ -222,7 +222,7 @@ export namespace qrcodegen {
 			assert(0 <= msk && msk <= 7);
 			this.mask = msk;
 			this.applyMask(msk);  // Apply the final choice of mask
-			this.drawFormatBits(msk);  // Overwrite old format bits
+			this.drawFormatBits(msk);  // Overwrite previous format bits
 			
 			this.isFunction = [];
 		}

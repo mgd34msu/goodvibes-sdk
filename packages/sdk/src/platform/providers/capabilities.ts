@@ -341,7 +341,7 @@ const PROVIDER_DEFAULTS: Record<string, Partial<ProviderCapability>> = {
 };
 
 /**
- * Fallback defaults applied when a provider is not in `PROVIDER_DEFAULTS`.
+ * Global defaults applied when a provider is not in `PROVIDER_DEFAULTS`.
  * Intentionally conservative: no reasoning controls, modest token limits.
  */
 const GLOBAL_DEFAULTS: ProviderCapability = {

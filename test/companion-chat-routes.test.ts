@@ -128,6 +128,7 @@ describe('companion-chat-routes: create session', () => {
   test('POST /api/companion/chat/sessions returns 201 with sessionId', async () => {
     const req = makeRequest('POST', 'http://localhost/api/companion/chat/sessions', {
       title: 'Test session',
+      provider: 'anthropic',
       model: 'claude-sonnet',
     });
     const ctx = makeContext(manager);
@@ -151,7 +152,10 @@ describe('companion-chat-routes: create session', () => {
 
   test('GET /api/companion/chat/sessions/:id returns session + empty messages', async () => {
     // Create session first
-    const createReq = makeRequest('POST', 'http://localhost/api/companion/chat/sessions', { model: 'claude-sonnet' });
+    const createReq = makeRequest('POST', 'http://localhost/api/companion/chat/sessions', {
+      provider: 'anthropic',
+      model: 'claude-sonnet',
+    });
     const ctx = makeContext(manager);
     const createRes = await dispatchCompanionChatRoutes(createReq, ctx);
     const { sessionId } = await createRes!.json();
@@ -204,7 +208,7 @@ describe('companion-chat-routes: update session', () => {
     expect(calls.at(-1)).toEqual({ provider: 'anthropic', model: 'claude-sonnet-4-5' });
   });
 
-  test('PATCH can infer provider from a registry-key model', async () => {
+  test('PATCH rejects a partial provider/model update', async () => {
     const manager = new CompanionChatManager({
       provider: makeMockProvider(),
       eventPublisher: makeEventPublisher(),
@@ -219,10 +223,9 @@ describe('companion-chat-routes: update session', () => {
       }),
       ctx,
     );
-    expect(res!.status).toBe(200);
+    expect(res!.status).toBe(400);
     const body = await res!.json();
-    expect(body.session.provider).toBe('openai');
-    expect(body.session.model).toBe('openai:gpt-5.5');
+    expect(body.code).toBe('INVALID_MODEL_ROUTE');
   });
 
   test('PATCH unknown session returns 404', async () => {
@@ -260,7 +263,10 @@ describe('companion-chat-routes: post message and events', () => {
     const ctx = makeContext(manager);
     // Create session
     const createRes = await dispatchCompanionChatRoutes(
-      makeRequest('POST', 'http://localhost/api/companion/chat/sessions', { model: 'claude-sonnet' }),
+      makeRequest('POST', 'http://localhost/api/companion/chat/sessions', {
+        provider: 'anthropic',
+        model: 'claude-sonnet',
+      }),
       ctx,
     );
     const { sessionId } = await createRes!.json();

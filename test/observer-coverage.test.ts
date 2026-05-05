@@ -255,11 +255,25 @@ describe('createOpenTelemetryObserver — onAuthTransition', () => {
 describe('invokeObserver', () => {
   test('calls the provided thunk', () => {
     let called = false;
-    invokeObserver(() => { called = true; });
+    const result = invokeObserver(() => { called = true; });
     expect(called).toBe(true);
+    expect(result.ok).toBe(true);
   });
 
-  test('swallows errors thrown by the thunk', () => {
-    expect(() => invokeObserver(() => { throw new Error('boom'); })).not.toThrow();
+  test('isolates, reports, and returns errors thrown by the thunk', () => {
+    const err = new Error('boom');
+    const capture = captureConsole('warn');
+    try {
+      const result = invokeObserver(() => { throw err; }, { label: 'testObserver' });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe(err);
+      }
+      expect(capture.messages).toHaveLength(1);
+      expect(String(capture.messages[0]?.[0])).toMatch(/observer callback failed: testObserver/);
+      expect(capture.messages[0]?.[1]).toBe(err);
+    } finally {
+      capture.restore();
+    }
   });
 });

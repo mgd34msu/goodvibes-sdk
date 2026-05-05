@@ -3,12 +3,11 @@ import type { EventEnvelope } from './event-envelope.js';
 /**
  * Minimal structural constraint for runtime events. Matches the `{ type: string }` shape
  * of `AnyRuntimeEvent` from `@pellux/goodvibes-contracts` without taking on that dependency.
- * Re-exported so downstream packages (`transport-realtime`) can share the same identity
- * and prevent api-extractor `_2`-suffix collisions in the bundled public d.ts.
+ * Re-exported so downstream packages can share the same public type identity.
  */
 export type EventLike = { readonly type: string };
 
-type EventForType<
+export type EventForType<
   TEvent extends EventLike,
   TType extends TEvent['type'],
 > = Extract<TEvent, { type: TType }>;
@@ -71,7 +70,7 @@ export function createRuntimeEventFeeds<
   for (const domain of domains) {
     feeds[domain] = createFeed(domain);
   }
-  // NIT-09: snapshot the domains array defensively.
+  // Snapshot the domains array defensively.
   const frozenDomains = Object.freeze([...domains] as TDomain[]);
   return Object.freeze({
     ...feeds,

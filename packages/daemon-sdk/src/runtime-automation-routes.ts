@@ -182,7 +182,7 @@ async function handleRunScheduleNow(context: DaemonRuntimeRouteContext, id: stri
 async function handlePostAutomationHeartbeat(context: DaemonRuntimeRouteContext, req: Request): Promise<Response> {
   const body = await context.parseOptionalJsonBody(req);
   if (body instanceof Response) return body;
-  // m2: Schema: only `source` (optional string) is consumed; extra fields are ignored.
+  // Only `source` is consumed; extra fields are ignored.
   const result = await context.automationManager.triggerHeartbeat({
     source: body && typeof body.source === 'string' && body.source.trim() ? body.source.trim() : 'api',
   });
@@ -197,7 +197,7 @@ async function handleAutomationRunAction(
 ): Promise<Response> {
   if (action === 'cancel') {
     const body = await context.parseOptionalJsonBody(req);
-    if (body instanceof Response) return body; // m19: preserve parse error rather than coercing to 'operator-cancelled'
+    if (body instanceof Response) return body;
     const reason = body && typeof body.reason === 'string'
       ? body.reason
       : 'operator-cancelled';
@@ -227,6 +227,6 @@ function handleGetAutomationRun(context: DaemonRuntimeRouteContext, runId: strin
 }
 
 function findAutomationJob(context: DaemonRuntimeRouteContext, id: string) {
-  // MAJ-01: exact-match only — prefix match was non-deterministic when multiple ids share a prefix.
+  // exact-match only — prefix match was non-deterministic when multiple ids share a prefix.
   return context.automationManager.listJobs().find((entry) => entry.id === id);
 }

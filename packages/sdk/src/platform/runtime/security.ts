@@ -73,9 +73,3 @@ export type {
   EnforceGateResult,
   SignedPolicyBundle,
 } from './permissions/index.js';
-export * from './sandbox/backend.js';
-export * from './sandbox/manager.js';
-export * from './sandbox/provisioning.js';
-export * from './sandbox/qemu-wrapper-template.js';
-export * from './sandbox/session-registry.js';
-export * from './sandbox/types.js';

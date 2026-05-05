@@ -106,8 +106,7 @@ function parseJsonField(value: string, fieldName: string): unknown {
   if (!value) return {};
   try {
     return JSON.parse(value) as unknown;
-  } catch (error) {
-    void error;
+  } catch {
     throw artifactUploadError(`Invalid JSON in multipart field ${fieldName}.`);
   }
 }
@@ -153,8 +152,7 @@ async function createArtifactFromMultipart(
   let form: FormData;
   try {
     form = await req.formData();
-  } catch (error) {
-    void error;
+  } catch {
     return jsonErrorResponse({ error: 'Invalid multipart upload.' }, { status: 400 });
   }
 
@@ -268,8 +266,7 @@ function readFieldsFromSearchParams(params: URLSearchParams): ArtifactUploadFiel
     try {
       const parsed = parseUploadField(name, value);
       if (parsed !== undefined) fields[name] = parsed;
-    } catch (error) {
-      void error;
+    } catch {
       fields[name] = value;
     }
   }
@@ -290,8 +287,7 @@ function filenameFromContentDisposition(header: string | null): string | undefin
   if (!match?.[1]) return undefined;
   try {
     return decodeURIComponent(match[1].replace(/^"|"$/g, ''));
-  } catch (error) {
-    void error;
+  } catch {
     return match[1].replace(/^"|"$/g, '');
   }
 }
@@ -323,8 +319,7 @@ function decodeHeaderValue(value: string): string {
   const unquoted = value.trim().replace(/^"|"$/g, '');
   try {
     return decodeURIComponent(unquoted.replace(/^UTF-8''/i, ''));
-  } catch (error) {
-    void error;
+  } catch {
     return unquoted;
   }
 }

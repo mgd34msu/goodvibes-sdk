@@ -1,5 +1,5 @@
 /**
- * Transport HTTP regression tests for the canonical transport package.
+ * Transport HTTP tests for the canonical transport package.
  *
  * Ensures structured transport errors keep the shared SDK error taxonomy.
  */

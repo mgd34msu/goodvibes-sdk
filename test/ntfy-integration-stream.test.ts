@@ -371,7 +371,7 @@ describe('ntfy topic routing', () => {
     }
   });
 
-  test('goodvibes-chat keeps a prompt fallback for clients that have not forwarded origin metadata yet', async () => {
+  test('goodvibes-chat derives channel metadata from the prompt when origin metadata is absent', async () => {
     const runtimeBus = new RuntimeEventBus();
     const publishCalls: Array<{ url: string; body: string; headers: IncomingHttpHeaders }> = [];
     let resolvePublish!: () => void;
@@ -436,14 +436,14 @@ describe('ntfy topic routing', () => {
       emitTurnCompleted(
         runtimeBus,
         { sessionId: 'orchestrator-private-session', traceId: 'turn-1', source: 'test' },
-        { turnId: 'turn-1', response: 'hello from fallback', stopReason: 'completed' },
+        { turnId: 'turn-1', response: 'hello from prompt-derived route', stopReason: 'completed' },
       );
 
       await withTimeout(published, 1_000, 'timed out waiting for ntfy chat reply publish');
       expect(publishCalls).toHaveLength(1);
       expect(publishCalls[0]).toMatchObject({
         url: `/${GOODVIBES_NTFY_CHAT_TOPIC}`,
-        body: 'hello from fallback',
+        body: 'hello from prompt-derived route',
       });
       expect(publishCalls[0]?.headers['x-goodvibes-origin']).toBe(GOODVIBES_NTFY_ORIGIN);
     } finally {
@@ -509,6 +509,8 @@ describe('ntfy topic routing', () => {
     expect(await response.json()).toEqual({
       acknowledged: true,
       queued: false,
+      outcome: 'ignored',
+      reason: 'unknown-ntfy-topic',
       ignored: 'unknown-ntfy-topic',
       topic: 'personal-topic',
     });
@@ -715,6 +717,8 @@ describe('ntfy GoodVibes self-echo marker', () => {
     expect(await response.json()).toEqual({
       acknowledged: true,
       queued: false,
+      outcome: 'ignored',
+      reason: 'goodvibes-self-echo',
       ignored: 'goodvibes-self-echo',
     });
     expect(calls).toEqual({ authorize: 0, upsert: 0, submit: 0, spawn: 0, queue: 0 });

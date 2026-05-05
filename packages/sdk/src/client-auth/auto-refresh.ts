@@ -1,18 +1,9 @@
-// Inline minimal debug logging to keep client-auth/ free of platform/ dependencies.
-function debugLog(msg: string, ctx?: Record<string, unknown>): void {
-  if (ctx !== undefined) {
-    console.debug(`[goodvibes] ${msg}`, ctx);
-  } else {
-    console.debug(`[goodvibes] ${msg}`);
-  }
-}
-
 /**
- * AutoRefreshCoordinator — Silent token refresh with in-flight request queuing.
+ * AutoRefreshCoordinator — automatic token refresh with in-flight request queuing.
  *
  * Prevents user-visible 401s by:
  *   1. Pre-flight leeway check: if the token expires within refreshLeewayMs,
- *      trigger a silent refresh before the request is dispatched.
+ *      trigger an automatic refresh before the request is dispatched.
  *   2. Reactive 401 retry: if a request returns 401 and the token wasn't
  *      already known expired, trigger a refresh then retry the request once.
  *   3. In-flight queuing: while a refresh is in progress, subsequent refresh
@@ -22,7 +13,7 @@ function debugLog(msg: string, ctx?: Record<string, unknown>): void {
  * function), the pre-flight check is a graceful no-op and the reactive path
  * triggers a token re-read (which may succeed if the store was updated externally).
  *
- * Wave 6 three-part error messages:
+ * Error messages use this three-part format:
  *   [what happened] · [why] · [what to do]
  */
 
@@ -37,13 +28,13 @@ import { invokeObserver } from '../observer/index.js';
 
 export interface AutoRefreshOptions {
   /**
-   * Enable or disable silent token refresh. Default: `true`.
+   * Enable or disable automatic token refresh. Default: `true`.
    * When `false`, 401 responses propagate immediately without retry.
    */
   readonly autoRefresh?: boolean | undefined;
 
   /**
-   * Milliseconds before token expiry to trigger a silent refresh.
+   * Milliseconds before token expiry to trigger an automatic refresh.
    * Default: 60_000 (1 minute).
    */
   readonly refreshLeewayMs?: number | undefined;
@@ -190,8 +181,15 @@ export class AutoRefreshCoordinator {
           }),
         );
       } catch (err) {
-        // Refresh failed — fall back to anonymous.
-        debugLog('AutoRefreshCoordinator: token refresh failed, clearing to anonymous', { error: String(err) });
+        const refreshError = err instanceof GoodVibesSdkError
+          ? err
+          : new GoodVibesSdkError('Token refresh failed; clearing to anonymous.', {
+              code: 'SDK_AUTH_REFRESH_FAILED',
+              category: 'authentication',
+              source: 'runtime',
+              recoverable: true,
+              cause: err,
+            });
         await this.#tokenStore.clearToken();
         invokeObserver(() =>
           this.#observer?.onAuthTransition?.({
@@ -200,6 +198,7 @@ export class AutoRefreshCoordinator {
             reason: 'expire',
           }),
         );
+        invokeObserver(() => this.#observer?.onError?.(refreshError), { label: 'onError' });
       }
     })();
 
@@ -216,7 +215,7 @@ export class AutoRefreshCoordinator {
 
   /**
    * Call before dispatching a request. If the token is near expiry (within
-   * `refreshLeewayMs`), silently refreshes before the request goes out.
+   * `refreshLeewayMs`), refreshes before the request goes out.
    *
    * If `autoRefresh` is disabled, this is a no-op.
    */
@@ -292,7 +291,7 @@ export class AutoRefreshCoordinator {
    * `withRetryOn401`) and then calls `fn` a single time.
    *
    * If `fn` throws a 401 on retry, a terminal `GoodVibesSdkError{kind:'auth'}`
-   * is thrown with the Wave 6 three-part message format.
+   * is thrown with the standard three-part message format.
    *
    * Used by `createAutoRefreshMiddleware` to avoid making an extra HTTP call
    * when the middleware already observed the initial 401 from `next()`.

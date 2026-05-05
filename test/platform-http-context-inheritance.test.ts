@@ -1,7 +1,7 @@
 /**
  * platform-http-context-inheritance.test.ts
  *
- * Regression test for ARCH-01: platform-HTTP DaemonRuntimeRouteContext must
+ * platform-HTTP DaemonRuntimeRouteContext must
  * structurally inherit from the canonical DaemonRuntimeRouteContext rather than
  * inlining duck-typed shapes.
  *
@@ -35,7 +35,7 @@ function assertPlatformInheritsAutomationManager(
 ): CanonicalContext['automationManager'] {
   // The platform-HTTP context must expose automationManager with the full
   // canonical shape. If the canonical gains a new method, this function's
-  // return type widening causes a compile error — the regression is caught.
+  // return type widening causes a compile error.
   return ctx.automationManager;
 }
 
@@ -63,7 +63,7 @@ function assertPlatformInheritsAgentManager(
 // Runtime smoke test — validates the structural assertions compile
 // ---------------------------------------------------------------------------
 
-describe('ARCH-01 — platform-HTTP DaemonRuntimeRouteContext inherits canonical shapes', () => {
+describe('platform-HTTP DaemonRuntimeRouteContext inherits canonical shapes', () => {
   test('automationManager shape is inherited from canonical, not inlined', () => {
     // Construct a minimal stub that satisfies PlatformHttpContext
     const automationManager: CanonicalContext['automationManager'] = {

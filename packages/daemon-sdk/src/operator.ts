@@ -2,7 +2,7 @@ import type { DaemonOperatorRouteHandlers } from './context.js';
 import { readBoundedPositiveInteger } from './route-helpers.js';
 
 /**
- * m7: Thrown when a URL path segment contains malformed percent-encoded sequences.
+ * Thrown when a URL path segment contains malformed percent-encoded sequences.
  * Caught at the dispatch boundary to return a 400 INVALID_PATH_ENCODING response.
  */
 class InvalidPathEncodingError extends Error {
@@ -27,8 +27,6 @@ const INVALID_ENCODING_RESPONSE = Response.json(
 );
 
 /**
- * M4: Auth contract for dispatchOperatorRoutes
- *
  * Route-level authentication is enforced inside each handler, not at the
  * dispatcher level. Handler auth requirements by category:
  *
@@ -64,7 +62,8 @@ async function dispatchOperatorRoutesInner(
   const { pathname } = url;
   const method = req.method;
 
-  if (pathname === '/status' && method === 'GET') return handlers.getStatus();
+  if (pathname === '/login' && method === 'POST') return handlers.postLogin(req);
+  if (pathname === '/status' && method === 'GET') return handlers.getStatus(req);
   if (pathname === '/api/control-plane/auth' && method === 'GET') return handlers.getCurrentAuth(req);
   if (pathname === '/api/control-plane' && method === 'GET') return handlers.getControlPlaneSnapshot();
   if (pathname === '/api/control-plane/contract' && method === 'GET') return handlers.getOperatorContract();

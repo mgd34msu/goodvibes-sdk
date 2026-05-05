@@ -250,8 +250,8 @@ afterEach(() => {
   for (const s of serversToStop.splice(0)) {
     try {
       s.stop();
-    } catch (error) {
-      void error;
+    } catch {
+      // Test server cleanup should not mask the assertion result.
     }
   }
 });
@@ -309,7 +309,7 @@ describe('auth-flow-e2e: session-cookie-only mode', () => {
     });
     expect(revokeRes.status).toBe(200);
 
-    // Step 4: subsequent request with old cookie → 401
+    // Step 4: subsequent request with replaced cookie -> 401
     const afterRevokeRes = await fetch(`${srv.baseUrl}/api/control/auth/current`, {
       headers: { cookie: `${COOKIE_NAME}=${encodeURIComponent(sessionToken)}` },
     });

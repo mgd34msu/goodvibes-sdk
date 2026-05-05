@@ -1,8 +1,8 @@
 # @pellux/goodvibes-errors
 
-Internal workspace package backing `@pellux/goodvibes-sdk/errors`.
+Public GoodVibes error package for structured SDK, transport, and daemon failures.
 
-Consumers should install `@pellux/goodvibes-sdk` and import this surface from the umbrella package.
+Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/errors`. Install this package directly when you only need the shared error model.
 
 Consumer import:
 

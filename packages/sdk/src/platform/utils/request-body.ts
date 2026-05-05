@@ -1,7 +1,7 @@
 export const DEFAULT_MAX_REQUEST_BODY_BYTES = 1_000_000;
 
 function ignoreCancelError(): void {
-  // Best-effort stream cancellation.
+  // Stream cancellation failure is intentionally non-blocking.
 }
 
 export async function readTextBodyWithinLimit(

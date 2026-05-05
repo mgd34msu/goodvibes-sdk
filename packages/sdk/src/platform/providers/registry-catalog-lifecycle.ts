@@ -43,7 +43,7 @@ export function initProviderCatalog(ctx: CatalogLifecycleContext): void {
   }
   if (!cached || isCatalogCacheStale(cached)) {
     void ctx.refreshCatalog().catch((err) => {
-      logger.debug('[model-catalog] Background refresh failed', { error: summarizeError(err) });
+      logger.warn('[model-catalog] Background refresh failed', { error: summarizeError(err) });
     });
   }
 }

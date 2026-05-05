@@ -121,7 +121,7 @@ export async function resolveSecretRef(
     });
     return value ? { value, source: 'config-ref' } : { value: null, source: 'missing' };
   } catch (err) {
-    logger.debug('resolveSecretRef: failed to resolve secret reference', { ref, error: summarizeError(err) });
+    logger.warn('resolveSecretRef: failed to resolve secret reference', { ref, error: summarizeError(err) });
     return { value: null, source: 'missing' };
   }
 }

@@ -9,12 +9,12 @@ const ProviderRouteRecordSchema = z.object({
   freshness: AuthFreshnessSchema,
   detail: z.string(),
   issues: z.array(z.string()),
-});
+}).strict();
 
 const UsageWindowSchema = z.object({
   label: z.string(),
   detail: z.string(),
-});
+}).strict();
 
 const ProviderSnapshotSchema = z.object({
   providerId: z.string(),
@@ -37,12 +37,7 @@ const ProviderSnapshotSchema = z.object({
   issues: z.array(z.string()),
   recommendedActions: z.array(z.string()),
   routeRecords: z.array(ProviderRouteRecordSchema),
-  // NIT-4: catchall(z.unknown()) accepts any extra keys silently. A typo in the
-  // daemon (e.g. `activeRouteReson`) will parse cleanly with the typo'd value in
-  // unknown and the typed field undefined. If strict shape enforcement is needed,
-  // remove catchall. The catchall is kept intentionally for forward-compatibility
-  // (new daemon fields won't break old SDK versions).
-}).catchall(z.unknown());
+}).strict();
 
 /**
  * Schema for `accounts.snapshot` response.
@@ -54,6 +49,6 @@ export const AccountsSnapshotResponseSchema = z.object({
   providers: z.array(ProviderSnapshotSchema),
   configuredCount: z.number(),
   issueCount: z.number(),
-});
+}).strict();
 
 export type AccountsSnapshotResponse = z.infer<typeof AccountsSnapshotResponseSchema>;
