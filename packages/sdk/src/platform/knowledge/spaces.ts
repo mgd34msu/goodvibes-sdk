@@ -78,12 +78,16 @@ export function withKnowledgeSpace<T extends { readonly metadata?: Record<string
 }
 
 export function getKnowledgeSpaceId(input: KnowledgeSpaceBackedRecord | Record<string, unknown> | undefined | null): KnowledgeSpaceId {
+  return getExplicitKnowledgeSpaceId(input) ?? DEFAULT_KNOWLEDGE_SPACE_ID;
+}
+
+export function getExplicitKnowledgeSpaceId(input: KnowledgeSpaceBackedRecord | Record<string, unknown> | undefined | null): KnowledgeSpaceId | null {
   const metadata = readMetadata(input);
-  return normalizeKnowledgeSpaceId(
+  const value =
     readString(metadata.knowledgeSpaceId)
       ?? readString(metadata.spaceId)
-      ?? readString(metadata.namespace),
-  );
+      ?? readString(metadata.namespace);
+  return value ? normalizeKnowledgeSpaceId(value) : null;
 }
 
 export function isInKnowledgeSpace(input: KnowledgeSpaceBackedRecord | undefined | null, spaceId: string): boolean {
@@ -100,7 +104,17 @@ export function isInKnowledgeSpaceScope(
   scope: KnowledgeSpaceScopeInput = {},
 ): boolean {
   const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
-  return scopedSpaceId === null || getKnowledgeSpaceId(input) === scopedSpaceId;
+  if (scopedSpaceId === null) return true;
+  return getExplicitKnowledgeSpaceId(input) === scopedSpaceId;
+}
+
+export function ensureKnowledgeSpaceMetadata(
+  metadata: Record<string, unknown> = {},
+  fallbackSpaceId: string = DEFAULT_KNOWLEDGE_SPACE_ID,
+): Record<string, unknown> {
+  return getExplicitKnowledgeSpaceId({ metadata })
+    ? metadata
+    : knowledgeSpaceMetadata(fallbackSpaceId, metadata);
 }
 
 export function normalizeSpaceComponent(value?: string | null): string {

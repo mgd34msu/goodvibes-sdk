@@ -22,6 +22,7 @@ import type {
   KnowledgeSourceRecord,
   KnowledgeSourceType,
 } from './types.js';
+import { getKnowledgeSpaceId, knowledgeSpaceMetadata } from './spaces.js';
 
 const MAX_EXTRACTION_SECTION_NODES = 12;
 const MAX_EXTRACTION_LINK_EDGES = 24;
@@ -162,6 +163,7 @@ async function compileKnowledgeSourceRecords(
   source: KnowledgeSourceRecord,
   extraction?: KnowledgeExtractionRecord | null,
 ): Promise<void> {
+  const spaceId = getKnowledgeSpaceId(source);
   if (source.artifactId) {
     await context.store.upsertEdge({
       fromKind: 'source',
@@ -169,6 +171,7 @@ async function compileKnowledgeSourceRecords(
       toKind: 'artifact',
       toId: source.artifactId,
       relation: 'snapshotted_as',
+      metadata: knowledgeSpaceMetadata(spaceId),
     });
   }
 
@@ -178,11 +181,11 @@ async function compileKnowledgeSourceRecords(
       const hostname = new URL(domain).hostname.toLowerCase();
       const domainNode = await context.store.upsertNode({
         kind: 'domain',
-        slug: slugify(hostname),
+        slug: slugify(`${spaceId}-${hostname}`),
         title: hostname,
         summary: `Knowledge sources cataloged under ${hostname}.`,
         aliases: [hostname],
-        metadata: { hostname },
+        metadata: knowledgeSpaceMetadata(spaceId, { hostname }),
       });
       await context.store.upsertEdge({
         fromKind: 'source',
@@ -190,6 +193,7 @@ async function compileKnowledgeSourceRecords(
         toKind: 'node',
         toId: domainNode.id,
         relation: 'belongs_to_domain',
+        metadata: knowledgeSpaceMetadata(spaceId),
       });
     } catch (error) {
       logger.debug('Knowledge ingest: source URL could not be canonicalized for domain node', {
@@ -209,11 +213,11 @@ async function compileKnowledgeSourceRecords(
       accumulated = accumulated ? `${accumulated}/${segment}` : segment;
       const folderNode = await context.store.upsertNode({
         kind: 'bookmark_folder',
-        slug: slugify(accumulated),
+        slug: slugify(`${spaceId}-${accumulated}`),
         title: segment,
         summary: `Bookmark folder ${accumulated}.`,
         aliases: [accumulated],
-        metadata: { folderPath: accumulated },
+        metadata: knowledgeSpaceMetadata(spaceId, { folderPath: accumulated }),
       });
       if (previousNode) {
         await context.store.upsertEdge({
@@ -222,6 +226,7 @@ async function compileKnowledgeSourceRecords(
           toKind: 'node',
           toId: folderNode.id,
           relation: 'contains_folder',
+          metadata: knowledgeSpaceMetadata(spaceId),
         });
       }
       previousNode = folderNode;
@@ -233,6 +238,7 @@ async function compileKnowledgeSourceRecords(
         toKind: 'node',
         toId: previousNode.id,
         relation: 'cataloged_in_folder',
+        metadata: knowledgeSpaceMetadata(spaceId),
       });
     }
   }
@@ -240,11 +246,11 @@ async function compileKnowledgeSourceRecords(
   for (const tag of source.tags) {
     const topicNode = await context.store.upsertNode({
       kind: 'topic',
-      slug: slugify(tag),
+      slug: slugify(`${spaceId}-${tag}`),
       title: tag,
       summary: `Topic tag ${tag}.`,
       aliases: [tag],
-      metadata: { tag },
+      metadata: knowledgeSpaceMetadata(spaceId, { tag }),
     });
     await context.store.upsertEdge({
       fromKind: 'source',
@@ -252,6 +258,7 @@ async function compileKnowledgeSourceRecords(
       toKind: 'node',
       toId: topicNode.id,
       relation: 'tagged_with',
+      metadata: knowledgeSpaceMetadata(spaceId),
     });
   }
 
@@ -272,14 +279,14 @@ async function compileKnowledgeSourceRecords(
       if (tagSlugs.has(slugify(section))) continue;
       const topicNode = await context.store.upsertNode({
         kind: 'topic',
-        slug: slugify(section),
+        slug: slugify(`${spaceId}-${section}`),
         title: section,
         summary: `Compiled section or concept from source ${source.id}.`,
         aliases: [section],
-        metadata: {
+        metadata: knowledgeSpaceMetadata(spaceId, {
           sourceId: source.id,
           extractionId: extraction.id,
-        },
+        }),
       });
       await context.store.upsertEdge({
         fromKind: 'source',
@@ -287,6 +294,7 @@ async function compileKnowledgeSourceRecords(
         toKind: 'node',
         toId: topicNode.id,
         relation: 'mentions_section',
+        metadata: knowledgeSpaceMetadata(spaceId),
       });
     }
     const outboundUris = [...new Set(extraction.links
@@ -302,6 +310,7 @@ async function compileKnowledgeSourceRecords(
         toKind: 'source',
         toId: linked.id,
         relation: 'links_to_source',
+        metadata: knowledgeSpaceMetadata(spaceId),
       });
     }
   }
@@ -313,6 +322,7 @@ async function compileKnowledgeSourceRecords(
       toKind: 'session',
       toId: source.sessionId,
       relation: 'ingested_during',
+      metadata: knowledgeSpaceMetadata(spaceId),
     });
   }
 }
@@ -322,6 +332,7 @@ export async function compileKnowledgeStructuredEntityHints(
   source: KnowledgeSourceRecord,
   extraction?: KnowledgeExtractionRecord | null,
 ): Promise<void> {
+  const spaceId = getKnowledgeSpaceId(source);
   const metadata = source.metadata ?? {};
   const topicKeywords = topKeywords([
     source.title ?? '',
@@ -407,14 +418,14 @@ export async function compileKnowledgeStructuredEntityHints(
       if (!title) continue;
       const node = await context.store.upsertNode({
         kind: spec.kind,
-        slug: slugify(title),
+        slug: slugify(`${spaceId}-${title}`),
         title,
         summary: `${spec.summaryPrefix} entity compiled from structured knowledge sources.`,
         aliases: topicKeywords,
-        metadata: {
+        metadata: knowledgeSpaceMetadata(spaceId, {
           compiledFrom: source.id,
           tags: [...source.tags],
-        },
+        }),
       });
       await context.store.upsertEdge({
         fromKind: 'source',
@@ -422,6 +433,7 @@ export async function compileKnowledgeStructuredEntityHints(
         toKind: 'node',
         toId: node.id,
         relation: spec.relation,
+        metadata: knowledgeSpaceMetadata(spaceId),
       });
     }
   }

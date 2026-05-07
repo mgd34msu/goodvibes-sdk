@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.12] - 2026-05-07
+
+### Fixed
+- Tightened regular Knowledge/Wiki default scoping so unscoped derivative
+  records are not treated as `default` knowledge. This prevents older
+  Home Assistant/Home Graph semantic nodes, issues, projection targets, map
+  entries, and packets from leaking through base knowledge routes.
+- Namespaced source-derived compiled nodes and edges with the source knowledge
+  space, so future domain, tag, folder, section, and structured entity records
+  stay in the same space as the source that generated them.
+
+---
+
 ## [0.33.11] - 2026-05-07
 
 ### Fixed

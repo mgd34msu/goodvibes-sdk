@@ -83,6 +83,11 @@ import {
   type KnowledgeStoreReadView,
 } from './store-read.js';
 import { loadKnowledgeStoreSnapshot } from './store-load.js';
+import {
+  ensureKnowledgeSpaceMetadata,
+  getExplicitKnowledgeSpaceId,
+  getKnowledgeSpaceId,
+} from './spaces.js';
 
 export class KnowledgeStore {
   private readonly sqlite: SQLiteStore;
@@ -307,6 +312,10 @@ export class KnowledgeStore {
     const _contentHash = stableText(input.contentHash);
     const _crawlError = stableText(input.crawlError);
     const _sessionId = stableText(input.sessionId);
+    const sourceMetadata = ensureKnowledgeSpaceMetadata({
+      ...(existing?.metadata ?? {}),
+      ...(input.metadata ?? {}),
+    });
     const record: KnowledgeSourceRecord = {
       id: existing?.id ?? input.id ?? `source-${randomUUID().slice(0, 8)}`,
       connectorId: input.connectorId,
@@ -324,10 +333,7 @@ export class KnowledgeStore {
       ...(typeof input.lastCrawledAt === 'number' ? { lastCrawledAt: input.lastCrawledAt } : existing?.lastCrawledAt ? { lastCrawledAt: existing.lastCrawledAt } : {}),
       ...opt('crawlError', _crawlError, existing?.crawlError && input.status !== 'indexed' ? existing.crawlError : undefined),
       ...opt('sessionId', _sessionId, existing?.sessionId),
-      metadata: {
-        ...(existing?.metadata ?? {}),
-        ...(input.metadata ?? {}),
-      },
+      metadata: sourceMetadata,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -443,6 +449,18 @@ export class KnowledgeStore {
     const now = nowMs();
     const _summary = stableText(input.summary);
     const _sourceId = stableText(input.sourceId);
+    const mergedNodeMetadata = {
+      ...(existing?.metadata ?? {}),
+      ...(input.metadata ?? {}),
+    };
+    const linkedSource = _sourceId !== null
+      ? this.sources.get(_sourceId)
+      : existing?.sourceId
+        ? this.sources.get(existing.sourceId)
+        : null;
+    const nodeMetadata = getExplicitKnowledgeSpaceId({ metadata: mergedNodeMetadata }) || !linkedSource
+      ? mergedNodeMetadata
+      : ensureKnowledgeSpaceMetadata(mergedNodeMetadata, getKnowledgeSpaceId(linkedSource));
     const record: KnowledgeNodeRecord = {
       id: existing?.id ?? input.id ?? `node-${randomUUID().slice(0, 8)}`,
       kind: input.kind,
@@ -453,10 +471,7 @@ export class KnowledgeStore {
       status: input.status ?? existing?.status ?? 'active',
       confidence: Math.max(0, Math.min(100, input.confidence ?? existing?.confidence ?? 70)),
       ...(_sourceId !== null ? { sourceId: _sourceId } : existing?.sourceId ? { sourceId: existing.sourceId } : {}),
-      metadata: {
-        ...(existing?.metadata ?? {}),
-        ...(input.metadata ?? {}),
-      },
+      metadata: nodeMetadata,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -644,6 +659,26 @@ export class KnowledgeStore {
     const now = nowMs();
     const _sourceId = stableText(input.sourceId);
     const _nodeId = stableText(input.nodeId);
+    const mergedIssueMetadata = {
+      ...(existing?.metadata ?? {}),
+      ...(input.metadata ?? {}),
+    };
+    const issueSource = _sourceId !== null
+      ? this.sources.get(_sourceId)
+      : existing?.sourceId
+        ? this.sources.get(existing.sourceId)
+        : null;
+    const issueNode = _nodeId !== null
+      ? this.nodes.get(_nodeId)
+      : existing?.nodeId
+        ? this.nodes.get(existing.nodeId)
+        : null;
+    const issueSpaceId = getExplicitKnowledgeSpaceId({ metadata: mergedIssueMetadata })
+      ?? getExplicitKnowledgeSpaceId(issueSource)
+      ?? getExplicitKnowledgeSpaceId(issueNode);
+    const issueMetadata = issueSpaceId
+      ? ensureKnowledgeSpaceMetadata(mergedIssueMetadata, issueSpaceId)
+      : mergedIssueMetadata;
     const record: KnowledgeIssueRecord = {
       id: existing?.id ?? input.id ?? `issue-${randomUUID().slice(0, 8)}`,
       severity: input.severity,
@@ -652,10 +687,7 @@ export class KnowledgeStore {
       status: input.status ?? issueStatusForUpsert(existing, input),
       ...(_sourceId !== null ? { sourceId: _sourceId } : {}),
       ...(_nodeId !== null ? { nodeId: _nodeId } : {}),
-      metadata: {
-        ...(existing?.metadata ?? {}),
-        ...(input.metadata ?? {}),
-      },
+      metadata: issueMetadata,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -680,6 +712,28 @@ export class KnowledgeStore {
     return record;
   }
 
+  async replaceIssueRecord(record: KnowledgeIssueRecord): Promise<void> {
+    await this.init();
+    this.sqlite.run(`
+      INSERT OR REPLACE INTO knowledge_issues (
+        id, severity, code, message, status, source_id, node_id, metadata, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      record.id,
+      record.severity,
+      record.code,
+      record.message,
+      record.status,
+      record.sourceId ?? null,
+      record.nodeId ?? null,
+      JSON.stringify(record.metadata),
+      record.createdAt,
+      record.updatedAt,
+    ]);
+    this.issues.set(record.id, record);
+    await this.sqlite.save();
+  }
+
   async upsertExtraction(input: KnowledgeExtractionUpsertInput): Promise<KnowledgeExtractionRecord> {
     await this.init();
     const existing = input.id
@@ -690,6 +744,14 @@ export class KnowledgeStore {
     const _title = stableText(input.title);
     const _summary = stableText(input.summary);
     const _excerpt = stableText(input.excerpt);
+    const mergedExtractionMetadata = {
+      ...(existing?.metadata ?? {}),
+      ...(input.metadata ?? {}),
+    };
+    const extractionSource = this.sources.get(input.sourceId);
+    const extractionMetadata = getExplicitKnowledgeSpaceId({ metadata: mergedExtractionMetadata }) || !extractionSource
+      ? mergedExtractionMetadata
+      : ensureKnowledgeSpaceMetadata(mergedExtractionMetadata, getKnowledgeSpaceId(extractionSource));
     const record: KnowledgeExtractionRecord = {
       id: existing?.id ?? input.id ?? `extract-${randomUUID().slice(0, 8)}`,
       sourceId: input.sourceId,
@@ -706,10 +768,7 @@ export class KnowledgeStore {
         ...(existing?.structure ?? {}),
         ...(input.structure ?? {}),
       },
-      metadata: {
-        ...(existing?.metadata ?? {}),
-        ...(input.metadata ?? {}),
-      },
+      metadata: extractionMetadata,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
