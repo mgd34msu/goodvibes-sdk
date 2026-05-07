@@ -1,4 +1,5 @@
 import type { MemoryRecord, MemoryRegistry } from '../state/index.js';
+import { DEFAULT_KNOWLEDGE_SPACE_ID, knowledgeSpaceMetadata } from './spaces.js';
 import type { KnowledgeStore } from './store.js';
 import { slugify } from './shared.js';
 
@@ -25,6 +26,7 @@ async function upsertKnowledgeMemoryNode(store: KnowledgeStore, record: MemoryRe
       status: record.reviewState === 'stale' ? 'stale' : 'active',
       confidence: record.confidence,
       metadata: {
+        ...knowledgeSpaceMetadata(DEFAULT_KNOWLEDGE_SPACE_ID),
         memoryId: record.id,
         scope: record.scope,
         cls: record.cls,
@@ -39,7 +41,7 @@ async function upsertKnowledgeMemoryNode(store: KnowledgeStore, record: MemoryRe
         title: tag,
         summary: `Topic tag ${tag}.`,
         aliases: [tag],
-        metadata: { tag },
+        metadata: knowledgeSpaceMetadata(DEFAULT_KNOWLEDGE_SPACE_ID, { tag }),
       });
       await store.upsertEdge({
         fromKind: 'node',
