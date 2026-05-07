@@ -84,6 +84,7 @@ import {
 } from './store-read.js';
 import { loadKnowledgeStoreSnapshot } from './store-load.js';
 import {
+  DEFAULT_KNOWLEDGE_SPACE_ID,
   ensureKnowledgeSpaceMetadata,
   getExplicitKnowledgeSpaceId,
   getKnowledgeSpaceId,
@@ -453,14 +454,17 @@ export class KnowledgeStore {
       ...(existing?.metadata ?? {}),
       ...(input.metadata ?? {}),
     };
-    const linkedSource = _sourceId !== null
-      ? this.sources.get(_sourceId)
-      : existing?.sourceId
-        ? this.sources.get(existing.sourceId)
-        : null;
-    const nodeMetadata = getExplicitKnowledgeSpaceId({ metadata: mergedNodeMetadata }) || !linkedSource
-      ? mergedNodeMetadata
-      : ensureKnowledgeSpaceMetadata(mergedNodeMetadata, getKnowledgeSpaceId(linkedSource));
+    const explicitNodeSpaceId = getExplicitKnowledgeSpaceId({ metadata: mergedNodeMetadata });
+    const relatedNodeSpaceId = inferRecordReferenceSpaceId({
+      sourceId: _sourceId ?? existing?.sourceId,
+      metadata: mergedNodeMetadata,
+      sources: this.sources,
+      nodes: this.nodes,
+    });
+    const nodeSpaceId = preferRelatedNonDefaultSpace(explicitNodeSpaceId, relatedNodeSpaceId);
+    const nodeMetadata = nodeSpaceId
+      ? ensureKnowledgeSpaceMetadata(mergedNodeMetadata, nodeSpaceId)
+      : mergedNodeMetadata;
     const record: KnowledgeNodeRecord = {
       id: existing?.id ?? input.id ?? `node-${randomUUID().slice(0, 8)}`,
       kind: input.kind,
@@ -673,9 +677,16 @@ export class KnowledgeStore {
       : existing?.nodeId
         ? this.nodes.get(existing.nodeId)
         : null;
-    const issueSpaceId = getExplicitKnowledgeSpaceId({ metadata: mergedIssueMetadata })
-      ?? getExplicitKnowledgeSpaceId(issueSource)
-      ?? getExplicitKnowledgeSpaceId(issueNode);
+    const issueSpaceId = preferRelatedNonDefaultSpace(
+      getExplicitKnowledgeSpaceId({ metadata: mergedIssueMetadata }),
+      inferRecordReferenceSpaceId({
+        sourceId: _sourceId ?? existing?.sourceId,
+        nodeId: _nodeId ?? existing?.nodeId,
+        metadata: mergedIssueMetadata,
+        sources: this.sources,
+        nodes: this.nodes,
+      }) ?? getExplicitKnowledgeSpaceId(issueSource) ?? getExplicitKnowledgeSpaceId(issueNode),
+    );
     const issueMetadata = issueSpaceId
       ? ensureKnowledgeSpaceMetadata(mergedIssueMetadata, issueSpaceId)
       : mergedIssueMetadata;
@@ -1057,4 +1068,53 @@ export class KnowledgeStore {
     for (const record of snapshot.schedules) this.schedules.set(record.id, record);
     this.ready = true;
   }
+}
+
+function inferRecordReferenceSpaceId(input: {
+  readonly sourceId?: string | null | undefined;
+  readonly nodeId?: string | null | undefined;
+  readonly metadata: Record<string, unknown>;
+  readonly sources: ReadonlyMap<string, KnowledgeSourceRecord>;
+  readonly nodes: ReadonlyMap<string, KnowledgeNodeRecord>;
+}): string | null {
+  const spaceIds = new Set<string>();
+  for (const sourceId of uniqueReferenceIds([
+    input.sourceId ?? undefined,
+    readMetadataString(input.metadata.sourceId),
+    ...readMetadataStringArray(input.metadata.sourceIds),
+  ])) {
+    const spaceId = getExplicitKnowledgeSpaceId(input.sources.get(sourceId));
+    if (spaceId) spaceIds.add(spaceId);
+  }
+  for (const nodeId of uniqueReferenceIds([
+    input.nodeId ?? undefined,
+    readMetadataString(input.metadata.nodeId),
+    ...readMetadataStringArray(input.metadata.linkedObjectIds),
+    ...readMetadataStringArray(input.metadata.subjectIds),
+  ])) {
+    const spaceId = getExplicitKnowledgeSpaceId(input.nodes.get(nodeId));
+    if (spaceId) spaceIds.add(spaceId);
+  }
+  return [...spaceIds].find((spaceId) => spaceId !== DEFAULT_KNOWLEDGE_SPACE_ID) ?? [...spaceIds][0] ?? null;
+}
+
+function preferRelatedNonDefaultSpace(explicitSpaceId: string | null, relatedSpaceId: string | null): string | null {
+  if (relatedSpaceId && relatedSpaceId !== DEFAULT_KNOWLEDGE_SPACE_ID && explicitSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID) {
+    return relatedSpaceId;
+  }
+  return explicitSpaceId ?? relatedSpaceId;
+}
+
+function readMetadataString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readMetadataStringArray(value: unknown): readonly string[] {
+  if (typeof value === 'string' && value.trim().length > 0) return [value.trim()];
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => readMetadataStringArray(entry));
+}
+
+function uniqueReferenceIds(values: readonly (string | undefined)[]): readonly string[] {
+  return [...new Set(values.filter((entry): entry is string => Boolean(entry && entry.trim().length > 0)))];
 }

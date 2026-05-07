@@ -3,6 +3,9 @@ import {
   isInKnowledgeSpaceScope,
   type KnowledgeSpaceScopeInput,
 } from './spaces.js';
+import {
+  knowledgeNodeMatchesScope,
+} from './scope-records.js';
 import type {
   KnowledgePacket,
   KnowledgePacketDetail,
@@ -74,7 +77,10 @@ export function searchKnowledge(
       source,
     };
   });
-  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => isInKnowledgeSpaceScope(node, scope)).map((node) => {
+  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => knowledgeNodeMatchesScope(node, scope, {
+    getSource: (id) => context.store.getSource(id),
+    getNode: (id) => context.store.getNode(id),
+  })).map((node) => {
     const haystack = [
       node.title,
       node.summary ?? '',
@@ -210,7 +216,10 @@ function buildKnowledgePacketFromCurrentState(
   }
 
   for (const node of context.store.listNodes(Number.MAX_SAFE_INTEGER)) {
-    if (!isInKnowledgeSpaceScope(node, options)) continue;
+    if (!knowledgeNodeMatchesScope(node, options, {
+      getSource: (id) => context.store.getSource(id),
+      getNode: (id) => context.store.getNode(id),
+    })) continue;
     const haystack = [
       node.title,
       node.summary ?? '',
@@ -299,7 +308,10 @@ function collectRelatedLabels(
     const otherId = edge.fromKind === kind && edge.fromId === id ? edge.toId : edge.fromId;
     if (otherKind === 'node') {
       const node = context.store.getNode(otherId);
-      if (node && isInKnowledgeSpaceScope(node, scope)) labels.push(node.title);
+      if (node && knowledgeNodeMatchesScope(node, scope, {
+        getSource: (sourceId) => context.store.getSource(sourceId),
+        getNode: (nodeId) => context.store.getNode(nodeId),
+      })) labels.push(node.title);
     } else if (otherKind === 'source') {
       const source = context.store.getSource(otherId);
       if (source && isInKnowledgeSpaceScope(source, scope)) labels.push(source.title ?? source.canonicalUri ?? source.id);

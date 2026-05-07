@@ -4,6 +4,10 @@ import {
 import {
   isInKnowledgeSpaceScope,
 } from './spaces.js';
+import {
+  knowledgeIssueMatchesScope,
+  knowledgeNodeMatchesScope,
+} from './scope-records.js';
 import type {
   KnowledgeEdgeRecord,
   KnowledgeIssueRecord,
@@ -35,6 +39,10 @@ export function applyKnowledgeMapFilters(
   const linkedRecordIds = linkedIds.size > 0 ? recordIdsLinkedTo(state.edges, linkedIds) : new Set<string>();
   const query = filters.query?.toLowerCase();
   const recordKinds = filters.recordKinds;
+  const scopeLookup = {
+    sources: new Map(state.sources.map((source) => [source.id, source])),
+    nodes: new Map(state.nodes.map((node) => [node.id, node])),
+  };
 
   const sources = recordKinds && !recordKinds.has('source')
     ? []
@@ -61,7 +69,7 @@ export function applyKnowledgeMapFilters(
     ? []
     : state.nodes
         .filter((node) => node.status !== 'stale')
-        .filter((node) => isInKnowledgeSpaceScope(node, filters))
+        .filter((node) => knowledgeNodeMatchesScope(node, filters, scopeLookup))
         .filter((node) => matchesSet(filters.nodeKinds, node.kind))
         .filter((node) => matchesSet(filters.nodeStatuses, node.status))
         .filter((node) => filters.minConfidence === undefined || node.confidence >= filters.minConfidence)
@@ -81,7 +89,7 @@ export function applyKnowledgeMapFilters(
     ? []
     : state.issues
         .filter((issue) => (filters.issueStatuses?.length ?? 0) > 0 || issue.status === 'open')
-        .filter((issue) => isInKnowledgeSpaceScope(issue, filters))
+        .filter((issue) => knowledgeIssueMatchesScope(issue, filters, scopeLookup))
         .filter((issue) => matchesSet(filters.issueCodes, issue.code))
         .filter((issue) => matchesSet(filters.issueStatuses, issue.status))
         .filter((issue) => matchesSet(filters.issueSeverities, issue.severity))

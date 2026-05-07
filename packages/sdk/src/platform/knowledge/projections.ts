@@ -11,6 +11,10 @@ import {
   type KnowledgeSpaceScopeInput,
 } from './spaces.js';
 import {
+  knowledgeIssueMatchesScope,
+  knowledgeNodeMatchesScope,
+} from './scope-records.js';
+import {
   buildBulletList,
   dedupe,
   formatDateTime,
@@ -158,7 +162,7 @@ export class KnowledgeProjectionService {
     if (kind === 'rollup') {
       if (!id?.trim()) return null;
       const node = this.store.getNode(id);
-      return node && isInKnowledgeSpaceScope(node, scope) ? this.createRollupTarget(node) : null;
+      return node && this.nodeInScope(node, scope) ? this.createRollupTarget(node) : null;
     }
     if (!id?.trim()) return null;
     if (kind === 'source') {
@@ -167,10 +171,10 @@ export class KnowledgeProjectionService {
     }
     if (kind === 'node') {
       const node = this.store.getNode(id);
-      return node && isInKnowledgeSpaceScope(node, scope) ? this.createNodeTarget(node) : null;
+      return node && this.nodeInScope(node, scope) ? this.createNodeTarget(node) : null;
     }
     const issue = this.store.getIssue(id);
-    return issue && isInKnowledgeSpaceScope(issue, scope) ? this.createIssueTarget(issue) : null;
+    return issue && this.issueInScope(issue, scope) ? this.createIssueTarget(issue) : null;
   }
 
   private createPresetTarget(kind: 'overview' | 'bundle', scope: KnowledgeSpaceScopeInput): KnowledgeProjectionTarget {
@@ -429,7 +433,7 @@ export class KnowledgeProjectionService {
           }
           if (edge.fromKind === 'node') {
             const node = this.store.getNode(edge.fromId);
-            return node && isInKnowledgeSpaceScope(node, scope) ? `${this.linkToTarget(this.createNodeTarget(node))} via \`${edge.relation}\`` : `node:${edge.fromId}`;
+            return node && this.nodeInScope(node, scope) ? `${this.linkToTarget(this.createNodeTarget(node))} via \`${edge.relation}\`` : `node:${edge.fromId}`;
           }
           return `${edge.fromKind}:${edge.fromId} via \`${edge.relation}\``;
         })),
@@ -527,7 +531,7 @@ export class KnowledgeProjectionService {
       extraction?.excerpt ? ['## Excerpt', extraction.excerpt].join('\n') : null,
       [
         '## Related Nodes',
-        buildBulletList(relatedNodes.filter((node) => isInKnowledgeSpaceScope(node, scope)).map((node) => this.linkToTarget(this.createNodeTarget(node), `${node.title} (${node.kind})`))),
+        buildBulletList(relatedNodes.filter((node) => this.nodeInScope(node, scope)).map((node) => this.linkToTarget(this.createNodeTarget(node), `${node.title} (${node.kind})`))),
       ].join('\n'),
       [
         '## Related Sources',
@@ -558,7 +562,7 @@ export class KnowledgeProjectionService {
 
   private renderNodePage(id: string, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const node = this.store.getNode(id);
-    if (!node || !isInKnowledgeSpaceScope(node, scope)) throw new Error(`Unknown knowledge node: ${id}`);
+    if (!node || !this.nodeInScope(node, scope)) throw new Error(`Unknown knowledge node: ${id}`);
     const view = this.store.getItem(id);
     const target = this.createNodeTarget(node);
     const incoming = this.store.listEdges().filter((edge) => edge.toKind === 'node' && edge.toId === node.id && this.edgeInScope(edge, scope));
@@ -614,7 +618,7 @@ export class KnowledgeProjectionService {
 
   private renderIssuePage(id: string, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const issue = this.store.getIssue(id);
-    if (!issue || !isInKnowledgeSpaceScope(issue, scope)) throw new Error(`Unknown knowledge issue: ${id}`);
+    if (!issue || !this.issueInScope(issue, scope)) throw new Error(`Unknown knowledge issue: ${id}`);
     const target = this.createIssueTarget(issue);
     const linkedSource = issue.sourceId ? this.store.getSource(issue.sourceId) : null;
     const linkedNode = issue.nodeId ? this.store.getNode(issue.nodeId) : null;
@@ -665,7 +669,7 @@ export class KnowledgeProjectionService {
 
   private renderRollupPage(nodeId: string, target: KnowledgeProjectionTarget, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const node = this.store.getNode(nodeId);
-    if (!node || !isInKnowledgeSpaceScope(node, scope)) throw new Error(`Unknown rollup node: ${nodeId}`);
+    if (!node || !this.nodeInScope(node, scope)) throw new Error(`Unknown rollup node: ${nodeId}`);
     const edges = this.store.edgesFor('node', node.id);
     const sources = edges
       .map((edge) => {
@@ -797,11 +801,11 @@ export class KnowledgeProjectionService {
     }
     if (kind === 'node') {
       const node = this.store.getNode(id);
-      return Boolean(node && isInKnowledgeSpaceScope(node, scope));
+      return Boolean(node && this.nodeInScope(node, scope));
     }
     if (kind === 'issue') {
       const issue = this.store.getIssue(id);
-      return Boolean(issue && isInKnowledgeSpaceScope(issue, scope));
+      return Boolean(issue && this.issueInScope(issue, scope));
     }
     return true;
   }
@@ -814,13 +818,13 @@ export class KnowledgeProjectionService {
 
   private scopedNodes(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeNodeRecord[] {
     return this.store.listNodes(Number.MAX_SAFE_INTEGER)
-      .filter((node) => isInKnowledgeSpaceScope(node, scope))
+      .filter((node) => this.nodeInScope(node, scope))
       .slice(0, Math.max(1, limit));
   }
 
   private scopedIssues(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeIssueRecord[] {
     return this.store.listIssues(Number.MAX_SAFE_INTEGER)
-      .filter((issue) => isInKnowledgeSpaceScope(issue, scope))
+      .filter((issue) => this.issueInScope(issue, scope))
       .slice(0, Math.max(1, limit));
   }
 
@@ -828,6 +832,20 @@ export class KnowledgeProjectionService {
     return this.store.listExtractions(Number.MAX_SAFE_INTEGER)
       .filter((extraction) => isInKnowledgeSpaceScope(extraction, scope))
       .slice(0, Math.max(1, limit));
+  }
+
+  private nodeInScope(node: KnowledgeNodeRecord, scope: KnowledgeSpaceScopeInput): boolean {
+    return knowledgeNodeMatchesScope(node, scope, {
+      getSource: (id) => this.store.getSource(id),
+      getNode: (id) => this.store.getNode(id),
+    });
+  }
+
+  private issueInScope(issue: KnowledgeIssueRecord, scope: KnowledgeSpaceScopeInput): boolean {
+    return knowledgeIssueMatchesScope(issue, scope, {
+      getSource: (id) => this.store.getSource(id),
+      getNode: (id) => this.store.getNode(id),
+    });
   }
 }
 
