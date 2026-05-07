@@ -689,6 +689,8 @@ export interface KnowledgeMaterializedProjection {
 export type KnowledgeMapRecordKind = 'source' | 'node' | 'issue';
 
 export interface KnowledgeMapFilterInput {
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly includeAllSpaces?: boolean | undefined;
   readonly query?: string | undefined;
   readonly recordKinds?: readonly KnowledgeMapRecordKind[] | undefined;
   readonly ids?: readonly string[] | undefined;

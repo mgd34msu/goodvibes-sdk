@@ -30,6 +30,8 @@ export interface KnowledgeMapRenderOptions {
   readonly includeGenerated?: boolean | undefined;
   readonly title?: string | undefined;
   readonly spaceId?: string | undefined;
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly includeAllSpaces?: boolean | undefined;
   readonly filters?: KnowledgeMapFilterInput | undefined;
   readonly query?: string | undefined;
   readonly recordKinds?: readonly ('source' | 'node' | 'issue')[] | undefined;
@@ -142,12 +144,7 @@ export function renderKnowledgeMap(
     edgeCount: visibleEdges.length,
     totalNodeCount: filtered.sources.length + filtered.nodes.length + filtered.issues.length,
     totalEdgeCount: filteredEdges.length,
-    facets: buildKnowledgeMapFacets({
-      sources: state.sources,
-      nodes: state.nodes,
-      edges: state.edges,
-      issues: state.issues ?? [],
-    }),
+    facets: buildKnowledgeMapFacets(filtered),
     nodes: mapNodes,
     edges: visibleEdges,
     svg: renderMapSvg({ width, height, title, nodes: mapNodes, edges: visibleEdges }),

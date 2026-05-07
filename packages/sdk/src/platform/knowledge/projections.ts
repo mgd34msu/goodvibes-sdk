@@ -6,6 +6,11 @@ import {
   materializeGeneratedKnowledgeProjection,
 } from './generated-projections.js';
 import {
+  isInKnowledgeSpaceScope,
+  resolveKnowledgeSpaceScope,
+  type KnowledgeSpaceScopeInput,
+} from './spaces.js';
+import {
   buildBulletList,
   dedupe,
   formatDateTime,
@@ -43,16 +48,16 @@ export class KnowledgeProjectionService {
     this.getConnectors = options.connectors ?? (() => []);
   }
 
-  async listTargets(limit = 25): Promise<KnowledgeProjectionTarget[]> {
+  async listTargets(limit = 25, scope: KnowledgeSpaceScopeInput = {}): Promise<KnowledgeProjectionTarget[]> {
     await this.store.init();
     const max = Math.max(1, limit);
-    const targets: KnowledgeProjectionTarget[] = [this.createPresetTarget('overview'), this.createPresetTarget('bundle')];
+    const targets: KnowledgeProjectionTarget[] = [this.createPresetTarget('overview', scope), this.createPresetTarget('bundle', scope)];
     const remaining = Math.max(1, max - targets.length);
     const perKind = Math.max(1, Math.ceil(remaining / 4));
-    const sources = this.store.listSources(perKind).map((source) => this.createSourceTarget(source));
-    const nodes = this.store.listNodes(perKind).map((node) => this.createNodeTarget(node));
-    const issues = this.store.listIssues(perKind).map((issue) => this.createIssueTarget(issue));
-    const rollups = this.store.listNodes(Number.MAX_SAFE_INTEGER)
+    const sources = this.scopedSources(scope, perKind).map((source) => this.createSourceTarget(source));
+    const nodes = this.scopedNodes(scope, perKind).map((node) => this.createNodeTarget(node));
+    const issues = this.scopedIssues(scope, perKind).map((issue) => this.createIssueTarget(issue));
+    const rollups = this.scopedNodes(scope)
       .filter((node) => node.kind === 'domain' || node.kind === 'topic' || node.kind === 'bookmark_folder')
       .slice(0, Math.max(2, perKind))
       .map((node) => this.createRollupTarget(node));
@@ -65,32 +70,35 @@ export class KnowledgeProjectionService {
       readonly kind: KnowledgeProjectionTargetKind;
       readonly id?: string | undefined;
       readonly limit?: number | undefined;
+      readonly knowledgeSpaceId?: string | undefined;
+      readonly includeAllSpaces?: boolean | undefined;
     },
   ): Promise<KnowledgeProjectionBundle> {
     await this.store.init();
     const limit = Math.max(1, input.limit ?? 12);
-    const target = this.resolveTarget(input.kind, input.id);
+    const scope = projectionScope(input);
+    const target = this.resolveTarget(input.kind, input.id, scope);
     if (!target) {
       throw new Error(`Unknown knowledge projection target: ${input.kind}${input.id ? `/${input.id}` : ''}`);
     }
 
     switch (target.kind) {
       case 'overview':
-        return this.bundleFromPages(target, [this.renderOverviewPage(target, limit)], { preset: 'overview' });
+        return this.bundleFromPages(target, [this.renderOverviewPage(target, limit, scope)], { preset: 'overview' }, scope);
       case 'bundle':
-        return this.renderBundleTarget(target, limit);
+        return this.renderBundleTarget(target, limit, scope);
       case 'source':
-        return this.bundleFromPages(target, [this.renderSourcePage(target.itemId!)], {});
+        return this.bundleFromPages(target, [this.renderSourcePage(target.itemId!, scope)], {}, scope);
       case 'node':
-        return this.bundleFromPages(target, [this.renderNodePage(target.itemId!)], {});
+        return this.bundleFromPages(target, [this.renderNodePage(target.itemId!, scope)], {}, scope);
       case 'issue':
-        return this.bundleFromPages(target, [this.renderIssuePage(target.itemId!)], {});
+        return this.bundleFromPages(target, [this.renderIssuePage(target.itemId!, scope)], {}, scope);
       case 'dashboard':
-        return this.bundleFromPages(target, [this.renderDashboardPage(target, limit)], { preset: 'dashboard' });
+        return this.bundleFromPages(target, [this.renderDashboardPage(target, limit, scope)], { preset: 'dashboard' }, scope);
       case 'rollup':
-        return this.bundleFromPages(target, [this.renderRollupPage(target.itemId!, target)], { preset: 'rollup' });
+        return this.bundleFromPages(target, [this.renderRollupPage(target.itemId!, target, scope)], { preset: 'rollup' }, scope);
       default:
-        return this.bundleFromPages(target, [this.renderOverviewPage(this.createPresetTarget('overview'), limit)], {});
+        return this.bundleFromPages(target, [this.renderOverviewPage(this.createPresetTarget('overview', scope), limit, scope)], {}, scope);
     }
   }
 
@@ -100,6 +108,8 @@ export class KnowledgeProjectionService {
       readonly id?: string | undefined;
       readonly limit?: number | undefined;
       readonly filename?: string | undefined;
+      readonly knowledgeSpaceId?: string | undefined;
+      readonly includeAllSpaces?: boolean | undefined;
     },
   ): Promise<KnowledgeMaterializedProjection> {
     const bundle = await this.render(input);
@@ -142,28 +152,30 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private resolveTarget(kind: KnowledgeProjectionTargetKind, id?: string): KnowledgeProjectionTarget | null {
-    if (kind === 'overview' || kind === 'bundle') return this.createPresetTarget(kind);
+  private resolveTarget(kind: KnowledgeProjectionTargetKind, id: string | undefined, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionTarget | null {
+    if (kind === 'overview' || kind === 'bundle') return this.createPresetTarget(kind, scope);
     if (kind === 'dashboard') return this.createDashboardTarget(id ?? 'source-health');
     if (kind === 'rollup') {
       if (!id?.trim()) return null;
       const node = this.store.getNode(id);
-      return node ? this.createRollupTarget(node) : null;
+      return node && isInKnowledgeSpaceScope(node, scope) ? this.createRollupTarget(node) : null;
     }
     if (!id?.trim()) return null;
     if (kind === 'source') {
       const source = this.store.getSource(id);
-      return source ? this.createSourceTarget(source) : null;
+      return source && isInKnowledgeSpaceScope(source, scope) ? this.createSourceTarget(source) : null;
     }
     if (kind === 'node') {
       const node = this.store.getNode(id);
-      return node ? this.createNodeTarget(node) : null;
+      return node && isInKnowledgeSpaceScope(node, scope) ? this.createNodeTarget(node) : null;
     }
     const issue = this.store.getIssue(id);
-    return issue ? this.createIssueTarget(issue) : null;
+    return issue && isInKnowledgeSpaceScope(issue, scope) ? this.createIssueTarget(issue) : null;
   }
 
-  private createPresetTarget(kind: 'overview' | 'bundle'): KnowledgeProjectionTarget {
+  private createPresetTarget(kind: 'overview' | 'bundle', scope: KnowledgeSpaceScopeInput): KnowledgeProjectionTarget {
+    const spaceId = resolveKnowledgeSpaceScope(scope);
+    const metadata = spaceId === null ? { includeAllSpaces: true } : { knowledgeSpaceId: spaceId };
     if (kind === 'overview') {
       return {
         targetId: 'overview',
@@ -172,7 +184,7 @@ export class KnowledgeProjectionService {
         description: 'A compact markdown projection of the current structured knowledge store.',
         defaultPath: 'wiki/index.md',
         defaultFilename: 'knowledge-overview.md',
-        metadata: {},
+        metadata,
       };
     }
     return {
@@ -182,7 +194,7 @@ export class KnowledgeProjectionService {
       description: 'A multi-page markdown bundle containing indexes, dashboards, and recent records.',
       defaultPath: 'wiki/bundle/index.md',
       defaultFilename: 'knowledge-bundle.md',
-      metadata: {},
+      metadata,
     };
   }
 
@@ -275,11 +287,15 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderOverviewPage(target: KnowledgeProjectionTarget, limit: number): KnowledgeProjectionPage {
-    const status = this.store.status();
-    const sources = this.store.listSources(limit);
-    const nodes = this.store.listNodes(limit);
-    const issues = this.store.listIssues(limit);
+  private renderOverviewPage(target: KnowledgeProjectionTarget, limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
+    const sources = this.scopedSources(scope, limit);
+    const nodes = this.scopedNodes(scope, limit);
+    const issues = this.scopedIssues(scope, limit);
+    const allSources = this.scopedSources(scope);
+    const allNodes = this.scopedNodes(scope);
+    const allIssues = this.scopedIssues(scope);
+    const edgeCount = this.store.listEdges().filter((edge) => this.edgeInScope(edge, scope)).length;
+    const extractionCount = this.scopedExtractions(scope).length;
     const connectors = this.getConnectors();
     const runs = this.store.listJobRuns(5);
     const content = joinSections(
@@ -287,12 +303,12 @@ export class KnowledgeProjectionService {
       'Structured knowledge is canonical in SQL. This markdown page is a derived projection for clients, exports, and future wiki-style surfaces.',
       [
         '## Counts',
-        `- sources: ${status.sourceCount}`,
-        `- nodes: ${status.nodeCount}`,
-        `- edges: ${status.edgeCount}`,
-        `- issues: ${status.issueCount}`,
-        `- extractions: ${status.extractionCount}`,
-        `- job runs: ${status.jobRunCount}`,
+        `- sources: ${allSources.length}`,
+        `- nodes: ${allNodes.length}`,
+        `- edges: ${edgeCount}`,
+        `- issues: ${allIssues.length}`,
+        `- extractions: ${extractionCount}`,
+        `- job runs: ${this.store.listJobRuns(Number.MAX_SAFE_INTEGER).length}`,
       ].join('\n'),
       [
         '## Connectors',
@@ -327,8 +343,8 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderSourceIndexPage(limit: number): KnowledgeProjectionPage {
-    const sources = sortByTitle(this.store.listSources(Number.MAX_SAFE_INTEGER).slice(0, limit));
+  private renderSourceIndexPage(limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
+    const sources = sortByTitle(this.scopedSources(scope).slice(0, limit));
     const lines = [
       '# Sources Index',
       '',
@@ -350,8 +366,8 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderNodeIndexPage(limit: number): KnowledgeProjectionPage {
-    const nodes = sortByTitle(this.store.listNodes(Number.MAX_SAFE_INTEGER).slice(0, limit));
+  private renderNodeIndexPage(limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
+    const nodes = sortByTitle(this.scopedNodes(scope).slice(0, limit));
     const grouped = new Map<string, KnowledgeNodeRecord[]>();
     for (const node of nodes) {
       const bucket = grouped.get(node.kind) ?? [];
@@ -374,8 +390,8 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderIssueDashboardPage(limit: number): KnowledgeProjectionPage {
-    const issues = this.store.listIssues(limit);
+  private renderIssueDashboardPage(limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
+    const issues = this.scopedIssues(scope, limit);
     const severityGroups = ['error', 'warning', 'info'].map((severity) => [
       `## ${severity.toUpperCase()}`,
       buildBulletList(issues
@@ -394,10 +410,11 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderBacklinksPage(limit: number): KnowledgeProjectionPage {
-    const items = this.store.listSources(limit).map((source) => {
+  private renderBacklinksPage(limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
+    const items = this.scopedSources(scope, limit).map((source) => {
       const incoming = this.store.listEdges()
-        .filter((edge) => edge.toKind === 'source' && edge.toId === source.id);
+        .filter((edge) => edge.toKind === 'source' && edge.toId === source.id)
+        .filter((edge) => this.edgeInScope(edge, scope));
       return { source, incoming };
     }).filter((entry) => entry.incoming.length > 0);
     const content = [
@@ -408,11 +425,11 @@ export class KnowledgeProjectionService {
         buildBulletList(entry.incoming.map((edge) => {
           if (edge.fromKind === 'source') {
             const linked = this.store.getSource(edge.fromId);
-            return linked ? `${this.linkToTarget(this.createSourceTarget(linked))} via \`${edge.relation}\`` : `source:${edge.fromId}`;
+            return linked && isInKnowledgeSpaceScope(linked, scope) ? `${this.linkToTarget(this.createSourceTarget(linked))} via \`${edge.relation}\`` : `source:${edge.fromId}`;
           }
           if (edge.fromKind === 'node') {
             const node = this.store.getNode(edge.fromId);
-            return node ? `${this.linkToTarget(this.createNodeTarget(node))} via \`${edge.relation}\`` : `node:${edge.fromId}`;
+            return node && isInKnowledgeSpaceScope(node, scope) ? `${this.linkToTarget(this.createNodeTarget(node))} via \`${edge.relation}\`` : `node:${edge.fromId}`;
           }
           return `${edge.fromKind}:${edge.fromId} via \`${edge.relation}\``;
         })),
@@ -430,8 +447,8 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderHealthDashboardPage(limit: number): KnowledgeProjectionPage {
-    const sources = this.store.listSources(limit);
+  private renderHealthDashboardPage(limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
+    const sources = this.scopedSources(scope, limit);
     const staleThreshold = Date.now() - (14 * 24 * 60 * 60 * 1000);
     const unhealthy = sources.filter((source) => (
       source.status !== 'indexed'
@@ -466,9 +483,9 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderSourcePage(id: string): KnowledgeProjectionPage {
+  private renderSourcePage(id: string, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const source = this.store.getSource(id);
-    if (!source) throw new Error(`Unknown knowledge source: ${id}`);
+    if (!source || !isInKnowledgeSpaceScope(source, scope)) throw new Error(`Unknown knowledge source: ${id}`);
     const extraction = this.store.getExtractionBySourceId(id);
     const view = this.store.getItem(id);
     const target = this.createSourceTarget(source);
@@ -476,11 +493,12 @@ export class KnowledgeProjectionService {
     const relatedSources = view?.linkedSources.filter((entry) => (
       entry.id !== source.id && !isGeneratedKnowledgeSource(entry)
     )) ?? [];
-    const issues = this.store.listIssues(Number.MAX_SAFE_INTEGER).filter((issue) => issue.sourceId === source.id);
+    const issues = this.scopedIssues(scope).filter((issue) => issue.sourceId === source.id);
     const incoming = this.store.listEdges().filter((edge) => (
       edge.toKind === 'source'
       && edge.toId === source.id
       && !this.isGeneratedSourceReference(edge.fromKind, edge.fromId)
+      && this.edgeInScope(edge, scope)
     ));
     const content = joinSections(
       `# ${target.title}`,
@@ -509,11 +527,11 @@ export class KnowledgeProjectionService {
       extraction?.excerpt ? ['## Excerpt', extraction.excerpt].join('\n') : null,
       [
         '## Related Nodes',
-        buildBulletList(relatedNodes.map((node) => this.linkToTarget(this.createNodeTarget(node), `${node.title} (${node.kind})`))),
+        buildBulletList(relatedNodes.filter((node) => isInKnowledgeSpaceScope(node, scope)).map((node) => this.linkToTarget(this.createNodeTarget(node), `${node.title} (${node.kind})`))),
       ].join('\n'),
       [
         '## Related Sources',
-        buildBulletList(relatedSources.map((entry) => this.linkToTarget(this.createSourceTarget(entry)))),
+        buildBulletList(relatedSources.filter((entry) => isInKnowledgeSpaceScope(entry, scope)).map((entry) => this.linkToTarget(this.createSourceTarget(entry)))),
       ].join('\n'),
       [
         '## Backlinks',
@@ -538,12 +556,12 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderNodePage(id: string): KnowledgeProjectionPage {
+  private renderNodePage(id: string, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const node = this.store.getNode(id);
-    if (!node) throw new Error(`Unknown knowledge node: ${id}`);
+    if (!node || !isInKnowledgeSpaceScope(node, scope)) throw new Error(`Unknown knowledge node: ${id}`);
     const view = this.store.getItem(id);
     const target = this.createNodeTarget(node);
-    const incoming = this.store.listEdges().filter((edge) => edge.toKind === 'node' && edge.toId === node.id);
+    const incoming = this.store.listEdges().filter((edge) => edge.toKind === 'node' && edge.toId === node.id && this.edgeInScope(edge, scope));
     const content = joinSections(
       `# ${target.title}`,
       node.summary,
@@ -561,11 +579,12 @@ export class KnowledgeProjectionService {
         '## Linked Sources',
         buildBulletList((view?.linkedSources ?? [])
           .filter((source) => !isGeneratedKnowledgeSource(source))
+          .filter((source) => isInKnowledgeSpaceScope(source, scope))
           .map((source) => this.linkToTarget(this.createSourceTarget(source)))),
       ].join('\n'),
       [
         '## Linked Nodes',
-        buildBulletList((view?.linkedNodes ?? []).filter((entry) => entry.id !== node.id).map((entry) => this.linkToTarget(this.createNodeTarget(entry), `${entry.title} (${entry.kind})`))),
+        buildBulletList((view?.linkedNodes ?? []).filter((entry) => entry.id !== node.id && isInKnowledgeSpaceScope(entry, scope)).map((entry) => this.linkToTarget(this.createNodeTarget(entry), `${entry.title} (${entry.kind})`))),
       ].join('\n'),
       [
         '## Backlinks',
@@ -575,7 +594,7 @@ export class KnowledgeProjectionService {
       ].join('\n'),
       [
         '## Issues',
-        buildBulletList(this.store.listIssues(Number.MAX_SAFE_INTEGER)
+        buildBulletList(this.scopedIssues(scope)
           .filter((issue) => issue.nodeId === node.id)
           .map((issue) => this.linkToTarget(this.createIssueTarget(issue), `${issue.severity.toUpperCase()} ${issue.code}: ${issue.message}`))),
       ].join('\n'),
@@ -593,12 +612,14 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderIssuePage(id: string): KnowledgeProjectionPage {
+  private renderIssuePage(id: string, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const issue = this.store.getIssue(id);
-    if (!issue) throw new Error(`Unknown knowledge issue: ${id}`);
+    if (!issue || !isInKnowledgeSpaceScope(issue, scope)) throw new Error(`Unknown knowledge issue: ${id}`);
     const target = this.createIssueTarget(issue);
-    const source = issue.sourceId ? this.store.getSource(issue.sourceId) : null;
-    const node = issue.nodeId ? this.store.getNode(issue.nodeId) : null;
+    const linkedSource = issue.sourceId ? this.store.getSource(issue.sourceId) : null;
+    const linkedNode = issue.nodeId ? this.store.getNode(issue.nodeId) : null;
+    const source = linkedSource && isInKnowledgeSpaceScope(linkedSource, scope) ? linkedSource : null;
+    const node = linkedNode && isInKnowledgeSpaceScope(linkedNode, scope) ? linkedNode : null;
     const content = joinSections(
       `# ${target.title}`,
       [
@@ -635,16 +656,16 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderDashboardPage(target: KnowledgeProjectionTarget, limit: number): KnowledgeProjectionPage {
+  private renderDashboardPage(target: KnowledgeProjectionTarget, limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     if (target.itemId === 'backlinks') {
-      return this.renderBacklinksPage(limit);
+      return this.renderBacklinksPage(limit, scope);
     }
-    return this.renderHealthDashboardPage(limit);
+    return this.renderHealthDashboardPage(limit, scope);
   }
 
-  private renderRollupPage(nodeId: string, target: KnowledgeProjectionTarget): KnowledgeProjectionPage {
+  private renderRollupPage(nodeId: string, target: KnowledgeProjectionTarget, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const node = this.store.getNode(nodeId);
-    if (!node) throw new Error(`Unknown rollup node: ${nodeId}`);
+    if (!node || !isInKnowledgeSpaceScope(node, scope)) throw new Error(`Unknown rollup node: ${nodeId}`);
     const edges = this.store.edgesFor('node', node.id);
     const sources = edges
       .map((edge) => {
@@ -652,14 +673,14 @@ export class KnowledgeProjectionService {
         if (edge.toKind === 'source') return this.store.getSource(edge.toId);
         return null;
       })
-      .filter((source): source is KnowledgeSourceRecord => Boolean(source));
+      .filter((source): source is KnowledgeSourceRecord => Boolean(source) && isInKnowledgeSpaceScope(source, scope));
     const linkedNodes = edges
       .map((edge) => {
         if (edge.fromKind === 'node' && edge.fromId !== node.id) return this.store.getNode(edge.fromId);
         if (edge.toKind === 'node' && edge.toId !== node.id) return this.store.getNode(edge.toId);
         return null;
       })
-      .filter((entry): entry is KnowledgeNodeRecord => Boolean(entry));
+      .filter((entry): entry is KnowledgeNodeRecord => Boolean(entry) && isInKnowledgeSpaceScope(entry, scope));
     const content = joinSections(
       `# ${target.title}`,
       node.summary,
@@ -685,47 +706,52 @@ export class KnowledgeProjectionService {
     };
   }
 
-  private renderBundleTarget(target: KnowledgeProjectionTarget, limit: number): KnowledgeProjectionBundle {
-    const overview = this.renderOverviewPage(this.createPresetTarget('overview'), limit);
-    const sourceIndex = this.renderSourceIndexPage(Math.max(limit * 2, 24));
-    const nodeIndex = this.renderNodeIndexPage(Math.max(limit * 2, 24));
-    const issueDashboard = this.renderIssueDashboardPage(Math.max(limit * 2, 24));
-    const backlinks = this.renderBacklinksPage(Math.max(limit * 2, 16));
-    const health = this.renderHealthDashboardPage(Math.max(limit * 2, 16));
+  private renderBundleTarget(target: KnowledgeProjectionTarget, limit: number, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionBundle {
+    const overview = this.renderOverviewPage(this.createPresetTarget('overview', scope), limit, scope);
+    const sourceIndex = this.renderSourceIndexPage(Math.max(limit * 2, 24), scope);
+    const nodeIndex = this.renderNodeIndexPage(Math.max(limit * 2, 24), scope);
+    const issueDashboard = this.renderIssueDashboardPage(Math.max(limit * 2, 24), scope);
+    const backlinks = this.renderBacklinksPage(Math.max(limit * 2, 16), scope);
+    const health = this.renderHealthDashboardPage(Math.max(limit * 2, 16), scope);
     const pages: KnowledgeProjectionPage[] = [overview, sourceIndex, nodeIndex, issueDashboard, backlinks, health];
     const perKind = Math.max(1, Math.ceil(limit / 3));
-    for (const node of this.store.listNodes(Number.MAX_SAFE_INTEGER).filter((entry) => entry.kind === 'domain' || entry.kind === 'topic').slice(0, 4)) {
-      pages.push(this.renderRollupPage(node.id, this.createRollupTarget(node)));
+    for (const node of this.scopedNodes(scope).filter((entry) => entry.kind === 'domain' || entry.kind === 'topic').slice(0, 4)) {
+      pages.push(this.renderRollupPage(node.id, this.createRollupTarget(node), scope));
     }
-    for (const source of this.store.listSources(perKind)) {
-      pages.push(this.renderSourcePage(source.id));
+    for (const source of this.scopedSources(scope, perKind)) {
+      pages.push(this.renderSourcePage(source.id, scope));
     }
-    for (const node of this.store.listNodes(perKind)) {
-      pages.push(this.renderNodePage(node.id));
+    for (const node of this.scopedNodes(scope, perKind)) {
+      pages.push(this.renderNodePage(node.id, scope));
     }
-    for (const issue of this.store.listIssues(perKind)) {
-      pages.push(this.renderIssuePage(issue.id));
+    for (const issue of this.scopedIssues(scope, perKind)) {
+      pages.push(this.renderIssuePage(issue.id, scope));
     }
     return this.bundleFromPages(target, pages, {
       preset: 'bundle',
-      sourceCount: this.store.status().sourceCount,
-      nodeCount: this.store.status().nodeCount,
-      issueCount: this.store.status().issueCount,
-    });
+      sourceCount: this.scopedSources(scope).length,
+      nodeCount: this.scopedNodes(scope).length,
+      issueCount: this.scopedIssues(scope).length,
+    }, scope);
   }
 
   private bundleFromPages(
     target: KnowledgeProjectionTarget,
     pages: readonly KnowledgeProjectionPage[],
     metadata: Record<string, unknown>,
+    scope: KnowledgeSpaceScopeInput,
   ): KnowledgeProjectionBundle {
+    const spaceId = resolveKnowledgeSpaceScope(scope);
     return {
       id: `projection-${slugify(target.targetId)}`,
       target,
       generatedAt: Date.now(),
       pageCount: pages.length,
       pages,
-      metadata,
+      metadata: {
+        ...metadata,
+        ...(spaceId === null ? { includeAllSpaces: true } : { knowledgeSpaceId: spaceId }),
+      },
     };
   }
 
@@ -758,4 +784,56 @@ export class KnowledgeProjectionService {
     const source = this.store.getSource(id);
     return source ? isGeneratedKnowledgeSource(source) : false;
   }
+
+  private edgeInScope(edge: { readonly fromKind: string; readonly fromId: string; readonly toKind: string; readonly toId: string }, scope: KnowledgeSpaceScopeInput): boolean {
+    return this.recordReferenceInScope(edge.fromKind, edge.fromId, scope)
+      && this.recordReferenceInScope(edge.toKind, edge.toId, scope);
+  }
+
+  private recordReferenceInScope(kind: string, id: string, scope: KnowledgeSpaceScopeInput): boolean {
+    if (kind === 'source') {
+      const source = this.store.getSource(id);
+      return Boolean(source && isInKnowledgeSpaceScope(source, scope));
+    }
+    if (kind === 'node') {
+      const node = this.store.getNode(id);
+      return Boolean(node && isInKnowledgeSpaceScope(node, scope));
+    }
+    if (kind === 'issue') {
+      const issue = this.store.getIssue(id);
+      return Boolean(issue && isInKnowledgeSpaceScope(issue, scope));
+    }
+    return true;
+  }
+
+  private scopedSources(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeSourceRecord[] {
+    return this.store.listSources(Number.MAX_SAFE_INTEGER)
+      .filter((source) => isInKnowledgeSpaceScope(source, scope))
+      .slice(0, Math.max(1, limit));
+  }
+
+  private scopedNodes(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeNodeRecord[] {
+    return this.store.listNodes(Number.MAX_SAFE_INTEGER)
+      .filter((node) => isInKnowledgeSpaceScope(node, scope))
+      .slice(0, Math.max(1, limit));
+  }
+
+  private scopedIssues(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeIssueRecord[] {
+    return this.store.listIssues(Number.MAX_SAFE_INTEGER)
+      .filter((issue) => isInKnowledgeSpaceScope(issue, scope))
+      .slice(0, Math.max(1, limit));
+  }
+
+  private scopedExtractions(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER) {
+    return this.store.listExtractions(Number.MAX_SAFE_INTEGER)
+      .filter((extraction) => isInKnowledgeSpaceScope(extraction, scope))
+      .slice(0, Math.max(1, limit));
+  }
+}
+
+function projectionScope(input: KnowledgeSpaceScopeInput = {}): KnowledgeSpaceScopeInput {
+  return {
+    ...(input.knowledgeSpaceId ? { knowledgeSpaceId: input.knowledgeSpaceId } : {}),
+    ...(input.includeAllSpaces === true ? { includeAllSpaces: true } : {}),
+  };
 }

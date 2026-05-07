@@ -86,6 +86,7 @@ export type {
   CompanionChatSession,
   CompanionChatSessionsListTotals,
   CompanionChatSessionStatus,
+  KnowledgeSpaceScopeInput,
   OperatorEventPayload,
   OperatorEventPayloadMap,
   JsonPrimitive,

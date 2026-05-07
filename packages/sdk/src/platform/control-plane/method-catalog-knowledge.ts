@@ -59,6 +59,11 @@ import {
   PROJECT_PLANNING_STATUS_SCHEMA,
 } from './operator-contract-schemas-project-planning.js';
 
+const KNOWLEDGE_SPACE_INPUT_FIELDS = {
+  knowledgeSpaceId: STRING_SCHEMA,
+  includeAllSpaces: BOOLEAN_SCHEMA,
+} as const;
+
 export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'knowledge.status',
@@ -67,7 +72,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'GET', path: '/api/knowledge/status' },
-    inputSchema: EMPTY_OBJECT_SCHEMA,
+    inputSchema: objectSchema(KNOWLEDGE_SPACE_INPUT_FIELDS),
     outputSchema: KNOWLEDGE_STATUS_SCHEMA,
   }),
   methodDescriptor({
@@ -77,7 +82,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'GET', path: '/api/knowledge/sources' },
-    inputSchema: objectSchema({ limit: NUMBER_SCHEMA }),
+    inputSchema: objectSchema({ limit: NUMBER_SCHEMA, ...KNOWLEDGE_SPACE_INPUT_FIELDS }),
     outputSchema: KNOWLEDGE_SOURCES_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
@@ -87,7 +92,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'GET', path: '/api/knowledge/nodes' },
-    inputSchema: objectSchema({ limit: NUMBER_SCHEMA }),
+    inputSchema: objectSchema({ limit: NUMBER_SCHEMA, ...KNOWLEDGE_SPACE_INPUT_FIELDS }),
     outputSchema: KNOWLEDGE_NODES_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
@@ -97,7 +102,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'GET', path: '/api/knowledge/issues' },
-    inputSchema: objectSchema({ limit: NUMBER_SCHEMA }),
+    inputSchema: objectSchema({ limit: NUMBER_SCHEMA, ...KNOWLEDGE_SPACE_INPUT_FIELDS }),
     outputSchema: KNOWLEDGE_ISSUES_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
@@ -123,7 +128,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'GET', path: '/api/knowledge/items/{id}' },
-    inputSchema: objectSchema({ id: STRING_SCHEMA }, ['id']),
+    inputSchema: objectSchema({ id: STRING_SCHEMA, ...KNOWLEDGE_SPACE_INPUT_FIELDS }, ['id']),
     outputSchema: KNOWLEDGE_ITEM_ENTITY_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
@@ -276,6 +281,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     inputSchema: bodyEnvelopeSchema({
       query: STRING_SCHEMA,
       limit: NUMBER_SCHEMA,
+      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
       includeSources: BOOLEAN_SCHEMA,
       includeNodes: BOOLEAN_SCHEMA,
       metadata: METADATA_SCHEMA,
@@ -312,7 +318,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'GET', path: '/api/knowledge/extractions' },
-    inputSchema: objectSchema({ limit: NUMBER_SCHEMA, sourceId: STRING_SCHEMA }),
+    inputSchema: objectSchema({ limit: NUMBER_SCHEMA, sourceId: STRING_SCHEMA, ...KNOWLEDGE_SPACE_INPUT_FIELDS }),
     outputSchema: KNOWLEDGE_EXTRACTIONS_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
@@ -347,6 +353,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       writeScope: arraySchema(STRING_SCHEMA),
       budgetLimit: NUMBER_SCHEMA,
       detail: KNOWLEDGE_PACKET_DETAIL_SCHEMA,
+      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
     }, ['task']),
     outputSchema: KNOWLEDGE_PACKET_SCHEMA,
   }),
@@ -403,7 +410,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'GET', path: '/api/knowledge/reports' },
-    inputSchema: objectSchema({ limit: NUMBER_SCHEMA }),
+    inputSchema: objectSchema({ limit: NUMBER_SCHEMA, ...KNOWLEDGE_SPACE_INPUT_FIELDS }),
     outputSchema: KNOWLEDGE_REPORTS_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
@@ -619,6 +626,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     http: { method: 'GET', path: '/api/knowledge/map' },
     inputSchema: objectSchema({
       limit: NUMBER_SCHEMA,
+      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
       includeSources: BOOLEAN_SCHEMA,
       includeIssues: BOOLEAN_SCHEMA,
       includeGenerated: BOOLEAN_SCHEMA,
@@ -650,6 +658,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       kind: STRING_SCHEMA,
       id: STRING_SCHEMA,
       limit: NUMBER_SCHEMA,
+      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
     }, ['kind']),
     outputSchema: KNOWLEDGE_PROJECTION_BUNDLE_SCHEMA,
   }),
@@ -665,6 +674,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       kind: STRING_SCHEMA,
       id: STRING_SCHEMA,
       limit: NUMBER_SCHEMA,
+      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
     }, ['kind']),
     outputSchema: KNOWLEDGE_MATERIALIZED_PROJECTION_SCHEMA,
   }),

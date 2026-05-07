@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.10"
+    "version": "0.33.11"
   },
   "auth": {
     "modes": [
@@ -34323,6 +34323,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "sourceId": {
               "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -36594,6 +36600,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {
             "limit": {
               "type": "number"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -36705,6 +36717,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {
             "id": {
               "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -38572,6 +38590,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "limit": {
               "type": "number"
             },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
+            },
             "includeSources": {
               "type": "boolean"
             },
@@ -39136,6 +39160,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {
             "limit": {
               "type": "number"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -39320,6 +39350,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "standard",
                 "detailed"
               ]
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -39486,6 +39522,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "limit": {
               "type": "number"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -39971,6 +40013,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "limit": {
               "type": "number"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -41459,6 +41507,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {
             "limit": {
               "type": "number"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -42463,6 +42517,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "limit": {
               "type": "number"
             },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
+            },
             "includeSources": {
               "type": "boolean"
             },
@@ -42960,6 +43020,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {
             "limit": {
               "type": "number"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -43110,7 +43176,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         },
         "inputSchema": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "includeAllSpaces": {
+              "type": "boolean"
+            }
+          },
           "additionalProperties": false
         },
         "outputSchema": {

@@ -1,4 +1,8 @@
 import type { KnowledgeStore } from './store.js';
+import {
+  isInKnowledgeSpaceScope,
+  type KnowledgeSpaceScopeInput,
+} from './spaces.js';
 import type {
   KnowledgePacket,
   KnowledgePacketDetail,
@@ -43,10 +47,11 @@ export function searchKnowledge(
   context: KnowledgePacketContext,
   query: string,
   limit = 10,
+  scope: KnowledgeSpaceScopeInput = {},
 ): KnowledgeSearchResult[] {
   const taskTokens = tokenize(query);
   if (taskTokens.length === 0) return [];
-  const sourceResults = context.store.listSources(Number.MAX_SAFE_INTEGER).map((source) => {
+  const sourceResults = context.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => isInKnowledgeSpaceScope(source, scope)).map((source) => {
     const extraction = context.store.getExtractionBySourceId(source.id);
     const haystack = [
       source.title ?? '',
@@ -69,7 +74,7 @@ export function searchKnowledge(
       source,
     };
   });
-  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).map((node) => {
+  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => isInKnowledgeSpaceScope(node, scope)).map((node) => {
     const haystack = [
       node.title,
       node.summary ?? '',
@@ -107,7 +112,7 @@ export async function buildKnowledgePacket(
   task: string,
   writeScope: readonly string[] = [],
   limit = DEFAULT_PACKET_LIMIT,
-  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
 ): Promise<KnowledgePacket> {
   return buildKnowledgePacketFromCurrentState(context, task, writeScope, limit, options);
 }
@@ -117,7 +122,7 @@ export function buildKnowledgePacketSync(
   task: string,
   writeScope: readonly string[] = [],
   limit = DEFAULT_PACKET_LIMIT,
-  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
 ): KnowledgePacket | null {
   return buildKnowledgePacketFromCurrentState(context, task, writeScope, limit, options);
 }
@@ -127,7 +132,7 @@ export function buildKnowledgePromptPacketSync(
   task: string,
   writeScope: readonly string[] = [],
   limit = DEFAULT_PACKET_LIMIT,
-  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
 ): string | null {
   const packet = buildKnowledgePacketSync(context, task, writeScope, limit, options);
   return packet ? renderPacket(packet.items, packet) : null;
@@ -138,7 +143,7 @@ export async function buildKnowledgePromptPacket(
   task: string,
   writeScope: readonly string[] = [],
   limit = DEFAULT_PACKET_LIMIT,
-  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
 ): Promise<string | null> {
   const packet = await buildKnowledgePacket(context, task, writeScope, limit, options);
   return renderPacket(packet.items, packet);
@@ -149,7 +154,7 @@ function buildKnowledgePacketFromCurrentState(
   task: string,
   writeScope: readonly string[],
   limit: number,
-  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number },
+  options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput,
 ): KnowledgePacket {
   const detail = options.detail ?? 'standard';
   const budgetLimit = Math.max(80, options.budgetLimit ?? DEFAULT_PACKET_BUDGET[detail]);
@@ -159,6 +164,7 @@ function buildKnowledgePacketFromCurrentState(
   const candidates: Array<{ score: number; item: KnowledgePacketItem }> = [];
 
   for (const source of context.store.listSources(Number.MAX_SAFE_INTEGER)) {
+    if (!isInKnowledgeSpaceScope(source, options)) continue;
     const extraction = context.store.getExtractionBySourceId(source.id);
     const haystack = [
       source.title ?? '',
@@ -178,7 +184,7 @@ function buildKnowledgePacketFromCurrentState(
       ? []
       : (extraction?.sections.slice(0, detail === 'detailed' ? 4 : 2) ?? []);
     const summary = trimForDetail(extraction?.summary ?? source.summary ?? source.description, detail);
-    const relationLabels = collectRelatedLabels(context, 'source', source.id);
+    const relationLabels = collectRelatedLabels(context, 'source', source.id, options);
     const usageBoost = scoreUsageBoost(usageStats.get(`source:${source.id}`));
     const relationBoost = Math.min(18, relationLabels.length * 3);
     const freshnessBoost = isSourcePastRefreshWindow(source) ? -8 : 6;
@@ -204,6 +210,7 @@ function buildKnowledgePacketFromCurrentState(
   }
 
   for (const node of context.store.listNodes(Number.MAX_SAFE_INTEGER)) {
+    if (!isInKnowledgeSpaceScope(node, options)) continue;
     const haystack = [
       node.title,
       node.summary ?? '',
@@ -212,7 +219,7 @@ function buildKnowledgePacketFromCurrentState(
     ].join(' ').toLowerCase();
     const scored = scoreHaystack(haystack, taskTokens, scopeTokens);
     if (scored.score <= 0) continue;
-    const related = collectRelatedLabels(context, 'node', node.id);
+    const related = collectRelatedLabels(context, 'node', node.id, options);
     const usageBoost = scoreUsageBoost(usageStats.get(`node:${node.id}`));
     const relationBoost = Math.min(20, context.store.edgesFor('node', node.id).length * 2);
     const kindBoost = nodeKindBoost(node.kind);
@@ -279,7 +286,12 @@ function buildKnowledgePacketFromCurrentState(
   return packet;
 }
 
-function collectRelatedLabels(context: KnowledgePacketContext, kind: 'source' | 'node', id: string): string[] {
+function collectRelatedLabels(
+  context: KnowledgePacketContext,
+  kind: 'source' | 'node',
+  id: string,
+  scope: KnowledgeSpaceScopeInput,
+): string[] {
   const related = context.store.edgesFor(kind, id);
   const labels: string[] = [];
   for (const edge of related) {
@@ -287,10 +299,10 @@ function collectRelatedLabels(context: KnowledgePacketContext, kind: 'source' | 
     const otherId = edge.fromKind === kind && edge.fromId === id ? edge.toId : edge.fromId;
     if (otherKind === 'node') {
       const node = context.store.getNode(otherId);
-      if (node) labels.push(node.title);
+      if (node && isInKnowledgeSpaceScope(node, scope)) labels.push(node.title);
     } else if (otherKind === 'source') {
       const source = context.store.getSource(otherId);
-      if (source) labels.push(source.title ?? source.canonicalUri ?? source.id);
+      if (source && isInKnowledgeSpaceScope(source, scope)) labels.push(source.title ?? source.canonicalUri ?? source.id);
     }
   }
   return [...new Set(labels)].slice(0, 8);

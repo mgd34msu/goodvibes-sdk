@@ -42,7 +42,7 @@ export {
   projectKnowledgeSpaceId,
   withKnowledgeSpace,
 } from './spaces.js';
-export type { KnowledgeSpaceId } from './spaces.js';
+export type { KnowledgeSpaceId, KnowledgeSpaceScopeInput } from './spaces.js';
 export {
   buildGeneratedKnowledgePageGraph,
   listGeneratedKnowledgePages,

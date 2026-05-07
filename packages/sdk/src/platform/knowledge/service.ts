@@ -94,6 +94,11 @@ import {
   tokenize,
 } from './shared.js';
 import { isGeneratedKnowledgeSource } from './generated-projections.js';
+import {
+  isInKnowledgeSpaceScope,
+  resolveKnowledgeSpaceScope,
+  type KnowledgeSpaceScopeInput,
+} from './spaces.js';
 
 export interface KnowledgeServiceConfig {
   readonly configManager?: {
@@ -176,10 +181,25 @@ export class KnowledgeService {
     if (runtimeBus) this.runtimeBus = runtimeBus;
   }
 
-  async getStatus(): Promise<KnowledgeServiceStatus> {
+  async getStatus(scope: KnowledgeSpaceScopeInput = {}): Promise<KnowledgeServiceStatus> {
     await this.store.init();
+    const allStatus = this.store.status();
+    const spaceId = resolveKnowledgeSpaceScope(scope);
+    if (spaceId === null) {
+      return {
+        ...allStatus,
+        note: 'Structured knowledge uses SQL-backed sources, nodes, edges, issues, extractions, and job runs. Markdown is an optional projection, not the source of truth.',
+      };
+    }
+    const scoped = { knowledgeSpaceId: spaceId };
     return {
-      ...this.store.status(),
+      ...allStatus,
+      sourceCount: this.querySources({ limit: Number.MAX_SAFE_INTEGER, ...scoped }).total,
+      nodeCount: this.queryNodes({ limit: Number.MAX_SAFE_INTEGER, ...scoped }).total,
+      edgeCount: this.store.listEdges().filter((edge) => this.edgeInKnowledgeSpaceScope(edge, scoped)).length,
+      issueCount: this.queryIssues({ limit: Number.MAX_SAFE_INTEGER, ...scoped }).total,
+      extractionCount: this.listExtractions(Number.MAX_SAFE_INTEGER, undefined, scoped).length,
+      refinementTaskCount: this.store.listRefinementTasks(Number.MAX_SAFE_INTEGER, { spaceId }).length,
       note: 'Structured knowledge uses SQL-backed sources, nodes, edges, issues, extractions, and job runs. Markdown is an optional projection, not the source of truth.',
     };
   }
@@ -233,6 +253,8 @@ export class KnowledgeService {
   querySources(input: {
     readonly limit?: number | undefined;
     readonly offset?: number | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly includeAllSpaces?: boolean | undefined;
     readonly status?: string | undefined;
     readonly connectorId?: string | undefined;
     readonly sourceType?: string | undefined;
@@ -243,6 +265,7 @@ export class KnowledgeService {
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
     const items = this.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => {
+      if (!isInKnowledgeSpaceScope(source, input)) return false;
       if (input.status && source.status !== input.status) return false;
       if (input.connectorId && source.connectorId !== input.connectorId) return false;
       if (input.sourceType && source.sourceType !== input.sourceType) return false;
@@ -276,6 +299,8 @@ export class KnowledgeService {
   queryNodes(input: {
     readonly limit?: number | undefined;
     readonly offset?: number | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly includeAllSpaces?: boolean | undefined;
     readonly kind?: string | undefined;
     readonly status?: string | undefined;
     readonly query?: string | undefined;
@@ -284,6 +309,7 @@ export class KnowledgeService {
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
     const items = this.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => {
+      if (!isInKnowledgeSpaceScope(node, input)) return false;
       if (input.kind && node.kind !== input.kind) return false;
       if (input.status && node.status !== input.status) return false;
       if (queryTokens.length === 0) return true;
@@ -308,6 +334,8 @@ export class KnowledgeService {
   queryIssues(input: {
     readonly limit?: number | undefined;
     readonly offset?: number | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly includeAllSpaces?: boolean | undefined;
     readonly severity?: string | undefined;
     readonly status?: string | undefined;
     readonly code?: string | undefined;
@@ -317,6 +345,7 @@ export class KnowledgeService {
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
     const items = this.store.listIssues(Number.MAX_SAFE_INTEGER).filter((issue) => {
+      if (!isInKnowledgeSpaceScope(issue, input)) return false;
       if (input.severity && issue.severity !== input.severity) return false;
       if (input.status && issue.status !== input.status) return false;
       if (input.code && issue.code !== input.code) return false;
@@ -334,9 +363,12 @@ export class KnowledgeService {
     return reviewKnowledgeIssue(this.store, input);
   }
 
-  listExtractions(limit = 100, sourceId?: string): KnowledgeExtractionRecord[] {
+  listExtractions(limit = 100, sourceId?: string, scope: KnowledgeSpaceScopeInput = {}): KnowledgeExtractionRecord[] {
     const records = this.store.listExtractions(sourceId ? 10_000 : limit);
-    return sourceId ? records.filter((entry) => entry.sourceId === sourceId).slice(0, Math.max(1, limit)) : records;
+    return records
+      .filter((entry) => !sourceId || entry.sourceId === sourceId)
+      .filter((entry) => isInKnowledgeSpaceScope(this.store.getSource(entry.sourceId) ?? entry, scope))
+      .slice(0, Math.max(1, limit));
   }
 
   getExtraction(id: string): KnowledgeExtractionRecord | null {
@@ -371,8 +403,36 @@ export class KnowledgeService {
     return item;
   }
 
+  getItemScoped(id: string, scope: KnowledgeSpaceScopeInput = {}): KnowledgeItemView | null {
+    const item = this.store.getItem(id);
+    const primary = item?.source ?? item?.node ?? item?.issue;
+    if (!item || !primary || !isInKnowledgeSpaceScope(primary, scope)) return null;
+    const scoped: KnowledgeItemView = {
+      ...item,
+      linkedSources: item.linkedSources.filter((source) => isInKnowledgeSpaceScope(source, scope)),
+      linkedNodes: item.linkedNodes.filter((node) => isInKnowledgeSpaceScope(node, scope)),
+      relatedEdges: item.relatedEdges.filter((edge) => this.edgeInKnowledgeSpaceScope(edge, scope)),
+    };
+    if (scoped.source) this.deferUsage({ targetKind: 'source', targetId: scoped.source.id, usageKind: 'item-open' });
+    if (scoped.node) this.deferUsage({ targetKind: 'node', targetId: scoped.node.id, usageKind: 'item-open' });
+    if (scoped.issue) this.deferUsage({ targetKind: 'issue', targetId: scoped.issue.id, usageKind: 'item-open' });
+    return scoped;
+  }
+
   getItems(ids: readonly string[]): KnowledgeItemView[] {
     return ids.map((id) => this.getItem(id)).filter((item): item is KnowledgeItemView => Boolean(item));
+  }
+
+  private edgeInKnowledgeSpaceScope(edge: { readonly fromKind: string; readonly fromId: string; readonly toKind: string; readonly toId: string }, scope: KnowledgeSpaceScopeInput): boolean {
+    return this.recordReferenceInKnowledgeSpaceScope(edge.fromKind, edge.fromId, scope)
+      && this.recordReferenceInKnowledgeSpaceScope(edge.toKind, edge.toId, scope);
+  }
+
+  private recordReferenceInKnowledgeSpaceScope(kind: string, id: string, scope: KnowledgeSpaceScopeInput): boolean {
+    if (kind === 'source') return isInKnowledgeSpaceScope(this.store.getSource(id), scope);
+    if (kind === 'node') return isInKnowledgeSpaceScope(this.store.getNode(id), scope);
+    if (kind === 'issue') return isInKnowledgeSpaceScope(this.store.getIssue(id), scope);
+    return true;
   }
 
   async recordUsage(input: {
@@ -505,14 +565,16 @@ export class KnowledgeService {
     return ingestBrowserKnowledge(this.getIngestContext(), input);
   }
 
-  async listProjectionTargets(limit = 25): Promise<KnowledgeProjectionTarget[]> {
-    return this.projectionService.listTargets(limit);
+  async listProjectionTargets(limit = 25, scope: KnowledgeSpaceScopeInput = {}): Promise<KnowledgeProjectionTarget[]> {
+    return this.projectionService.listTargets(limit, scope);
   }
 
   async renderProjection(input: {
     readonly kind: KnowledgeProjectionTargetKind;
     readonly id?: string | undefined;
     readonly limit?: number | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly includeAllSpaces?: boolean | undefined;
   }): Promise<KnowledgeProjectionBundle> {
     const bundle = await this.projectionService.render(input);
     this.emitIfReady((bus, ctx) => emitKnowledgeProjectionRendered(bus, ctx, {
@@ -527,6 +589,8 @@ export class KnowledgeService {
     readonly id?: string | undefined;
     readonly limit?: number | undefined;
     readonly filename?: string | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly includeAllSpaces?: boolean | undefined;
   }): Promise<KnowledgeMaterializedProjection> {
     const materialized = await this.projectionService.materialize(input);
     this.emitIfReady((bus, ctx) => emitKnowledgeProjectionMaterialized(bus, ctx, {
@@ -564,6 +628,15 @@ export class KnowledgeService {
     return searchKnowledge(this.getPacketContext(), query, limit);
   }
 
+  searchScoped(input: {
+    readonly query: string;
+    readonly limit?: number | undefined;
+    readonly knowledgeSpaceId?: string | undefined;
+    readonly includeAllSpaces?: boolean | undefined;
+  }): KnowledgeSearchResult[] {
+    return searchKnowledge(this.getPacketContext(), input.query, input.limit ?? 10, input);
+  }
+
   async ask(input: {
     readonly query: string;
     readonly limit?: number | undefined;
@@ -580,7 +653,7 @@ export class KnowledgeService {
     task: string,
     writeScope: readonly string[] = [],
     limit = DEFAULT_PACKET_LIMIT,
-    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
   ): Promise<KnowledgePacket> {
     return buildKnowledgePacket(this.getPacketContext(), task, writeScope, limit, options);
   }
@@ -589,7 +662,7 @@ export class KnowledgeService {
     task: string,
     writeScope: readonly string[] = [],
     limit = DEFAULT_PACKET_LIMIT,
-    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
   ): KnowledgePacket | null {
     return buildKnowledgePacketSync(this.getPacketContext(), task, writeScope, limit, options);
   }
@@ -598,7 +671,7 @@ export class KnowledgeService {
     task: string,
     writeScope: readonly string[] = [],
     limit = DEFAULT_PACKET_LIMIT,
-    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
   ): string | null {
     return buildKnowledgePromptPacketSync(this.getPacketContext(), task, writeScope, limit, options);
   }
@@ -607,7 +680,7 @@ export class KnowledgeService {
     task: string,
     writeScope: readonly string[] = [],
     limit = DEFAULT_PACKET_LIMIT,
-    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } = {},
+    options: { readonly detail?: KnowledgePacketDetail; readonly budgetLimit?: number } & KnowledgeSpaceScopeInput = {},
   ): Promise<string | null> {
     return buildKnowledgePromptPacket(this.getPacketContext(), task, writeScope, limit, options);
   }

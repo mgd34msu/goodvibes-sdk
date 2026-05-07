@@ -6,6 +6,7 @@ import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
 import { listGeneratedKnowledgePages } from '../packages/sdk/src/platform/knowledge/generated-pages.js';
 import { materializeGeneratedKnowledgeProjection } from '../packages/sdk/src/platform/knowledge/generated-projections.js';
 import { renderDevicePassportPage } from '../packages/sdk/src/platform/knowledge/home-graph/rendering.js';
+import { buildKnowledgePacketSync } from '../packages/sdk/src/platform/knowledge/packet.js';
 import { KnowledgeProjectionService } from '../packages/sdk/src/platform/knowledge/projections.js';
 import { renderKnowledgeMap } from '../packages/sdk/src/platform/knowledge/map.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
@@ -722,6 +723,94 @@ describe('knowledge generated projections and maps', () => {
     expect(map.facets?.sourceTypes.some((entry) => entry.value === 'manual' && entry.count === 1)).toBe(true);
     expect(map.facets?.nodeKinds.some((entry) => entry.value === 'capability')).toBe(true);
   });
+
+  test('keeps extension spaces out of regular knowledge maps, projections, and packets by default', async () => {
+    const { store, artifactStore } = createStores();
+    const baseSource = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'document',
+      title: 'Base Knowledge Manual',
+      canonicalUri: 'manual://base-widget',
+      summary: 'Base widget setup and operation notes.',
+      tags: ['base'],
+      status: 'indexed',
+    });
+    const baseNode = await store.upsertNode({
+      kind: 'topic',
+      slug: 'base-widget',
+      title: 'Base Widget',
+      summary: 'Base widget knowledge.',
+    });
+    const haSource = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'Home Assistant LG Passport',
+      canonicalUri: 'homeassistant://device/lg-tv',
+      summary: 'LG webOS Smart TV Home Graph passport.',
+      tags: ['homeassistant'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: 'homeassistant:test', namespace: 'homeassistant:test' },
+    });
+    const haNode = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-webos-smart-tv',
+      title: 'LG webOS Smart TV',
+      summary: 'LG 86NANO90UNA Home Graph device.',
+      metadata: { knowledgeSpaceId: 'homeassistant:test', namespace: 'homeassistant:test' },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: baseSource.id,
+      toKind: 'node',
+      toId: baseNode.id,
+      relation: 'documents',
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: haSource.id,
+      toKind: 'node',
+      toId: haNode.id,
+      relation: 'documents',
+    });
+
+    const projectionService = new KnowledgeProjectionService(store, artifactStore);
+    const defaultTargets = await projectionService.listTargets(20);
+    const defaultBundle = await projectionService.render({ kind: 'bundle', limit: 10 });
+    const allBundle = await projectionService.render({ kind: 'bundle', limit: 10, includeAllSpaces: true });
+    const haBundle = await projectionService.render({ kind: 'bundle', limit: 10, knowledgeSpaceId: 'homeassistant:test' });
+    const defaultMap = renderKnowledgeMap({
+      sources: store.listSources(20),
+      nodes: store.listNodes(20),
+      edges: store.listEdges(),
+      issues: store.listIssues(20),
+    }, { includeSources: true });
+    const allMap = renderKnowledgeMap({
+      sources: store.listSources(20),
+      nodes: store.listNodes(20),
+      edges: store.listEdges(),
+      issues: store.listIssues(20),
+    }, { includeSources: true, includeAllSpaces: true });
+    const defaultPacket = buildKnowledgePacketSync(packetContext(store), 'LG webOS Smart TV', [], 10);
+    const allPacket = buildKnowledgePacketSync(packetContext(store), 'LG webOS Smart TV', [], 10, { includeAllSpaces: true });
+
+    expect(defaultTargets.map((target) => target.title)).toContain('Base Knowledge Manual');
+    expect(defaultTargets.map((target) => target.title)).not.toContain('Home Assistant LG Passport');
+    expect(defaultBundle.pages.map((page) => page.content).join('\n')).toContain('Base Knowledge Manual');
+    expect(defaultBundle.pages.map((page) => page.content).join('\n')).not.toContain('Home Assistant LG Passport');
+    expect(defaultBundle.pages.map((page) => page.content).join('\n')).not.toContain('LG webOS Smart TV');
+    expect(allBundle.pages.map((page) => page.content).join('\n')).toContain('Home Assistant LG Passport');
+    expect(haBundle.pages.map((page) => page.content).join('\n')).toContain('LG webOS Smart TV');
+    expect(haBundle.pages.map((page) => page.content).join('\n')).not.toContain('Base Knowledge Manual');
+    expect(defaultMap.nodes.map((entry) => entry.id)).toContain(baseNode.id);
+    expect(defaultMap.nodes.map((entry) => entry.id)).not.toContain(haNode.id);
+    expect(defaultMap.nodes.map((entry) => entry.id)).not.toContain(haSource.id);
+    expect(defaultMap.facets?.nodeKinds.some((entry) => entry.value === 'ha_device')).toBe(false);
+    expect(allMap.nodes.map((entry) => entry.id)).toContain(haNode.id);
+    expect(allMap.facets?.nodeKinds.some((entry) => entry.value === 'ha_device')).toBe(true);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(haNode.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(haSource.id);
+    expect(allPacket?.items.map((item) => item.id)).toContain(haNode.id);
+  });
 });
 
 function createStores(): {
@@ -733,5 +822,13 @@ function createStores(): {
   return {
     store: new KnowledgeStore({ dbPath: join(root, 'knowledge.sqlite') }),
     artifactStore: new ArtifactStore({ rootDir: join(root, 'artifacts') }),
+  };
+}
+
+function packetContext(store: KnowledgeStore): Parameters<typeof buildKnowledgePacketSync>[0] {
+  return {
+    store,
+    deferUsage: () => {},
+    emitIfReady: () => {},
   };
 }

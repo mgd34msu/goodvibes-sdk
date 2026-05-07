@@ -11,6 +11,7 @@ export type CompanionChatMessageRole = "assistant" | "user";
 export type CompanionChatSession = { id: string; kind: "companion-chat"; title: string; model: null | string; provider: null | string; systemPrompt: null | string; status: CompanionChatSessionStatus; createdAt: number; updatedAt: number; closedAt: null | number; messageCount: number; };
 export type CompanionChatMessage = { id: string; sessionId: string; role: CompanionChatMessageRole; content: string; createdAt: number; };
 export type CompanionChatSessionsListTotals = { sessions: number; active: number; closed: number; };
+export type KnowledgeSpaceScopeInput = { knowledgeSpaceId?: string; includeAllSpaces?: boolean; };
 
 export interface OperatorMethodInputMap {
   "accounts.snapshot": {  };
@@ -101,7 +102,7 @@ export interface OperatorMethodInputMap {
   "knowledge.connector.get": { id: string; };
   "knowledge.connectors.list": {  };
   "knowledge.extraction.get": { id: string; };
-  "knowledge.extractions.list": { limit?: number; sourceId?: string; };
+  "knowledge.extractions.list": ({ limit?: number; sourceId?: string; } & KnowledgeSpaceScopeInput);
   "knowledge.graphql.execute": ({ query: string; operationName?: string; variables?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "knowledge.graphql.schema": {  };
   "knowledge.ingest.artifact": ({ artifactId?: string; path?: string; uri?: string; sourceType?: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url"; title?: string; sessionId?: string; tags?: readonly string[]; folderPath?: string; allowPrivateHosts?: boolean; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
@@ -110,18 +111,18 @@ export interface OperatorMethodInputMap {
   "knowledge.ingest.connector": unknown;
   "knowledge.ingest.url": ({ url: string; title?: string; sourceType?: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url"; sessionId?: string; tags?: readonly string[]; folderPath?: string; allowPrivateHosts?: boolean; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "knowledge.ingest.urls": ({ path: string; sessionId?: string; allowPrivateHosts?: boolean; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
-  "knowledge.issues.list": { limit?: number; };
-  "knowledge.item.get": { id: string; };
+  "knowledge.issues.list": ({ limit?: number; } & KnowledgeSpaceScopeInput);
+  "knowledge.item.get": ({ id: string; } & KnowledgeSpaceScopeInput);
   "knowledge.job-runs.list": { limit?: number; jobId?: string; };
   "knowledge.job.get": { jobId: string; };
   "knowledge.job.run": { mode?: "background" | "inline"; sourceIds?: readonly string[]; limit?: number; };
   "knowledge.jobs.list": {  };
   "knowledge.lint": {  };
-  "knowledge.nodes.list": { limit?: number; };
-  "knowledge.packet": ({ task: string; writeScope?: readonly string[]; budgetLimit?: number; detail?: "compact" | "detailed" | "standard"; } & { readonly [key: string]: unknown });
-  "knowledge.projection.materialize": ({ kind: string; id?: string; limit?: number; } & { readonly [key: string]: unknown });
-  "knowledge.projection.render": ({ kind: string; id?: string; limit?: number; } & { readonly [key: string]: unknown });
-  "knowledge.projections.list": { limit?: number; };
+  "knowledge.nodes.list": ({ limit?: number; } & KnowledgeSpaceScopeInput);
+  "knowledge.packet": ({ task: string; writeScope?: readonly string[]; budgetLimit?: number; detail?: "compact" | "detailed" | "standard"; } & KnowledgeSpaceScopeInput & { readonly [key: string]: unknown });
+  "knowledge.projection.materialize": ({ kind: string; id?: string; limit?: number; } & KnowledgeSpaceScopeInput & { readonly [key: string]: unknown });
+  "knowledge.projection.render": ({ kind: string; id?: string; limit?: number; } & KnowledgeSpaceScopeInput & { readonly [key: string]: unknown });
+  "knowledge.projections.list": ({ limit?: number; } & KnowledgeSpaceScopeInput);
   "knowledge.reindex": {  };
   "knowledge.report.get": { id: string; };
   "knowledge.reports.list": { limit?: number; };
@@ -130,10 +131,10 @@ export interface OperatorMethodInputMap {
   "knowledge.schedule.get": { id: string; };
   "knowledge.schedule.save": ({ id?: string; jobId: string; label?: string; enabled?: boolean; schedule: { kind: "at"; at: number; } | { kind: "cron"; expression: string; timezone?: string; staggerMs?: number; } | { kind: "every"; interval: string; anchorAt?: number; } | { kind: "every"; intervalMs: number; anchorAt?: number; }; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "knowledge.schedules.list": { limit?: number; };
-  "knowledge.search": ({ query: string; limit?: number; includeSources?: boolean; includeNodes?: boolean; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
+  "knowledge.search": ({ query: string; limit?: number; includeSources?: boolean; includeNodes?: boolean; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & KnowledgeSpaceScopeInput & { readonly [key: string]: unknown });
   "knowledge.source.extraction.get": { id: string; };
-  "knowledge.sources.list": { limit?: number; };
-  "knowledge.status": {  };
+  "knowledge.sources.list": ({ limit?: number; } & KnowledgeSpaceScopeInput);
+  "knowledge.status": KnowledgeSpaceScopeInput;
   "knowledge.usage.list": { limit?: number; targetKind?: string; targetId?: string; usageKind?: string; };
   "local_auth.bootstrap.delete": {  };
   "local_auth.sessions.delete": { sessionId: string; };
