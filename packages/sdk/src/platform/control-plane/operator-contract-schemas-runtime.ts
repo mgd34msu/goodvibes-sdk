@@ -44,6 +44,23 @@ const EXECUTION_RISK_CLASS_SCHEMA = enumSchema(['safe', 'elevated', 'dangerous']
 const EXECUTION_NETWORK_POLICY_SCHEMA = enumSchema(['inherit', 'allow', 'deny', 'scoped']);
 const EXECUTION_FILESYSTEM_POLICY_SCHEMA = enumSchema(['inherit', 'workspace-write', 'read-only', 'isolated']);
 
+const COMPANION_CHAT_ATTACHMENT_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  artifactId: STRING_SCHEMA,
+  kind: STRING_SCHEMA,
+  mimeType: STRING_SCHEMA,
+  filename: STRING_SCHEMA,
+  sizeBytes: NUMBER_SCHEMA,
+  sha256: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+  expiresAt: NUMBER_SCHEMA,
+  sourceUri: STRING_SCHEMA,
+  acquisitionMode: STRING_SCHEMA,
+  fetchMode: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+  metadata: METADATA_SCHEMA,
+}, ['id', 'artifactId', 'kind', 'mimeType', 'sizeBytes', 'sha256', 'createdAt', 'metadata'], { additionalProperties: true });
+
 export const SHARED_SESSION_PARTICIPANT_SCHEMA = objectSchema({
   surfaceKind: STRING_SCHEMA,
   surfaceId: STRING_SCHEMA,
@@ -109,8 +126,9 @@ export const COMPANION_CHAT_MESSAGE_SCHEMA = objectSchema({
   sessionId: STRING_SCHEMA,
   role: COMPANION_CHAT_MESSAGE_ROLE_SCHEMA,
   content: STRING_SCHEMA,
+  attachments: arraySchema(COMPANION_CHAT_ATTACHMENT_SCHEMA),
   createdAt: NUMBER_SCHEMA,
-}, ['id', 'sessionId', 'role', 'content', 'createdAt']);
+}, ['id', 'sessionId', 'role', 'content', 'attachments', 'createdAt']);
 
 export const COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA = objectSchema({
   session: COMPANION_CHAT_SESSION_SCHEMA,

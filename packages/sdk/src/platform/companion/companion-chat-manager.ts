@@ -20,10 +20,14 @@
  * - A GC sweep closes sessions that have been idle beyond the TTL.
  */
 
+import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { ConversationManager } from '../core/conversation.js';
-import type { ProviderMessage } from '../providers/interface.js';
+import type { ContentPart, ProviderMessage } from '../providers/interface.js';
+import type { ArtifactDescriptor } from '../artifacts/index.js';
 import type {
+  CompanionChatMessageAttachment,
+  CompanionChatMessageAttachmentInput,
   CompanionChatMessage,
   CompanionChatSession,
   CompanionChatTurnEvent,
@@ -82,6 +86,14 @@ type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;
 };
 
+export interface CompanionChatArtifactStore {
+  get(artifactId: string): ArtifactDescriptor | null;
+  readContent(artifactId: string): Promise<{
+    readonly record: { readonly mimeType: string; readonly filename?: string | undefined };
+    readonly buffer: ArrayBuffer | Uint8Array | Buffer;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Event publisher interface (subset of ControlPlaneGateway)
 // ---------------------------------------------------------------------------
@@ -102,6 +114,15 @@ const DEFAULT_IDLE_ACTIVE_MS = 30 * 60 * 1_000; // 30 minutes with messages
 const DEFAULT_IDLE_EMPTY_MS = 5 * 60 * 1_000;   // 5 minutes empty session
 const GC_INTERVAL_MS = 60 * 1_000;               // sweep every minute
 const MAX_TOOL_ROUNDS_PER_TURN = 8;
+const MAX_ATTACHMENTS_PER_MESSAGE = 8;
+const MAX_INLINE_IMAGE_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const MAX_INLINE_TEXT_ATTACHMENT_BYTES = 200 * 1024;
+
+function toNodeBuffer(buffer: ArrayBuffer | Uint8Array | Buffer): Buffer {
+  if (Buffer.isBuffer(buffer)) return buffer;
+  if (buffer instanceof ArrayBuffer) return Buffer.from(new Uint8Array(buffer));
+  return Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+}
 
 function assertCompleteProviderModelRoute(
   input: { readonly model?: string | undefined; readonly provider?: string | undefined },
@@ -161,6 +182,8 @@ export interface CompanionChatManagerConfig {
   readonly hookDispatcher?: HookDispatcherLike | null | undefined;
   /** Optional runtime event bus for typed tool telemetry. */
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
+  /** Optional artifact store used to resolve and inline chat attachments. */
+  readonly artifactStore?: CompanionChatArtifactStore | null | undefined;
   /**
    * Directory under which session JSON files are persisted.
    * Default: ~/.goodvibes/companion-chat/sessions/
@@ -189,6 +212,7 @@ export class CompanionChatManager {
   private readonly permissionManager: PermissionManager | null;
   private readonly hookDispatcher: HookDispatcherLike | null;
   private readonly runtimeBus: RuntimeEventBus | null;
+  private readonly artifactStore: CompanionChatArtifactStore | null;
   private readonly persistence: CompanionChatPersistence | null;
   private readonly rateLimiter: CompanionChatRateLimiter | null;
   private readonly idleActiveMs: number;
@@ -211,6 +235,7 @@ export class CompanionChatManager {
     this.permissionManager = config.permissionManager ?? null;
     this.hookDispatcher = config.hookDispatcher ?? null;
     this.runtimeBus = config.runtimeBus ?? null;
+    this.artifactStore = config.artifactStore ?? null;
     this.idleActiveMs = config.idleActiveMs ?? DEFAULT_IDLE_ACTIVE_MS;
     this.idleEmptyMs = config.idleEmptyMs ?? DEFAULT_IDLE_EMPTY_MS;
 
@@ -255,15 +280,16 @@ export class CompanionChatManager {
 
     const stored = await this.persistence.loadAll();
     for (const { meta, messages } of stored) {
+      const normalizedMessages = messages.map((message) => this.normalizeMessage(message));
       // Skip sessions that were already closed before the restart — they are
       // in a terminal state and don't need to be in memory.
       if (meta.status === 'closed') continue;
 
       const conversation = new ConversationManager();
       // Replay messages into the conversation to restore LLM context
-      for (const msg of messages) {
+      for (const msg of normalizedMessages) {
         if (msg.role === 'user') {
-          conversation.addUserMessage(msg.content);
+          conversation.addUserMessage(this.buildReplayUserContent(msg));
         } else {
           conversation.addAssistantMessage(msg.content);
         }
@@ -272,7 +298,7 @@ export class CompanionChatManager {
       this.sessions.set(meta.id, {
         meta,
         conversation,
-        messages: [...messages],
+        messages: normalizedMessages,
         abortController: new AbortController(),
         lastActivityAt: meta.updatedAt,
         subscriberClientId: null,
@@ -352,6 +378,13 @@ export class CompanionChatManager {
     return this.sessions.get(sessionId)?.messages ?? [];
   }
 
+  private normalizeMessage(message: CompanionChatMessage): CompanionChatMessage {
+    return {
+      ...message,
+      attachments: message.attachments ?? [],
+    };
+  }
+
   updateSession(
     sessionId: string,
     input: UpdateCompanionChatSessionInput,
@@ -424,15 +457,21 @@ export class CompanionChatManager {
     sessionId: string,
     content: string,
     clientId = '',
+    options: { readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined } = {},
   ): Promise<string> {
-    return await this._postMessageInternal(sessionId, content, clientId);
+    return await this._postMessageInternal(sessionId, content, clientId, {
+      attachments: options.attachments,
+    });
   }
 
   async postMessageAndWaitForReply(
     sessionId: string,
     content: string,
     clientId = '',
-    options: { readonly timeoutMs?: number | undefined } = {},
+    options: {
+      readonly timeoutMs?: number | undefined;
+      readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+    } = {},
   ): Promise<CompanionChatReplyResult> {
     let messageId = '';
     const result = new Promise<CompanionChatReplyResult>((resolve) => {
@@ -441,7 +480,10 @@ export class CompanionChatManager {
         resolve({ messageId, error: 'Timed out waiting for companion chat reply' });
       }, options.timeoutMs ?? 120_000);
       timeout.unref?.();
-      void this._postMessageInternal(sessionId, content, clientId, { resolve, timeout })
+      void this._postMessageInternal(sessionId, content, clientId, {
+        pendingReply: { resolve, timeout },
+        attachments: options.attachments,
+      })
         .then((id) => { messageId = id; })
         .catch((error: unknown) => {
           clearTimeout(timeout);
@@ -458,7 +500,10 @@ export class CompanionChatManager {
     sessionId: string,
     content: string,
     clientId: string,
-    pendingReply?: PendingReply,
+    options: {
+      readonly pendingReply?: PendingReply | undefined;
+      readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+    } = {},
   ): Promise<string> {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -471,6 +516,11 @@ export class CompanionChatManager {
     // Rate-limit check (throws GoodVibesSdkError on violation)
     this.rateLimiter?.check(sessionId, clientId);
 
+    const attachments = this.resolveAttachments(options.attachments ?? []);
+    if (!content.trim() && attachments.length === 0) {
+      throw Object.assign(new Error('content or attachments are required'), { code: 'INVALID_INPUT', status: 400 });
+    }
+
     const messageId = randomUUID();
     const now = Date.now();
 
@@ -479,11 +529,12 @@ export class CompanionChatManager {
       sessionId,
       role: 'user',
       content,
+      attachments,
       createdAt: now,
     };
 
     session.messages.push(userMsg);
-    session.conversation.addUserMessage(content);
+    session.conversation.addUserMessage(await this.buildProviderUserContent(content, attachments));
     session.lastActivityAt = now;
     this._updateMeta(session, {
       messageCount: session.messages.length,
@@ -492,8 +543,8 @@ export class CompanionChatManager {
 
     this._persist(sessionId);
 
-    if (pendingReply) {
-      this.pendingReplies.set(messageId, pendingReply);
+    if (options.pendingReply) {
+      this.pendingReplies.set(messageId, options.pendingReply);
     }
 
     void this._runTurn(session, messageId).catch((error: unknown) => {
@@ -505,6 +556,122 @@ export class CompanionChatManager {
     });
 
     return messageId;
+  }
+
+  private resolveAttachments(
+    inputs: readonly CompanionChatMessageAttachmentInput[],
+  ): CompanionChatMessageAttachment[] {
+    if (inputs.length === 0) return [];
+    if (inputs.length > MAX_ATTACHMENTS_PER_MESSAGE) {
+      throw Object.assign(
+        new Error(`A companion chat message can include at most ${MAX_ATTACHMENTS_PER_MESSAGE} attachments.`),
+        { code: 'TOO_MANY_ATTACHMENTS', status: 400 },
+      );
+    }
+    if (!this.artifactStore) {
+      throw Object.assign(
+        new Error('Companion chat attachments require an artifact store.'),
+        { code: 'ATTACHMENTS_UNAVAILABLE', status: 501 },
+      );
+    }
+
+    return inputs.map((input) => {
+      const artifactId = input.artifactId.trim();
+      if (!artifactId) {
+        throw Object.assign(new Error('Attachment artifactId is required.'), {
+          code: 'INVALID_ATTACHMENT',
+          status: 400,
+        });
+      }
+      const artifact = this.artifactStore!.get(artifactId);
+      if (!artifact) {
+        throw Object.assign(new Error(`Unknown attachment artifact: ${artifactId}`), {
+          code: 'UNKNOWN_ARTIFACT',
+          status: 404,
+        });
+      }
+      return {
+        ...artifact,
+        artifactId: artifact.id,
+        ...(input.label?.trim() ? { label: input.label.trim() } : {}),
+        metadata: {
+          ...artifact.metadata,
+          ...(input.metadata ?? {}),
+        },
+      };
+    });
+  }
+
+  private formatAttachmentSummary(attachments: readonly CompanionChatMessageAttachment[]): string {
+    if (attachments.length === 0) return '';
+    const lines = attachments.map((attachment, index) => {
+      const name = attachment.label ?? attachment.filename ?? attachment.artifactId;
+      return `${index + 1}. ${name} (${attachment.mimeType}, ${attachment.sizeBytes} bytes, artifact ${attachment.artifactId})`;
+    });
+    return `\n\nAttached file${attachments.length === 1 ? '' : 's'}:\n${lines.join('\n')}`;
+  }
+
+  private buildReplayUserContent(message: CompanionChatMessage): string {
+    return `${message.content}${this.formatAttachmentSummary(message.attachments ?? [])}`;
+  }
+
+  private isInlineTextAttachment(attachment: CompanionChatMessageAttachment): boolean {
+    const lower = attachment.mimeType.toLowerCase();
+    return attachment.sizeBytes <= MAX_INLINE_TEXT_ATTACHMENT_BYTES
+      && (lower.startsWith('text/')
+        || lower === 'application/json'
+        || lower === 'application/xml'
+        || lower === 'application/yaml'
+        || lower === 'text/csv');
+  }
+
+  private isInlineImageAttachment(attachment: CompanionChatMessageAttachment): boolean {
+    const lower = attachment.mimeType.toLowerCase();
+    return attachment.sizeBytes <= MAX_INLINE_IMAGE_ATTACHMENT_BYTES
+      && (lower === 'image/png'
+        || lower === 'image/jpeg'
+        || lower === 'image/gif'
+        || lower === 'image/webp');
+  }
+
+  private async buildProviderUserContent(
+    content: string,
+    attachments: readonly CompanionChatMessageAttachment[],
+  ): Promise<string | ContentPart[]> {
+    if (attachments.length === 0) return content;
+    const textSections: string[] = [content.trim() ? content : 'Please review the attached file(s).'];
+    const imageParts: ContentPart[] = [];
+
+    for (const attachment of attachments) {
+      if (!this.artifactStore) continue;
+      try {
+        if (this.isInlineTextAttachment(attachment)) {
+          const { buffer } = await this.artifactStore.readContent(attachment.artifactId);
+          const text = toNodeBuffer(buffer).toString('utf-8');
+          textSections.push(
+            `\n\n--- Attachment: ${attachment.label ?? attachment.filename ?? attachment.artifactId} ---\n${text}`,
+          );
+          continue;
+        }
+        if (this.isInlineImageAttachment(attachment)) {
+          const { buffer } = await this.artifactStore.readContent(attachment.artifactId);
+          imageParts.push({
+            type: 'image',
+            mediaType: attachment.mimeType,
+            data: toNodeBuffer(buffer).toString('base64'),
+          });
+        }
+      } catch (error) {
+        logger.warn('[companion-chat] failed to inline attachment for provider prompt', {
+          artifactId: attachment.artifactId,
+          error: summarizeError(error),
+        });
+      }
+    }
+
+    textSections.push(this.formatAttachmentSummary(attachments));
+    if (imageParts.length === 0) return textSections.join('');
+    return [{ type: 'text', text: textSections.join('') }, ...imageParts];
   }
 
   dispose(): void {
@@ -544,6 +711,7 @@ export class CompanionChatManager {
       body: userMsg?.content ?? '',
       source: 'companion-chat-user',
       timestamp: userMsg?.createdAt ?? Date.now(),
+      ...(userMsg?.attachments?.length ? { attachments: userMsg.attachments } : {}),
     };
 
     publish({ type: 'turn.started', sessionId, messageId: userMessageId, turnId, envelope: startEnvelope });
@@ -644,6 +812,7 @@ export class CompanionChatManager {
         sessionId,
         role: 'assistant',
         content: assistantContent,
+        attachments: [],
         createdAt: now,
       };
       session.messages.push(assistantMsg);

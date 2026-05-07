@@ -8,6 +8,7 @@
  */
 
 import type { ConversationMessageEnvelope } from '../control-plane/conversation-message.js';
+import type { ArtifactDescriptor } from '../artifacts/index.js';
 
 /**
  * Re-export the shared envelope so chat-mode code can import from one place.
@@ -22,11 +23,23 @@ export type CompanionChatSessionStatus = 'active' | 'closed';
 
 export type CompanionChatMessageRole = 'user' | 'assistant';
 
+export interface CompanionChatMessageAttachmentInput {
+  readonly artifactId: string;
+  readonly label?: string | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+}
+
+export interface CompanionChatMessageAttachment extends ArtifactDescriptor {
+  readonly artifactId: string;
+  readonly label?: string | undefined;
+}
+
 export interface CompanionChatMessage {
   readonly id: string;
   readonly sessionId: string;
   readonly role: CompanionChatMessageRole;
   readonly content: string;
+  readonly attachments: readonly CompanionChatMessageAttachment[];
   readonly createdAt: number;
 }
 
@@ -88,6 +101,7 @@ export interface UpdateCompanionChatSessionOutput {
 
 export interface PostCompanionChatMessageInput {
   readonly content: string;
+  readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
   readonly metadata?: Record<string, unknown> | undefined;
 }
 

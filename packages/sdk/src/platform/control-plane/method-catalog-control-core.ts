@@ -648,13 +648,18 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'companion.chat.messages.create',
     title: 'Send Companion Chat Message',
-    description: 'Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided.',
+    description: 'Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided. Attachments reference artifacts created through `artifacts.create`.',
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages' },
     inputSchema: bodyEnvelopeSchema({
       body: STRING_SCHEMA,
       content: STRING_SCHEMA,
+      attachments: arraySchema(objectSchema({
+        artifactId: STRING_SCHEMA,
+        label: STRING_SCHEMA,
+        metadata: objectSchema({}, []),
+      }, ['artifactId'])),
       metadata: objectSchema({}, []),
     }, []),
     outputSchema: objectSchema({

@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.9"
+    "version": "0.33.10"
   },
   "auth": {
     "modes": [
@@ -20159,7 +20159,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "companion.chat.messages.create",
         "title": "Send Companion Chat Message",
-        "description": "Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided.",
+        "description": "Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided. Attachments reference artifacts created through `artifacts.create`.",
         "category": "companion",
         "source": "builtin",
         "access": "authenticated",
@@ -20182,6 +20182,29 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "content": {
               "type": "string"
+            },
+            "attachments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "artifactId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "artifactId"
+                ],
+                "additionalProperties": false
+              }
             },
             "metadata": {
               "type": "object",
@@ -20262,6 +20285,91 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "content": {
                     "type": "string"
                   },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "artifactId": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "mimeType": {
+                          "type": "string"
+                        },
+                        "filename": {
+                          "type": "string"
+                        },
+                        "sizeBytes": {
+                          "type": "number"
+                        },
+                        "sha256": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "number"
+                        },
+                        "expiresAt": {
+                          "type": "number"
+                        },
+                        "sourceUri": {
+                          "type": "string"
+                        },
+                        "acquisitionMode": {
+                          "type": "string"
+                        },
+                        "fetchMode": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "artifactId",
+                        "kind",
+                        "mimeType",
+                        "sizeBytes",
+                        "sha256",
+                        "createdAt",
+                        "metadata"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
                   "createdAt": {
                     "type": "number"
                   }
@@ -20271,6 +20379,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "sessionId",
                   "role",
                   "content",
+                  "attachments",
                   "createdAt"
                 ],
                 "additionalProperties": false
@@ -20616,6 +20725,91 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "content": {
                     "type": "string"
                   },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "artifactId": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "mimeType": {
+                          "type": "string"
+                        },
+                        "filename": {
+                          "type": "string"
+                        },
+                        "sizeBytes": {
+                          "type": "number"
+                        },
+                        "sha256": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "number"
+                        },
+                        "expiresAt": {
+                          "type": "number"
+                        },
+                        "sourceUri": {
+                          "type": "string"
+                        },
+                        "acquisitionMode": {
+                          "type": "string"
+                        },
+                        "fetchMode": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "array",
+                                "items": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "artifactId",
+                        "kind",
+                        "mimeType",
+                        "sizeBytes",
+                        "sha256",
+                        "createdAt",
+                        "metadata"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
                   "createdAt": {
                     "type": "number"
                   }
@@ -20625,6 +20819,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "sessionId",
                   "role",
                   "content",
+                  "attachments",
                   "createdAt"
                 ],
                 "additionalProperties": false

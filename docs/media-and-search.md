@@ -21,6 +21,10 @@ Operator methods:
 
 Artifacts are used by knowledge extraction, multimodal writeback, media
 providers, session export, and channel delivery.
+The scoped browser knowledge SDK also exposes `sdk.artifacts.create(...)`,
+`sdk.artifacts.get(...)`, and `sdk.artifacts.list()` so browser WebUI clients
+can attach uploaded artifacts to companion-chat messages without importing the
+full operator contract.
 
 `POST /api/artifacts` supports three body families:
 

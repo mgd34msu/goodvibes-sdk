@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
+import { Buffer } from 'node:buffer';
 import { settleEvents } from './_helpers/test-timeout.js';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
@@ -16,6 +17,7 @@ import type {
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
+import type { ProviderMessage } from '../packages/sdk/src/platform/providers/interface.js';
 
 // ---------------------------------------------------------------------------
 // Mock provider — returns deterministic chunks
@@ -42,6 +44,18 @@ function makeCapturingProvider(
         model: options.model ?? null,
         provider: options.provider ?? null,
       });
+      yield { type: 'text_delta', delta: 'ok' } satisfies CompanionProviderChunk;
+      yield { type: 'done' } satisfies CompanionProviderChunk;
+    },
+  };
+}
+
+function makeMessageCapturingProvider(
+  calls: ProviderMessage[][],
+): CompanionLLMProvider {
+  return {
+    async *chatStream(messages) {
+      calls.push(messages);
       yield { type: 'text_delta', delta: 'ok' } satisfies CompanionProviderChunk;
       yield { type: 'done' } satisfies CompanionProviderChunk;
     },
@@ -339,6 +353,91 @@ describe('companion-chat-routes: post message and events', () => {
       ctx,
     );
     expect(res!.status).toBe(400);
+  });
+
+  test('POST message persists artifact attachments and exposes them to events/provider prompt', async () => {
+    const providerCalls: ProviderMessage[][] = [];
+    const publisher = makeEventPublisher();
+    const artifact = {
+      id: 'artifact-note',
+      kind: 'document',
+      mimeType: 'text/plain',
+      filename: 'note.txt',
+      sizeBytes: 16,
+      sha256: 'abc123',
+      createdAt: 123,
+      acquisitionMode: 'inline-data',
+      fetchMode: 'not-applicable',
+      metadata: { source: 'test' },
+    };
+    const manager = new CompanionChatManager({
+      provider: makeMessageCapturingProvider(providerCalls),
+      eventPublisher: publisher,
+      gcIntervalMs: 999_999,
+      artifactStore: {
+        get: (id) => id === artifact.id ? artifact : null,
+        async readContent() {
+          return {
+            record: { mimeType: artifact.mimeType, filename: artifact.filename },
+            buffer: Buffer.from('hello attachment'),
+          };
+        },
+      },
+    });
+    const ctx = makeContext(manager);
+    const session = manager.createSession({ provider: 'openai', model: 'openai:gpt-5.5' });
+
+    const msgRes = await dispatchCompanionChatRoutes(
+      makeRequest('POST', `http://localhost/api/companion/chat/sessions/${session.id}/messages`, {
+        attachments: [{ artifactId: artifact.id, label: 'Note' }],
+      }),
+      ctx,
+    );
+    expect(msgRes!.status).toBe(202);
+    await settleEvents();
+
+    const messagesRes = await dispatchCompanionChatRoutes(
+      makeRequest('GET', `http://localhost/api/companion/chat/sessions/${session.id}/messages`),
+      ctx,
+    );
+    const messagesBody = await messagesRes!.json();
+    expect(messagesBody.messages[0].attachments).toHaveLength(1);
+    expect(messagesBody.messages[0].attachments[0]).toMatchObject({
+      artifactId: artifact.id,
+      filename: 'note.txt',
+      label: 'Note',
+    });
+
+    const started = publisher.events.find((event) => (event.payload as { type?: string }).type === 'turn.started');
+    expect((started!.payload as { envelope: { attachments?: unknown[] } }).envelope.attachments).toHaveLength(1);
+    const firstUserMessage = providerCalls[0]![0]!;
+    expect(firstUserMessage.role).toBe('user');
+    expect(String(firstUserMessage.content)).toContain('hello attachment');
+  });
+
+  test('POST message rejects unknown attachment artifacts', async () => {
+    const manager = new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+      artifactStore: {
+        get: () => null,
+        async readContent() {
+          throw new Error('not used');
+        },
+      },
+    });
+    const ctx = makeContext(manager);
+    const session = manager.createSession({ provider: 'openai', model: 'openai:gpt-5.5' });
+    const res = await dispatchCompanionChatRoutes(
+      makeRequest('POST', `http://localhost/api/companion/chat/sessions/${session.id}/messages`, {
+        body: 'review this',
+        attachments: [{ artifactId: 'missing' }],
+      }),
+      ctx,
+    );
+    expect(res!.status).toBe(404);
+    expect((await res!.json()).code).toBe('UNKNOWN_ARTIFACT');
   });
 
   test('events arrive in order: started -> deltas -> completed', async () => {
