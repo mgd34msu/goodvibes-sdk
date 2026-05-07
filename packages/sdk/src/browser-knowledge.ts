@@ -9,9 +9,11 @@ import {
   SHARED_BROWSER_ROUTES,
   type BrowserScopedRouteDefinition,
   type ScopedBrowserSdk,
+  type ScopedEventStreamOptions,
   type ScopedBrowserSdkOptions,
   type SharedBrowserMethodId,
 } from './browser-scoped.js';
+import type { ServerSentEventHandlers } from './transport-http.js';
 
 const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.ask': { method: 'POST', path: '/api/knowledge/ask' },
@@ -62,6 +64,10 @@ const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.sources.list': { method: 'GET', path: '/api/knowledge/sources' },
   'knowledge.status': { method: 'GET', path: '/api/knowledge/status' },
   'knowledge.usage.list': { method: 'GET', path: '/api/knowledge/usage' },
+  'companion.chat.messages.create': { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages' },
+  'companion.chat.messages.list': { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/messages' },
+  'companion.chat.sessions.create': { method: 'POST', path: '/api/companion/chat/sessions' },
+  'companion.chat.sessions.get': { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}' },
 } as const satisfies Partial<Record<OperatorTypedMethodId, BrowserScopedRouteDefinition>>;
 
 const KNOWLEDGE_BROWSER_DOMAINS = [
@@ -86,6 +92,26 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
     status(): Promise<OperatorMethodOutput<'knowledge.status'>>;
     map(input?: OperatorMethodInput<'knowledge.map'>): Promise<OperatorMethodOutput<'knowledge.map'>>;
   };
+  readonly chat: {
+    readonly sessions: {
+      create(input?: OperatorMethodInput<'companion.chat.sessions.create'>): Promise<OperatorMethodOutput<'companion.chat.sessions.create'>>;
+      get(sessionId: string): Promise<OperatorMethodOutput<'companion.chat.sessions.get'>>;
+    };
+    readonly messages: {
+      create(
+        sessionId: string,
+        input: Omit<OperatorMethodInput<'companion.chat.messages.create'>, 'sessionId'>,
+      ): Promise<OperatorMethodOutput<'companion.chat.messages.create'>>;
+      list(sessionId: string): Promise<OperatorMethodOutput<'companion.chat.messages.list'>>;
+    };
+    readonly events: {
+      stream(
+        sessionId: string,
+        handlers: ServerSentEventHandlers,
+        options?: ScopedEventStreamOptions,
+      ): Promise<() => void>;
+    };
+  };
 }
 
 export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {}): BrowserKnowledgeSdk {
@@ -97,13 +123,28 @@ export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {})
     KNOWLEDGE_BROWSER_DOMAINS,
     options,
   );
+  const invoke = sdk.operator.invoke;
   return {
     ...sdk,
     knowledge: {
-      ask: (input) => sdk.operator.invoke('knowledge.ask', input),
-      search: (input) => sdk.operator.invoke('knowledge.search', input),
-      status: () => sdk.operator.invoke('knowledge.status', {}),
-      map: (input = {}) => sdk.operator.invoke('knowledge.map', input),
+      ask: (input) => invoke('knowledge.ask', input),
+      search: (input) => invoke('knowledge.search', input),
+      status: () => invoke('knowledge.status'),
+      map: (input) => invoke('knowledge.map', input),
+    },
+    chat: {
+      sessions: {
+        create: (input) => invoke('companion.chat.sessions.create', input),
+        get: (id) => invoke('companion.chat.sessions.get', { sessionId: id }),
+      },
+      messages: {
+        create: (id, input) => invoke('companion.chat.messages.create', { sessionId: id, ...input }),
+        list: (id) => invoke('companion.chat.messages.list', { sessionId: id }),
+      },
+      events: {
+        stream: (id, handlers, options) =>
+          sdk.streams.open('/api/companion/chat/sessions/' + id + '/events', handlers, options),
+      },
     },
   };
 }

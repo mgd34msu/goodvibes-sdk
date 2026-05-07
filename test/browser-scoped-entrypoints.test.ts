@@ -78,10 +78,60 @@ describe('scoped browser SDK entrypoints', () => {
 
     await sdk.knowledge.status();
     expect(transport.calls).toEqual(['https://daemon.example.test/api/knowledge/status']);
+    await sdk.operator.invoke('companion.chat.sessions.create', {
+      title: 'WebUI chat',
+      provider: 'openai',
+      model: 'gpt-5.5',
+    });
+    expect(transport.calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions');
     await expect(
       (sdk.operator as { invoke(methodId: string, input?: unknown): Promise<unknown> })
         .invoke('homeassistant.homeGraph.status', {}),
     ).rejects.toThrow('is not available from this scoped browser SDK entrypoint');
+    await expect(
+      (sdk.operator as { invoke(methodId: string, input?: unknown): Promise<unknown> })
+        .invoke('companion.chat.events.stream', { sessionId: 'chat-1' }),
+    ).rejects.toThrow('is not available from this scoped browser SDK entrypoint');
+  });
+
+  test('knowledge browser sdk exposes companion chat helpers and session event stream', async () => {
+    const calls: string[] = [];
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith('/events')) {
+        const encoder = new TextEncoder();
+        return new Response(new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode('event: companion-chat.turn.delta\n'));
+            controller.enqueue(encoder.encode('data: {"type":"turn.delta","sessionId":"chat-1","turnId":"turn-1","delta":"Hi"}\n\n'));
+            controller.close();
+          },
+        }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+      }
+      return jsonResponse({ sessionId: 'chat-1', createdAt: 123 });
+    }) as typeof fetch;
+    const sdk = createBrowserKnowledgeSdk({
+      baseUrl: 'https://daemon.example.test',
+      fetch: fetchImpl,
+    });
+
+    await sdk.chat.sessions.create({
+      title: 'WebUI chat',
+      provider: 'openai',
+      model: 'gpt-5.5',
+    });
+    expect(calls[0]).toBe('https://daemon.example.test/api/companion/chat/sessions');
+    const events: unknown[] = [];
+    const close = await sdk.chat.events.stream('chat-1', {
+      onEvent: (_eventName, payload) => {
+        events.push(payload);
+      },
+    }, { reconnect: { enabled: false } });
+    await Promise.resolve();
+    close();
+    expect(calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions/chat-1/events');
+    expect(events).toEqual([{ type: 'turn.delta', sessionId: 'chat-1', turnId: 'turn-1', delta: 'Hi' }]);
   });
 
   test('home assistant browser sdk routes only home graph methods', async () => {
@@ -104,6 +154,7 @@ describe('scoped browser SDK entrypoints', () => {
 
     expect(bundle).not.toContain('homeassistant.homeGraph');
     expect(bundle).not.toContain('/api/homeassistant/home-graph');
+    expect(bundle).toContain('companion.chat.sessions.create');
   });
 
   test('bundled home assistant entrypoint does not include base knowledge/wiki contract metadata', async () => {

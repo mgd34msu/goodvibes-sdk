@@ -31,6 +31,10 @@ export type {
 export { DISTRIBUTED_WORK_TYPES } from './types.js';
 export { FOUNDATION_METADATA } from './generated/foundation-metadata.js';
 export type {
+  CompanionChatMessage,
+  CompanionChatMessageRole,
+  CompanionChatSession,
+  CompanionChatSessionStatus,
   JsonPrimitive,
   JsonValue,
   SharedSessionConversationRouteOutput,

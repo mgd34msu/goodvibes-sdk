@@ -19,6 +19,9 @@ import {
   APPROVAL_ACTION_INPUT_SCHEMA,
   APPROVAL_ACTION_OUTPUT_SCHEMA,
   APPROVAL_SNAPSHOT_SCHEMA,
+  COMPANION_CHAT_MESSAGES_LIST_SCHEMA,
+  COMPANION_CHAT_SESSION_SCHEMA,
+  COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA,
   CONTROL_AUTH_CURRENT_RESPONSE_SCHEMA,
   CONTROL_AUTH_LOGIN_REQUEST_SCHEMA,
   CONTROL_AUTH_LOGIN_RESPONSE_SCHEMA,
@@ -595,10 +598,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     scopes: ['read:sessions'],
     http: { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}' },
     inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
-    outputSchema: objectSchema({
-      session: SHARED_SESSION_RECORD_SCHEMA,
-      messages: arraySchema(objectSchema({}, [])),
-    }, ['session', 'messages']),
+    outputSchema: COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA,
   }),
   methodDescriptor({
     id: 'companion.chat.sessions.update',
@@ -614,7 +614,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
       systemPrompt: STRING_SCHEMA,
     }, []),
     outputSchema: objectSchema({
-      session: SHARED_SESSION_RECORD_SCHEMA,
+      session: COMPANION_CHAT_SESSION_SCHEMA,
     }, ['session']),
   }),
   methodDescriptor({
@@ -654,10 +654,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     scopes: ['read:sessions'],
     http: { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/messages' },
     inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
-    outputSchema: objectSchema({
-      sessionId: STRING_SCHEMA,
-      messages: arraySchema(objectSchema({}, [])),
-    }, ['sessionId', 'messages']),
+    outputSchema: COMPANION_CHAT_MESSAGES_LIST_SCHEMA,
   }),
   methodDescriptor({
     id: 'companion.chat.events.stream',
@@ -665,8 +662,11 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     description: 'Server-Sent Events stream of turn and agent events scoped to a single companion-chat session.',
     category: 'companion',
     scopes: ['read:sessions'],
+    transport: ['http'],
     http: { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/events' },
     inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
     outputSchema: EMPTY_OBJECT_SCHEMA,
+    invokable: false,
+    metadata: { responseKind: 'sse', stream: true, wireEventPrefix: 'companion-chat.' },
   }),
 ];

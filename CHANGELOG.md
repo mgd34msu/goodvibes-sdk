@@ -8,6 +8,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.8] - 2026-05-07
+
+### Added
+- Added typed companion-chat browser helpers to
+  `@pellux/goodvibes-sdk/browser/knowledge`, including scoped JSON methods for
+  chat sessions/messages and an explicit SSE helper for per-session turn events.
+
+### Fixed
+- Aligned companion-chat operator contract outputs with the daemon route shapes
+  so `sessions.get`, `sessions.update`, and `messages.list` no longer expose
+  shared-session schemas.
+- Preserved full provider/model routing metadata for `sessions.messages.create`
+  `kind: "message"` conversation turns.
+
+---
+
 ## [0.33.7] - 2026-05-07
 
 ### Fixed

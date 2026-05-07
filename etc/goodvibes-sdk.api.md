@@ -511,6 +511,36 @@ export type CompactionEvent =
 // @public
 export type CompactionEventType = CompactionEvent['type'];
 
+// @public (undocumented)
+export type CompanionChatMessage = {
+    id: string;
+    sessionId: string;
+    role: CompanionChatMessageRole;
+    content: string;
+    createdAt: number;
+};
+
+// @public (undocumented)
+export type CompanionChatMessageRole = "assistant" | "user";
+
+// @public (undocumented)
+export type CompanionChatSession = {
+    id: string;
+    kind: "companion-chat";
+    title: string;
+    model: null | string;
+    provider: null | string;
+    systemPrompt: null | string;
+    status: CompanionChatSessionStatus;
+    createdAt: number;
+    updatedAt: number;
+    closedAt: null | number;
+    messageCount: number;
+};
+
+// @public (undocumented)
+export type CompanionChatSessionStatus = "active" | "closed";
+
 // @public
 export function composeMiddleware(middleware: readonly TransportMiddleware[], innerFetch: (ctx: TransportContext) => Promise<Response>): (ctx: TransportContext) => Promise<void>;
 
@@ -1137,7 +1167,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.7";
+    readonly productVersion: "0.33.8";
     readonly operatorMethodCount: 263;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -2834,6 +2864,54 @@ export interface OperatorMethodInputMap {
     "channels.tools.surface.list": {
         surface: string;
     };
+    // (undocumented)
+    "companion.chat.events.stream": {
+        sessionId: string;
+    };
+    // (undocumented)
+    "companion.chat.messages.create": ({
+        sessionId: string;
+        body?: string;
+        content?: string;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "companion.chat.messages.list": {
+        sessionId: string;
+    };
+    // (undocumented)
+    "companion.chat.sessions.create": ({
+        title?: string;
+        provider?: string;
+        model?: string;
+        systemPrompt?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "companion.chat.sessions.delete": {
+        sessionId: string;
+    };
+    // (undocumented)
+    "companion.chat.sessions.get": {
+        sessionId: string;
+    };
+    // (undocumented)
+    "companion.chat.sessions.update": ({
+        sessionId: string;
+        title?: string;
+        provider?: string;
+        model?: string;
+        systemPrompt?: null | string;
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "config.get": {};
     // (undocumented)
@@ -6959,6 +7037,35 @@ export interface OperatorMethodOutputMap {
                 }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
+    };
+    // (undocumented)
+    "companion.chat.events.stream": {};
+    // (undocumented)
+    "companion.chat.messages.create": {
+        messageId: string;
+    };
+    // (undocumented)
+    "companion.chat.messages.list": {
+        messages: readonly CompanionChatMessage[];
+    };
+    // (undocumented)
+    "companion.chat.sessions.create": {
+        sessionId: string;
+        createdAt: number;
+    };
+    // (undocumented)
+    "companion.chat.sessions.delete": {
+        sessionId: string;
+        status: CompanionChatSessionStatus;
+    };
+    // (undocumented)
+    "companion.chat.sessions.get": {
+        session: CompanionChatSession;
+        messages: readonly CompanionChatMessage[];
+    };
+    // (undocumented)
+    "companion.chat.sessions.update": {
+        session: CompanionChatSession;
     };
     // (undocumented)
     "config.get": ({
@@ -13348,7 +13455,7 @@ export interface OperatorSdkOptions extends HttpTransportOptions {
 }
 
 // @public (undocumented)
-export type OperatorStreamMethodId = Extract<OperatorTypedMethodId, 'control.events.stream' | 'telemetry.stream'>;
+export type OperatorStreamMethodId = Extract<OperatorTypedMethodId, 'companion.chat.events.stream' | 'control.events.stream' | 'telemetry.stream'>;
 
 // @public
 export interface OperatorStreamOptions extends OperatorRemoteClientStreamOptions {

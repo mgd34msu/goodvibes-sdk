@@ -341,6 +341,43 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     expect(envelope.timestamp).toBeGreaterThanOrEqual(before);
   });
 
+  test('kind=message preserves routing metadata for the conversation turn owner', async () => {
+    const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
+    const req = makeRequest(
+      'POST',
+      `http://localhost/api/sessions/${sessionId}/messages`,
+      {
+        body: 'Use the selected model',
+        kind: 'message',
+        surfaceKind: 'webui',
+        surfaceId: 'goodvibes-webui',
+        routing: {
+          providerId: 'openai',
+          modelId: 'openai:gpt-5.5',
+          providerSelection: 'concrete',
+          providerFailurePolicy: 'ordered-fallbacks',
+          fallbackModels: ['openrouter:qwen/qwen3'],
+          helperModel: { providerId: 'openai', modelId: 'openai:gpt-5.4-mini' },
+          reasoningEffort: 'medium',
+        },
+      },
+    );
+    const res = await handlers.postSharedSessionMessage(sessionId, req);
+    expect(res.status).toBe(202);
+    const envelope = followupEvents[0].envelope as ConversationMessageEnvelope;
+    expect(envelope.metadata?.surfaceKind).toBe('webui');
+    expect(envelope.metadata?.surfaceId).toBe('goodvibes-webui');
+    expect(envelope.metadata?.routing).toEqual({
+      providerId: 'openai',
+      modelId: 'openai:gpt-5.5',
+      providerSelection: 'concrete',
+      providerFailurePolicy: 'ordered-fallbacks',
+      fallbackModels: ['openrouter:qwen/qwen3'],
+      helperModel: { providerId: 'openai', modelId: 'openai:gpt-5.4-mini' },
+      reasoningEffort: 'medium',
+    });
+  });
+
   test('event is scoped to the target session only (sessionId on event)', async () => {
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
     const req = makeRequest(

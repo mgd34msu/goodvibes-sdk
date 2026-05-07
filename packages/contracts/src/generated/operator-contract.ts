@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.7"
+    "version": "0.33.8"
   },
   "auth": {
     "modes": [
@@ -20123,8 +20123,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "source": "builtin",
         "access": "authenticated",
         "transport": [
-          "http",
-          "ws"
+          "http"
         ],
         "scopes": [
           "read:sessions"
@@ -20150,7 +20149,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {},
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false,
+        "metadata": {
+          "responseKind": "sse",
+          "stream": true,
+          "wireEventPrefix": "companion-chat."
+        }
       },
       {
         "id": "companion.chat.messages.create",
@@ -20241,7 +20245,34 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "array",
               "items": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "assistant"
+                    ]
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "role",
+                  "content",
+                  "createdAt"
+                ],
                 "additionalProperties": false
               }
             }
@@ -20398,13 +20429,41 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "kind": {
                   "type": "string",
                   "enum": [
-                    "tui",
-                    "companion-task",
                     "companion-chat"
                   ]
                 },
                 "title": {
                   "type": "string"
+                },
+                "model": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "provider": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "systemPrompt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "status": {
                   "type": "string",
@@ -20419,119 +20478,32 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "updatedAt": {
                   "type": "number"
                 },
-                "lastMessageAt": {
-                  "type": "number"
-                },
                 "closedAt": {
-                  "type": "number"
-                },
-                "lastActivityAt": {
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "messageCount": {
                   "type": "number"
-                },
-                "pendingInputCount": {
-                  "type": "number"
-                },
-                "routeIds": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "surfaceKinds": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "participants": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "surfaceKind": {
-                        "type": "string"
-                      },
-                      "surfaceId": {
-                        "type": "string"
-                      },
-                      "externalId": {
-                        "type": "string"
-                      },
-                      "userId": {
-                        "type": "string"
-                      },
-                      "displayName": {
-                        "type": "string"
-                      },
-                      "routeId": {
-                        "type": "string"
-                      },
-                      "lastSeenAt": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "surfaceKind",
-                      "surfaceId",
-                      "lastSeenAt"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "activeAgentId": {
-                  "type": "string"
-                },
-                "lastAgentId": {
-                  "type": "string"
-                },
-                "lastError": {
-                  "type": "string"
-                },
-                "metadata": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": {}
-                      },
-                      {
-                        "type": "array",
-                        "items": {}
-                      }
-                    ]
-                  }
                 }
               },
               "required": [
                 "id",
                 "kind",
                 "title",
+                "model",
+                "provider",
+                "systemPrompt",
                 "status",
                 "createdAt",
                 "updatedAt",
-                "lastActivityAt",
-                "messageCount",
-                "pendingInputCount",
-                "routeIds",
-                "surfaceKinds",
-                "participants",
-                "metadata"
+                "closedAt",
+                "messageCount"
               ],
               "additionalProperties": false
             },
@@ -20539,7 +20511,34 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "array",
               "items": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "assistant"
+                    ]
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "role",
+                  "content",
+                  "createdAt"
+                ],
                 "additionalProperties": false
               }
             }
@@ -20600,13 +20599,41 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "kind": {
                   "type": "string",
                   "enum": [
-                    "tui",
-                    "companion-task",
                     "companion-chat"
                   ]
                 },
                 "title": {
                   "type": "string"
+                },
+                "model": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "provider": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "systemPrompt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "status": {
                   "type": "string",
@@ -20621,119 +20648,32 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "updatedAt": {
                   "type": "number"
                 },
-                "lastMessageAt": {
-                  "type": "number"
-                },
                 "closedAt": {
-                  "type": "number"
-                },
-                "lastActivityAt": {
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "messageCount": {
                   "type": "number"
-                },
-                "pendingInputCount": {
-                  "type": "number"
-                },
-                "routeIds": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "surfaceKinds": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "participants": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "surfaceKind": {
-                        "type": "string"
-                      },
-                      "surfaceId": {
-                        "type": "string"
-                      },
-                      "externalId": {
-                        "type": "string"
-                      },
-                      "userId": {
-                        "type": "string"
-                      },
-                      "displayName": {
-                        "type": "string"
-                      },
-                      "routeId": {
-                        "type": "string"
-                      },
-                      "lastSeenAt": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "surfaceKind",
-                      "surfaceId",
-                      "lastSeenAt"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "activeAgentId": {
-                  "type": "string"
-                },
-                "lastAgentId": {
-                  "type": "string"
-                },
-                "lastError": {
-                  "type": "string"
-                },
-                "metadata": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": {}
-                      },
-                      {
-                        "type": "array",
-                        "items": {}
-                      }
-                    ]
-                  }
                 }
               },
               "required": [
                 "id",
                 "kind",
                 "title",
+                "model",
+                "provider",
+                "systemPrompt",
                 "status",
                 "createdAt",
                 "updatedAt",
-                "lastActivityAt",
-                "messageCount",
-                "pendingInputCount",
-                "routeIds",
-                "surfaceKinds",
-                "participants",
-                "metadata"
+                "closedAt",
+                "messageCount"
               ],
               "additionalProperties": false
             }

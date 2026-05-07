@@ -6,6 +6,10 @@ import type { PeerEndpointId } from './peer-endpoint-ids.js';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | { readonly [key: string]: JsonValue } | readonly JsonValue[];
 export type SharedSessionConversationRouteOutput = { messageId: string; routedTo: "conversation"; sessionId: string; };
+export type CompanionChatSessionStatus = "active" | "closed";
+export type CompanionChatMessageRole = "assistant" | "user";
+export type CompanionChatSession = { id: string; kind: "companion-chat"; title: string; model: null | string; provider: null | string; systemPrompt: null | string; status: CompanionChatSessionStatus; createdAt: number; updatedAt: number; closedAt: null | number; messageCount: number; };
+export type CompanionChatMessage = { id: string; sessionId: string; role: CompanionChatMessageRole; content: string; createdAt: number; };
 
 export interface OperatorMethodInputMap {
   "accounts.snapshot": {  };
@@ -62,6 +66,13 @@ export interface OperatorMethodInputMap {
   "channels.tools.invoke": ({ accountId?: string; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "channels.tools.list": {  };
   "channels.tools.surface.list": { surface: string; };
+  "companion.chat.events.stream": { sessionId: string; };
+  "companion.chat.messages.create": ({ sessionId: string; body?: string; content?: string; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
+  "companion.chat.messages.list": { sessionId: string; };
+  "companion.chat.sessions.create": ({ title?: string; provider?: string; model?: string; systemPrompt?: string; } & { readonly [key: string]: unknown });
+  "companion.chat.sessions.delete": { sessionId: string; };
+  "companion.chat.sessions.get": { sessionId: string; };
+  "companion.chat.sessions.update": ({ sessionId: string; title?: string; provider?: string; model?: string; systemPrompt?: null | string; } & { readonly [key: string]: unknown });
   "config.get": {  };
   "config.set": ({ key: string; } & { readonly [key: string]: unknown });
   "continuity.snapshot": {  };
@@ -279,6 +290,13 @@ export interface OperatorMethodOutputMap {
   "channels.tools.invoke": { toolId: string; surface: string; result: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); };
   "channels.tools.list": { tools: readonly ({ id: string; surface: string; name: string; description: string; actionIds: readonly string[]; inputSchema?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); metadata: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); })[]; };
   "channels.tools.surface.list": { tools: readonly ({ id: string; surface: string; name: string; description: string; actionIds: readonly string[]; inputSchema?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); metadata: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); })[]; };
+  "companion.chat.events.stream": {  };
+  "companion.chat.messages.create": { messageId: string; };
+  "companion.chat.messages.list": { messages: readonly CompanionChatMessage[]; };
+  "companion.chat.sessions.create": { sessionId: string; createdAt: number; };
+  "companion.chat.sessions.delete": { sessionId: string; status: CompanionChatSessionStatus; };
+  "companion.chat.sessions.get": { session: CompanionChatSession; messages: readonly CompanionChatMessage[]; };
+  "companion.chat.sessions.update": { session: CompanionChatSession; };
   "config.get": ({ danger?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); controlPlane?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); web?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); network?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); service?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); providers?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); ui?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); channels?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); watchers?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); memory?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "config.set": ({ success: boolean; key: string; value?: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string; } & { readonly [key: string]: unknown });
   "continuity.snapshot": { sessionId: string; status: string; recoveryState: string; lastSessionPointer: null | string; recoveryFilePresent: boolean; recoveryFile: null | { title: string; timestamp: number; sessionId: string; returnContext?: { activityLabel: string; statusLabel: string; lastUserPrompt?: string; lastAssistantReply?: string; pendingApprovals: number; toolCallCount: number; toolResultCount: number; assistantTurnCount: number; userTurnCount: number; lastRole?: string; activeTasks?: number; blockedTasks?: number; remoteContracts?: number; remoteRunners?: readonly string[]; worktreeCount?: number; worktreePaths?: readonly string[]; openPanels?: readonly string[]; lines: readonly string[]; assistedNarrative?: string; }; }; };
@@ -579,7 +597,7 @@ export type OperatorMethodOutput<TMethodId extends OperatorTypedMethodId> =
   TMethodId extends keyof OperatorMethodOutputMap ? OperatorMethodOutputMap[TMethodId] : unknown;
 export type OperatorTypedEventId = keyof OperatorEventPayloadMap & string;
 export type OperatorEventPayload<TEventId extends OperatorTypedEventId> = OperatorEventPayloadMap[TEventId];
-export type OperatorStreamMethodId = Extract<OperatorTypedMethodId, 'control.events.stream' | 'telemetry.stream'>;
+export type OperatorStreamMethodId = Extract<OperatorTypedMethodId, 'companion.chat.events.stream' | 'control.events.stream' | 'telemetry.stream'>;
 export type PeerTypedEndpointId = PeerEndpointId;
 export type PeerEndpointInput<TEndpointId extends PeerTypedEndpointId> =
   TEndpointId extends keyof PeerEndpointInputMap ? PeerEndpointInputMap[TEndpointId] : { readonly [key: string]: unknown };

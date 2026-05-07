@@ -28,6 +28,20 @@ type RuntimeTaskBody = {
   readonly tools?: string[] | undefined;
   readonly routing?: SharedSessionRoutingIntent | undefined;
 };
+type SharedSessionMessageInput = {
+  readonly sessionId: string;
+  readonly surfaceKind: AutomationSurfaceKind;
+  readonly surfaceId: string;
+  readonly externalId?: string | undefined;
+  readonly threadId?: string | undefined;
+  readonly userId?: string | undefined;
+  readonly displayName?: string | undefined;
+  readonly title?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly body: string;
+  readonly metadata?: Record<string, unknown> | undefined;
+  readonly routing?: SharedSessionRoutingIntent | undefined;
+};
 type SharedSessionRecordResponse = {
   readonly id: string;
   readonly kind: 'tui' | 'companion-task' | 'companion-chat';
@@ -421,9 +435,11 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
     return jsonErrorResponse({ error: 'Missing shared session message body' }, { status: 400 });
   }
 
+  const input = buildSharedSessionMessageInput(sessionId, body, message);
+
   // kind='followup' — always queues/spawns a follow-up turn via followUpMessage()
   if (kind === 'followup') {
-    const followUpSubmission = await context.sessionBroker.followUpMessage(buildSharedSessionMessageInput(sessionId, body, message));
+    const followUpSubmission = await context.sessionBroker.followUpMessage(input);
     return await respondToSessionSubmission(context, req, followUpSubmission, message, `/api/sessions/${sessionId}/messages`, 'DaemonServer.handlePostSharedSessionMessage.followup', {
       context: `shared-session:${followUpSubmission.session.id}`,
     });
@@ -432,10 +448,10 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
   // kind='message' — companion main-chat send. Delegates to dedicated handler to avoid
   // inline duplication of session-resolution with submitMessage().
   if (kind === 'message') {
-    return handleCompanionMessageKind(context, sessionId, req, message);
+    return handleCompanionMessageKind(context, sessionId, req, input);
   }
 
-  const submission = await context.sessionBroker.submitMessage(buildSharedSessionMessageInput(sessionId, body, message));
+  const submission = await context.sessionBroker.submitMessage(input);
 
   return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/messages`, 'DaemonServer.handlePostSharedSessionMessage', {
     context: `shared-session:${submission.session.id}`,
@@ -452,7 +468,7 @@ async function handleCompanionMessageKind(
   context: DaemonRuntimeRouteContext,
   sessionId: string,
   req: Request,
-  message: string,
+  input: SharedSessionMessageInput,
 ): Promise<Response> {
   const session = context.sessionBroker.getSession(sessionId);
   if (!session) {
@@ -463,22 +479,25 @@ async function handleCompanionMessageKind(
   }
   const messageId = `companion-${randomUUID()}`;
   const timestamp = Date.now();
+  const metadata = buildCompanionMessageMetadata(input);
   // Persist the companion message to the session log so GET /api/sessions/:id/messages
   // returns it and the TUI can render it.
   await context.sessionBroker.appendCompanionMessage(sessionId, {
     messageId,
-    body: message,
+    body: input.body,
     source: 'companion-followup',
     timestamp,
+    ...(metadata ? { metadata } : {}),
   });
   // Notify in-process subscribers via the conversation follow-up event. The
   // runtime subscriber turns this persisted message into a normal conversation
   // turn whose events stream to both local and remote clients.
   context.publishConversationFollowup(sessionId, {
     messageId,
-    body: message,
+    body: input.body,
     source: 'companion-followup',
     timestamp,
+    ...(metadata ? { metadata } : {}),
   });
   // The { routedTo: 'conversation' } shape signals the companion app that the message
   // was received and persisted (isConversationRouteResult check).
@@ -487,6 +506,21 @@ async function handleCompanionMessageKind(
     routedTo: 'conversation',
     sessionId,
   }, { status: 202 }));
+}
+
+function buildCompanionMessageMetadata(input: SharedSessionMessageInput): Record<string, unknown> | undefined {
+  const metadata: Record<string, unknown> = {
+    ...(input.metadata ?? {}),
+  };
+  if (input.routing) metadata.routing = input.routing;
+  if (input.surfaceKind) metadata.surfaceKind = input.surfaceKind;
+  if (input.surfaceId) metadata.surfaceId = input.surfaceId;
+  if (input.routeId) metadata.routeId = input.routeId;
+  if (input.externalId) metadata.externalId = input.externalId;
+  if (input.threadId) metadata.threadId = input.threadId;
+  if (input.userId) metadata.userId = input.userId;
+  if (input.displayName) metadata.displayName = input.displayName;
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
 /**
@@ -585,20 +619,7 @@ function buildSharedSessionMessageInput(
   sessionId: string,
   body: JsonRecord,
   message: string,
-): {
-  sessionId: string;
-  surfaceKind: AutomationSurfaceKind;
-  surfaceId: string;
-  externalId?: string | undefined;
-  threadId?: string | undefined;
-  userId?: string | undefined;
-  displayName?: string | undefined;
-  title?: string | undefined;
-  routeId?: string | undefined;
-  body: string;
-  metadata?: Record<string, unknown> | undefined;
-  routing?: SharedSessionRoutingIntent | undefined;
-} {
+): SharedSessionMessageInput {
   const routing = readSharedSessionRoutingIntent(body.routing);
   return {
     sessionId,
@@ -624,14 +645,43 @@ function readToolNames(value: unknown): string[] | undefined {
 
 function readSharedSessionRoutingIntent(value: unknown): SharedSessionRoutingIntent | undefined {
   if (typeof value !== 'object' || value === null) return undefined;
-  const input = value as SharedSessionRoutingIntent;
-  const tools = readToolNames(input.tools);
+  const record = value as Record<string, unknown>;
+  const tools = readToolNames(record.tools);
+  const fallbackModels = readStringArrayField(record, 'fallbackModels', MAX_SESSION_TOOL_NAMES);
+  const helperModel = readHelperModel(record.helperModel);
+  const providerSelection = readProviderSelection(record.providerSelection);
+  const providerFailurePolicy = readProviderFailurePolicy(record.providerFailurePolicy);
+  const reasoningEffort = readReasoningEffort(record.reasoningEffort);
   return {
-    ...(typeof input.modelId === 'string' ? { modelId: input.modelId } : {}),
-    ...(typeof input.providerId === 'string' ? { providerId: input.providerId } : {}),
+    ...(typeof record.modelId === 'string' ? { modelId: record.modelId } : {}),
+    ...(typeof record.providerId === 'string' ? { providerId: record.providerId } : {}),
+    ...(providerSelection ? { providerSelection } : {}),
+    ...(providerFailurePolicy ? { providerFailurePolicy } : {}),
+    ...(fallbackModels?.length ? { fallbackModels } : {}),
+    ...(helperModel ? { helperModel } : {}),
     ...(tools ? { tools } : {}),
-    ...(input.executionIntent !== undefined ? { executionIntent: input.executionIntent } : {}),
+    ...(record.executionIntent !== undefined ? { executionIntent: record.executionIntent } : {}),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
   };
+}
+
+function readProviderSelection(value: unknown): SharedSessionRoutingIntent['providerSelection'] | undefined {
+  return value === 'inherit-current' || value === 'concrete' || value === 'synthetic' ? value : undefined;
+}
+
+function readProviderFailurePolicy(value: unknown): SharedSessionRoutingIntent['providerFailurePolicy'] | undefined {
+  return value === 'ordered-fallbacks' || value === 'fail' ? value : undefined;
+}
+
+function readReasoningEffort(value: unknown): SharedSessionRoutingIntent['reasoningEffort'] | undefined {
+  return value === 'instant' || value === 'low' || value === 'medium' || value === 'high' ? value : undefined;
+}
+
+function readHelperModel(value: unknown): SharedSessionRoutingIntent['helperModel'] | undefined {
+  if (!isJsonRecord(value)) return undefined;
+  return typeof value.providerId === 'string' && typeof value.modelId === 'string'
+    ? { providerId: value.providerId, modelId: value.modelId }
+    : undefined;
 }
 
 async function respondToSessionSubmission(

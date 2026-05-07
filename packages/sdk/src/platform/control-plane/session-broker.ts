@@ -359,6 +359,7 @@ export class SharedSessionBroker {
       readonly body: string;
       readonly timestamp: number;
       readonly source: string;
+      readonly metadata?: Readonly<Record<string, unknown>> | undefined;
     },
   ): Promise<SharedSessionMessage | null> {
     if (!input.body.trim()) return null;
@@ -366,6 +367,7 @@ export class SharedSessionBroker {
       role: 'user',
       body: input.body,
       metadata: {
+        ...(input.metadata ?? {}),
         source: input.source,
         messageId: input.messageId,
         timestamp: input.timestamp,
