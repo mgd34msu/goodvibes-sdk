@@ -20136,12 +20136,12 @@ Server-Sent Events stream of turn and agent events scoped to a single companion-
 - Title: `Stream Companion Chat Events`
 - Source: `builtin`
 - Access: `authenticated`
-- Transport: `http`, `ws`
+- Transport: `http`
 - HTTP: `GET /api/companion/chat/sessions/{sessionId}/events`
 - Scopes: `read:sessions`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -20267,7 +20267,34 @@ Return the message list for a companion-chat session.
       "type": "array",
       "items": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "role",
+          "content",
+          "createdAt"
+        ],
         "additionalProperties": false
       }
     }
@@ -20436,13 +20463,41 @@ Return a companion-chat session record together with its full message history.
         "kind": {
           "type": "string",
           "enum": [
-            "tui",
-            "companion-task",
             "companion-chat"
           ]
         },
         "title": {
           "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "systemPrompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "status": {
           "type": "string",
@@ -20457,119 +20512,32 @@ Return a companion-chat session record together with its full message history.
         "updatedAt": {
           "type": "number"
         },
-        "lastMessageAt": {
-          "type": "number"
-        },
         "closedAt": {
-          "type": "number"
-        },
-        "lastActivityAt": {
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "messageCount": {
           "type": "number"
-        },
-        "pendingInputCount": {
-          "type": "number"
-        },
-        "routeIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "surfaceKinds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "participants": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "surfaceKind": {
-                "type": "string"
-              },
-              "surfaceId": {
-                "type": "string"
-              },
-              "externalId": {
-                "type": "string"
-              },
-              "userId": {
-                "type": "string"
-              },
-              "displayName": {
-                "type": "string"
-              },
-              "routeId": {
-                "type": "string"
-              },
-              "lastSeenAt": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "surfaceKind",
-              "surfaceId",
-              "lastSeenAt"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "activeAgentId": {
-          "type": "string"
-        },
-        "lastAgentId": {
-          "type": "string"
-        },
-        "lastError": {
-          "type": "string"
-        },
-        "metadata": {
-          "type": "object",
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "object",
-                "additionalProperties": {}
-              },
-              {
-                "type": "array",
-                "items": {}
-              }
-            ]
-          }
         }
       },
       "required": [
         "id",
         "kind",
         "title",
+        "model",
+        "provider",
+        "systemPrompt",
         "status",
         "createdAt",
         "updatedAt",
-        "lastActivityAt",
-        "messageCount",
-        "pendingInputCount",
-        "routeIds",
-        "surfaceKinds",
-        "participants",
-        "metadata"
+        "closedAt",
+        "messageCount"
       ],
       "additionalProperties": false
     },
@@ -20577,7 +20545,34 @@ Return a companion-chat session record together with its full message history.
       "type": "array",
       "items": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "role",
+          "content",
+          "createdAt"
+        ],
         "additionalProperties": false
       }
     }
@@ -20642,13 +20637,41 @@ Update companion-chat session metadata, including session-local `provider` and `
         "kind": {
           "type": "string",
           "enum": [
-            "tui",
-            "companion-task",
             "companion-chat"
           ]
         },
         "title": {
           "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "systemPrompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "status": {
           "type": "string",
@@ -20663,119 +20686,32 @@ Update companion-chat session metadata, including session-local `provider` and `
         "updatedAt": {
           "type": "number"
         },
-        "lastMessageAt": {
-          "type": "number"
-        },
         "closedAt": {
-          "type": "number"
-        },
-        "lastActivityAt": {
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "messageCount": {
           "type": "number"
-        },
-        "pendingInputCount": {
-          "type": "number"
-        },
-        "routeIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "surfaceKinds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "participants": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "surfaceKind": {
-                "type": "string"
-              },
-              "surfaceId": {
-                "type": "string"
-              },
-              "externalId": {
-                "type": "string"
-              },
-              "userId": {
-                "type": "string"
-              },
-              "displayName": {
-                "type": "string"
-              },
-              "routeId": {
-                "type": "string"
-              },
-              "lastSeenAt": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "surfaceKind",
-              "surfaceId",
-              "lastSeenAt"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "activeAgentId": {
-          "type": "string"
-        },
-        "lastAgentId": {
-          "type": "string"
-        },
-        "lastError": {
-          "type": "string"
-        },
-        "metadata": {
-          "type": "object",
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "object",
-                "additionalProperties": {}
-              },
-              {
-                "type": "array",
-                "items": {}
-              }
-            ]
-          }
         }
       },
       "required": [
         "id",
         "kind",
         "title",
+        "model",
+        "provider",
+        "systemPrompt",
         "status",
         "createdAt",
         "updatedAt",
-        "lastActivityAt",
-        "messageCount",
-        "pendingInputCount",
-        "routeIds",
-        "surfaceKinds",
-        "participants",
-        "metadata"
+        "closedAt",
+        "messageCount"
       ],
       "additionalProperties": false
     }

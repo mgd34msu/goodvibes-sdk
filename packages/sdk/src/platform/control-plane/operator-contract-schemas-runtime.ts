@@ -36,6 +36,8 @@ const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'companion-task', 'compani
 const SHARED_SESSION_INPUT_INTENT_SCHEMA = enumSchema(['submit', 'steer', 'follow-up']);
 const SHARED_SESSION_INPUT_STATE_SCHEMA = enumSchema(['queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected']);
 const SHARED_SESSION_MESSAGE_MODE_SCHEMA = enumSchema(['spawn', 'continued-live', 'queued-follow-up', 'rejected']);
+const COMPANION_CHAT_SESSION_STATUS_SCHEMA = enumSchema(['active', 'closed']);
+const COMPANION_CHAT_MESSAGE_ROLE_SCHEMA = enumSchema(['user', 'assistant']);
 const PROVIDER_SELECTION_SCHEMA = enumSchema(['inherit-current', 'concrete', 'synthetic']);
 const PROVIDER_FAILURE_POLICY_SCHEMA = enumSchema(['ordered-fallbacks', 'fail']);
 const EXECUTION_RISK_CLASS_SCHEMA = enumSchema(['safe', 'elevated', 'dangerous']);
@@ -87,6 +89,38 @@ export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   lastError: STRING_SCHEMA,
   metadata: METADATA_SCHEMA,
 }, ['id', 'kind', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'messageCount', 'pendingInputCount', 'routeIds', 'surfaceKinds', 'participants', 'metadata']);
+
+export const COMPANION_CHAT_SESSION_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  kind: enumSchema(['companion-chat']),
+  title: STRING_SCHEMA,
+  model: nullableSchema(STRING_SCHEMA),
+  provider: nullableSchema(STRING_SCHEMA),
+  systemPrompt: nullableSchema(STRING_SCHEMA),
+  status: COMPANION_CHAT_SESSION_STATUS_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+  updatedAt: NUMBER_SCHEMA,
+  closedAt: nullableSchema(NUMBER_SCHEMA),
+  messageCount: NUMBER_SCHEMA,
+}, ['id', 'kind', 'title', 'model', 'provider', 'systemPrompt', 'status', 'createdAt', 'updatedAt', 'closedAt', 'messageCount']);
+
+export const COMPANION_CHAT_MESSAGE_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  sessionId: STRING_SCHEMA,
+  role: COMPANION_CHAT_MESSAGE_ROLE_SCHEMA,
+  content: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+}, ['id', 'sessionId', 'role', 'content', 'createdAt']);
+
+export const COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA = objectSchema({
+  session: COMPANION_CHAT_SESSION_SCHEMA,
+  messages: arraySchema(COMPANION_CHAT_MESSAGE_SCHEMA),
+}, ['session', 'messages']);
+
+export const COMPANION_CHAT_MESSAGES_LIST_SCHEMA = objectSchema({
+  sessionId: STRING_SCHEMA,
+  messages: arraySchema(COMPANION_CHAT_MESSAGE_SCHEMA),
+}, ['sessionId', 'messages']);
 
 export const SHARED_SESSION_ROUTING_INTENT_SCHEMA = objectSchema({
   providerId: STRING_SCHEMA,

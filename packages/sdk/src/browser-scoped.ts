@@ -7,6 +7,7 @@ import type {
 import type {
   AuthTokenResolver,
   HttpRetryPolicy,
+  ServerSentEventHandlers,
   StreamReconnectPolicy,
   TransportMiddleware,
 } from './transport-http.js';
@@ -47,6 +48,26 @@ export interface ScopedBrowserSdkOptions {
   } | undefined;
   readonly observer?: SDKObserver | undefined;
 }
+
+export interface ScopedEventStreamOptions {
+  readonly signal?: AbortSignal | undefined;
+  readonly headers?: HeadersInit | undefined;
+  readonly reconnect?: StreamReconnectPolicy | undefined;
+}
+
+export interface ScopedRawEventStream {
+  open(
+    pathOrUrl: string,
+    handlers: ServerSentEventHandlers,
+    options?: ScopedEventStreamOptions,
+  ): Promise<() => void>;
+}
+
+type EventStreamOpenInput = {
+  readonly pathOrUrl: string;
+  readonly handlers: ServerSentEventHandlers;
+  readonly options?: ScopedEventStreamOptions | undefined;
+};
 
 export interface ScopedInvokeOptions {
   readonly signal?: AbortSignal | undefined;
@@ -95,6 +116,7 @@ export interface ScopedBrowserSdk<TMethodId extends OperatorTypedMethodId, TDoma
   readonly realtime: {
     viaSse(): ScopedRuntimeEvents<TDomain>;
   };
+  readonly streams: ScopedRawEventStream;
   use(middleware: TransportMiddleware): void;
 }
 
@@ -153,16 +175,19 @@ function createScopedOperatorClient<TMethodId extends OperatorTypedMethodId>(
 ): {
   readonly operator: ScopedOperatorClient<TMethodId>;
   readonly requestJson: <T>(pathOrUrl: string, requestOptions?: Parameters<ReturnType<typeof createHttpTransport>['requestJson']>[1]) => Promise<T>;
+  readonly openEventStream: (input: EventStreamOpenInput) => Promise<() => void>;
   readonly getAuthToken: () => Promise<string | null>;
   readonly use: (middleware: TransportMiddleware) => void;
 } {
+  const baseUrl = resolveBrowserBaseUrl(options.baseUrl);
+  const fetchImpl = resolveFetch(options.fetch);
   const transport = createHttpTransport({
-    baseUrl: resolveBrowserBaseUrl(options.baseUrl),
+    baseUrl,
     authToken: options.authToken ?? null,
     getAuthToken: options.tokenStore
       ? () => options.tokenStore!.getToken()
       : options.getAuthToken,
-    fetch: resolveFetch(options.fetch),
+    fetch: fetchImpl,
     headers: options.headers,
     getHeaders: options.getHeaders,
     retry: options.retry,
@@ -199,6 +224,17 @@ function createScopedOperatorClient<TMethodId extends OperatorTypedMethodId>(
   return {
     operator,
     requestJson: (pathOrUrl, requestOptions) => transport.requestJson(pathOrUrl, requestOptions),
+    openEventStream: async ({ pathOrUrl, handlers, options: streamOptions = {} }) => {
+      const url = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
+        ? pathOrUrl
+        : new URL(pathOrUrl, baseUrl).toString();
+      return await openRawServerSentEventStream(fetchImpl, url, handlers, {
+        signal: streamOptions.signal,
+        headers: streamOptions.headers,
+        reconnect: streamOptions.reconnect,
+        getAuthToken: () => transport.getAuthToken(),
+      });
+    },
     getAuthToken: () => transport.getAuthToken(),
     use: (middleware) => transport.use(middleware),
   };
@@ -401,6 +437,9 @@ export function createScopedBrowserSdk<TMethodId extends OperatorTypedMethodId, 
     operator: scoped.operator,
     auth,
     realtime: createScopedRealtime(domains, options, scoped.getAuthToken),
+    streams: {
+      open: (pathOrUrl, handlers, streamOptions) => scoped.openEventStream({ pathOrUrl, handlers, options: streamOptions }),
+    },
     use: scoped.use,
   };
 }

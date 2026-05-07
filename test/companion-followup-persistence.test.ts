@@ -33,12 +33,13 @@ type AppendCompanionCall = {
     body: string;
     timestamp: number;
     source: string;
+    metadata?: Readonly<Record<string, unknown>>;
   };
 };
 
 type FollowupEvent = {
   sessionId: string;
-  envelope: { messageId: string; body: string; source: string; timestamp: number };
+  envelope: { messageId: string; body: string; source: string; timestamp: number; metadata?: Readonly<Record<string, unknown>> };
 };
 
 interface MockSessionRecord {
@@ -140,7 +141,7 @@ function makeContext(opts: {
           role: 'user',
           body: input.body,
           createdAt: input.timestamp,
-          metadata: { source: input.source, messageId: input.messageId },
+          metadata: { ...(input.metadata ?? {}), source: input.source, messageId: input.messageId },
         });
         persistedMessages.set(sessionId, bucket);
         return null;
@@ -229,6 +230,28 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     expect(appendCalls[0].input.messageId).toMatch(/^companion-/);
     expect(typeof appendCalls[0].input.timestamp).toBe('number');
     expect(appendCalls[0].input.timestamp).toBeGreaterThanOrEqual(before);
+  });
+
+  test('appendCompanionMessage persists routing metadata', async () => {
+    const ctx = makeContext({ sessions, appendCalls, followupEvents, persistedMessages });
+    const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
+    const req = makeRequest('POST', `http://localhost/api/sessions/${sessionId}/messages`, {
+      body: 'hello from companion',
+      kind: 'message',
+      routing: {
+        providerId: 'openai',
+        modelId: 'openai:gpt-5.5',
+        providerSelection: 'concrete',
+      },
+    });
+    await handlers.postSharedSessionMessage(sessionId, req);
+
+    expect(appendCalls[0].input.metadata?.routing).toEqual({
+      providerId: 'openai',
+      modelId: 'openai:gpt-5.5',
+      providerSelection: 'concrete',
+    });
+    expect(followupEvents[0].envelope.metadata?.routing).toEqual(appendCalls[0].input.metadata?.routing);
   });
 
   test('GET /api/sessions/:id/messages returns the persisted message', async () => {

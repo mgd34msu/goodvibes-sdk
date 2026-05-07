@@ -12,8 +12,16 @@ import type { ExecutionIntent } from '../../runtime/execution-intents.js';
 export interface SharedSessionRoutingIntent {
   readonly modelId?: string | undefined;
   readonly providerId?: string | undefined;
+  readonly providerSelection?: 'inherit-current' | 'concrete' | 'synthetic' | undefined;
+  readonly providerFailurePolicy?: 'ordered-fallbacks' | 'fail' | undefined;
+  readonly fallbackModels?: readonly string[] | undefined;
+  readonly helperModel?: {
+    readonly providerId: string;
+    readonly modelId: string;
+  } | undefined;
   readonly tools?: readonly string[] | undefined;
   readonly executionIntent?: ExecutionIntent | undefined;
+  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
 }
 interface AutomationRouteBinding {
   readonly id?: string | undefined;
@@ -155,6 +163,7 @@ export interface DaemonRuntimeRouteContext extends Omit<
       readonly body: string;
       readonly timestamp: number;
       readonly source: string;
+      readonly metadata?: Readonly<Record<string, unknown>> | undefined;
     }): Promise<unknown>;
   };
   readonly agentManager: {
