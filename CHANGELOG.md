@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.5] - 2026-05-07
+
+### Fixed
+- Aligned the public typed operator method id union with the generated operator method id artifact so `OperatorTypedMethodId` accepts every public method, including `knowledge.ask` and `knowledge.refinement.tasks.list`.
+- Added type-level coverage for browser/WebUI knowledge invokes so contract drift between `OPERATOR_METHOD_IDS` and `OperatorMethodInput/Output` fails before publish.
+
+---
+
 ## [0.33.4] - 2026-05-05
 
 ### Fixed

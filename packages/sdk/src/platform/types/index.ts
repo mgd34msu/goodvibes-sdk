@@ -42,6 +42,8 @@ export type {
   RuntimeEventDomain,
 } from './foundation-contract.js';
 export type {
+  JsonPrimitive,
+  JsonValue,
   OperatorEventPayload,
   OperatorEventPayloadMap,
   OperatorMethodInput,

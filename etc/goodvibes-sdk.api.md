@@ -1137,7 +1137,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.4";
+    readonly productVersion: "0.33.5";
     readonly operatorMethodCount: 263;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -2320,7 +2320,9 @@ export interface OperatorMethodContract {
 export type OperatorMethodId = typeof OPERATOR_METHOD_IDS[number];
 
 // @public (undocumented)
-export type OperatorMethodInput<TMethodId extends OperatorTypedMethodId> = OperatorMethodInputMap[TMethodId];
+export type OperatorMethodInput<TMethodId extends OperatorTypedMethodId> = TMethodId extends keyof OperatorMethodInputMap ? OperatorMethodInputMap[TMethodId] : {
+    readonly [key: string]: unknown;
+};
 
 // @public (undocumented)
 export interface OperatorMethodInputMap {
@@ -4220,7 +4222,7 @@ export interface OperatorMethodInputMap {
 }
 
 // @public (undocumented)
-export type OperatorMethodOutput<TMethodId extends OperatorTypedMethodId> = OperatorMethodOutputMap[TMethodId];
+export type OperatorMethodOutput<TMethodId extends OperatorTypedMethodId> = TMethodId extends keyof OperatorMethodOutputMap ? OperatorMethodOutputMap[TMethodId] : unknown;
 
 // @public (undocumented)
 export interface OperatorMethodOutputMap {
@@ -13356,7 +13358,7 @@ export interface OperatorStreamOptions extends OperatorRemoteClientStreamOptions
 export type OperatorTypedEventId = keyof OperatorEventPayloadMap & string;
 
 // @public (undocumented)
-export type OperatorTypedMethodId = keyof OperatorMethodInputMap & string;
+export type OperatorTypedMethodId = OperatorMethodId;
 
 // @public (undocumented)
 export type OpsEvent =
@@ -13715,7 +13717,9 @@ export interface PeerEndpointContract {
 export type PeerEndpointId = typeof PEER_ENDPOINT_IDS[number];
 
 // @public (undocumented)
-export type PeerEndpointInput<TEndpointId extends PeerTypedEndpointId> = PeerEndpointInputMap[TEndpointId];
+export type PeerEndpointInput<TEndpointId extends PeerTypedEndpointId> = TEndpointId extends keyof PeerEndpointInputMap ? PeerEndpointInputMap[TEndpointId] : {
+    readonly [key: string]: unknown;
+};
 
 // @public (undocumented)
 export interface PeerEndpointInputMap {
@@ -13793,7 +13797,7 @@ export interface PeerEndpointInputMap {
 }
 
 // @public (undocumented)
-export type PeerEndpointOutput<TEndpointId extends PeerTypedEndpointId> = PeerEndpointOutputMap[TEndpointId];
+export type PeerEndpointOutput<TEndpointId extends PeerTypedEndpointId> = TEndpointId extends keyof PeerEndpointOutputMap ? PeerEndpointOutputMap[TEndpointId] : unknown;
 
 // @public (undocumented)
 export interface PeerEndpointOutputMap {
@@ -14339,7 +14343,7 @@ export interface PeerSdkBehaviorOptions {
 export type PeerSdkOptions = HttpTransportOptions & PeerSdkBehaviorOptions;
 
 // @public (undocumented)
-export type PeerTypedEndpointId = keyof PeerEndpointInputMap & string;
+export type PeerTypedEndpointId = PeerEndpointId;
 
 // @public (undocumented)
 export interface PerMethodRetryPolicy {
