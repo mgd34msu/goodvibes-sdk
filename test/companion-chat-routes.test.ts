@@ -139,6 +139,14 @@ describe('companion-chat-routes: create session', () => {
     expect(typeof body.sessionId).toBe('string');
     expect(body.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(typeof body.createdAt).toBe('number');
+    expect(body.session).toMatchObject({
+      id: body.sessionId,
+      kind: 'companion-chat',
+      title: 'Test session',
+      provider: 'anthropic',
+      model: 'claude-sonnet',
+      status: 'active',
+    });
   });
 
   test('POST /api/companion/chat/sessions with no body rejects when no default resolver is configured', async () => {
@@ -168,6 +176,44 @@ describe('companion-chat-routes: create session', () => {
     expect(body.session.kind).toBe('companion-chat');
     expect(body.messages).toBeInstanceOf(Array);
     expect(body.messages).toHaveLength(0);
+  });
+
+  test('GET /api/companion/chat/sessions lists active sessions newest first', async () => {
+    const ctx = makeContext(manager);
+    const older = manager.createSession({ title: 'Older', provider: 'openai', model: 'openai:gpt-5.5' });
+    await settleEvents(2);
+    const newer = manager.createSession({ title: 'Newer', provider: 'anthropic', model: 'anthropic:claude-sonnet' });
+
+    const res = await dispatchCompanionChatRoutes(
+      makeRequest('GET', 'http://localhost/api/companion/chat/sessions?limit=10'),
+      ctx,
+    );
+    expect(res!.status).toBe(200);
+    const body = await res!.json();
+    expect(body.totals).toEqual({ sessions: 2, active: 2, closed: 0 });
+    expect(body.sessions.map((session: { id: string }) => session.id)).toEqual([newer.id, older.id]);
+  });
+
+  test('GET /api/companion/chat/sessions excludes closed sessions unless requested', async () => {
+    const ctx = makeContext(manager);
+    const session = manager.createSession({ provider: 'openai', model: 'openai:gpt-5.5' });
+    manager.closeSession(session.id);
+
+    const activeOnly = await dispatchCompanionChatRoutes(
+      makeRequest('GET', 'http://localhost/api/companion/chat/sessions'),
+      ctx,
+    );
+    expect(activeOnly!.status).toBe(200);
+    expect((await activeOnly!.json()).sessions).toHaveLength(0);
+
+    const includeClosed = await dispatchCompanionChatRoutes(
+      makeRequest('GET', 'http://localhost/api/companion/chat/sessions?includeClosed=true'),
+      ctx,
+    );
+    expect(includeClosed!.status).toBe(200);
+    const body = await includeClosed!.json();
+    expect(body.sessions).toHaveLength(1);
+    expect(body.sessions[0].status).toBe('closed');
   });
 
   test('GET unknown session returns 404', async () => {

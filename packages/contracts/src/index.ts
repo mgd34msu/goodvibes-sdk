@@ -34,6 +34,7 @@ export type {
   CompanionChatMessage,
   CompanionChatMessageRole,
   CompanionChatSession,
+  CompanionChatSessionsListTotals,
   CompanionChatSessionStatus,
   JsonPrimitive,
   JsonValue,

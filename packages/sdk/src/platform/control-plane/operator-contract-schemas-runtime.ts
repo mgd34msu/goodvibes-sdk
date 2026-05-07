@@ -117,6 +117,15 @@ export const COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA = objectSchema({
   messages: arraySchema(COMPANION_CHAT_MESSAGE_SCHEMA),
 }, ['session', 'messages']);
 
+export const COMPANION_CHAT_SESSIONS_LIST_SCHEMA = objectSchema({
+  sessions: arraySchema(COMPANION_CHAT_SESSION_SCHEMA),
+  totals: objectSchema({
+    sessions: NUMBER_SCHEMA,
+    active: NUMBER_SCHEMA,
+    closed: NUMBER_SCHEMA,
+  }, ['sessions', 'active', 'closed']),
+}, ['sessions', 'totals']);
+
 export const COMPANION_CHAT_MESSAGES_LIST_SCHEMA = objectSchema({
   sessionId: STRING_SCHEMA,
   messages: arraySchema(COMPANION_CHAT_MESSAGE_SCHEMA),

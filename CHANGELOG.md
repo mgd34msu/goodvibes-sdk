@@ -8,6 +8,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.9] - 2026-05-07
+
+### Added
+- Added first-class companion-chat session listing and session route updates to
+  `@pellux/goodvibes-sdk/browser/knowledge` via `sdk.chat.sessions.list()` and
+  `sdk.chat.sessions.update(...)`.
+- Added the typed `companion.chat.sessions.list` operator method and
+  `GET /api/companion/chat/sessions` daemon route.
+
+### Fixed
+- Normalized OpenAI subscription-backed companion-chat model routing so both
+  the catalog provider (`openai`) and runtime provider implementation
+  (`openai-subscriber`) resolve `openai:*` registry keys safely.
+- Returned the full stored companion-chat session from
+  `companion.chat.sessions.create`, allowing browser clients to verify the
+  persisted provider/model route immediately after create.
+
+---
+
 ## [0.33.8] - 2026-05-07
 
 ### Added

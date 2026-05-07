@@ -22,6 +22,7 @@ export interface ProviderRegistrar {
 }
 
 export const CATALOG_PROVIDER_NAME_ALIASES: Record<string, string> = {
+  'openai-subscriber': 'openai',
   inception: 'inceptionlabs',
   copilot: 'github-copilot',
   'azure-openai': 'microsoft-foundry',

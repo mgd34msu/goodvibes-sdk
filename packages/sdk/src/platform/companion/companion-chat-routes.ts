@@ -19,6 +19,7 @@
 
 import type {
   CreateCompanionChatSessionInput,
+  ListCompanionChatSessionsInput,
   PostCompanionChatMessageInput,
   UpdateCompanionChatSessionInput,
 } from './companion-chat-types.js';
@@ -42,6 +43,11 @@ export async function dispatchCompanionChatRoutes(
   // POST /api/companion/chat/sessions
   if (pathname === '/api/companion/chat/sessions' && req.method === 'POST') {
     return handleCreateSession(req, context);
+  }
+
+  // GET /api/companion/chat/sessions
+  if (pathname === '/api/companion/chat/sessions' && req.method === 'GET') {
+    return handleListSessions(url, context);
   }
 
   const sessionMatch = pathname.match(
@@ -130,9 +136,37 @@ async function handleCreateSession(
 
   const session = context.chatManager.createSession(input);
   return Response.json(
-    { sessionId: session.id, createdAt: session.createdAt },
+    { sessionId: session.id, createdAt: session.createdAt, session },
     { status: 201 },
   );
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/companion/chat/sessions
+// ---------------------------------------------------------------------------
+
+function readBooleanQuery(url: URL, key: string): boolean | undefined {
+  const value = url.searchParams.get(key);
+  if (value === null) return undefined;
+  return value === '1' || value.toLowerCase() === 'true';
+}
+
+function readLimitQuery(url: URL): number | undefined {
+  const value = url.searchParams.get('limit');
+  if (value === null || value.trim() === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function handleListSessions(
+  url: URL,
+  context: CompanionChatRouteContext,
+): Response {
+  const input: ListCompanionChatSessionsInput = {
+    includeClosed: readBooleanQuery(url, 'includeClosed'),
+    limit: readLimitQuery(url),
+  };
+  return Response.json(context.chatManager.listSessions(input));
 }
 
 // ---------------------------------------------------------------------------

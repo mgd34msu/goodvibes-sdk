@@ -84,6 +84,7 @@ export type {
   CompanionChatMessage,
   CompanionChatMessageRole,
   CompanionChatSession,
+  CompanionChatSessionsListTotals,
   CompanionChatSessionStatus,
   OperatorEventPayload,
   OperatorEventPayloadMap,

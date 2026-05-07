@@ -13,6 +13,8 @@ export type {
   CompanionChatTurnErrorEvent,
   CreateCompanionChatSessionInput,
   CreateCompanionChatSessionOutput,
+  ListCompanionChatSessionsInput,
+  ListCompanionChatSessionsOutput,
   UpdateCompanionChatSessionInput,
   UpdateCompanionChatSessionOutput,
   PostCompanionChatMessageInput,

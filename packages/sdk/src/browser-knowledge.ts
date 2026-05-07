@@ -68,6 +68,8 @@ const KNOWLEDGE_BROWSER_ROUTES = {
   'companion.chat.messages.list': { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/messages' },
   'companion.chat.sessions.create': { method: 'POST', path: '/api/companion/chat/sessions' },
   'companion.chat.sessions.get': { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}' },
+  'companion.chat.sessions.list': { method: 'GET', path: '/api/companion/chat/sessions' },
+  'companion.chat.sessions.update': { method: 'PATCH', path: '/api/companion/chat/sessions/{sessionId}' },
 } as const satisfies Partial<Record<OperatorTypedMethodId, BrowserScopedRouteDefinition>>;
 
 const KNOWLEDGE_BROWSER_DOMAINS = [
@@ -96,6 +98,11 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
     readonly sessions: {
       create(input?: OperatorMethodInput<'companion.chat.sessions.create'>): Promise<OperatorMethodOutput<'companion.chat.sessions.create'>>;
       get(sessionId: string): Promise<OperatorMethodOutput<'companion.chat.sessions.get'>>;
+      list(input?: OperatorMethodInput<'companion.chat.sessions.list'>): Promise<OperatorMethodOutput<'companion.chat.sessions.list'>>;
+      update(
+        sessionId: string,
+        input: Omit<OperatorMethodInput<'companion.chat.sessions.update'>, 'sessionId'>,
+      ): Promise<OperatorMethodOutput<'companion.chat.sessions.update'>>;
     };
     readonly messages: {
       create(
@@ -136,6 +143,8 @@ export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {})
       sessions: {
         create: (input) => invoke('companion.chat.sessions.create', input),
         get: (id) => invoke('companion.chat.sessions.get', { sessionId: id }),
+        list: (input) => invoke('companion.chat.sessions.list', input),
+        update: (id, input) => invoke('companion.chat.sessions.update', { sessionId: id, ...input }),
       },
       messages: {
         create: (id, input) => invoke('companion.chat.messages.create', { sessionId: id, ...input }),

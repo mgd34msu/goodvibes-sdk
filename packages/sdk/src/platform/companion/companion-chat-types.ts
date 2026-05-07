@@ -55,6 +55,11 @@ export interface CreateCompanionChatSessionInput {
   readonly systemPrompt?: string | undefined;
 }
 
+export interface ListCompanionChatSessionsInput {
+  readonly includeClosed?: boolean | undefined;
+  readonly limit?: number | undefined;
+}
+
 export interface UpdateCompanionChatSessionInput {
   readonly title?: string | undefined;
   readonly model?: string | undefined;
@@ -65,6 +70,16 @@ export interface UpdateCompanionChatSessionInput {
 export interface CreateCompanionChatSessionOutput {
   readonly sessionId: string;
   readonly createdAt: number;
+  readonly session: CompanionChatSession;
+}
+
+export interface ListCompanionChatSessionsOutput {
+  readonly sessions: readonly CompanionChatSession[];
+  readonly totals: {
+    readonly sessions: number;
+    readonly active: number;
+    readonly closed: number;
+  };
 }
 
 export interface UpdateCompanionChatSessionOutput {

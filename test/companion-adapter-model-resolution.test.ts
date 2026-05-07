@@ -7,6 +7,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import { createCompanionProviderAdapter } from '../packages/sdk/src/platform/daemon/facade-composition.js';
+import { CATALOG_PROVIDER_NAME_ALIASES } from '../packages/sdk/src/platform/providers/builtin-registry.js';
+import { findModelDefinition, findModelDefinitionForProvider } from '../packages/sdk/src/platform/providers/registry-models.js';
 import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
 import type { ModelDefinition } from '../packages/sdk/src/platform/providers/registry-types.js';
 import type { LLMProvider, ChatRequest, ChatResponse } from '../packages/sdk/src/platform/providers/interface.js';
@@ -46,6 +48,13 @@ function makeModelDef(id: string, provider: string): ModelDefinition {
   };
 }
 
+function makeModelDefWithRegistryKey(id: string, provider: string, registryKey: string): ModelDefinition {
+  return {
+    ...makeModelDef(id, provider),
+    registryKey,
+  };
+}
+
 /**
  * Minimal ProviderRegistry implementation that knows about a single model.
  */
@@ -74,8 +83,8 @@ function makeMultiModelRegistry(
   return {
     getForModel(modelId: string, provider?: string): LLMProvider {
       const def = provider
-        ? modelDefs.find((model) => (model.registryKey === modelId || model.id === modelId) && model.provider === provider)
-        : modelDefs.find((model) => model.registryKey === modelId);
+        ? findModelDefinitionForProvider(modelId, provider, modelDefs, CATALOG_PROVIDER_NAME_ALIASES)
+        : findModelDefinition(modelId, modelDefs);
       const resolvedProvider = def?.provider ?? provider;
       const selectedProvider = resolvedProvider ? providers[resolvedProvider] : undefined;
       if (!selectedProvider) throw new Error('provider not found');
@@ -179,6 +188,69 @@ describe('createCompanionProviderAdapter — model id resolution', () => {
 
     expect(azureProvider.recordedModel).toBe('gpt-4o');
     expect(openaiProvider.recordedModel).toBeNull();
+  });
+
+  test('openai-subscriber provider route resolves through the openai catalog model', async () => {
+    const openaiModel = makeModelDef('gpt-5.5', 'openai');
+    const subscriberProvider = makeRecordingProvider('openai-subscriber');
+    const registry = makeMultiModelRegistry(
+      [openaiModel],
+      { openai: subscriberProvider },
+    );
+
+    const adapter = createCompanionProviderAdapter(registry);
+    const stream = adapter.chatStream(
+      [{ role: 'user', content: 'hello' }],
+      { provider: 'openai-subscriber', model: 'openai:gpt-5.5' },
+    );
+
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+
+    expect(subscriberProvider.recordedModel).toBe('gpt-5.5');
+    expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
+  });
+
+  test('openai-subscriber provider route also accepts provider-local model id', async () => {
+    const openaiModel = makeModelDef('gpt-5.5', 'openai');
+    const subscriberProvider = makeRecordingProvider('openai-subscriber');
+    const registry = makeMultiModelRegistry(
+      [openaiModel],
+      { openai: subscriberProvider },
+    );
+
+    const adapter = createCompanionProviderAdapter(registry);
+    const stream = adapter.chatStream(
+      [{ role: 'user', content: 'hello' }],
+      { provider: 'openai-subscriber', model: 'gpt-5.5' },
+    );
+
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+
+    expect(subscriberProvider.recordedModel).toBe('gpt-5.5');
+    expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
+  });
+
+  test('openai catalog route resolves subscription-backed model definitions', async () => {
+    const openaiSubscriberModel = makeModelDefWithRegistryKey('gpt-5.5', 'openai-subscriber', 'openai:gpt-5.5');
+    const subscriberProvider = makeRecordingProvider('openai-subscriber');
+    const registry = makeMultiModelRegistry(
+      [openaiSubscriberModel],
+      { 'openai-subscriber': subscriberProvider },
+    );
+
+    const adapter = createCompanionProviderAdapter(registry);
+    const stream = adapter.chatStream(
+      [{ role: 'user', content: 'hello' }],
+      { provider: 'openai', model: 'openai:gpt-5.5' },
+    );
+
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+
+    expect(subscriberProvider.recordedModel).toBe('gpt-5.5');
+    expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
   });
 
   test('no options.model selects the current provider-qualified registry key', async () => {
