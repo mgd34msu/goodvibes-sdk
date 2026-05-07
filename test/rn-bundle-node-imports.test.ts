@@ -27,6 +27,8 @@ const COMPANION_ENTRIES = [
   'react-native.js',
   'expo.js',
   'browser.js',
+  'browser-homeassistant.js',
+  'browser-knowledge.js',
   'web.js',
   'workers.js',
   // The /auth subpath is also consumed by RN/browser consumers for token helpers.

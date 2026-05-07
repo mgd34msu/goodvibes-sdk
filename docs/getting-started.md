@@ -213,8 +213,10 @@ See [Observability](./observability.md) for the `SDKObserver` interface and avai
 - `@pellux/goodvibes-sdk/daemon` — Bun server hosts embedding daemon routes.
 - `@pellux/goodvibes-sdk/react-native` — React Native (Hermes) companion apps.
 - `@pellux/goodvibes-sdk/expo` — Expo companion defaults and Expo secure token stores.
-- `@pellux/goodvibes-sdk/browser` — browser and web apps (canonical browser entrypoint).
-- `@pellux/goodvibes-sdk/web` — browser + service-worker defaults; use this when targeting web UI hosts that need service-worker registration. Prefer `/browser` for vanilla browser apps. See [Web UI integration](./web-ui-integration.md).
+- `@pellux/goodvibes-sdk/browser` — browser apps that need the full operator contract.
+- `@pellux/goodvibes-sdk/browser/knowledge` — base knowledge/wiki WebUI apps.
+- `@pellux/goodvibes-sdk/browser/homeassistant` — Home Assistant browser panels.
+- `@pellux/goodvibes-sdk/web` — full browser + service-worker defaults for apps that need the complete operator contract. See [Web UI integration](./web-ui-integration.md).
 - `@pellux/goodvibes-sdk/operator` — operator/control-plane client only.
 - `@pellux/goodvibes-sdk/peer` — peer/distributed-runtime client only.
 - `@pellux/goodvibes-sdk/auth` — token storage helpers and auth flows.

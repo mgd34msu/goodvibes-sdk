@@ -30,6 +30,8 @@ export const GOODVIBES_CLIENT_SAFE_ENTRYPOINTS = [
   '@pellux/goodvibes-sdk',
   '@pellux/goodvibes-sdk/auth',
   '@pellux/goodvibes-sdk/browser',
+  '@pellux/goodvibes-sdk/browser/homeassistant',
+  '@pellux/goodvibes-sdk/browser/knowledge',
   '@pellux/goodvibes-sdk/client-auth',
   '@pellux/goodvibes-sdk/contracts',
   '@pellux/goodvibes-sdk/errors',

@@ -4,7 +4,12 @@ This is the **companion surface** for browser runtimes. See [Runtime Surfaces](.
 
 Browser apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
 
-Use `@pellux/goodvibes-sdk/browser` for browser and web UI work.
+Use `@pellux/goodvibes-sdk/browser` when a browser app needs the complete
+operator route contract. Use scoped browser entrypoints when an app owns one
+extension surface:
+
+- `@pellux/goodvibes-sdk/browser/knowledge` for the base knowledge/wiki WebUI.
+- `@pellux/goodvibes-sdk/browser/homeassistant` for Home Assistant panels.
 
 ```ts
 import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
@@ -12,6 +17,19 @@ import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
 const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
 });
+```
+
+Scoped entrypoints expose the same auth/token options and shared session routes
+without loading unrelated route metadata:
+
+```ts
+import { createBrowserKnowledgeSdk } from '@pellux/goodvibes-sdk/browser/knowledge';
+
+const sdk = createBrowserKnowledgeSdk({
+  baseUrl: 'https://goodvibes.example.com',
+});
+
+await sdk.knowledge.status();
 ```
 
 ## Auth
@@ -92,7 +110,7 @@ try {
 `SDKObserver` is the right mechanism for dev-time logging in browser consoles. `createConsoleObserver` outputs structured events to `console.debug`, making it easy to trace SDK activity during development. See [Observability](./observability.md) for the full observer API.
 
 ```ts
-import { createConsoleObserver } from '@pellux/goodvibes-sdk';
+import { createConsoleObserver } from '@pellux/goodvibes-sdk/observer';
 
 const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

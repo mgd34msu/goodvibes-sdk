@@ -12,6 +12,8 @@ describe('contracts portability', () => {
       'packages/peer-sdk/dist/index.js',
       'packages/sdk/dist/index.js',
       'packages/sdk/dist/browser.js',
+      'packages/sdk/dist/browser-homeassistant.js',
+      'packages/sdk/dist/browser-knowledge.js',
       'packages/sdk/dist/react-native.js',
       'packages/transport-core/dist/index.js',
       'packages/transport-http/dist/index.js',

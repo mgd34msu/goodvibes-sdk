@@ -12,6 +12,8 @@ const runtimeNeutralEntries = [
   'packages/peer-sdk/dist/index.js',
   'packages/sdk/dist/index.js',
   'packages/sdk/dist/browser.js',
+  'packages/sdk/dist/browser-homeassistant.js',
+  'packages/sdk/dist/browser-knowledge.js',
   'packages/sdk/dist/react-native.js',
   'packages/sdk/dist/expo.js',
   // /auth subpath is used by RN consumers for token helpers — must be node:-free

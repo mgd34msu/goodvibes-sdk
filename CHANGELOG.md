@@ -8,6 +8,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.6] - 2026-05-07
+
+### Added
+- Added scoped browser SDK entrypoints for extension-specific browser apps:
+  `@pellux/goodvibes-sdk/browser/knowledge` exposes the base knowledge/wiki
+  browser surface without Home Assistant Home Graph route metadata, and
+  `@pellux/goodvibes-sdk/browser/homeassistant` exposes the Home Assistant Home
+  Graph browser surface without the base knowledge/wiki route table.
+- Added regression coverage that scoped browser bundles reject out-of-scope
+  operator methods and do not include unrelated route metadata.
+
+### Fixed
+- Fixed scoped browser SSE cleanup so a subscription removed before the stream
+  connection resolves cannot leave an orphaned stream open.
+
+---
+
 ## [0.33.5] - 2026-05-07
 
 ### Fixed
