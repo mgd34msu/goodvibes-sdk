@@ -4,14 +4,17 @@ This is the **companion surface** for web UI applications (browser runtime). See
 
 Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
 
-Use `@pellux/goodvibes-sdk/browser` for web UI applications. It exposes the
-companion-safe browser runtime surface with web UI defaults.
-(`@pellux/goodvibes-sdk/web` is an equivalent alias — both resolve to the same surface.)
+Use the narrowest browser entrypoint that matches the app. A normal GoodVibes
+WebUI that presents the base knowledge/wiki system should use
+`@pellux/goodvibes-sdk/browser/knowledge`; it contains base knowledge routes,
+shared session/auth/provider routes, and realtime domains without loading Home
+Assistant Home Graph route metadata. Use `@pellux/goodvibes-sdk/browser` only
+when the app intentionally needs the complete operator route contract.
 
 ```ts
-import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
+import { createBrowserKnowledgeSdk } from '@pellux/goodvibes-sdk/browser/knowledge';
 
-const sdk = createBrowserGoodVibesSdk({
+const sdk = createBrowserKnowledgeSdk({
   baseUrl: 'https://goodvibes.example.com',
 });
 ```
@@ -19,16 +22,21 @@ const sdk = createBrowserGoodVibesSdk({
 ## Recommended model
 
 For a browser-based web UI:
-- use the web entrypoint
+- use the narrowest scoped browser entrypoint
 - prefer same-origin cookie-backed auth when hosting the UI with the daemon
 - use `sdk.realtime.viaSse()` for dashboards and live status panes
-- use `sdk.operator.telemetry.*` for history, filters, and OTLP export views
-- use `sdk.operator.control.snapshot()` and specific list endpoints for initial page state
+- use `sdk.knowledge.*` or `sdk.operator.invoke(...)` for the base knowledge/wiki methods exposed by the scoped entrypoint
+- use `sdk.operator.invoke('control.snapshot', {})` for shared control-plane state
 - treat realtime as live update flow, not as the only source of truth
 
-## When to use the browser entrypoint directly
+## Choosing browser entrypoints
 
-`@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web` are equivalent surfaces. `./browser` is the canonical browser entrypoint for new projects; `./web` is a valid alternative for service-worker scenarios or when the web-UI mental model is preferred.
+`@pellux/goodvibes-sdk/browser/knowledge` is the default for the base GoodVibes
+WebUI. `@pellux/goodvibes-sdk/browser/homeassistant` is for Home Assistant
+panels and includes Home Graph routes without pulling the base knowledge/wiki
+route table. `@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web`
+remain full all-method browser clients for applications that need the entire
+operator contract.
 
 See [public-surface.md](./public-surface.md) for the full entry-point reference.
 
@@ -47,7 +55,7 @@ All SDK errors extend `GoodVibesSdkError`. See [Error Kinds](./error-kinds.md) f
 import { GoodVibesSdkError } from '@pellux/goodvibes-sdk/errors';
 
 try {
-  await sdk.operator.control.snapshot();
+  await sdk.operator.invoke('control.snapshot', {});
 } catch (err) {
   if (err instanceof GoodVibesSdkError) {
     switch (err.kind) {
@@ -72,12 +80,15 @@ try {
 
 ## Observability
 
-`SDKObserver` and `createConsoleObserver` work from web UI contexts exactly like from the full surface. They are imported from `@pellux/goodvibes-sdk` root, which is companion-safe. See [Observability](./observability.md) for the full observer API.
+`SDKObserver` and `createConsoleObserver` work from web UI contexts exactly like
+from the full surface. Import observer helpers from
+`@pellux/goodvibes-sdk/observer` so scoped browser bundles stay narrow. See
+[Observability](./observability.md) for the full observer API.
 
 ```ts
-import { createConsoleObserver } from '@pellux/goodvibes-sdk';
+import { createConsoleObserver } from '@pellux/goodvibes-sdk/observer';
 
-const sdk = createBrowserGoodVibesSdk({
+const sdk = createBrowserKnowledgeSdk({
   baseUrl: 'https://goodvibes.example.com',
   observer: createConsoleObserver(),
 });

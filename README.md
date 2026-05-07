@@ -126,7 +126,9 @@ export default createGoodVibesCloudflareWorker();
 | `@pellux/goodvibes-sdk/contracts` | Runtime-neutral contract artifacts, schemas, method IDs, and types |
 | `@pellux/goodvibes-sdk/contracts/node` | Filesystem helpers for contract JSON artifacts |
 | `@pellux/goodvibes-sdk/auth` | Auth client, token stores, OAuth helpers, mobile secure stores |
-| `@pellux/goodvibes-sdk/browser` | Browser client factory with browser defaults |
+| `@pellux/goodvibes-sdk/browser` | Full browser client factory with browser defaults and the complete operator route contract |
+| `@pellux/goodvibes-sdk/browser/knowledge` | Scoped browser client for the base knowledge/wiki system plus shared sessions/auth/provider routes |
+| `@pellux/goodvibes-sdk/browser/homeassistant` | Scoped browser client for the Home Assistant Home Graph extension plus shared sessions/auth/provider routes |
 | `@pellux/goodvibes-sdk/web` | Web UI client factory with browser runtime defaults |
 | `@pellux/goodvibes-sdk/react-native` | React Native client factory and mobile secure stores |
 | `@pellux/goodvibes-sdk/expo` | Expo client factory with Expo token store exports |

@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "0.33.5",
+  "version": "0.33.6",
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "keywords": [
     "goodvibes",
@@ -33,6 +33,14 @@
     "./browser": {
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.js"
+    },
+    "./browser/homeassistant": {
+      "types": "./dist/browser-homeassistant.d.ts",
+      "import": "./dist/browser-homeassistant.js"
+    },
+    "./browser/knowledge": {
+      "types": "./dist/browser-knowledge.d.ts",
+      "import": "./dist/browser-knowledge.js"
     },
     "./client-auth": {
       "types": "./dist/client-auth/index.d.ts",

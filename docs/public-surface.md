@@ -149,7 +149,24 @@ SSE/WebSocket realtime transport implementation.
 
 **Status:** stable
 
-Browser-optimized SDK entry. Browser-safe entry with browser-appropriate reconnect/retry defaults.
+Browser-optimized full SDK entry. Browser-safe entry with browser-appropriate
+reconnect/retry defaults and the complete operator route contract.
+
+### `./browser/knowledge` — `@pellux/goodvibes-sdk/browser/knowledge`
+
+**Status:** stable
+
+Scoped browser SDK entry for the base knowledge/wiki system. It includes base
+`knowledge.*` routes plus shared auth, provider, session, account, control, and
+SSE helpers without loading Home Assistant Home Graph route metadata.
+
+### `./browser/homeassistant` — `@pellux/goodvibes-sdk/browser/homeassistant`
+
+**Status:** stable
+
+Scoped browser SDK entry for Home Assistant panels. It includes
+`homeassistant.homeGraph.*` routes plus shared auth, provider, session, account,
+control, and SSE helpers without loading the base knowledge/wiki route table.
 
 ### `./web` — `@pellux/goodvibes-sdk/web`
 

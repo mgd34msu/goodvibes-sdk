@@ -32,6 +32,8 @@ Entry points:
 - `@pellux/goodvibes-sdk/peer`
 - `@pellux/goodvibes-sdk/contracts`
 - `@pellux/goodvibes-sdk/browser`
+- `@pellux/goodvibes-sdk/browser/knowledge`
+- `@pellux/goodvibes-sdk/browser/homeassistant`
 - `@pellux/goodvibes-sdk/web`
 - `@pellux/goodvibes-sdk/workers`
 - `@pellux/goodvibes-sdk/react-native`

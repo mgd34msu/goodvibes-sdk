@@ -17,8 +17,10 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 | Bun server host (daemon routes) | `@pellux/goodvibes-sdk/daemon` | `bun add @pellux/goodvibes-sdk` | [Daemon embedding](./daemon-embedding.md) |
 | React Native app (Hermes) | `@pellux/goodvibes-sdk/react-native` | `npm install @pellux/goodvibes-sdk` | [React Native integration](./react-native-integration.md) |
 | Expo app | `@pellux/goodvibes-sdk/expo` | `npm install @pellux/goodvibes-sdk` | [Expo integration](./expo-integration.md) |
-| Browser SPA | `@pellux/goodvibes-sdk/browser` | `npm install @pellux/goodvibes-sdk` | [Browser integration](./browser-integration.md) |
-| Web app / web UI | `@pellux/goodvibes-sdk/web` | `npm install @pellux/goodvibes-sdk` | [Web UI integration](./web-ui-integration.md) |
+| Browser SPA needing all operator methods | `@pellux/goodvibes-sdk/browser` | `npm install @pellux/goodvibes-sdk` | [Browser integration](./browser-integration.md) |
+| Base knowledge/wiki WebUI | `@pellux/goodvibes-sdk/browser/knowledge` | `npm install @pellux/goodvibes-sdk` | [Web UI integration](./web-ui-integration.md) |
+| Home Assistant panel | `@pellux/goodvibes-sdk/browser/homeassistant` | `npm install @pellux/goodvibes-sdk` | [Browser integration](./browser-integration.md) |
+| Web app needing the full operator contract | `@pellux/goodvibes-sdk/web` | `npm install @pellux/goodvibes-sdk` | [Web UI integration](./web-ui-integration.md) |
 | Cloudflare Worker batch bridge and provisioning routes | `@pellux/goodvibes-sdk/workers` plus daemon `/api/cloudflare/*` | `npm install @pellux/goodvibes-sdk` | [Daemon batch processing](./daemon-batch-processing.md) |
 | iOS native | JSON contracts via `/contracts` | N/A | [iOS integration](./ios-integration.md) |
 | Android native | JSON contracts via `/contracts` | N/A | [Android integration](./android-integration.md) |
@@ -59,8 +61,10 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 |---|---|
 | `@pellux/goodvibes-sdk/react-native` | React Native (Hermes) defaults |
 | `@pellux/goodvibes-sdk/expo` | Expo companion defaults and Expo secure token stores |
-| `@pellux/goodvibes-sdk/browser` | Browser defaults |
-| `@pellux/goodvibes-sdk/web` | Web UI companion defaults |
+| `@pellux/goodvibes-sdk/browser` | Full browser defaults and complete operator contract |
+| `@pellux/goodvibes-sdk/browser/knowledge` | Scoped base knowledge/wiki browser client |
+| `@pellux/goodvibes-sdk/browser/homeassistant` | Scoped Home Assistant Home Graph browser client |
+| `@pellux/goodvibes-sdk/web` | Full web UI companion defaults |
 | `@pellux/goodvibes-sdk/workers` | Manual Cloudflare Worker bridge for optional daemon batch queue/tick integration; SDK-owned provisioning is done through daemon `/api/cloudflare/*` routes |
 | `@pellux/goodvibes-sdk/auth` | Token storage and auth flows |
 | `@pellux/goodvibes-sdk/client-auth` | Low-level auth primitives: `AutoRefreshCoordinator`, platform-specific token stores, and auto-refresh options. Use `@pellux/goodvibes-sdk/auth` for most use cases. |

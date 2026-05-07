@@ -49,6 +49,8 @@ Client-safe surfaces:
 
 - `@pellux/goodvibes-sdk/auth`
 - `@pellux/goodvibes-sdk/browser`
+- `@pellux/goodvibes-sdk/browser/knowledge`
+- `@pellux/goodvibes-sdk/browser/homeassistant`
 - `@pellux/goodvibes-sdk/client-auth`
 - `@pellux/goodvibes-sdk/events`
 - `@pellux/goodvibes-sdk/events/<domain>` for the explicit public event domains documented in [Public Surface](./public-surface.md)

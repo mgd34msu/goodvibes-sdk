@@ -12,6 +12,14 @@
     "gzip_bytes": 1102,
     "rationale": "companion browser surface with localStorage token store; measured 918 B gzip @ commit 4e5a5e2; headroom max(ceil(918*1.2)=1102, 918+50=968) → 1102 (1.2x dominates by 134 B)"
   },
+  "./browser/homeassistant": {
+    "gzip_bytes": 909,
+    "rationale": "scoped Home Assistant browser surface; measured 757 B gzip @ v0.33.6 release verification; headroom max(ceil(757*1.2)=909, 757+50=807) -> 909 (1.2x dominates)"
+  },
+  "./browser/knowledge": {
+    "gzip_bytes": 1130,
+    "rationale": "scoped base knowledge/wiki browser surface; measured 941 B gzip @ v0.33.6 release verification; headroom max(ceil(941*1.2)=1130, 941+50=991) -> 1130 (1.2x dominates)"
+  },
   "./client-auth": {
     "gzip_bytes": 213,
     "rationale": "public facade; measured 163 B gzip @ commit 4e5a5e2; headroom max(ceil(163*1.2)=196, 163+50=213) → 213 (+50 B floor dominates by 17 B)"
