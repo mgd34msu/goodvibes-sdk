@@ -1,5 +1,7 @@
 export type {
   CompanionChatMessage,
+  CompanionChatMessageAttachment,
+  CompanionChatMessageAttachmentInput,
   CompanionChatSession,
   CompanionChatSessionKind,
   CompanionChatSessionStatus,
@@ -27,6 +29,7 @@ export type {
   CompanionLLMProvider,
   CompanionChatEventPublisher,
   CompanionChatManagerConfig,
+  CompanionChatArtifactStore,
   CompanionProviderMessage,
   CompanionProviderChunk,
 } from './companion-chat-manager.js';

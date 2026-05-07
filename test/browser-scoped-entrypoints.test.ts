@@ -148,6 +148,17 @@ describe('scoped browser SDK entrypoints', () => {
       model: 'openai:gpt-5.5',
     });
     expect(calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions/chat-1');
+    await sdk.artifacts.create({
+      filename: 'note.txt',
+      mimeType: 'text/plain',
+      dataBase64: 'aGVsbG8=',
+    });
+    expect(calls.at(-1)).toBe('https://daemon.example.test/api/artifacts');
+    await sdk.chat.messages.create('chat-1', {
+      body: 'See attached',
+      attachments: [{ artifactId: 'artifact-1', label: 'note.txt' }],
+    });
+    expect(calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions/chat-1/messages');
     const events: unknown[] = [];
     const close = await sdk.chat.events.stream('chat-1', {
       onEvent: (_eventName, payload) => {

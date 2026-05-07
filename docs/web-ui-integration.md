@@ -82,6 +82,39 @@ Use `sdk.chat.sessions.list()` for the chat sidebar and
 the model for an existing companion-chat session. Do not send provider/model on
 `messages.create`; message creation uses the session's stored route.
 
+### Chat attachments
+
+Companion chat attachments are artifact-backed. Upload the file to the daemon
+artifact store first, then reference the returned artifact id when creating the
+chat message. Do not encode files in message metadata and do not create local
+attachment-only state in the WebUI.
+
+```ts
+const uploaded = await sdk.artifacts.create({
+  filename: file.name,
+  mimeType: file.type || 'application/octet-stream',
+  dataBase64: await fileToBase64(file),
+  metadata: { surface: 'webui' },
+});
+
+await sdk.chat.messages.create(created.sessionId, {
+  body: 'Use this file in your answer.',
+  attachments: [
+    {
+      artifactId: uploaded.artifact.id,
+      label: file.name,
+    },
+  ],
+});
+```
+
+`messages.create` accepts text-only, attachment-only, and text-plus-attachment
+messages. Message history and `companion-chat.turn.started` events include the
+resolved attachment descriptors. Small text artifacts are inlined into the
+provider prompt, supported image artifacts are passed as multimodal content, and
+other artifact types remain durable references visible to the model as an
+attachment summary.
+
 ## Error handling
 
 All SDK errors extend `GoodVibesSdkError`. See [Error Kinds](./error-kinds.md) for the full taxonomy.

@@ -269,6 +269,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     ),
     hookDispatcher: runtimeServices.hookDispatcher,
     runtimeBus,
+    artifactStore: runtimeServices.artifactStore,
   });
   runtimeServices.approvalBroker.setPublisher(controlPlaneGateway);
   runtimeServices.sessionBroker.setEventPublisher((event, payload) => {

@@ -8,6 +8,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.10] - 2026-05-07
+
+### Added
+- Added typed companion-chat message attachments. Browser clients can create
+  artifacts through `sdk.artifacts.create(...)` from
+  `@pellux/goodvibes-sdk/browser/knowledge`, then send them with
+  `sdk.chat.messages.create(sessionId, { body, attachments: [...] })`.
+- Persisted companion-chat attachments in message history and included them in
+  per-session turn events so WebUI clients can render attachment state without
+  local-only metadata.
+
+### Fixed
+- Resolved companion-chat attachments through the daemon artifact store before
+  model turns. Small text artifacts are inlined into the provider prompt, image
+  artifacts are forwarded as multimodal content parts, and unsupported files
+  remain visible as durable artifact references instead of fake message
+  metadata.
+
+---
+
 ## [0.33.9] - 2026-05-07
 
 ### Added

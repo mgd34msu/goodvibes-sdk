@@ -1,3 +1,5 @@
+import type { ArtifactDescriptor } from '../artifacts/index.js';
+
 /**
  * conversation-message.ts
  *
@@ -32,6 +34,11 @@ export interface ConversationMessageEnvelope {
   readonly body: string;
   readonly source: MessageSource;
   readonly timestamp: number;
+  /** Artifacts attached to this conversation message. */
+  readonly attachments?: readonly (ArtifactDescriptor & {
+    readonly artifactId: string;
+    readonly label?: string | undefined;
+  })[] | undefined;
   /** Optional metadata for tool info, model id, etc. */
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
 }

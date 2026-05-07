@@ -18,6 +18,7 @@
  */
 
 import type {
+  CompanionChatMessageAttachmentInput,
   CreateCompanionChatSessionInput,
   ListCompanionChatSessionsInput,
   PostCompanionChatMessageInput,
@@ -310,6 +311,46 @@ export function readCompanionChatMessageBody(body: Record<string, unknown>): str
       : '';
 }
 
+function readCompanionChatAttachments(
+  body: Record<string, unknown>,
+): CompanionChatMessageAttachmentInput[] | Response {
+  const raw = body['attachments'];
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) {
+    return Response.json(
+      { error: 'attachments must be an array', code: 'INVALID_INPUT' },
+      { status: 400 },
+    );
+  }
+  const attachments: CompanionChatMessageAttachmentInput[] = [];
+  for (const [index, item] of raw.entries()) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      return Response.json(
+        { error: `attachments[${index}] must be an object`, code: 'INVALID_INPUT' },
+        { status: 400 },
+      );
+    }
+    const record = item as Record<string, unknown>;
+    if (typeof record['artifactId'] !== 'string' || record['artifactId'].trim().length === 0) {
+      return Response.json(
+        { error: `attachments[${index}].artifactId is required`, code: 'INVALID_INPUT' },
+        { status: 400 },
+      );
+    }
+    const attachment: CompanionChatMessageAttachmentInput = {
+      artifactId: record['artifactId'].trim(),
+    };
+    if (typeof record['label'] === 'string' && record['label'].trim()) {
+      (attachment as { label?: string }).label = record['label'].trim();
+    }
+    if (typeof record['metadata'] === 'object' && record['metadata'] !== null && !Array.isArray(record['metadata'])) {
+      (attachment as { metadata?: Record<string, unknown> }).metadata = record['metadata'] as Record<string, unknown>;
+    }
+    attachments.push(attachment);
+  }
+  return attachments;
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/companion/chat/sessions/:sessionId/messages
 // ---------------------------------------------------------------------------
@@ -336,22 +377,27 @@ async function handlePostMessage(
       : typeof body['content'] === 'string'
         ? body['content']
         : '';
+  const attachments = readCompanionChatAttachments(body);
+  if (attachments instanceof Response) return attachments;
   const input: PostCompanionChatMessageInput = {
     content: rawContent,
+    attachments,
     metadata: typeof body['metadata'] === 'object' && body['metadata'] !== null
       ? (body['metadata'] as Record<string, unknown>)
       : undefined,
   };
 
-  if (!input.content.trim()) {
+  if (!input.content.trim() && attachments.length === 0) {
     return Response.json(
-      { error: 'content or body is required and must be a non-empty string', code: 'INVALID_INPUT' },
+      { error: 'content, body, or attachments are required', code: 'INVALID_INPUT' },
       { status: 400 },
     );
   }
 
   try {
-    const messageId = await context.chatManager.postMessage(sessionId, input.content);
+    const messageId = await context.chatManager.postMessage(sessionId, input.content, '', {
+      attachments: input.attachments,
+    });
     return Response.json({ messageId }, { status: 202 });
   } catch (err: unknown) {
     const e = err as { code?: string; status?: number; message?: string };

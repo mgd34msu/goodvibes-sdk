@@ -20172,7 +20172,7 @@ Server-Sent Events stream of turn and agent events scoped to a single companion-
 
 #### `companion.chat.messages.create`
 
-Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided.
+Post a user message to a companion-chat session. Accepts either `body` or `content` in the payload; `body` wins when both are provided. Attachments reference artifacts created through `artifacts.create`.
 
 - Title: `Send Companion Chat Message`
 - Source: `builtin`
@@ -20195,6 +20195,29 @@ Post a user message to a companion-chat session. Accepts either `body` or `conte
     },
     "content": {
       "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifactId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "artifactId"
+        ],
+        "additionalProperties": false
+      }
     },
     "metadata": {
       "type": "object",
@@ -20284,6 +20307,91 @@ Return the message list for a companion-chat session.
           "content": {
             "type": "string"
           },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "artifactId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "number"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "expiresAt": {
+                  "type": "number"
+                },
+                "sourceUri": {
+                  "type": "string"
+                },
+                "acquisitionMode": {
+                  "type": "string"
+                },
+                "fetchMode": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "artifactId",
+                "kind",
+                "mimeType",
+                "sizeBytes",
+                "sha256",
+                "createdAt",
+                "metadata"
+              ],
+              "additionalProperties": true
+            }
+          },
           "createdAt": {
             "type": "number"
           }
@@ -20293,6 +20401,7 @@ Return the message list for a companion-chat session.
           "sessionId",
           "role",
           "content",
+          "attachments",
           "createdAt"
         ],
         "additionalProperties": false
@@ -20650,6 +20759,91 @@ Return a companion-chat session record together with its full message history.
           "content": {
             "type": "string"
           },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "artifactId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "number"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "expiresAt": {
+                  "type": "number"
+                },
+                "sourceUri": {
+                  "type": "string"
+                },
+                "acquisitionMode": {
+                  "type": "string"
+                },
+                "fetchMode": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "artifactId",
+                "kind",
+                "mimeType",
+                "sizeBytes",
+                "sha256",
+                "createdAt",
+                "metadata"
+              ],
+              "additionalProperties": true
+            }
+          },
           "createdAt": {
             "type": "number"
           }
@@ -20659,6 +20853,7 @@ Return a companion-chat session record together with its full message history.
           "sessionId",
           "role",
           "content",
+          "attachments",
           "createdAt"
         ],
         "additionalProperties": false

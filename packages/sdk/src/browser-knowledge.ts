@@ -64,6 +64,9 @@ const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.sources.list': { method: 'GET', path: '/api/knowledge/sources' },
   'knowledge.status': { method: 'GET', path: '/api/knowledge/status' },
   'knowledge.usage.list': { method: 'GET', path: '/api/knowledge/usage' },
+  'artifacts.create': { method: 'POST', path: '/api/artifacts' },
+  'artifacts.get': { method: 'GET', path: '/api/artifacts/{artifactId}' },
+  'artifacts.list': { method: 'GET', path: '/api/artifacts' },
   'companion.chat.messages.create': { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages' },
   'companion.chat.messages.list': { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}/messages' },
   'companion.chat.sessions.create': { method: 'POST', path: '/api/companion/chat/sessions' },
@@ -119,6 +122,11 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
       ): Promise<() => void>;
     };
   };
+  readonly artifacts: {
+    create(input: OperatorMethodInput<'artifacts.create'>): Promise<OperatorMethodOutput<'artifacts.create'>>;
+    get(artifactId: string): Promise<OperatorMethodOutput<'artifacts.get'>>;
+    list(): Promise<OperatorMethodOutput<'artifacts.list'>>;
+  };
 }
 
 export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {}): BrowserKnowledgeSdk {
@@ -154,6 +162,11 @@ export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {})
         stream: (id, handlers, options) =>
           sdk.streams.open('/api/companion/chat/sessions/' + id + '/events', handlers, options),
       },
+    },
+    artifacts: {
+      create: (input) => invoke('artifacts.create', input),
+      get: (artifactId) => invoke('artifacts.get', { artifactId }),
+      list: () => invoke('artifacts.list'),
     },
   };
 }
