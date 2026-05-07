@@ -81,7 +81,7 @@ describe('scoped browser SDK entrypoints', () => {
     await sdk.operator.invoke('companion.chat.sessions.create', {
       title: 'WebUI chat',
       provider: 'openai',
-      model: 'gpt-5.5',
+      model: 'openai:gpt-5.5',
     });
     expect(transport.calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions');
     await expect(
@@ -109,7 +109,26 @@ describe('scoped browser SDK entrypoints', () => {
           },
         }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
       }
-      return jsonResponse({ sessionId: 'chat-1', createdAt: 123 });
+      if (url.endsWith('/sessions')) {
+        return jsonResponse({
+          sessionId: 'chat-1',
+          createdAt: 123,
+          session: {
+            id: 'chat-1',
+            kind: 'companion-chat',
+            title: 'WebUI chat',
+            model: 'openai:gpt-5.5',
+            provider: 'openai',
+            systemPrompt: null,
+            status: 'active',
+            createdAt: 123,
+            updatedAt: 123,
+            closedAt: null,
+            messageCount: 0,
+          },
+        });
+      }
+      return jsonResponse({ ok: true });
     }) as typeof fetch;
     const sdk = createBrowserKnowledgeSdk({
       baseUrl: 'https://daemon.example.test',
@@ -119,9 +138,16 @@ describe('scoped browser SDK entrypoints', () => {
     await sdk.chat.sessions.create({
       title: 'WebUI chat',
       provider: 'openai',
-      model: 'gpt-5.5',
+      model: 'openai:gpt-5.5',
     });
     expect(calls[0]).toBe('https://daemon.example.test/api/companion/chat/sessions');
+    await sdk.chat.sessions.list({ limit: 10 });
+    expect(calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions?limit=10');
+    await sdk.chat.sessions.update('chat-1', {
+      provider: 'openai',
+      model: 'openai:gpt-5.5',
+    });
+    expect(calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions/chat-1');
     const events: unknown[] = [];
     const close = await sdk.chat.events.stream('chat-1', {
       onEvent: (_eventName, payload) => {

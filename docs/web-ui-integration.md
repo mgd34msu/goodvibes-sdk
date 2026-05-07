@@ -26,6 +26,7 @@ For a browser-based web UI:
 - prefer same-origin cookie-backed auth when hosting the UI with the daemon
 - use `sdk.realtime.viaSse()` for dashboards and live status panes
 - use `sdk.knowledge.*` or `sdk.operator.invoke(...)` for the base knowledge/wiki methods exposed by the scoped entrypoint
+- use `sdk.chat.*` for standalone companion chat sessions
 - use `sdk.operator.invoke('control.snapshot', {})` for shared control-plane state
 - treat realtime as live update flow, not as the only source of truth
 
@@ -46,6 +47,40 @@ See [public-surface.md](./public-surface.md) for the full entry-point reference.
 2. Subscribe to runtime events or telemetry streams.
 3. Refresh affected read models when key events arrive.
 4. Keep mutation calls on HTTP even when realtime is enabled.
+
+## Companion Chat
+
+Use `sdk.chat` from `@pellux/goodvibes-sdk/browser/knowledge` for standalone
+browser chat. These sessions are separate from operator task sessions and do
+not call `sessions.followUp`.
+
+```ts
+const created = await sdk.chat.sessions.create({
+  title: 'WebUI chat',
+  provider: 'openai',
+  model: 'openai:gpt-5.5',
+});
+
+await sdk.chat.events.stream(created.sessionId, {
+  onEvent(eventName, payload) {
+    // companion-chat.turn.delta / companion-chat.turn.completed / companion-chat.turn.error
+  },
+});
+
+await sdk.chat.messages.create(created.sessionId, {
+  body: 'Hello',
+});
+```
+
+`model` should be the provider-qualified registry key from the model catalog.
+`provider` should normally be the registry-key prefix. Subscription-backed
+OpenAI routes also accept the runtime provider id `openai-subscriber`; the
+daemon normalizes both forms to the same model definition.
+
+Use `sdk.chat.sessions.list()` for the chat sidebar and
+`sdk.chat.sessions.update(sessionId, { provider, model })` when a user changes
+the model for an existing companion-chat session. Do not send provider/model on
+`messages.create`; message creation uses the session's stored route.
 
 ## Error handling
 

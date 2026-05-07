@@ -155,6 +155,7 @@ All companion-chat routes are registered in the live method catalog. Fetch the c
 | Route | Purpose |
 |-------|---------|
 | `POST /api/companion/chat/sessions` | Create a new remote companion-chat session |
+| `GET /api/companion/chat/sessions` | List companion-chat sessions |
 | `PATCH /api/companion/chat/sessions/:id` | Update session provider/model metadata |
 | `POST /api/companion/chat/sessions/:id/messages` | Send a message to the companion-chat session |
 | `GET /api/companion/chat/sessions/:id/messages` | Fetch the message history for the session |

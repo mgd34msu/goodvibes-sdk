@@ -10,6 +10,7 @@ export type CompanionChatSessionStatus = "active" | "closed";
 export type CompanionChatMessageRole = "assistant" | "user";
 export type CompanionChatSession = { id: string; kind: "companion-chat"; title: string; model: null | string; provider: null | string; systemPrompt: null | string; status: CompanionChatSessionStatus; createdAt: number; updatedAt: number; closedAt: null | number; messageCount: number; };
 export type CompanionChatMessage = { id: string; sessionId: string; role: CompanionChatMessageRole; content: string; createdAt: number; };
+export type CompanionChatSessionsListTotals = { sessions: number; active: number; closed: number; };
 
 export interface OperatorMethodInputMap {
   "accounts.snapshot": {  };
@@ -72,6 +73,7 @@ export interface OperatorMethodInputMap {
   "companion.chat.sessions.create": ({ title?: string; provider?: string; model?: string; systemPrompt?: string; } & { readonly [key: string]: unknown });
   "companion.chat.sessions.delete": { sessionId: string; };
   "companion.chat.sessions.get": { sessionId: string; };
+  "companion.chat.sessions.list": { includeClosed?: boolean; limit?: number; };
   "companion.chat.sessions.update": ({ sessionId: string; title?: string; provider?: string; model?: string; systemPrompt?: null | string; } & { readonly [key: string]: unknown });
   "config.get": {  };
   "config.set": ({ key: string; } & { readonly [key: string]: unknown });
@@ -292,10 +294,11 @@ export interface OperatorMethodOutputMap {
   "channels.tools.surface.list": { tools: readonly ({ id: string; surface: string; name: string; description: string; actionIds: readonly string[]; inputSchema?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); metadata: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); })[]; };
   "companion.chat.events.stream": {  };
   "companion.chat.messages.create": { messageId: string; };
-  "companion.chat.messages.list": { messages: readonly CompanionChatMessage[]; };
-  "companion.chat.sessions.create": { sessionId: string; createdAt: number; };
+  "companion.chat.messages.list": { sessionId: string; messages: readonly CompanionChatMessage[]; };
+  "companion.chat.sessions.create": { sessionId: string; createdAt: number; session: CompanionChatSession; };
   "companion.chat.sessions.delete": { sessionId: string; status: CompanionChatSessionStatus; };
   "companion.chat.sessions.get": { session: CompanionChatSession; messages: readonly CompanionChatMessage[]; };
+  "companion.chat.sessions.list": { sessions: readonly CompanionChatSession[]; totals: CompanionChatSessionsListTotals; };
   "companion.chat.sessions.update": { session: CompanionChatSession; };
   "config.get": ({ danger?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); controlPlane?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); web?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); network?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); service?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); providers?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); ui?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); channels?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); watchers?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); memory?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "config.set": ({ success: boolean; key: string; value?: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string; } & { readonly [key: string]: unknown });

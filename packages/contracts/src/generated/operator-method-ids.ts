@@ -59,6 +59,7 @@ export const OPERATOR_METHOD_IDS = [
   "companion.chat.sessions.create",
   "companion.chat.sessions.delete",
   "companion.chat.sessions.get",
+  "companion.chat.sessions.list",
   "companion.chat.sessions.update",
   "config.get",
   "config.set",

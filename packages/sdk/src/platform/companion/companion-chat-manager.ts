@@ -324,6 +324,30 @@ export class CompanionChatManager {
     return this.sessions.get(sessionId)?.meta ?? null;
   }
 
+  listSessions(input: { readonly includeClosed?: boolean | undefined; readonly limit?: number | undefined } = {}): {
+    readonly sessions: readonly CompanionChatSession[];
+    readonly totals: { readonly sessions: number; readonly active: number; readonly closed: number };
+  } {
+    const all = [...this.sessions.values()].map((session) => session.meta);
+    const active = all.filter((session) => session.status === 'active').length;
+    const closed = all.length - active;
+    const limit = typeof input.limit === 'number' && Number.isFinite(input.limit)
+      ? Math.max(0, Math.floor(input.limit))
+      : 100;
+    const sessions = all
+      .filter((session) => input.includeClosed || session.status !== 'closed')
+      .sort((left, right) => right.updatedAt - left.updatedAt)
+      .slice(0, limit);
+    return {
+      sessions,
+      totals: {
+        sessions: all.length,
+        active,
+        closed,
+      },
+    };
+  }
+
   getMessages(sessionId: string): CompanionChatMessage[] {
     return this.sessions.get(sessionId)?.messages ?? [];
   }

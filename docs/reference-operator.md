@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `263`
+- Methods: `264`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -20355,11 +20355,99 @@ Create a new companion-chat session. Optional `provider` / `model` override the 
     },
     "createdAt": {
       "type": "number"
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "companion-chat"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "systemPrompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "closed"
+          ]
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "closedAt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "messageCount": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "model",
+        "provider",
+        "systemPrompt",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "closedAt",
+        "messageCount"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
     "sessionId",
-    "createdAt"
+    "createdAt",
+    "session"
   ],
   "additionalProperties": false
 }
@@ -20580,6 +20668,162 @@ Return a companion-chat session record together with its full message history.
   "required": [
     "session",
     "messages"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.sessions.list`
+
+List active companion-chat sessions. Pass `includeClosed` to include recently closed sessions.
+
+- Title: `List Companion Chat Sessions`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/companion/chat/sessions`
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "includeClosed": {
+      "type": "boolean"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "companion-chat"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "systemPrompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "closed"
+            ]
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "messageCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "model",
+          "provider",
+          "systemPrompt",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "closedAt",
+          "messageCount"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "sessions": {
+          "type": "number"
+        },
+        "active": {
+          "type": "number"
+        },
+        "closed": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "sessions",
+        "active",
+        "closed"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "sessions",
+    "totals"
   ],
   "additionalProperties": false
 }

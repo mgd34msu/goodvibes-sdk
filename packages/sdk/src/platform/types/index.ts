@@ -44,6 +44,7 @@ export type {
 export type {
   JsonPrimitive,
   JsonValue,
+  CompanionChatSessionsListTotals,
   OperatorEventPayload,
   OperatorEventPayloadMap,
   OperatorMethodInput,

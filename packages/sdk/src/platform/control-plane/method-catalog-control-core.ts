@@ -21,6 +21,7 @@ import {
   APPROVAL_SNAPSHOT_SCHEMA,
   COMPANION_CHAT_MESSAGES_LIST_SCHEMA,
   COMPANION_CHAT_SESSION_SCHEMA,
+  COMPANION_CHAT_SESSIONS_LIST_SCHEMA,
   COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA,
   CONTROL_AUTH_CURRENT_RESPONSE_SCHEMA,
   CONTROL_AUTH_LOGIN_REQUEST_SCHEMA,
@@ -588,7 +589,21 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     outputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       createdAt: NUMBER_SCHEMA,
-    }, ['sessionId', 'createdAt']),
+      session: COMPANION_CHAT_SESSION_SCHEMA,
+    }, ['sessionId', 'createdAt', 'session']),
+  }),
+  methodDescriptor({
+    id: 'companion.chat.sessions.list',
+    title: 'List Companion Chat Sessions',
+    description: 'List active companion-chat sessions. Pass `includeClosed` to include recently closed sessions.',
+    category: 'companion',
+    scopes: ['read:sessions'],
+    http: { method: 'GET', path: '/api/companion/chat/sessions' },
+    inputSchema: objectSchema({
+      includeClosed: BOOLEAN_SCHEMA,
+      limit: NUMBER_SCHEMA,
+    }, []),
+    outputSchema: COMPANION_CHAT_SESSIONS_LIST_SCHEMA,
   }),
   methodDescriptor({
     id: 'companion.chat.sessions.get',

@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.8"
+    "version": "0.33.9"
   },
   "auth": {
     "modes": [
@@ -20329,11 +20329,99 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "createdAt": {
               "type": "number"
+            },
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "companion-chat"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "model": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "provider": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "systemPrompt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "closed"
+                  ]
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "closedAt": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "messageCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "title",
+                "model",
+                "provider",
+                "systemPrompt",
+                "status",
+                "createdAt",
+                "updatedAt",
+                "closedAt",
+                "messageCount"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
             "sessionId",
-            "createdAt"
+            "createdAt",
+            "session"
           ],
           "additionalProperties": false
         },
@@ -20546,6 +20634,158 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "session",
             "messages"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.sessions.list",
+        "title": "List Companion Chat Sessions",
+        "description": "List active companion-chat sessions. Pass `includeClosed` to include recently closed sessions.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/companion/chat/sessions"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "includeClosed": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "companion-chat"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "provider": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "systemPrompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "closed"
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "closedAt": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "messageCount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "model",
+                  "provider",
+                  "systemPrompt",
+                  "status",
+                  "createdAt",
+                  "updatedAt",
+                  "closedAt",
+                  "messageCount"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "totals": {
+              "type": "object",
+              "properties": {
+                "sessions": {
+                  "type": "number"
+                },
+                "active": {
+                  "type": "number"
+                },
+                "closed": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "sessions",
+                "active",
+                "closed"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "sessions",
+            "totals"
           ],
           "additionalProperties": false
         },
@@ -68755,10 +68995,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 263,
-      "typedInputs": 263,
+      "methods": 264,
+      "typedInputs": 264,
       "genericInputs": 0,
-      "typedOutputs": 263,
+      "typedOutputs": 264,
       "genericOutputs": 0
     },
     "eventCoverage": {

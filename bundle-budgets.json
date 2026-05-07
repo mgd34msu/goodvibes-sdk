@@ -17,8 +17,8 @@
     "rationale": "scoped Home Assistant browser surface; measured 757 B gzip @ v0.33.6 release verification; headroom max(ceil(757*1.2)=909, 757+50=807) -> 909 (1.2x dominates)"
   },
   "./browser/knowledge": {
-    "gzip_bytes": 1130,
-    "rationale": "scoped base knowledge/wiki browser surface; measured 941 B gzip @ v0.33.6 release verification; headroom max(ceil(941*1.2)=1130, 941+50=991) -> 1130 (1.2x dominates)"
+    "gzip_bytes": 1396,
+    "rationale": "scoped base knowledge/wiki browser surface plus companion chat helpers; measured 1163 B gzip after adding sessions.list/update @ v0.33.9 candidate; headroom max(ceil(1163*1.2)=1396, 1163+50=1213) -> 1396 (1.2x dominates)"
   },
   "./client-auth": {
     "gzip_bytes": 213,
