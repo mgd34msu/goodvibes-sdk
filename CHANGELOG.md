@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.13] - 2026-05-07
+
+### Fixed
+- Tightened Knowledge/Wiki scoped issue, projection, packet, map, and item reads
+  so stale answer-gap records marked `default` are hidden when their linked
+  source or subject object belongs to an extension knowledge space.
+- Inferred concrete non-default knowledge spaces for new answer gaps and
+  source-linked records when their related source, subject, or linked object is
+  already scoped, preventing future Home Assistant answer gaps from being
+  written into base Knowledge/Wiki by mistake.
+
+---
+
 ## [0.33.12] - 2026-05-07
 
 ### Fixed

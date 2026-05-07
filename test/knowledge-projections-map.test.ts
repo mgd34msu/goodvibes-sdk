@@ -856,6 +856,15 @@ describe('knowledge generated projections and maps', () => {
         tag: 'BRAVIA XBR-55X850B',
       },
     });
+    const haDevice = await store.upsertNode({
+      kind: 'ha_device',
+      slug: 'lg-86nano90una',
+      title: 'LG webOS Smart TV',
+      metadata: knowledgeSpaceMetadata('homeassistant:test', {
+        manufacturer: 'LG',
+        model: '86NANO90UNA',
+      }),
+    });
     const leakedIssue = await store.upsertIssue({
       severity: 'info',
       code: 'knowledge.answer_gap',
@@ -871,6 +880,41 @@ describe('knowledge generated projections and maps', () => {
       metadata: {
         query: 'What features does the TV have?',
       },
+    });
+    const explicitDefaultGap = await store.upsertNode({
+      kind: 'knowledge_gap',
+      slug: 'default-scoped-ha-answer-gap',
+      title: 'What smart TV features does it have?',
+      summary: 'The answer gap was incorrectly written as default while linked to an HA object.',
+      metadata: knowledgeSpaceMetadata('default', {
+        linkedObjectIds: [haDevice.id],
+        subject: 'LG 86NANO90UNA Smart TV Specifications',
+      }),
+    });
+    const explicitDefaultIssue = await store.upsertIssue({
+      id: 'sem-answer-gap-issue-default-linked-ha',
+      severity: 'info',
+      code: 'knowledge.answer_gap',
+      message: 'No knowledge answer available for: What smart TV features does it have?',
+      nodeId: explicitDefaultGap.id,
+      metadata: knowledgeSpaceMetadata('default', {
+        linkedObjectIds: [haDevice.id],
+        subject: 'LG 86NANO90UNA Smart TV Specifications',
+      }),
+    });
+    await store.replaceNodeRecord({
+      ...explicitDefaultGap,
+      metadata: knowledgeSpaceMetadata('default', {
+        linkedObjectIds: [haDevice.id],
+        subject: 'LG 86NANO90UNA Smart TV Specifications',
+      }),
+    });
+    await store.replaceIssueRecord({
+      ...explicitDefaultIssue,
+      metadata: knowledgeSpaceMetadata('default', {
+        linkedObjectIds: [haDevice.id],
+        subject: 'LG 86NANO90UNA Smart TV Specifications',
+      }),
     });
     await store.upsertEdge({
       fromKind: 'source',
@@ -891,9 +935,13 @@ describe('knowledge generated projections and maps', () => {
 
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).toContain(baseNode.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(leakedNode.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(explicitDefaultGap.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(leakedNode.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(explicitDefaultGap.id);
     expect(service.queryIssues({ limit: 100 }).items.map((issue) => issue.id)).not.toContain(leakedIssue.id);
+    expect(service.queryIssues({ limit: 100 }).items.map((issue) => issue.id)).not.toContain(explicitDefaultIssue.id);
     expect(service.queryIssues({ limit: 100, includeAllSpaces: true }).items.map((issue) => issue.id)).toContain(leakedIssue.id);
+    expect(service.queryIssues({ limit: 100, includeAllSpaces: true }).items.map((issue) => issue.id)).toContain(explicitDefaultIssue.id);
 
     const defaultTargets = await projectionService.listTargets(100);
     const defaultPacket = buildKnowledgePacketSync(packetContext(store), 'BRAVIA Home Assistant', [], 10);
@@ -906,10 +954,13 @@ describe('knowledge generated projections and maps', () => {
 
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedNode.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedIssue.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(explicitDefaultIssue.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedNode.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedIssue.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(explicitDefaultGap.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedNode.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedIssue.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(explicitDefaultIssue.id);
 
     const defaultAnswer = await service.ask({
       query: 'What features does the BRAVIA XBR-55X850B have?',

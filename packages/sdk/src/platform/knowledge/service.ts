@@ -95,6 +95,10 @@ import {
 } from './shared.js';
 import { isGeneratedKnowledgeSource } from './generated-projections.js';
 import {
+  knowledgeIssueMatchesScope,
+  knowledgeNodeMatchesScope,
+} from './scope-records.js';
+import {
   isInKnowledgeSpaceScope,
   resolveKnowledgeSpaceScope,
   type KnowledgeSpaceScopeInput,
@@ -247,7 +251,7 @@ export class KnowledgeService {
   }
 
   listSources(limit = 100): KnowledgeSourceRecord[] {
-    return this.store.listSources(limit);
+    return this.querySources({ limit }).items;
   }
 
   querySources(input: {
@@ -293,7 +297,7 @@ export class KnowledgeService {
   }
 
   listNodes(limit = 100): KnowledgeNodeRecord[] {
-    return this.store.listNodes(limit);
+    return this.queryNodes({ limit }).items;
   }
 
   queryNodes(input: {
@@ -309,7 +313,10 @@ export class KnowledgeService {
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
     const items = this.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => {
-      if (!isInKnowledgeSpaceScope(node, input)) return false;
+      if (!knowledgeNodeMatchesScope(node, input, {
+        getSource: (id) => this.store.getSource(id),
+        getNode: (id) => this.store.getNode(id),
+      })) return false;
       if (input.kind && node.kind !== input.kind) return false;
       if (input.status && node.status !== input.status) return false;
       if (queryTokens.length === 0) return true;
@@ -328,7 +335,7 @@ export class KnowledgeService {
   }
 
   listIssues(limit = 100): KnowledgeIssueRecord[] {
-    return this.store.listIssues(limit);
+    return this.queryIssues({ limit }).items;
   }
 
   queryIssues(input: {
@@ -345,7 +352,10 @@ export class KnowledgeService {
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
     const items = this.store.listIssues(Number.MAX_SAFE_INTEGER).filter((issue) => {
-      if (!isInKnowledgeSpaceScope(issue, input)) return false;
+      if (!knowledgeIssueMatchesScope(issue, input, {
+        getSource: (id) => this.store.getSource(id),
+        getNode: (id) => this.store.getNode(id),
+      })) return false;
       if (input.severity && issue.severity !== input.severity) return false;
       if (input.status && issue.status !== input.status) return false;
       if (input.code && issue.code !== input.code) return false;
@@ -406,11 +416,11 @@ export class KnowledgeService {
   getItemScoped(id: string, scope: KnowledgeSpaceScopeInput = {}): KnowledgeItemView | null {
     const item = this.store.getItem(id);
     const primary = item?.source ?? item?.node ?? item?.issue;
-    if (!item || !primary || !isInKnowledgeSpaceScope(primary, scope)) return null;
+    if (!item || !primary || !this.recordMatchesKnowledgeSpaceScope(primary, scope)) return null;
     const scoped: KnowledgeItemView = {
       ...item,
       linkedSources: item.linkedSources.filter((source) => isInKnowledgeSpaceScope(source, scope)),
-      linkedNodes: item.linkedNodes.filter((node) => isInKnowledgeSpaceScope(node, scope)),
+      linkedNodes: item.linkedNodes.filter((node) => this.nodeMatchesKnowledgeSpaceScope(node, scope)),
       relatedEdges: item.relatedEdges.filter((edge) => this.edgeInKnowledgeSpaceScope(edge, scope)),
     };
     if (scoped.source) this.deferUsage({ targetKind: 'source', targetId: scoped.source.id, usageKind: 'item-open' });
@@ -430,9 +440,38 @@ export class KnowledgeService {
 
   private recordReferenceInKnowledgeSpaceScope(kind: string, id: string, scope: KnowledgeSpaceScopeInput): boolean {
     if (kind === 'source') return isInKnowledgeSpaceScope(this.store.getSource(id), scope);
-    if (kind === 'node') return isInKnowledgeSpaceScope(this.store.getNode(id), scope);
-    if (kind === 'issue') return isInKnowledgeSpaceScope(this.store.getIssue(id), scope);
+    if (kind === 'node') {
+      const node = this.store.getNode(id);
+      return Boolean(node && this.nodeMatchesKnowledgeSpaceScope(node, scope));
+    }
+    if (kind === 'issue') {
+      const issue = this.store.getIssue(id);
+      return Boolean(issue && this.issueMatchesKnowledgeSpaceScope(issue, scope));
+    }
     return true;
+  }
+
+  private recordMatchesKnowledgeSpaceScope(
+    record: KnowledgeSourceRecord | KnowledgeNodeRecord | KnowledgeIssueRecord,
+    scope: KnowledgeSpaceScopeInput,
+  ): boolean {
+    if ('sourceType' in record) return isInKnowledgeSpaceScope(record, scope);
+    if ('kind' in record) return this.nodeMatchesKnowledgeSpaceScope(record, scope);
+    return this.issueMatchesKnowledgeSpaceScope(record, scope);
+  }
+
+  private nodeMatchesKnowledgeSpaceScope(node: KnowledgeNodeRecord, scope: KnowledgeSpaceScopeInput): boolean {
+    return knowledgeNodeMatchesScope(node, scope, {
+      getSource: (id) => this.store.getSource(id),
+      getNode: (id) => this.store.getNode(id),
+    });
+  }
+
+  private issueMatchesKnowledgeSpaceScope(issue: KnowledgeIssueRecord, scope: KnowledgeSpaceScopeInput): boolean {
+    return knowledgeIssueMatchesScope(issue, scope, {
+      getSource: (id) => this.store.getSource(id),
+      getNode: (id) => this.store.getNode(id),
+    });
   }
 
   async recordUsage(input: {
