@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.7] - 2026-05-07
+
+### Fixed
+- Reissued the scoped browser entrypoint release after npm published the
+  `0.33.6` metadata for `@pellux/goodvibes-transport-realtime` without a
+  retrievable tarball. No source changes from `0.33.6`.
+
+---
+
 ## [0.33.6] - 2026-05-07
 
 ### Added
