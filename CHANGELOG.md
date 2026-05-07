@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.11] - 2026-05-07
+
+### Fixed
+- Scoped regular Knowledge/Wiki reads to the base `default` knowledge space by
+  default, so Home Assistant Home Graph records no longer appear through base
+  knowledge sources, nodes, issues, search, map, packets, projections, status,
+  item, extraction, or GraphQL routes unless callers explicitly request
+  `knowledgeSpaceId` or `includeAllSpaces`.
+- Returned scoped map facets and projection counts instead of deriving sidebar
+  facets, backlink IDs, and wiki counts from the full cross-extension graph.
+
+---
+
 ## [0.33.10] - 2026-05-07
 
 ### Added

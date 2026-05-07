@@ -20,6 +20,11 @@ export type KnowledgeSpaceBackedRecord =
   | KnowledgeExtractionRecord
   | { readonly metadata?: Record<string, unknown> };
 
+export interface KnowledgeSpaceScopeInput {
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly includeAllSpaces?: boolean | undefined;
+}
+
 export function normalizeKnowledgeSpaceId(value?: string | null): KnowledgeSpaceId {
   const trimmed = typeof value === 'string' ? value.trim() : '';
   return trimmed.length > 0 ? trimmed : DEFAULT_KNOWLEDGE_SPACE_ID;
@@ -83,6 +88,19 @@ export function getKnowledgeSpaceId(input: KnowledgeSpaceBackedRecord | Record<s
 
 export function isInKnowledgeSpace(input: KnowledgeSpaceBackedRecord | undefined | null, spaceId: string): boolean {
   return getKnowledgeSpaceId(input) === normalizeKnowledgeSpaceId(spaceId);
+}
+
+export function resolveKnowledgeSpaceScope(input: KnowledgeSpaceScopeInput = {}): KnowledgeSpaceId | null {
+  if (input.includeAllSpaces === true) return null;
+  return normalizeKnowledgeSpaceId(input.knowledgeSpaceId);
+}
+
+export function isInKnowledgeSpaceScope(
+  input: KnowledgeSpaceBackedRecord | undefined | null,
+  scope: KnowledgeSpaceScopeInput = {},
+): boolean {
+  const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
+  return scopedSpaceId === null || getKnowledgeSpaceId(input) === scopedSpaceId;
 }
 
 export function normalizeSpaceComponent(value?: string | null): string {

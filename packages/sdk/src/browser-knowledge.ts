@@ -94,7 +94,7 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
   readonly knowledge: {
     ask(input: OperatorMethodInput<'knowledge.ask'>): Promise<OperatorMethodOutput<'knowledge.ask'>>;
     search(input: OperatorMethodInput<'knowledge.search'>): Promise<OperatorMethodOutput<'knowledge.search'>>;
-    status(): Promise<OperatorMethodOutput<'knowledge.status'>>;
+    status(input?: OperatorMethodInput<'knowledge.status'>): Promise<OperatorMethodOutput<'knowledge.status'>>;
     map(input?: OperatorMethodInput<'knowledge.map'>): Promise<OperatorMethodOutput<'knowledge.map'>>;
   };
   readonly chat: {
@@ -144,7 +144,7 @@ export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {})
     knowledge: {
       ask: (input) => invoke('knowledge.ask', input),
       search: (input) => invoke('knowledge.search', input),
-      status: () => invoke('knowledge.status'),
+      status: (input) => invoke('knowledge.status', input),
       map: (input) => invoke('knowledge.map', input),
     },
     chat: {

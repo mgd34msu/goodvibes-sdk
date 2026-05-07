@@ -1,6 +1,9 @@
 import {
   isGeneratedKnowledgeSource,
 } from './generated-projections.js';
+import {
+  isInKnowledgeSpaceScope,
+} from './spaces.js';
 import type {
   KnowledgeEdgeRecord,
   KnowledgeIssueRecord,
@@ -37,6 +40,7 @@ export function applyKnowledgeMapFilters(
     ? []
     : state.sources
         .filter((source) => source.status !== 'stale')
+        .filter((source) => isInKnowledgeSpaceScope(source, filters))
         .filter((source) => options.includeGenerated !== false || !isGeneratedKnowledgeSource(source))
         .filter((source) => matchesSet(filters.sourceTypes, source.sourceType))
         .filter((source) => matchesSet(filters.sourceStatuses, source.status))
@@ -57,6 +61,7 @@ export function applyKnowledgeMapFilters(
     ? []
     : state.nodes
         .filter((node) => node.status !== 'stale')
+        .filter((node) => isInKnowledgeSpaceScope(node, filters))
         .filter((node) => matchesSet(filters.nodeKinds, node.kind))
         .filter((node) => matchesSet(filters.nodeStatuses, node.status))
         .filter((node) => filters.minConfidence === undefined || node.confidence >= filters.minConfidence)
@@ -76,6 +81,7 @@ export function applyKnowledgeMapFilters(
     ? []
     : state.issues
         .filter((issue) => (filters.issueStatuses?.length ?? 0) > 0 || issue.status === 'open')
+        .filter((issue) => isInKnowledgeSpaceScope(issue, filters))
         .filter((issue) => matchesSet(filters.issueCodes, issue.code))
         .filter((issue) => matchesSet(filters.issueStatuses, issue.status))
         .filter((issue) => matchesSet(filters.issueSeverities, issue.severity))
@@ -141,15 +147,21 @@ export function normalizeKnowledgeMapFilters(options: KnowledgeMapFilterOptions 
 >> & {
   readonly query?: string | undefined;
   readonly minConfidence?: number | undefined;
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly includeAllSpaces?: boolean | undefined;
   readonly recordKinds?: ReadonlySet<'source' | 'node' | 'issue'> | undefined;
 } {
   const nested = options.filters ?? {};
   const recordKinds = normalizeStringArray(options.recordKinds ?? nested.recordKinds);
   const query = readString(options.query) ?? readString(nested.query);
   const minConfidence = readNumber(options.minConfidence) ?? readNumber(nested.minConfidence);
+  const knowledgeSpaceId = readString(options.knowledgeSpaceId) ?? readString(nested.knowledgeSpaceId);
+  const includeAllSpaces = readBoolean(options.includeAllSpaces) ?? readBoolean(nested.includeAllSpaces);
   return {
     ...(query ? { query } : {}),
     ...(minConfidence === undefined ? {} : { minConfidence }),
+    ...(knowledgeSpaceId ? { knowledgeSpaceId } : {}),
+    ...(includeAllSpaces === undefined ? {} : { includeAllSpaces }),
     ...(recordKinds.length > 0 ? { recordKinds: new Set(recordKinds.filter(isRecordKind)) } : {}),
     ids: normalizeStringArray(options.ids ?? nested.ids),
     linkedToIds: normalizeStringArray(options.linkedToIds ?? nested.linkedToIds),
@@ -182,6 +194,16 @@ export function readNumber(value: unknown): number | undefined {
   if (typeof value === 'string' && value.trim().length > 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+export function readBoolean(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
   }
   return undefined;
 }

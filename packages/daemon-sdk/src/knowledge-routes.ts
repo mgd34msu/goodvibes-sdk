@@ -30,6 +30,8 @@ import type {
 type KnowledgeSearchBody = {
   readonly query: string;
   readonly limit: number;
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly includeAllSpaces?: boolean | undefined;
 };
 
 type KnowledgeAskBody = {
@@ -51,6 +53,8 @@ type KnowledgePacketBody = {
   readonly limit: number;
   readonly detail?: KnowledgePacketDetail | undefined;
   readonly budgetLimit?: number | undefined;
+  readonly knowledgeSpaceId?: string | undefined;
+  readonly includeAllSpaces?: boolean | undefined;
 };
 
 type KnowledgeRunJobBody = {
@@ -65,12 +69,27 @@ export function createDaemonKnowledgeRouteHandlers(
   context: DaemonKnowledgeRouteContext,
 ): DaemonKnowledgeRouteHandlers {
   return {
-    getKnowledgeStatus: async () => Response.json(await context.knowledgeService.getStatus()),
-    getKnowledgeSources: async (url) => Response.json({ sources: context.knowledgeService.listSources(readLimit(url, 100)) }),
-    getKnowledgeNodes: async (url) => Response.json({ nodes: context.knowledgeService.listNodes(readLimit(url, 100)) }),
-    getKnowledgeIssues: async (url) => Response.json({ issues: context.knowledgeService.listIssues(readLimit(url, 100)) }),
-    getKnowledgeItem: (id) => {
-      const item = context.knowledgeService.getItem(id);
+    getKnowledgeStatus: async (url) => Response.json(await context.knowledgeService.getStatus(readKnowledgeSpaceQuery(url))),
+    getKnowledgeSources: async (url) => Response.json({
+      sources: context.knowledgeService.querySources({
+        limit: readLimit(url, 100),
+        ...readKnowledgeSpaceQuery(url),
+      }).items,
+    }),
+    getKnowledgeNodes: async (url) => Response.json({
+      nodes: context.knowledgeService.queryNodes({
+        limit: readLimit(url, 100),
+        ...readKnowledgeSpaceQuery(url),
+      }).items,
+    }),
+    getKnowledgeIssues: async (url) => Response.json({
+      issues: context.knowledgeService.queryIssues({
+        limit: readLimit(url, 100),
+        ...readKnowledgeSpaceQuery(url),
+      }).items,
+    }),
+    getKnowledgeItem: (id, url) => {
+      const item = context.knowledgeService.getItemScoped(id, readKnowledgeSpaceQuery(url));
       return item
         ? Response.json(item)
         : jsonErrorResponse({ error: 'Unknown knowledge item' }, { status: 404 });
@@ -88,7 +107,9 @@ export function createDaemonKnowledgeRouteHandlers(
         ? Response.json({ report })
         : jsonErrorResponse({ error: 'Unknown knowledge connector' }, { status: 404 });
     },
-    getKnowledgeProjectionTargets: async (url) => Response.json({ targets: await context.knowledgeService.listProjectionTargets(readLimit(url, 25)) }),
+    getKnowledgeProjectionTargets: async (url) => Response.json({
+      targets: await context.knowledgeService.listProjectionTargets(readLimit(url, 25), readKnowledgeSpaceQuery(url)),
+    }),
     getKnowledgeMap: async (url) => Response.json(await context.knowledgeService.map({
       limit: readLimit(url, 500),
       includeSources: readBooleanQuery(url, 'includeSources'),
@@ -103,7 +124,13 @@ export function createDaemonKnowledgeRouteHandlers(
     }),
     getKnowledgeExtractions: async (url) => {
       const sourceId = url.searchParams.get('sourceId') ?? undefined;
-      return Response.json({ extractions: context.knowledgeService.listExtractions(readLimit(url, 100), sourceId) });
+      return Response.json({
+        extractions: context.knowledgeService.listExtractions(
+          readLimit(url, 100),
+          sourceId,
+          readKnowledgeSpaceQuery(url),
+        ),
+      });
     },
     getKnowledgeUsage: async (url) => {
       const targetKind = url.searchParams.get('targetKind') ?? undefined;
@@ -221,9 +248,17 @@ function readBooleanQuery(url: URL, key: string): boolean | undefined {
   return raw === '1' || raw.toLowerCase() === 'true' || raw.toLowerCase() === 'yes';
 }
 
+function readKnowledgeSpaceQuery(url: URL): JsonRecord {
+  return {
+    ...(url.searchParams.get('knowledgeSpaceId') ? { knowledgeSpaceId: url.searchParams.get('knowledgeSpaceId')! } : {}),
+    ...(readBooleanQuery(url, 'includeAllSpaces') === true ? { includeAllSpaces: true } : {}),
+  };
+}
+
 function readKnowledgeMapFilters(url: URL): JsonRecord {
   const minConfidence = readOptionalBoundedInteger(url.searchParams.get('minConfidence'), 0, 100);
   return {
+    ...readKnowledgeSpaceQuery(url),
     ...(url.searchParams.get('query') ? { query: url.searchParams.get('query')! } : {}),
     ...(Number.isFinite(minConfidence) ? { minConfidence } : {}),
     recordKinds: readStringList(url, 'recordKinds', 'recordKind'),
@@ -253,9 +288,12 @@ const knowledgeBodySchemas = createRouteBodySchemaRegistry({
   search: createRouteBodySchema<KnowledgeSearchBody>('POST /api/knowledge/search', (body) => {
     const query = readOptionalStringField(body, 'query');
     if (!query) return jsonErrorResponse({ error: 'Missing query' }, { status: 400 });
+    const knowledgeSpaceId = readOptionalStringField(body, 'knowledgeSpaceId');
     return {
       query,
       limit: readBoundedBodyInteger(body.limit, 10, 100),
+      ...(knowledgeSpaceId ? { knowledgeSpaceId } : {}),
+      ...(body.includeAllSpaces === true ? { includeAllSpaces: true } : {}),
     };
   }),
   ask: createRouteBodySchema<KnowledgeAskBody>('POST /api/knowledge/ask', (body) => {
@@ -285,12 +323,15 @@ const knowledgeBodySchemas = createRouteBodySchemaRegistry({
     const budgetLimit = Object.hasOwn(body, 'budgetLimit')
       ? readBoundedBodyInteger(body.budgetLimit, 6, 100)
       : undefined;
+    const knowledgeSpaceId = readOptionalStringField(body, 'knowledgeSpaceId');
     return {
       task,
       writeScope: readStringArrayField(body, 'writeScope') ?? [],
       limit: readBoundedBodyInteger(body.limit, 6, 50),
       ...(detail ? { detail } : {}),
       ...(typeof budgetLimit === 'number' ? { budgetLimit } : {}),
+      ...(knowledgeSpaceId ? { knowledgeSpaceId } : {}),
+      ...(body.includeAllSpaces === true ? { includeAllSpaces: true } : {}),
     };
   }),
   runJob: createRouteBodySchema<KnowledgeRunJobBody>('POST /api/knowledge/jobs/:jobId/run', (body) => {
@@ -318,7 +359,7 @@ function readKnowledgeJobRunMode(value: unknown): 'inline' | 'background' | unde
 
 function readKnowledgeProjectionRequest(
   body: JsonRecord,
-): { kind: KnowledgeProjectionTargetKind; id?: string; limit?: number } | Response {
+): { kind: KnowledgeProjectionTargetKind; id?: string; limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean } | Response {
   const rawKind = typeof body.kind === 'string' ? body.kind.trim().toLowerCase() : '';
   if (
     rawKind !== 'overview'
@@ -338,10 +379,13 @@ function readKnowledgeProjectionRequest(
   if ((rawKind === 'source' || rawKind === 'node' || rawKind === 'issue' || rawKind === 'rollup') && !id) {
     return jsonErrorResponse({ error: `Projection kind ${rawKind} requires id.` }, { status: 400 });
   }
+  const knowledgeSpaceId = readOptionalStringField(body, 'knowledgeSpaceId');
   return {
     kind: rawKind,
     ...(id ? { id } : {}),
     ...(Object.hasOwn(body, 'limit') ? { limit: readBoundedBodyInteger(body.limit, 20, 500) } : {}),
+    ...(knowledgeSpaceId ? { knowledgeSpaceId } : {}),
+    ...(body.includeAllSpaces === true ? { includeAllSpaces: true } : {}),
   };
 }
 
@@ -664,7 +708,7 @@ async function handleKnowledgeSearch(context: DaemonKnowledgeRouteContext, reque
   if (body instanceof Response) return body;
   const input = knowledgeBodySchemas.search.parse(body);
   if (input instanceof Response) return input;
-  return Response.json({ results: context.knowledgeService.search(input.query, input.limit) });
+  return Response.json({ results: context.knowledgeService.searchScoped(input) });
 }
 
 async function handleKnowledgeAsk(context: DaemonKnowledgeRouteContext, request: Request): Promise<Response> {
@@ -683,6 +727,8 @@ async function handleKnowledgePacket(context: DaemonKnowledgeRouteContext, reque
   return Response.json(await context.knowledgeService.buildPacket(input.task, input.writeScope, input.limit, {
     ...(input.detail ? { detail: input.detail } : {}),
     ...(typeof input.budgetLimit === 'number' ? { budgetLimit: input.budgetLimit } : {}),
+    ...(input.knowledgeSpaceId ? { knowledgeSpaceId: input.knowledgeSpaceId } : {}),
+    ...(input.includeAllSpaces === true ? { includeAllSpaces: true } : {}),
   }));
 }
 
@@ -828,5 +874,3 @@ async function handleKnowledgeMaterializeProjection(context: DaemonKnowledgeRout
     return jsonErrorResponse(error, { status: 400 });
   }
 }
-
-

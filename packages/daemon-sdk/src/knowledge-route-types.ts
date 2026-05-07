@@ -37,18 +37,18 @@ export interface KnowledgeGraphqlServiceLike {
 }
 
 export interface KnowledgeServiceLike {
-  getStatus(): Promise<unknown>;
-  listSources(limit: number): readonly unknown[];
-  listNodes(limit: number): readonly unknown[];
-  listIssues(limit: number): readonly unknown[];
+  getStatus(scope?: Record<string, unknown>): Promise<unknown>;
+  querySources(input: Record<string, unknown>): { readonly total: number; readonly items: readonly unknown[] };
+  queryNodes(input: Record<string, unknown>): { readonly total: number; readonly items: readonly unknown[] };
+  queryIssues(input: Record<string, unknown>): { readonly total: number; readonly items: readonly unknown[] };
   reviewIssue(input: Record<string, unknown>): Promise<unknown>;
-  getItem(id: string): unknown | null;
+  getItemScoped(id: string, scope?: Record<string, unknown>): unknown | null;
   listConnectors(): readonly unknown[];
   getConnector(id: string): unknown | null;
   doctorConnector(id: string): Promise<unknown | null>;
-  listProjectionTargets(limit: number): Promise<readonly unknown[]>;
+  listProjectionTargets(limit: number, scope?: Record<string, unknown>): Promise<readonly unknown[]>;
   map(input: Record<string, unknown>): Promise<unknown>;
-  listExtractions(limit: number, sourceId?: string): readonly unknown[];
+  listExtractions(limit: number, sourceId?: string, scope?: Record<string, unknown>): readonly unknown[];
   listUsageRecords(
     limit: number,
     filter: { targetKind?: 'source' | 'node' | 'issue'; targetId?: string; usageKind?: KnowledgeUsageKind },
@@ -77,13 +77,18 @@ export interface KnowledgeServiceLike {
   importBookmarksFromFile(input: Record<string, unknown>): Promise<unknown>;
   importUrlsFromFile(input: Record<string, unknown>): Promise<unknown>;
   ingestConnectorInput(input: Record<string, unknown>): Promise<unknown>;
-  search(query: string, limit: number): readonly unknown[];
+  searchScoped(input: Record<string, unknown>): readonly unknown[];
   ask(input: Record<string, unknown>): Promise<unknown>;
   buildPacket(
     task: string,
     writeScope: readonly string[],
     limit: number,
-    options: { detail?: KnowledgePacketDetail; budgetLimit?: number },
+    options: {
+      detail?: KnowledgePacketDetail;
+      budgetLimit?: number;
+      knowledgeSpaceId?: string;
+      includeAllSpaces?: boolean;
+    },
   ): Promise<unknown> | unknown;
   decideConsolidationCandidate(
     id: string,
@@ -103,12 +108,20 @@ export interface KnowledgeServiceLike {
   }): Promise<unknown>;
   deleteSchedule(id: string): Promise<boolean>;
   setScheduleEnabled(id: string, enabled: boolean): Promise<unknown | null>;
-  renderProjection(input: { kind: KnowledgeProjectionTargetKind; id?: string; limit?: number }): Promise<unknown>;
+  renderProjection(input: {
+    kind: KnowledgeProjectionTargetKind;
+    id?: string;
+    limit?: number;
+    knowledgeSpaceId?: string;
+    includeAllSpaces?: boolean;
+  }): Promise<unknown>;
   materializeProjection(input: {
     kind: KnowledgeProjectionTargetKind;
     id?: string | undefined;
     limit?: number | undefined;
     filename?: string | undefined;
+    knowledgeSpaceId?: string | undefined;
+    includeAllSpaces?: boolean | undefined;
   }): Promise<unknown>;
 }
 

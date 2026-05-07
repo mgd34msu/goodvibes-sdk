@@ -15,7 +15,7 @@ import {
   toPacketDetail,
   toProjectionKind,
 } from './graphql-schema.js';
-import { isInKnowledgeSpace } from './spaces.js';
+import type { KnowledgeSpaceScopeInput } from './spaces.js';
 
 export interface KnowledgeGraphqlAccessProfile {
   readonly operation: 'query' | 'mutation';
@@ -92,21 +92,24 @@ export class KnowledgeGraphqlService {
 
   private createRootValue() {
     return {
-      status: async () => this.service.getStatus(),
-      sources: ({ limit, knowledgeSpaceId }: { limit?: number; knowledgeSpaceId?: string }) => (
-        this.service.listSources(knowledgeSpaceId ? 10_000 : clampInt(limit, 100))
-          .filter((source) => !knowledgeSpaceId || isInKnowledgeSpace(source, knowledgeSpaceId))
-          .slice(0, clampInt(limit, 100))
+      status: async (args: { knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => this.service.getStatus(graphqlScope(args)),
+      sources: (args: { limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => (
+        this.service.querySources({
+          limit: clampInt(args.limit, 100),
+          ...graphqlScope(args),
+        }).items
       ),
-      nodes: ({ limit, knowledgeSpaceId }: { limit?: number; knowledgeSpaceId?: string }) => (
-        this.service.listNodes(knowledgeSpaceId ? 10_000 : clampInt(limit, 100))
-          .filter((node) => !knowledgeSpaceId || isInKnowledgeSpace(node, knowledgeSpaceId))
-          .slice(0, clampInt(limit, 100))
+      nodes: (args: { limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => (
+        this.service.queryNodes({
+          limit: clampInt(args.limit, 100),
+          ...graphqlScope(args),
+        }).items
       ),
-      issues: ({ limit, knowledgeSpaceId }: { limit?: number; knowledgeSpaceId?: string }) => (
-        this.service.listIssues(knowledgeSpaceId ? 10_000 : clampInt(limit, 100))
-          .filter((issue) => !knowledgeSpaceId || isInKnowledgeSpace(issue, knowledgeSpaceId))
-          .slice(0, clampInt(limit, 100))
+      issues: (args: { limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => (
+        this.service.queryIssues({
+          limit: clampInt(args.limit, 100),
+          ...graphqlScope(args),
+        }).items
       ),
       source: ({ id }: { id: string }) => this.service.listSources(Number.MAX_SAFE_INTEGER).find((source) => source.id === id) ?? null,
       node: ({ id }: { id: string }) => this.service.listNodes(Number.MAX_SAFE_INTEGER).find((node) => node.id === id) ?? null,
@@ -116,6 +119,8 @@ export class KnowledgeGraphqlService {
       sourcesConnection: (args: {
         limit?: number | undefined;
         offset?: number | undefined;
+        knowledgeSpaceId?: string | undefined;
+        includeAllSpaces?: boolean | undefined;
         status?: string | undefined;
         connectorId?: string | undefined;
         sourceType?: string | undefined;
@@ -124,31 +129,50 @@ export class KnowledgeGraphqlService {
       }) => this.service.querySources({
         limit: clampInt(args.limit, 100),
         offset: clampOffset(args.offset),
+        ...graphqlScope(args),
         status: args.status,
         connectorId: args.connectorId,
         sourceType: args.sourceType,
         tag: args.tag,
         query: args.query,
       }),
-      nodesConnection: (args: { limit?: number; offset?: number; kind?: string; status?: string; query?: string }) => this.service.queryNodes({
+      nodesConnection: (args: {
+        limit?: number;
+        offset?: number;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+        kind?: string;
+        status?: string;
+        query?: string;
+      }) => this.service.queryNodes({
         limit: clampInt(args.limit, 100),
         offset: clampOffset(args.offset),
+        ...graphqlScope(args),
         kind: args.kind,
         status: args.status,
         query: args.query,
       }),
-      issuesConnection: (args: { limit?: number; offset?: number; severity?: string; status?: string; code?: string; query?: string }) => this.service.queryIssues({
+      issuesConnection: (args: {
+        limit?: number;
+        offset?: number;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+        severity?: string;
+        status?: string;
+        code?: string;
+        query?: string;
+      }) => this.service.queryIssues({
         limit: clampInt(args.limit, 100),
         offset: clampOffset(args.offset),
+        ...graphqlScope(args),
         severity: args.severity,
         status: args.status,
         code: args.code,
         query: args.query,
       }),
-      extractions: ({ limit, sourceId, knowledgeSpaceId }: { limit?: number; sourceId?: string; knowledgeSpaceId?: string }) => (
-        this.service.listExtractions(clampInt(limit, 100), sourceId)
-          .filter((extraction) => !knowledgeSpaceId || isInKnowledgeSpace(extraction, knowledgeSpaceId))
-          .slice(0, clampInt(limit, 100))
+      extractions: (args: { limit?: number; sourceId?: string; knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => (
+        this.service.listExtractions(clampInt(args.limit, 100), args.sourceId, graphqlScope(args))
+          .slice(0, clampInt(args.limit, 100))
       ),
       sourceExtraction: ({ sourceId }: { sourceId: string }) => this.service.getSourceExtraction(sourceId),
       neighbors: ({ kind, id, relation, limit }: { kind: 'source' | 'node'; id: string; relation?: string | undefined; limit?: number }) => {
@@ -157,28 +181,42 @@ export class KnowledgeGraphqlService {
         }
         return this.service.getNeighbors(kind, id, { relation, limit: clampInt(limit, 20) });
       },
-      search: ({ query, limit, knowledgeSpaceId }: { query: string; limit?: number; knowledgeSpaceId?: string }) => (
-        this.service.search(query, knowledgeSpaceId ? 10_000 : clampInt(limit, 10))
-          .filter((result) => !knowledgeSpaceId || isInKnowledgeSpace(result.source ?? result.node, knowledgeSpaceId))
-          .slice(0, clampInt(limit, 10))
+      search: (args: { query: string; limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => (
+        this.service.searchScoped({
+          query: args.query,
+          limit: clampInt(args.limit, 10),
+          ...graphqlScope(args),
+        })
       ),
-      packet: async ({ task, writeScope, limit, detail, budgetLimit }: { task: string; writeScope?: string[]; limit?: number; detail?: string; budgetLimit?: number }) => mapPacket(await this.service.buildPacket(
-        task,
-        writeScope ?? [],
-        clampInt(limit, 6),
+      packet: async (args: {
+        task: string;
+        writeScope?: string[];
+        limit?: number;
+        detail?: string;
+        budgetLimit?: number;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+      }) => mapPacket(await this.service.buildPacket(
+        args.task,
+        args.writeScope ?? [],
+        clampInt(args.limit, 6),
         {
-          detail: toPacketDetail(detail),
-          ...(typeof budgetLimit === 'number' ? { budgetLimit } : {}),
+          detail: toPacketDetail(args.detail),
+          ...(typeof args.budgetLimit === 'number' ? { budgetLimit: args.budgetLimit } : {}),
+          ...graphqlScope(args),
         },
       )),
       connectors: () => this.service.listConnectors(),
       connector: ({ id }: { id: string }) => this.service.getConnector(id),
       connectorDoctor: ({ id }: { id: string }) => this.service.doctorConnector(id),
-      projectionTargets: async ({ limit }: { limit?: number }) => (await this.service.listProjectionTargets(clampInt(limit, 25))).map((target) => mapProjectionTarget(target)),
-      projection: async ({ kind, id, limit }: { kind: string; id?: string; limit?: number }) => mapProjectionBundle(await this.service.renderProjection({
-        kind: toProjectionKind(kind),
-        id,
-        limit: clampInt(limit, 12),
+      projectionTargets: async (args: { limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => (
+        await this.service.listProjectionTargets(clampInt(args.limit, 25), graphqlScope(args))
+      ).map((target) => mapProjectionTarget(target)),
+      projection: async (args: { kind: string; id?: string; limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean }) => mapProjectionBundle(await this.service.renderProjection({
+        kind: toProjectionKind(args.kind),
+        id: args.id,
+        limit: clampInt(args.limit, 12),
+        ...graphqlScope(args),
       })),
       jobs: () => this.service.listJobs().map((job) => mapJob(job)),
       job: ({ id }: { id: string }) => {
@@ -323,13 +361,29 @@ export class KnowledgeGraphqlService {
         assertWriteAccess(context);
         return this.service.setScheduleEnabled(args.id, args.enabled);
       },
-      materializeProjection: async (args: { kind: string; id?: string; limit?: number; filename?: string }, context: KnowledgeGraphqlContext) => {
+      renderProjection: async (
+        args: { kind: string; id?: string; limit?: number; knowledgeSpaceId?: string; includeAllSpaces?: boolean },
+        context: KnowledgeGraphqlContext,
+      ) => {
+        assertWriteAccess(context);
+        return mapProjectionBundle(await this.service.renderProjection({
+          kind: toProjectionKind(args.kind),
+          id: args.id,
+          limit: clampInt(args.limit, 12),
+          ...graphqlScope(args),
+        }));
+      },
+      materializeProjection: async (
+        args: { kind: string; id?: string; limit?: number; filename?: string; knowledgeSpaceId?: string; includeAllSpaces?: boolean },
+        context: KnowledgeGraphqlContext,
+      ) => {
         assertWriteAccess(context);
         const materialized = await this.service.materializeProjection({
           kind: toProjectionKind(args.kind),
           id: args.id,
           limit: clampInt(args.limit, 12),
           filename: args.filename,
+          ...graphqlScope(args),
         });
         return {
           ...materialized,
@@ -338,6 +392,15 @@ export class KnowledgeGraphqlService {
       },
     };
   }
+}
+
+function graphqlScope(input: KnowledgeSpaceScopeInput = {}): KnowledgeSpaceScopeInput {
+  return {
+    ...(typeof input.knowledgeSpaceId === 'string' && input.knowledgeSpaceId.trim()
+      ? { knowledgeSpaceId: input.knowledgeSpaceId }
+      : {}),
+    ...(input.includeAllSpaces === true ? { includeAllSpaces: true } : {}),
+  };
 }
 
 export function getKnowledgeGraphqlSchemaText(): string {

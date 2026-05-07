@@ -1174,7 +1174,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.10";
+    readonly productVersion: "0.33.11";
     readonly operatorMethodCount: 264;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -1768,6 +1768,12 @@ export type KnowledgeEvent = {
 
 // @public (undocumented)
 export type KnowledgeEventType = KnowledgeEvent['type'];
+
+// @public (undocumented)
+export type KnowledgeSpaceScopeInput = {
+    knowledgeSpaceId?: string;
+    includeAllSpaces?: boolean;
+};
 
 // @public (undocumented)
 export type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<PeerEndpointInput<TEndpointId>, PeerRemoteClientInvokeOptions>;
@@ -3020,10 +3026,10 @@ export interface OperatorMethodInputMap {
         id: string;
     };
     // (undocumented)
-    "knowledge.extractions.list": {
+    "knowledge.extractions.list": ({
         limit?: number;
         sourceId?: string;
-    };
+    } & KnowledgeSpaceScopeInput);
     // (undocumented)
     "knowledge.graphql.execute": ({
         query: string;
@@ -3120,13 +3126,13 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
-    "knowledge.issues.list": {
+    "knowledge.issues.list": ({
         limit?: number;
-    };
+    } & KnowledgeSpaceScopeInput);
     // (undocumented)
-    "knowledge.item.get": {
+    "knowledge.item.get": ({
         id: string;
-    };
+    } & KnowledgeSpaceScopeInput);
     // (undocumented)
     "knowledge.job-runs.list": {
         limit?: number;
@@ -3147,16 +3153,16 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "knowledge.lint": {};
     // (undocumented)
-    "knowledge.nodes.list": {
+    "knowledge.nodes.list": ({
         limit?: number;
-    };
+    } & KnowledgeSpaceScopeInput);
     // (undocumented)
     "knowledge.packet": ({
         task: string;
         writeScope?: readonly string[];
         budgetLimit?: number;
         detail?: "compact" | "detailed" | "standard";
-    } & {
+    } & KnowledgeSpaceScopeInput & {
         readonly [key: string]: unknown;
     });
     // (undocumented)
@@ -3164,7 +3170,7 @@ export interface OperatorMethodInputMap {
         kind: string;
         id?: string;
         limit?: number;
-    } & {
+    } & KnowledgeSpaceScopeInput & {
         readonly [key: string]: unknown;
     });
     // (undocumented)
@@ -3172,13 +3178,13 @@ export interface OperatorMethodInputMap {
         kind: string;
         id?: string;
         limit?: number;
-    } & {
+    } & KnowledgeSpaceScopeInput & {
         readonly [key: string]: unknown;
     });
     // (undocumented)
-    "knowledge.projections.list": {
+    "knowledge.projections.list": ({
         limit?: number;
-    };
+    } & KnowledgeSpaceScopeInput);
     // (undocumented)
     "knowledge.reindex": {};
     // (undocumented)
@@ -3249,7 +3255,7 @@ export interface OperatorMethodInputMap {
                 readonly [key: string]: JsonValue;
             }) | boolean | null | number | readonly JsonValue[] | string;
         });
-    } & {
+    } & KnowledgeSpaceScopeInput & {
         readonly [key: string]: unknown;
     });
     // (undocumented)
@@ -3257,11 +3263,11 @@ export interface OperatorMethodInputMap {
         id: string;
     };
     // (undocumented)
-    "knowledge.sources.list": {
+    "knowledge.sources.list": ({
         limit?: number;
-    };
+    } & KnowledgeSpaceScopeInput);
     // (undocumented)
-    "knowledge.status": {};
+    "knowledge.status": KnowledgeSpaceScopeInput;
     // (undocumented)
     "knowledge.usage.list": {
         limit?: number;

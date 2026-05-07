@@ -34569,6 +34569,12 @@ Return structured extraction records for ingested sources.
     },
     "sourceId": {
       "type": "string"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "additionalProperties": false
@@ -36868,6 +36874,12 @@ Return current knowledge lint and health issues.
   "properties": {
     "limit": {
       "type": "number"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "additionalProperties": false
@@ -36983,6 +36995,12 @@ Return a single structured knowledge source, node, or issue with linked relation
   "properties": {
     "id": {
       "type": "string"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -38871,6 +38889,12 @@ Return a deterministic visual map of structured knowledge nodes, sources, edges,
     "limit": {
       "type": "number"
     },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
+    },
     "includeSources": {
       "type": "boolean"
     },
@@ -39439,6 +39463,12 @@ Return compiled knowledge nodes.
   "properties": {
     "limit": {
       "type": "number"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "additionalProperties": false
@@ -39627,6 +39657,12 @@ Build a compact structured knowledge packet for a task and write scope.
         "standard",
         "detailed"
       ]
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -39797,6 +39833,12 @@ Render and persist a markdown/wiki projection as a derived artifact.
     },
     "limit": {
       "type": "number"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -40286,6 +40328,12 @@ Render a markdown/wiki projection from the canonical structured knowledge store.
     },
     "limit": {
       "type": "number"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -41806,6 +41854,12 @@ Return deterministic knowledge consolidation reports.
   "properties": {
     "limit": {
       "type": "number"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "additionalProperties": false
@@ -42834,6 +42888,12 @@ Search structured knowledge sources and nodes with compact ranked results.
     "limit": {
       "type": "number"
     },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
+    },
     "includeSources": {
       "type": "boolean"
     },
@@ -43339,6 +43399,12 @@ Return ingested structured knowledge sources.
   "properties": {
     "limit": {
       "type": "number"
+    },
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
     }
   },
   "additionalProperties": false
@@ -43493,7 +43559,14 @@ Return structured knowledge runtime status and record counts.
 ```json
 {
   "type": "object",
-  "properties": {},
+  "properties": {
+    "knowledgeSpaceId": {
+      "type": "string"
+    },
+    "includeAllSpaces": {
+      "type": "boolean"
+    }
+  },
   "additionalProperties": false
 }
 ```

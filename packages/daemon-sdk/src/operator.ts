@@ -243,7 +243,7 @@ async function dispatchOperatorRoutesInner(
   if (pathname === '/api/memory/vector/rebuild' && method === 'POST') return handlers.postMemoryVectorRebuild(req);
   if (pathname === '/api/memory/embeddings/default' && method === 'POST') return handlers.postMemoryEmbeddingDefault(req);
 
-  if (pathname === '/api/knowledge/status' && method === 'GET') return handlers.getKnowledgeStatus();
+  if (pathname === '/api/knowledge/status' && method === 'GET') return handlers.getKnowledgeStatus(url);
   if (pathname === '/api/knowledge/sources' && method === 'GET') return handlers.getKnowledgeSources(url);
   if (pathname === '/api/knowledge/nodes' && method === 'GET') return handlers.getKnowledgeNodes(url);
   if (pathname === '/api/knowledge/issues' && method === 'GET') return handlers.getKnowledgeIssues(url);
@@ -305,7 +305,7 @@ async function dispatchOperatorRoutesInner(
   if (knowledgeScheduleMatch && method === 'GET') return handlers.getKnowledgeSchedule(safeDecodeURIComponent(knowledgeScheduleMatch[1]!) );
   if (knowledgeScheduleMatch && method === 'DELETE') return handlers.deleteKnowledgeSchedule(safeDecodeURIComponent(knowledgeScheduleMatch[1]!), req);
   const knowledgeItemMatch = pathname.match(/^\/api\/knowledge\/items\/([^/]+)$/);
-  if (knowledgeItemMatch && method === 'GET') return handlers.getKnowledgeItem(safeDecodeURIComponent(knowledgeItemMatch[1]!) );
+  if (knowledgeItemMatch && method === 'GET') return handlers.getKnowledgeItem(safeDecodeURIComponent(knowledgeItemMatch[1]!), url);
 
   if (pathname === '/api/voice' && method === 'GET') return handlers.getVoiceStatus();
   if (pathname === '/api/voice/providers' && method === 'GET') return handlers.getVoiceProviders();

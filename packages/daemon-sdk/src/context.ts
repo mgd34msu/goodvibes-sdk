@@ -220,11 +220,11 @@ export interface DaemonRemoteManagementRouteHandlers {
 }
 
 export interface DaemonKnowledgeRouteHandlers extends DaemonKnowledgeRefinementRouteHandlers {
-  getKnowledgeStatus(): MaybeResponse;
+  getKnowledgeStatus(url: URL): MaybeResponse;
   getKnowledgeSources(url: URL): MaybeResponse;
   getKnowledgeNodes(url: URL): MaybeResponse;
   getKnowledgeIssues(url: URL): MaybeResponse;
-  getKnowledgeItem(id: string): MaybeResponse;
+  getKnowledgeItem(id: string, url: URL): MaybeResponse;
   getKnowledgeConnectors(): MaybeResponse;
   getKnowledgeConnector(id: string): MaybeResponse;
   getKnowledgeConnectorDoctor(id: string): MaybeResponse;

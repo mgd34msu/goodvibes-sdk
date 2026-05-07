@@ -228,19 +228,37 @@ export function buildKnowledgeRouteContext(input: {
     requireAdmin: input.requireAdmin,
     resolveAuthenticatedPrincipal: input.resolveAuthenticatedPrincipal,
     knowledgeService: {
-      getStatus: () => input.knowledgeService.getStatus(),
-      listSources: (limit) => input.knowledgeService.listSources(limit),
-      listNodes: (limit) => input.knowledgeService.listNodes(limit),
-      listIssues: (limit) => input.knowledgeService.listIssues(limit),
+      getStatus: (scope) => input.knowledgeService.getStatus(
+        scope as Parameters<KnowledgeService['getStatus']>[0],
+      ),
+      querySources: (query) => input.knowledgeService.querySources(
+        query as Parameters<KnowledgeService['querySources']>[0],
+      ),
+      queryNodes: (query) => input.knowledgeService.queryNodes(
+        query as Parameters<KnowledgeService['queryNodes']>[0],
+      ),
+      queryIssues: (query) => input.knowledgeService.queryIssues(
+        query as Parameters<KnowledgeService['queryIssues']>[0],
+      ),
       reviewIssue: (body) => input.knowledgeService.reviewIssue(
         body as unknown as Parameters<KnowledgeService['reviewIssue']>[0],
       ),
-      getItem: (id) => input.knowledgeService.getItem(id),
+      getItemScoped: (id, scope) => input.knowledgeService.getItemScoped(
+        id,
+        scope as Parameters<KnowledgeService['getItemScoped']>[1],
+      ),
       listConnectors: () => input.knowledgeService.listConnectors(),
       getConnector: (id) => input.knowledgeService.getConnector(id),
       doctorConnector: (id) => input.knowledgeService.doctorConnector(id),
-      listProjectionTargets: (limit) => input.knowledgeService.listProjectionTargets(limit),
-      listExtractions: (limit, sourceId) => input.knowledgeService.listExtractions(limit, sourceId),
+      listProjectionTargets: (limit, scope) => input.knowledgeService.listProjectionTargets(
+        limit,
+        scope as Parameters<KnowledgeService['listProjectionTargets']>[1],
+      ),
+      listExtractions: (limit, sourceId, scope) => input.knowledgeService.listExtractions(
+        limit,
+        sourceId,
+        scope as Parameters<KnowledgeService['listExtractions']>[2],
+      ),
       listUsageRecords: (limit, filter) => input.knowledgeService.listUsageRecords(
         limit,
         filter as Parameters<KnowledgeService['listUsageRecords']>[1],
@@ -286,7 +304,9 @@ export function buildKnowledgeRouteContext(input: {
       ingestConnectorInput: (body) => input.knowledgeService.ingestConnectorInput(
         body as Parameters<KnowledgeService['ingestConnectorInput']>[0],
       ),
-      search: (query, limit) => input.knowledgeService.search(query, limit),
+      searchScoped: (query) => input.knowledgeService.searchScoped(
+        query as Parameters<KnowledgeService['searchScoped']>[0],
+      ),
       ask: (body) => input.knowledgeService.ask(
         body as Parameters<KnowledgeService['ask']>[0],
       ),
