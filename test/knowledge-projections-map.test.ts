@@ -9,6 +9,8 @@ import { renderDevicePassportPage } from '../packages/sdk/src/platform/knowledge
 import { buildKnowledgePacketSync } from '../packages/sdk/src/platform/knowledge/packet.js';
 import { KnowledgeProjectionService } from '../packages/sdk/src/platform/knowledge/projections.js';
 import { renderKnowledgeMap } from '../packages/sdk/src/platform/knowledge/map.js';
+import { KnowledgeService } from '../packages/sdk/src/platform/knowledge/service.js';
+import { knowledgeSpaceMetadata } from '../packages/sdk/src/platform/knowledge/spaces.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 import { semanticFactId } from '../packages/sdk/src/platform/knowledge/semantic/utils.js';
 
@@ -700,8 +702,8 @@ describe('knowledge generated projections and maps', () => {
       tags: ['deploy'],
       status: 'indexed',
     });
-    const topic = await store.upsertNode({ kind: 'topic', slug: 'operations', title: 'Operations' });
-    const capability = await store.upsertNode({ kind: 'capability', slug: 'deploy', title: 'Deployment' });
+    const topic = await store.upsertNode({ kind: 'topic', slug: 'operations', title: 'Operations', sourceId: manual.id });
+    const capability = await store.upsertNode({ kind: 'capability', slug: 'deploy', title: 'Deployment', sourceId: note.id });
     await store.upsertEdge({ fromKind: 'source', fromId: manual.id, toKind: 'node', toId: topic.id, relation: 'documents' });
     await store.upsertEdge({ fromKind: 'source', fromId: note.id, toKind: 'node', toId: capability.id, relation: 'documents' });
 
@@ -740,6 +742,7 @@ describe('knowledge generated projections and maps', () => {
       slug: 'base-widget',
       title: 'Base Widget',
       summary: 'Base widget knowledge.',
+      metadata: knowledgeSpaceMetadata('default'),
     });
     const haSource = await store.upsertSource({
       connectorId: 'homeassistant',
@@ -810,6 +813,113 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(haNode.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(haSource.id);
     expect(allPacket?.items.map((item) => item.id)).toContain(haNode.id);
+  });
+
+  test('default knowledge views reject unscoped source-derived extension records', async () => {
+    const { store, artifactStore } = createStores();
+    const baseSource = await store.upsertSource({
+      connectorId: 'manual',
+      sourceType: 'document',
+      title: 'Base Knowledge Manual',
+      canonicalUri: 'manual://base-widget',
+      tags: ['base'],
+      status: 'indexed',
+    });
+    const baseNode = await store.upsertNode({
+      kind: 'topic',
+      slug: 'default-base-widget',
+      title: 'Base Widget',
+      sourceId: baseSource.id,
+    });
+    const haSource = await store.upsertSource({
+      connectorId: 'homeassistant',
+      sourceType: 'document',
+      title: 'Sony BRAVIA repair source',
+      canonicalUri: 'https://www.displayspecifications.com/en/model/example',
+      tags: ['homeassistant'],
+      status: 'indexed',
+      metadata: knowledgeSpaceMetadata('homeassistant:test'),
+    });
+    const leakedNode = await store.upsertNode({
+      kind: 'topic',
+      slug: 'sony-bravia-xbr-55x850b',
+      title: 'BRAVIA XBR-55X850B',
+      sourceId: haSource.id,
+      metadata: knowledgeSpaceMetadata('homeassistant:test', {
+        sourceId: haSource.id,
+      }),
+    });
+    await store.replaceNodeRecord({
+      ...leakedNode,
+      metadata: {
+        sourceId: haSource.id,
+        tag: 'BRAVIA XBR-55X850B',
+      },
+    });
+    const leakedIssue = await store.upsertIssue({
+      severity: 'info',
+      code: 'knowledge.answer_gap',
+      message: 'No knowledge answer available for: What features does the TV have?',
+      sourceId: haSource.id,
+      nodeId: leakedNode.id,
+      metadata: knowledgeSpaceMetadata('homeassistant:test', {
+        query: 'What features does the TV have?',
+      }),
+    });
+    await store.replaceIssueRecord({
+      ...leakedIssue,
+      metadata: {
+        query: 'What features does the TV have?',
+      },
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: haSource.id,
+      toKind: 'node',
+      toId: leakedNode.id,
+      relation: 'documents',
+    });
+
+    const service = new KnowledgeService(store, artifactStore, undefined, {
+      memoryRegistry: {
+        add: async () => {},
+        getAll: () => [],
+        getStore: () => null,
+      },
+    });
+    const projectionService = new KnowledgeProjectionService(store, artifactStore);
+
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).toContain(baseNode.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(leakedNode.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(leakedNode.id);
+    expect(service.queryIssues({ limit: 100 }).items.map((issue) => issue.id)).not.toContain(leakedIssue.id);
+    expect(service.queryIssues({ limit: 100, includeAllSpaces: true }).items.map((issue) => issue.id)).toContain(leakedIssue.id);
+
+    const defaultTargets = await projectionService.listTargets(100);
+    const defaultPacket = buildKnowledgePacketSync(packetContext(store), 'BRAVIA Home Assistant', [], 10);
+    const defaultMap = renderKnowledgeMap({
+      sources: store.listSources(100),
+      nodes: store.listNodes(100),
+      edges: store.listEdges(),
+      issues: store.listIssues(100),
+    }, { includeSources: true });
+
+    expect(defaultTargets.map((target) => target.id)).not.toContain(leakedNode.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(leakedIssue.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedNode.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedIssue.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedNode.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedIssue.id);
+
+    const defaultAnswer = await service.ask({
+      query: 'What features does the BRAVIA XBR-55X850B have?',
+      includeSources: true,
+      includeLinkedObjects: true,
+      includeConfidence: true,
+    });
+    expect(defaultAnswer.results.map((result) => result.id)).not.toContain(leakedNode.id);
+    expect(defaultAnswer.answer.sources.map((source) => source.id)).not.toContain(haSource.id);
+    expect(defaultAnswer.answer.linkedObjects.map((node) => node.id)).not.toContain(leakedNode.id);
   });
 });
 

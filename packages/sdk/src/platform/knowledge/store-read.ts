@@ -13,7 +13,7 @@ import type {
   KnowledgeConsolidationReportRecord,
   KnowledgeExtractionRecord,
 } from './types.js';
-import { getKnowledgeSpaceId, normalizeKnowledgeSpaceId } from './spaces.js';
+import { isInKnowledgeSpaceScope, normalizeKnowledgeSpaceId } from './spaces.js';
 
 export interface KnowledgeStoreReadView {
   readonly ready: boolean;
@@ -87,7 +87,7 @@ export function listKnowledgeNodesInSpace(
 ): KnowledgeNodeRecord[] {
   const normalizedSpaceId = normalizeKnowledgeSpaceId(spaceId);
   return [...view.nodes.values()]
-    .filter((node) => getKnowledgeSpaceId(node) === normalizedSpaceId)
+    .filter((node) => isInKnowledgeSpaceScope(node, { knowledgeSpaceId: normalizedSpaceId }))
     .sort(byUpdatedAtDesc);
 }
 
@@ -101,7 +101,7 @@ export function listKnowledgeSourcesInSpace(
 ): KnowledgeSourceRecord[] {
   const normalizedSpaceId = normalizeKnowledgeSpaceId(spaceId);
   return [...view.sources.values()]
-    .filter((source) => getKnowledgeSpaceId(source) === normalizedSpaceId)
+    .filter((source) => isInKnowledgeSpaceScope(source, { knowledgeSpaceId: normalizedSpaceId }))
     .sort(byUpdatedAtDesc);
 }
 
@@ -117,7 +117,7 @@ export function listKnowledgeIssuesInSpace(
 ): KnowledgeIssueRecord[] {
   const normalizedSpaceId = normalizeKnowledgeSpaceId(spaceId);
   return [...view.issues.values()]
-    .filter((issue) => getKnowledgeSpaceId(issue) === normalizedSpaceId)
+    .filter((issue) => isInKnowledgeSpaceScope(issue, { knowledgeSpaceId: normalizedSpaceId }))
     .sort(byUpdatedAtDesc);
 }
 
@@ -133,7 +133,7 @@ export function listKnowledgeExtractionsInSpace(
 ): KnowledgeExtractionRecord[] {
   const normalizedSpaceId = normalizeKnowledgeSpaceId(spaceId);
   return [...view.extractions.values()]
-    .filter((extraction) => getKnowledgeSpaceId(extraction) === normalizedSpaceId)
+    .filter((extraction) => isInKnowledgeSpaceScope(extraction, { knowledgeSpaceId: normalizedSpaceId }))
     .sort(byUpdatedAtDesc);
 }
 

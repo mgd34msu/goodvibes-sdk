@@ -5,9 +5,8 @@ import type {
   KnowledgeSourceRecord,
 } from '../types.js';
 import {
-  getKnowledgeSpaceId,
+  getExplicitKnowledgeSpaceId,
   isHomeAssistantKnowledgeSpace,
-  isInKnowledgeSpace,
   normalizeKnowledgeSpaceId,
 } from '../spaces.js';
 import { isActiveKnowledgeEdge } from '../projection-utils.js';
@@ -486,10 +485,12 @@ function belongsToAnswerSpace(
   spaceId: string,
 ): boolean {
   const normalized = normalizeKnowledgeSpaceId(spaceId);
-  const recordSpaceId = normalizeKnowledgeSpaceId(getKnowledgeSpaceId(record));
+  const explicitSpaceId = getExplicitKnowledgeSpaceId(record);
+  if (!explicitSpaceId) return false;
+  const recordSpaceId = normalizeKnowledgeSpaceId(explicitSpaceId);
   if (normalized === 'default') return recordSpaceId === 'default';
   if (normalized === 'homeassistant') return isHomeAssistantKnowledgeSpace(recordSpaceId);
-  return isInKnowledgeSpace(record, normalized);
+  return recordSpaceId === normalized;
 }
 
 function uniqueSources(sources: readonly KnowledgeSourceRecord[]): KnowledgeSourceRecord[] {

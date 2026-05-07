@@ -5,6 +5,7 @@ import {
   HomeGraphService,
   KnowledgeSemanticService,
   homeAssistantKnowledgeSpaceId,
+  knowledgeSpaceMetadata,
 } from '../packages/sdk/src/platform/knowledge/index.js';
 import {
   BoilerplateAnswerLlm,
@@ -581,7 +582,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: { manufacturer: 'LG', model: '86NANO90UNA' },
+      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     await store.upsertEdge({
       fromKind: 'source',
@@ -644,7 +645,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: { manufacturer: 'LG', model: '86NANO90UNA' },
+      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     const gap = await store.upsertNode({
       kind: 'knowledge_gap',
@@ -719,7 +720,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: { manufacturer: 'LG', model: '86NANO90UNA' },
+      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     const gap = await store.upsertNode({
       kind: 'knowledge_gap',
@@ -728,11 +729,11 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       summary: 'Existing evidence lacks a full feature and specification profile.',
       aliases: [],
       confidence: 70,
-      metadata: {
+      metadata: knowledgeSpaceMetadata('default', {
         semanticKind: 'gap',
         gapKind: 'answer',
         linkedObjectIds: [device.id],
-      },
+      }),
     });
     await store.upsertEdge({ fromKind: 'node', fromId: device.id, toKind: 'node', toId: gap.id, relation: 'has_gap' });
     const semantic = new KnowledgeSemanticService(store, {
@@ -781,7 +782,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: { manufacturer: 'LG', model: '86NANO90UNA' },
+      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     const otherDevice = await store.upsertNode({
       kind: 'ha_device',
@@ -789,7 +790,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'Sony BRAVIA TV',
       aliases: ['XBR-55X850B'],
       confidence: 90,
-      metadata: { manufacturer: 'Sony', model: 'XBR-55X850B' },
+      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'Sony', model: 'XBR-55X850B' }),
     });
     const gap = await store.upsertNode({
       kind: 'knowledge_gap',
@@ -798,11 +799,11 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       summary: 'Existing evidence lacks a full feature and specification profile.',
       aliases: [],
       confidence: 70,
-      metadata: {
+      metadata: knowledgeSpaceMetadata('default', {
         semanticKind: 'gap',
         gapKind: 'answer',
         linkedObjectIds: [device.id],
-      },
+      }),
     });
     await store.upsertEdge({ fromKind: 'node', fromId: device.id, toKind: 'node', toId: gap.id, relation: 'has_gap' });
     const goodFacts = await Promise.all([

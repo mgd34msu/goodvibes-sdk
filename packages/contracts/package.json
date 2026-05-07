@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-contracts",
-  "version": "0.33.11",
+  "version": "0.33.12",
   "engines": {
     "bun": "1.3.10",
     "node": ">=22.0.0"
