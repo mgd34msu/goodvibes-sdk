@@ -105,7 +105,7 @@ export function isInKnowledgeSpaceScope(
 ): boolean {
   const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
   if (scopedSpaceId === null) return true;
-  return getExplicitKnowledgeSpaceId(input) === scopedSpaceId;
+  return getKnowledgeSpaceId(input) === scopedSpaceId;
 }
 
 export function ensureKnowledgeSpaceMetadata(

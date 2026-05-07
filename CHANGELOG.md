@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.14] - 2026-05-07
+
+### Fixed
+- Restored implicit `default` knowledge-space matching for base records without
+  explicit space metadata, while keeping relationship-aware filtering for
+  extension-linked records. This keeps reviewed project memory visible in the
+  regular Knowledge/Wiki surface without reintroducing Home Assistant leaks.
+- Wrote memory-derived graph nodes and topic tags with explicit `default`
+  knowledge-space metadata during memory sync so future reindex runs produce
+  unambiguous base knowledge records.
+
+---
+
 ## [0.33.13] - 2026-05-07
 
 ### Fixed
