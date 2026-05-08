@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.17] - 2026-05-08
+
+### Fixed
+- Split regular Knowledge/Wiki and Home Assistant Home Graph into separate
+  runtime knowledge stores so `/api/knowledge/*` cannot expose Home Graph
+  records through default views, `includeAllSpaces`, projections, packets, or
+  repair-derived nodes.
+- Routed Home Graph semantic repair through the Home Graph service and store,
+  including the target Home Graph knowledge space on repair-source ingestion.
+
+---
+
 ## [0.33.16] - 2026-05-07
 
 ### Fixed

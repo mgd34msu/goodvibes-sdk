@@ -20,7 +20,13 @@ import {
 
 describe('semantic knowledge/wiki enrichment: web repair and subject links', () => {
   test('web gap repair ingests at least two distinct sources for answer gaps', async () => {
-    const ingested: Array<{ url: string; title?: string; tags?: readonly string[]; metadata?: Record<string, unknown> }> = [];
+    const ingested: Array<{
+      url: string;
+      knowledgeSpaceId?: string;
+      title?: string;
+      tags?: readonly string[];
+      metadata?: Record<string, unknown>;
+    }> = [];
     const repairer = createWebKnowledgeGapRepairer({
       searchService: {
         async search(request) {
@@ -110,6 +116,7 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
     expect(result?.ingestedSourceIds).toEqual(['source-1', 'source-2']);
     expect(result?.sourceAssessments?.[0]?.confidence).toBeGreaterThanOrEqual(70);
     expect(ingested).toHaveLength(2);
+    expect(ingested[0]?.knowledgeSpaceId).toBe('homeassistant:house');
     expect(ingested[0]?.metadata?.sourceDiscovery).not.toBeUndefined(); // presence-only: sourceDiscovery field
     expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).confidence).toBeGreaterThanOrEqual(70);
     expect((ingested[0]?.metadata?.sourceDiscovery as Record<string, unknown>).confidenceReasons).toContain('model:86NANO90UNA');

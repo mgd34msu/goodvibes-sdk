@@ -22,6 +22,10 @@ import {
   createWebKnowledgeGapRepairer,
   projectPlanningProjectIdFromPath,
 } from '../knowledge/index.js';
+import {
+  HOME_GRAPH_KNOWLEDGE_DB_FILE,
+  REGULAR_KNOWLEDGE_DB_FILE,
+} from '../knowledge/store-config.js';
 import { MediaProviderRegistry, ensureBuiltinMediaProviders } from '../media/index.js';
 import { MultimodalService } from '../multimodal/index.js';
 import { AgentManager } from '../tools/agent/index.js';
@@ -392,12 +396,24 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       return record.id;
     },
   });
-  const knowledgeStore = new KnowledgeStore({ configManager });
+  const knowledgeStore = new KnowledgeStore({
+    configManager,
+    dbFileName: REGULAR_KNOWLEDGE_DB_FILE,
+  });
+  const homeGraphKnowledgeStore = new KnowledgeStore({
+    configManager,
+    dbFileName: HOME_GRAPH_KNOWLEDGE_DB_FILE,
+  });
+  const knowledgeSemanticLlm = createProviderBackedKnowledgeSemanticLlm(providerRegistry, {
+    timeoutMs: 20_000,
+    maxConcurrent: 1,
+  });
   const knowledgeSemanticService = new KnowledgeSemanticService(knowledgeStore, {
-    llm: createProviderBackedKnowledgeSemanticLlm(providerRegistry, {
-      timeoutMs: 20_000,
-      maxConcurrent: 1,
-    }),
+    llm: knowledgeSemanticLlm,
+    maxLlmSourcesPerReindex: 3,
+  });
+  const homeGraphSemanticService = new KnowledgeSemanticService(homeGraphKnowledgeStore, {
+    llm: knowledgeSemanticLlm,
     maxLlmSourcesPerReindex: 3,
     objectProfiles: HOME_GRAPH_KNOWLEDGE_EXTENSION.objectProfiles,
   });
@@ -407,8 +423,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     semanticService: knowledgeSemanticService,
   });
   knowledgeService.attachRuntimeBus(options.runtimeBus);
-  const homeGraphService = new HomeGraphService(knowledgeStore, artifactStore, {
-    semanticService: knowledgeSemanticService,
+  const homeGraphService = new HomeGraphService(homeGraphKnowledgeStore, artifactStore, {
+    semanticService: homeGraphSemanticService,
   });
   const projectPlanningService = new ProjectPlanningService(knowledgeStore, {
     defaultProjectId: projectPlanningProjectIdFromPath(workingDirectory),
@@ -427,6 +443,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   knowledgeSemanticService.setGapRepairer(createWebKnowledgeGapRepairer({
     searchService: webSearchService,
     ingestService: knowledgeService,
+  }));
+  homeGraphSemanticService.setGapRepairer(createWebKnowledgeGapRepairer({
+    searchService: webSearchService,
+    ingestService: homeGraphService,
   }));
   const mediaProviders = new MediaProviderRegistry();
   ensureBuiltinMediaProviders(mediaProviders, artifactStore, providerRegistry);
