@@ -8,6 +8,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.18] - 2026-05-08
+
+### Added
+- Added durable WRFC owner decisions for chain lifecycle, child spawning,
+  review/fix transitions, gate outcomes, cancellation, failure, pass, and
+  resume handling.
+- Added optional WRFC child route selection so owners can choose provider,
+  model, and reasoning effort per phase while defaulting to owner routing.
+- Added basic WRFC chain resume hooks and a generic external WRFC adapter seam
+  for companion or partner surfaces that need a translation layer.
+
+### Changed
+- Made WRFC review and fix prompts preserve the original request as the
+  authoritative full-scope review target for every loop, including later fix
+  rounds.
+- Added lightweight worker self-check guidance instead of heavier phase
+  contract retry machinery.
+
+---
+
 ## [0.33.17] - 2026-05-08
 
 ### Fixed

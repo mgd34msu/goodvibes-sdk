@@ -5,7 +5,7 @@
 export interface Constraint {
   readonly id: string;
   readonly text: string;
-  readonly source: 'prompt' | 'inherited';
+  readonly source: 'prompt';
 }
 
 export type WrfcState =

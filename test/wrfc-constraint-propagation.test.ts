@@ -116,6 +116,12 @@ interface Harness {
   addAgent(id: string, task: string, template?: string): AgentRecord;
 }
 
+function latestSpawnedByWrfcRole(records: AgentRecord[], role: NonNullable<AgentRecord['wrfcRole']>): AgentRecord {
+  const record = records.filter((candidate) => candidate.wrfcRole === role).at(-1);
+  if (!record) throw new Error(`Expected spawned WRFC ${role} agent`);
+  return record;
+}
+
 function createHarness(opts?: {
   scoreThreshold?: number;
   maxFixAttempts?: number;
@@ -162,6 +168,7 @@ function createHarness(opts?: {
         id,
         task: (input as { task?: string }).task ?? 'spawned-task',
         template: (input as { template?: string }).template ?? 'engineer',
+        parentAgentId: (input as { parentAgentId?: string }).parentAgentId,
         status: 'running',
       });
       agentStore.set(id, record);
@@ -229,15 +236,15 @@ async function seedChainWithConstraints(
   opts?: { scoreThreshold?: number; maxFixAttempts?: number },
 ): Promise<SeededChain> {
   const h = createHarness(opts);
-  const engineerRecord = h.addAgent('eng-seed', 'seed task');
-  const chain = h.controller.createChain(engineerRecord);
+  const ownerRecord = h.addAgent('owner-seed', 'seed task');
+  const chain = h.controller.createChain(ownerRecord);
 
-  h.setOutput('eng-seed', engineerOutput(constraints));
-  emitAgentCompleted(h.bus, 'eng-seed');
+  h.setOutput(chain.engineerAgentId!, engineerOutput(constraints));
+  emitAgentCompleted(h.bus, chain.engineerAgentId!);
   await flushMicrotasks(20);
 
-  const reviewerAgentId = () => h.spawnedRecords[0]?.id ?? '';
-  return { h, chain, engineerAgentId: 'eng-seed', reviewerAgentId };
+  const reviewerAgentId = () => latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer').id;
+  return { h, chain, engineerAgentId: chain.engineerAgentId!, reviewerAgentId };
 }
 
 // ---------------------------------------------------------------------------
@@ -269,10 +276,10 @@ describe('A1: Engineer → review propagation', () => {
 
     // Reviewer should have been spawned (chain in reviewing)
     expect(chain.state).toBe('reviewing');
-    expect(h.spawnedRecords.length).toBe(1);
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer')).toHaveLength(1);
 
     // The reviewer task should contain the constraint section
-    const reviewerTask = h.spawnedRecords[0]!.task;
+    const reviewerTask = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer').task;
     expect(reviewerTask).toContain('## Constraints to verify');
     expect(reviewerTask).toContain('c1');
     expect(reviewerTask).toContain('c2');
@@ -310,7 +317,7 @@ describe('A2: Review → fix propagation with markers', () => {
     expect(eventData(reviewEvent!)['passed']).toBe(false);
 
     // The fixer agent task should contain SATISFIED and UNSATISFIED markers
-    const fixerRecord = h.spawnedRecords[1]; // [0] = reviewer, [1] = fixer
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     expect(fixerRecord).not.toBeUndefined(); // presence-only: fixer agent was spawned
     const fixerTask = fixerRecord!.task;
     expect(fixerTask).toContain('c1 [SATISFIED]');
@@ -347,7 +354,7 @@ describe('A2: Review → fix propagation with markers', () => {
     expect(fixEvent?.type).toBe('WORKFLOW_FIX_ATTEMPTED');
     expect(eventData(fixEvent!)['targetConstraintIds']).toEqual(['c2']);
 
-    const fixerTask = h.spawnedRecords[1]!.task;
+    const fixerTask = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer').task;
     expect(fixerTask).toContain('c1 [SATISFIED]');
     expect(fixerTask).toContain('c2 [UNVERIFIED]');
 
@@ -401,7 +408,7 @@ describe('A3: Fixer continuity — clean return', () => {
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('fixing');
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
 
     // Fixer returns same constraint ids — continuity preserved
     h.setOutput(fixerRecord.id, engineerOutput(constraints));
@@ -437,7 +444,7 @@ describe('A4: Fixer continuity — id missing', () => {
     emitAgentCompleted(h.bus, reviewerAgentId());
     await flushMicrotasks(20);
 
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     // Fixer only returns c1, drops c2
     h.setOutput(fixerRecord.id, engineerOutput([{ id: 'c1', text: 'must be pure', source: 'prompt' }]));
     emitAgentCompleted(h.bus, fixerRecord.id);
@@ -445,7 +452,7 @@ describe('A4: Fixer continuity — id missing', () => {
 
     // syntheticIssues is cleared into the reviewer2 task during startReview;
     // verify it was injected by checking the reviewer2 task content.
-    const reviewer2Record = h.spawnedRecords[2];
+    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
     const reviewer2Task = reviewer2Record!.task;
     expect(reviewer2Task).toContain('## Synthetic issues from controller');
@@ -477,7 +484,7 @@ describe('A5: Fixer continuity — id extra', () => {
     emitAgentCompleted(h.bus, reviewerAgentId());
     await flushMicrotasks(20);
 
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     // Fixer invents c99
     h.setOutput(fixerRecord.id, engineerOutput([
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -489,7 +496,7 @@ describe('A5: Fixer continuity — id extra', () => {
 
     // syntheticIssues is cleared into the reviewer2 task during startReview;
     // verify it was injected by checking the reviewer2 task content.
-    const reviewer2Record = h.spawnedRecords[2];
+    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
     const reviewer2Task = reviewer2Record!.task;
     expect(reviewer2Task).toContain('## Synthetic issues from controller');
@@ -520,14 +527,14 @@ describe('A6: Synthetic issue consumption', () => {
     emitAgentCompleted(h.bus, reviewerAgentId());
     await flushMicrotasks(20);
 
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     // Fixer drops c2 → inject synthetic issue
     h.setOutput(fixerRecord.id, engineerOutput([{ id: 'c1', text: 'must be pure', source: 'prompt' }]));
     emitAgentCompleted(h.bus, fixerRecord.id);
     await flushMicrotasks(20);
 
     // The second reviewer's task should be prepended with synthetic issue block
-    const reviewer2Record = h.spawnedRecords[2];
+    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
     const reviewer2Task = reviewer2Record!.task;
     expect(reviewer2Task).toContain('## Synthetic issues from controller');
@@ -551,7 +558,7 @@ describe('A7: Empty-list no-op — reviewer side', () => {
     expect(chain.constraints).toHaveLength(0);
     expect(chain.state).toBe('reviewing');
 
-    const reviewerRecord = h.spawnedRecords[0]!;
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     const reviewerTask = reviewerRecord.task;
 
     expect(reviewerTask).not.toContain('## Constraints to verify');
@@ -574,7 +581,7 @@ describe('A8: Empty-list no-op — fixer side', () => {
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('fixing');
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     const fixerTask = fixerRecord.task;
 
     expect(fixerTask).not.toContain('## Constraints (authoritative');
@@ -585,7 +592,7 @@ describe('A8: Empty-list no-op — fixer side', () => {
 });
 
 // ---------------------------------------------------------------------------
-// A9: Gate-retry inheritance — immediate (followUpChain path)
+// A9: Gate retry — same-chain fix
 // ---------------------------------------------------------------------------
 
 function createGateHarness(gateName: string) {
@@ -625,6 +632,7 @@ function createGateHarness(gateName: string) {
         id,
         task: (input as { task?: string }).task ?? 'spawned-task',
         template: (input as { template?: string }).template ?? 'engineer',
+        parentAgentId: (input as { parentAgentId?: string }).parentAgentId,
         status: 'running',
       });
       agentStore.set(id, record);
@@ -661,8 +669,8 @@ function waitForEvent(bus: RuntimeEventBus, eventType: string): Promise<void> {
   });
 }
 
-describe('A9: Gate-retry inheritance — immediate (followUpChain)', () => {
-  test('child chain inherits constraints with source:inherited, constraintsEnumerated:true', async () => {
+describe('A9: Gate retry — same-chain fix', () => {
+  test('gate failure keeps owner chain active and sends constraints to the fixer', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a9');
 
     const parentConstraints: Constraint[] = [
@@ -674,55 +682,42 @@ describe('A9: Gate-retry inheritance — immediate (followUpChain)', () => {
     agentStore.set('eng-gate-a9', engRecord);
     const parentChain = controller.createChain(engRecord);
 
-    engRecord.fullOutput = engineerOutput(parentConstraints);
-    emitAgentCompleted(bus, 'eng-gate-a9');
+    agentStore.get(parentChain.engineerAgentId!)!.fullOutput = engineerOutput(parentConstraints);
+    emitAgentCompleted(bus, parentChain.engineerAgentId!);
     await flushMicrotasks(20);
 
     // Reviewer spawned
-    const reviewerRecord = spawnedRecords[0]!;
+    const reviewerRecord = latestSpawnedByWrfcRole(spawnedRecords, 'reviewer');
     reviewerRecord.fullOutput = reviewerOutput(10.0, [
       { constraintId: 'c1', satisfied: true, evidence: 'pure' },
       { constraintId: 'c2', satisfied: true, evidence: 'no external deps' },
     ]);
 
-    // Wait for WORKFLOW_CHAIN_PASSED (gate processing is async — runs real subprocess)
-    const passedPromise = waitForEvent(bus, 'WORKFLOW_CHAIN_PASSED');
+    // Wait for WORKFLOW_FIX_ATTEMPTED (gate processing is async — runs real subprocess)
+    const fixPromise = waitForEvent(bus, 'WORKFLOW_FIX_ATTEMPTED');
     emitAgentCompleted(bus, reviewerRecord.id);
-    await passedPromise;
+    await fixPromise;
     await flushMicrotasks(20);
 
-    expect(parentChain.state).toBe('passed');
+    expect(parentChain.state).toBe('fixing');
 
-    // The gate fail spawned a follow-up agent; register it as a chain so we can inspect it.
-    // (The controller spawns the agent but only registers a chain when createChain is called externally.)
-    const followUpRecord = spawnedRecords[1];
-    expect(followUpRecord).not.toBeUndefined(); // presence-only: array element existence
-    expect(followUpRecord!.task).toContain('## Inherited constraints');
-    expect(followUpRecord!.task).toContain('c1: must be pure');
-    expect(followUpRecord!.task).toContain('c2: no deps');
-    const followUpChain = controller.createChain(followUpRecord!);
-    await flushMicrotasks(20);
-
-    // Inherited constraints: source flipped to 'inherited', id/text preserved
-    expect(followUpChain.constraintsEnumerated).toBe(true);
-    expect(followUpChain.constraints).toHaveLength(2);
-    expect(followUpChain.constraints[0]?.source).toBe('inherited');
-    expect(followUpChain.constraints[1]?.source).toBe('inherited');
-    expect(followUpChain.constraints[0]?.id).toBe('c1');
-    expect(followUpChain.constraints[1]?.id).toBe('c2');
-    expect(followUpChain.constraints[0]?.text).toBe('must be pure');
-    expect(followUpChain.constraints[1]?.text).toBe('no deps');
+    const fixerRecord = latestSpawnedByWrfcRole(spawnedRecords, 'fixer');
+    expect(fixerRecord.task).toContain('## Constraints to preserve');
+    expect(fixerRecord.task).toContain('c1: must be pure');
+    expect(fixerRecord.task).toContain('c2: no deps');
+    expect(parentChain.constraintsEnumerated).toBe(true);
+    expect(parentChain.constraints).toEqual(parentConstraints);
 
     controller.dispose();
   });
 });
 
 // ---------------------------------------------------------------------------
-// A10: Gate-retry inheritance — pending path
+// A10: Gate retry does not create child chains
 // ---------------------------------------------------------------------------
 
-describe('A10: Gate-retry inheritance — pending path', () => {
-  test('child chain receives inherited constraints via attachPendingParentChain', async () => {
+describe('A10: Gate retry — no child chain', () => {
+  test('gate failure does not create a second WRFC chain', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a10');
 
     const parentConstraints: Constraint[] = [
@@ -734,76 +729,56 @@ describe('A10: Gate-retry inheritance — pending path', () => {
     agentStore.set('eng-pend-a10', engRecord);
     const parentChain = controller.createChain(engRecord);
 
-    engRecord.fullOutput = engineerOutput(parentConstraints);
-    emitAgentCompleted(bus, 'eng-pend-a10');
+    agentStore.get(parentChain.engineerAgentId!)!.fullOutput = engineerOutput(parentConstraints);
+    emitAgentCompleted(bus, parentChain.engineerAgentId!);
     await flushMicrotasks(20);
 
-    const reviewerRecord = spawnedRecords[0]!;
+    const reviewerRecord = latestSpawnedByWrfcRole(spawnedRecords, 'reviewer');
     reviewerRecord.fullOutput = reviewerOutput(10.0, [
       { constraintId: 'c1', satisfied: true, evidence: 'pure' },
       { constraintId: 'c2', satisfied: true, evidence: 'no deps' },
     ]);
 
-    const passedPromise = waitForEvent(bus, 'WORKFLOW_CHAIN_PASSED');
+    const fixPromise = waitForEvent(bus, 'WORKFLOW_FIX_ATTEMPTED');
     emitAgentCompleted(bus, reviewerRecord.id);
-    await passedPromise;
+    await fixPromise;
     await flushMicrotasks(20);
 
-    expect(parentChain.state).toBe('passed');
-
-    // The gate fail spawned a follow-up agent via the pending path; register it as a chain.
-    // (The controller queues parentChainId + constraints for the agent, applied on createChain.)
-    const followUpRecord = spawnedRecords[1];
-    expect(followUpRecord).not.toBeUndefined(); // presence-only: array element existence
-    const childChain = controller.createChain(followUpRecord!);
-    await flushMicrotasks(20);
-
-    // Child should have inherited constraints applied via attachPendingParentChain
-    expect(childChain.constraints).toHaveLength(2);
-    expect(childChain.constraints.every((c) => c.source === 'inherited')).toBe(true);
-    expect(childChain.constraintsEnumerated).toBe(true);
-    expect(childChain.parentChainId).toBe(parentChain.id);
+    expect(parentChain.state).toBe('fixing');
+    expect(controller.listChains()).toHaveLength(1);
+    expect(latestSpawnedByWrfcRole(spawnedRecords, 'fixer').parentAgentId).toBe(parentChain.ownerAgentId);
 
     controller.dispose();
   });
 });
 
 // ---------------------------------------------------------------------------
-// A11: Zero-constraint gate-retry
+// A11: Zero-constraint gate retry
 // ---------------------------------------------------------------------------
 
-describe('A11: Zero-constraint gate-retry', () => {
-  test('parent with empty constraints → child has empty constraints, constraintsEnumerated:false', async () => {
+describe('A11: Zero-constraint gate retry', () => {
+  test('same-chain gate fix omits constraint section when no constraints were enumerated', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a11');
 
     const engRecord = makeRecord({ id: 'eng-zero-a11', task: 'unconstrained task' });
     agentStore.set('eng-zero-a11', engRecord);
     const parentChain = controller.createChain(engRecord);
 
-    engRecord.fullOutput = engineerOutput([]);
-    emitAgentCompleted(bus, 'eng-zero-a11');
+    agentStore.get(parentChain.engineerAgentId!)!.fullOutput = engineerOutput([]);
+    emitAgentCompleted(bus, parentChain.engineerAgentId!);
     await flushMicrotasks(20);
 
-    const reviewerRecord = spawnedRecords[0]!;
+    const reviewerRecord = latestSpawnedByWrfcRole(spawnedRecords, 'reviewer');
     reviewerRecord.fullOutput = reviewerOutput(10.0, []);
 
-    const passedPromise = waitForEvent(bus, 'WORKFLOW_CHAIN_PASSED');
+    const fixPromise = waitForEvent(bus, 'WORKFLOW_FIX_ATTEMPTED');
     emitAgentCompleted(bus, reviewerRecord.id);
-    await passedPromise;
+    await fixPromise;
     await flushMicrotasks(20);
 
-    expect(parentChain.state).toBe('passed');
-
-    // Register the follow-up agent as a chain to inspect constraint inheritance.
-    const followUpRecord = spawnedRecords[1];
-    expect(followUpRecord).not.toBeUndefined(); // presence-only: array element existence
-    const childChain = controller.createChain(followUpRecord!);
-    await flushMicrotasks(20);
-
-    // Zero-constraint parent: child has empty constraints and constraintsEnumerated:false
-    // (pending path only sets constraintsEnumerated:true when inherited.length > 0)
-    expect(childChain.constraints).toHaveLength(0);
-    expect(childChain.constraintsEnumerated).toBe(false);
+    expect(parentChain.state).toBe('fixing');
+    expect(parentChain.constraints).toHaveLength(0);
+    expect(latestSpawnedByWrfcRole(spawnedRecords, 'fixer').task).not.toContain('## Constraints to preserve');
 
     controller.dispose();
   });
@@ -952,7 +927,7 @@ describe('A14: WORKFLOW_CONSTRAINTS_ENUMERATED emitted exactly once', () => {
     emitAgentCompleted(h.bus, reviewerAgentId());
     await flushMicrotasks(20);
 
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     // Fixer returns same constraints
     h.setOutput(fixerRecord.id, engineerOutput(constraints));
     emitAgentCompleted(h.bus, fixerRecord.id);

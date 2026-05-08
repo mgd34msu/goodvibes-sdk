@@ -17,12 +17,12 @@ export interface BaseCompletionReport {
 }
 
 /**
- * A single constraint extracted from the task prompt or inherited from a parent chain.
+ * A single constraint extracted from the task prompt.
  */
 export interface Constraint {
   id: string;                        // e.g. "c1", "c2"
   text: string;                      // quoted/near-quoted user phrasing
-  source: 'prompt' | 'inherited';    // 'prompt' = engineer enumerated from this prompt; 'inherited' = from parent chain / gate-retry
+  source: 'prompt';                  // engineer enumerated from this prompt
 }
 
 /**
@@ -47,7 +47,7 @@ export interface EngineerReport extends BaseCompletionReport {
   decisions: Array<{ what: string; why: string }>;
   issues: string[];
   uncertainties: string[];
-  /** Constraints enumerated from the task prompt (or inherited from parent chain). Defaults to [] when absent. */
+  /** Constraints enumerated from the task prompt. Defaults to [] when absent. */
   constraints?: Constraint[] | undefined;
 }
 
@@ -99,7 +99,7 @@ function isWellFormedConstraint(c: unknown): c is Constraint {
   return (
     typeof obj['id'] === 'string' && obj['id'].length > 0 &&
     typeof obj['text'] === 'string' && obj['text'].length > 0 &&
-    (obj['source'] === 'prompt' || obj['source'] === 'inherited')
+    obj['source'] === 'prompt'
   );
 }
 

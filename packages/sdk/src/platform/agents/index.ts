@@ -10,6 +10,7 @@ export * from './session.js';
 export * from './worktree.js';
 export * from './wrfc-config.js';
 export * from './wrfc-controller.js';
+export * from './wrfc-external-adapter.js';
 export * from './wrfc-gate-runtime.js';
 export * from './wrfc-gates.js';
 export * from './wrfc-plan-sync.js';

@@ -113,6 +113,7 @@ const CONSTRAINTS_TASK_LIMIT = 20;
 
 export function buildReviewTask(
   chainId: string,
+  originalTask: string,
   report: CompletionReport,
   threshold: number,
   constraints: Constraint[] = [],
@@ -122,16 +123,20 @@ export function buildReviewTask(
     `WRFC Review Request`,
     `Chain ID: ${chainId}`,
     ``,
+    `Original WRFC ask (authoritative full review scope):`,
+    originalTask,
+    ``,
     `Engineer report digest:`,
     ...lines,
     ``,
     `Instructions:`,
-    `1. Read the referenced files directly before scoring. Do not rely on this digest alone.`,
-    `2. Inspect the engineer's gatheredContext, plannedActions, appliedChanges, and decisions for discipline and coherence.`,
-    `3. Verify the implementation meets all stated requirements.`,
-    `4. Score the implementation using the 10-dimension review rubric.`,
-    `5. The passing score threshold is ${threshold}/10.`,
-    `6. Return a structured ReviewerReport JSON block in your final response.`,
+    `1. Review the complete current result against the original WRFC ask above. Do not narrow the review to the latest fix, files touched in the last child turn, or functions mentioned in the digest.`,
+    `2. Read the referenced files directly before scoring. Do not rely on this digest alone.`,
+    `3. Inspect the engineer's gatheredContext, plannedActions, appliedChanges, and decisions for discipline and coherence.`,
+    `4. Verify the implementation meets all stated requirements and that prior passing behavior was not regressed by later fix loops.`,
+    `5. Score the implementation using the 10-dimension review rubric.`,
+    `6. The passing score threshold is ${threshold}/10.`,
+    `7. Return a structured ReviewerReport JSON block in your final response.`,
     ``,
     `The ReviewerReport must include:`,
     `- version: 1`,
@@ -254,6 +259,7 @@ function buildReviewBrief(report: CompletionReport): string[] {
 
 export function buildFixTask(
   chainId: string,
+  originalTask: string,
   review: ReviewerReport,
   threshold: number,
   fixAttempts: number,
@@ -270,6 +276,9 @@ export function buildFixTask(
     `WRFC Fix Request`,
     `Chain ID: ${chainId}`,
     ``,
+    `Original WRFC ask (authoritative scope for every fix loop):`,
+    originalTask,
+    ``,
     `Review score: ${review.score}/10 (threshold: ${threshold}/10)`,
     `Fix attempt: ${fixAttempts}`,
     ``,
@@ -280,9 +289,11 @@ export function buildFixTask(
     ``,
     `Instructions:`,
     `1. Address ALL issues listed above, prioritizing critical and major items.`,
-    `2. Fix each issue completely — partial fixes will reduce your score.`,
-    `3. Re-run Gather, Plan, Apply explicitly before writing your final answer.`,
-    `4. Return a structured EngineerReport JSON block including gatheredContext, plannedActions, and appliedChanges in your final response.`,
+    `2. Keep the original WRFC ask in scope. Do not limit the fix to only the files/functions named by the latest review if the original ask requires broader correction.`,
+    `3. Fix each issue completely — partial fixes will reduce your score.`,
+    `4. Re-run Gather, Plan, Apply explicitly before writing your final answer.`,
+    `5. Before finalizing, spot-check your complete result against the original ask and record any remaining misses under issues[] or uncertainties[].`,
+    `6. Return a structured EngineerReport JSON block including gatheredContext, plannedActions, and appliedChanges in your final response.`,
   ].join('\n');
 
   if (constraints.length === 0) {
@@ -353,9 +364,9 @@ export function buildGateFailureTask(
   }
 
   const constraintSection = [
-    `## Inherited constraints`,
+    `## Constraints to preserve`,
     ``,
-    `These constraints passed through from the parent WRFC chain and remain binding while fixing gate failures. Return them in your EngineerReport constraints[] with source "inherited". Do not add, rename, or drop constraints while repairing gates.`,
+    `These constraints remain binding while fixing gate failures. Return the same ids and text in your EngineerReport constraints[] with source "prompt". Do not add, rename, or drop constraints while repairing gates.`,
     ``,
     ...constraintLines,
   ].join('\n');
