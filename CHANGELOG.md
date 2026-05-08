@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.16] - 2026-05-07
+
+### Fixed
+- Hid orphan catalog-derived topic/domain/folder nodes from default
+  Knowledge/Wiki views unless they are connected to visible base knowledge,
+  preventing stale DisplaySpecifications-style repair tags from appearing in
+  regular wiki nodes after reindex.
+- Hid answer-gap issues whose only grounding is a refinement-only answer-gap
+  node from default issues and projection targets, while still exposing them
+  through `includeAllSpaces` diagnostics.
+
+---
+
 ## [0.33.15] - 2026-05-07
 
 ### Fixed

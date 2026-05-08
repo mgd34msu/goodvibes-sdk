@@ -37,7 +37,9 @@ export function knowledgeNodeMatchesScope(
   if (scopedSpaceId === null) return true;
   const relatedSpaces = relatedNodeSpaceIds(node, lookup);
   const ownSpace = getKnowledgeSpaceId(node);
-  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID && relatedSpaces.length === 0 && isUngroundedSemanticAnswerGapNode(node)) return false;
+  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID
+    && relatedSpaces.length === 0
+    && (isUngroundedSemanticAnswerGapNode(node) || isUngroundedCatalogDerivedNode(node))) return false;
   if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID) {
     return ownSpace === scopedSpaceId && (relatedSpaces.length === 0 || relatedSpaces.every((spaceId) => spaceId === scopedSpaceId));
   }
@@ -53,7 +55,8 @@ export function knowledgeIssueMatchesScope(
   if (scopedSpaceId === null) return true;
   const relatedSpaces = relatedIssueSpaceIds(issue, lookup);
   const ownSpace = getKnowledgeSpaceId(issue);
-  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID && relatedSpaces.length === 0 && isUngroundedSemanticAnswerGapIssue(issue)) return false;
+  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID
+    && (isUngroundedSemanticAnswerGapIssue(issue, lookup) || isIssueLinkedOnlyToUngroundedAnswerGap(issue, lookup))) return false;
   if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID) {
     return ownSpace === scopedSpaceId && (relatedSpaces.length === 0 || relatedSpaces.every((spaceId) => spaceId === scopedSpaceId));
   }
@@ -155,18 +158,47 @@ function isUngroundedSemanticAnswerGapNode(node: KnowledgeNodeRecord): boolean {
     ]).length === 0;
 }
 
-function isUngroundedSemanticAnswerGapIssue(issue: KnowledgeIssueRecord): boolean {
+function isUngroundedSemanticAnswerGapIssue(issue: KnowledgeIssueRecord, lookup: KnowledgeScopeLookup): boolean {
   return issue.code === 'knowledge.answer_gap'
     && (issue.metadata.semantic === true || readString(issue.metadata.semantic) === 'true')
     && uniqueStrings([
       issue.sourceId,
-      issue.nodeId,
       readString(issue.metadata.sourceId),
-      readString(issue.metadata.nodeId),
       ...readStringArray(issue.metadata.sourceIds),
       ...readStringArray(issue.metadata.linkedObjectIds),
       ...readStringArray(issue.metadata.subjectIds),
-    ]).length === 0;
+    ]).length === 0
+    && issueNodeIds(issue).every((nodeId) => {
+      const node = lookupNode(lookup, nodeId);
+      return node ? isUngroundedSemanticAnswerGapNode(node) : true;
+    });
+}
+
+function isIssueLinkedOnlyToUngroundedAnswerGap(issue: KnowledgeIssueRecord, lookup: KnowledgeScopeLookup): boolean {
+  if (issue.code !== 'knowledge.answer_gap') return false;
+  const nodeIds = issueNodeIds(issue);
+  return nodeIds.length > 0 && nodeIds.every((nodeId) => {
+    const node = lookupNode(lookup, nodeId);
+    return Boolean(node && isUngroundedSemanticAnswerGapNode(node));
+  });
+}
+
+function issueNodeIds(issue: KnowledgeIssueRecord): readonly string[] {
+  return uniqueStrings([
+    issue.nodeId,
+    readString(issue.metadata.nodeId),
+  ]);
+}
+
+function isUngroundedCatalogDerivedNode(node: KnowledgeNodeRecord): boolean {
+  if (node.sourceId || readString(node.metadata.sourceId) || readStringArray(node.metadata.sourceIds).length > 0) return false;
+  if (readString(node.metadata.linkedObjectIds) || readStringArray(node.metadata.linkedObjectIds).length > 0) return false;
+  if (readString(node.metadata.subjectIds) || readStringArray(node.metadata.subjectIds).length > 0) return false;
+  if (node.kind === 'domain') return Boolean(readString(node.metadata.hostname));
+  if (node.kind === 'bookmark_folder') return Boolean(readString(node.metadata.folderPath));
+  if (node.kind !== 'topic') return false;
+  const tag = readString(node.metadata.tag);
+  return Boolean(tag && readOnlyMetadataKeys(node.metadata).every((key) => key === 'tag'));
 }
 
 function lookupSource(lookup: KnowledgeScopeLookup, id: string | undefined): KnowledgeSourceRecord | null {
@@ -191,4 +223,8 @@ function readStringArray(value: unknown): readonly string[] {
 
 function uniqueStrings(values: readonly (string | undefined)[]): readonly string[] {
   return [...new Set(values.filter((entry): entry is string => Boolean(entry && entry.trim().length > 0)))];
+}
+
+function readOnlyMetadataKeys(metadata: Record<string, unknown>): readonly string[] {
+  return Object.keys(metadata).filter((key) => !['knowledgeSpaceId', 'namespace'].includes(key));
 }
