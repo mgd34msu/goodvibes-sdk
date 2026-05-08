@@ -930,6 +930,13 @@ describe('knowledge generated projections and maps', () => {
       summary: 'Knowledge sources cataloged under www.displayspecifications.com.',
       metadata: { hostname: 'www.displayspecifications.com' },
     });
+    const orphanCatalogTopic = await store.upsertNode({
+      kind: 'topic',
+      slug: 'orphan-displayspecifications-topic',
+      title: 'DisplaySpecifications',
+      summary: 'Topic tag DisplaySpecifications.',
+      metadata: { tag: 'DisplaySpecifications' },
+    });
     await store.upsertEdge({
       fromKind: 'source',
       fromId: haSource.id,
@@ -973,6 +980,7 @@ describe('knowledge generated projections and maps', () => {
       severity: 'info',
       code: 'knowledge.answer_gap',
       message: 'No knowledge answer available for: BRAVIA XBR-55X850B Home Assistant',
+      nodeId: orphanAnswerGap.id,
       metadata: knowledgeSpaceMetadata('default', {
         query: 'BRAVIA XBR-55X850B Home Assistant',
         sourceIds: [],
@@ -995,11 +1003,13 @@ describe('knowledge generated projections and maps', () => {
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(explicitDefaultGap.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(edgeOnlyTopic.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(edgeOnlyDomain.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(orphanCatalogTopic.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(leakedNode.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(explicitDefaultGap.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(edgeOnlyTopic.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(edgeOnlyDomain.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(orphanCatalogTopic.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(orphanAnswerGap.id);
     expect(service.queryNodes({ limit: 100, knowledgeSpaceId: 'homeassistant:test' }).items.map((node) => node.id)).toContain(edgeOnlyTopic.id);
     expect(service.queryNodes({ limit: 100, knowledgeSpaceId: 'homeassistant:test' }).items.map((node) => node.id)).toContain(edgeOnlyDomain.id);
@@ -1022,6 +1032,7 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedNode.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(edgeOnlyTopic.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(edgeOnlyDomain.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(orphanCatalogTopic.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedIssue.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(explicitDefaultIssue.id);
@@ -1031,12 +1042,14 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(explicitDefaultGap.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(edgeOnlyTopic.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(edgeOnlyDomain.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(orphanCatalogTopic.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedNode.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedIssue.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(explicitDefaultIssue.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(edgeOnlyTopic.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(edgeOnlyDomain.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(orphanCatalogTopic.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
 
     const defaultAnswer = await service.ask({
