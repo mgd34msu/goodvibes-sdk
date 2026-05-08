@@ -28,8 +28,13 @@ import type {
   KnowledgeUsageRecord,
 } from './types.js';
 
-export function resolveKnowledgeDbPathFromControlPlaneDir(controlPlaneDir: string): string {
-  return join(controlPlaneDir, 'knowledge.sqlite');
+export const DEFAULT_KNOWLEDGE_DB_FILE = 'knowledge-wiki.sqlite';
+
+export function resolveKnowledgeDbPathFromControlPlaneDir(
+  controlPlaneDir: string,
+  dbFileName = DEFAULT_KNOWLEDGE_DB_FILE,
+): string {
+  return join(controlPlaneDir, dbFileName);
 }
 
 export function nowMs(): number {

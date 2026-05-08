@@ -23,6 +23,7 @@ interface GapRepairSearch {
 interface GapRepairIngest {
   ingestUrl(input: {
     readonly url: string;
+    readonly knowledgeSpaceId?: string | undefined;
     readonly title?: string | undefined;
     readonly tags?: readonly string[] | undefined;
     readonly sourceType?: KnowledgeSourceType | undefined;
@@ -154,6 +155,7 @@ async function repairKnowledgeGapsWithWeb(
       if (timeoutMs <= 0) break;
       const ingested = await withTimeout(options.ingestService.ingestUrl({
         url: result.url,
+        knowledgeSpaceId: request.spaceId,
         ...(result.title ? { title: result.title } : {}),
         sourceType: 'url',
         connectorId: 'semantic-gap-repair',
