@@ -126,6 +126,8 @@ Available runtime domains:
 
 For the complete list of event types and their payload shapes, see [Runtime events reference](./reference-runtime-events.md).
 
+WRFC owner decisions are persisted to the WRFC workmap as `owner_decision` entries. These are not high-volume runtime events; they are an audit trail for why the owner spawned a phase child, accepted or rejected a review, resumed or skipped resume, and completed/cancelled/failed a chain. Use `agent` tool modes `wrfc-chains` and `wrfc-history` to inspect this trail from native SDK/TUI surfaces.
+
 ### Subscribing via SSE
 
 ```ts
@@ -754,7 +756,7 @@ Emitted once per chain on initial engineer completion. Carries the authoritative
 feed.workflows.on('WORKFLOW_CONSTRAINTS_ENUMERATED', (event) => {
   console.log(event.chainId, event.constraints);
   // event.constraints: Constraint[]
-  // { id: string; text: string; source: 'prompt' | 'inherited' }[]
+  // { id: string; text: string; source: 'prompt' }[]
 });
 ```
 

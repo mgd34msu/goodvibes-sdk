@@ -18,9 +18,13 @@ export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 
 function summarizeWrfcEvent(event: Record<string, unknown>) {
   return {
-    type: event.type,
-    timestamp: event.timestamp,
+    type: event.event ?? event.type,
+    timestamp: event.ts ?? event.timestamp,
     status: event.status,
+    action: event.action,
+    reason: event.reason,
+    agentId: event.agentId,
+    role: event.role,
     score: event.score,
     gate: event.gate,
     issueCount: Array.isArray(event.issues) ? event.issues.length : undefined,

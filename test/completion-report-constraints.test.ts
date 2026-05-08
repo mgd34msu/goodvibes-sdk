@@ -119,14 +119,14 @@ describe('D3: Engineer report — mixed well-formed and malformed constraint ent
     expect(result.constraints).toEqual([]);
   });
 
-  test('inherited source is accepted as well-formed', () => {
+  test('inherited source is rejected as obsolete', () => {
     const raw = asJsonBlock({
       ...BASE_ENGINEER,
       constraints: [{ id: 'c1', text: 'inherited constraint', source: 'inherited' }],
     });
     const result = parseCompletionReport(raw) as EngineerReport;
-    expect(result.constraints).toHaveLength(1);
-    expect(result.constraints![0]?.source).toBe('inherited');
+    expect(result.constraints).toEqual([]);
+    expect(result.issues).toContain('Malformed constraints ignored: 1 entry.');
   });
 });
 

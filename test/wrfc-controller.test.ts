@@ -3,7 +3,7 @@
  *
  * Tests:
  * - Happy path: engineer completes → reviewer fires → score passes → WORKFLOW_CHAIN_PASSED
- * - Gate failure: score passes, gate fails → WORKFLOW_FIX_ATTEMPTED on follow-up → eventual pass
+ * - Gate failure: score passes, gate fails → WORKFLOW_FIX_ATTEMPTED in the same owner-owned chain
  * - Escalation: score repeatedly below threshold → WORKFLOW_CHAIN_FAILED after maxFixAttempts
  */
 import { describe, expect, test, beforeEach } from 'bun:test';
@@ -94,6 +94,12 @@ interface TestHarness {
   addAgent(id: string, task: string, template?: string): AgentRecord;
 }
 
+function latestSpawnedByWrfcRole(records: AgentRecord[], role: NonNullable<AgentRecord['wrfcRole']>): AgentRecord {
+  const record = records.filter((candidate) => candidate.wrfcRole === role).at(-1);
+  if (!record) throw new Error(`Expected spawned WRFC ${role} agent`);
+  return record;
+}
+
 function createHarness(overrides?: {
   scoreThreshold?: number;
   maxFixAttempts?: number;
@@ -143,6 +149,7 @@ function createHarness(overrides?: {
         id,
         task: (input as { task?: string }).task ?? 'spawned-task',
         template: (input as { template?: string }).template ?? 'engineer',
+        parentAgentId: (input as { parentAgentId?: string }).parentAgentId,
         status: 'running',
       });
       agentStore.set(id, record);
@@ -192,21 +199,20 @@ describe('WrfcController — happy path', () => {
   test('engineer completes → reviewer spawned → passing score → WORKFLOW_CHAIN_PASSED emitted', async () => {
     const h = createHarness();
 
-    // Create the engineer agent and register it
-    const engineerRecord = h.addAgent('eng-1', 'implement feature X');
-    const chain = h.controller.createChain(engineerRecord);
+    const ownerRecord = h.addAgent('owner-1', 'implement feature X');
+    const chain = h.controller.createChain(ownerRecord);
 
     expect(chain.state).toBe('engineering');
     expect(chain.task).toBe('implement feature X');
 
     // Engineer completes with some output
-    h.setOutput('eng-1', 'I have completed the feature. Summary: done.');
-    emitAgentCompleted(h.bus, 'eng-1');
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
     await flushMicrotasks();
 
     // Reviewer should have been spawned
-    expect(h.spawnedRecords.length).toBe(1);
-    const reviewerRecord = h.spawnedRecords[0]!;
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer')).toHaveLength(1);
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     expect(chain.state).toBe('reviewing');
     expect(chain.reviewerAgentId).toBe(reviewerRecord.id);
 
@@ -230,7 +236,7 @@ describe('WrfcController — happy path', () => {
 });
 
 describe('WrfcController — gate failure', () => {
-  test('score passes but configured gate fails → WORKFLOW_FIX_ATTEMPTED on follow-up chain', async () => {
+  test('score passes but configured gate fails → same WRFC chain starts a gate fix', async () => {
     // Use a gate that is configured (enabled) so it runs. The gate command will
     // fail because no real command can succeed in this unit test environment.
     // We configure a gate that always fails.
@@ -274,6 +280,7 @@ describe('WrfcController — gate failure', () => {
           id,
           task: (input as { task?: string }).task ?? 'spawned-task',
           template: (input as { template?: string }).template ?? 'engineer',
+          parentAgentId: (input as { parentAgentId?: string }).parentAgentId,
           status: 'running',
         });
         agentStore.set(id, record);
@@ -298,26 +305,24 @@ describe('WrfcController — gate failure', () => {
       }),
     });
 
-    // Create engineer and let it complete with a passing score
-    const engineerRecord = makeRecord({ id: 'eng-gate-1', task: 'implement gated feature' });
-    agentStore.set('eng-gate-1', engineerRecord);
-    const chain = controller.createChain(engineerRecord);
+    const ownerRecord = makeRecord({ id: 'owner-gate-1', task: 'implement gated feature' });
+    agentStore.set('owner-gate-1', ownerRecord);
+    const chain = controller.createChain(ownerRecord);
 
-    engineerRecord.fullOutput = 'Implementation done.';
-    emitAgentCompleted(busWithGate, 'eng-gate-1');
+    agentStore.get(chain.engineerAgentId!)!.fullOutput = 'Implementation done.';
+    emitAgentCompleted(busWithGate, chain.engineerAgentId!);
     await flushMicrotasks();
 
     // Reviewer spawned
     expect(spawnedRecords.length).toBeGreaterThanOrEqual(1);
-    const reviewer = spawnedRecords[0]!;
+    const reviewer = latestSpawnedByWrfcRole(spawnedRecords, 'reviewer');
     expect(chain.state).toBe('reviewing');
 
     // Reviewer passes with score 10
     reviewer.fullOutput = PASSING_REVIEW_OUTPUT;
-    emitAgentCompleted(busWithGate, reviewer.id);
-    await new Promise<void>((resolve) => {
+    const fixAttempted = new Promise<void>((resolve) => {
       const unsubscribe = busWithGate.onDomain('workflows', (envelope) => {
-        if (envelope.type === 'WORKFLOW_CHAIN_PASSED') {
+        if (envelope.type === 'WORKFLOW_FIX_ATTEMPTED') {
           const chainId = (envelope.payload as { chainId?: string }).chainId;
           if (chainId === chain.id) {
             unsubscribe();
@@ -325,21 +330,20 @@ describe('WrfcController — gate failure', () => {
           }
         }
       });
-    }); // event-based wait for gate process to complete
+    });
+    emitAgentCompleted(busWithGate, reviewer.id);
+    await fixAttempted; // event-based wait for gate process to complete
+    await flushMicrotasks();
 
-    // Chain completed passed (gate failure spawns a follow-up but original chain marks passed)
-    expect(chain.state).toBe('passed');
+    // Chain remains active under the owner and starts a same-chain gate fix.
+    expect(chain.state).toBe('fixing');
 
-    // A gate-failure follow-up engineer should have been spawned
-    // (spawnedRecords[1] is the follow-up gate-fix agent)
-    expect(spawnedRecords.length).toBeGreaterThanOrEqual(2);
+    const fixer = latestSpawnedByWrfcRole(spawnedRecords, 'fixer');
+    expect(fixer.parentAgentId).toBe(chain.ownerAgentId);
 
-    // Verify WORKFLOW_CHAIN_PASSED was emitted for original chain
     const types = workflowEvents.map((e) => e.type);
-    expect(types).toContain('WORKFLOW_CHAIN_PASSED');
-
-    // The follow-up chain should also receive a WORKFLOW_CHAIN_CREATED event
-    expect(types).toContain('WORKFLOW_CHAIN_CREATED');
+    expect(types).toContain('WORKFLOW_FIX_ATTEMPTED');
+    expect(types).not.toContain('WORKFLOW_CHAIN_PASSED');
 
     controller.dispose();
   });
@@ -349,18 +353,18 @@ describe('WrfcController — escalation', () => {
   test('score below threshold after maxFixAttempts → WORKFLOW_CHAIN_FAILED emitted', async () => {
     const h = createHarness({ scoreThreshold: 9.9, maxFixAttempts: 1 });
 
-    const engineerRecord = h.addAgent('eng-esc-1', 'implement escalation feature');
-    const chain = h.controller.createChain(engineerRecord);
+    const ownerRecord = h.addAgent('owner-esc-1', 'implement escalation feature');
+    const chain = h.controller.createChain(ownerRecord);
 
     expect(chain.state).toBe('engineering');
 
     // Engineer completes
-    h.setOutput('eng-esc-1', 'Implementation done.');
-    emitAgentCompleted(h.bus, 'eng-esc-1');
+    h.setOutput(chain.engineerAgentId!, 'Implementation done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
     await flushMicrotasks();
 
     expect(chain.state).toBe('reviewing');
-    const reviewerRecord1 = h.spawnedRecords[0]!;
+    const reviewerRecord1 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
 
     // Reviewer 1 fails (score 5/10)
     h.setOutput(reviewerRecord1.id, FAILING_REVIEW_OUTPUT);
@@ -370,9 +374,9 @@ describe('WrfcController — escalation', () => {
     // With maxFixAttempts=1, a fixer is spawned (attempt 1)
     expect(chain.state).toBe('fixing');
     expect(chain.fixAttempts).toBe(1);
-    expect(h.spawnedRecords.length).toBe(2); // reviewer + fixer
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer')).toHaveLength(1);
 
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     expect(chain.fixerAgentId).toBe(fixerRecord.id);
 
     // Fixer completes — triggers second review
@@ -381,8 +385,8 @@ describe('WrfcController — escalation', () => {
     await flushMicrotasks();
 
     expect(chain.state).toBe('reviewing');
-    expect(h.spawnedRecords.length).toBe(3); // reviewer + fixer + reviewer2
-    const reviewerRecord2 = h.spawnedRecords[2]!;
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer')).toHaveLength(2);
+    const reviewerRecord2 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
 
     // Second reviewer also fails — fixAttempts(1) >= maxFixAttempts(1) → fail chain
     h.setOutput(reviewerRecord2.id, FAILING_REVIEW_OUTPUT);
@@ -413,12 +417,12 @@ describe('WrfcController — escalation', () => {
   test('agent failure directly fails the chain', async () => {
     const h = createHarness();
 
-    const engineerRecord = h.addAgent('eng-fail-1', 'task that will fail');
-    const chain = h.controller.createChain(engineerRecord);
+    const ownerRecord = h.addAgent('owner-fail-1', 'task that will fail');
+    const chain = h.controller.createChain(ownerRecord);
 
     expect(chain.state).toBe('engineering');
 
-    emitAgentFailed(h.bus, 'eng-fail-1', 'LLM error: context limit exceeded');
+    emitAgentFailed(h.bus, chain.engineerAgentId!, 'LLM error: context limit exceeded');
     await flushMicrotasks();
 
     expect(chain.state).toBe('failed');
@@ -486,18 +490,18 @@ describe('WrfcController — constraint integration', () => {
     const engRecord = h.addAgent('eng-c1', 'implement with constraints');
     const chain = h.controller.createChain(engRecord);
 
-    h.setOutput('eng-c1', makeEngineerOutput([
+    h.setOutput(chain.engineerAgentId!, makeEngineerOutput([
       { id: 'c1', text: 'must be pure', source: 'prompt' },
       { id: 'c2', text: 'no deps', source: 'prompt' },
     ]));
-    emitAgentCompleted(h.bus, 'eng-c1');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('reviewing');
     expect(chain.constraints).toHaveLength(2);
     expect(chain.constraintsEnumerated).toBe(true);
 
-    const reviewerRecord = h.spawnedRecords[0]!;
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     h.setOutput(reviewerRecord.id, makeReviewerOutput(10.0, [
       { constraintId: 'c1', satisfied: true, evidence: 'pure function verified' },
       { constraintId: 'c2', satisfied: true, evidence: 'zero imports' },
@@ -524,14 +528,14 @@ describe('WrfcController — constraint integration', () => {
     const engRecord = h.addAgent('eng-c2', 'implement unconstrained feature');
     const chain = h.controller.createChain(engRecord);
 
-    h.setOutput('eng-c2', makeEngineerOutput([]));
-    emitAgentCompleted(h.bus, 'eng-c2');
+    h.setOutput(chain.engineerAgentId!, makeEngineerOutput([]));
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('reviewing');
     expect(chain.constraints).toHaveLength(0);
 
-    const reviewerRecord = h.spawnedRecords[0]!;
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     h.setOutput(reviewerRecord.id, makeReviewerOutput(10.0, []));
     emitAgentCompleted(h.bus, reviewerRecord.id);
     await flushMicrotasks(20);
@@ -561,14 +565,14 @@ describe('WrfcController — constraint integration', () => {
     const engRecord = h.addAgent('eng-c3', 'implement with one constraint');
     const chain = h.controller.createChain(engRecord);
 
-    h.setOutput('eng-c3', makeEngineerOutput([
+    h.setOutput(chain.engineerAgentId!, makeEngineerOutput([
       { id: 'c1', text: 'must be pure', source: 'prompt' },
     ]));
-    emitAgentCompleted(h.bus, 'eng-c3');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('reviewing');
-    const reviewer1 = h.spawnedRecords[0]!;
+    const reviewer1 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
 
     // Score 10 but c1 unsatisfied → constraint-forced fail
     h.setOutput(reviewer1.id, makeReviewerOutput(10.0, [
@@ -580,7 +584,7 @@ describe('WrfcController — constraint integration', () => {
     expect(chain.state).toBe('fixing');
     expect(chain.fixAttempts).toBe(1);
 
-    const fixerRecord = h.spawnedRecords[1]!;
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
     h.setOutput(fixerRecord.id, makeEngineerOutput([
       { id: 'c1', text: 'must be pure', source: 'prompt' },
     ]));
@@ -588,7 +592,7 @@ describe('WrfcController — constraint integration', () => {
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('reviewing');
-    const reviewer2 = h.spawnedRecords[2]!;
+    const reviewer2 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
 
     h.setOutput(reviewer2.id, makeReviewerOutput(10.0, [
       { constraintId: 'c1', satisfied: true, evidence: 'pure function confirmed' },
@@ -625,7 +629,8 @@ describe('WrfcController — state machine', () => {
     expect(chain.id).toMatch(/^wrfc-/);
     expect(chain.state).toBe('engineering');
     expect(chain.task).toBe('state machine task');
-    expect(chain.engineerAgentId).toBe('eng-sm-1');
+    expect(chain.ownerAgentId).toBe('eng-sm-1');
+    expect(chain.engineerAgentId).not.toBe('eng-sm-1');
     expect(chain.fixAttempts).toBe(0);
     expect(chain.reviewCycles).toBe(0);
 
@@ -660,13 +665,13 @@ describe('WrfcController — state machine', () => {
     );
 
     const record = h.addAgent('eng-sm-4', 'state transition task');
-    h.controller.createChain(record);
+    const chain = h.controller.createChain(record);
 
-    h.setOutput('eng-sm-4', 'Done.');
-    emitAgentCompleted(h.bus, 'eng-sm-4');
+    h.setOutput(chain.engineerAgentId!, 'Done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
     await flushMicrotasks();
 
-    const reviewer = h.spawnedRecords[0]!;
+    const reviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     h.setOutput(reviewer.id, PASSING_REVIEW_OUTPUT);
     emitAgentCompleted(h.bus, reviewer.id);
     await flushMicrotasks();

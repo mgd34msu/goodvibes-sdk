@@ -7,8 +7,9 @@ import { resolveScopedDirectory } from '../runtime/surface-root.js';
 export interface WorkmapEntry {
   ts: string;
   wrfcId: string;
-  event: 'engineer_complete' | 'review_complete' | 'fix_started' | 'gate_result' | 'chain_passed' | 'chain_failed';
+  event: 'engineer_complete' | 'review_complete' | 'fix_started' | 'gate_result' | 'chain_passed' | 'chain_failed' | 'owner_decision';
   agentId?: string | undefined;
+  role?: string | undefined;
   task?: string;        // original task (on first engineer_complete only)
   score?: number;       // review score
   passed?: boolean;     // review passed or gate passed
@@ -17,6 +18,11 @@ export interface WorkmapEntry {
   gateOutput?: string;  // gate output (truncated to 200 chars)
   attempt?: number;     // fix attempt number
   reason?: string;      // failure reason
+  action?: string;      // owner decision action
+  state?: string;       // chain state at decision time
+  model?: string | undefined;
+  provider?: string | undefined;
+  reasoningEffort?: string | undefined;
 }
 
 export class WrfcWorkmap {

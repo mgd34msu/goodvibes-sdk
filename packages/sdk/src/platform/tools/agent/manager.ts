@@ -5,6 +5,9 @@ import { WrfcController } from '../../agents/wrfc-controller.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import {
+  emitAgentCancelled,
+  emitAgentProgress,
+  emitAgentRunning,
   emitAgentSpawning,
   emitOrchestrationGraphCreated,
   emitOrchestrationNodeAdded,
@@ -19,6 +22,7 @@ import { logger } from '../../utils/logger.js';
 import type { AgentInput } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { splitModelRegistryKey } from '../../providers/registry-helpers.js';
+import type { WrfcAgentRole } from '../../agents/wrfc-types.js';
 
 export type AgentExecutor = {
   runAgent(record: AgentRecord): Promise<void>;
@@ -104,6 +108,8 @@ export interface AgentRecord {
   fullOutput?: string | undefined;
   streamingContent?: string | undefined;
   wrfcId?: string | undefined;
+  wrfcRole?: WrfcAgentRole | undefined;
+  wrfcRouteReason?: string | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
   cohort?: string | undefined;
   orchestrationGraphId?: string | undefined;
@@ -213,13 +219,18 @@ export class AgentManager {
     if (input.parentAgentId && !parentRecord) {
       throw new Error(`Unknown parent agent: '${input.parentAgentId}'`);
     }
+    if (parentRecord?.wrfcId && parentRecord.wrfcRole !== 'owner') {
+      throw new Error('WRFC phase agents cannot spawn nested child agents; spawn work through the WRFC owner.');
+    }
     const orchestrationDepth = parentRecord ? parentRecord.orchestrationDepth + 1 : 0;
     const activeAgents = this.list().filter((agent) => agent.status === 'pending' || agent.status === 'running').length;
+    const isWrfcOwnerChild = Boolean(parentRecord?.wrfcRole === 'owner' && input.dangerously_disable_wrfc);
     const spawnDecision = evaluateOrchestrationSpawn({
       configManager: this.configManager,
-      mode: input.parentAgentId ? 'recursive-child' : 'manual-batch',
+      mode: input.parentAgentId && !isWrfcOwnerChild ? 'recursive-child' : 'manual-batch',
       activeAgents,
       requestedDepth: orchestrationDepth,
+      ...(isWrfcOwnerChild ? { overrides: { recursionEnabled: true, maxDepth: 1 } } : {}),
     });
     if (!spawnDecision.allowed) {
       if (this.runtimeBus && (input.orchestrationGraphId ?? parentRecord?.orchestrationGraphId)) {
@@ -267,6 +278,11 @@ export class AgentManager {
     }
 
     const id = `agent-${crypto.randomUUID().slice(0, 8)}`;
+    const orchestrationGraphId = input.orchestrationGraphId
+      ?? parentRecord?.orchestrationGraphId
+      ?? (input.cohort ? `cohort:${input.cohort}` : undefined);
+    const orchestrationNodeId = orchestrationGraphId ? (input.orchestrationNodeId ?? id) : undefined;
+    const parentNodeId = input.parentNodeId ?? parentRecord?.orchestrationNodeId;
     const record: AgentRecord = {
       id,
       task,
@@ -288,6 +304,7 @@ export class AgentManager {
       executionProtocol,
       reviewMode,
       communicationLane,
+      systemPromptAddendum: input.systemPromptAddendum,
       status: 'pending',
       startedAt: Date.now(),
       toolCallCount: 0,
@@ -303,12 +320,12 @@ export class AgentManager {
       dangerously_disable_wrfc: input.dangerously_disable_wrfc,
       cohort: input.cohort,
 
-      ...(input.orchestrationGraphId ?? input.cohort ? {
-        orchestrationGraphId: input.orchestrationGraphId ?? parentRecord?.orchestrationGraphId ?? `cohort:${input.cohort}`,
-        orchestrationNodeId: input.orchestrationNodeId ?? id,
+      ...(orchestrationGraphId ? {
+        orchestrationGraphId,
+        orchestrationNodeId,
       } : {}),
       ...(input.parentAgentId ? { parentAgentId: input.parentAgentId } : {}),
-      ...(input.parentNodeId ? { parentNodeId: input.parentNodeId } : {}),
+      ...(parentNodeId ? { parentNodeId } : {}),
       ...(toolResolution.capabilityCeilingTools ? { capabilityCeilingTools: toolResolution.capabilityCeilingTools } : {}),
       ...(input.successCriteria ? { successCriteria: [...input.successCriteria] } : {}),
       ...(input.requiredEvidence ? { requiredEvidence: [...input.requiredEvidence] } : {}),
@@ -397,6 +414,21 @@ export class AgentManager {
     if (!input.dangerously_disable_wrfc) {
       try {
         this.wrfcController?.createChain(record);
+        if (record.wrfcRole === 'owner') {
+          record.status = 'running';
+          record.progress = 'WRFC owner supervising child agents';
+          if (this.runtimeBus) {
+            const ctx = {
+              sessionId: 'agent-manager',
+              traceId: `agent-manager:${id}:wrfc-owner`,
+              source: 'agent-manager',
+              agentId: id,
+            };
+            emitAgentRunning(this.runtimeBus, ctx, { agentId: id });
+            emitAgentProgress(this.runtimeBus, ctx, { agentId: id, progress: record.progress });
+          }
+          return record;
+        }
       } catch (error) {
         logger.error('Failed to create WRFC chain', { agentId: id, error: summarizeError(error) });
       }
@@ -429,6 +461,17 @@ export class AgentManager {
     if (record.status === 'pending' || record.status === 'running') {
       record.status = 'cancelled';
       record.completedAt = Date.now();
+      if (this.runtimeBus) {
+        emitAgentCancelled(this.runtimeBus, {
+          sessionId: 'agent-manager',
+          traceId: `agent-manager:${record.id}:cancel`,
+          source: 'agent-manager',
+          agentId: record.id,
+        }, {
+          agentId: record.id,
+          reason: 'operator cancellation',
+        });
+      }
       if (this.runtimeBus && record.orchestrationGraphId && record.orchestrationNodeId) {
         emitOrchestrationNodeCancelled(this.runtimeBus, {
           sessionId: 'agent-manager',

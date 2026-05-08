@@ -36,6 +36,15 @@ A **non-build or unconstrained prompt** looks like: a question, a conversational
 **Hard cap: at most ~16 constraints.** If you find more, you are over-enumerating — consolidate. Real user prompts almost never produce more than 5-10.
 
 These constraints become your self-declared acceptance criteria. The reviewer will verify each one independently. If you cannot satisfy a constraint, record it under \`issues[]\` with an explanation — do not omit it.`;
+  _engineerAddendumCache += `
+
+## WRFC self-check before final report
+
+Before writing your final EngineerReport, do a targeted self-check against the original task prompt:
+- Confirm the complete result addresses the ask, not only the last code region you touched.
+- Spot-check changed files and any directly related behavior you may have affected.
+- Record meaningful remaining misses in \`issues[]\` and uncertainty in \`uncertainties[]\`; do not hide known gaps.
+- Keep this concise. The review phase will still perform the full independent review.`;
   return _engineerAddendumCache;
 }
 

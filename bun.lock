@@ -34,14 +34,14 @@
     },
     "packages/contracts": {
       "name": "@pellux/goodvibes-contracts",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "zod": "^4.3.6",
       },
     },
     "packages/daemon-sdk": {
       "name": "@pellux/goodvibes-daemon-sdk",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -49,11 +49,11 @@
     },
     "packages/errors": {
       "name": "@pellux/goodvibes-errors",
-      "version": "0.30.5",
+      "version": "0.33.18",
     },
     "packages/operator-sdk": {
       "name": "@pellux/goodvibes-operator-sdk",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -63,7 +63,7 @@
     },
     "packages/peer-sdk": {
       "name": "@pellux/goodvibes-peer-sdk",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -72,7 +72,7 @@
     },
     "packages/sdk": {
       "name": "@pellux/goodvibes-sdk",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-daemon-sdk": "workspace:*",
@@ -125,14 +125,14 @@
     },
     "packages/transport-core": {
       "name": "@pellux/goodvibes-transport-core",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "@pellux/goodvibes-errors": "workspace:*",
       },
     },
     "packages/transport-http": {
       "name": "@pellux/goodvibes-transport-http",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -142,7 +142,7 @@
     },
     "packages/transport-realtime": {
       "name": "@pellux/goodvibes-transport-realtime",
-      "version": "0.30.5",
+      "version": "0.33.18",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -154,6 +154,7 @@
   "overrides": {
     "ajv": "8.18.0",
     "bash-language-server": "file:vendor/bash-language-server",
+    "fast-uri": "3.1.2",
     "fast-xml-parser": "5.7.1",
     "google-auth-library": "10.6.2",
     "lodash": "4.18.1",
@@ -1013,7 +1014,7 @@
 
     "fast-string-width": ["fast-string-width@3.0.2", "", { "dependencies": { "fast-string-truncated-width": "^3.0.2" } }, "sha512-gX8LrtNEI5hq8DVUfRQMbr5lpaS4nMIWV+7XEbXk2b8kiQIizgnlr12B4dA3ZEx3308ze0O4Q1R+cHts8kyUJg=="],
 
-    "fast-uri": ["fast-uri@3.1.1", "", {}, "sha512-h2r7rcm6Ee/J8o0LD5djLuFVcfbZxhvho4vvsbeV0aMvXjUgqv4YpxpkEx0d68l6+IleVfLAdVEfhR7QNMkGHQ=="],
+    "fast-uri": ["fast-uri@3.1.2", "", {}, "sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ=="],
 
     "fast-wrap-ansi": ["fast-wrap-ansi@0.2.0", "", { "dependencies": { "fast-string-width": "^3.0.2" } }, "sha512-rLV8JHxTyhVmFYhBJuMujcrHqOT2cnO5Zxj37qROj23CP39GXubJRBUFF0z8KFK77Uc0SukZUf7JZhsVEQ6n8w=="],
 

@@ -581,7 +581,7 @@ export interface Constraint {
     // (undocumented)
     readonly id: string;
     // (undocumented)
-    readonly source: 'prompt' | 'inherited';
+    readonly source: 'prompt';
     // (undocumented)
     readonly text: string;
 }
@@ -1174,7 +1174,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.17";
+    readonly productVersion: "0.33.18";
     readonly operatorMethodCount: 264;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;

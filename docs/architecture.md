@@ -184,11 +184,15 @@ pending → engineering → reviewing → fixing → awaiting_gates → gating �
                                                            failed
 ```
 
-- **Engineering phase:** engineer agent performs the task and emits a `CompletionReport`
-- **Reviewing phase:** reviewer agent scores the output; score history is tracked to detect regressions
+- **Owner phase:** a durable owner agent owns the WRFC chain and remains running until the chain passes or fails
+- **Engineering phase:** an engineer child agent performs the task and emits a `CompletionReport`
+- **Reviewing phase:** reviewer agent scores the complete current result against the original WRFC ask; reviews are never narrowed to only the latest fix, touched files, or rewritten functions
 - **Fixing phase:** fixer agent addresses reviewer feedback; bounded by `fixAttempts` and `reviewCycles` limits
-- **Gating phase:** configured quality gates (e.g. `npm run typecheck`, `npm run lint`) are run; failures trigger a gate-retry chain
-- `WrfcChain` tracks the full lifecycle: all agent IDs, gate results, review scores, parent chain ID, gate failure fingerprint, and retry depth
+- **Gating phase:** configured quality gates (e.g. `npm run typecheck`, `npm run lint`) are run; failures start another fixer pass inside the same owner-owned chain
+- `WrfcChain` tracks the full lifecycle: owner agent ID, child agent IDs, gate results, review scores, retry attempts, and owner decisions
+- The owner is deliberately narrow: it keeps the chain running until full-scope review and gates pass, fails, or is cancelled. It may optionally select child model/provider routing through the `selectChildRoute` hook, but default routing remains sufficient.
+- `resumeChain()` / `resumeAllActiveChains()` provide idempotent in-process resume hooks. They avoid duplicate child spawns when a phase child is already active and restart pending chains when capacity allows.
+- TUI and other full SDK hosts can use WRFC natively. Limited surfaces and partner apps can use the generic `WrfcExternalWorkAdapter` / `WrfcExternalWorkBridge` translation seam to dispatch, poll, cancel, and normalize externally-owned work without embedding the controller internals.
 
 ### AgentMessageBus
 

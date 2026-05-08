@@ -263,6 +263,8 @@ export interface AgentInput {
   tools?: string[] | undefined;
   restrictTools?: boolean | undefined;
   context?: string | undefined;
+  /** Internal prompt addendum used by WRFC phase agents. */
+  systemPromptAddendum?: string | undefined;
   successCriteria?: string[] | undefined;
   requiredEvidence?: string[] | undefined;
   writeScope?: string[] | undefined;

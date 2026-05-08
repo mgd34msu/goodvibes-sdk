@@ -18,8 +18,7 @@ The type that represents a single constraint:
 interface Constraint {
   id: string;                         // "c1", "c2", …
   text: string;                       // quoted or minimally paraphrased user phrasing
-  source: 'prompt' | 'inherited';     // 'prompt' = engineer enumerated from this prompt
-                                      // 'inherited' = from parent chain / gate-retry
+  source: 'prompt';                   // engineer enumerated from this prompt
 }
 ```
 
@@ -89,7 +88,9 @@ When the constraint list is empty (`constraints: []`), the event is still emitte
 
 ## Reviewer verification
 
-The reviewer's task payload includes the full constraint list. The reviewer runs constraint verification alongside the 10-dimension quality rubric — not instead of it.
+The reviewer's task payload includes the original WRFC ask and the full constraint list. The reviewer runs constraint verification alongside the 10-dimension quality rubric — not instead of it.
+
+Every review is full-scope. The reviewer must evaluate the complete current result against the original WRFC ask, even after one or more fix loops. A review must not be narrowed to the latest fix, recently touched files, functions named by a reviewer, or the engineer report digest. This invariant is what keeps fix loops from passing after they solve a small local issue while regressing or ignoring the broader task.
 
 ### Per-constraint findings
 
@@ -170,6 +171,8 @@ Synthetic critical issues are prepended to the next review task as a `[CRITICAL]
 
 The authoritative constraint list on `chain.constraints` is never overwritten by a fixer run — only the initial engineer's enumeration is canonical.
 
+Fixer prompts also include the original WRFC ask. A fixer is expected to address reviewer issues while preserving the full original scope, then perform a short self-check before final reporting. Known remaining gaps go into `issues[]` or `uncertainties[]`; hiding them is treated as poor WRFC hygiene and should be caught by the full-scope reviewer.
+
 ### `WORKFLOW_FIX_ATTEMPTED` extended field
 
 When `targetConstraintIds` is present on `WORKFLOW_FIX_ATTEMPTED`, it lists the IDs of constraints the fixer was tasked with resolving in this iteration:
@@ -187,32 +190,30 @@ When `targetConstraintIds` is present on `WORKFLOW_FIX_ATTEMPTED`, it lists the 
 
 ---
 
-## Gate-failure retry inheritance
+## Gate-failure retry continuity
 
-When a chain fails quality gates and spawns a retry child chain, the child inherits the parent's constraints as `source: 'inherited'`:
+Quality gate failures do not spawn a second WRFC chain. The durable owner keeps the same chain active, starts another fixer child, and passes the authoritative constraint list through that fixer task.
 
-```ts
-// Child constraint entries
-{ id: 'c1', text: '...', source: 'inherited' }
-```
-
-The child chain starts with `constraintsEnumerated: true`, so the child engineer does not re-enumerate constraints from scratch. The inherited list is authoritative — the child engineer's returned `constraints[]` array is ignored for enumeration purposes (used only for continuity validation).
-
-Inheritance works for both the immediate path (child chain registered before the parent completes) and the pending path (child chain not yet registered when the parent triggers the retry, via the `pendingParentConstraints` map).
-
-Chains with zero constraints spawn zero-constraint retry children — the inheritance machinery runs but carries an empty list, which is a clean no-op.
+The original `constraints[]` list remains authoritative for the chain. Fixer reports are checked for continuity against that list; they can satisfy the constraints, but they cannot add, rename, or drop constraint ids. Chains with zero constraints simply omit the constraint section from gate-fix tasks.
 
 ---
 
 ## Chain fields
 
-`WrfcChain` carries three constraint-related fields (internal — not part of the public companion surface):
+`WrfcChain` carries these WRFC quality fields (internal — not part of the public companion surface):
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `constraints` | `Constraint[]` | Authoritative constraint list; set once on initial engineer completion, never overwritten |
 | `constraintsEnumerated` | `boolean` | `true` once `WORKFLOW_CONSTRAINTS_ENUMERATED` has been emitted for this chain; prevents duplicate emission on fixer re-runs |
 | `syntheticIssues` | `Array<{ severity: 'critical'; description: string }> \| undefined` | Controller-injected critical issues (e.g. continuity violations); prepended to the next review task, then cleared |
+| `ownerDecisions` | `WrfcOwnerDecision[]` | Durable audit of the owner’s chain-keeping decisions: child spawns, review pass/fail decisions, gate decisions, resume decisions, and terminal decisions |
+
+## Owner role and external adapters
+
+The WRFC owner has one narrow job: keep the chain running until the full-scope review score is at or above the configured threshold and all quality gates pass, or until the chain fails/cancels. It is not a broad planner by default. Hosts may provide a `selectChildRoute` hook when they want the owner to choose a different child model/provider/reasoning route, but the default child routing is inherited from the owner record.
+
+TUI implements WRFC directly against the SDK-native controller. Limited surfaces and partner apps should use the generic external work seam (`WrfcExternalWorkAdapter` / `WrfcExternalWorkBridge`) when they need a translation layer instead of direct WRFC control. That seam provides dispatch/status/cancel/result operations without coupling those apps to controller internals.
 
 ---
 
@@ -225,7 +226,7 @@ When the engineer emits `constraints: []` (non-build or unconstrained prompt):
 - `WORKFLOW_REVIEW_COMPLETED` omits the constraint fields entirely.
 - `WORKFLOW_FIX_ATTEMPTED` omits `targetConstraintIds`.
 - Fixer receives no constraint addendum.
-- Gate-retry children inherit an empty list.
+- Gate-fix tasks in the same chain omit the constraint section.
 - `passed` is computed as `review.score >= threshold` only — no constraint axis.
 
 This path does not add constraint fields to events or constraint blocks to agent prompts.

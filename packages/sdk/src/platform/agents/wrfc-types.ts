@@ -19,11 +19,61 @@ export type WrfcState =
   | 'failed'
   | 'committing';
 
+/** Agent role within a WRFC chain. The owner is the durable chain orchestrator. */
+export type WrfcAgentRole = 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier';
+
+export type WrfcOwnerDecisionAction =
+  | 'chain_created'
+  | 'spawn_engineer'
+  | 'spawn_reviewer'
+  | 'spawn_fixer'
+  | 'spawn_gate_fixer'
+  | 'review_passed'
+  | 'review_failed'
+  | 'gate_passed'
+  | 'gate_failed'
+  | 'chain_passed'
+  | 'chain_failed'
+  | 'chain_cancelled'
+  | 'resume_skipped'
+  | 'resume_started';
+
+export interface WrfcOwnerDecision {
+  id: string;
+  ts: string;
+  action: WrfcOwnerDecisionAction;
+  state: WrfcState;
+  reason: string;
+  agentId?: string | undefined;
+  role?: Exclude<WrfcAgentRole, 'owner'> | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
+  reasoningEffort?: AgentRecord['reasoningEffort'] | undefined;
+  reviewScore?: number | undefined;
+}
+
+export interface WrfcChildRouteSelection {
+  model?: string | undefined;
+  provider?: string | undefined;
+  fallbackModels?: string[] | undefined;
+  routing?: AgentRecord['routing'] | undefined;
+  reasoningEffort?: AgentRecord['reasoningEffort'] | undefined;
+  reason?: string | undefined;
+}
+
+export type WrfcChildRouteSelector = (context: {
+  readonly chain: WrfcChain;
+  readonly role: Exclude<WrfcAgentRole, 'owner' | 'verifier'>;
+  readonly task: string;
+  readonly ownerAgent: AgentRecord | null;
+}) => WrfcChildRouteSelection | null | undefined;
+
 /** A single WRFC chain instance. */
 export interface WrfcChain {
   id: string;
   state: WrfcState;
   task: string;
+  ownerAgentId: string;
   currentNodeId?: string | undefined;
   engineerAgentId?: string | undefined;
   reviewerAgentId?: string | undefined;
@@ -37,18 +87,17 @@ export interface WrfcChain {
   gateResults?: QualityGateResult[] | undefined;
   createdAt: number;
   completedAt?: number | undefined;
-  parentChainId?: string | undefined;
   /** Whether quality gates passed. Only meaningful when state is 'passed'. */
   gatesPassed?: boolean | undefined;
-  /** Fingerprint of gate failures: used for same-error detection across chained chains. */
-  gateFailureFingerprint?: string | undefined;
-  /** How many gate-failure retry cycles deep this chain is. 0 = original chain. */
-  gateRetryDepth: number;
   /** Review scores history — used to detect regression (2 consecutive below initial). */
   reviewScores: number[];
+  /** Durable audit of owner orchestration choices. */
+  ownerDecisions: WrfcOwnerDecision[];
   error?: string | undefined;
   /** Buffered agent completion — set when agent finishes while chain is still queued/pending. */
   bufferedCompletion?: { agentId: string; fullOutput?: string | undefined } | undefined;
+  /** True once the durable owner agent terminal event has been emitted. */
+  ownerTerminalEmitted: boolean;
   /** Constraints propagated for this chain. Initialized to [] on construction. */
   constraints: Constraint[];
   /** True once constraints have been captured and WORKFLOW_CONSTRAINTS_ENUMERATED has been emitted. */
