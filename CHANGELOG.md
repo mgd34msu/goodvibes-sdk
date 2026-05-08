@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.15] - 2026-05-07
+
+### Fixed
+- Made regular Knowledge/Wiki scoping edge-aware for derived nodes and issues,
+  so stale topic/domain records connected to Home Assistant sources only by
+  graph edges no longer appear in default nodes, issues, projections, packets,
+  or maps.
+- Hid ungrounded semantic answer-gap records from scoped default Knowledge/Wiki
+  surfaces while preserving them for `includeAllSpaces` diagnostics and
+  refinement state inspection.
+
+---
+
 ## [0.33.14] - 2026-05-07
 
 ### Fixed

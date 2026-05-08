@@ -4,6 +4,7 @@ import {
   type KnowledgeSpaceScopeInput,
 } from './spaces.js';
 import {
+  type KnowledgeScopeLookup,
   knowledgeNodeMatchesScope,
 } from './scope-records.js';
 import type {
@@ -54,6 +55,7 @@ export function searchKnowledge(
 ): KnowledgeSearchResult[] {
   const taskTokens = tokenize(query);
   if (taskTokens.length === 0) return [];
+  const scopeLookup = knowledgeScopeLookup(context);
   const sourceResults = context.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => isInKnowledgeSpaceScope(source, scope)).map((source) => {
     const extraction = context.store.getExtractionBySourceId(source.id);
     const haystack = [
@@ -77,10 +79,7 @@ export function searchKnowledge(
       source,
     };
   });
-  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => knowledgeNodeMatchesScope(node, scope, {
-    getSource: (id) => context.store.getSource(id),
-    getNode: (id) => context.store.getNode(id),
-  })).map((node) => {
+  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => knowledgeNodeMatchesScope(node, scope, scopeLookup)).map((node) => {
     const haystack = [
       node.title,
       node.summary ?? '',
@@ -215,11 +214,9 @@ function buildKnowledgePacketFromCurrentState(
     candidates.push({ score: item.score, item });
   }
 
+  const scopeLookup = knowledgeScopeLookup(context);
   for (const node of context.store.listNodes(Number.MAX_SAFE_INTEGER)) {
-    if (!knowledgeNodeMatchesScope(node, options, {
-      getSource: (id) => context.store.getSource(id),
-      getNode: (id) => context.store.getNode(id),
-    })) continue;
+    if (!knowledgeNodeMatchesScope(node, options, scopeLookup)) continue;
     const haystack = [
       node.title,
       node.summary ?? '',
@@ -302,22 +299,28 @@ function collectRelatedLabels(
   scope: KnowledgeSpaceScopeInput,
 ): string[] {
   const related = context.store.edgesFor(kind, id);
+  const scopeLookup = knowledgeScopeLookup(context);
   const labels: string[] = [];
   for (const edge of related) {
     const otherKind = edge.fromKind === kind && edge.fromId === id ? edge.toKind : edge.fromKind;
     const otherId = edge.fromKind === kind && edge.fromId === id ? edge.toId : edge.fromId;
     if (otherKind === 'node') {
       const node = context.store.getNode(otherId);
-      if (node && knowledgeNodeMatchesScope(node, scope, {
-        getSource: (sourceId) => context.store.getSource(sourceId),
-        getNode: (nodeId) => context.store.getNode(nodeId),
-      })) labels.push(node.title);
+      if (node && knowledgeNodeMatchesScope(node, scope, scopeLookup)) labels.push(node.title);
     } else if (otherKind === 'source') {
       const source = context.store.getSource(otherId);
       if (source && isInKnowledgeSpaceScope(source, scope)) labels.push(source.title ?? source.canonicalUri ?? source.id);
     }
   }
   return [...new Set(labels)].slice(0, 8);
+}
+
+function knowledgeScopeLookup(context: KnowledgePacketContext): KnowledgeScopeLookup {
+  return {
+    getSource: (id) => context.store.getSource(id),
+    getNode: (id) => context.store.getNode(id),
+    edges: context.store.listEdges(),
+  };
 }
 
 function buildUsageStats(context: KnowledgePacketContext, limit = 10_000): Map<string, {

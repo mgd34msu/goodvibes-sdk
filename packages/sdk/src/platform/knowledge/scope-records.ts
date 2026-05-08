@@ -1,10 +1,13 @@
 import {
+  DEFAULT_KNOWLEDGE_SPACE_ID,
   getExplicitKnowledgeSpaceId,
+  getKnowledgeSpaceId,
   isInKnowledgeSpaceScope,
   resolveKnowledgeSpaceScope,
   type KnowledgeSpaceScopeInput,
 } from './spaces.js';
 import type {
+  KnowledgeEdgeRecord,
   KnowledgeIssueRecord,
   KnowledgeNodeRecord,
   KnowledgeSourceRecord,
@@ -15,6 +18,7 @@ export interface KnowledgeScopeLookup {
   readonly getNode?: ((id: string) => KnowledgeNodeRecord | null | undefined) | undefined;
   readonly sources?: ReadonlyMap<string, KnowledgeSourceRecord> | undefined;
   readonly nodes?: ReadonlyMap<string, KnowledgeNodeRecord> | undefined;
+  readonly edges?: readonly KnowledgeEdgeRecord[] | undefined;
 }
 
 export function knowledgeSourceMatchesScope(
@@ -29,11 +33,15 @@ export function knowledgeNodeMatchesScope(
   scope: KnowledgeSpaceScopeInput = {},
   lookup: KnowledgeScopeLookup = {},
 ): boolean {
-  if (!isInKnowledgeSpaceScope(node, scope)) return false;
   const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
   if (scopedSpaceId === null) return true;
   const relatedSpaces = relatedNodeSpaceIds(node, lookup);
-  return relatedSpaces.length === 0 || relatedSpaces.every((spaceId) => spaceId === scopedSpaceId);
+  const ownSpace = getKnowledgeSpaceId(node);
+  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID && relatedSpaces.length === 0 && isUngroundedSemanticAnswerGapNode(node)) return false;
+  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID) {
+    return ownSpace === scopedSpaceId && (relatedSpaces.length === 0 || relatedSpaces.every((spaceId) => spaceId === scopedSpaceId));
+  }
+  return ownSpace === scopedSpaceId || relatedSpaces.includes(scopedSpaceId);
 }
 
 export function knowledgeIssueMatchesScope(
@@ -41,11 +49,15 @@ export function knowledgeIssueMatchesScope(
   scope: KnowledgeSpaceScopeInput = {},
   lookup: KnowledgeScopeLookup = {},
 ): boolean {
-  if (!isInKnowledgeSpaceScope(issue, scope)) return false;
   const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
   if (scopedSpaceId === null) return true;
   const relatedSpaces = relatedIssueSpaceIds(issue, lookup);
-  return relatedSpaces.length === 0 || relatedSpaces.every((spaceId) => spaceId === scopedSpaceId);
+  const ownSpace = getKnowledgeSpaceId(issue);
+  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID && relatedSpaces.length === 0 && isUngroundedSemanticAnswerGapIssue(issue)) return false;
+  if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID) {
+    return ownSpace === scopedSpaceId && (relatedSpaces.length === 0 || relatedSpaces.every((spaceId) => spaceId === scopedSpaceId));
+  }
+  return ownSpace === scopedSpaceId || relatedSpaces.includes(scopedSpaceId);
 }
 
 function relatedIssueSpaceIds(issue: KnowledgeIssueRecord, lookup: KnowledgeScopeLookup): readonly string[] {
@@ -70,6 +82,12 @@ function relatedIssueSpaceIds(issue: KnowledgeIssueRecord, lookup: KnowledgeScop
     if (nodeSpace) spaces.add(nodeSpace);
     if (node) for (const related of relatedNodeSpaceIds(node, lookup)) spaces.add(related);
   }
+  for (const edge of lookup.edges ?? []) {
+    if (!edgeTouchesRecord(edge, 'issue', issue.id)) continue;
+    const edgeSpace = getExplicitKnowledgeSpaceId(edge);
+    if (edgeSpace) spaces.add(edgeSpace);
+    for (const related of relatedEdgeSpaceIds(edge, lookup)) spaces.add(related);
+  }
   return [...spaces];
 }
 
@@ -90,7 +108,65 @@ function relatedNodeSpaceIds(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLo
     const linkedSpace = getExplicitKnowledgeSpaceId(lookupNode(lookup, nodeId));
     if (linkedSpace) spaces.add(linkedSpace);
   }
+  for (const edge of lookup.edges ?? []) {
+    if (!edgeTouchesRecord(edge, 'node', node.id)) continue;
+    const edgeSpace = getExplicitKnowledgeSpaceId(edge);
+    if (edgeSpace) spaces.add(edgeSpace);
+    for (const related of relatedEdgeSpaceIds(edge, lookup)) spaces.add(related);
+  }
   return [...spaces];
+}
+
+function relatedEdgeSpaceIds(edge: KnowledgeEdgeRecord, lookup: KnowledgeScopeLookup): readonly string[] {
+  const spaces = new Set<string>();
+  for (const endpoint of [
+    { kind: edge.fromKind, id: edge.fromId },
+    { kind: edge.toKind, id: edge.toId },
+  ]) {
+    if (endpoint.kind === 'source') {
+      const sourceSpace = getExplicitKnowledgeSpaceId(lookupSource(lookup, endpoint.id));
+      if (sourceSpace) spaces.add(sourceSpace);
+    }
+    if (endpoint.kind === 'node') {
+      const node = lookupNode(lookup, endpoint.id);
+      const nodeSpace = getExplicitKnowledgeSpaceId(node);
+      if (nodeSpace) spaces.add(nodeSpace);
+    }
+  }
+  return [...spaces];
+}
+
+function edgeTouchesRecord(edge: KnowledgeEdgeRecord, kind: string, id: string): boolean {
+  return (edge.fromKind === kind && edge.fromId === id) || (edge.toKind === kind && edge.toId === id);
+}
+
+function isUngroundedSemanticAnswerGapNode(node: KnowledgeNodeRecord): boolean {
+  return node.kind === 'knowledge_gap'
+    && readString(node.metadata.semanticKind) === 'gap'
+    && readString(node.metadata.gapKind) === 'answer'
+    && readString(node.metadata.visibility) === 'refinement'
+    && uniqueStrings([
+      node.sourceId,
+      readString(node.metadata.sourceId),
+      readString(node.metadata.nodeId),
+      ...readStringArray(node.metadata.sourceIds),
+      ...readStringArray(node.metadata.linkedObjectIds),
+      ...readStringArray(node.metadata.subjectIds),
+    ]).length === 0;
+}
+
+function isUngroundedSemanticAnswerGapIssue(issue: KnowledgeIssueRecord): boolean {
+  return issue.code === 'knowledge.answer_gap'
+    && (issue.metadata.semantic === true || readString(issue.metadata.semantic) === 'true')
+    && uniqueStrings([
+      issue.sourceId,
+      issue.nodeId,
+      readString(issue.metadata.sourceId),
+      readString(issue.metadata.nodeId),
+      ...readStringArray(issue.metadata.sourceIds),
+      ...readStringArray(issue.metadata.linkedObjectIds),
+      ...readStringArray(issue.metadata.subjectIds),
+    ]).length === 0;
 }
 
 function lookupSource(lookup: KnowledgeScopeLookup, id: string | undefined): KnowledgeSourceRecord | null {
