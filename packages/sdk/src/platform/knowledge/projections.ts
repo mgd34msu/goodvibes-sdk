@@ -11,6 +11,7 @@ import {
   type KnowledgeSpaceScopeInput,
 } from './spaces.js';
 import {
+  type KnowledgeScopeLookup,
   knowledgeIssueMatchesScope,
   knowledgeNodeMatchesScope,
 } from './scope-records.js';
@@ -817,14 +818,16 @@ export class KnowledgeProjectionService {
   }
 
   private scopedNodes(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeNodeRecord[] {
+    const scopeLookup = this.getScopeLookup();
     return this.store.listNodes(Number.MAX_SAFE_INTEGER)
-      .filter((node) => this.nodeInScope(node, scope))
+      .filter((node) => knowledgeNodeMatchesScope(node, scope, scopeLookup))
       .slice(0, Math.max(1, limit));
   }
 
   private scopedIssues(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeIssueRecord[] {
+    const scopeLookup = this.getScopeLookup();
     return this.store.listIssues(Number.MAX_SAFE_INTEGER)
-      .filter((issue) => this.issueInScope(issue, scope))
+      .filter((issue) => knowledgeIssueMatchesScope(issue, scope, scopeLookup))
       .slice(0, Math.max(1, limit));
   }
 
@@ -835,17 +838,19 @@ export class KnowledgeProjectionService {
   }
 
   private nodeInScope(node: KnowledgeNodeRecord, scope: KnowledgeSpaceScopeInput): boolean {
-    return knowledgeNodeMatchesScope(node, scope, {
-      getSource: (id) => this.store.getSource(id),
-      getNode: (id) => this.store.getNode(id),
-    });
+    return knowledgeNodeMatchesScope(node, scope, this.getScopeLookup());
   }
 
   private issueInScope(issue: KnowledgeIssueRecord, scope: KnowledgeSpaceScopeInput): boolean {
-    return knowledgeIssueMatchesScope(issue, scope, {
+    return knowledgeIssueMatchesScope(issue, scope, this.getScopeLookup());
+  }
+
+  private getScopeLookup(): KnowledgeScopeLookup {
+    return {
       getSource: (id) => this.store.getSource(id),
       getNode: (id) => this.store.getNode(id),
-    });
+      edges: this.store.listEdges(),
+    };
   }
 }
 

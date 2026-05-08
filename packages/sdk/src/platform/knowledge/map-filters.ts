@@ -42,6 +42,7 @@ export function applyKnowledgeMapFilters(
   const scopeLookup = {
     sources: new Map(state.sources.map((source) => [source.id, source])),
     nodes: new Map(state.nodes.map((node) => [node.id, node])),
+    edges: state.edges,
   };
 
   const sources = recordKinds && !recordKinds.has('source')

@@ -95,6 +95,7 @@ import {
 } from './shared.js';
 import { isGeneratedKnowledgeSource } from './generated-projections.js';
 import {
+  type KnowledgeScopeLookup,
   knowledgeIssueMatchesScope,
   knowledgeNodeMatchesScope,
 } from './scope-records.js';
@@ -312,11 +313,9 @@ export class KnowledgeService {
     const limit = Math.max(1, input.limit ?? 100);
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
+    const scopeLookup = this.getScopeLookup();
     const items = this.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => {
-      if (!knowledgeNodeMatchesScope(node, input, {
-        getSource: (id) => this.store.getSource(id),
-        getNode: (id) => this.store.getNode(id),
-      })) return false;
+      if (!knowledgeNodeMatchesScope(node, input, scopeLookup)) return false;
       if (input.kind && node.kind !== input.kind) return false;
       if (input.status && node.status !== input.status) return false;
       if (queryTokens.length === 0) return true;
@@ -351,11 +350,9 @@ export class KnowledgeService {
     const limit = Math.max(1, input.limit ?? 100);
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
+    const scopeLookup = this.getScopeLookup();
     const items = this.store.listIssues(Number.MAX_SAFE_INTEGER).filter((issue) => {
-      if (!knowledgeIssueMatchesScope(issue, input, {
-        getSource: (id) => this.store.getSource(id),
-        getNode: (id) => this.store.getNode(id),
-      })) return false;
+      if (!knowledgeIssueMatchesScope(issue, input, scopeLookup)) return false;
       if (input.severity && issue.severity !== input.severity) return false;
       if (input.status && issue.status !== input.status) return false;
       if (input.code && issue.code !== input.code) return false;
@@ -461,17 +458,19 @@ export class KnowledgeService {
   }
 
   private nodeMatchesKnowledgeSpaceScope(node: KnowledgeNodeRecord, scope: KnowledgeSpaceScopeInput): boolean {
-    return knowledgeNodeMatchesScope(node, scope, {
-      getSource: (id) => this.store.getSource(id),
-      getNode: (id) => this.store.getNode(id),
-    });
+    return knowledgeNodeMatchesScope(node, scope, this.getScopeLookup());
   }
 
   private issueMatchesKnowledgeSpaceScope(issue: KnowledgeIssueRecord, scope: KnowledgeSpaceScopeInput): boolean {
-    return knowledgeIssueMatchesScope(issue, scope, {
+    return knowledgeIssueMatchesScope(issue, scope, this.getScopeLookup());
+  }
+
+  private getScopeLookup(): KnowledgeScopeLookup {
+    return {
       getSource: (id) => this.store.getSource(id),
       getNode: (id) => this.store.getNode(id),
-    });
+      edges: this.store.listEdges(),
+    };
   }
 
   async recordUsage(input: {

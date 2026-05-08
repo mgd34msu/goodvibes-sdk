@@ -916,12 +916,69 @@ describe('knowledge generated projections and maps', () => {
         subject: 'LG 86NANO90UNA Smart TV Specifications',
       }),
     });
+    const edgeOnlyTopic = await store.upsertNode({
+      kind: 'topic',
+      slug: 'edge-only-bravia-topic',
+      title: 'BRAVIA XBR-55X850B',
+      summary: 'Topic tag BRAVIA XBR-55X850B.',
+      metadata: { tag: 'BRAVIA XBR-55X850B' },
+    });
+    const edgeOnlyDomain = await store.upsertNode({
+      kind: 'domain',
+      slug: 'edge-only-displayspecifications-domain',
+      title: 'www.displayspecifications.com',
+      summary: 'Knowledge sources cataloged under www.displayspecifications.com.',
+      metadata: { hostname: 'www.displayspecifications.com' },
+    });
     await store.upsertEdge({
       fromKind: 'source',
       fromId: haSource.id,
       toKind: 'node',
       toId: leakedNode.id,
       relation: 'documents',
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: haSource.id,
+      toKind: 'node',
+      toId: edgeOnlyTopic.id,
+      relation: 'tagged_with',
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: haSource.id,
+      toKind: 'node',
+      toId: edgeOnlyDomain.id,
+      relation: 'belongs_to_domain',
+    });
+    const orphanAnswerGap = await store.upsertNode({
+      id: 'sem-answer-gap-orphan-home-assistant',
+      kind: 'knowledge_gap',
+      slug: 'orphan-home-assistant-answer-gap',
+      title: 'BRAVIA XBR-55X850B Home Assistant',
+      summary: 'No indexed evidence matched the question.',
+      metadata: knowledgeSpaceMetadata('default', {
+        semanticKind: 'gap',
+        gapKind: 'answer',
+        query: 'BRAVIA XBR-55X850B Home Assistant',
+        sourceIds: [],
+        linkedObjectIds: [],
+        visibility: 'refinement',
+        displayRole: 'knowledge-gap',
+        semantic: true,
+      }),
+    });
+    const orphanAnswerIssue = await store.upsertIssue({
+      id: 'sem-answer-gap-issue-orphan-home-assistant',
+      severity: 'info',
+      code: 'knowledge.answer_gap',
+      message: 'No knowledge answer available for: BRAVIA XBR-55X850B Home Assistant',
+      metadata: knowledgeSpaceMetadata('default', {
+        query: 'BRAVIA XBR-55X850B Home Assistant',
+        sourceIds: [],
+        linkedObjectIds: [],
+        semantic: true,
+      }),
     });
 
     const service = new KnowledgeService(store, artifactStore, undefined, {
@@ -936,12 +993,22 @@ describe('knowledge generated projections and maps', () => {
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).toContain(baseNode.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(leakedNode.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(explicitDefaultGap.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(edgeOnlyTopic.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(edgeOnlyDomain.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(leakedNode.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(explicitDefaultGap.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(edgeOnlyTopic.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(edgeOnlyDomain.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(orphanAnswerGap.id);
+    expect(service.queryNodes({ limit: 100, knowledgeSpaceId: 'homeassistant:test' }).items.map((node) => node.id)).toContain(edgeOnlyTopic.id);
+    expect(service.queryNodes({ limit: 100, knowledgeSpaceId: 'homeassistant:test' }).items.map((node) => node.id)).toContain(edgeOnlyDomain.id);
     expect(service.queryIssues({ limit: 100 }).items.map((issue) => issue.id)).not.toContain(leakedIssue.id);
     expect(service.queryIssues({ limit: 100 }).items.map((issue) => issue.id)).not.toContain(explicitDefaultIssue.id);
+    expect(service.queryIssues({ limit: 100 }).items.map((issue) => issue.id)).not.toContain(orphanAnswerIssue.id);
     expect(service.queryIssues({ limit: 100, includeAllSpaces: true }).items.map((issue) => issue.id)).toContain(leakedIssue.id);
     expect(service.queryIssues({ limit: 100, includeAllSpaces: true }).items.map((issue) => issue.id)).toContain(explicitDefaultIssue.id);
+    expect(service.queryIssues({ limit: 100, includeAllSpaces: true }).items.map((issue) => issue.id)).toContain(orphanAnswerIssue.id);
 
     const defaultTargets = await projectionService.listTargets(100);
     const defaultPacket = buildKnowledgePacketSync(packetContext(store), 'BRAVIA Home Assistant', [], 10);
@@ -953,14 +1020,24 @@ describe('knowledge generated projections and maps', () => {
     }, { includeSources: true });
 
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedNode.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(edgeOnlyTopic.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(edgeOnlyDomain.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedIssue.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(explicitDefaultIssue.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(orphanAnswerIssue.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedNode.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedIssue.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(explicitDefaultGap.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(edgeOnlyTopic.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(edgeOnlyDomain.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedNode.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedIssue.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(explicitDefaultIssue.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(edgeOnlyTopic.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(edgeOnlyDomain.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
 
     const defaultAnswer = await service.ask({
       query: 'What features does the BRAVIA XBR-55X850B have?',
