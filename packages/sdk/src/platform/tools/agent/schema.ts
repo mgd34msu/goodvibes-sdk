@@ -158,7 +158,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       },
       dangerously_disable_wrfc: {
         type: 'boolean',
-        description: 'If true, skip the WRFC review chain for this agent (mode: spawn). Default: false.',
+        description: 'If true, skip the WRFC review chain for ordinary implementation/research agents (mode: spawn). Root reviewer/tester/verifier tasks are still normalized into one WRFC owner chain.',
         default: false,
       },
       // mode: batch-spawn
@@ -198,10 +198,10 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
             orchestrationGraphId: { type: 'string', description: 'Graph id to attach the worker to.' },
             orchestrationNodeId: { type: 'string', description: 'Explicit node id for the worker.' },
             parentNodeId: { type: 'string', description: 'Parent node id for the worker.' },
-            dangerously_disable_wrfc: { type: 'boolean', description: 'Skip WRFC review.' },
+            dangerously_disable_wrfc: { type: 'boolean', description: 'Skip WRFC review for ordinary implementation/research agents. Root review/test/verify role phases are still normalized into WRFC ownership.' },
           },
         },
-        description: 'Array of genuinely independent tasks to spawn as agents (mode: batch-spawn). Max 20. Do not place tester/reviewer/verifier role phases here for one deliverable; those are WRFC lifecycle children owned by one owner chain.',
+        description: 'Array of genuinely independent tasks to spawn as agents (mode: batch-spawn). Max 20. One-task batches are normalized through spawn. Do not place tester/reviewer/verifier role phases here for one deliverable; those are WRFC lifecycle children owned by one owner chain.',
       },
       // mode: spawn, batch-spawn, list, cohort-status, cohort-report
       cohort: {

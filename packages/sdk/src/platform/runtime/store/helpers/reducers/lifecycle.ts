@@ -254,6 +254,15 @@ function isTerminalAgentStatus(status: AgentLifecycleState): boolean {
   return status === 'completed' || status === 'failed' || status === 'cancelled';
 }
 
+function isWrfcOwnerRevivalEvent(event: AgentEvent): boolean {
+  return (
+    (event.type === 'AGENT_RUNNING' || event.type === 'AGENT_PROGRESS')
+    && event.wrfcRole === 'owner'
+    && typeof event.wrfcId === 'string'
+    && event.wrfcId.length > 0
+  );
+}
+
 export function updateAgentState(domain: AgentDomainState, event: AgentEvent): AgentDomainState {
   const agents = new Map(domain.agents);
   const timestamp = now();
@@ -261,7 +270,8 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
   if (!existing && event.type !== 'AGENT_SPAWNING') return domain;
 
   const nextStatus = agentStatusForEvent(event);
-  if (existing && isTerminalAgentStatus(existing.status) && nextStatus !== existing.status) {
+  const revivedWrfcOwner = Boolean(existing && isTerminalAgentStatus(existing.status) && isWrfcOwnerRevivalEvent(event));
+  if (existing && isTerminalAgentStatus(existing.status) && nextStatus !== existing.status && !revivedWrfcOwner) {
     return domain;
   }
 
@@ -284,6 +294,14 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
   agents.set(event.agentId, {
     ...agent,
     status: nextStatus,
+    parentAgentId: 'parentAgentId' in event ? event.parentAgentId ?? agent.parentAgentId : agent.parentAgentId,
+    wrfcRef: 'wrfcId' in event && event.wrfcId
+      ? {
+          chainId: event.wrfcId,
+          chainRole: event.wrfcRole ?? agent.wrfcRef?.chainRole ?? 'engineer',
+          phaseOrder: event.wrfcPhaseOrder ?? agent.wrfcRef?.phaseOrder,
+        }
+      : agent.wrfcRef,
     taskId: event.taskId ?? agent.taskId,
     latestProgress:
       event.type === 'AGENT_PROGRESS'
@@ -300,8 +318,10 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
     endedAt:
       event.type === 'AGENT_COMPLETED' || event.type === 'AGENT_FAILED' || event.type === 'AGENT_CANCELLED'
         ? timestamp
-        : agent.endedAt,
-    error: event.type === 'AGENT_FAILED' ? event.error : agent.error,
+        : revivedWrfcOwner
+          ? undefined
+          : agent.endedAt,
+    error: event.type === 'AGENT_FAILED' ? event.error : revivedWrfcOwner ? undefined : agent.error,
     toolCallCount:
       event.type === 'AGENT_COMPLETED' && event.toolCallsMade !== undefined
         ? event.toolCallsMade
@@ -313,16 +333,24 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
             ...(event.output !== undefined ? { output: event.output } : {}),
             ...(event.toolCallsMade !== undefined ? { toolCallsMade: event.toolCallsMade } : {}),
           }
-        : agent.result,
+        : revivedWrfcOwner ? undefined : agent.result,
   });
   const activeAgentIds = [...agents.values()].filter((value) => !['completed', 'failed', 'cancelled'].includes(value.status)).map((value) => value.id);
+  const completedCorrection = revivedWrfcOwner && existing?.status === 'completed' ? -1 : 0;
+  const failedCorrection = revivedWrfcOwner && existing?.status === 'failed' ? -1 : 0;
   return {
     ...updateDomainMetadata(domain, event.type),
     agents,
     activeAgentIds,
     totalSpawned: domain.totalSpawned + (!existing && event.type === 'AGENT_SPAWNING' ? 1 : 0),
-    totalCompleted: domain.totalCompleted + (existing?.status !== 'completed' && nextStatus === 'completed' ? 1 : 0),
-    totalFailed: domain.totalFailed + (existing?.status !== 'failed' && nextStatus === 'failed' ? 1 : 0),
+    totalCompleted: Math.max(
+      0,
+      domain.totalCompleted + completedCorrection + (existing?.status !== 'completed' && nextStatus === 'completed' ? 1 : 0),
+    ),
+    totalFailed: Math.max(
+      0,
+      domain.totalFailed + failedCorrection + (existing?.status !== 'failed' && nextStatus === 'failed' ? 1 : 0),
+    ),
     peakConcurrency: Math.max(domain.peakConcurrency, activeAgentIds.length),
   };
 }

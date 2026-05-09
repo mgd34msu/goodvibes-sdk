@@ -110,6 +110,7 @@ export interface AgentRecord {
   streamingContent?: string | undefined;
   wrfcId?: string | undefined;
   wrfcRole?: WrfcAgentRole | undefined;
+  wrfcPhaseOrder?: number | undefined;
   wrfcRouteReason?: string | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
   cohort?: string | undefined;
@@ -194,16 +195,31 @@ export class AgentManager {
   }
 
   spawn(input: AgentInput): AgentRecord {
-    const task = input.task;
+    let task = input.task;
     if (!task || typeof task !== 'string' || task.trim() === '') {
       throw new Error('spawn() requires a non-empty task string');
     }
     if (!this.configManager) {
       throw new Error('AgentManager requires configManager');
     }
-    const template = input.template ?? 'general';
-    if (!input.parentAgentId && input.dangerously_disable_wrfc && isRootReviewRoleTask({ task, template })) {
-      throw new Error('Root reviewer/tester/verifier agents are not valid independent roots. Start one WRFC owner chain for the deliverable, or spawn genuinely independent sidecar research/implementation tasks.');
+    let template = input.template ?? 'general';
+    if (!input.parentAgentId && isRootReviewRoleTask({ task, template })) {
+      input = {
+        ...input,
+        template: 'engineer',
+        reviewMode: 'wrfc',
+        dangerously_disable_wrfc: false,
+        context: [
+          input.context?.trim(),
+          'SDK WRFC topology enforcement normalized this root review/test/verification task into a single owner chain. Review, test, verification, and fix work are lifecycle phases owned by the WRFC controller, not independent root agents.',
+        ].filter((part): part is string => Boolean(part)).join('\n\n'),
+        successCriteria: [
+          ...(input.successCriteria ?? []),
+          'Keep the work as one WRFC owner chain; review, test, verification, and fix phases must remain lifecycle children.',
+        ],
+      };
+      task = input.task ?? task;
+      template = input.template ?? 'engineer';
     }
 
     const archetype = this.archetypeLoader.loadArchetype(template);
@@ -420,7 +436,7 @@ export class AgentManager {
         this.wrfcController?.createChain(record);
         if (record.wrfcRole === 'owner') {
           record.status = 'running';
-          record.progress = 'WRFC owner supervising child agents';
+          record.progress ??= 'WRFC owner supervising child agents';
           if (this.runtimeBus) {
             const ctx = {
               sessionId: 'agent-manager',
@@ -428,8 +444,19 @@ export class AgentManager {
               source: 'agent-manager',
               agentId: id,
             };
-            emitAgentRunning(this.runtimeBus, ctx, { agentId: id });
-            emitAgentProgress(this.runtimeBus, ctx, { agentId: id, progress: record.progress });
+            emitAgentRunning(this.runtimeBus, ctx, {
+              agentId: id,
+              wrfcId: record.wrfcId,
+              wrfcRole: record.wrfcRole,
+              wrfcPhaseOrder: record.wrfcPhaseOrder,
+            });
+            emitAgentProgress(this.runtimeBus, ctx, {
+              agentId: id,
+              progress: record.progress,
+              wrfcId: record.wrfcId,
+              wrfcRole: record.wrfcRole,
+              wrfcPhaseOrder: record.wrfcPhaseOrder,
+            });
           }
           return record;
         }

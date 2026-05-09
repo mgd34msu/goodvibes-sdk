@@ -35,6 +35,8 @@ export type WrfcOwnerDecisionAction =
   | 'chain_passed'
   | 'chain_failed'
   | 'chain_cancelled'
+  | 'owner_completion_ignored'
+  | 'owner_failure_ignored'
   | 'resume_skipped'
   | 'resume_started';
 

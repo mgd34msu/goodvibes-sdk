@@ -31,7 +31,9 @@ export interface AgentWrfcRef {
   /** ID of the WRFC chain this agent belongs to. */
   chainId: string;
   /** The agent's role within that chain. */
-  chainRole: 'engineer' | 'reviewer' | 'fixer';
+  chainRole: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier';
+  /** Stable phase order for display: owner=0, engineer=1, reviewer=2, fixer=3, verifier=4. */
+  phaseOrder?: number | undefined;
 }
 
 /**

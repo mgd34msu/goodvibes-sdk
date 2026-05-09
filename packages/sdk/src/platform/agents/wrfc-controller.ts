@@ -14,6 +14,7 @@ import type {
   QueuedChain,
   WrfcChain,
   WrfcChildRouteSelector,
+  WrfcAgentRole,
   WrfcOwnerDecision,
   WrfcOwnerDecisionAction,
   WrfcState,
@@ -35,6 +36,8 @@ import type {
 import {
   emitAgentCompleted,
   emitAgentFailed,
+  emitAgentProgress,
+  emitAgentRunning,
   emitWorkflowChainFailed,
   emitWorkflowFixAttempted,
   emitWorkflowReviewCompleted,
@@ -230,8 +233,87 @@ export class WrfcController {
 
     const from = chain.state;
     chain.state = to;
+    if (to !== 'passed' && to !== 'failed') {
+      this.keepOwnerAgentActive(chain);
+    }
     emitWrfcStateChanged(this.runtimeBus, this.sessionId, chain.id, from, to);
     logger.debug('WrfcController.transition', { chainId: chain.id, from, to });
+  }
+
+  private applyWrfcAgentMetadata(chain: WrfcChain, record: AgentRecord, role: WrfcAgentRole): void {
+    record.wrfcId = chain.id;
+    record.wrfcRole = role;
+    record.wrfcPhaseOrder = this.wrfcPhaseOrder(role);
+    if (role === 'owner') {
+      record.progress = this.ownerProgress(chain);
+    }
+    if (record.status === 'pending' || record.status === 'running') {
+      emitAgentProgress(this.runtimeBus, {
+        sessionId: this.sessionId,
+        traceId: `${this.sessionId}:wrfc-agent-metadata:${record.id}`,
+        source: 'wrfc-controller',
+        agentId: record.id,
+      }, {
+        agentId: record.id,
+        progress: record.progress ?? `WRFC ${role} phase`,
+        ...(record.parentAgentId ? { parentAgentId: record.parentAgentId } : {}),
+        wrfcId: chain.id,
+        wrfcRole: role,
+        wrfcPhaseOrder: record.wrfcPhaseOrder,
+      });
+    }
+  }
+
+  private keepOwnerAgentActive(chain: WrfcChain, reason?: string): void {
+    if (chain.ownerTerminalEmitted || chain.state === 'passed' || chain.state === 'failed') return;
+    const owner = this.agentManager.getStatus(chain.ownerAgentId);
+    if (!owner) return;
+    this.applyWrfcAgentMetadata(chain, owner, 'owner');
+    owner.status = 'running';
+    delete owner.completedAt;
+    owner.progress = reason ? `${this.ownerProgress(chain)} - ${reason}` : this.ownerProgress(chain);
+    emitAgentRunning(this.runtimeBus, {
+      sessionId: this.sessionId,
+      traceId: `${this.sessionId}:wrfc-owner-active:${chain.id}`,
+      source: 'wrfc-controller',
+      agentId: owner.id,
+    }, {
+      agentId: owner.id,
+      wrfcId: chain.id,
+      wrfcRole: 'owner',
+      wrfcPhaseOrder: owner.wrfcPhaseOrder,
+    });
+    emitAgentProgress(this.runtimeBus, {
+      sessionId: this.sessionId,
+      traceId: `${this.sessionId}:wrfc-owner-progress:${chain.id}`,
+      source: 'wrfc-controller',
+      agentId: owner.id,
+    }, {
+      agentId: owner.id,
+      progress: owner.progress,
+      wrfcId: chain.id,
+      wrfcRole: 'owner',
+      wrfcPhaseOrder: owner.wrfcPhaseOrder,
+    });
+  }
+
+  private ownerProgress(chain: WrfcChain): string {
+    return `WRFC owner supervising child agents (${chain.state})`;
+  }
+
+  private wrfcPhaseOrder(role: WrfcAgentRole): number {
+    switch (role) {
+      case 'owner':
+        return 0;
+      case 'engineer':
+        return 1;
+      case 'reviewer':
+        return 2;
+      case 'fixer':
+        return 3;
+      case 'verifier':
+        return 4;
+    }
   }
 
   private setupListeners(): void {
@@ -267,7 +349,18 @@ export class WrfcController {
 
     if (agentId === chain.ownerAgentId) {
       if (chain.ownerTerminalEmitted) return;
-      this.failChain(chain, 'WRFC owner agent completed before the chain reached a terminal state');
+      this.keepOwnerAgentActive(chain, 'Ignored premature owner completion event; WRFC lifecycle is still active');
+      this.appendOwnerDecision(
+        chain,
+        'owner_completion_ignored',
+        'Ignored premature owner completion because WRFC owner remains active until the full chain is terminal',
+        { agentId },
+      );
+      logger.warn('WrfcController: ignored premature owner completion before terminal chain state', {
+        chainId: chain.id,
+        agentId,
+        state: chain.state,
+      });
       return;
     }
 
@@ -316,6 +409,24 @@ export class WrfcController {
     const chain = this.findChainByAgentId(agentId);
     if (!chain) return;
     if (agentId === chain.ownerAgentId && (chain.state === 'passed' || chain.state === 'failed')) return;
+    if (agentId === chain.ownerAgentId) {
+      this.keepOwnerAgentActive(chain, 'Ignored premature owner failure event; WRFC lifecycle is still active');
+      this.appendOwnerDecision(
+        chain,
+        'owner_failure_ignored',
+        errorMessage
+          ? `Ignored premature owner failure before terminal chain state: ${errorMessage}`
+          : 'Ignored premature owner failure before terminal chain state',
+        { agentId },
+      );
+      logger.warn('WrfcController: ignored premature owner failure before terminal chain state', {
+        chainId: chain.id,
+        agentId,
+        state: chain.state,
+        error: errorMessage,
+      });
+      return;
+    }
     this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', errorMessage ?? `Agent ${agentId} failed`);
     this.failChain(chain, errorMessage ?? `Agent ${agentId} failed`);
   }
@@ -357,9 +468,8 @@ export class WrfcController {
     );
 
     chain.reviewerAgentId = reviewerRecord.id;
-    reviewerRecord.wrfcRole = 'reviewer';
+    this.applyWrfcAgentMetadata(chain, reviewerRecord, 'reviewer');
     chain.allAgentIds.push(reviewerRecord.id);
-    reviewerRecord.wrfcId = chain.id;
     this.messageBus.registerAgent({
       agentId: reviewerRecord.id,
       role: 'reviewer',
@@ -528,9 +638,8 @@ export class WrfcController {
     );
 
     chain.fixerAgentId = fixerRecord.id;
-    fixerRecord.wrfcRole = 'fixer';
+    this.applyWrfcAgentMetadata(chain, fixerRecord, 'fixer');
     chain.allAgentIds.push(fixerRecord.id);
-    fixerRecord.wrfcId = chain.id;
     this.messageBus.registerAgent({
       agentId: fixerRecord.id,
       role: 'fixer',
@@ -711,10 +820,9 @@ export class WrfcController {
 
     const gateFixTask = buildGateFailureTask(chain.id, chain.task, failedGates, chain.constraints);
     const fixerRecord = this.spawnWrfcAgent(chain, 'fixer', 'engineer', gateFixTask, true);
-    fixerRecord.wrfcRole = 'fixer';
+    this.applyWrfcAgentMetadata(chain, fixerRecord, 'fixer');
     chain.fixerAgentId = fixerRecord.id;
     chain.allAgentIds.push(fixerRecord.id);
-    fixerRecord.wrfcId = chain.id;
     this.messageBus.registerAgent({
       agentId: fixerRecord.id,
       role: 'fixer',
@@ -1035,9 +1143,8 @@ export class WrfcController {
     };
     this.chains.set(chain.id, chain);
     emitWrfcGraphCreated(this.runtimeBus, this.sessionId, chain.id, `WRFC: ${ownerRecord.task}`);
-    ownerRecord.wrfcId = chain.id;
-    ownerRecord.wrfcRole = 'owner';
-    ownerRecord.progress = 'WRFC owner supervising child agents';
+    this.applyWrfcAgentMetadata(chain, ownerRecord, 'owner');
+    this.keepOwnerAgentActive(chain);
     this.messageBus.registerAgent({
       agentId: ownerRecord.id,
       template: ownerRecord.template,
@@ -1061,10 +1168,9 @@ export class WrfcController {
       chain.task,
       true,
     );
-    engineerRecord.wrfcRole = 'engineer';
+    this.applyWrfcAgentMetadata(chain, engineerRecord, 'engineer');
     chain.engineerAgentId = engineerRecord.id;
     chain.allAgentIds.push(engineerRecord.id);
-    engineerRecord.wrfcId = chain.id;
     this.messageBus.registerAgent({
       agentId: engineerRecord.id,
       role: 'engineer',
@@ -1201,6 +1307,7 @@ export class WrfcController {
     if (chain.ownerTerminalEmitted) return;
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
     if (!owner) return;
+    this.applyWrfcAgentMetadata(chain, owner, 'owner');
     owner.status = status;
     owner.completedAt = Date.now();
     owner.progress = message;

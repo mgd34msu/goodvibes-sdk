@@ -48,6 +48,40 @@ describe('runtime store lifecycle seams', () => {
     expect(agents.agents.get('agent-1')?.status).toBe('completed');
   });
 
+  test('WRFC owner running/progress events can revive a prematurely terminal owner record', () => {
+    const store = createRuntimeStore();
+    const dispatch = createDomainDispatch(store);
+
+    dispatch.dispatchAgentEvent({ type: 'AGENT_SPAWNING', agentId: 'owner-1', task: 'Run WRFC chain' });
+    dispatch.dispatchAgentEvent({ type: 'AGENT_COMPLETED', agentId: 'owner-1', durationMs: 10, output: 'premature' });
+    expect(store.getState().agents.agents.get('owner-1')?.status).toBe('completed');
+    expect(store.getState().agents.totalCompleted).toBe(1);
+
+    dispatch.dispatchAgentEvent({
+      type: 'AGENT_RUNNING',
+      agentId: 'owner-1',
+      wrfcId: 'wrfc-1',
+      wrfcRole: 'owner',
+      wrfcPhaseOrder: 0,
+    });
+    dispatch.dispatchAgentEvent({
+      type: 'AGENT_PROGRESS',
+      agentId: 'owner-1',
+      progress: 'WRFC owner supervising child agents',
+      wrfcId: 'wrfc-1',
+      wrfcRole: 'owner',
+      wrfcPhaseOrder: 0,
+    });
+
+    const agent = store.getState().agents.agents.get('owner-1');
+    expect(agent?.status).toBe('running');
+    expect(agent?.endedAt).toBeUndefined();
+    expect(agent?.result).toBeUndefined();
+    expect(agent?.wrfcRef).toEqual({ chainId: 'wrfc-1', chainRole: 'owner', phaseOrder: 0 });
+    expect(store.getState().agents.activeAgentIds).toContain('owner-1');
+    expect(store.getState().agents.totalCompleted).toBe(0);
+  });
+
   test('scheduler adapter preserves failed run status when wrapping history', () => {
     const store = createRuntimeStore();
     const adapter = new SchedulerTaskAdapter(store);

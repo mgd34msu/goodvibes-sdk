@@ -14,13 +14,33 @@ export type AgentEvent =
       taskId?: string | undefined;
       task: string;
       parentAgentId?: string | undefined;
+      wrfcId?: string | undefined;
+      wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+      wrfcPhaseOrder?: number | undefined;
       orchestrationGraphId?: string | undefined;
       parentNodeId?: string | undefined;
     }
   /** Agent is actively running and processing. */
-  | { type: 'AGENT_RUNNING'; agentId: string; taskId?: string }
+  | {
+      type: 'AGENT_RUNNING';
+      agentId: string;
+      taskId?: string;
+      parentAgentId?: string | undefined;
+      wrfcId?: string | undefined;
+      wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+      wrfcPhaseOrder?: number | undefined;
+    }
   /** Agent emitted a textual progress update. */
-  | { type: 'AGENT_PROGRESS'; agentId: string; taskId?: string; progress: string }
+  | {
+      type: 'AGENT_PROGRESS';
+      agentId: string;
+      taskId?: string;
+      progress: string;
+      parentAgentId?: string | undefined;
+      wrfcId?: string | undefined;
+      wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+      wrfcPhaseOrder?: number | undefined;
+    }
   /** Agent streamed a chunk of output. */
   | { type: 'AGENT_STREAM_DELTA'; agentId: string; taskId?: string; content: string; accumulated: string }
   /** Agent is waiting to send a message to the LLM. */
