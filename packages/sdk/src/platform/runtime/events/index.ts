@@ -25,7 +25,14 @@ export type { AgentEvent, AgentEventType } from '../../../events/agents.js';
 export type { WorkflowEvent, WorkflowEventType } from '../../../events/workflows.js';
 export type { OrchestrationEvent, OrchestrationEventType, OrchestrationTaskContract } from '../../../events/orchestration.js';
 export type { CommunicationEvent, CommunicationEventType, CommunicationKind, CommunicationScope } from '../../../events/communication.js';
-export type { PlannerEvent, PlannerEventType } from '../../../events/planner.js';
+export type {
+  PlannerEvent,
+  PlannerEventType,
+  WorkPlanEventBase,
+  WorkPlanSnapshotEventRecord,
+  WorkPlanTaskEventRecord,
+  WorkPlanTaskStatus,
+} from '../../../events/planner.js';
 export type { PermissionEvent, PermissionEventType } from '../../../events/permissions.js';
 export type { PluginEvent, PluginEventType } from '../../../events/plugins.js';
 export type { McpEvent, McpEventType } from '../../../events/mcp.js';

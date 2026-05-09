@@ -7,6 +7,16 @@ export type ProjectPlanningTaskStatus = 'pending' | 'in-progress' | 'blocked' | 
 export type ProjectPlanningGateStatus = 'pending' | 'passed' | 'failed' | 'skipped';
 export type ProjectPlanningDecisionStatus = 'proposed' | 'accepted' | 'superseded' | 'rejected';
 export type ProjectPlanningGapSeverity = 'blocking' | 'advisory';
+export type ProjectWorkPlanTaskStatus = 'pending' | 'in_progress' | 'blocked' | 'done' | 'failed' | 'cancelled';
+export type ProjectWorkPlanTaskMutationSource =
+  | 'user'
+  | 'planning'
+  | 'wrfc'
+  | 'agent'
+  | 'daemon'
+  | 'migration'
+  | 'api'
+  | string;
 export type ProjectPlanningGapKind =
   | 'missing-goal'
   | 'missing-scope'
@@ -20,6 +30,156 @@ export type ProjectPlanningGapKind =
 export interface ProjectPlanningSpaceInput {
   readonly projectId?: string | undefined;
   readonly knowledgeSpaceId?: string | undefined;
+}
+
+export interface ProjectWorkPlanTask {
+  readonly taskId: string;
+  readonly projectId: string;
+  readonly knowledgeSpaceId: string;
+  readonly title: string;
+  readonly notes?: string | undefined;
+  readonly owner?: string | undefined;
+  readonly status: ProjectWorkPlanTaskStatus;
+  readonly priority?: number | undefined;
+  readonly order: number;
+  readonly source?: ProjectWorkPlanTaskMutationSource | undefined;
+  readonly tags: readonly string[];
+  readonly parentTaskId?: string | undefined;
+  readonly chainId?: string | undefined;
+  readonly phaseId?: string | undefined;
+  readonly agentId?: string | undefined;
+  readonly turnId?: string | undefined;
+  readonly decisionId?: string | undefined;
+  readonly sourceMessageId?: string | undefined;
+  readonly linkedArtifactIds: readonly string[];
+  readonly linkedSourceIds: readonly string[];
+  readonly linkedNodeIds: readonly string[];
+  readonly originSurface?: string | undefined;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  readonly completedAt?: number | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+}
+
+export interface ProjectWorkPlanArtifact {
+  readonly id: string;
+  readonly projectId: string;
+  readonly knowledgeSpaceId: string;
+  readonly tasks: readonly ProjectWorkPlanTask[];
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  readonly metadata?: Record<string, unknown> | undefined;
+}
+
+export interface ProjectWorkPlanCounts {
+  readonly total: number;
+  readonly pending: number;
+  readonly in_progress: number;
+  readonly blocked: number;
+  readonly done: number;
+  readonly failed: number;
+  readonly cancelled: number;
+}
+
+export interface ProjectWorkPlanSnapshot {
+  readonly ok: true;
+  readonly projectId: string;
+  readonly knowledgeSpaceId: string;
+  readonly workPlanId: string;
+  readonly tasks: readonly ProjectWorkPlanTask[];
+  readonly counts: ProjectWorkPlanCounts;
+  readonly updatedAt: number;
+}
+
+export interface ProjectWorkPlanTaskCreateInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly task: {
+    readonly taskId?: string | undefined;
+    readonly title: string;
+    readonly notes?: string | undefined;
+    readonly owner?: string | undefined;
+    readonly status?: ProjectWorkPlanTaskStatus | undefined;
+    readonly priority?: number | undefined;
+    readonly order?: number | undefined;
+    readonly source?: ProjectWorkPlanTaskMutationSource | undefined;
+    readonly tags?: readonly string[] | undefined;
+    readonly parentTaskId?: string | undefined;
+    readonly chainId?: string | undefined;
+    readonly phaseId?: string | undefined;
+    readonly agentId?: string | undefined;
+    readonly turnId?: string | undefined;
+    readonly decisionId?: string | undefined;
+    readonly sourceMessageId?: string | undefined;
+    readonly linkedArtifactIds?: readonly string[] | undefined;
+    readonly linkedSourceIds?: readonly string[] | undefined;
+    readonly linkedNodeIds?: readonly string[] | undefined;
+    readonly originSurface?: string | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
+  };
+}
+
+export interface ProjectWorkPlanTaskUpdateInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly taskId: string;
+  readonly patch: Partial<Omit<ProjectWorkPlanTask, 'taskId' | 'projectId' | 'knowledgeSpaceId' | 'createdAt' | 'updatedAt'>>;
+}
+
+export interface ProjectWorkPlanTaskStatusInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly taskId: string;
+  readonly status: ProjectWorkPlanTaskStatus;
+  readonly reason?: string | undefined;
+  readonly source?: ProjectWorkPlanTaskMutationSource | undefined;
+}
+
+export interface ProjectWorkPlanTaskGetInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly taskId: string;
+}
+
+export interface ProjectWorkPlanTaskDeleteInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly taskId: string;
+}
+
+export interface ProjectWorkPlanTaskReorderInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly orderedTaskIds: readonly string[];
+}
+
+export interface ProjectWorkPlanTaskListInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly status?: ProjectWorkPlanTaskStatus | undefined;
+  readonly parentTaskId?: string | undefined;
+  readonly chainId?: string | undefined;
+  readonly owner?: string | undefined;
+  readonly limit?: number | undefined;
+}
+
+export interface ProjectWorkPlanClearCompletedInput extends ProjectPlanningSpaceInput {
+  readonly workPlanId?: string | undefined;
+  readonly statuses?: readonly ProjectWorkPlanTaskStatus[] | undefined;
+}
+
+export interface ProjectWorkPlanTaskResult {
+  readonly ok: true;
+  readonly projectId: string;
+  readonly knowledgeSpaceId: string;
+  readonly workPlanId: string;
+  readonly task: ProjectWorkPlanTask | null;
+  readonly snapshot: ProjectWorkPlanSnapshot;
+}
+
+export interface ProjectWorkPlanMutationResult {
+  readonly ok: true;
+  readonly projectId: string;
+  readonly knowledgeSpaceId: string;
+  readonly workPlanId: string;
+  readonly task?: ProjectWorkPlanTask | undefined;
+  readonly previousTask?: ProjectWorkPlanTask | undefined;
+  readonly deletedTask?: ProjectWorkPlanTask | undefined;
+  readonly clearedTaskIds?: readonly string[] | undefined;
+  readonly snapshot: ProjectWorkPlanSnapshot;
 }
 
 export interface ProjectPlanningQuestion {
@@ -171,6 +331,8 @@ export interface ProjectPlanningStatus {
     readonly states: number;
     readonly decisions: number;
     readonly languageArtifacts: number;
+    readonly workPlans: number;
+    readonly workPlanTasks: number;
   };
   readonly capabilities: readonly string[];
 }
@@ -228,4 +390,3 @@ export interface ProjectPlanningLanguageResult {
   readonly language: ProjectPlanningLanguageArtifact | null;
   readonly source?: KnowledgeSourceRecord | undefined;
 }
-

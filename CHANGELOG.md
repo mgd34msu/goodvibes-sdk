@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+### Added
+- Added a shared, durable project work-plan/task primitive under
+  `projectPlanning.workPlan.*`, including project-scoped task CRUD, status
+  transitions, ordering, completed-task clearing, snapshot counts, browser
+  knowledge SDK helpers, and runtime task/snapshot events for TUI, WebUI, APK,
+  daemon planning, and WRFC.
+- Mirrored accepted project-planning state tasks into the shared work-plan store
+  so plan items have one cross-surface task model instead of per-client local
+  tracking.
+
+### Changed
+- Linked WRFC owner, engineer, reviewer, fixer, and verifier phases to shared
+  work-plan tasks with chain/phase/agent correlation metadata, ordered task
+  writes, and lifecycle status updates.
+
 ---
 
 ## [0.33.20] - 2026-05-09

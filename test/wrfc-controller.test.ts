@@ -88,6 +88,7 @@ interface TestHarness {
   spawnedRecords: AgentRecord[];
   /** Emitted workflow event types in order. */
   workflowEvents: Array<{ type: string; payload: Record<string, unknown> }>;
+  workPlanCalls: Array<{ type: 'create' | 'update'; input: Record<string, unknown> }>;
   /** Register a record output so getStatus() returns it. */
   setOutput(agentId: string, fullOutput: string): void;
   /** Spawn a new agent record and register it. */
@@ -109,6 +110,7 @@ function createHarness(overrides?: {
   const agentStore = new Map<string, AgentRecord>();
   const spawnedRecords: AgentRecord[] = [];
   const workflowEvents: Array<{ type: string; payload: Record<string, unknown> }> = [];
+  const workPlanCalls: Array<{ type: 'create' | 'update'; input: Record<string, unknown> }> = [];
 
   // Capture workflow events
   bus.onDomain('workflows', (envelope) => {
@@ -176,6 +178,14 @@ function createHarness(overrides?: {
       cleanup: async (_agentId: string) => {},
     }),
   });
+  controller.setWorkPlanService({
+    async createWorkPlanTask(input) {
+      workPlanCalls.push({ type: 'create', input: input as unknown as Record<string, unknown> });
+    },
+    async updateWorkPlanTask(input) {
+      workPlanCalls.push({ type: 'update', input: input as unknown as Record<string, unknown> });
+    },
+  });
 
   const addAgent = (id: string, task: string, template = 'engineer'): AgentRecord => {
     const record = makeRecord({ id, task, template });
@@ -188,7 +198,7 @@ function createHarness(overrides?: {
     if (record) record.fullOutput = fullOutput;
   };
 
-  return { bus, controller, agentStore, spawnedRecords, workflowEvents, setOutput, addAgent };
+  return { bus, controller, agentStore, spawnedRecords, workflowEvents, workPlanCalls, setOutput, addAgent };
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +206,34 @@ function createHarness(overrides?: {
 // ---------------------------------------------------------------------------
 
 describe('WrfcController — happy path', () => {
+  test('creates correlated work-plan tasks for owner and phase agents', async () => {
+    const h = createHarness();
+
+    const ownerRecord = h.addAgent('owner-1', 'implement feature X');
+    const chain = h.controller.createChain(ownerRecord);
+    await flushMicrotasks();
+
+    expect(h.workPlanCalls.filter((call) => call.type === 'create').map((call) => {
+      const task = (call.input as { task?: { phaseId?: string } }).task;
+      return task?.phaseId;
+    })).toEqual(['owner', 'engineer']);
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const updateStatuses = h.workPlanCalls.filter((call) => call.type === 'update').map((call) => {
+      const patch = (call.input as { patch?: { status?: string } }).patch;
+      return patch?.status;
+    });
+    expect(updateStatuses).toContain('in_progress');
+    expect(updateStatuses).toContain('done');
+    expect(h.workPlanCalls.some((call) => {
+      const task = (call.input as { task?: { phaseId?: string; chainId?: string; parentTaskId?: string } }).task;
+      return task?.phaseId === 'reviewer' && task.chainId === chain.id && !!task.parentTaskId;
+    })).toBe(true);
+  });
+
   test('engineer completes → reviewer spawned → passing score → WORKFLOW_CHAIN_PASSED emitted', async () => {
     const h = createHarness();
 

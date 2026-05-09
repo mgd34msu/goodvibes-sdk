@@ -428,7 +428,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const projectPlanningService = new ProjectPlanningService(knowledgeStore, {
     defaultProjectId: projectPlanningProjectIdFromPath(workingDirectory),
+    runtimeBus: options.runtimeBus,
   });
+  wrfcController.setWorkPlanService(projectPlanningService);
   const voiceProviders = new VoiceProviderRegistry();
   ensureBuiltinVoiceProviders(voiceProviders);
   const voiceService = new VoiceService(voiceProviders);

@@ -53,6 +53,45 @@ describe('project planning routes', () => {
     expect(body.state.goal).toBe('Add planning support');
     expect(body.state.readiness).toBe('executable');
   });
+
+  test('exposes shared work-plan task routes with admin write protection', async () => {
+    const blockedRoutes = createRoutes({ admin: false });
+    const blocked = await blockedRoutes.handle(jsonRequest('/api/projects/planning/work-plan/tasks', {
+      projectId: 'alpha',
+      task: { title: 'Blocked write' },
+    }));
+    expect(blocked?.status).toBe(403);
+
+    const routes = createRoutes({ admin: true });
+    const created = await routes.handle(jsonRequest('/api/projects/planning/work-plan/tasks?projectId=alpha', {
+      task: {
+        title: 'Ship shared task model',
+        owner: 'sdk',
+        status: 'pending',
+        chainId: 'chain-1',
+        originSurface: 'tui',
+      },
+    }));
+    expect(created?.status).toBe(200);
+    const createdBody = await created!.json() as { readonly task: { readonly taskId: string; readonly status: string } };
+    expect(createdBody.task.status).toBe('pending');
+
+    const status = await routes.handle(jsonRequest(
+      `/api/projects/planning/work-plan/tasks/${encodeURIComponent(createdBody.task.taskId)}/status?projectId=alpha`,
+      { status: 'done', reason: 'Verified' },
+    ));
+    expect(status?.status).toBe(200);
+
+    const list = await routes.handle(new Request('http://daemon.local/api/projects/planning/work-plan/tasks?projectId=alpha'));
+    expect(list?.status).toBe(200);
+    const listBody = await list!.json() as {
+      readonly counts: { readonly done: number };
+      readonly tasks: readonly { readonly title: string; readonly status: string; readonly completedAt?: number }[];
+    };
+    expect(listBody.counts.done).toBe(1);
+    expect(listBody.tasks[0]?.title).toBe('Ship shared task model');
+    expect(typeof listBody.tasks[0]?.completedAt).toBe('number');
+  });
 });
 
 function createRoutes(input: { readonly admin: boolean }): ProjectPlanningRoutes {
@@ -77,4 +116,3 @@ function jsonRequest(path: string, body: unknown): Request {
     body: JSON.stringify(body),
   });
 }
-
