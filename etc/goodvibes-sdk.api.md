@@ -1175,7 +1175,7 @@ export { forSession as forSessionRuntime }
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
     readonly productVersion: "0.33.20";
-    readonly operatorMethodCount: 264;
+    readonly operatorMethodCount: 273;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
 };
@@ -2038,7 +2038,7 @@ export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: s
 export const OPERATOR_CONTRACT: OperatorContractManifest;
 
 // @public (undocumented)
-export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
+export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "projectPlanning.workPlan.clearCompleted", "projectPlanning.workPlan.snapshot", "projectPlanning.workPlan.task.create", "projectPlanning.workPlan.task.delete", "projectPlanning.workPlan.task.get", "projectPlanning.workPlan.task.status", "projectPlanning.workPlan.task.update", "projectPlanning.workPlan.tasks.list", "projectPlanning.workPlan.tasks.reorder", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
 
 // @public (undocumented)
 export interface OperatorContractManifest {
@@ -14610,7 +14610,28 @@ export type PlannerEvent = ({
     type: 'PLAN_STRATEGY_OVERRIDDEN';
     strategy: ExecutionStrategy | null;
     clearedBy?: string | undefined;
-};
+} | ({
+    type: 'WORK_PLAN_TASK_CREATED';
+    task: WorkPlanTaskEventRecord;
+} & WorkPlanEventBase) | ({
+    type: 'WORK_PLAN_TASK_UPDATED';
+    task: WorkPlanTaskEventRecord;
+    previousTask: WorkPlanTaskEventRecord;
+} & WorkPlanEventBase) | ({
+    type: 'WORK_PLAN_TASK_STATUS_CHANGED';
+    taskId: string;
+    status: WorkPlanTaskStatus;
+    previousStatus: WorkPlanTaskStatus;
+    task: WorkPlanTaskEventRecord;
+} & WorkPlanEventBase) | ({
+    type: 'WORK_PLAN_TASK_DELETED';
+    taskId: string;
+    task: WorkPlanTaskEventRecord;
+} & WorkPlanEventBase) | ({
+    type: 'WORK_PLAN_SNAPSHOT_INVALIDATED';
+    reason: string;
+    snapshot: WorkPlanSnapshotEventRecord;
+} & WorkPlanEventBase);
 
 // @public (undocumented)
 export type PlannerEventType = PlannerEvent['type'];
@@ -16193,6 +16214,93 @@ export type WorkflowEvent = {
 
 // @public (undocumented)
 export type WorkflowEventType = WorkflowEvent['type'];
+
+// @public (undocumented)
+export interface WorkPlanEventBase {
+    // (undocumented)
+    readonly knowledgeSpaceId: string;
+    // (undocumented)
+    readonly projectId: string;
+    // (undocumented)
+    readonly workPlanId: string;
+}
+
+// @public (undocumented)
+export interface WorkPlanSnapshotEventRecord extends WorkPlanEventBase {
+    // (undocumented)
+    readonly counts: {
+        readonly total: number;
+        readonly pending: number;
+        readonly in_progress: number;
+        readonly blocked: number;
+        readonly done: number;
+        readonly failed: number;
+        readonly cancelled: number;
+    };
+    // (undocumented)
+    readonly tasks: readonly WorkPlanTaskEventRecord[];
+    // (undocumented)
+    readonly updatedAt: number;
+}
+
+// @public (undocumented)
+export interface WorkPlanTaskEventRecord {
+    // (undocumented)
+    readonly agentId?: string | undefined;
+    // (undocumented)
+    readonly chainId?: string | undefined;
+    // (undocumented)
+    readonly completedAt?: number | undefined;
+    // (undocumented)
+    readonly createdAt: number;
+    // (undocumented)
+    readonly decisionId?: string | undefined;
+    // (undocumented)
+    readonly knowledgeSpaceId: string;
+    // (undocumented)
+    readonly linkedArtifactIds: readonly string[];
+    // (undocumented)
+    readonly linkedNodeIds: readonly string[];
+    // (undocumented)
+    readonly linkedSourceIds: readonly string[];
+    // (undocumented)
+    readonly metadata?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly notes?: string | undefined;
+    // (undocumented)
+    readonly order: number;
+    // (undocumented)
+    readonly originSurface?: string | undefined;
+    // (undocumented)
+    readonly owner?: string | undefined;
+    // (undocumented)
+    readonly parentTaskId?: string | undefined;
+    // (undocumented)
+    readonly phaseId?: string | undefined;
+    // (undocumented)
+    readonly priority?: number | undefined;
+    // (undocumented)
+    readonly projectId: string;
+    // (undocumented)
+    readonly source?: string | undefined;
+    // (undocumented)
+    readonly sourceMessageId?: string | undefined;
+    // (undocumented)
+    readonly status: WorkPlanTaskStatus;
+    // (undocumented)
+    readonly tags: readonly string[];
+    // (undocumented)
+    readonly taskId: string;
+    // (undocumented)
+    readonly title: string;
+    // (undocumented)
+    readonly turnId?: string | undefined;
+    // (undocumented)
+    readonly updatedAt: number;
+}
+
+// @public (undocumented)
+export type WorkPlanTaskStatus = 'pending' | 'in_progress' | 'blocked' | 'done' | 'failed' | 'cancelled';
 
 // @public
 export type WorkspaceEvent =

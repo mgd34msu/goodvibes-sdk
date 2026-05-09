@@ -64,6 +64,15 @@ const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.sources.list': { method: 'GET', path: '/api/knowledge/sources' },
   'knowledge.status': { method: 'GET', path: '/api/knowledge/status' },
   'knowledge.usage.list': { method: 'GET', path: '/api/knowledge/usage' },
+  'projectPlanning.workPlan.clearCompleted': { method: 'POST', path: '/api/projects/planning/work-plan/clear-completed' },
+  'projectPlanning.workPlan.snapshot': { method: 'GET', path: '/api/projects/planning/work-plan' },
+  'projectPlanning.workPlan.task.create': { method: 'POST', path: '/api/projects/planning/work-plan/tasks' },
+  'projectPlanning.workPlan.task.delete': { method: 'DELETE', path: '/api/projects/planning/work-plan/tasks/{taskId}' },
+  'projectPlanning.workPlan.task.get': { method: 'GET', path: '/api/projects/planning/work-plan/tasks/{taskId}' },
+  'projectPlanning.workPlan.task.status': { method: 'POST', path: '/api/projects/planning/work-plan/tasks/{taskId}/status' },
+  'projectPlanning.workPlan.task.update': { method: 'PATCH', path: '/api/projects/planning/work-plan/tasks/{taskId}' },
+  'projectPlanning.workPlan.tasks.list': { method: 'GET', path: '/api/projects/planning/work-plan/tasks' },
+  'projectPlanning.workPlan.tasks.reorder': { method: 'POST', path: '/api/projects/planning/work-plan/tasks/reorder' },
   'artifacts.create': { method: 'POST', path: '/api/artifacts' },
   'artifacts.get': { method: 'GET', path: '/api/artifacts/{artifactId}' },
   'artifacts.list': { method: 'GET', path: '/api/artifacts' },
@@ -127,6 +136,25 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
     get(artifactId: string): Promise<OperatorMethodOutput<'artifacts.get'>>;
     list(): Promise<OperatorMethodOutput<'artifacts.list'>>;
   };
+  readonly workPlan: {
+    snapshot(input?: OperatorMethodInput<'projectPlanning.workPlan.snapshot'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.snapshot'>>;
+    readonly tasks: {
+      list(input?: OperatorMethodInput<'projectPlanning.workPlan.tasks.list'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.tasks.list'>>;
+      get(taskId: string, input?: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.get'>, 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.get'>>;
+      create(input: OperatorMethodInput<'projectPlanning.workPlan.task.create'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.create'>>;
+      update(
+        taskId: string,
+        input: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.update'>, 'taskId'>,
+      ): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.update'>>;
+      status(
+        taskId: string,
+        input: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.status'>, 'taskId'>,
+      ): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.status'>>;
+      reorder(input: OperatorMethodInput<'projectPlanning.workPlan.tasks.reorder'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.tasks.reorder'>>;
+      delete(taskId: string, input?: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.delete'>, 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.delete'>>;
+      clearCompleted(input?: OperatorMethodInput<'projectPlanning.workPlan.clearCompleted'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.clearCompleted'>>;
+    };
+  };
 }
 
 export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {}): BrowserKnowledgeSdk {
@@ -167,6 +195,19 @@ export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {})
       create: (input) => invoke('artifacts.create', input),
       get: (artifactId) => invoke('artifacts.get', { artifactId }),
       list: () => invoke('artifacts.list'),
+    },
+    workPlan: {
+      snapshot: (input) => invoke('projectPlanning.workPlan.snapshot', input),
+      tasks: {
+        list: (input) => invoke('projectPlanning.workPlan.tasks.list', input),
+        get: (taskId, input) => invoke('projectPlanning.workPlan.task.get', { taskId, ...(input ?? {}) }),
+        create: (input) => invoke('projectPlanning.workPlan.task.create', input),
+        update: (taskId, input) => invoke('projectPlanning.workPlan.task.update', { taskId, ...input }),
+        status: (taskId, input) => invoke('projectPlanning.workPlan.task.status', { taskId, ...input }),
+        reorder: (input) => invoke('projectPlanning.workPlan.tasks.reorder', input),
+        delete: (taskId, input) => invoke('projectPlanning.workPlan.task.delete', { taskId, ...(input ?? {}) }),
+        clearCompleted: (input) => invoke('projectPlanning.workPlan.clearCompleted', input),
+      },
     },
   };
 }

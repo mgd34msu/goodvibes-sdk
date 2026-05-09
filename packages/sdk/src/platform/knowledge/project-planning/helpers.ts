@@ -13,12 +13,13 @@ import type {
   ProjectPlanningLanguageArtifact,
   ProjectPlanningSpaceInput,
   ProjectPlanningState,
+  ProjectWorkPlanArtifact,
 } from './types.js';
 
 export const PROJECT_PLANNING_CONNECTOR_ID = 'goodvibes-project-planning';
 export const PROJECT_PLANNING_TAG = 'project-planning';
 
-export type ProjectPlanningArtifactKind = 'state' | 'decision' | 'language';
+export type ProjectPlanningArtifactKind = 'state' | 'decision' | 'language' | 'work-plan';
 
 export interface ResolvedProjectPlanningSpace {
   readonly projectId: string;
@@ -86,6 +87,10 @@ export function projectPlanningArtifactSummary(kind: ProjectPlanningArtifactKind
     const decision = value as Partial<ProjectPlanningDecision>;
     return decision.decision ? `${decision.title ?? 'Decision'}: ${decision.decision}` : 'Project planning decision record.';
   }
+  if (kind === 'work-plan') {
+    const workPlan = value as Partial<ProjectWorkPlanArtifact>;
+    return `Project work plan with ${workPlan.tasks?.length ?? 0} tasks.`;
+  }
   const language = value as Partial<ProjectPlanningLanguageArtifact>;
   return `Project language artifact with ${language.terms?.length ?? 0} terms and ${language.ambiguities?.length ?? 0} resolved ambiguities.`;
 }
@@ -102,4 +107,3 @@ export function readPlanningMetadataObject(value: unknown): Record<string, unkno
     ? value as Record<string, unknown>
     : {};
 }
-

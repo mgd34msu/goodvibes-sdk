@@ -4,6 +4,14 @@ import type {
   ProjectPlanningLanguageUpsertInput,
   ProjectPlanningService,
   ProjectPlanningStateUpsertInput,
+  ProjectWorkPlanClearCompletedInput,
+  ProjectWorkPlanTaskCreateInput,
+  ProjectWorkPlanTaskDeleteInput,
+  ProjectWorkPlanTaskGetInput,
+  ProjectWorkPlanTaskListInput,
+  ProjectWorkPlanTaskReorderInput,
+  ProjectWorkPlanTaskStatusInput,
+  ProjectWorkPlanTaskUpdateInput,
 } from '../../knowledge/index.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -55,6 +63,73 @@ export class ProjectPlanningRoutes {
           await this.context.projectPlanningService.upsertLanguage(await this.readBody<ProjectPlanningLanguageUpsertInput>(req)),
         ));
       }
+      if (url.pathname === '/api/projects/planning/work-plan' && req.method === 'GET') {
+        return Response.json(await this.context.projectPlanningService.getWorkPlanSnapshot(readWorkPlanQuery(url)));
+      }
+      if (url.pathname === '/api/projects/planning/work-plan/tasks' && req.method === 'GET') {
+        return Response.json(await this.context.projectPlanningService.getWorkPlanSnapshot(readWorkPlanQuery(url)));
+      }
+      if (url.pathname === '/api/projects/planning/work-plan/tasks' && req.method === 'POST') {
+        return this.admin(req, async () => Response.json(
+          await this.context.projectPlanningService.createWorkPlanTask({
+            ...readWorkPlanQuery(url),
+            ...(await this.readBody<ProjectWorkPlanTaskCreateInput>(req)),
+          }),
+        ));
+      }
+      if (url.pathname === '/api/projects/planning/work-plan/tasks/reorder' && req.method === 'POST') {
+        return this.admin(req, async () => Response.json(
+          await this.context.projectPlanningService.reorderWorkPlanTasks({
+            ...readWorkPlanQuery(url),
+            ...(await this.readBody<ProjectWorkPlanTaskReorderInput>(req)),
+          }),
+        ));
+      }
+      if (url.pathname === '/api/projects/planning/work-plan/clear-completed' && req.method === 'POST') {
+        return this.admin(req, async () => Response.json(
+          await this.context.projectPlanningService.clearCompletedWorkPlanTasks({
+            ...readWorkPlanQuery(url),
+            ...(await this.readOptionalBody<ProjectWorkPlanClearCompletedInput>(req)),
+          }),
+        ));
+      }
+      const taskMatch = url.pathname.match(/^\/api\/projects\/planning\/work-plan\/tasks\/([^/]+)(?:\/status)?$/);
+      if (taskMatch) {
+        const taskId = decodeURIComponent(taskMatch[1]!);
+        const isStatusRoute = url.pathname.endsWith('/status');
+        if (!isStatusRoute && req.method === 'GET') {
+          return Response.json(await this.context.projectPlanningService.getWorkPlanTask({
+            ...readWorkPlanQuery(url),
+            taskId,
+          } satisfies ProjectWorkPlanTaskGetInput));
+        }
+        if (!isStatusRoute && req.method === 'PATCH') {
+          return this.admin(req, async () => Response.json(
+            await this.context.projectPlanningService.updateWorkPlanTask({
+              ...readWorkPlanQuery(url),
+              ...(await this.readBody<Omit<ProjectWorkPlanTaskUpdateInput, 'taskId'>>(req)),
+              taskId,
+            }),
+          ));
+        }
+        if (!isStatusRoute && req.method === 'DELETE') {
+          return this.admin(req, async () => Response.json(
+            await this.context.projectPlanningService.deleteWorkPlanTask({
+              ...readWorkPlanQuery(url),
+              taskId,
+            } satisfies ProjectWorkPlanTaskDeleteInput),
+          ));
+        }
+        if (isStatusRoute && req.method === 'POST') {
+          return this.admin(req, async () => Response.json(
+            await this.context.projectPlanningService.setWorkPlanTaskStatus({
+              ...readWorkPlanQuery(url),
+              ...(await this.readBody<Omit<ProjectWorkPlanTaskStatusInput, 'taskId'>>(req)),
+              taskId,
+            }),
+          ));
+        }
+      }
       return Response.json({ error: 'Unknown project planning route' }, { status: 404 });
     } catch (error) {
       return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
@@ -87,3 +162,15 @@ function readProjectSpaceFromUrl(url: URL): JsonRecord {
   };
 }
 
+function readWorkPlanQuery(url: URL): ProjectWorkPlanTaskListInput {
+  const limit = url.searchParams.get('limit');
+  return {
+    ...readProjectSpaceFromUrl(url),
+    ...(url.searchParams.get('workPlanId') ? { workPlanId: url.searchParams.get('workPlanId')! } : {}),
+    ...(url.searchParams.get('status') ? { status: url.searchParams.get('status')! as ProjectWorkPlanTaskListInput['status'] } : {}),
+    ...(url.searchParams.get('parentTaskId') ? { parentTaskId: url.searchParams.get('parentTaskId')! } : {}),
+    ...(url.searchParams.get('chainId') ? { chainId: url.searchParams.get('chainId')! } : {}),
+    ...(url.searchParams.get('owner') ? { owner: url.searchParams.get('owner')! } : {}),
+    ...(limit ? { limit: Number(limit) } : {}),
+  };
+}

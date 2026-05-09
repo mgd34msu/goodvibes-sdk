@@ -46469,6 +46469,4617 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "projectPlanning.workPlan.clearCompleted",
+        "title": "Clear Completed Project Work Plan Tasks",
+        "description": "Remove completed project work-plan tasks. Defaults to clearing status done only.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/projects/planning/work-plan/clear-completed"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "statuses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "task": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "previousTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "deletedTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "clearedTaskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshot": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "workPlanId": {
+                  "type": "string"
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "taskId": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "knowledgeSpaceId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "number"
+                      },
+                      "order": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "parentTaskId": {
+                        "type": "string"
+                      },
+                      "chainId": {
+                        "type": "string"
+                      },
+                      "phaseId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      },
+                      "turnId": {
+                        "type": "string"
+                      },
+                      "decisionId": {
+                        "type": "string"
+                      },
+                      "sourceMessageId": {
+                        "type": "string"
+                      },
+                      "linkedArtifactIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedSourceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedNodeIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "originSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "updatedAt": {
+                        "type": "number"
+                      },
+                      "completedAt": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "array",
+                              "items": {}
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "taskId",
+                      "projectId",
+                      "knowledgeSpaceId",
+                      "title",
+                      "status",
+                      "order",
+                      "tags",
+                      "linkedArtifactIds",
+                      "linkedSourceIds",
+                      "linkedNodeIds",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "pending": {
+                      "type": "number"
+                    },
+                    "in_progress": {
+                      "type": "number"
+                    },
+                    "blocked": {
+                      "type": "number"
+                    },
+                    "done": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    },
+                    "cancelled": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "pending",
+                    "in_progress",
+                    "blocked",
+                    "done",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "additionalProperties": false
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "ok",
+                "projectId",
+                "knowledgeSpaceId",
+                "workPlanId",
+                "tasks",
+                "counts",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "snapshot"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.snapshot",
+        "title": "Project Work Plan Snapshot",
+        "description": "Return the durable project-scoped work-plan snapshot, including tasks and status counts.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/projects/planning/work-plan"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "parentTaskId": {
+              "type": "string"
+            },
+            "chainId": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "taskId": {
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "knowledgeSpaceId": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "owner": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "number"
+                  },
+                  "order": {
+                    "type": "number"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "parentTaskId": {
+                    "type": "string"
+                  },
+                  "chainId": {
+                    "type": "string"
+                  },
+                  "phaseId": {
+                    "type": "string"
+                  },
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "turnId": {
+                    "type": "string"
+                  },
+                  "decisionId": {
+                    "type": "string"
+                  },
+                  "sourceMessageId": {
+                    "type": "string"
+                  },
+                  "linkedArtifactIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "linkedSourceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "linkedNodeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "originSurface": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "completedAt": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "taskId",
+                  "projectId",
+                  "knowledgeSpaceId",
+                  "title",
+                  "status",
+                  "order",
+                  "tags",
+                  "linkedArtifactIds",
+                  "linkedSourceIds",
+                  "linkedNodeIds",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "counts": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "number"
+                },
+                "in_progress": {
+                  "type": "number"
+                },
+                "blocked": {
+                  "type": "number"
+                },
+                "done": {
+                  "type": "number"
+                },
+                "failed": {
+                  "type": "number"
+                },
+                "cancelled": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "total",
+                "pending",
+                "in_progress",
+                "blocked",
+                "done",
+                "failed",
+                "cancelled"
+              ],
+              "additionalProperties": false
+            },
+            "updatedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "tasks",
+            "counts",
+            "updatedAt"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.task.create",
+        "title": "Create Project Work Plan Task",
+        "description": "Create a durable project-scoped work-plan task for TUI, WebUI, APK, daemon planning, or WRFC correlation.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/projects/planning/work-plan/tasks"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "task": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "task": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "previousTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "deletedTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "clearedTaskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshot": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "workPlanId": {
+                  "type": "string"
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "taskId": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "knowledgeSpaceId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "number"
+                      },
+                      "order": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "parentTaskId": {
+                        "type": "string"
+                      },
+                      "chainId": {
+                        "type": "string"
+                      },
+                      "phaseId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      },
+                      "turnId": {
+                        "type": "string"
+                      },
+                      "decisionId": {
+                        "type": "string"
+                      },
+                      "sourceMessageId": {
+                        "type": "string"
+                      },
+                      "linkedArtifactIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedSourceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedNodeIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "originSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "updatedAt": {
+                        "type": "number"
+                      },
+                      "completedAt": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "array",
+                              "items": {}
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "taskId",
+                      "projectId",
+                      "knowledgeSpaceId",
+                      "title",
+                      "status",
+                      "order",
+                      "tags",
+                      "linkedArtifactIds",
+                      "linkedSourceIds",
+                      "linkedNodeIds",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "pending": {
+                      "type": "number"
+                    },
+                    "in_progress": {
+                      "type": "number"
+                    },
+                    "blocked": {
+                      "type": "number"
+                    },
+                    "done": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    },
+                    "cancelled": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "pending",
+                    "in_progress",
+                    "blocked",
+                    "done",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "additionalProperties": false
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "ok",
+                "projectId",
+                "knowledgeSpaceId",
+                "workPlanId",
+                "tasks",
+                "counts",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "snapshot"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.task.delete",
+        "title": "Delete Project Work Plan Task",
+        "description": "Delete a durable project-scoped work-plan task.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/projects/planning/work-plan/tasks/{taskId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "taskId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "task": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "previousTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "deletedTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "clearedTaskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshot": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "workPlanId": {
+                  "type": "string"
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "taskId": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "knowledgeSpaceId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "number"
+                      },
+                      "order": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "parentTaskId": {
+                        "type": "string"
+                      },
+                      "chainId": {
+                        "type": "string"
+                      },
+                      "phaseId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      },
+                      "turnId": {
+                        "type": "string"
+                      },
+                      "decisionId": {
+                        "type": "string"
+                      },
+                      "sourceMessageId": {
+                        "type": "string"
+                      },
+                      "linkedArtifactIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedSourceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedNodeIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "originSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "updatedAt": {
+                        "type": "number"
+                      },
+                      "completedAt": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "array",
+                              "items": {}
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "taskId",
+                      "projectId",
+                      "knowledgeSpaceId",
+                      "title",
+                      "status",
+                      "order",
+                      "tags",
+                      "linkedArtifactIds",
+                      "linkedSourceIds",
+                      "linkedNodeIds",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "pending": {
+                      "type": "number"
+                    },
+                    "in_progress": {
+                      "type": "number"
+                    },
+                    "blocked": {
+                      "type": "number"
+                    },
+                    "done": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    },
+                    "cancelled": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "pending",
+                    "in_progress",
+                    "blocked",
+                    "done",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "additionalProperties": false
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "ok",
+                "projectId",
+                "knowledgeSpaceId",
+                "workPlanId",
+                "tasks",
+                "counts",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "snapshot"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.task.get",
+        "title": "Get Project Work Plan Task",
+        "description": "Fetch one durable project-scoped work-plan task by id.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/projects/planning/work-plan/tasks/{taskId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "taskId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "task": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "taskId": {
+                      "type": "string"
+                    },
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "knowledgeSpaceId": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "notes": {
+                      "type": "string"
+                    },
+                    "owner": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "number"
+                    },
+                    "order": {
+                      "type": "number"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "parentTaskId": {
+                      "type": "string"
+                    },
+                    "chainId": {
+                      "type": "string"
+                    },
+                    "phaseId": {
+                      "type": "string"
+                    },
+                    "agentId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "type": "string"
+                    },
+                    "decisionId": {
+                      "type": "string"
+                    },
+                    "sourceMessageId": {
+                      "type": "string"
+                    },
+                    "linkedArtifactIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "linkedSourceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "linkedNodeIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "originSurface": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "updatedAt": {
+                      "type": "number"
+                    },
+                    "completedAt": {
+                      "type": "number"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "taskId",
+                    "projectId",
+                    "knowledgeSpaceId",
+                    "title",
+                    "status",
+                    "order",
+                    "tags",
+                    "linkedArtifactIds",
+                    "linkedSourceIds",
+                    "linkedNodeIds",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "snapshot": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "workPlanId": {
+                  "type": "string"
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "taskId": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "knowledgeSpaceId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "number"
+                      },
+                      "order": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "parentTaskId": {
+                        "type": "string"
+                      },
+                      "chainId": {
+                        "type": "string"
+                      },
+                      "phaseId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      },
+                      "turnId": {
+                        "type": "string"
+                      },
+                      "decisionId": {
+                        "type": "string"
+                      },
+                      "sourceMessageId": {
+                        "type": "string"
+                      },
+                      "linkedArtifactIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedSourceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedNodeIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "originSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "updatedAt": {
+                        "type": "number"
+                      },
+                      "completedAt": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "array",
+                              "items": {}
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "taskId",
+                      "projectId",
+                      "knowledgeSpaceId",
+                      "title",
+                      "status",
+                      "order",
+                      "tags",
+                      "linkedArtifactIds",
+                      "linkedSourceIds",
+                      "linkedNodeIds",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "pending": {
+                      "type": "number"
+                    },
+                    "in_progress": {
+                      "type": "number"
+                    },
+                    "blocked": {
+                      "type": "number"
+                    },
+                    "done": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    },
+                    "cancelled": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "pending",
+                    "in_progress",
+                    "blocked",
+                    "done",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "additionalProperties": false
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "ok",
+                "projectId",
+                "knowledgeSpaceId",
+                "workPlanId",
+                "tasks",
+                "counts",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "task",
+            "snapshot"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.task.status",
+        "title": "Set Project Work Plan Task Status",
+        "description": "Validate and apply a project work-plan task status transition.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/projects/planning/work-plan/tasks/{taskId}/status"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "taskId",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "task": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "previousTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "deletedTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "clearedTaskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshot": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "workPlanId": {
+                  "type": "string"
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "taskId": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "knowledgeSpaceId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "number"
+                      },
+                      "order": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "parentTaskId": {
+                        "type": "string"
+                      },
+                      "chainId": {
+                        "type": "string"
+                      },
+                      "phaseId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      },
+                      "turnId": {
+                        "type": "string"
+                      },
+                      "decisionId": {
+                        "type": "string"
+                      },
+                      "sourceMessageId": {
+                        "type": "string"
+                      },
+                      "linkedArtifactIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedSourceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedNodeIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "originSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "updatedAt": {
+                        "type": "number"
+                      },
+                      "completedAt": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "array",
+                              "items": {}
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "taskId",
+                      "projectId",
+                      "knowledgeSpaceId",
+                      "title",
+                      "status",
+                      "order",
+                      "tags",
+                      "linkedArtifactIds",
+                      "linkedSourceIds",
+                      "linkedNodeIds",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "pending": {
+                      "type": "number"
+                    },
+                    "in_progress": {
+                      "type": "number"
+                    },
+                    "blocked": {
+                      "type": "number"
+                    },
+                    "done": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    },
+                    "cancelled": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "pending",
+                    "in_progress",
+                    "blocked",
+                    "done",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "additionalProperties": false
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "ok",
+                "projectId",
+                "knowledgeSpaceId",
+                "workPlanId",
+                "tasks",
+                "counts",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "snapshot"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.task.update",
+        "title": "Update Project Work Plan Task",
+        "description": "Patch a durable project-scoped work-plan task.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "PATCH",
+          "path": "/api/projects/planning/work-plan/tasks/{taskId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            },
+            "patch": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "taskId",
+            "patch"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "task": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "previousTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "deletedTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "order": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "parentTaskId": {
+                  "type": "string"
+                },
+                "chainId": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                },
+                "decisionId": {
+                  "type": "string"
+                },
+                "sourceMessageId": {
+                  "type": "string"
+                },
+                "linkedArtifactIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedSourceIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "linkedNodeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "originSurface": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "taskId",
+                "projectId",
+                "knowledgeSpaceId",
+                "title",
+                "status",
+                "order",
+                "tags",
+                "linkedArtifactIds",
+                "linkedSourceIds",
+                "linkedNodeIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "clearedTaskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "snapshot": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "knowledgeSpaceId": {
+                  "type": "string"
+                },
+                "workPlanId": {
+                  "type": "string"
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "taskId": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "knowledgeSpaceId": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "number"
+                      },
+                      "order": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "parentTaskId": {
+                        "type": "string"
+                      },
+                      "chainId": {
+                        "type": "string"
+                      },
+                      "phaseId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      },
+                      "turnId": {
+                        "type": "string"
+                      },
+                      "decisionId": {
+                        "type": "string"
+                      },
+                      "sourceMessageId": {
+                        "type": "string"
+                      },
+                      "linkedArtifactIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedSourceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "linkedNodeIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "originSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "updatedAt": {
+                        "type": "number"
+                      },
+                      "completedAt": {
+                        "type": "number"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "array",
+                              "items": {}
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "taskId",
+                      "projectId",
+                      "knowledgeSpaceId",
+                      "title",
+                      "status",
+                      "order",
+                      "tags",
+                      "linkedArtifactIds",
+                      "linkedSourceIds",
+                      "linkedNodeIds",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "pending": {
+                      "type": "number"
+                    },
+                    "in_progress": {
+                      "type": "number"
+                    },
+                    "blocked": {
+                      "type": "number"
+                    },
+                    "done": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    },
+                    "cancelled": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "pending",
+                    "in_progress",
+                    "blocked",
+                    "done",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "additionalProperties": false
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "ok",
+                "projectId",
+                "knowledgeSpaceId",
+                "workPlanId",
+                "tasks",
+                "counts",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "snapshot"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.tasks.list",
+        "title": "List Project Work Plan Tasks",
+        "description": "List durable project-scoped work-plan tasks with optional status, owner, parent, or WRFC-chain filters.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:knowledge"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/projects/planning/work-plan/tasks"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "parentTaskId": {
+              "type": "string"
+            },
+            "chainId": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "taskId": {
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "knowledgeSpaceId": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "owner": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "number"
+                  },
+                  "order": {
+                    "type": "number"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "parentTaskId": {
+                    "type": "string"
+                  },
+                  "chainId": {
+                    "type": "string"
+                  },
+                  "phaseId": {
+                    "type": "string"
+                  },
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "turnId": {
+                    "type": "string"
+                  },
+                  "decisionId": {
+                    "type": "string"
+                  },
+                  "sourceMessageId": {
+                    "type": "string"
+                  },
+                  "linkedArtifactIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "linkedSourceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "linkedNodeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "originSurface": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "completedAt": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "taskId",
+                  "projectId",
+                  "knowledgeSpaceId",
+                  "title",
+                  "status",
+                  "order",
+                  "tags",
+                  "linkedArtifactIds",
+                  "linkedSourceIds",
+                  "linkedNodeIds",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "counts": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "number"
+                },
+                "in_progress": {
+                  "type": "number"
+                },
+                "blocked": {
+                  "type": "number"
+                },
+                "done": {
+                  "type": "number"
+                },
+                "failed": {
+                  "type": "number"
+                },
+                "cancelled": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "total",
+                "pending",
+                "in_progress",
+                "blocked",
+                "done",
+                "failed",
+                "cancelled"
+              ],
+              "additionalProperties": false
+            },
+            "updatedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "tasks",
+            "counts",
+            "updatedAt"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "projectPlanning.workPlan.tasks.reorder",
+        "title": "Reorder Project Work Plan Tasks",
+        "description": "Replace task ordering for the current project work plan.",
+        "category": "knowledge",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:knowledge"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/projects/planning/work-plan/tasks/reorder"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "orderedTaskIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "orderedTaskIds"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "knowledgeSpaceId": {
+              "type": "string"
+            },
+            "workPlanId": {
+              "type": "string"
+            },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "taskId": {
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "knowledgeSpaceId": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "owner": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "number"
+                  },
+                  "order": {
+                    "type": "number"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "parentTaskId": {
+                    "type": "string"
+                  },
+                  "chainId": {
+                    "type": "string"
+                  },
+                  "phaseId": {
+                    "type": "string"
+                  },
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "turnId": {
+                    "type": "string"
+                  },
+                  "decisionId": {
+                    "type": "string"
+                  },
+                  "sourceMessageId": {
+                    "type": "string"
+                  },
+                  "linkedArtifactIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "linkedSourceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "linkedNodeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "originSurface": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "completedAt": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "taskId",
+                  "projectId",
+                  "knowledgeSpaceId",
+                  "title",
+                  "status",
+                  "order",
+                  "tags",
+                  "linkedArtifactIds",
+                  "linkedSourceIds",
+                  "linkedNodeIds",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "counts": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "number"
+                },
+                "in_progress": {
+                  "type": "number"
+                },
+                "blocked": {
+                  "type": "number"
+                },
+                "done": {
+                  "type": "number"
+                },
+                "failed": {
+                  "type": "number"
+                },
+                "cancelled": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "total",
+                "pending",
+                "in_progress",
+                "blocked",
+                "done",
+                "failed",
+                "cancelled"
+              ],
+              "additionalProperties": false
+            },
+            "updatedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ok",
+            "projectId",
+            "knowledgeSpaceId",
+            "workPlanId",
+            "tasks",
+            "counts",
+            "updatedAt"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "media.analyze",
         "title": "Analyze Media Artifact",
         "description": "Analyze an artifact through a registered media provider.",
@@ -69263,10 +73874,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 264,
-      "typedInputs": 264,
+      "methods": 273,
+      "typedInputs": 273,
       "genericInputs": 0,
-      "typedOutputs": 264,
+      "typedOutputs": 273,
       "genericOutputs": 0
     },
     "eventCoverage": {

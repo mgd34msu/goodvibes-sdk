@@ -27,6 +27,11 @@ import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ExecutionPlanManager } from '../core/execution-plan.js';
 import type { AgentEvent, RuntimeEventBus } from '../runtime/events/index.js';
+import type {
+  ProjectWorkPlanTaskCreateInput,
+  ProjectWorkPlanTaskStatus,
+  ProjectWorkPlanTaskUpdateInput,
+} from '../knowledge/project-planning/index.js';
 import {
   emitAgentCompleted,
   emitAgentFailed,
@@ -73,6 +78,10 @@ const VALID_TRANSITIONS: Partial<Record<WrfcState, WrfcState[]>> = {
 const MAX_ACTIVE_CHAINS = 6;
 const CHAIN_CLEANUP_DELAY_MS = 60_000;
 type WrfcWorktreeOps = Pick<AgentWorktree, 'merge' | 'cleanup'>;
+type WrfcWorkPlanService = {
+  createWorkPlanTask(input: ProjectWorkPlanTaskCreateInput): Promise<unknown>;
+  updateWorkPlanTask(input: ProjectWorkPlanTaskUpdateInput): Promise<unknown>;
+};
 interface ConstraintEvaluation {
   constraintsSatisfied: number;
   constraintsTotal: number;
@@ -96,6 +105,8 @@ export class WrfcController {
   private readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
   private readonly createWorktree: () => WrfcWorktreeOps;
   private readonly selectChildRoute: WrfcChildRouteSelector | null;
+  private workPlanService: WrfcWorkPlanService | null = null;
+  private readonly workPlanTaskQueues = new Map<string, Promise<void>>();
 
   constructor(
     runtimeBus: RuntimeEventBus,
@@ -159,6 +170,10 @@ export class WrfcController {
     this.unsubscribers = [];
     this.runtimeBus = runtimeBus;
     this.setupListeners();
+  }
+
+  setWorkPlanService(service: WrfcWorkPlanService | null | undefined): void {
+    this.workPlanService = service ?? null;
   }
 
   getChain(chainId: string): WrfcChain | null { return this.chains.get(chainId) ?? null; }
@@ -277,11 +292,13 @@ export class WrfcController {
 
     if (chain.state === 'engineering' || chain.state === 'fixing') {
       const report = parseEngineerCompletionReport(rawOutput, record?.template);
+      this.setWrfcWorkPlanTaskStatus(chain, agentId, 'done');
       this.handleEngineerCompletion(chain, agentId, report);
     } else if (chain.state === 'reviewing') {
       const review = parseReviewerCompletionReport(chain.id, rawOutput, getWrfcScoreThreshold(this.configManager));
       chain.reviewerReport = review;
       chain.reviewCycles += 1;
+      this.setWrfcWorkPlanTaskStatus(chain, agentId, 'done');
       await this.processReview(chain, review);
     }
 
@@ -299,6 +316,7 @@ export class WrfcController {
     const chain = this.findChainByAgentId(agentId);
     if (!chain) return;
     if (agentId === chain.ownerAgentId && (chain.state === 'passed' || chain.state === 'failed')) return;
+    this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', errorMessage ?? `Agent ${agentId} failed`);
     this.failChain(chain, errorMessage ?? `Agent ${agentId} failed`);
   }
 
@@ -306,9 +324,11 @@ export class WrfcController {
     const chain = this.findChainByAgentId(agentId);
     if (!chain || chain.state === 'passed' || chain.state === 'failed') return;
     if (agentId === chain.ownerAgentId) {
+      this.setWrfcWorkPlanTaskStatus(chain, agentId, 'cancelled', reason ?? 'WRFC owner agent cancelled');
       this.cancelChain(chain, reason ?? 'WRFC owner agent cancelled');
       return;
     }
+    this.setWrfcWorkPlanTaskStatus(chain, agentId, 'cancelled', reason ?? `Agent ${agentId} cancelled`);
     this.failChain(chain, reason ?? `Agent ${agentId} cancelled`);
   }
 
@@ -367,6 +387,7 @@ export class WrfcController {
       role: 'reviewer',
       record: reviewerRecord,
     });
+    this.upsertWrfcWorkPlanTask(chain, 'reviewer', reviewerRecord, 'in_progress');
   }
 
   private async processReview(chain: WrfcChain, review: ReviewerReport): Promise<void> {
@@ -546,6 +567,7 @@ export class WrfcController {
       role: 'fixer',
       record: fixerRecord,
     });
+    this.upsertWrfcWorkPlanTask(chain, 'fixer', fixerRecord, 'in_progress');
   }
 
   private async runGates(chain: WrfcChain): Promise<QualityGateResult[]> {
@@ -729,6 +751,7 @@ export class WrfcController {
       role: 'fixer',
       record: fixerRecord,
     });
+    this.upsertWrfcWorkPlanTask(chain, 'fixer', fixerRecord, 'in_progress');
   }
 
   private scheduleChainCleanup(chain: WrfcChain): void {
@@ -835,6 +858,7 @@ export class WrfcController {
 
     chain.error = reason;
     chain.completedAt = Date.now();
+    this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'failed', reason);
     this.cancelRunningChildren(chain);
     this.appendOwnerDecision(chain, 'chain_failed', reason, {
       agentId: chain.ownerAgentId,
@@ -885,6 +909,7 @@ export class WrfcController {
     chain.error = reason;
     chain.completedAt = Date.now();
     chain.ownerTerminalEmitted = true;
+    this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'cancelled', reason);
     this.appendOwnerDecision(chain, 'chain_cancelled', reason, {
       agentId: chain.ownerAgentId,
     });
@@ -1021,12 +1046,14 @@ export class WrfcController {
     this.appendOwnerDecision(chain, 'chain_created', 'WRFC owner created for original ask', {
       agentId: ownerRecord.id,
     });
+    this.upsertWrfcWorkPlanTask(chain, 'owner', ownerRecord, 'pending');
     return chain;
   }
 
   private startEngineeringChain(chain: WrfcChain, emitCreated: boolean): void {
     this.activeChainCount += 1;
     this.transition(chain, 'engineering');
+    this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'in_progress');
     const engineerRecord = this.spawnWrfcAgent(
       chain,
       'engineer',
@@ -1063,6 +1090,7 @@ export class WrfcController {
       role: 'engineer',
       record: engineerRecord,
     });
+    this.upsertWrfcWorkPlanTask(chain, 'engineer', engineerRecord, 'in_progress');
   }
 
   private handleEngineerCompletion(chain: WrfcChain, agentId: string, report: CompletionReport): void {
@@ -1162,6 +1190,7 @@ export class WrfcController {
     this.appendOwnerDecision(chain, 'chain_passed', 'WRFC full-scope review and quality gates passed', {
       agentId: chain.ownerAgentId,
     });
+    this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'done', 'WRFC full-scope review and quality gates passed');
     this.completeOwnerAgent(chain, 'completed', `WRFC chain ${chain.id} passed`);
     emitWrfcChainPassed(this.runtimeBus, this.sessionId, chain.id);
     this.scheduleChainCleanup(chain);
@@ -1198,6 +1227,142 @@ export class WrfcController {
         error: message,
       });
     }
+  }
+
+  private upsertWrfcWorkPlanTask(
+    chain: WrfcChain,
+    role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier',
+    record: AgentRecord,
+    status: ProjectWorkPlanTaskStatus,
+  ): void {
+    if (!this.workPlanService) return;
+    const taskId = this.workPlanTaskIdForAgent(chain, record.id, role);
+    const task = {
+      taskId,
+      title: this.workPlanTaskTitle(role, chain.task),
+      notes: role === 'owner'
+        ? 'WRFC owner chain supervising lifecycle child agents.'
+        : `WRFC ${role} phase for the owner chain.`,
+      owner: role,
+      status,
+      source: 'wrfc',
+      chainId: chain.id,
+      phaseId: role,
+      agentId: record.id,
+      originSurface: 'daemon',
+      tags: ['wrfc', role],
+      parentTaskId: role === 'owner' ? undefined : this.workPlanTaskIdForAgent(chain, chain.ownerAgentId, 'owner'),
+      metadata: {
+        wrfcState: chain.state,
+        agentTemplate: record.template,
+      },
+    };
+    this.enqueueWrfcWorkPlanTaskOperation(taskId, async () => {
+      try {
+        await this.workPlanService?.createWorkPlanTask({ task });
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes('already exists')) throw error;
+        await this.workPlanService?.updateWorkPlanTask({
+          taskId,
+          patch: {
+            ...task,
+            taskId: undefined,
+          } as ProjectWorkPlanTaskUpdateInput['patch'],
+        });
+      }
+    }, {
+      chainId: chain.id,
+      agentId: record.id,
+      role,
+      action: 'upsert',
+    });
+  }
+
+  private setWrfcWorkPlanTaskStatus(
+    chain: WrfcChain,
+    agentId: string,
+    status: ProjectWorkPlanTaskStatus,
+    reason?: string,
+  ): void {
+    if (!this.workPlanService) return;
+    const role = this.workPlanRoleForAgent(chain, agentId);
+    if (!role) return;
+    const taskId = this.workPlanTaskIdForAgent(chain, agentId, role);
+    this.enqueueWrfcWorkPlanTaskOperation(taskId, async () => {
+      await this.workPlanService?.updateWorkPlanTask({
+        taskId,
+        patch: {
+          status,
+          metadata: {
+            wrfcState: chain.state,
+            ...(reason ? { statusReason: reason } : {}),
+          },
+        },
+      });
+    }, {
+      chainId: chain.id,
+      agentId,
+      role,
+      action: 'status',
+    });
+  }
+
+  private enqueueWrfcWorkPlanTaskOperation(
+    taskId: string,
+    operation: () => Promise<void>,
+    context: {
+      readonly chainId: string;
+      readonly agentId: string;
+      readonly role: string;
+      readonly action: string;
+    },
+  ): void {
+    const previous = this.workPlanTaskQueues.get(taskId) ?? Promise.resolve();
+    let next: Promise<void>;
+    next = previous
+      .catch(() => undefined)
+      .then(operation)
+      .catch((error: unknown) => {
+        logger.warn('WrfcController: failed to sync work-plan task', {
+          chainId: context.chainId,
+          agentId: context.agentId,
+          role: context.role,
+          action: context.action,
+          error: summarizeError(error),
+        });
+      })
+      .finally(() => {
+        if (this.workPlanTaskQueues.get(taskId) === next) {
+          this.workPlanTaskQueues.delete(taskId);
+        }
+      });
+    this.workPlanTaskQueues.set(taskId, next);
+  }
+
+  private workPlanRoleForAgent(
+    chain: WrfcChain,
+    agentId: string,
+  ): 'owner' | 'engineer' | 'reviewer' | 'fixer' | null {
+    if (agentId === chain.ownerAgentId) return 'owner';
+    if (agentId === chain.engineerAgentId) return 'engineer';
+    if (agentId === chain.reviewerAgentId) return 'reviewer';
+    if (agentId === chain.fixerAgentId) return 'fixer';
+    return null;
+  }
+
+  private workPlanTaskIdForAgent(
+    chain: WrfcChain,
+    agentId: string,
+    role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier',
+  ): string {
+    return `wrfc-${chain.id}-${role}-${agentId}`;
+  }
+
+  private workPlanTaskTitle(role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier', task: string): string {
+    const label = role === 'owner'
+      ? 'WRFC owner'
+      : role.charAt(0).toUpperCase() + role.slice(1);
+    return `${label}: ${task.slice(0, 120)}`;
   }
 
   private safeDequeueNext(): void {

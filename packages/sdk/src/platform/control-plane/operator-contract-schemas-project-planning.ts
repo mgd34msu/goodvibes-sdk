@@ -99,6 +99,89 @@ const PROJECT_PLANNING_LANGUAGE_SCHEMA = objectSchema({
   metadata: METADATA_SCHEMA,
 }, ['projectId', 'knowledgeSpaceId', 'terms', 'ambiguities', 'updatedAt'], { additionalProperties: true });
 
+const PROJECT_WORK_PLAN_COUNTS_SCHEMA = objectSchema({
+  total: NUMBER_SCHEMA,
+  pending: NUMBER_SCHEMA,
+  in_progress: NUMBER_SCHEMA,
+  blocked: NUMBER_SCHEMA,
+  done: NUMBER_SCHEMA,
+  failed: NUMBER_SCHEMA,
+  cancelled: NUMBER_SCHEMA,
+}, ['total', 'pending', 'in_progress', 'blocked', 'done', 'failed', 'cancelled'], { additionalProperties: false });
+
+export const PROJECT_WORK_PLAN_TASK_SCHEMA = objectSchema({
+  taskId: STRING_SCHEMA,
+  projectId: STRING_SCHEMA,
+  knowledgeSpaceId: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  notes: STRING_SCHEMA,
+  owner: STRING_SCHEMA,
+  status: STRING_SCHEMA,
+  priority: NUMBER_SCHEMA,
+  order: NUMBER_SCHEMA,
+  source: STRING_SCHEMA,
+  tags: STRING_LIST_SCHEMA,
+  parentTaskId: STRING_SCHEMA,
+  chainId: STRING_SCHEMA,
+  phaseId: STRING_SCHEMA,
+  agentId: STRING_SCHEMA,
+  turnId: STRING_SCHEMA,
+  decisionId: STRING_SCHEMA,
+  sourceMessageId: STRING_SCHEMA,
+  linkedArtifactIds: STRING_LIST_SCHEMA,
+  linkedSourceIds: STRING_LIST_SCHEMA,
+  linkedNodeIds: STRING_LIST_SCHEMA,
+  originSurface: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+  updatedAt: NUMBER_SCHEMA,
+  completedAt: NUMBER_SCHEMA,
+  metadata: METADATA_SCHEMA,
+}, [
+  'taskId',
+  'projectId',
+  'knowledgeSpaceId',
+  'title',
+  'status',
+  'order',
+  'tags',
+  'linkedArtifactIds',
+  'linkedSourceIds',
+  'linkedNodeIds',
+  'createdAt',
+  'updatedAt',
+], { additionalProperties: true });
+
+export const PROJECT_WORK_PLAN_SNAPSHOT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  projectId: STRING_SCHEMA,
+  knowledgeSpaceId: STRING_SCHEMA,
+  workPlanId: STRING_SCHEMA,
+  tasks: arraySchema(PROJECT_WORK_PLAN_TASK_SCHEMA),
+  counts: PROJECT_WORK_PLAN_COUNTS_SCHEMA,
+  updatedAt: NUMBER_SCHEMA,
+}, ['ok', 'projectId', 'knowledgeSpaceId', 'workPlanId', 'tasks', 'counts', 'updatedAt'], { additionalProperties: true });
+
+export const PROJECT_WORK_PLAN_TASK_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  projectId: STRING_SCHEMA,
+  knowledgeSpaceId: STRING_SCHEMA,
+  workPlanId: STRING_SCHEMA,
+  task: nullableSchema(PROJECT_WORK_PLAN_TASK_SCHEMA),
+  snapshot: PROJECT_WORK_PLAN_SNAPSHOT_SCHEMA,
+}, ['ok', 'projectId', 'knowledgeSpaceId', 'workPlanId', 'task', 'snapshot'], { additionalProperties: true });
+
+export const PROJECT_WORK_PLAN_MUTATION_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  projectId: STRING_SCHEMA,
+  knowledgeSpaceId: STRING_SCHEMA,
+  workPlanId: STRING_SCHEMA,
+  task: PROJECT_WORK_PLAN_TASK_SCHEMA,
+  previousTask: PROJECT_WORK_PLAN_TASK_SCHEMA,
+  deletedTask: PROJECT_WORK_PLAN_TASK_SCHEMA,
+  clearedTaskIds: STRING_LIST_SCHEMA,
+  snapshot: PROJECT_WORK_PLAN_SNAPSHOT_SCHEMA,
+}, ['ok', 'projectId', 'knowledgeSpaceId', 'workPlanId', 'snapshot'], { additionalProperties: true });
+
 const PROJECT_PLANNING_GAP_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   kind: STRING_SCHEMA,
@@ -158,4 +241,3 @@ export const PROJECT_PLANNING_LANGUAGE_OUTPUT_SCHEMA = objectSchema({
   language: nullableSchema(PROJECT_PLANNING_LANGUAGE_SCHEMA),
   source: KNOWLEDGE_SOURCE_SCHEMA,
 }, ['ok', 'projectId', 'knowledgeSpaceId'], { additionalProperties: true });
-
