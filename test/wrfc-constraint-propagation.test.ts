@@ -510,6 +510,62 @@ describe('A5: Fixer continuity — id extra', () => {
   });
 });
 
+describe('A5b: Fixer continuity — no authoritative constraints', () => {
+  test('fixer-invented constraints are ignored and not forwarded as synthetic review failures', async () => {
+    const { h, chain, reviewerAgentId } = await seedChainWithConstraints([], { maxFixAttempts: 3 });
+
+    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, []));
+    emitAgentCompleted(h.bus, reviewerAgentId());
+    await flushMicrotasks(20);
+
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
+    expect(fixerRecord.task).toContain('Return "constraints": []');
+    h.setOutput(fixerRecord.id, engineerOutput([
+      { id: 'c1', text: 'invented implementation detail', source: 'prompt' },
+      { id: 'c2', text: 'another invented detail', source: 'prompt' },
+    ]));
+    emitAgentCompleted(h.bus, fixerRecord.id);
+    await flushMicrotasks(20);
+
+    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    expect(reviewer2Record.task).not.toContain('## Synthetic issues from controller');
+    expect(reviewer2Record.task).not.toContain('Fixer regressed constraint continuity');
+    expect(reviewer2Record.task).toContain('"constraints": []');
+    expect(reviewer2Record.task).not.toContain('invented implementation detail');
+    expect(chain.constraints).toEqual([]);
+
+    h.controller.dispose();
+  });
+});
+
+describe('A5c: Fixer continuity — malformed constrained fixer report', () => {
+  test('non-engineer fixer output creates one synthetic continuity issue for missing authoritative constraints', async () => {
+    const constraints: Constraint[] = [
+      { id: 'c1', text: 'must be pure', source: 'prompt' },
+      { id: 'c2', text: 'no deps', source: 'prompt' },
+    ];
+    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
+
+    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, []));
+    emitAgentCompleted(h.bus, reviewerAgentId());
+    await flushMicrotasks(20);
+
+    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
+    h.setOutput(fixerRecord.id, 'Fixed the issue, but did not return an EngineerReport JSON block.');
+    emitAgentCompleted(h.bus, fixerRecord.id);
+    await flushMicrotasks(20);
+
+    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    const reviewer2Task = reviewer2Record.task;
+    expect(reviewer2Task).toContain('## Synthetic issues from controller');
+    expect(reviewer2Task).toContain('missing=[c1,c2] extra=[]');
+    expect(reviewer2Task.match(/Fixer regressed constraint continuity/g) ?? []).toHaveLength(1);
+    expect(chain.constraints.map((constraint) => constraint.id)).toEqual(['c1', 'c2']);
+
+    h.controller.dispose();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // A6: Synthetic issue consumption (fire-once)
 // ---------------------------------------------------------------------------

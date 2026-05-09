@@ -13,6 +13,7 @@ import { buildSyntheticResult } from './tool-reconciliation.js';
 import { autoSpawnPendingItems } from './orchestrator-tool-runtime.js';
 import type { ToolCall, ToolResult } from '../types/tools.js';
 import type { AgentManager } from '../tools/agent/index.js';
+import { buildWrfcWorkflowRoutingPrompt, toolResultIndicatesAuthoritativeWrfcChain } from './wrfc-routing.js';
 
 type EmitterContextFactory = (turnId: string) => import('../runtime/emitters/index.js').EmitterContext;
 export type ChatResponseWithReasoning = Awaited<ReturnType<LLMProvider['chat']>> & {
@@ -89,6 +90,11 @@ export function prepareConversationForTurn(
     conversation.addUserMessage(content ?? text);
   }
 
+  const wrfcRoutingPrompt = buildWrfcWorkflowRoutingPrompt(text);
+  if (wrfcRoutingPrompt) {
+    conversation.addSystemMessage(wrfcRoutingPrompt);
+  }
+
   const activePlan = planManager?.getActive(sessionId) ?? null;
   if (!activePlan) {
     const classification = classifyIntent(text);
@@ -154,6 +160,7 @@ export async function handleToolResponseOutcome(args: {
     const mode = (tc.arguments as Record<string, unknown>).mode;
     return tc.name === 'agent' && (mode === 'spawn' || mode === 'batch-spawn');
   });
+  const spawnedAuthoritativeWrfcChain = spawnedAgents && results.some(toolResultIndicatesAuthoritativeWrfcChain);
 
   if (spawnedAgents || args.messageQueueLength > 0) {
     if (spawnedAgents) {
@@ -161,36 +168,48 @@ export async function handleToolResponseOutcome(args: {
       const activePlan = planManager?.getActive(args.sessionId) ?? null;
       if (activePlan) {
         const summary = planManager?.getSummary(activePlan) ?? '';
-        const nextItems = planManager?.getNextItems(activePlan) ?? [];
-        if (nextItems.length > 0) {
-          const autoSpawnedDescs = autoSpawnPendingItems(
-            args.conversation,
-            activePlan,
-            nextItems,
-            args.agentManager,
-            args.configManager,
-            args.providerRegistry,
-            args.runtimeBus,
-            args.emitterContext(args.turnId),
-            planManager,
+        if (spawnedAuthoritativeWrfcChain) {
+          args.conversation.addSystemMessage(
+            `A WRFC owner chain is now the authoritative owner for this deliverable. Do not spawn additional root agents for review, testing, verification, or fixing this same work; inspect the WRFC chain status instead. Plan progress: ${summary}.`
           );
-          if (autoSpawnedDescs.length > 0) {
-            args.conversation.addSystemMessage(
-              `[Plan] Auto-spawned ${autoSpawnedDescs.length} agent(s) for remaining plan items: ${autoSpawnedDescs.join(', ')}. Plan progress: ${summary}.`
-            );
-          } else {
-            const nextDesc = nextItems.map(i => i.description).join(', ');
-            args.conversation.addSystemMessage(
-              `Plan progress: ${summary}. Next items ready: ${nextDesc}. Continue spawning agents for remaining work.`
-            );
-          }
         } else {
-          args.conversation.addSystemMessage(`Plan progress: ${summary}. All items are accounted for.`);
+          const nextItems = planManager?.getNextItems(activePlan) ?? [];
+          if (nextItems.length > 0) {
+            const autoSpawnedDescs = autoSpawnPendingItems(
+              args.conversation,
+              activePlan,
+              nextItems,
+              args.agentManager,
+              args.configManager,
+              args.providerRegistry,
+              args.runtimeBus,
+              args.emitterContext(args.turnId),
+              planManager,
+            );
+            if (autoSpawnedDescs.length > 0) {
+              args.conversation.addSystemMessage(
+                `[Plan] Auto-spawned ${autoSpawnedDescs.length} agent(s) for remaining plan items: ${autoSpawnedDescs.join(', ')}. Plan progress: ${summary}.`
+              );
+            } else {
+              const nextDesc = nextItems.map(i => i.description).join(', ');
+              args.conversation.addSystemMessage(
+                `Plan progress: ${summary}. Next items ready: ${nextDesc}. Continue spawning agents for remaining work.`
+              );
+            }
+          } else {
+            args.conversation.addSystemMessage(`Plan progress: ${summary}. All items are accounted for.`);
+          }
         }
       } else {
-        args.conversation.addSystemMessage(
-          'You spawned an agent for part of the task. If there are remaining tasks, continue spawning agents now.'
-        );
+        if (spawnedAuthoritativeWrfcChain) {
+          args.conversation.addSystemMessage(
+            'A WRFC owner chain is now the authoritative owner for this deliverable. Do not spawn additional root agents for review, testing, verification, or fixing this same work; inspect the WRFC chain status instead.'
+          );
+        } else {
+          args.conversation.addSystemMessage(
+            'You spawned an agent for part of the task. If there are remaining tasks, continue spawning agents now.'
+          );
+        }
       }
     }
     if (args.runtimeBus) {

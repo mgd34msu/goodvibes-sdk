@@ -22,7 +22,8 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
     'wrfc-history (detailed event history for a specific WRFC chain — reviews, scores, issues, gates), ' +
     'cohort-status (JSON summary of all agents in a named cohort), ' +
     'cohort-report (markdown table report for all agents in a named cohort).' +
-    ' Discovery: use mode=list to see all agents and their status, mode=templates to see available agent templates.',
+    ' Discovery: use mode=list to see all agents and their status, mode=templates to see available agent templates. ' +
+    'If the user asks for WRFC, agent review, reviewed implementation, review/fix cycles, or test/verify work for one deliverable, call this tool with mode=spawn, template=engineer, reviewMode=wrfc; do not answer by describing WRFC in prose.',
   sideEffects: ['agent', 'workflow', 'state'],
   concurrency: 'serial',
   supportsProgress: true,
@@ -38,7 +39,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       // mode: spawn
       task: {
         type: 'string',
-        description: 'Task description for the agent to execute (mode: spawn).',
+        description: 'Task description for the agent to execute (mode: spawn). For a user request that asks for WRFC/review/test/verify of one deliverable, describe the implementation deliverable itself and use reviewMode=wrfc; do not spawn reviewer/tester roots.',
       },
       template: {
         type: 'string',
@@ -125,7 +126,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       reviewMode: {
         type: 'string',
         enum: ['none', 'wrfc'],
-        description: 'Review loop requirement for the spawned agent (mode: spawn). Default: wrfc unless explicitly disabled.',
+        description: 'Review loop requirement for the spawned agent (mode: spawn). Default: wrfc unless explicitly disabled. Use wrfc for any requested WRFC, review/fix cycle, reviewed implementation, test, or verification flow for a single deliverable.',
       },
       communicationLane: {
         type: 'string',

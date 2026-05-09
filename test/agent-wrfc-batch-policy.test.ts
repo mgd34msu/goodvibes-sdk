@@ -77,13 +77,19 @@ describe('agent batch-spawn WRFC topology policy', () => {
     expect(result.success).toBe(true);
     const output = JSON.parse(result.output!) as {
       collapsedToWrfc?: boolean;
+      authoritativeWrfcChain?: boolean;
+      continueRootSpawning?: boolean;
+      orchestrationStopSignal?: string | null;
       count: number;
       skipped: number;
       collapsedTaskCount: number;
       roleTaskIndexes: number[];
-      agents: Array<{ id: string; wrfcRole?: string; wrfcId?: string; wrfcPhaseOrder?: number }>;
+      agents: Array<{ id: string; wrfcRole?: string; wrfcId?: string; wrfcPhaseOrder?: number; continueRootSpawning?: boolean }>;
     };
     expect(output.collapsedToWrfc).toBe(true);
+    expect(output.authoritativeWrfcChain).toBe(true);
+    expect(output.continueRootSpawning).toBe(false);
+    expect(output.orchestrationStopSignal).toBe('wrfc_owner_chain_started');
     expect(output.count).toBe(1);
     expect(output.skipped).toBe(0);
     expect(output.collapsedTaskCount).toBe(2);
@@ -95,6 +101,7 @@ describe('agent batch-spawn WRFC topology policy', () => {
     expect(owner.wrfcPhaseOrder).toBe(0);
     expect(output.agents[0]!.wrfcRole).toBe('owner');
     expect(output.agents[0]!.wrfcPhaseOrder).toBe(0);
+    expect(output.agents[0]!.continueRootSpawning).toBe(false);
     expect(owner.dangerously_disable_wrfc).toBe(false);
 
     const chains = controller.listChains();
@@ -127,8 +134,9 @@ describe('agent batch-spawn WRFC topology policy', () => {
     });
 
     expect(result.success).toBe(true);
-    const output = JSON.parse(result.output!) as { collapsedToWrfc?: boolean; agents: Array<{ id: string }> };
+    const output = JSON.parse(result.output!) as { collapsedToWrfc?: boolean; continueRootSpawning?: boolean; agents: Array<{ id: string }> };
     expect(output.collapsedToWrfc).toBe(true);
+    expect(output.continueRootSpawning).toBe(false);
     expect(controller.listChains()).toHaveLength(1);
     expect(manager.list().filter((agent) => !agent.parentAgentId)).toHaveLength(1);
     expect(manager.getStatus(output.agents[0]!.id)?.wrfcRole).toBe('owner');
@@ -147,9 +155,10 @@ describe('agent batch-spawn WRFC topology policy', () => {
     });
 
     expect(result.success).toBe(true);
-    const output = JSON.parse(result.output!) as { collapsedToWrfc?: boolean; count: number };
+    const output = JSON.parse(result.output!) as { collapsedToWrfc?: boolean; count: number; agents: Array<{ continueRootSpawning?: boolean }> };
     expect(output.collapsedToWrfc).toBeUndefined();
     expect(output.count).toBe(2);
+    expect(output.agents.every((agent) => agent.continueRootSpawning === true)).toBe(true);
     expect(controller.listChains()).toHaveLength(0);
     const rootAgents = manager.list().filter((agent) => !agent.parentAgentId);
     expect(rootAgents).toHaveLength(2);
@@ -167,9 +176,21 @@ describe('agent batch-spawn WRFC topology policy', () => {
     });
 
     expect(result.success).toBe(true);
-    const output = JSON.parse(result.output!) as { agentId: string; wrfcRole?: string; wrfcPhaseOrder?: number };
+    const output = JSON.parse(result.output!) as {
+      agentId: string;
+      wrfcRole?: string;
+      wrfcPhaseOrder?: number;
+      wrfcRouteReason?: string | null;
+      authoritativeWrfcChain?: boolean;
+      continueRootSpawning?: boolean;
+      orchestrationStopSignal?: string | null;
+    };
     expect(output.wrfcRole).toBe('owner');
     expect(output.wrfcPhaseOrder).toBe(0);
+    expect(output.wrfcRouteReason).toBe('root-review-role-normalized');
+    expect(output.authoritativeWrfcChain).toBe(true);
+    expect(output.continueRootSpawning).toBe(false);
+    expect(output.orchestrationStopSignal).toBe('wrfc_owner_chain_started');
     expect(controller.listChains()).toHaveLength(1);
     const owner = manager.getStatus(output.agentId)!;
     expect(owner.template).toBe('engineer');
@@ -188,9 +209,10 @@ describe('agent batch-spawn WRFC topology policy', () => {
     });
 
     expect(result.success).toBe(true);
-    const output = JSON.parse(result.output!) as { agentId: string; wrfcRole?: string };
+    const output = JSON.parse(result.output!) as { agentId: string; wrfcRole?: string; continueRootSpawning?: boolean };
     const owner = manager.getStatus(output.agentId)!;
     expect(owner.wrfcRole).toBe('owner');
+    expect(output.continueRootSpawning).toBe(false);
     expect(owner.template).toBe('engineer');
     expect(owner.reviewMode).toBe('wrfc');
     expect(manager.list().filter((agent) => !agent.parentAgentId)).toHaveLength(1);
@@ -208,9 +230,10 @@ describe('agent batch-spawn WRFC topology policy', () => {
     });
 
     expect(result.success).toBe(true);
-    const output = JSON.parse(result.output!) as { normalizedToSpawn?: boolean; count: number; agents: Array<{ id: string }> };
+    const output = JSON.parse(result.output!) as { normalizedToSpawn?: boolean; count: number; agents: Array<{ id: string; continueRootSpawning?: boolean }> };
     expect(output.normalizedToSpawn).toBe(true);
     expect(output.count).toBe(1);
+    expect(output.agents[0]!.continueRootSpawning).toBe(true);
     expect(manager.getStatus(output.agents[0]!.id)?.task).toBe('Inspect one independent subsystem.');
   });
 });

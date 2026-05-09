@@ -8,6 +8,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.22] - 2026-05-09
+
+### Changed
+- Added an explicit WRFC owner-chain orchestration contract to agent tool
+  results: authoritative WRFC spawns now return `authoritativeWrfcChain`,
+  `continueRootSpawning: false`, `rootSpawnContinuation`, and
+  `orchestrationStopSignal` so clients and orchestrators know the WRFC owner
+  chain owns the deliverable.
+- Injected explicit WRFC execution prompts into the live provider system prompt
+  for user requests such as `WRFC review for ...`, so the model is instructed to
+  start one WRFC owner chain instead of answering with a prose explanation.
+- Recorded `wrfcRouteReason` when root reviewer/tester/verifier tasks are
+  normalized into an engineer-owned WRFC chain.
+
+### Fixed
+- Suppressed the generic post-agent "continue spawning agents" nudge when the
+  spawned result is an authoritative WRFC owner chain, including active-plan
+  turns that would otherwise auto-spawn more root agents for the same
+  deliverable.
+- Prevented unconstrained WRFC fix loops from failing on fixer-invented
+  `constraints` ids: fixer reports are canonicalized to the chain's
+  authoritative constraint list before review, while non-empty constraint chains
+  still surface missing or extra ids as continuity regressions.
+
+---
+
 ## [0.33.21] - 2026-05-09
 
 ### Added
