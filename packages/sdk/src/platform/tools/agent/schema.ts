@@ -9,7 +9,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
   name: 'agent',
   description:
     'Manages in-process subagents. Modes: spawn (create a new agent task), ' +
-    'batch-spawn (spawn multiple agents at once from a tasks array), ' +
+    'batch-spawn (spawn multiple genuinely independent sidecar agents at once from a tasks array; review/test/verification role decomposition is WRFC and is collapsed to one owner chain), ' +
     'status (check agent progress by ID), cancel (stop a running agent), ' +
     'list (show all agents and their status), ' +
     'templates (list available agent templates with default tool sets), ' +
@@ -201,7 +201,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
             dangerously_disable_wrfc: { type: 'boolean', description: 'Skip WRFC review.' },
           },
         },
-        description: 'Array of tasks to spawn as agents (mode: batch-spawn). Max 20.',
+        description: 'Array of genuinely independent tasks to spawn as agents (mode: batch-spawn). Max 20. Do not place tester/reviewer/verifier role phases here for one deliverable; those are WRFC lifecycle children owned by one owner chain.',
       },
       // mode: spawn, batch-spawn, list, cohort-status, cohort-report
       cohort: {

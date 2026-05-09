@@ -23,6 +23,7 @@ import type { AgentInput } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { splitModelRegistryKey } from '../../providers/registry-helpers.js';
 import type { WrfcAgentRole } from '../../agents/wrfc-types.js';
+import { isRootReviewRoleTask } from './wrfc-batch-policy.js';
 
 export type AgentExecutor = {
   runAgent(record: AgentRecord): Promise<void>;
@@ -201,6 +202,9 @@ export class AgentManager {
       throw new Error('AgentManager requires configManager');
     }
     const template = input.template ?? 'general';
+    if (!input.parentAgentId && input.dangerously_disable_wrfc && isRootReviewRoleTask({ task, template })) {
+      throw new Error('Root reviewer/tester/verifier agents are not valid independent roots. Start one WRFC owner chain for the deliverable, or spawn genuinely independent sidecar research/implementation tasks.');
+    }
 
     const archetype = this.archetypeLoader.loadArchetype(template);
     const templateDef = AGENT_TEMPLATES[template]! ?? AGENT_TEMPLATES.general;
