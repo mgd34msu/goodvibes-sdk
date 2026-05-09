@@ -9,6 +9,7 @@ import { AGENT_TEMPLATES, AgentManager } from './manager.js';
 import { evaluateOrchestrationSpawn } from '../../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { toRecord } from '../../utils/record-coerce.js';
+import { evaluateWrfcBatchPolicy, isRootReviewRoleTask } from './wrfc-batch-policy.js';
 export type { AgentExecutor, AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 
@@ -67,6 +68,12 @@ export function createAgentTool(config: {
       case 'spawn': {
         if (!input.task || typeof input.task !== 'string' || input.task.trim() === '') {
           return { success: false, error: 'Missing required parameter for spawn: task' };
+        }
+        if (!input.parentAgentId && input.dangerously_disable_wrfc && isRootReviewRoleTask({ task: input.task, template: input.template })) {
+          return {
+            success: false,
+            error: 'Root reviewer/tester/verifier agents are not valid independent roots. Start one WRFC owner chain for the deliverable, or spawn genuinely independent sidecar research/implementation tasks.',
+          };
         }
 
         if (input.template && !AGENT_TEMPLATES[input.template]) {
@@ -430,6 +437,38 @@ export function createAgentTool(config: {
         }
         if (input.tasks.length > 20) {
           return { success: false, error: 'batch-spawn limited to 20 tasks per batch.' };
+        }
+        const batchPolicy = evaluateWrfcBatchPolicy(input);
+        if (batchPolicy.kind === 'collapse-to-wrfc') {
+          let record;
+          try {
+            record = manager.spawn(batchPolicy.ownerInput!);
+          } catch (error) {
+            return {
+              success: false,
+              error: `Failed to collapse role-decomposition batch into a WRFC owner chain: ${summarizeError(error)}`,
+            };
+          }
+          return {
+            success: true,
+            output: JSON.stringify({
+              agents: [{
+                id: record.id,
+                task: record.task.slice(0, 80),
+                template: record.template,
+                cohort: record.cohort,
+                wrfcId: record.wrfcId ?? null,
+                wrfcRole: record.wrfcRole ?? null,
+              }],
+              count: 1,
+              cohort: input.cohort,
+              skipped: 0,
+              collapsedToWrfc: true,
+              collapsedTaskCount: input.tasks.length,
+              reason: batchPolicy.reason,
+              roleTaskIndexes: batchPolicy.roleTaskIndexes ?? [],
+            }),
+          };
         }
         const currentCount = manager.list().filter(a => a.status === 'pending' || a.status === 'running').length;
         const spawnDecision = evaluateOrchestrationSpawn({

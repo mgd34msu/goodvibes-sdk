@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.20] - 2026-05-09
+
+### Fixed
+- Enforced WRFC topology at the SDK agent tool/runtime boundary by collapsing
+  batch-spawn role decomposition such as engineer plus tester/reviewer/verifier
+  into one WRFC owner chain instead of allowing sibling root role agents.
+- Rejected direct disabled reviewer/tester/verifier root spawns so review,
+  test, verification, and fix roles remain WRFC lifecycle children owned by
+  the controller.
+- Clarified the agent tool contract so `batch-spawn` is reserved for genuinely
+  independent sidecar work, while same-deliverable role decomposition is routed
+  through WRFC.
+
+---
+
 ## [0.33.19] - 2026-05-08
 
 ### Fixed
