@@ -315,7 +315,11 @@ export function buildFixTask(
   ].join('\n');
 
   if (constraints.length === 0) {
-    return base;
+    return [
+      base,
+      ``,
+      `Constraint continuity: the initial engineer declared no user-declared constraints for this chain. Return "constraints": [] in your EngineerReport. Do not invent constraint ids from the review findings, implementation details, or quality rubric.`,
+    ].join('\n');
   }
 
   // Build a finding-lookup map: constraintId -> ConstraintFinding

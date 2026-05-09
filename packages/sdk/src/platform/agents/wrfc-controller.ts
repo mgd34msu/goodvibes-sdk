@@ -1200,6 +1200,7 @@ export class WrfcController {
   }
 
   private handleEngineerCompletion(chain: WrfcChain, agentId: string, report: CompletionReport): void {
+    let reportForReview = report;
     this.completeCurrentNode(chain, report.summary);
     if (chain.state === 'engineering') {
       chain.engineerReport = report;
@@ -1230,16 +1231,37 @@ export class WrfcController {
       // Fixer continuity validation: verify the fixer returned the same constraint id-set.
       // If it diverged, inject a synthetic critical issue for the next review pass.
       const fixerConstraints: Constraint[] = isEngineerReportShape(report) ? (report.constraints ?? []) : [];
-      const expectedIds = new Set(chain.constraints.map((c) => c.id));
-      const actualIds = new Set(fixerConstraints.map((c) => c.id));
-      const missing = [...expectedIds].filter((id) => !actualIds.has(id));
-      const extra = [...actualIds].filter((id) => !expectedIds.has(id));
-      if (missing.length > 0 || extra.length > 0) {
-        const description = `Fixer regressed constraint continuity: missing=[${missing.join(',')}] extra=[${extra.join(',')}]`;
+      if (isEngineerReportShape(report)) {
+        reportForReview = this.canonicalizeFixerReportConstraints(report, chain.constraints);
+      }
+      if (chain.constraints.length === 0) {
+        if (fixerConstraints.length > 0) {
+          logger.warn('WrfcController: ignored fixer-invented constraints for unconstrained chain', {
+            chainId: chain.id,
+            extra: fixerConstraints.map((constraint) => constraint.id),
+          });
+        }
+      } else if (isEngineerReportShape(report)) {
+        const expectedIds = new Set(chain.constraints.map((c) => c.id));
+        const actualIds = new Set(fixerConstraints.map((c) => c.id));
+        const missing = [...expectedIds].filter((id) => !actualIds.has(id));
+        const extra = [...actualIds].filter((id) => !expectedIds.has(id));
+        if (missing.length > 0 || extra.length > 0) {
+          const description = `Fixer regressed constraint continuity: missing=[${missing.join(',')}] extra=[${extra.join(',')}]`;
+          logger.warn('WrfcController: fixer constraint-continuity violation', {
+            chainId: chain.id,
+            missing,
+            extra,
+          });
+          chain.syntheticIssues ??= [];
+          chain.syntheticIssues.push({ severity: 'critical', description });
+        }
+      } else {
+        const description = `Fixer regressed constraint continuity: missing=[${chain.constraints.map((c) => c.id).join(',')}] extra=[]`;
         logger.warn('WrfcController: fixer constraint-continuity violation', {
           chainId: chain.id,
-          missing,
-          extra,
+          missing: chain.constraints.map((constraint) => constraint.id),
+          extra: [],
         });
         chain.syntheticIssues ??= [];
         chain.syntheticIssues.push({ severity: 'critical', description });
@@ -1248,7 +1270,24 @@ export class WrfcController {
       // original enumeration from the initial engineer turn.
     }
 
-    this.startReview(chain, report);
+    this.startReview(chain, reportForReview);
+  }
+
+  private canonicalizeFixerReportConstraints(report: EngineerReport, constraints: readonly Constraint[]): EngineerReport & { reviewableOutput?: string } {
+    const canonical: EngineerReport & { reviewableOutput?: string } = {
+      ...report,
+      constraints: constraints.map((constraint) => ({ ...constraint })),
+    };
+    const { reviewableOutput: _ignored, ...jsonReport } = canonical;
+    canonical.reviewableOutput = [
+      'Controller-canonicalized EngineerReport for WRFC review.',
+      'The constraint list below is the authoritative chain constraint list; fixer-invented or renamed constraints were not forwarded to the reviewer.',
+      '',
+      '```json',
+      JSON.stringify(jsonReport, null, 2),
+      '```',
+    ].join('\n');
+    return canonical;
   }
 
   private spawnWrfcAgent(

@@ -37,6 +37,7 @@ import {
   type ChatResponseWithReasoning,
 } from './orchestrator-turn-helpers.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
+import { buildWrfcWorkflowRoutingPrompt } from './wrfc-routing.js';
 
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
 
@@ -213,11 +214,13 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       });
     }
     try {
+      const baseSystemPrompt = appendGoodVibesRuntimeAwarenessPrompt(context.getSystemPrompt());
+      const wrfcRoutingPrompt = buildWrfcWorkflowRoutingPrompt(context.text);
       response = await provider.chat({
         model: model.id,
         messages: context.conversation.getMessagesForLLM(),
         tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
-        systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(context.getSystemPrompt()),
+        systemPrompt: wrfcRoutingPrompt ? `${baseSystemPrompt}\n\n${wrfcRoutingPrompt}` : baseSystemPrompt,
         maxTokens: tokenLimits.maxOutputTokens,
         reasoningEffort: (() => {
           const configured = context.configManager.get('provider.reasoningEffort') as string | undefined;

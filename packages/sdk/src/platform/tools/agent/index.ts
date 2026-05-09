@@ -45,6 +45,19 @@ function agentTopology(record: AgentRecord) {
   };
 }
 
+function agentOrchestrationControl(record: AgentRecord) {
+  const authoritativeWrfcChain = record.wrfcRole === 'owner' && typeof record.wrfcId === 'string' && record.wrfcId.length > 0;
+  return {
+    authoritativeWrfcChain,
+    continueRootSpawning: authoritativeWrfcChain ? false : true,
+    rootSpawnContinuation: authoritativeWrfcChain ? 'stop' : 'allowed',
+    orchestrationStopSignal: authoritativeWrfcChain ? 'wrfc_owner_chain_started' : null,
+    orchestrationInstruction: authoritativeWrfcChain
+      ? 'This WRFC owner chain is authoritative for the deliverable. Do not spawn additional root review/test/verification/fix agents for the same work.'
+      : null,
+  };
+}
+
 function agentExecutionContract(record: AgentRecord) {
   return {
     executionIntent: record.executionIntent ?? null,
@@ -71,6 +84,13 @@ function agentSummary(record: AgentRecord) {
     cohort: record.cohort,
     progress: record.progress,
     ...agentTopology(record),
+  };
+}
+
+function agentSpawnSummary(record: AgentRecord) {
+  return {
+    ...agentSummary(record),
+    ...agentOrchestrationControl(record),
   };
 }
 
@@ -172,6 +192,7 @@ export function createAgentTool(config: {
             task: record.task,
             ...agentExecutionContract(record),
             ...agentTopology(record),
+            ...agentOrchestrationControl(record),
           }),
         };
       }
@@ -510,11 +531,12 @@ export function createAgentTool(config: {
           return {
             success: true,
             output: JSON.stringify({
-              agents: [{ ...agentSummary(record), task: record.task.slice(0, 80) }],
+              agents: [{ ...agentSpawnSummary(record), task: record.task.slice(0, 80) }],
               count: 1,
               cohort: input.cohort,
               skipped: 0,
               normalizedToSpawn: true,
+              ...agentOrchestrationControl(record),
             }),
           };
         }
@@ -532,7 +554,7 @@ export function createAgentTool(config: {
           return {
             success: true,
             output: JSON.stringify({
-              agents: [{ ...agentSummary(record), task: record.task.slice(0, 80) }],
+              agents: [{ ...agentSpawnSummary(record), task: record.task.slice(0, 80) }],
               count: 1,
               cohort: input.cohort,
               skipped: 0,
@@ -540,6 +562,7 @@ export function createAgentTool(config: {
               collapsedTaskCount: input.tasks.length,
               reason: batchPolicy.reason,
               roleTaskIndexes: batchPolicy.roleTaskIndexes ?? [],
+              ...agentOrchestrationControl(record),
             }),
           };
         }
@@ -559,7 +582,7 @@ export function createAgentTool(config: {
         const tasksToSpawn = input.tasks.slice(0, spawnDecision.availableSlots);
         const skipped = input.tasks.length - tasksToSpawn.length;
 
-        const results: ReturnType<typeof agentSummary>[] = [];
+        const results: ReturnType<typeof agentSpawnSummary>[] = [];
         for (const taskDef of tasksToSpawn) {
           if (!taskDef.task || typeof taskDef.task !== 'string' || taskDef.task.trim() === '') {
             return { success: false, error: 'Each task in batch-spawn must have a non-empty task string.' };
@@ -584,7 +607,7 @@ export function createAgentTool(config: {
               error: summarizeError(error),
             };
           }
-          results.push({ ...agentSummary(record), task: taskDef.task.slice(0, 80) });
+          results.push({ ...agentSpawnSummary(record), task: taskDef.task.slice(0, 80) });
         }
         return {
           success: true,

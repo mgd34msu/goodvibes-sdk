@@ -203,7 +203,9 @@ export class AgentManager {
       throw new Error('AgentManager requires configManager');
     }
     let template = input.template ?? 'general';
+    let wrfcRouteReason: string | undefined;
     if (!input.parentAgentId && isRootReviewRoleTask({ task, template })) {
+      wrfcRouteReason = 'root-review-role-normalized';
       input = {
         ...input,
         template: 'engineer',
@@ -346,6 +348,7 @@ export class AgentManager {
       } : {}),
       ...(input.parentAgentId ? { parentAgentId: input.parentAgentId } : {}),
       ...(parentNodeId ? { parentNodeId } : {}),
+      ...(wrfcRouteReason ? { wrfcRouteReason } : {}),
       ...(toolResolution.capabilityCeilingTools ? { capabilityCeilingTools: toolResolution.capabilityCeilingTools } : {}),
       ...(input.successCriteria ? { successCriteria: [...input.successCriteria] } : {}),
       ...(input.requiredEvidence ? { requiredEvidence: [...input.requiredEvidence] } : {}),
