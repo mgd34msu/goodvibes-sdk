@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.19] - 2026-05-08
+
+### Fixed
+- Made WRFC review prompts include the engineer's full reviewable output so
+  no-write and non-file deliverable tasks can be reviewed directly instead of
+  failing because no files exist.
+- Tightened reviewer constraint-finding instructions with the exact JSON shape
+  and normalized common evidence object/array shapes in the parser so usable
+  findings are not silently dropped into repeated malformed-finding loops.
+
+---
+
 ## [0.33.18] - 2026-05-08
 
 ### Added

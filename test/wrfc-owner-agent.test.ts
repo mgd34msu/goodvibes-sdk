@@ -356,6 +356,7 @@ describe('WRFC owner agent orchestration', () => {
       version: 1,
       archetype: 'engineer',
       summary: 'Changed one file',
+      reviewableOutput: 'Inline deliverable: assertions A, B, and C should be reviewed even if no files were changed.',
       gatheredContext: [],
       plannedActions: [],
       appliedChanges: [],
@@ -370,6 +371,10 @@ describe('WRFC owner agent orchestration', () => {
     expect(reviewTask).toContain('Original WRFC ask (authoritative full review scope)');
     expect(reviewTask).toContain(originalAsk);
     expect(reviewTask).toContain('Do not narrow the review to the latest fix');
+    expect(reviewTask).toContain('Engineer reviewable output');
+    expect(reviewTask).toContain('Inline deliverable: assertions A, B, and C');
+    expect(reviewTask).toContain('Do not fail only because no files exist');
+    expect(reviewTask).toContain('constraintFindings: array of exactly');
 
     const fixTask = buildFixTask('wrfc-test', originalAsk, {
       version: 1,

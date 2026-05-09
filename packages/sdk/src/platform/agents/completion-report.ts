@@ -103,17 +103,47 @@ function isWellFormedConstraint(c: unknown): c is Constraint {
   );
 }
 
-/** Returns true if a ConstraintFinding entry is well-formed. */
-function isWellFormedConstraintFinding(f: unknown): f is ConstraintFinding {
-  if (typeof f !== 'object' || f === null) return false;
+function evidenceToString(evidence: unknown): string | null {
+  if (typeof evidence === 'string') {
+    const trimmed = evidence.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof evidence === 'number' || typeof evidence === 'boolean') {
+    return String(evidence);
+  }
+  if (Array.isArray(evidence) || (typeof evidence === 'object' && evidence !== null)) {
+    try {
+      const serialized = JSON.stringify(evidence);
+      return serialized.length > 0 && serialized !== 'null' ? serialized : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Normalizes a ConstraintFinding entry, tolerating common model evidence shapes. */
+function normalizeConstraintFinding(f: unknown): ConstraintFinding | null {
+  if (typeof f !== 'object' || f === null) return null;
   const obj = f as Record<string, unknown>;
   const severity = obj['severity'];
-  return (
-    typeof obj['constraintId'] === 'string' && obj['constraintId'].length > 0 &&
-    typeof obj['satisfied'] === 'boolean' &&
-    typeof obj['evidence'] === 'string' && obj['evidence'].length > 0 &&
-    (severity === undefined || severity === 'critical' || severity === 'major' || severity === 'minor')
-  );
+  const evidence = evidenceToString(obj['evidence']);
+  if (
+    typeof obj['constraintId'] !== 'string' || obj['constraintId'].length === 0 ||
+    typeof obj['satisfied'] !== 'boolean' ||
+    evidence === null
+  ) {
+    return null;
+  }
+  const finding: ConstraintFinding = {
+    constraintId: obj['constraintId'],
+    satisfied: obj['satisfied'],
+    evidence,
+  };
+  if (severity === 'critical' || severity === 'major' || severity === 'minor') {
+    finding.severity = severity;
+  }
+  return finding;
 }
 
 function filterWellFormed<T>(
@@ -127,6 +157,24 @@ function filterWellFormed<T>(
   for (const item of raw) {
     if (guard(item)) {
       items.push(item);
+    } else {
+      dropped += 1;
+    }
+  }
+  return { items, dropped, malformedContainer: false };
+}
+
+function normalizeConstraintFindingList(
+  raw: unknown,
+): { items: ConstraintFinding[]; dropped: number; malformedContainer: boolean } {
+  if (raw === undefined) return { items: [], dropped: 0, malformedContainer: false };
+  if (!Array.isArray(raw)) return { items: [], dropped: 0, malformedContainer: true };
+  const items: ConstraintFinding[] = [];
+  let dropped = 0;
+  for (const item of raw) {
+    const normalized = normalizeConstraintFinding(item);
+    if (normalized) {
+      items.push(normalized);
     } else {
       dropped += 1;
     }
@@ -226,12 +274,12 @@ function applyConstraintDefaults(parsed: Record<string, unknown>): Record<string
     }
   }
   if (next['archetype'] === 'reviewer') {
-    const normalized = filterWellFormed(next['constraintFindings'], isWellFormedConstraintFinding);
+    const normalized = normalizeConstraintFindingList(next['constraintFindings']);
     next['constraintFindings'] = normalized.items;
     if (normalized.malformedContainer) {
-      appendReviewerIssue(next, 'Malformed constraintFindings field ignored: expected an array.');
+      appendReviewerIssue(next, 'Malformed constraintFindings field ignored: expected an array of {constraintId:string,satisfied:boolean,evidence:string,severity?:critical|major|minor}.');
     } else if (normalized.dropped > 0) {
-      appendReviewerIssue(next, `Malformed constraintFindings ignored: ${normalized.dropped} entr${normalized.dropped === 1 ? 'y' : 'ies'}.`);
+      appendReviewerIssue(next, `Malformed constraintFindings ignored: ${normalized.dropped} entr${normalized.dropped === 1 ? 'y' : 'ies'}; expected {constraintId:string,satisfied:boolean,evidence:string,severity?:critical|major|minor}.`);
     }
   }
   return next;

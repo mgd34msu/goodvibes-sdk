@@ -163,10 +163,10 @@ describe('D5: Reviewer report — malformed constraintFindings', () => {
     const result = parseCompletionReport(raw) as ReviewerReport;
     expect(result.constraintFindings).toHaveLength(1);
     expect(result.constraintFindings![0]?.constraintId).toBe('c1');
-    expect(result.issues.some((issue) => issue.description === 'Malformed constraintFindings ignored: 4 entries.')).toBe(true);
+    expect(result.issues.some((issue) => issue.description === 'Malformed constraintFindings ignored: 4 entries; expected {constraintId:string,satisfied:boolean,evidence:string,severity?:critical|major|minor}.')).toBe(true);
   });
 
-  test('malformed finding severity is dropped and reported', () => {
+  test('invalid finding severity is omitted without dropping otherwise usable evidence', () => {
     const raw = asJsonBlock({
       ...BASE_REVIEWER,
       constraintFindings: [
@@ -174,8 +174,26 @@ describe('D5: Reviewer report — malformed constraintFindings', () => {
       ],
     });
     const result = parseCompletionReport(raw) as ReviewerReport;
-    expect(result.constraintFindings).toEqual([]);
-    expect(result.issues.some((issue) => issue.description === 'Malformed constraintFindings ignored: 1 entry.')).toBe(true);
+    expect(result.constraintFindings).toEqual([
+      { constraintId: 'c1', satisfied: false, evidence: 'bad' },
+    ]);
+    expect(result.issues).toEqual([]);
+  });
+
+  test('object and array evidence are normalized to strings', () => {
+    const raw = asJsonBlock({
+      ...BASE_REVIEWER,
+      constraintFindings: [
+        { constraintId: 'c1', satisfied: true, evidence: { file: 'src/a.ts', line: 12 } },
+        { constraintId: 'c2', satisfied: false, evidence: ['missing assertion', 'no output'], severity: 'major' },
+      ],
+    });
+    const result = parseCompletionReport(raw) as ReviewerReport;
+    expect(result.constraintFindings).toEqual([
+      { constraintId: 'c1', satisfied: true, evidence: '{"file":"src/a.ts","line":12}' },
+      { constraintId: 'c2', satisfied: false, evidence: '["missing assertion","no output"]', severity: 'major' },
+    ]);
+    expect(result.issues).toEqual([]);
   });
 });
 
