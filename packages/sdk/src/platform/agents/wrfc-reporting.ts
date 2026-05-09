@@ -7,6 +7,11 @@ import { logger } from '../utils/logger.js';
 const REVIEW_BRIEF_ITEM_LIMIT = 6;
 const REVIEW_BRIEF_FILE_LIMIT = 8;
 const REVIEW_BRIEF_TEXT_LIMIT = 220;
+const REVIEWABLE_OUTPUT_LIMIT = 16_000;
+
+type ReviewableCompletionReport = CompletionReport & {
+  reviewableOutput?: string | undefined;
+};
 
 export function extractScoreFromText(text: string): number | null {
   const scorePattern = /\*{0,2}(?:overall\s+)?score\s*:?\s*\*{0,2}\s*(\d+(?:\.\d+)?)\s*\/\s*10/i;
@@ -55,13 +60,14 @@ export function extractIssuesFromText(text: string): ReviewerReport['issues'] {
   return issues;
 }
 
-export function parseEngineerCompletionReport(rawOutput: string, _template?: string): CompletionReport {
+export function parseEngineerCompletionReport(rawOutput: string, _template?: string): ReviewableCompletionReport {
   const report = parseCompletionReport(rawOutput);
-  if (report) return report;
+  if (report) return { ...report, reviewableOutput: rawOutput };
   return {
     version: 1,
     archetype: 'engineer',
     summary: rawOutput.slice(0, 500) || '(no output)',
+    reviewableOutput: rawOutput,
     gatheredContext: [],
     plannedActions: [],
     appliedChanges: [],
@@ -114,7 +120,7 @@ const CONSTRAINTS_TASK_LIMIT = 20;
 export function buildReviewTask(
   chainId: string,
   originalTask: string,
-  report: CompletionReport,
+  report: ReviewableCompletionReport,
   threshold: number,
   constraints: Constraint[] = [],
 ): string {
@@ -129,14 +135,18 @@ export function buildReviewTask(
     `Engineer report digest:`,
     ...lines,
     ``,
+    `Engineer reviewable output (authoritative for non-file deliverables and no-write tasks):`,
+    formatReviewableOutput(report),
+    ``,
     `Instructions:`,
     `1. Review the complete current result against the original WRFC ask above. Do not narrow the review to the latest fix, files touched in the last child turn, or functions mentioned in the digest.`,
-    `2. Read the referenced files directly before scoring. Do not rely on this digest alone.`,
-    `3. Inspect the engineer's gatheredContext, plannedActions, appliedChanges, and decisions for discipline and coherence.`,
-    `4. Verify the implementation meets all stated requirements and that prior passing behavior was not regressed by later fix loops.`,
-    `5. Score the implementation using the 10-dimension review rubric.`,
-    `6. The passing score threshold is ${threshold}/10.`,
-    `7. Return a structured ReviewerReport JSON block in your final response.`,
+    `2. If the original ask requested a non-file deliverable or explicitly said not to write files, review the Engineer reviewable output as the deliverable. Do not fail only because no files exist.`,
+    `3. Read referenced files directly when files were created or modified. Do not rely on the digest alone for file-backed work.`,
+    `4. Inspect the engineer's gatheredContext, plannedActions, appliedChanges, decisions, and reviewable output for discipline and coherence.`,
+    `5. Verify the implementation meets all stated requirements and that prior passing behavior was not regressed by later fix loops.`,
+    `6. Score the implementation using the 10-dimension review rubric.`,
+    `7. The passing score threshold is ${threshold}/10.`,
+    `8. Return a structured ReviewerReport JSON block in your final response.`,
     ``,
     `The ReviewerReport must include:`,
     `- version: 1`,
@@ -145,6 +155,7 @@ export function buildReviewTask(
     `- passed: <boolean>`,
     `- dimensions: array of { name, score, maxScore, issues[] }`,
     `- issues: array of { severity, description, file?, line?, pointValue }`,
+    `- constraintFindings: array of exactly { constraintId: string, satisfied: boolean, evidence: string, severity?: "critical" | "major" | "minor" }`,
   ];
 
   if (constraints.length === 0) {
@@ -173,6 +184,13 @@ function truncateReviewText(text: string, max = REVIEW_BRIEF_TEXT_LIMIT): string
   const normalized = text.replace(/\s+/g, ' ').trim();
   if (normalized.length <= max) return normalized;
   return `${normalized.slice(0, max - 3)}...`;
+}
+
+function formatReviewableOutput(report: ReviewableCompletionReport): string {
+  const output = typeof report.reviewableOutput === 'string' ? report.reviewableOutput.trim() : '';
+  if (output.length === 0) return '(no reviewable output recorded)';
+  if (output.length <= REVIEWABLE_OUTPUT_LIMIT) return output;
+  return `${output.slice(0, REVIEWABLE_OUTPUT_LIMIT)}\n\n[truncated from ${output.length} characters; inspect agent fullOutput directly if more detail is required]`;
 }
 
 function formatInlineList(items: readonly string[], limit: number): string {

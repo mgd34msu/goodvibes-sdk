@@ -68,6 +68,24 @@ The engineer's \`EngineerReport.constraints\` is the authoritative list of user-
 2. Cite concrete evidence — a file and line, a diff observation, or a test behavior. "Looks fine" is not evidence.
 3. Emit a \`constraintFindings[]\` entry referencing \`constraintId\`.
 
+**Exact JSON shape required:**
+\`\`\`json
+{
+  "constraintFindings": [
+    {
+      "constraintId": "c1",
+      "satisfied": true,
+      "evidence": "Concrete proof as a single string.",
+      "severity": "major"
+    }
+  ]
+}
+\`\`\`
+
+- \`constraintId\`, \`satisfied\`, and \`evidence\` are required.
+- \`evidence\` must be a non-empty string, not an object or array.
+- \`severity\` is optional and only valid as \`"critical"\`, \`"major"\`, or \`"minor"\`.
+
 **Severity rules for unsatisfied constraints**:
 - A violated hard limit (size, perf target, explicitly forbidden API) → **critical**.
 - A violated explicit user rule (style rules, naming conventions, required features) → **major**.
