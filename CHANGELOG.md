@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+---
+
+## [0.33.21] - 2026-05-09
+
 ### Added
 - Added a shared, durable project work-plan/task primitive under
   `projectPlanning.workPlan.*`, including project-scoped task CRUD, status
@@ -20,6 +24,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 - Linked WRFC owner, engineer, reviewer, fixer, and verifier phases to shared
   work-plan tasks with chain/phase/agent correlation metadata, ordered task
   writes, and lifecycle status updates.
+- Made WRFC owner/root lifecycle authoritative: premature owner completion or
+  failure events are ignored and corrected while the chain is still active, and
+  the owner remains visible/running until the full chain reaches a terminal
+  passed, failed, or cancelled state.
+- Added stable WRFC topology metadata to agent records, tool output, and runtime
+  events/store state: `wrfcId`, `wrfcRole`, `wrfcPhaseOrder`, and
+  `parentAgentId`.
+- Normalized root reviewer/tester/verifier spawns into one WRFC owner chain
+  instead of hard-failing, and normalized one-task `batch-spawn` requests
+  through the single-agent spawn path.
+
+### Fixed
+- Prevented WRFC owner records from disappearing or being counted as terminal
+  before review/fix/verify lifecycle children complete.
+- Exposed enough WRFC metadata for clients to render owner/child hierarchy
+  without inferring duplicate-looking engineer rows from task text.
 
 ---
 

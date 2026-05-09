@@ -14,6 +14,9 @@ export function emitAgentSpawning(
     taskId?: string | undefined;
     task: string;
     parentAgentId?: string | undefined;
+    wrfcId?: string | undefined;
+    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcPhaseOrder?: number | undefined;
     orchestrationGraphId?: string | undefined;
     parentNodeId?: string | undefined;
   }
@@ -25,7 +28,14 @@ export function emitAgentSpawning(
 export function emitAgentRunning(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { agentId: string; taskId?: string }
+  data: {
+    agentId: string;
+    taskId?: string;
+    parentAgentId?: string | undefined;
+    wrfcId?: string | undefined;
+    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcPhaseOrder?: number | undefined;
+  }
 ): void {
   bus.emit('agents', createEventEnvelope('AGENT_RUNNING', { type: 'AGENT_RUNNING', ...data }, ctx));
 }
@@ -34,7 +44,15 @@ export function emitAgentRunning(
 export function emitAgentProgress(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { agentId: string; taskId?: string; progress: string }
+  data: {
+    agentId: string;
+    taskId?: string;
+    progress: string;
+    parentAgentId?: string | undefined;
+    wrfcId?: string | undefined;
+    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcPhaseOrder?: number | undefined;
+  }
 ): void {
   bus.emit('agents', createEventEnvelope('AGENT_PROGRESS', { type: 'AGENT_PROGRESS', ...data }, ctx));
 }

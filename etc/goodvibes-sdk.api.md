@@ -94,6 +94,9 @@ export type AgentEvent =
     taskId?: string | undefined;
     task: string;
     parentAgentId?: string | undefined;
+    wrfcId?: string | undefined;
+    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcPhaseOrder?: number | undefined;
     orchestrationGraphId?: string | undefined;
     parentNodeId?: string | undefined;
 }
@@ -102,6 +105,10 @@ export type AgentEvent =
     type: 'AGENT_RUNNING';
     agentId: string;
     taskId?: string;
+    parentAgentId?: string | undefined;
+    wrfcId?: string | undefined;
+    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcPhaseOrder?: number | undefined;
 }
 /** Agent emitted a textual progress update. */
 | {
@@ -109,6 +116,10 @@ export type AgentEvent =
     agentId: string;
     taskId?: string;
     progress: string;
+    parentAgentId?: string | undefined;
+    wrfcId?: string | undefined;
+    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcPhaseOrder?: number | undefined;
 }
 /** Agent streamed a chunk of output. */
 | {
@@ -1174,7 +1185,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.20";
+    readonly productVersion: "0.33.21";
     readonly operatorMethodCount: 273;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;

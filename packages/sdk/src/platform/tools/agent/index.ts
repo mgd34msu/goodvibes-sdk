@@ -5,11 +5,11 @@ import type { AgentInput } from './schema.js';
 import { ArchetypeLoader } from '../../agents/archetypes.js';
 import { AgentMessageBus } from '../../agents/message-bus.js';
 import type { WrfcController } from '../../agents/wrfc-controller.js';
-import { AGENT_TEMPLATES, AgentManager } from './manager.js';
+import { AGENT_TEMPLATES, AgentManager, type AgentRecord } from './manager.js';
 import { evaluateOrchestrationSpawn } from '../../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { toRecord } from '../../utils/record-coerce.js';
-import { evaluateWrfcBatchPolicy, isRootReviewRoleTask } from './wrfc-batch-policy.js';
+import { evaluateWrfcBatchPolicy } from './wrfc-batch-policy.js';
 export type { AgentExecutor, AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 
@@ -29,6 +29,76 @@ function summarizeWrfcEvent(event: Record<string, unknown>) {
     score: event.score,
     gate: event.gate,
     issueCount: Array.isArray(event.issues) ? event.issues.length : undefined,
+  };
+}
+
+function agentTopology(record: AgentRecord) {
+  return {
+    parentAgentId: record.parentAgentId ?? null,
+    wrfcId: record.wrfcId ?? null,
+    wrfcRole: record.wrfcRole ?? null,
+    wrfcPhaseOrder: record.wrfcPhaseOrder ?? null,
+    wrfcRouteReason: record.wrfcRouteReason ?? null,
+    orchestrationGraphId: record.orchestrationGraphId ?? null,
+    orchestrationNodeId: record.orchestrationNodeId ?? null,
+    parentNodeId: record.parentNodeId ?? null,
+  };
+}
+
+function agentExecutionContract(record: AgentRecord) {
+  return {
+    executionIntent: record.executionIntent ?? null,
+    tools: record.tools,
+    capabilityCeilingTools: record.capabilityCeilingTools ?? record.tools,
+    successCriteria: record.successCriteria ?? [],
+    requiredEvidence: record.requiredEvidence ?? [],
+    writeScope: record.writeScope ?? [],
+    executionProtocol: record.executionProtocol,
+    reviewMode: record.reviewMode,
+    communicationLane: record.communicationLane,
+    knowledgeInjections: record.knowledgeInjections ?? [],
+  };
+}
+
+function agentSummary(record: AgentRecord) {
+  return {
+    id: record.id,
+    task: record.task,
+    template: record.template,
+    status: record.status,
+    startedAt: record.startedAt,
+    toolCallCount: record.toolCallCount,
+    cohort: record.cohort,
+    progress: record.progress,
+    ...agentTopology(record),
+  };
+}
+
+function batchTaskToSpawnInput(input: AgentInput, taskDef: NonNullable<AgentInput['tasks']>[number]): AgentInput {
+  return {
+    mode: 'spawn',
+    task: taskDef.task,
+    template: taskDef.template ?? input.template ?? 'general',
+    model: taskDef.model ?? input.model,
+    provider: taskDef.provider ?? input.provider,
+    fallbackModels: taskDef.fallbackModels ?? input.fallbackModels,
+    routing: taskDef.routing ?? input.routing,
+    reasoningEffort: taskDef.reasoningEffort ?? input.reasoningEffort,
+    tools: taskDef.tools ?? input.tools,
+    restrictTools: taskDef.restrictTools ?? input.restrictTools,
+    context: taskDef.context ?? input.context,
+    successCriteria: taskDef.successCriteria ?? input.successCriteria,
+    requiredEvidence: taskDef.requiredEvidence ?? input.requiredEvidence,
+    writeScope: taskDef.writeScope ?? input.writeScope,
+    executionProtocol: taskDef.executionProtocol ?? input.executionProtocol,
+    reviewMode: taskDef.reviewMode ?? input.reviewMode,
+    communicationLane: taskDef.communicationLane ?? input.communicationLane,
+    parentAgentId: taskDef.parentAgentId ?? input.parentAgentId,
+    orchestrationGraphId: taskDef.orchestrationGraphId ?? input.orchestrationGraphId,
+    orchestrationNodeId: taskDef.orchestrationNodeId,
+    parentNodeId: taskDef.parentNodeId ?? input.parentNodeId,
+    dangerously_disable_wrfc: taskDef.dangerously_disable_wrfc ?? input.dangerously_disable_wrfc,
+    cohort: input.cohort,
   };
 }
 
@@ -69,12 +139,6 @@ export function createAgentTool(config: {
         if (!input.task || typeof input.task !== 'string' || input.task.trim() === '') {
           return { success: false, error: 'Missing required parameter for spawn: task' };
         }
-        if (!input.parentAgentId && input.dangerously_disable_wrfc && isRootReviewRoleTask({ task: input.task, template: input.template })) {
-          return {
-            success: false,
-            error: 'Root reviewer/tester/verifier agents are not valid independent roots. Start one WRFC owner chain for the deliverable, or spawn genuinely independent sidecar research/implementation tasks.',
-          };
-        }
 
         if (input.template && !AGENT_TEMPLATES[input.template]) {
           // Also allow custom archetypes loaded from .goodvibes/agents/*.md
@@ -106,17 +170,8 @@ export function createAgentTool(config: {
             status: 'spawned',
             template: record.template,
             task: record.task,
-            executionIntent: record.executionIntent ?? null,
-            tools: record.tools,
-            capabilityCeilingTools: record.capabilityCeilingTools ?? record.tools,
-            successCriteria: record.successCriteria ?? [],
-            requiredEvidence: record.requiredEvidence ?? [],
-            writeScope: record.writeScope ?? [],
-            executionProtocol: record.executionProtocol,
-            reviewMode: record.reviewMode,
-            communicationLane: record.communicationLane,
-            knowledgeInjections: record.knowledgeInjections ?? [],
-            parentAgentId: record.parentAgentId ?? null,
+            ...agentExecutionContract(record),
+            ...agentTopology(record),
           }),
         };
       }
@@ -147,6 +202,7 @@ export function createAgentTool(config: {
             toolCallCount: record.toolCallCount,
             progress: record.progress,
             error: record.error,
+            ...agentTopology(record),
           }),
         };
       }
@@ -179,15 +235,7 @@ export function createAgentTool(config: {
         return {
           success: true,
           output: JSON.stringify({
-            agents: records.map((r) => ({
-              id: r.id,
-              task: r.task,
-              template: r.template,
-              status: r.status,
-              startedAt: r.startedAt,
-              toolCallCount: r.toolCallCount,
-              cohort: r.cohort,
-            })),
+            agents: records.map(agentSummary),
             count: records.length,
             ...(input.cohort ? { cohort: input.cohort } : {}),
           }),
@@ -239,9 +287,7 @@ export function createAgentTool(config: {
           executionProtocol: record.executionProtocol,
           reviewMode: record.reviewMode,
           communicationLane: record.communicationLane,
-          parentAgentId: record.parentAgentId ?? null,
-          orchestrationGraphId: record.orchestrationGraphId ?? null,
-          orchestrationNodeId: record.orchestrationNodeId ?? null,
+          ...agentTopology(record),
         };
 
         const contract = {
@@ -438,6 +484,40 @@ export function createAgentTool(config: {
         if (input.tasks.length > 20) {
           return { success: false, error: 'batch-spawn limited to 20 tasks per batch.' };
         }
+        if (input.tasks.length === 1) {
+          const taskDef = input.tasks[0]!;
+          if (!taskDef.task || typeof taskDef.task !== 'string' || taskDef.task.trim() === '') {
+            return { success: false, error: 'Each task in batch-spawn must have a non-empty task string.' };
+          }
+          if (taskDef.template && !AGENT_TEMPLATES[taskDef.template]) {
+            const customArchetype = archetypeLoader.loadArchetype(taskDef.template);
+            if (!customArchetype || customArchetype.isCustom === false) {
+              return {
+                success: false,
+                error: `Unknown template: '${taskDef.template}'. Available: ${Object.keys(AGENT_TEMPLATES).join(', ')}`,
+              };
+            }
+          }
+          let record;
+          try {
+            record = manager.spawn(batchTaskToSpawnInput(input, taskDef));
+          } catch (error) {
+            return {
+              success: false,
+              error: summarizeError(error),
+            };
+          }
+          return {
+            success: true,
+            output: JSON.stringify({
+              agents: [{ ...agentSummary(record), task: record.task.slice(0, 80) }],
+              count: 1,
+              cohort: input.cohort,
+              skipped: 0,
+              normalizedToSpawn: true,
+            }),
+          };
+        }
         const batchPolicy = evaluateWrfcBatchPolicy(input);
         if (batchPolicy.kind === 'collapse-to-wrfc') {
           let record;
@@ -452,14 +532,7 @@ export function createAgentTool(config: {
           return {
             success: true,
             output: JSON.stringify({
-              agents: [{
-                id: record.id,
-                task: record.task.slice(0, 80),
-                template: record.template,
-                cohort: record.cohort,
-                wrfcId: record.wrfcId ?? null,
-                wrfcRole: record.wrfcRole ?? null,
-              }],
+              agents: [{ ...agentSummary(record), task: record.task.slice(0, 80) }],
               count: 1,
               cohort: input.cohort,
               skipped: 0,
@@ -486,7 +559,7 @@ export function createAgentTool(config: {
         const tasksToSpawn = input.tasks.slice(0, spawnDecision.availableSlots);
         const skipped = input.tasks.length - tasksToSpawn.length;
 
-        const results: Array<{ id: string; task: string; template: string; cohort?: string | undefined }> = [];
+        const results: ReturnType<typeof agentSummary>[] = [];
         for (const taskDef of tasksToSpawn) {
           if (!taskDef.task || typeof taskDef.task !== 'string' || taskDef.task.trim() === '') {
             return { success: false, error: 'Each task in batch-spawn must have a non-empty task string.' };
@@ -501,31 +574,7 @@ export function createAgentTool(config: {
               };
             }
           }
-          const spawnInput: AgentInput = {
-            mode: 'spawn',
-            task: taskDef.task,
-            template: taskDef.template ?? input.template ?? 'general',
-            model: taskDef.model ?? input.model,
-            provider: taskDef.provider ?? input.provider,
-            fallbackModels: taskDef.fallbackModels ?? input.fallbackModels,
-            routing: taskDef.routing ?? input.routing,
-            reasoningEffort: taskDef.reasoningEffort ?? input.reasoningEffort,
-            tools: taskDef.tools ?? input.tools,
-            restrictTools: taskDef.restrictTools ?? input.restrictTools,
-            context: taskDef.context ?? input.context,
-            successCriteria: taskDef.successCriteria ?? input.successCriteria,
-            requiredEvidence: taskDef.requiredEvidence ?? input.requiredEvidence,
-            writeScope: taskDef.writeScope ?? input.writeScope,
-            executionProtocol: taskDef.executionProtocol ?? input.executionProtocol,
-            reviewMode: taskDef.reviewMode ?? input.reviewMode,
-            communicationLane: taskDef.communicationLane ?? input.communicationLane,
-            parentAgentId: taskDef.parentAgentId ?? input.parentAgentId,
-            orchestrationGraphId: taskDef.orchestrationGraphId ?? input.orchestrationGraphId,
-            orchestrationNodeId: taskDef.orchestrationNodeId,
-            parentNodeId: taskDef.parentNodeId ?? input.parentNodeId,
-            dangerously_disable_wrfc: taskDef.dangerously_disable_wrfc ?? input.dangerously_disable_wrfc,
-            cohort: input.cohort,
-          };
+          const spawnInput = batchTaskToSpawnInput(input, taskDef);
           let record;
           try {
             record = manager.spawn(spawnInput);
@@ -535,7 +584,7 @@ export function createAgentTool(config: {
               error: summarizeError(error),
             };
           }
-          results.push({ id: record.id, task: taskDef.task.slice(0, 80), template: record.template, cohort: record.cohort });
+          results.push({ ...agentSummary(record), task: taskDef.task.slice(0, 80) });
         }
         return {
           success: true,

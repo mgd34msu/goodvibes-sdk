@@ -81,7 +81,7 @@ describe('agent batch-spawn WRFC topology policy', () => {
       skipped: number;
       collapsedTaskCount: number;
       roleTaskIndexes: number[];
-      agents: Array<{ id: string; wrfcRole?: string; wrfcId?: string }>;
+      agents: Array<{ id: string; wrfcRole?: string; wrfcId?: string; wrfcPhaseOrder?: number }>;
     };
     expect(output.collapsedToWrfc).toBe(true);
     expect(output.count).toBe(1);
@@ -92,6 +92,9 @@ describe('agent batch-spawn WRFC topology policy', () => {
     const owner = manager.getStatus(output.agents[0]!.id)!;
     expect(owner.parentAgentId).toBeUndefined();
     expect(owner.wrfcRole).toBe('owner');
+    expect(owner.wrfcPhaseOrder).toBe(0);
+    expect(output.agents[0]!.wrfcRole).toBe('owner');
+    expect(output.agents[0]!.wrfcPhaseOrder).toBe(0);
     expect(owner.dangerously_disable_wrfc).toBe(false);
 
     const chains = controller.listChains();
@@ -106,6 +109,7 @@ describe('agent batch-spawn WRFC topology policy', () => {
     const engineer = manager.getStatus(chains[0]!.engineerAgentId!)!;
     expect(engineer.parentAgentId).toBe(owner.id);
     expect(engineer.wrfcRole).toBe('engineer');
+    expect(engineer.wrfcPhaseOrder).toBe(1);
     expect(runRecords.map((record) => record.id)).toEqual([engineer.id]);
   });
 
@@ -152,8 +156,8 @@ describe('agent batch-spawn WRFC topology policy', () => {
     expect(rootAgents.every((agent) => agent.wrfcRole === undefined && agent.reviewMode === 'none')).toBe(true);
   });
 
-  test('rejects direct disabled reviewer/tester root spawns', async () => {
-    const { tool } = createHarness();
+  test('normalizes direct disabled reviewer/tester root spawns into one WRFC owner chain', async () => {
+    const { controller, manager, tool } = createHarness();
 
     const result = await tool.execute({
       mode: 'spawn',
@@ -162,7 +166,51 @@ describe('agent batch-spawn WRFC topology policy', () => {
       dangerously_disable_wrfc: true,
     });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('Root reviewer/tester/verifier agents are not valid independent roots');
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { agentId: string; wrfcRole?: string; wrfcPhaseOrder?: number };
+    expect(output.wrfcRole).toBe('owner');
+    expect(output.wrfcPhaseOrder).toBe(0);
+    expect(controller.listChains()).toHaveLength(1);
+    const owner = manager.getStatus(output.agentId)!;
+    expect(owner.template).toBe('engineer');
+    expect(owner.reviewMode).toBe('wrfc');
+    expect(owner.dangerously_disable_wrfc).toBe(false);
+    expect(manager.list().filter((agent) => !agent.parentAgentId)).toHaveLength(1);
+  });
+
+  test('normalizes direct reviewer/tester root spawns even when WRFC is not explicitly disabled', async () => {
+    const { manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'spawn',
+      task: 'Tester: test the implementation for correctness.',
+      template: 'tester',
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { agentId: string; wrfcRole?: string };
+    const owner = manager.getStatus(output.agentId)!;
+    expect(owner.wrfcRole).toBe('owner');
+    expect(owner.template).toBe('engineer');
+    expect(owner.reviewMode).toBe('wrfc');
+    expect(manager.list().filter((agent) => !agent.parentAgentId)).toHaveLength(1);
+  });
+
+  test('normalizes one-task batch-spawn through the spawn path', async () => {
+    const { manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'batch-spawn',
+      dangerously_disable_wrfc: true,
+      tasks: [
+        { task: 'Inspect one independent subsystem.', template: 'researcher' },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { normalizedToSpawn?: boolean; count: number; agents: Array<{ id: string }> };
+    expect(output.normalizedToSpawn).toBe(true);
+    expect(output.count).toBe(1);
+    expect(manager.getStatus(output.agents[0]!.id)?.task).toBe('Inspect one independent subsystem.');
   });
 });

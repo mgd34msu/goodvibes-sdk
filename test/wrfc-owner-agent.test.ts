@@ -98,6 +98,7 @@ describe('WRFC owner agent orchestration', () => {
     });
 
     expect(owner.wrfcRole).toBe('owner');
+    expect(owner.wrfcPhaseOrder).toBe(0);
     expect(owner.status).toBe('running');
     expect(owner.parentAgentId).toBeUndefined();
     expect(runRecords.map((record) => record.id)).not.toContain(owner.id);
@@ -109,6 +110,7 @@ describe('WRFC owner agent orchestration', () => {
 
     const engineer = manager.getStatus(chain.engineerAgentId!)!;
     expect(engineer.wrfcRole).toBe('engineer');
+    expect(engineer.wrfcPhaseOrder).toBe(1);
     expect(engineer.parentAgentId).toBe(owner.id);
     expect(engineer.orchestrationGraphId).toBe('wrfc-owner-graph');
     expect(engineer.parentNodeId).toBe('owner-node');
@@ -130,6 +132,7 @@ describe('WRFC owner agent orchestration', () => {
 
     const reviewer = manager.list().find((record) => record.wrfcRole === 'reviewer')!;
     expect(reviewer).toBeDefined();
+    expect(reviewer.wrfcPhaseOrder).toBe(2);
     expect(reviewer.parentAgentId).toBe(owner.id);
     expect(reviewer.orchestrationGraphId).toBe('wrfc-owner-graph');
     expect(reviewer.parentNodeId).toBe('owner-node');
@@ -157,6 +160,76 @@ describe('WRFC owner agent orchestration', () => {
       'chain_passed',
     ]));
     expect(chain.ownerDecisions.some((decision) => decision.reason.includes('cheaper full-scope review'))).toBe(true);
+
+    controller.dispose();
+  });
+
+  test('owner completion events before terminal chain state are ignored and owner remains active', async () => {
+    const bus = new RuntimeEventBus();
+    const runRecords: AgentRecord[] = [];
+    const messageBus = { registerAgent: () => {} };
+    const configManager = {
+      get: (key: string): unknown => {
+        if (key === 'wrfc.scoreThreshold') return 9.9;
+        if (key === 'wrfc.maxFixAttempts') return 3;
+        if (key === 'wrfc.autoCommit') return false;
+        return undefined;
+      },
+      getCategory: (category: string): unknown => {
+        if (category === 'wrfc') {
+          return {
+            scoreThreshold: 9.9,
+            maxFixAttempts: 3,
+            autoCommit: false,
+            gates: [],
+          };
+        }
+        return undefined;
+      },
+    };
+
+    const manager = new AgentManager({
+      archetypeLoader: { loadArchetype: () => null },
+      messageBus,
+      configManager,
+      executor: {
+        async runAgent(record) {
+          record.status = 'running';
+          runRecords.push(record);
+        },
+      },
+    });
+    manager.setRuntimeBus(bus);
+    const controller = new WrfcController(bus, messageBus, {
+      agentManager: manager,
+      configManager,
+      projectRoot: '/tmp/wrfc-owner-agent-premature-complete-test',
+      createWorktree: () => ({ merge: async () => true, cleanup: async () => {} }),
+    });
+    manager.setWrfcController(controller);
+
+    const owner = manager.spawn({
+      mode: 'spawn',
+      task: 'keep owner active until full WRFC terminal state',
+      template: 'engineer',
+    });
+    const chain = controller.listChains()[0]!;
+    const engineer = manager.getStatus(chain.engineerAgentId!)!;
+
+    owner.status = 'completed';
+    owner.completedAt = Date.now();
+    owner.fullOutput = 'Premature owner completion should not terminate WRFC.';
+    emitAgentCompleted(bus, owner.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('engineering');
+    expect(owner.status).toBe('running');
+    expect(owner.completedAt).toBeUndefined();
+    expect(owner.wrfcRole).toBe('owner');
+    expect(owner.wrfcPhaseOrder).toBe(0);
+    expect(engineer.status).toBe('running');
+    expect(chain.ownerTerminalEmitted).toBe(false);
+    expect(chain.ownerDecisions.map((decision) => decision.action)).toContain('owner_completion_ignored');
 
     controller.dispose();
   });
@@ -288,7 +361,7 @@ describe('WRFC owner agent orchestration', () => {
     controller.dispose();
   });
 
-  test('unexpected owner completion fails the WRFC chain instead of orphaning children', async () => {
+  test('unexpected owner completion keeps the WRFC owner active until the chain is terminal', async () => {
     const bus = new RuntimeEventBus();
     const messageBus = { registerAgent: () => {} };
     const configManager = {
@@ -337,15 +410,16 @@ describe('WRFC owner agent orchestration', () => {
     const chain = controller.listChains()[0]!;
     const engineer = manager.getStatus(chain.engineerAgentId!)!;
 
-    const failed = waitForWorkflowEvent(bus, 'WORKFLOW_CHAIN_FAILED');
     emitAgentCompleted(bus, owner.id);
-    await failed;
     await flushMicrotasks(20);
 
-    expect(chain.state).toBe('failed');
-    expect(chain.error).toBe('WRFC owner agent completed before the chain reached a terminal state');
-    expect(owner.status).toBe('failed');
-    expect(engineer.status).toBe('cancelled');
+    expect(chain.state).toBe('engineering');
+    expect(chain.error).toBeUndefined();
+    expect(owner.status).toBe('running');
+    expect(owner.completedAt).toBeUndefined();
+    expect(engineer.status).toBe('running');
+    expect(chain.ownerTerminalEmitted).toBe(false);
+    expect(chain.ownerDecisions.map((decision) => decision.action)).toContain('owner_completion_ignored');
 
     controller.dispose();
   });
