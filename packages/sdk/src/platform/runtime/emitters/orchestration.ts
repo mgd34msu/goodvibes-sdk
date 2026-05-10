@@ -17,7 +17,7 @@ export function emitOrchestrationGraphCreated(
 export function emitOrchestrationNodeAdded(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { graphId: string; nodeId: string; title: string; role: 'planner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | 'researcher' | 'integrator'; parentNodeId?: string; dependsOn?: string[]; taskId?: string; agentId?: string; contract?: OrchestrationTaskContract },
+  data: { graphId: string; nodeId: string; title: string; role: 'planner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | 'researcher' | 'integrator'; parentNodeId?: string; dependsOn?: string[]; taskId?: string; agentId?: string; contract?: OrchestrationTaskContract },
 ): void {
   bus.emit('orchestration', createEventEnvelope('ORCHESTRATION_NODE_ADDED', { type: 'ORCHESTRATION_NODE_ADDED', ...data }, ctx));
 }

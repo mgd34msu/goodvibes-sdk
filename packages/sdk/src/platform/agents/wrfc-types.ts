@@ -11,6 +11,7 @@ export interface QueuedChain {
 export type WrfcState =
   | 'pending'
   | 'engineering'
+  | 'integrating'
   | 'reviewing'
   | 'fixing'
   | 'awaiting_gates'
@@ -20,14 +21,20 @@ export type WrfcState =
   | 'committing';
 
 /** Agent role within a WRFC chain. The owner is the durable chain orchestrator. */
-export type WrfcAgentRole = 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier';
+export type WrfcAgentRole = 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier';
+
+export type WrfcSubtaskState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'passed' | 'failed';
 
 export type WrfcOwnerDecisionAction =
   | 'chain_created'
+  | 'compound_started'
   | 'spawn_engineer'
   | 'spawn_reviewer'
   | 'spawn_fixer'
+  | 'spawn_integrator'
   | 'spawn_gate_fixer'
+  | 'subtask_review_passed'
+  | 'subtask_review_failed'
   | 'review_passed'
   | 'review_failed'
   | 'gate_passed'
@@ -65,10 +72,29 @@ export interface WrfcChildRouteSelection {
 
 export type WrfcChildRouteSelector = (context: {
   readonly chain: WrfcChain;
-  readonly role: Exclude<WrfcAgentRole, 'owner' | 'verifier'>;
+  readonly role: Exclude<WrfcAgentRole, 'owner' | 'orchestrator' | 'verifier'>;
   readonly task: string;
   readonly ownerAgent: AgentRecord | null;
 }) => WrfcChildRouteSelection | null | undefined;
+
+export interface WrfcSubtask {
+  id: string;
+  title: string;
+  task: string;
+  state: WrfcSubtaskState;
+  currentNodeId?: string | undefined;
+  engineerAgentId?: string | undefined;
+  reviewerAgentId?: string | undefined;
+  fixerAgentId?: string | undefined;
+  engineerReport?: CompletionReport | undefined;
+  reviewerReport?: ReviewerReport | undefined;
+  fixAttempts: number;
+  reviewCycles: number;
+  reviewScores: number[];
+  constraints: Constraint[];
+  constraintsEnumerated: boolean;
+  syntheticIssues?: Array<{ severity: 'critical'; description: string }> | undefined;
+}
 
 /** A single WRFC chain instance. */
 export interface WrfcChain {
@@ -80,10 +106,13 @@ export interface WrfcChain {
   engineerAgentId?: string | undefined;
   reviewerAgentId?: string | undefined;
   fixerAgentId?: string | undefined;
+  integratorAgentId?: string | undefined;
   /** All agent IDs involved in this chain (for worktree cleanup). */
   allAgentIds: string[];
   engineerReport?: CompletionReport | undefined;
   reviewerReport?: ReviewerReport | undefined;
+  integratorReport?: CompletionReport | undefined;
+  subtasks?: WrfcSubtask[] | undefined;
   fixAttempts: number;
   reviewCycles: number;
   gateResults?: QualityGateResult[] | undefined;

@@ -339,6 +339,105 @@ describe('agent batch-spawn WRFC topology policy', () => {
     expect(rootAgents.every((agent) => agent.wrfcRole === undefined && agent.reviewMode === 'none')).toBe(true);
   });
 
+  test('does not compound-collapse implementation batches when every implementation task explicitly disables WRFC', async () => {
+    const { controller, manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'batch-spawn',
+      tasks: [
+        { task: 'Implement standalone rate limiter experiment.', template: 'engineer', reviewMode: 'none', dangerously_disable_wrfc: true },
+        { task: 'Implement standalone request logger experiment.', template: 'engineer', reviewMode: 'none', dangerously_disable_wrfc: true },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { collapsedToWrfc?: boolean; count: number };
+    expect(output.collapsedToWrfc).toBeUndefined();
+    expect(output.count).toBe(2);
+    expect(controller.listChains()).toHaveLength(0);
+    expect(manager.list().filter((agent) => !agent.parentAgentId)).toHaveLength(2);
+  });
+
+  test('collapses multiple implementation deliverables with WRFC review into one compound owner chain', async () => {
+    const { controller, manager, runRecords, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'batch-spawn',
+      authoritativeTask: 'Build a small API with a rate limiter and request logger.',
+      reviewMode: 'wrfc',
+      tasks: [
+        { task: 'Implement token bucket rate limiter module.', template: 'engineer' },
+        { task: 'Implement request logging middleware.', template: 'engineer' },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as {
+      collapsedToWrfc?: boolean;
+      reason?: string;
+      count: number;
+      compoundTaskIndexes: number[];
+      roleTaskIndexes: number[];
+      agents: Array<{ id: string; wrfcRole?: string; continueRootSpawning?: boolean }>;
+    };
+    expect(output.collapsedToWrfc).toBe(true);
+    expect(output.reason).toContain('compound WRFC owner chain');
+    expect(output.count).toBe(1);
+    expect(output.compoundTaskIndexes).toEqual([0, 1]);
+    expect(output.roleTaskIndexes).toEqual([]);
+    expect(output.agents[0]!.wrfcRole).toBe('owner');
+    expect(output.agents[0]!.continueRootSpawning).toBe(false);
+
+    const owner = manager.getStatus(output.agents[0]!.id)!;
+    expect(owner.template).toBe('orchestrator');
+    expect(owner.task).toBe('Build a small API with a rate limiter and request logger.');
+    expect(owner.wrfcSubtasks).toHaveLength(2);
+
+    const chain = controller.listChains()[0]!;
+    expect(chain.ownerAgentId).toBe(owner.id);
+    expect(chain.subtasks?.map((subtask) => subtask.task)).toEqual([
+      'Implement token bucket rate limiter module.',
+      'Implement request logging middleware.',
+    ]);
+    expect(runRecords.map((record) => record.wrfcRole)).toEqual(['engineer', 'engineer']);
+    expect(runRecords.every((record) => record.parentAgentId === owner.id)).toBe(true);
+    expect(runRecords.every((record) => record.wrfcSubtaskId)).toBe(true);
+    expect(runRecords.every((record) => record.tools.includes('write'))).toBe(true);
+    expect(runRecords.every((record) => record.tools.includes('exec'))).toBe(true);
+    expect(manager.list().filter((agent) => !agent.parentAgentId)).toEqual([owner]);
+  });
+
+  test('compound WRFC subtasks cannot narrow implementation work into no-write design tasks', async () => {
+    const { controller, manager, runRecords, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'batch-spawn',
+      authoritativeTask: 'Build a small API with a rate limiter and request logger.',
+      reviewMode: 'wrfc',
+      tasks: [
+        {
+          task: 'Design a token bucket rate limiter module. Do not write files.',
+          template: 'engineer',
+          tools: ['read', 'find'],
+          restrictTools: true,
+        },
+        { task: 'Implement request logging middleware.', template: 'engineer' },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    const chain = controller.listChains()[0]!;
+    expect(chain.subtasks?.[0]?.task).toContain('Implement');
+    expect(chain.subtasks?.[0]?.task).not.toContain('Do not write files');
+    const owner = manager.list().find((agent) => agent.wrfcRole === 'owner')!;
+    expect(owner.wrfcSubtasks?.[0]?.tools).toBeUndefined();
+    expect(owner.wrfcSubtasks?.[0]?.restrictTools).toBe(false);
+    expect(runRecords[0]?.task).toContain('Implement');
+    expect(runRecords[0]?.task).not.toContain('Do not write files');
+    expect(runRecords[0]?.tools).toContain('write');
+    expect(runRecords[0]?.tools).toContain('exec');
+  });
+
   test('normalizes direct disabled reviewer/tester root spawns into one WRFC owner chain', async () => {
     const { controller, manager, tool } = createHarness();
 

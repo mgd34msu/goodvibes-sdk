@@ -18,7 +18,7 @@ export interface OrchestrationTaskContract {
 
 export type OrchestrationEvent =
   | { type: 'ORCHESTRATION_GRAPH_CREATED'; graphId: string; title: string; mode: 'single-worker' | 'parallel-workers' | 'review-loop' | 'graph-execute' }
-  | { type: 'ORCHESTRATION_NODE_ADDED'; graphId: string; nodeId: string; title: string; role: 'planner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | 'researcher' | 'integrator'; parentNodeId?: string; dependsOn?: string[]; taskId?: string; agentId?: string; contract?: OrchestrationTaskContract }
+  | { type: 'ORCHESTRATION_NODE_ADDED'; graphId: string; nodeId: string; title: string; role: 'planner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | 'researcher' | 'integrator'; parentNodeId?: string; dependsOn?: string[]; taskId?: string; agentId?: string; contract?: OrchestrationTaskContract }
   | { type: 'ORCHESTRATION_NODE_READY'; graphId: string; nodeId: string }
   | { type: 'ORCHESTRATION_NODE_STARTED'; graphId: string; nodeId: string; taskId?: string; agentId?: string }
   | { type: 'ORCHESTRATION_NODE_PROGRESS'; graphId: string; nodeId: string; message: string }

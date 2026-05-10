@@ -11,6 +11,7 @@ export interface Constraint {
 export type WrfcState =
   | 'pending'
   | 'engineering'
+  | 'integrating'
   | 'reviewing'
   | 'fixing'
   | 'awaiting_gates'

@@ -18,6 +18,7 @@ import type {
   WrfcOwnerDecision,
   WrfcOwnerDecisionAction,
   WrfcState,
+  WrfcSubtask,
 } from './wrfc-types.js';
 import { WrfcWorkmap } from './wrfc-workmap.js';
 import { AgentWorktree } from './worktree.js';
@@ -70,7 +71,8 @@ export { extractScoreFromText, extractPassedFromText, extractIssuesFromText } fr
 
 const VALID_TRANSITIONS: Partial<Record<WrfcState, WrfcState[]>> = {
   pending: ['engineering'],
-  engineering: ['reviewing', 'failed'],
+  engineering: ['integrating', 'reviewing', 'failed'],
+  integrating: ['reviewing', 'failed'],
   reviewing: ['fixing', 'awaiting_gates', 'failed'],
   fixing: ['reviewing', 'failed'],
   awaiting_gates: ['gating', 'failed'],
@@ -240,10 +242,13 @@ export class WrfcController {
     logger.debug('WrfcController.transition', { chainId: chain.id, from, to });
   }
 
-  private applyWrfcAgentMetadata(chain: WrfcChain, record: AgentRecord, role: WrfcAgentRole): void {
+  private applyWrfcAgentMetadata(chain: WrfcChain, record: AgentRecord, role: WrfcAgentRole, subtaskId?: string): void {
     record.wrfcId = chain.id;
     record.wrfcRole = role;
     record.wrfcPhaseOrder = this.wrfcPhaseOrder(role);
+    if (subtaskId) {
+      record.wrfcSubtaskId = subtaskId;
+    }
     if (role === 'owner') {
       record.progress = this.ownerProgress(chain);
     }
@@ -298,6 +303,10 @@ export class WrfcController {
   }
 
   private ownerProgress(chain: WrfcChain): string {
+    if (chain.subtasks && chain.subtasks.length > 0) {
+      const passed = chain.subtasks.filter((subtask) => subtask.state === 'passed').length;
+      return `WRFC owner supervising compound chain (${chain.state}, ${passed}/${chain.subtasks.length} deliverables passed)`;
+    }
     return `WRFC owner supervising child agents (${chain.state})`;
   }
 
@@ -305,14 +314,18 @@ export class WrfcController {
     switch (role) {
       case 'owner':
         return 0;
+      case 'orchestrator':
+        return 0;
       case 'engineer':
         return 1;
       case 'reviewer':
         return 2;
       case 'fixer':
         return 3;
-      case 'verifier':
+      case 'integrator':
         return 4;
+      case 'verifier':
+        return 5;
     }
   }
 
@@ -373,6 +386,25 @@ export class WrfcController {
       state: chain.state,
       outputLength: rawOutput.length,
     });
+
+    const subtask = this.findSubtaskByAgentId(chain, agentId);
+    if (subtask) {
+      await this.onCompoundSubtaskAgentComplete(chain, subtask, agentId, rawOutput, record ?? undefined);
+      if (this.planManager) {
+        completePlanItemsForAgent(agentId, this.planManager);
+      }
+      return;
+    }
+
+    if (agentId === chain.integratorAgentId) {
+      const report = parseEngineerCompletionReport(rawOutput, record?.template);
+      this.setWrfcWorkPlanTaskStatus(chain, agentId, 'done');
+      this.handleIntegratorCompletion(chain, agentId, report);
+      if (this.planManager) {
+        completePlanItemsForAgent(agentId, this.planManager);
+      }
+      return;
+    }
 
     if (chain.state === 'pending') {
       chain.bufferedCompletion = { agentId, fullOutput: rawOutput };
@@ -746,6 +778,50 @@ export class WrfcController {
     };
   }
 
+  private evaluateSubtaskConstraints(subtask: WrfcSubtask, review: ReviewerReport): ConstraintEvaluation {
+    if (subtask.constraints.length === 0) {
+      return {
+        constraintsSatisfied: 0,
+        constraintsTotal: 0,
+        unsatisfiedConstraintIds: [],
+        ignoredConstraintFindingIds: [],
+        constraintFailure: false,
+      };
+    }
+
+    const expectedIds = new Set(subtask.constraints.map((constraint) => constraint.id));
+    const findingMap = new Map<string, NonNullable<ReviewerReport['constraintFindings']>[number]>();
+    const ignoredConstraintFindingIds: string[] = [];
+    for (const finding of review.constraintFindings ?? []) {
+      if (!expectedIds.has(finding.constraintId)) {
+        ignoredConstraintFindingIds.push(finding.constraintId);
+        continue;
+      }
+      if (!findingMap.has(finding.constraintId)) {
+        findingMap.set(finding.constraintId, finding);
+      }
+    }
+
+    let constraintsSatisfied = 0;
+    const unsatisfiedConstraintIds: string[] = [];
+    for (const constraint of subtask.constraints) {
+      const finding = findingMap.get(constraint.id);
+      if (finding?.satisfied === true) {
+        constraintsSatisfied += 1;
+      } else {
+        unsatisfiedConstraintIds.push(constraint.id);
+      }
+    }
+
+    return {
+      constraintsSatisfied,
+      constraintsTotal: subtask.constraints.length,
+      unsatisfiedConstraintIds,
+      ignoredConstraintFindingIds,
+      constraintFailure: unsatisfiedConstraintIds.length > 0,
+    };
+  }
+
   private async processGateResults(chain: WrfcChain, results: QualityGateResult[]): Promise<void> {
     if (!chain.currentNodeId?.includes(':gate:')) {
       chain.currentNodeId = startWrfcOrchestrationNode(
@@ -878,6 +954,7 @@ export class WrfcController {
     const activeWorkChains = allChains.filter((chain) => (
       chain.state === 'pending'
       || chain.state === 'engineering'
+      || chain.state === 'integrating'
       || chain.state === 'reviewing'
       || chain.state === 'fixing'
     ));
@@ -954,6 +1031,12 @@ export class WrfcController {
 
     const wasActive = chain.state !== 'passed' && chain.state !== 'failed' && chain.state !== 'pending';
     this.failCurrentNode(chain, reason);
+    for (const subtask of chain.subtasks ?? []) {
+      if (subtask.currentNodeId) {
+        failWrfcOrchestrationNode(this.runtimeBus, this.sessionId, chain.id, subtask.currentNodeId, reason);
+        subtask.currentNodeId = undefined;
+      }
+    }
     try {
       this.transition(chain, 'failed');
     } catch {
@@ -1125,7 +1208,26 @@ export class WrfcController {
     chain.currentNodeId = undefined;
   }
 
+  private completeSubtaskNode(chain: WrfcChain, subtask: WrfcSubtask, summary?: string): void {
+    if (!subtask.currentNodeId) return;
+    completeWrfcOrchestrationNode(this.runtimeBus, this.sessionId, chain.id, subtask.currentNodeId, summary);
+    subtask.currentNodeId = undefined;
+  }
+
   private createBaseChain(ownerRecord: AgentRecord): WrfcChain {
+    const subtasks = (ownerRecord.wrfcSubtasks ?? [])
+      .filter((task) => typeof task.task === 'string' && task.task.trim().length > 0)
+      .map<WrfcSubtask>((task, index) => ({
+        id: `deliverable-${index + 1}`,
+        title: task.task.trim().slice(0, 80),
+        task: task.task.trim(),
+        state: 'pending',
+        fixAttempts: 0,
+        reviewCycles: 0,
+        reviewScores: [],
+        constraints: [],
+        constraintsEnumerated: false,
+      }));
     const chain: WrfcChain = {
       id: this.generateWrfcId(),
       state: 'pending',
@@ -1140,6 +1242,7 @@ export class WrfcController {
       constraints: [],
       constraintsEnumerated: false,
       createdAt: Date.now(),
+      ...(subtasks.length > 1 ? { subtasks } : {}),
     };
     this.chains.set(chain.id, chain);
     emitWrfcGraphCreated(this.runtimeBus, this.sessionId, chain.id, `WRFC: ${ownerRecord.task}`);
@@ -1158,6 +1261,10 @@ export class WrfcController {
   }
 
   private startEngineeringChain(chain: WrfcChain, emitCreated: boolean): void {
+    if (chain.subtasks && chain.subtasks.length > 1) {
+      this.startCompoundEngineeringChain(chain, emitCreated);
+      return;
+    }
     this.activeChainCount += 1;
     this.transition(chain, 'engineering');
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'in_progress');
@@ -1197,6 +1304,58 @@ export class WrfcController {
       record: engineerRecord,
     });
     this.upsertWrfcWorkPlanTask(chain, 'engineer', engineerRecord, 'in_progress');
+  }
+
+  private startCompoundEngineeringChain(chain: WrfcChain, emitCreated: boolean): void {
+    this.activeChainCount += 1;
+    this.transition(chain, 'engineering');
+    this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'in_progress');
+    if (emitCreated) {
+      emitWrfcChainCreated(this.runtimeBus, this.sessionId, chain.id, chain.task);
+    }
+    this.appendOwnerDecision(
+      chain,
+      'compound_started',
+      `Compound WRFC owner supervising ${chain.subtasks?.length ?? 0} deliverables under one chain`,
+      { agentId: chain.ownerAgentId },
+    );
+    for (const subtask of chain.subtasks ?? []) {
+      subtask.state = 'engineering';
+      const engineerRecord = this.spawnWrfcAgent(
+        chain,
+        'engineer',
+        'engineer',
+        this.buildSubtaskEngineerTask(chain, subtask),
+        true,
+        subtask.id,
+      );
+      this.applyWrfcAgentMetadata(chain, engineerRecord, 'engineer', subtask.id);
+      subtask.engineerAgentId = engineerRecord.id;
+      chain.allAgentIds.push(engineerRecord.id);
+      this.messageBus.registerAgent({
+        agentId: engineerRecord.id,
+        role: 'engineer',
+        wrfcId: chain.id,
+      });
+      subtask.currentNodeId = startWrfcOrchestrationNode(
+        this.runtimeBus,
+        this.sessionId,
+        chain.id,
+        `subtask:${subtask.id}:engineer:0`,
+        'engineer',
+        `Engineer ${subtask.title}`,
+        engineerRecord.id,
+      );
+      this.appendOwnerDecision(chain, 'spawn_engineer', this.withRouteReason(
+        `Start compound WRFC engineer child for ${subtask.id}`,
+        engineerRecord,
+      ), {
+        agentId: engineerRecord.id,
+        role: 'engineer',
+        record: engineerRecord,
+      });
+      this.upsertWrfcWorkPlanTask(chain, 'engineer', engineerRecord, 'in_progress', subtask.id);
+    }
   }
 
   private handleEngineerCompletion(chain: WrfcChain, agentId: string, report: CompletionReport): void {
@@ -1273,6 +1432,373 @@ export class WrfcController {
     this.startReview(chain, reportForReview);
   }
 
+  private buildSubtaskEngineerTask(chain: WrfcChain, subtask: WrfcSubtask): string {
+    return [
+      `Compound WRFC engineer task`,
+      `Parent WRFC ask (authoritative whole):`,
+      chain.task,
+      ``,
+      `Sub-deliverable ${subtask.id}:`,
+      subtask.task,
+      ``,
+      `Instructions:`,
+      `1. Implement only this sub-deliverable, but keep the parent ask in mind for compatibility.`,
+      `2. Do not review or verify sibling deliverables. The WRFC owner controls review/fix phases after your output exists.`,
+      `3. Return a structured EngineerReport JSON block.`,
+    ].join('\n');
+  }
+
+  private buildCompoundIntegrationTask(chain: WrfcChain): string {
+    const subtaskSummaries = (chain.subtasks ?? []).map((subtask) => [
+      `## ${subtask.id}: ${subtask.title}`,
+      `Task: ${subtask.task}`,
+      `Review cycles: ${subtask.reviewCycles}`,
+      `Last score: ${subtask.reviewScores.at(-1) ?? 'n/a'}`,
+      `Engineer summary: ${subtask.engineerReport?.summary ?? '(no summary)'}`,
+      `Reviewer summary: ${subtask.reviewerReport?.summary ?? '(no review)'}`,
+    ].join('\n')).join('\n\n');
+    return [
+      `Compound WRFC integration task`,
+      `Parent WRFC ask (authoritative full scope):`,
+      chain.task,
+      ``,
+      `All sub-deliverables have individually passed review. Integrate them into one coherent final result.`,
+      ``,
+      subtaskSummaries,
+      ``,
+      `Instructions:`,
+      `1. Inspect the current workspace and the sub-deliverable outputs before editing.`,
+      `2. Resolve cross-deliverable API, export, documentation, and test consistency issues.`,
+      `3. Preserve all accepted sub-deliverable behavior; do not start unrelated new work.`,
+      `4. Return a structured EngineerReport JSON block so the final reviewer can inspect integration changes.`,
+    ].join('\n');
+  }
+
+  private findSubtaskByAgentId(chain: WrfcChain, agentId: string): WrfcSubtask | null {
+    for (const subtask of chain.subtasks ?? []) {
+      if (
+        subtask.engineerAgentId === agentId
+        || subtask.reviewerAgentId === agentId
+        || subtask.fixerAgentId === agentId
+      ) {
+        return subtask;
+      }
+    }
+    return null;
+  }
+
+  private async onCompoundSubtaskAgentComplete(
+    chain: WrfcChain,
+    subtask: WrfcSubtask,
+    agentId: string,
+    rawOutput: string,
+    record: AgentRecord | undefined,
+  ): Promise<void> {
+    if (agentId === subtask.engineerAgentId || agentId === subtask.fixerAgentId) {
+      const report = parseEngineerCompletionReport(rawOutput, record?.template);
+      this.setWrfcWorkPlanTaskStatus(chain, agentId, 'done');
+      this.handleCompoundEngineerCompletion(chain, subtask, agentId, report);
+      return;
+    }
+    if (agentId === subtask.reviewerAgentId) {
+      const review = parseReviewerCompletionReport(chain.id, rawOutput, getWrfcScoreThreshold(this.configManager));
+      subtask.reviewerReport = review;
+      subtask.reviewCycles += 1;
+      this.setWrfcWorkPlanTaskStatus(chain, agentId, 'done');
+      await this.processCompoundSubtaskReview(chain, subtask, review);
+    }
+  }
+
+  private handleCompoundEngineerCompletion(
+    chain: WrfcChain,
+    subtask: WrfcSubtask,
+    agentId: string,
+    report: CompletionReport,
+  ): void {
+    let reportForReview = report;
+    this.completeSubtaskNode(chain, subtask, report.summary);
+    if (subtask.state === 'engineering') {
+      subtask.engineerReport = report;
+      this.workmap.append({
+        ts: new Date().toISOString(),
+        wrfcId: chain.id,
+        event: 'engineer_complete',
+        agentId,
+        task: subtask.task,
+        subtaskId: subtask.id,
+      });
+    }
+
+    const isEngineerReportShape = (r: CompletionReport): r is EngineerReport =>
+      r.archetype === 'engineer';
+
+    if (!subtask.constraintsEnumerated) {
+      subtask.constraints = isEngineerReportShape(report) ? (report.constraints ?? []) : [];
+      subtask.constraintsEnumerated = true;
+    } else if (isEngineerReportShape(report)) {
+      const fixerConstraints = report.constraints ?? [];
+      reportForReview = this.canonicalizeFixerReportConstraints(report, subtask.constraints);
+      if (subtask.constraints.length === 0) {
+        if (fixerConstraints.length > 0) {
+          logger.warn('WrfcController: ignored compound fixer-invented constraints for unconstrained subtask', {
+            chainId: chain.id,
+            subtaskId: subtask.id,
+            extra: fixerConstraints.map((constraint) => constraint.id),
+          });
+        }
+      } else {
+        const expectedIds = new Set(subtask.constraints.map((constraint) => constraint.id));
+        const actualIds = new Set(fixerConstraints.map((constraint) => constraint.id));
+        const missing = [...expectedIds].filter((id) => !actualIds.has(id));
+        const extra = [...actualIds].filter((id) => !expectedIds.has(id));
+        if (missing.length > 0 || extra.length > 0) {
+          const description = `Fixer regressed constraint continuity for ${subtask.id}: missing=[${missing.join(',')}] extra=[${extra.join(',')}]`;
+          logger.warn('WrfcController: compound fixer constraint-continuity violation', {
+            chainId: chain.id,
+            subtaskId: subtask.id,
+            missing,
+            extra,
+          });
+          subtask.syntheticIssues ??= [];
+          subtask.syntheticIssues.push({ severity: 'critical', description });
+        }
+      }
+    } else if (subtask.constraints.length > 0) {
+      const description = `Fixer regressed constraint continuity for ${subtask.id}: missing=[${subtask.constraints.map((constraint) => constraint.id).join(',')}] extra=[]`;
+      logger.warn('WrfcController: compound fixer constraint-continuity violation', {
+        chainId: chain.id,
+        subtaskId: subtask.id,
+        missing: subtask.constraints.map((constraint) => constraint.id),
+        extra: [],
+      });
+      subtask.syntheticIssues ??= [];
+      subtask.syntheticIssues.push({ severity: 'critical', description });
+    }
+
+    subtask.engineerReport = reportForReview;
+    this.startCompoundSubtaskReview(chain, subtask, reportForReview);
+  }
+
+  private startCompoundSubtaskReview(chain: WrfcChain, subtask: WrfcSubtask, report: CompletionReport): void {
+    subtask.state = 'reviewing';
+    let reviewTask = buildReviewTask(
+      chain.id,
+      `Parent WRFC ask:\n${chain.task}\n\nSub-deliverable ${subtask.id}:\n${subtask.task}`,
+      report,
+      getWrfcScoreThreshold(this.configManager),
+      subtask.constraints,
+    );
+    if (subtask.syntheticIssues && subtask.syntheticIssues.length > 0) {
+      const syntheticBlock = [
+        `## Synthetic issues from controller`,
+        ``,
+        ...subtask.syntheticIssues.map((issue) => `- [${issue.severity.toUpperCase()}] ${issue.description}`),
+      ].join('\n');
+      reviewTask = syntheticBlock + '\n\n---\n\n' + reviewTask;
+      subtask.syntheticIssues = [];
+    }
+
+    const reviewerRecord = this.spawnWrfcAgent(chain, 'reviewer', 'reviewer', reviewTask, true, subtask.id);
+    subtask.reviewerAgentId = reviewerRecord.id;
+    this.applyWrfcAgentMetadata(chain, reviewerRecord, 'reviewer', subtask.id);
+    chain.allAgentIds.push(reviewerRecord.id);
+    this.messageBus.registerAgent({
+      agentId: reviewerRecord.id,
+      role: 'reviewer',
+      wrfcId: chain.id,
+    });
+    subtask.currentNodeId = startWrfcOrchestrationNode(
+      this.runtimeBus,
+      this.sessionId,
+      chain.id,
+      `subtask:${subtask.id}:review:${subtask.reviewCycles + 1}`,
+      'reviewer',
+      `Review ${subtask.title}`,
+      reviewerRecord.id,
+    );
+    this.appendOwnerDecision(chain, 'spawn_reviewer', this.withRouteReason(
+      `Review compound sub-deliverable ${subtask.id} after engineer output exists`,
+      reviewerRecord,
+    ), {
+      agentId: reviewerRecord.id,
+      role: 'reviewer',
+      record: reviewerRecord,
+    });
+    this.upsertWrfcWorkPlanTask(chain, 'reviewer', reviewerRecord, 'in_progress', subtask.id);
+  }
+
+  private async processCompoundSubtaskReview(
+    chain: WrfcChain,
+    subtask: WrfcSubtask,
+    review: ReviewerReport,
+  ): Promise<void> {
+    const threshold = getWrfcScoreThreshold(this.configManager);
+    const constraintEvaluation = this.evaluateSubtaskConstraints(subtask, review);
+    const passed = review.score >= threshold && !constraintEvaluation.constraintFailure;
+    this.completeSubtaskNode(chain, subtask, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
+
+    emitWorkflowReviewCompleted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
+      chainId: chain.id,
+      score: review.score,
+      passed,
+      ...(subtask.constraints.length > 0
+        ? {
+            constraintsSatisfied: constraintEvaluation.constraintsSatisfied,
+            constraintsTotal: constraintEvaluation.constraintsTotal,
+            unsatisfiedConstraintIds: constraintEvaluation.unsatisfiedConstraintIds,
+          }
+        : {}),
+    });
+
+    this.workmap.append({
+      ts: new Date().toISOString(),
+      wrfcId: chain.id,
+      event: 'review_complete',
+      agentId: subtask.reviewerAgentId,
+      score: review.score,
+      passed,
+      subtaskId: subtask.id,
+      issues: review.issues?.slice(0, 10).map((issue) => ({
+        severity: issue.severity,
+        description: issue.description,
+        file: issue.file,
+      })),
+    });
+
+    subtask.reviewScores.push(review.score);
+    if (passed) {
+      subtask.state = 'passed';
+      this.appendOwnerDecision(chain, 'subtask_review_passed', `Sub-deliverable ${subtask.id} passed review with ${review.score}/10`, {
+        agentId: subtask.reviewerAgentId,
+        role: 'reviewer',
+        reviewScore: review.score,
+      });
+      if ((chain.subtasks ?? []).every((candidate) => candidate.state === 'passed')) {
+        this.startIntegration(chain);
+      }
+      return;
+    }
+
+    const maxFixAttempts = getWrfcMaxFixAttempts(this.configManager);
+    if (subtask.fixAttempts >= maxFixAttempts) {
+      subtask.state = 'failed';
+      this.failChain(chain, `Sub-deliverable ${subtask.id} review score ${review.score}/10 below threshold ${threshold}/10 after ${subtask.fixAttempts} fix attempt${subtask.fixAttempts !== 1 ? 's' : ''}`);
+      return;
+    }
+
+    this.appendOwnerDecision(chain, 'subtask_review_failed', `Sub-deliverable ${subtask.id} review did not pass`, {
+      agentId: subtask.reviewerAgentId,
+      role: 'reviewer',
+      reviewScore: review.score,
+    });
+    this.startCompoundSubtaskFix(chain, subtask, review);
+  }
+
+  private startCompoundSubtaskFix(chain: WrfcChain, subtask: WrfcSubtask, review: ReviewerReport): void {
+    subtask.fixAttempts += 1;
+    subtask.state = 'fixing';
+    const targetConstraintIds = this.evaluateSubtaskConstraints(subtask, review).unsatisfiedConstraintIds;
+    emitWorkflowFixAttempted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
+      chainId: chain.id,
+      attempt: subtask.fixAttempts,
+      maxAttempts: getWrfcMaxFixAttempts(this.configManager),
+      ...(targetConstraintIds.length > 0 ? { targetConstraintIds } : {}),
+    });
+
+    const fixerRecord = this.spawnWrfcAgent(
+      chain,
+      'fixer',
+      'engineer',
+      buildFixTask(
+        chain.id,
+        `Parent WRFC ask:\n${chain.task}\n\nSub-deliverable ${subtask.id}:\n${subtask.task}`,
+        review,
+        getWrfcScoreThreshold(this.configManager),
+        subtask.fixAttempts,
+        subtask.constraints,
+        review.constraintFindings ?? [],
+      ),
+      true,
+      subtask.id,
+    );
+    subtask.fixerAgentId = fixerRecord.id;
+    this.applyWrfcAgentMetadata(chain, fixerRecord, 'fixer', subtask.id);
+    chain.allAgentIds.push(fixerRecord.id);
+    this.messageBus.registerAgent({
+      agentId: fixerRecord.id,
+      role: 'fixer',
+      wrfcId: chain.id,
+    });
+    subtask.currentNodeId = startWrfcOrchestrationNode(
+      this.runtimeBus,
+      this.sessionId,
+      chain.id,
+      `subtask:${subtask.id}:fix:${subtask.fixAttempts}`,
+      'fixer',
+      `Fix ${subtask.title}`,
+      fixerRecord.id,
+    );
+    this.appendOwnerDecision(chain, 'spawn_fixer', this.withRouteReason(
+      `Fix compound sub-deliverable ${subtask.id}`,
+      fixerRecord,
+    ), {
+      agentId: fixerRecord.id,
+      role: 'fixer',
+      record: fixerRecord,
+    });
+    this.upsertWrfcWorkPlanTask(chain, 'fixer', fixerRecord, 'in_progress', subtask.id);
+  }
+
+  private startIntegration(chain: WrfcChain): void {
+    this.transition(chain, 'integrating');
+    const integratorRecord = this.spawnWrfcAgent(
+      chain,
+      'integrator',
+      'integrator',
+      this.buildCompoundIntegrationTask(chain),
+      true,
+    );
+    chain.integratorAgentId = integratorRecord.id;
+    this.applyWrfcAgentMetadata(chain, integratorRecord, 'integrator');
+    chain.allAgentIds.push(integratorRecord.id);
+    this.messageBus.registerAgent({
+      agentId: integratorRecord.id,
+      role: 'integrator',
+      wrfcId: chain.id,
+    });
+    chain.currentNodeId = startWrfcOrchestrationNode(
+      this.runtimeBus,
+      this.sessionId,
+      chain.id,
+      `integrator:${Date.now()}`,
+      'integrator',
+      'Integrate passed deliverables',
+      integratorRecord.id,
+    );
+    this.appendOwnerDecision(chain, 'spawn_integrator', this.withRouteReason(
+      'Integrate all passed compound WRFC deliverables before final full-scope review',
+      integratorRecord,
+    ), {
+      agentId: integratorRecord.id,
+      role: 'integrator',
+      record: integratorRecord,
+    });
+    this.upsertWrfcWorkPlanTask(chain, 'integrator', integratorRecord, 'in_progress');
+  }
+
+  private handleIntegratorCompletion(chain: WrfcChain, agentId: string, report: CompletionReport): void {
+    chain.integratorReport = report;
+    this.completeCurrentNode(chain, report.summary);
+    this.workmap.append({
+      ts: new Date().toISOString(),
+      wrfcId: chain.id,
+      event: 'integrator_complete',
+      agentId,
+      task: chain.task,
+    });
+    this.startReview(chain, report);
+  }
+
   private canonicalizeFixerReportConstraints(report: EngineerReport, constraints: readonly Constraint[]): EngineerReport & { reviewableOutput?: string } {
     const canonical: EngineerReport & { reviewableOutput?: string } = {
       ...report,
@@ -1292,10 +1818,11 @@ export class WrfcController {
 
   private spawnWrfcAgent(
     chain: WrfcChain,
-    role: 'engineer' | 'reviewer' | 'fixer',
-    template: 'engineer' | 'reviewer',
+    role: 'engineer' | 'reviewer' | 'fixer' | 'integrator',
+    template: 'engineer' | 'reviewer' | 'integrator',
     task: string,
     dangerouslyDisableWrfc: boolean,
+    subtaskId?: string,
   ): AgentRecord {
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
     const selectedRoute = this.selectChildRoute?.({ chain, role, task, ownerAgent: owner }) ?? null;
@@ -1315,9 +1842,13 @@ export class WrfcController {
       ...(routing ? { routing } : {}),
       ...(reasoningEffort ? { reasoningEffort } : {}),
       ...(template === 'engineer' ? { systemPromptAddendum: '\n\n---\n\n' + buildEngineerConstraintAddendum() } : {}),
+      ...(template === 'integrator' ? { systemPromptAddendum: '\n\n---\n\n' + buildEngineerConstraintAddendum() } : {}),
       ...(dangerouslyDisableWrfc ? { dangerously_disable_wrfc: true } : {}),
     });
     record.wrfcId = chain.id;
+    if (subtaskId) {
+      record.wrfcSubtaskId = subtaskId;
+    }
     if (selectedRoute?.reason) {
       record.wrfcRouteReason = selectedRoute.reason;
     }
@@ -1377,18 +1908,21 @@ export class WrfcController {
 
   private upsertWrfcWorkPlanTask(
     chain: WrfcChain,
-    role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier',
+    role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier',
     record: AgentRecord,
     status: ProjectWorkPlanTaskStatus,
+    subtaskId?: string,
   ): void {
     if (!this.workPlanService) return;
     const taskId = this.workPlanTaskIdForAgent(chain, record.id, role);
     const task = {
       taskId,
-      title: this.workPlanTaskTitle(role, chain.task),
+      title: this.workPlanTaskTitle(role, role === 'owner' ? chain.task : record.task),
       notes: role === 'owner'
         ? 'WRFC owner chain supervising lifecycle child agents.'
-        : `WRFC ${role} phase for the owner chain.`,
+        : subtaskId
+          ? `WRFC ${role} phase for compound deliverable ${subtaskId}.`
+          : `WRFC ${role} phase for the owner chain.`,
       owner: role,
       status,
       source: 'wrfc',
@@ -1401,6 +1935,7 @@ export class WrfcController {
       metadata: {
         wrfcState: chain.state,
         agentTemplate: record.template,
+        ...(subtaskId ? { wrfcSubtaskId: subtaskId } : {}),
       },
     };
     this.enqueueWrfcWorkPlanTaskOperation(taskId, async () => {
@@ -1488,23 +2023,29 @@ export class WrfcController {
   private workPlanRoleForAgent(
     chain: WrfcChain,
     agentId: string,
-  ): 'owner' | 'engineer' | 'reviewer' | 'fixer' | null {
+  ): 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | null {
     if (agentId === chain.ownerAgentId) return 'owner';
     if (agentId === chain.engineerAgentId) return 'engineer';
     if (agentId === chain.reviewerAgentId) return 'reviewer';
     if (agentId === chain.fixerAgentId) return 'fixer';
+    if (agentId === chain.integratorAgentId) return 'integrator';
+    for (const subtask of chain.subtasks ?? []) {
+      if (agentId === subtask.engineerAgentId) return 'engineer';
+      if (agentId === subtask.reviewerAgentId) return 'reviewer';
+      if (agentId === subtask.fixerAgentId) return 'fixer';
+    }
     return null;
   }
 
   private workPlanTaskIdForAgent(
     chain: WrfcChain,
     agentId: string,
-    role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier',
+    role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier',
   ): string {
     return `wrfc-${chain.id}-${role}-${agentId}`;
   }
 
-  private workPlanTaskTitle(role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier', task: string): string {
+  private workPlanTaskTitle(role: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier', task: string): string {
     const label = role === 'owner'
       ? 'WRFC owner'
       : role.charAt(0).toUpperCase() + role.slice(1);

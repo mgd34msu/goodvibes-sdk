@@ -15,7 +15,7 @@ export function emitAgentSpawning(
     task: string;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
-    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
     wrfcPhaseOrder?: number | undefined;
     orchestrationGraphId?: string | undefined;
     parentNodeId?: string | undefined;
@@ -33,7 +33,7 @@ export function emitAgentRunning(
     taskId?: string;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
-    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
     wrfcPhaseOrder?: number | undefined;
   }
 ): void {
@@ -50,7 +50,7 @@ export function emitAgentProgress(
     progress: string;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
-    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
     wrfcPhaseOrder?: number | undefined;
   }
 ): void {

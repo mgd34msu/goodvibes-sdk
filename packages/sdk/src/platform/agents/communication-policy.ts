@@ -21,12 +21,16 @@ export interface AgentCommunicationMetadata {
 
 export function communicationRoleForTemplate(template?: string): AgentCommunicationRole {
   switch (template) {
+    case 'orchestrator':
+      return 'orchestrator';
     case 'engineer':
       return 'engineer';
     case 'reviewer':
       return 'reviewer';
     case 'researcher':
       return 'researcher';
+    case 'integrator':
+      return 'integrator';
     case 'general':
       return 'general';
     default:
