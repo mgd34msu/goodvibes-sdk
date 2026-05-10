@@ -23,7 +23,12 @@ import type { AgentInput } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { splitModelRegistryKey } from '../../providers/registry-helpers.js';
 import type { WrfcAgentRole } from '../../agents/wrfc-types.js';
-import { isRootReviewRoleTask } from './wrfc-batch-policy.js';
+import {
+  isRootReviewRoleTask,
+  resolveAuthoritativeWrfcScope,
+  resolveImplementationToolContract,
+  resolveNarrowedRootSpawnScope,
+} from './wrfc-batch-policy.js';
 
 export type AgentExecutor = {
   runAgent(record: AgentRecord): Promise<void>;
@@ -204,24 +209,77 @@ export class AgentManager {
     }
     let template = input.template ?? 'general';
     let wrfcRouteReason: string | undefined;
-    if (!input.parentAgentId && isRootReviewRoleTask({ task, template })) {
+    const rootReviewRoleTask = !input.parentAgentId && isRootReviewRoleTask({ task, template });
+    if (rootReviewRoleTask) {
       wrfcRouteReason = 'root-review-role-normalized';
+      const scope = resolveAuthoritativeWrfcScope(input, task);
+      const toolContract = input.authoritativeTask || scope.scopeMutation
+        ? resolveImplementationToolContract({
+            tools: input.tools,
+            restrictTools: input.restrictTools,
+            authoritativeTask: scope.task,
+            proposedTask: task,
+            scopeMutation: scope.scopeMutation,
+          })
+        : { tools: input.tools, restrictTools: input.restrictTools, scopeMutation: scope.scopeMutation };
       input = {
         ...input,
+        task: scope.task,
+        authoritativeTask: scope.task,
+        tools: toolContract.tools,
+        restrictTools: toolContract.restrictTools,
         template: 'engineer',
         reviewMode: 'wrfc',
         dangerously_disable_wrfc: false,
         context: [
           input.context?.trim(),
           'SDK WRFC topology enforcement normalized this root review/test/verification task into a single owner chain. Review, test, verification, and fix work are lifecycle phases owned by the WRFC controller, not independent root agents.',
+          `Authoritative original ask for this WRFC chain:\n${scope.task}`,
+          toolContract.scopeMutation
+            ? `Scope mutation warning: ${toolContract.scopeMutation.warnings.join(' ')} Model-proposed child scope:\n${toolContract.scopeMutation.proposedTask}`
+            : undefined,
         ].filter((part): part is string => Boolean(part)).join('\n\n'),
         successCriteria: [
           ...(input.successCriteria ?? []),
+          `Satisfy the authoritative WRFC ask exactly: ${scope.task}`,
+          'Do not treat model-invented review/test/design/no-write wording as limiting scope unless it appears in the authoritative ask.',
           'Keep the work as one WRFC owner chain; review, test, verification, and fix phases must remain lifecycle children.',
         ],
       };
       task = input.task ?? task;
       template = input.template ?? 'engineer';
+    } else if (!input.parentAgentId) {
+      const scope = resolveNarrowedRootSpawnScope(input, task);
+      const toolContract = input.authoritativeTask || scope.scopeMutation
+        ? resolveImplementationToolContract({
+            tools: input.tools,
+            restrictTools: input.restrictTools,
+            authoritativeTask: scope.task,
+            proposedTask: task,
+            scopeMutation: scope.scopeMutation,
+          })
+        : { tools: input.tools, restrictTools: input.restrictTools, scopeMutation: scope.scopeMutation };
+      if (scope.scopeMutation || toolContract.scopeMutation !== scope.scopeMutation) {
+        input = {
+          ...input,
+          task: scope.task,
+          tools: toolContract.tools,
+          restrictTools: toolContract.restrictTools,
+          context: [
+            input.context?.trim(),
+            toolContract.scopeMutation
+              ? `Scope mutation warning: ${toolContract.scopeMutation.warnings.join(' ')} Model-proposed task:\n${toolContract.scopeMutation.proposedTask}`
+              : undefined,
+            `Authoritative original ask for this agent:\n${scope.task}`,
+          ].filter((part): part is string => Boolean(part)).join('\n\n'),
+          successCriteria: [
+            ...(input.successCriteria ?? []),
+            `Satisfy the authoritative original ask exactly: ${scope.task}`,
+            'Do not treat model-invented design-only or no-write wording as limiting scope unless it appears in the authoritative ask.',
+          ],
+        };
+        task = scope.task;
+      }
     }
 
     const archetype = this.archetypeLoader.loadArchetype(template);

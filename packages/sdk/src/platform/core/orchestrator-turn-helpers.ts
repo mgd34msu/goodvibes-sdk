@@ -115,6 +115,25 @@ export function prepareConversationForTurn(
   return preTurnPlan;
 }
 
+function attachAuthoritativeTaskToAgentCalls(toolCalls: readonly ToolCall[], userText: string): ToolCall[] {
+  const authoritativeTask = userText.trim();
+  if (!authoritativeTask) return [...toolCalls];
+  return toolCalls.map((call) => {
+    if (call.name !== 'agent') return call;
+    const args = call.arguments as Record<string, unknown>;
+    const mode = args.mode;
+    if (mode !== 'spawn' && mode !== 'batch-spawn') return call;
+    if (typeof args.parentAgentId === 'string' && args.parentAgentId.trim().length > 0) return call;
+    return {
+      ...call,
+      arguments: {
+        ...args,
+        authoritativeTask,
+      },
+    };
+  });
+}
+
 export async function handleToolResponseOutcome(args: {
   conversation: ConversationManager;
   agentManager: Pick<AgentManager, 'list' | 'spawn'>;
@@ -125,15 +144,17 @@ export async function handleToolResponseOutcome(args: {
   emitterContext: EmitterContextFactory;
   turnId: string;
   response: ChatResponseWithReasoning;
+  userText: string;
   executeToolCalls: (turnId: string, calls: ToolCall[]) => Promise<ToolResult[]>;
   setPendingToolCalls: (calls: ToolCall[]) => void;
   messageQueueLength: number;
   requestRender: () => void;
   sessionId?: string | undefined;
 }): Promise<{ continueLoop: boolean; results: ToolResult[] }> {
-  args.setPendingToolCalls(args.response.toolCalls);
+  const toolCalls = attachAuthoritativeTaskToAgentCalls(args.response.toolCalls, args.userText);
+  args.setPendingToolCalls(toolCalls);
   args.conversation.addAssistantMessage(args.response.content, {
-    toolCalls: args.response.toolCalls,
+    toolCalls,
     reasoningContent: args.response.reasoning || undefined,
     reasoningSummary: args.response.reasoningSummary || undefined,
     usage: args.response.usage,
@@ -141,7 +162,7 @@ export async function handleToolResponseOutcome(args: {
     provider: args.providerRegistry.getCurrentModel().provider,
   });
 
-  const results = await args.executeToolCalls(args.turnId, args.response.toolCalls);
+  const results = await args.executeToolCalls(args.turnId, toolCalls);
   args.conversation.addToolResults(results);
   args.setPendingToolCalls([]);
 
@@ -156,7 +177,7 @@ export async function handleToolResponseOutcome(args: {
     args.conversation.addUserMessage(imageParts);
   }
 
-  const spawnedAgents = args.response.toolCalls.some((tc: ToolCall) => {
+  const spawnedAgents = toolCalls.some((tc: ToolCall) => {
     const mode = (tc.arguments as Record<string, unknown>).mode;
     return tc.name === 'agent' && (mode === 'spawn' || mode === 'batch-spawn');
   });

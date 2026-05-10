@@ -85,6 +85,7 @@ describe('orchestrator WRFC spawn continuation contract', () => {
         toolCalls,
         usage: undefined,
       } as never,
+      userText: '',
       executeToolCalls: async () => [{
         callId: 'call-agent',
         success: true,
@@ -111,6 +112,65 @@ describe('orchestrator WRFC spawn continuation contract', () => {
     expect(systemMessages.some((message) => message.includes('WRFC owner chain is now the authoritative owner'))).toBe(true);
   });
 
+  test('attaches current user prompt as authoritative task for root agent tool calls', async () => {
+    const conversation = new ConversationManager();
+    const toolCalls: ToolCall[] = [{
+      id: 'call-agent',
+      name: 'agent',
+      arguments: {
+        mode: 'batch-spawn',
+        tasks: [
+          { task: 'Design a token bucket rate limiter. Do not write files.', template: 'engineer' },
+          { task: 'Review the implementation.', template: 'reviewer' },
+        ],
+      },
+    }];
+    let executedCalls: ToolCall[] = [];
+
+    await handleToolResponseOutcome({
+      conversation,
+      agentManager: { list: () => [], spawn: () => { throw new Error('not used'); } },
+      planManager: null,
+      configManager: { get: () => undefined },
+      providerRegistry: createProviderRegistry(),
+      runtimeBus: null,
+      emitterContext: () => ({ sessionId: 'test', traceId: 'test', source: 'test' }),
+      turnId: 'turn-inject',
+      response: {
+        content: '',
+        toolCalls,
+        usage: undefined,
+      } as never,
+      userText: 'make a token bucket rate limiter',
+      executeToolCalls: async (_turnId, calls) => {
+        executedCalls = calls;
+        return [{
+          callId: 'call-agent',
+          success: true,
+          output: JSON.stringify({
+            agentId: 'agent-owner',
+            status: 'spawned',
+            wrfcId: 'wrfc-1',
+            wrfcRole: 'owner',
+            authoritativeWrfcChain: true,
+            continueRootSpawning: false,
+            orchestrationStopSignal: 'wrfc_owner_chain_started',
+          }),
+        }];
+      },
+      setPendingToolCalls: () => {},
+      messageQueueLength: 0,
+      requestRender: () => {},
+      sessionId: 'session-1',
+    });
+
+    expect(executedCalls).toHaveLength(1);
+    expect(executedCalls[0]!.arguments.authoritativeTask).toBe('make a token bucket rate limiter');
+    const assistantToolCall = conversation.getMessageSnapshot()
+      .find((message) => message.role === 'assistant' && message.toolCalls?.length);
+    expect(assistantToolCall?.toolCalls?.[0]?.arguments.authoritativeTask).toBe('make a token bucket rate limiter');
+  });
+
   test('keeps generic continuation nudge for ordinary non-WRFC agent spawns', async () => {
     const conversation = new ConversationManager();
     const toolCalls: ToolCall[] = [{
@@ -133,6 +193,7 @@ describe('orchestrator WRFC spawn continuation contract', () => {
         toolCalls,
         usage: undefined,
       } as never,
+      userText: '',
       executeToolCalls: async () => [{
         callId: 'call-agent',
         success: true,

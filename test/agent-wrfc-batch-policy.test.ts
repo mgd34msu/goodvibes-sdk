@@ -62,6 +62,180 @@ function createHarness() {
 }
 
 describe('agent batch-spawn WRFC topology policy', () => {
+  test('preserves the original user ask as authoritative WRFC scope when collapse sees a narrowed no-write child task', async () => {
+    const { controller, manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'batch-spawn',
+      authoritativeTask: 'make a token bucket rate limiter',
+      dangerously_disable_wrfc: true,
+      tasks: [
+        {
+          task: 'Independently design a minimal, robust token bucket rate limiter API for a new empty repository. Do not write files. Return recommended language-neutral behavior, edge cases, and tests.',
+          template: 'engineer',
+          tools: ['find', 'read'],
+          restrictTools: true,
+          reviewMode: 'none',
+          dangerously_disable_wrfc: true,
+        },
+        {
+          task: 'Independently review expected correctness properties for a token bucket rate limiter. Do not write files. Return concise validation checklist.',
+          template: 'reviewer',
+          tools: ['find', 'read'],
+          restrictTools: true,
+          reviewMode: 'none',
+          dangerously_disable_wrfc: true,
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as {
+      collapsedToWrfc?: boolean;
+      scopeMutation?: { action: string; proposedTask: string; authoritativeTask: string; warnings: string[] } | null;
+      agents: Array<{ id: string }>;
+    };
+    expect(output.collapsedToWrfc).toBe(true);
+    expect(output.scopeMutation?.action).toBe('used-authoritative-task');
+    expect(output.scopeMutation?.authoritativeTask).toBe('make a token bucket rate limiter');
+    expect(output.scopeMutation?.proposedTask).toContain('Do not write files');
+
+    const owner = manager.getStatus(output.agents[0]!.id)!;
+    expect(owner.task).toBe('make a token bucket rate limiter');
+    expect(owner.context).toContain('Authoritative original ask');
+    expect(owner.context).toContain('Model-proposed child scope');
+    expect(owner.context).toContain('ignored restrictive child tool settings');
+    expect(owner.tools).toContain('write');
+    expect(owner.tools).toContain('exec');
+
+    const chain = controller.listChains()[0]!;
+    expect(chain.task).toBe('make a token bucket rate limiter');
+    const engineer = manager.getStatus(chain.engineerAgentId!)!;
+    expect(engineer.task).toBe('make a token bucket rate limiter');
+    expect(engineer.task).not.toContain('Do not write files');
+    expect(engineer.tools).toContain('write');
+    expect(engineer.tools).toContain('exec');
+  });
+
+  test('normalizes a narrowed design-only collapse task when no original ask was supplied', async () => {
+    const { controller, manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'batch-spawn',
+      dangerously_disable_wrfc: true,
+      tasks: [
+        {
+          task: 'Independently design a minimal, robust token bucket rate limiter API for a new empty repository. Do not write files.',
+          template: 'engineer',
+        },
+        {
+          task: 'Review the implementation for correctness.',
+          template: 'reviewer',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as {
+      scopeMutation?: { action: string; authoritativeTask: string } | null;
+      agents: Array<{ id: string }>;
+    };
+    expect(output.scopeMutation?.action).toBe('normalized-narrowed-task');
+    const owner = manager.getStatus(output.agents[0]!.id)!;
+    expect(owner.task).toContain('Implement');
+    expect(owner.task).toContain('token bucket rate limiter');
+    expect(owner.task).not.toContain('Do not write files');
+    expect(controller.listChains()[0]!.task).toBe(owner.task);
+  });
+
+  test('uses authoritative task for direct reviewer root normalization', async () => {
+    const { controller, manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'spawn',
+      authoritativeTask: 'make a token bucket rate limiter',
+      task: 'Review the implementation for correctness. Do not write files.',
+      template: 'reviewer',
+      dangerously_disable_wrfc: true,
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { agentId: string; wrfcRole?: string };
+    expect(output.wrfcRole).toBe('owner');
+    const owner = manager.getStatus(output.agentId)!;
+    expect(owner.task).toBe('make a token bucket rate limiter');
+    expect(owner.task).not.toContain('Do not write files');
+    expect(controller.listChains()[0]!.task).toBe('make a token bucket rate limiter');
+  });
+
+  test('prevents direct engineer root spawns from narrowing an implementation ask to design-only no-write work', async () => {
+    const { manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'spawn',
+      authoritativeTask: 'make a token bucket rate limiter',
+      task: 'Independently design a minimal, robust token bucket rate limiter API for a new empty repository. Do not write files.',
+      template: 'engineer',
+      tools: ['find', 'read'],
+      restrictTools: true,
+      reviewMode: 'none',
+      dangerously_disable_wrfc: true,
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { agentId: string };
+    const agent = manager.getStatus(output.agentId)!;
+    expect(agent.task).toBe('make a token bucket rate limiter');
+    expect(agent.task).not.toContain('Do not write files');
+    expect(agent.context).toContain('Scope mutation warning');
+    expect(agent.context).toContain('removed write or execution capability');
+    expect(agent.successCriteria).toContain('Satisfy the authoritative original ask exactly: make a token bucket rate limiter');
+    expect(agent.tools).toContain('write');
+    expect(agent.tools).toContain('exec');
+  });
+
+  test('preserves restrictive read-only tools when the authoritative ask is explicitly no-write', async () => {
+    const { manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'spawn',
+      authoritativeTask: 'Design a token bucket rate limiter API. Do not write files.',
+      task: 'Design a token bucket rate limiter API. Do not write files.',
+      template: 'engineer',
+      tools: ['find', 'read'],
+      restrictTools: true,
+      reviewMode: 'none',
+      dangerously_disable_wrfc: true,
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { agentId: string };
+    const agent = manager.getStatus(output.agentId)!;
+    expect(agent.task).toBe('Design a token bucket rate limiter API. Do not write files.');
+    expect(agent.tools).toEqual(['find', 'read']);
+  });
+
+  test('preserves restrictive read-only tools for non-implementation inspection tasks', async () => {
+    const { manager, tool } = createHarness();
+
+    const result = await tool.execute({
+      mode: 'spawn',
+      authoritativeTask: 'Inspect CI configuration.',
+      task: 'Inspect CI configuration.',
+      template: 'researcher',
+      tools: ['find', 'read'],
+      restrictTools: true,
+      reviewMode: 'none',
+      dangerously_disable_wrfc: true,
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output!) as { agentId: string };
+    const agent = manager.getStatus(output.agentId)!;
+    expect(agent.task).toBe('Inspect CI configuration.');
+    expect(agent.tools).toEqual(['find', 'read']);
+  });
+
   test('collapses natural engineer plus tester fanout into one WRFC owner chain even when caller disables WRFC', async () => {
     const { controller, manager, runRecords, tool } = createHarness();
 

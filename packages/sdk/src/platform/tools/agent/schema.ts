@@ -39,7 +39,11 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       // mode: spawn
       task: {
         type: 'string',
-        description: 'Task description for the agent to execute (mode: spawn). For a user request that asks for WRFC/review/test/verify of one deliverable, describe the implementation deliverable itself and use reviewMode=wrfc; do not spawn reviewer/tester roots.',
+        description: 'Task description for the agent to execute (mode: spawn). For a user request that asks for WRFC/review/test/verify of one deliverable, describe the implementation deliverable itself and use reviewMode=wrfc; do not spawn reviewer/tester roots. For batch-spawn collapse, the SDK preserves authoritativeTask/task as the original user ask when present.',
+      },
+      authoritativeTask: {
+        type: 'string',
+        description: 'Exact original user request supplied by the host/orchestrator. The SDK uses this as the authoritative WRFC scope when normalizing review/test role fanout; do not invent or narrow it.',
       },
       template: {
         type: 'string',
@@ -254,6 +258,7 @@ export interface AgentInput {
   mode: 'spawn' | 'batch-spawn' | 'status' | 'cancel' | 'list' | 'templates' | 'get' | 'budget' | 'plan' | 'wait' | 'message' | 'wrfc-chains' | 'wrfc-history' | 'cohort-status' | 'cohort-report';
   // spawn
   task?: string | undefined;
+  authoritativeTask?: string | undefined;
   template?: string | undefined;
   model?: string | undefined;
   provider?: string | undefined;
