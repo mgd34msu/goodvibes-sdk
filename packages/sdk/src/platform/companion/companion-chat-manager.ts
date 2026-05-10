@@ -114,6 +114,13 @@ const DEFAULT_IDLE_ACTIVE_MS = 30 * 60 * 1_000; // 30 minutes with messages
 const DEFAULT_IDLE_EMPTY_MS = 5 * 60 * 1_000;   // 5 minutes empty session
 const GC_INTERVAL_MS = 60 * 1_000;               // sweep every minute
 const MAX_TOOL_ROUNDS_PER_TURN = 8;
+const TOOL_EXHAUSTION_FINALIZER_PROMPT = [
+  `The tool-call budget for this turn is exhausted after ${MAX_TOOL_ROUNDS_PER_TURN} rounds.`,
+  'Do not call any more tools. Use the conversation and tool results already available to give '
+    + 'the user the best concise final answer you can.',
+  'If the available tool results are insufficient, say what is missing and ask one short follow-up '
+    + 'question.',
+].join(' ');
 const MAX_ATTACHMENTS_PER_MESSAGE = 8;
 const MAX_INLINE_IMAGE_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 const MAX_INLINE_TEXT_ATTACHMENT_BYTES = 200 * 1024;
@@ -803,7 +810,17 @@ export class CompanionChatManager {
       }
 
       if (!completed && !abortSignal.aborted) {
-        throw new Error(`Companion chat exceeded ${MAX_TOOL_ROUNDS_PER_TURN} tool rounds without a final response`);
+        const finalResponse = await this._finalizeAfterToolExhaustion(session, abortSignal, turnId, publish);
+        if (finalResponse.trim()) {
+          assistantContent += finalResponse;
+          session.conversation.addAssistantMessage(finalResponse);
+          completed = true;
+        } else {
+          const fallbackResponse = 'I could not finish a final answer after using the available tools. Please try again with a narrower request.';
+          assistantContent += fallbackResponse;
+          session.conversation.addAssistantMessage(fallbackResponse);
+          completed = true;
+        }
       }
 
       const now = Date.now();
@@ -841,6 +858,45 @@ export class CompanionChatManager {
         this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: 'Turn cancelled' });
       }
     }
+  }
+
+  private async _finalizeAfterToolExhaustion(
+    session: InternalSession,
+    abortSignal: AbortSignal,
+    turnId: string,
+    publish: (event: CompanionChatTurnEvent) => void,
+  ): Promise<string> {
+    const sessionId = session.meta.id;
+    let finalContent = '';
+    const stream = this.provider.chatStream([...session.conversation.getMessagesForLLM()], {
+      systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(
+        [session.meta.systemPrompt, TOOL_EXHAUSTION_FINALIZER_PROMPT].filter(Boolean).join('\n\n'),
+      ),
+      model: session.meta.model,
+      provider: session.meta.provider,
+      abortSignal,
+    });
+
+    for await (const chunk of stream) {
+      if (abortSignal.aborted) break;
+
+      switch (chunk.type) {
+        case 'text_delta': {
+          const delta = chunk.delta ?? '';
+          finalContent += delta;
+          publish({ type: 'turn.delta', sessionId, turnId, delta });
+          break;
+        }
+        case 'error':
+          throw new Error(chunk.error ?? 'Provider streaming error');
+        case 'tool_call':
+        case 'tool_result':
+        case 'done':
+          break;
+      }
+    }
+
+    return finalContent;
   }
 
   private async _executeToolCalls(
