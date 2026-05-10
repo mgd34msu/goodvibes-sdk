@@ -8,6 +8,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.23] - 2026-05-09
+
+### Added
+- Added SDK-owned WRFC scope-mutation diagnostics in collapsed agent
+  `batch-spawn` results so callers can see when a model-proposed child task was
+  not allowed to narrow the authoritative review scope.
+
+### Fixed
+- Preserved the original user request as `authoritativeTask` for root agent
+  spawns and batch spawns emitted by the orchestrator, so WRFC owner chains
+  review the user's requested deliverable instead of a model-invented child
+  task.
+- Prevented root WRFC role-fanout collapse from converting build/make/create
+  requests into design-only or no-write scopes. Collapsed Engineer+Reviewer
+  batches now use the authoritative original ask for the owner, engineer, and
+  reviewer prompts.
+- Ignored restrictive child `tools`/`restrictTools` settings that remove write
+  or execution capability from implementation-like WRFC scopes, while still
+  preserving those restrictions for explicitly no-write/read-only asks.
+- Prevented direct root engineer spawns from silently narrowing an
+  implementation request into design-only/no-write work when the orchestrator
+  supplied the original user ask.
+
+---
+
 ## [0.33.22] - 2026-05-09
 
 ### Changed

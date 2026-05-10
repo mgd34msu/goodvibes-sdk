@@ -394,6 +394,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         emitterContext: (id) => context.emitterContext(id),
         turnId: context.turnId,
         response: enrichedResponse,
+        userText: context.text,
         executeToolCalls: (id, calls) => context.executeToolCalls(id, calls),
         setPendingToolCalls: (calls) => { context.setPendingToolCalls(calls); },
         messageQueueLength: context.getMessageQueueLength(),

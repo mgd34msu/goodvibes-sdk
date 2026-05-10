@@ -98,6 +98,7 @@ function batchTaskToSpawnInput(input: AgentInput, taskDef: NonNullable<AgentInpu
   return {
     mode: 'spawn',
     task: taskDef.task,
+    authoritativeTask: input.authoritativeTask ?? input.task,
     template: taskDef.template ?? input.template ?? 'general',
     model: taskDef.model ?? input.model,
     provider: taskDef.provider ?? input.provider,
@@ -562,6 +563,7 @@ export function createAgentTool(config: {
               collapsedTaskCount: input.tasks.length,
               reason: batchPolicy.reason,
               roleTaskIndexes: batchPolicy.roleTaskIndexes ?? [],
+              scopeMutation: batchPolicy.scopeMutation ?? null,
               ...agentOrchestrationControl(record),
             }),
           };
