@@ -43,6 +43,10 @@ export interface AgentManagerDependencies {
 }
 
 export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools: string[] }> = {
+  orchestrator: {
+    description: 'WRFC coordination and decomposition agent',
+    defaultTools: ['read', 'find', 'analyze', 'inspect', 'registry'],
+  },
   engineer: {
     description: 'Full-stack implementation agent',
     defaultTools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],
@@ -58,6 +62,10 @@ export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools
   researcher: {
     description: 'Codebase exploration and analysis',
     defaultTools: ['read', 'find', 'analyze', 'inspect', 'fetch', 'registry'],
+  },
+  integrator: {
+    description: 'Cross-deliverable integration agent',
+    defaultTools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],
   },
   general: {
     description: 'General purpose agent',
@@ -116,7 +124,9 @@ export interface AgentRecord {
   wrfcId?: string | undefined;
   wrfcRole?: WrfcAgentRole | undefined;
   wrfcPhaseOrder?: number | undefined;
+  wrfcSubtaskId?: string | undefined;
   wrfcRouteReason?: string | undefined;
+  wrfcSubtasks?: AgentInput['wrfcSubtasks'] | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
   cohort?: string | undefined;
   orchestrationGraphId?: string | undefined;
@@ -185,6 +195,13 @@ export class AgentManager {
     const parentRecord = this.agents.get(input.parentAgentId);
     if (!parentRecord) {
       throw new Error(`Unknown parent agent: '${input.parentAgentId}'`);
+    }
+
+    if (parentRecord.wrfcRole === 'owner' && input.dangerously_disable_wrfc) {
+      return {
+        tools: requestedTools,
+        capabilityCeilingTools: requestedTools,
+      };
     }
 
     const parentCeiling = parentRecord.capabilityCeilingTools ?? parentRecord.tools;
@@ -385,6 +402,7 @@ export class AgentManager {
       reviewMode,
       communicationLane,
       systemPromptAddendum: input.systemPromptAddendum,
+      wrfcSubtasks: input.wrfcSubtasks,
       status: 'pending',
       startedAt: Date.now(),
       toolCallCount: 0,
@@ -469,6 +487,10 @@ export class AgentManager {
             ? 'reviewer'
             : template === 'researcher'
               ? 'researcher'
+              : template === 'orchestrator'
+                ? 'orchestrator'
+                : template === 'integrator'
+                  ? 'integrator'
               : template === 'engineer'
                 ? 'engineer'
                 : 'integrator',

@@ -33,6 +33,7 @@ export interface WrfcBatchPolicyDecision {
   readonly reason?: string | undefined;
   readonly ownerInput?: AgentInput | undefined;
   readonly roleTaskIndexes?: readonly number[] | undefined;
+  readonly compoundTaskIndexes?: readonly number[] | undefined;
   readonly scopeMutation?: WrfcScopeMutation | undefined;
 }
 
@@ -269,6 +270,40 @@ function buildCollapsedContext(
   ].filter((line): line is string => Boolean(line)).join('\n');
 }
 
+function buildCompoundContext(
+  input: AgentInput,
+  tasks: readonly BatchTask[],
+  authoritativeTask: string,
+): string {
+  const existing = input.context?.trim();
+  return [
+    existing ? `Caller context:\n${existing}` : null,
+    'SDK compound WRFC topology enforcement collapsed this batch into one durable owner chain because multiple implementation deliverables share one higher-level reviewed outcome.',
+    `Authoritative original ask for this WRFC chain:\n${authoritativeTask}`,
+    'The WRFC owner must track every sub-deliverable. Engineer children may run concurrently. Reviewer/fixer phases must run only after the corresponding engineer has output. The integrator phase runs only after all sub-deliverables pass.',
+    'Compound deliverables:',
+    ...tasks.map(formatTask),
+  ].filter((line): line is string => Boolean(line)).join('\n');
+}
+
+function normalizeCompoundSubtask(task: BatchTask, authoritativeTask: string): BatchTask {
+  const normalizedTask = looksLikeScopeNarrowing(task.task, authoritativeTask)
+    ? normalizeNarrowedTask(task.task)
+    : task.task;
+  const toolContract = resolveImplementationToolContract({
+    tools: task.tools,
+    restrictTools: task.restrictTools,
+    authoritativeTask,
+    proposedTask: task.task,
+  });
+  return {
+    ...task,
+    task: normalizedTask,
+    tools: toolContract.tools,
+    restrictTools: toolContract.restrictTools,
+  };
+}
+
 export function evaluateWrfcBatchPolicy(input: AgentInput): WrfcBatchPolicyDecision {
   const tasks = input.tasks ?? [];
   if (input.mode !== 'batch-spawn' || tasks.length <= 1) {
@@ -280,7 +315,77 @@ export function evaluateWrfcBatchPolicy(input: AgentInput): WrfcBatchPolicyDecis
     .filter((index) => index >= 0);
 
   if (roleTaskIndexes.length === 0) {
-    return { kind: 'independent' };
+    const implementationTaskIndexes = tasks
+      .map((task, index) => isImplementationLikeTask(task) ? index : -1)
+      .filter((index) => index >= 0);
+    const implementationTasksDisableWrfc = implementationTaskIndexes.length > 0
+      && implementationTaskIndexes.every((index) => {
+        const task = tasks[index]!;
+        return task.dangerously_disable_wrfc === true || task.reviewMode === 'none';
+      });
+    const wantsWrfc = input.reviewMode === 'wrfc'
+      || tasks.some((task) => task.reviewMode === 'wrfc')
+      || (
+        !implementationTasksDisableWrfc
+        && input.dangerously_disable_wrfc !== true
+        && input.reviewMode !== 'none'
+        && implementationTaskIndexes.length > 0
+      );
+    if (!wantsWrfc || implementationTaskIndexes.length <= 1) {
+      return { kind: 'independent' };
+    }
+
+    const authoritativeTask = normalizeTaskText(input.authoritativeTask)
+      ?? normalizeTaskText(input.task)
+      ?? `Complete and integrate ${implementationTaskIndexes.length} reviewed deliverables.`;
+    const ownerInput: AgentInput = {
+      mode: 'spawn',
+      task: authoritativeTask,
+      authoritativeTask,
+      template: input.template ?? 'orchestrator',
+      model: input.model,
+      provider: input.provider,
+      fallbackModels: input.fallbackModels,
+      routing: input.routing,
+      executionIntent: input.executionIntent,
+      reasoningEffort: input.reasoningEffort,
+      tools: input.tools,
+      restrictTools: input.restrictTools,
+      context: buildCompoundContext(input, tasks, authoritativeTask),
+      successCriteria: uniqueStrings([
+        input.successCriteria,
+        ...tasks.map((task) => task.successCriteria),
+        [`Satisfy the authoritative compound WRFC ask exactly: ${authoritativeTask}`],
+        ['Keep every implementation deliverable under one owner chain; do not create sibling reviewer/tester/fixer roots.'],
+        ['Run reviewer/fixer loops only after each corresponding engineer child has output, then integrate the passed deliverables before final full-scope review.'],
+      ]),
+      requiredEvidence: uniqueStrings([
+        input.requiredEvidence,
+        ...tasks.map((task) => task.requiredEvidence),
+      ]),
+      writeScope: uniqueStrings([
+        input.writeScope,
+        ...tasks.map((task) => task.writeScope),
+      ]),
+      executionProtocol: input.executionProtocol,
+      reviewMode: 'wrfc',
+      communicationLane: input.communicationLane,
+      parentAgentId: input.parentAgentId,
+      orchestrationGraphId: input.orchestrationGraphId,
+      orchestrationNodeId: input.orchestrationNodeId,
+      parentNodeId: input.parentNodeId,
+      dangerously_disable_wrfc: false,
+      cohort: input.cohort,
+      wrfcSubtasks: implementationTaskIndexes.map((index) => normalizeCompoundSubtask(tasks[index]!, authoritativeTask)),
+    };
+
+    return {
+      kind: 'collapse-to-wrfc',
+      reason: 'batch-spawn contained multiple implementation deliverables that require one compound WRFC owner chain',
+      ownerInput,
+      roleTaskIndexes: [],
+      compoundTaskIndexes: implementationTaskIndexes,
+    };
   }
 
   const primaryIndex = tasks.findIndex((task, index) =>

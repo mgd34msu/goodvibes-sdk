@@ -13,6 +13,7 @@ export type OrchestrationMode =
 
 export type OrchestrationNodeRole =
   | 'planner'
+  | 'orchestrator'
   | 'engineer'
   | 'reviewer'
   | 'fixer'

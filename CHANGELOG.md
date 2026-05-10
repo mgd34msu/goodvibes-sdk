@@ -8,6 +8,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.25] - 2026-05-10
+
+### Added
+- Added compound WRFC owner chains for multi-deliverable implementation work:
+  the SDK now collapses related implementation batches into one durable owner,
+  runs sub-deliverable engineer children concurrently, reviews and fixes each
+  sub-deliverable only after its engineer output exists, and then runs an
+  integrator child before final full-scope review.
+- Added WRFC `orchestrator` and `integrator` roles/archetypes plus subtask
+  metadata so hosts can render compound chains as one owner tree instead of
+  sibling root agents.
+
+### Fixed
+- Preserved implementation scope and write/exec capability for compound WRFC
+  subtasks when model-proposed child tasks try to narrow build work into
+  design-only or no-write work.
+- Kept compound subtask fixer loops scoped to the failing deliverable while
+  preserving constraint continuity and feeding the latest fixed output into
+  the integration phase.
+
+---
+
 ## [0.33.24] - 2026-05-10
 
 ### Fixed

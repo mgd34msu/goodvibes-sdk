@@ -15,7 +15,7 @@ export type AgentEvent =
       task: string;
       parentAgentId?: string | undefined;
       wrfcId?: string | undefined;
-      wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+      wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
       wrfcPhaseOrder?: number | undefined;
       orchestrationGraphId?: string | undefined;
       parentNodeId?: string | undefined;
@@ -27,7 +27,7 @@ export type AgentEvent =
       taskId?: string;
       parentAgentId?: string | undefined;
       wrfcId?: string | undefined;
-      wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+      wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
       wrfcPhaseOrder?: number | undefined;
     }
   /** Agent emitted a textual progress update. */
@@ -38,7 +38,7 @@ export type AgentEvent =
       progress: string;
       parentAgentId?: string | undefined;
       wrfcId?: string | undefined;
-      wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+      wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
       wrfcPhaseOrder?: number | undefined;
     }
   /** Agent streamed a chunk of output. */

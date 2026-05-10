@@ -17,7 +17,7 @@ import {
 } from '../runtime/emitters/index.js';
 
 export type WorkflowContext = { sessionId: string; traceId: string; source: string };
-export type WrfcNodeRole = 'engineer' | 'reviewer' | 'fixer' | 'verifier';
+export type WrfcNodeRole = 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier';
 
 export function createWrfcWorkflowContext(sessionId: string, chainId: string): WorkflowContext {
   return {

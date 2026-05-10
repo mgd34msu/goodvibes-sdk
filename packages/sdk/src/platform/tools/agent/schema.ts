@@ -9,7 +9,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
   name: 'agent',
   description:
     'Manages in-process subagents. Modes: spawn (create a new agent task), ' +
-    'batch-spawn (spawn multiple genuinely independent sidecar agents at once from a tasks array; review/test/verification role decomposition is WRFC and is collapsed to one owner chain), ' +
+    'batch-spawn (spawn multiple genuinely independent sidecar agents at once from a tasks array; review/test/verification role decomposition and multi-deliverable WRFC work are collapsed to one owner chain), ' +
     'status (check agent progress by ID), cancel (stop a running agent), ' +
     'list (show all agents and their status), ' +
     'templates (list available agent templates with default tool sets), ' +
@@ -47,7 +47,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       },
       template: {
         type: 'string',
-        enum: ['engineer', 'reviewer', 'tester', 'researcher', 'general'],
+        enum: ['orchestrator', 'engineer', 'reviewer', 'tester', 'researcher', 'integrator', 'general'],
         description:
           'Agent template to use (mode: spawn). Default: general. ' +
           'Each template includes a pre-selected tool set.',
@@ -174,7 +174,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
           required: ['task'],
           properties: {
             task: { type: 'string', description: 'Task description for the agent.' },
-            template: { type: 'string', enum: ['engineer', 'reviewer', 'tester', 'researcher', 'general'], description: 'Agent template.' },
+            template: { type: 'string', enum: ['orchestrator', 'engineer', 'reviewer', 'tester', 'researcher', 'integrator', 'general'], description: 'Agent template.' },
             model: { type: 'string', description: 'Provider-qualified model registry key.' },
             provider: { type: 'string', description: 'Provider override.' },
             fallbackModels: { type: 'array', items: { type: 'string' }, description: 'Ordered provider-qualified registry keys.' },
@@ -206,7 +206,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
             dangerously_disable_wrfc: { type: 'boolean', description: 'Skip WRFC review for ordinary implementation/research agents. Root review/test/verify role phases are still normalized into WRFC ownership.' },
           },
         },
-        description: 'Array of genuinely independent tasks to spawn as agents (mode: batch-spawn). Max 20. One-task batches are normalized through spawn. Do not place tester/reviewer/verifier role phases here for one deliverable; those are WRFC lifecycle children owned by one owner chain.',
+        description: 'Array of genuinely independent tasks to spawn as agents (mode: batch-spawn). Max 20. One-task batches are normalized through spawn. Do not place tester/reviewer/verifier role phases here for one deliverable; those are WRFC lifecycle children owned by one owner chain. If reviewMode=wrfc and multiple implementation deliverables are part of one larger outcome, the SDK collapses them to one compound WRFC owner with concurrent engineer children, per-deliverable review/fix loops, an integrator, and final full-scope review.',
       },
       // mode: spawn, batch-spawn, list, cohort-status, cohort-report
       cohort: {
@@ -271,6 +271,8 @@ export interface AgentInput {
   context?: string | undefined;
   /** Internal prompt addendum used by WRFC phase agents. */
   systemPromptAddendum?: string | undefined;
+  /** Internal compound WRFC deliverables owned by one top-level WRFC chain. */
+  wrfcSubtasks?: AgentInput['tasks'] | undefined;
   successCriteria?: string[] | undefined;
   requiredEvidence?: string[] | undefined;
   writeScope?: string[] | undefined;

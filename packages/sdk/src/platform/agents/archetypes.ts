@@ -51,6 +51,13 @@ export interface AgentArchetype {
 
 const BUILT_IN_ARCHETYPES: AgentArchetype[] = [
   {
+    name: 'orchestrator',
+    description: 'WRFC coordination and decomposition agent',
+    tools: ['read', 'find', 'analyze', 'inspect', 'registry'],
+    isCustom: false,
+    origin: 'builtin',
+  },
+  {
     name: 'engineer',
     description: 'Full-stack implementation agent',
     tools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],
@@ -75,6 +82,13 @@ const BUILT_IN_ARCHETYPES: AgentArchetype[] = [
     name: 'researcher',
     description: 'Codebase exploration and analysis',
     tools: ['read', 'find', 'analyze', 'inspect', 'fetch', 'registry'],
+    isCustom: false,
+    origin: 'builtin',
+  },
+  {
+    name: 'integrator',
+    description: 'Cross-deliverable integration agent',
+    tools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],
     isCustom: false,
     origin: 'builtin',
   },

@@ -48,6 +48,49 @@ const PASSING_REVIEW_OUTPUT = 'The implementation looks solid. Score: 10/10';
 /** Reviewer output text that parses as a failing score (below 9.9). */
 const FAILING_REVIEW_OUTPUT = 'There are serious issues with the implementation. Score: 5/10';
 
+function engineerReportOutput(summary: string, constraints: Array<{ id: string; text: string; source: 'prompt' }> = []): string {
+  return [
+    '```json',
+    JSON.stringify({
+      version: 1,
+      archetype: 'engineer',
+      summary,
+      gatheredContext: [],
+      plannedActions: [],
+      appliedChanges: [summary],
+      filesCreated: [],
+      filesModified: [],
+      filesDeleted: [],
+      decisions: [],
+      issues: [],
+      uncertainties: [],
+      constraints,
+    }),
+    '```',
+  ].join('\n');
+}
+
+function reviewerReportOutput(
+  score: number,
+  passed: boolean,
+  constraintFindings: Array<{ constraintId: string; satisfied: boolean; evidence: string; severity?: 'critical' | 'major' | 'minor' }> = [],
+): string {
+  return [
+    '```json',
+    JSON.stringify({
+      version: 1,
+      archetype: 'reviewer',
+      summary: passed ? 'passed' : 'needs fixes',
+      score,
+      passed,
+      dimensions: [],
+      issues: passed ? [] : [{ severity: 'major', description: 'Needs a fix.', pointValue: 1 }],
+      constraintFindings,
+    }),
+    '```',
+  ].join('\n');
+}
+
 /**
  * Emit AGENT_COMPLETED on the bus, simulating what AgentManager does when
  * an agent finishes. The WrfcController listens for this event.
@@ -268,6 +311,138 @@ describe('WrfcController — happy path', () => {
     expect(types).toContain('WORKFLOW_CHAIN_CREATED');
     expect(types).toContain('WORKFLOW_REVIEW_COMPLETED');
     expect(types).toContain('WORKFLOW_CHAIN_PASSED');
+
+    h.controller.dispose();
+  });
+
+  test('compound chain runs parallel engineers, then per-deliverable reviews, then integrator, then final review', async () => {
+    const h = createHarness();
+
+    const ownerRecord = h.addAgent('owner-compound-1', 'Build a small API with a rate limiter and request logger.', 'orchestrator');
+    ownerRecord.wrfcSubtasks = [
+      { task: 'Implement token bucket rate limiter module.', template: 'engineer' },
+      { task: 'Implement request logging middleware.', template: 'engineer' },
+    ];
+    const chain = h.controller.createChain(ownerRecord);
+
+    expect(chain.state).toBe('engineering');
+    expect(chain.subtasks).toHaveLength(2);
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'engineer')).toHaveLength(2);
+    expect(h.spawnedRecords.every((record) => record.parentAgentId === ownerRecord.id)).toBe(true);
+    expect(h.spawnedRecords.map((record) => record.wrfcSubtaskId)).toEqual(['deliverable-1', 'deliverable-2']);
+
+    for (const subtask of chain.subtasks!) {
+      h.setOutput(subtask.engineerAgentId!, `Implemented ${subtask.id}.`);
+      emitAgentCompleted(h.bus, subtask.engineerAgentId!);
+      await flushMicrotasks(20);
+    }
+
+    const subtaskReviewers = h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer');
+    expect(subtaskReviewers).toHaveLength(2);
+    expect(subtaskReviewers.map((record) => record.wrfcSubtaskId)).toEqual(['deliverable-1', 'deliverable-2']);
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer')).toHaveLength(0);
+
+    for (const reviewer of subtaskReviewers) {
+      h.setOutput(reviewer.id, PASSING_REVIEW_OUTPUT);
+      emitAgentCompleted(h.bus, reviewer.id);
+      await flushMicrotasks(20);
+    }
+
+    expect(chain.subtasks!.every((subtask) => subtask.state === 'passed')).toBe(true);
+    expect(chain.state).toBe('integrating');
+    const integrator = latestSpawnedByWrfcRole(h.spawnedRecords, 'integrator');
+    expect(integrator.template).toBe('integrator');
+    expect(integrator.parentAgentId).toBe(ownerRecord.id);
+
+    h.setOutput(integrator.id, 'Integrated both deliverables into one coherent API.');
+    emitAgentCompleted(h.bus, integrator.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('reviewing');
+    const allReviewers = h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer');
+    expect(allReviewers).toHaveLength(3);
+    const finalReviewer = allReviewers.at(-1)!;
+    expect(finalReviewer.wrfcSubtaskId).toBeUndefined();
+
+    h.setOutput(finalReviewer.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, finalReviewer.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('passed');
+    expect(ownerRecord.status).toBe('completed');
+    expect(chain.ownerDecisions.map((decision) => decision.action)).toEqual(expect.arrayContaining([
+      'spawn_integrator',
+      'chain_passed',
+    ]));
+
+    h.controller.dispose();
+  });
+
+  test('compound subtask fix loop stays scoped and integration uses latest fixed output', async () => {
+    const h = createHarness();
+
+    const ownerRecord = h.addAgent('owner-compound-2', 'Build a small API with a rate limiter and request logger.', 'orchestrator');
+    ownerRecord.wrfcSubtasks = [
+      { task: 'Implement token bucket rate limiter module.', template: 'engineer' },
+      { task: 'Implement request logging middleware.', template: 'engineer' },
+    ];
+    const chain = h.controller.createChain(ownerRecord);
+
+    const [limiterSubtask, loggerSubtask] = chain.subtasks!;
+    h.setOutput(limiterSubtask.engineerAgentId!, engineerReportOutput('initial limiter implementation', [
+      { id: 'c1', text: 'support burst capacity', source: 'prompt' },
+    ]));
+    emitAgentCompleted(h.bus, limiterSubtask.engineerAgentId!);
+    await flushMicrotasks(20);
+
+    h.setOutput(loggerSubtask.engineerAgentId!, engineerReportOutput('logger implementation'));
+    emitAgentCompleted(h.bus, loggerSubtask.engineerAgentId!);
+    await flushMicrotasks(20);
+
+    const firstLimiterReviewer = h.spawnedRecords.find((record) =>
+      record.wrfcRole === 'reviewer' && record.wrfcSubtaskId === limiterSubtask.id)!;
+    const loggerReviewer = h.spawnedRecords.find((record) =>
+      record.wrfcRole === 'reviewer' && record.wrfcSubtaskId === loggerSubtask.id)!;
+
+    h.setOutput(firstLimiterReviewer.id, reviewerReportOutput(7, false, [
+      { constraintId: 'c1', satisfied: false, evidence: 'burst capacity is missing', severity: 'major' },
+    ]));
+    emitAgentCompleted(h.bus, firstLimiterReviewer.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('engineering');
+    expect(limiterSubtask.state).toBe('fixing');
+    expect(loggerSubtask.state).toBe('reviewing');
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer' && record.wrfcSubtaskId === limiterSubtask.id)).toHaveLength(1);
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'integrator')).toHaveLength(0);
+
+    h.setOutput(loggerReviewer.id, reviewerReportOutput(10, true));
+    emitAgentCompleted(h.bus, loggerReviewer.id);
+    await flushMicrotasks(20);
+
+    expect(loggerSubtask.state).toBe('passed');
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'integrator')).toHaveLength(0);
+
+    const limiterFixer = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
+    h.setOutput(limiterFixer.id, engineerReportOutput('fixed limiter implementation', [
+      { id: 'c1', text: 'support burst capacity', source: 'prompt' },
+    ]));
+    emitAgentCompleted(h.bus, limiterFixer.id);
+    await flushMicrotasks(20);
+
+    const secondLimiterReviewer = h.spawnedRecords.filter((record) =>
+      record.wrfcRole === 'reviewer' && record.wrfcSubtaskId === limiterSubtask.id).at(-1)!;
+    expect(secondLimiterReviewer.id).not.toBe(firstLimiterReviewer.id);
+    h.setOutput(secondLimiterReviewer.id, reviewerReportOutput(10, true, [
+      { constraintId: 'c1', satisfied: true, evidence: 'burst capacity is implemented' },
+    ]));
+    emitAgentCompleted(h.bus, secondLimiterReviewer.id);
+    await flushMicrotasks(20);
+
+    const integrator = latestSpawnedByWrfcRole(h.spawnedRecords, 'integrator');
+    expect(chain.state).toBe('integrating');
+    expect(integrator.task).toContain('Engineer summary: fixed limiter implementation');
+    expect(integrator.task).toContain('Engineer summary: logger implementation');
 
     h.controller.dispose();
   });

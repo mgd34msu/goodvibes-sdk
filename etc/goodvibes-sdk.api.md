@@ -95,7 +95,7 @@ export type AgentEvent =
     task: string;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
-    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
     wrfcPhaseOrder?: number | undefined;
     orchestrationGraphId?: string | undefined;
     parentNodeId?: string | undefined;
@@ -107,7 +107,7 @@ export type AgentEvent =
     taskId?: string;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
-    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
     wrfcPhaseOrder?: number | undefined;
 }
 /** Agent emitted a textual progress update. */
@@ -118,7 +118,7 @@ export type AgentEvent =
     progress: string;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
-    wrfcRole?: 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | undefined;
+    wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;
     wrfcPhaseOrder?: number | undefined;
 }
 /** Agent streamed a chunk of output. */
@@ -1185,7 +1185,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.24";
+    readonly productVersion: "0.33.25";
     readonly operatorMethodCount: 273;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -13599,7 +13599,7 @@ export type OrchestrationEvent = {
     graphId: string;
     nodeId: string;
     title: string;
-    role: 'planner' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | 'researcher' | 'integrator';
+    role: 'planner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'verifier' | 'researcher' | 'integrator';
     parentNodeId?: string;
     dependsOn?: string[];
     taskId?: string;
@@ -16353,7 +16353,7 @@ export type WorkspaceEvent =
 export type WorkspaceEventType = WorkspaceEvent['type'];
 
 // @public (undocumented)
-export type WrfcState = 'pending' | 'engineering' | 'reviewing' | 'fixing' | 'awaiting_gates' | 'gating' | 'passed' | 'failed' | 'committing';
+export type WrfcState = 'pending' | 'engineering' | 'integrating' | 'reviewing' | 'fixing' | 'awaiting_gates' | 'gating' | 'passed' | 'failed' | 'committing';
 
 // (No @packageDocumentation comment for this package)
 
