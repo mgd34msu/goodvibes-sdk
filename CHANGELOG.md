@@ -8,6 +8,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.24] - 2026-05-10
+
+### Fixed
+- Prevented companion chat and Home Assistant Assist conversation turns from
+  failing with HTTP 500 when a model exhausts the tool-call round budget. The
+  SDK now performs one tool-free finalization pass using the accumulated tool
+  results and returns a normal assistant answer when possible.
+
+---
+
 ## [0.33.23] - 2026-05-09
 
 ### Added

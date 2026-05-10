@@ -322,4 +322,70 @@ describe('TR5: companion remote chat advertises tools and loops over tool result
 
     manager.dispose();
   });
+
+  test('exhausted tool loops force a tool-free final answer instead of failing', async () => {
+    const { registry, calls } = makeMockRegistry('weather is 72F and clear');
+    const { publisher, events } = makeRecordingPublisher();
+    const observed: Array<{
+      readonly messages: readonly ProviderMessage[];
+      readonly toolNames: readonly string[];
+    }> = [];
+
+    const provider: CompanionLLMProvider = {
+      async *chatStream(messages, options): AsyncIterable<CompanionProviderChunk> {
+        observed.push({
+          messages,
+          toolNames: (options.tools ?? []).map((tool) => tool.name),
+        });
+
+        if (observed.length <= 8) {
+          yield {
+            type: 'tool_call',
+            toolCallId: `call-loop-${observed.length}`,
+            toolName: 'mock_tool',
+            toolInput: { query: 'weather' },
+          };
+          yield { type: 'done' };
+          return;
+        }
+
+        expect(options.tools ?? []).toHaveLength(0);
+        yield { type: 'text_delta', delta: 'It is 72F and clear.' };
+        yield { type: 'done' };
+      },
+    };
+
+    const manager = new CompanionChatManager({
+      provider,
+      eventPublisher: publisher,
+      toolRegistry: registry,
+      permissionManager: allowToolPermission(),
+      gcIntervalMs: 999_999,
+      persist: false,
+      rateLimiter: false,
+    });
+
+    const session = manager.createSession();
+    const reply = await manager.postMessageAndWaitForReply(
+      session.id,
+      'how is the weather?',
+      '',
+      { timeoutMs: 1_000 },
+    );
+
+    expect(reply.error).toBeUndefined();
+    expect(reply.response).toBe('It is 72F and clear.');
+    expect(calls).toHaveLength(8);
+    expect(observed).toHaveLength(9);
+    expect(observed[8]!.toolNames).toEqual([]);
+    expect(observed[8]!.messages.some((message) => (
+      message.role === 'tool'
+      && message.callId === 'call-loop-8'
+      && message.content === 'weather is 72F and clear'
+    ))).toBe(true);
+    expect(events.map((event) => event.event)).toContain('companion-chat.turn.completed');
+    expect(events.map((event) => event.event)).not.toContain('companion-chat.turn.error');
+
+    manager.dispose();
+  });
 });
