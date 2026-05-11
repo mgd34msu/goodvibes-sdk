@@ -82,7 +82,7 @@ const VALID_TRANSITIONS: Partial<Record<WrfcState, WrfcState[]>> = {
 
 const MAX_ACTIVE_CHAINS = 6;
 const CHAIN_CLEANUP_DELAY_MS = 60_000;
-type WrfcWorktreeOps = Pick<AgentWorktree, 'merge' | 'cleanup'>;
+type WrfcWorktreeOps = Pick<AgentWorktree, 'merge' | 'cleanup'> & Partial<Pick<AgentWorktree, 'commitWorkingTree' | 'currentHead'>>;
 type WrfcWorkPlanService = {
   createWorkPlanTask(input: ProjectWorkPlanTaskCreateInput): Promise<unknown>;
   updateWorkPlanTask(input: ProjectWorkPlanTaskUpdateInput): Promise<unknown>;
@@ -988,11 +988,9 @@ export class WrfcController {
   private async autoCommit(chain: WrfcChain): Promise<void> {
     this.transition(chain, 'committing');
 
-    const agentId = chain.allAgentIds.length > 0
-      ? chain.allAgentIds[chain.allAgentIds.length - 1]
-      : (chain.fixerAgentId ?? chain.engineerAgentId);
-    if (!agentId) {
-      this.failChain(chain, 'autoCommit: no agent ID found on chain');
+    const commitCandidateIds = this.autoCommitCandidateAgentIds(chain);
+    if (commitCandidateIds.length === 0) {
+      this.failChain(chain, 'autoCommit: no write-capable WRFC agent found on chain');
       return;
     }
 
@@ -1003,17 +1001,38 @@ export class WrfcController {
     }
 
     const worktree = this.createWorktree();
+    let completed = false;
     try {
-      const merged = await worktree.merge(agentId);
-      emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id);
+      const commitMessage = this.autoCommitMessage(chain);
+      const directCommitHash = worktree.commitWorkingTree
+        ? await worktree.commitWorkingTree(commitMessage)
+        : null;
+      let mergedCount = 0;
+      for (const agentId of commitCandidateIds) {
+        if (await worktree.merge(agentId)) {
+          mergedCount += 1;
+        }
+      }
+      const headHash = mergedCount > 0 && worktree.currentHead ? await worktree.currentHead() : directCommitHash;
+      emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id, headHash ?? undefined);
       this.completeChainAsPassed(chain);
-      logger.debug('WrfcController.autoCommit: success', { chainId: chain.id, agentId, merged });
+      completed = true;
+      logger.debug('WrfcController.autoCommit: success', {
+        chainId: chain.id,
+        commitCandidateIds,
+        directCommitHash,
+        mergedCount,
+        headHash,
+      });
     } catch (error) {
       const reason = summarizeError(error);
       logger.error('WrfcController.autoCommit: failed', { chainId: chain.id, error: reason });
       this.failChain(chain, `autoCommit failed: ${reason}`);
     } finally {
-      for (const id of chain.allAgentIds) {
+      const cleanupIds = completed
+        ? chain.allAgentIds
+        : chain.allAgentIds.filter((id) => !commitCandidateIds.includes(id));
+      for (const id of cleanupIds) {
         worktree.cleanup(id).catch((error) => {
           logger.warn('WrfcController.autoCommit: cleanup failed', {
             agentId: id,
@@ -1022,6 +1041,41 @@ export class WrfcController {
         });
       }
     }
+  }
+
+  private autoCommitCandidateAgentIds(chain: WrfcChain): string[] {
+    const candidates: string[] = [];
+
+    const add = (agentId: string | undefined): void => {
+      if (agentId && !candidates.includes(agentId)) candidates.push(agentId);
+    };
+
+    if (chain.subtasks && chain.subtasks.length > 0) {
+      for (const subtask of chain.subtasks) {
+        add(subtask.fixerAgentId ?? subtask.engineerAgentId);
+      }
+      add(chain.integratorAgentId);
+      return candidates;
+    }
+
+    add(chain.fixerAgentId ?? chain.engineerAgentId);
+    add(chain.integratorAgentId);
+    if (candidates.length > 0) {
+      return candidates;
+    }
+
+    const writeRoles = new Set(['engineer', 'fixer', 'integrator']);
+    for (const agentId of chain.allAgentIds) {
+      const recordRole = this.agentManager.getStatus(agentId)?.wrfcRole;
+      const role = recordRole ?? this.workPlanRoleForAgent(chain, agentId);
+      if (role && writeRoles.has(role)) add(agentId);
+    }
+    return candidates;
+  }
+
+  private autoCommitMessage(chain: WrfcChain): string {
+    const firstLine = chain.task.trim().replace(/\s+/g, ' ').slice(0, 72) || chain.id;
+    return `WRFC: ${firstLine}`;
   }
 
   private failChain(chain: WrfcChain, reason: string): void {

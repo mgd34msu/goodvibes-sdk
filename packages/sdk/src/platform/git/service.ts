@@ -4,6 +4,15 @@ import type { HookEvent } from '../hooks/types.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
+function isMissingGitIdentityError(error: unknown): boolean {
+  const message = summarizeError(error).toLowerCase();
+  return (
+    message.includes('author identity unknown')
+    || message.includes('please tell me who you are')
+    || message.includes('unable to auto-detect email address')
+  );
+}
+
 /**
  * GitService — Wraps simple-git with hook emission on all mutating operations.
  *
@@ -194,7 +203,11 @@ export class GitService {
 
   async commit(
     message: string,
-    options?: { amend?: boolean; noVerify?: boolean },
+    options?: {
+      amend?: boolean;
+      noVerify?: boolean;
+      fallbackIdentity?: { name: string; email: string } | undefined;
+    },
   ): Promise<{ hash: string; summary: string }> {
     await this.firePre('commit', { message, options });
     try {
@@ -207,6 +220,30 @@ export class GitService {
       await this.firePost('commit', { message, ...output });
       return output;
     } catch (err) {
+      if (options?.fallbackIdentity && isMissingGitIdentityError(err)) {
+        try {
+          const flags: string[] = [];
+          if (options.amend) flags.push('--amend');
+          if (options.noVerify) flags.push('--no-verify');
+          const raw = await this.git.raw([
+            '-c',
+            `user.name=${options.fallbackIdentity.name}`,
+            '-c',
+            `user.email=${options.fallbackIdentity.email}`,
+            'commit',
+            '-m',
+            message,
+            ...flags,
+          ]);
+          const hash = (await this.git.raw(['rev-parse', 'HEAD'])).trim();
+          const output = { hash, summary: raw.trim() };
+          await this.firePost('commit', { message, ...output });
+          return output;
+        } catch (fallbackErr) {
+          await this.fireFail('commit', { message, error: summarizeError(fallbackErr) });
+          throw fallbackErr;
+        }
+      }
       await this.fireFail('commit', { message, error: summarizeError(err) });
       throw err;
     }

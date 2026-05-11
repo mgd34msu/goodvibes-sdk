@@ -12,6 +12,9 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,6 +135,10 @@ interface TestHarness {
   /** Emitted workflow event types in order. */
   workflowEvents: Array<{ type: string; payload: Record<string, unknown> }>;
   workPlanCalls: Array<{ type: 'create' | 'update'; input: Record<string, unknown> }>;
+  mergedAgentIds: string[];
+  cleanedAgentIds: string[];
+  directCommitMessages: string[];
+  currentHeadCalls: number;
   /** Register a record output so getStatus() returns it. */
   setOutput(agentId: string, fullOutput: string): void;
   /** Spawn a new agent record and register it. */
@@ -148,12 +155,17 @@ function createHarness(overrides?: {
   scoreThreshold?: number;
   maxFixAttempts?: number;
   autoCommit?: boolean;
+  gitRepo?: boolean;
 }): TestHarness {
   const bus = new RuntimeEventBus();
   const agentStore = new Map<string, AgentRecord>();
   const spawnedRecords: AgentRecord[] = [];
   const workflowEvents: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const workPlanCalls: Array<{ type: 'create' | 'update'; input: Record<string, unknown> }> = [];
+  const mergedAgentIds: string[] = [];
+  const cleanedAgentIds: string[] = [];
+  const directCommitMessages: string[] = [];
+  let currentHeadCalls = 0;
 
   // Capture workflow events
   bus.onDomain('workflows', (envelope) => {
@@ -166,6 +178,10 @@ function createHarness(overrides?: {
   const threshold = overrides?.scoreThreshold ?? 9.9;
   const maxFixAttempts = overrides?.maxFixAttempts ?? 3;
   const autoCommit = overrides?.autoCommit ?? false;
+  const projectRoot = overrides?.gitRepo ? mkdtempSync(join(tmpdir(), 'wrfc-controller-')) : '/tmp/test-project';
+  if (overrides?.gitRepo) {
+    mkdirSync(join(projectRoot, '.git'), { recursive: true });
+  }
 
   const configManager = {
     get: (key: string): unknown => {
@@ -215,10 +231,23 @@ function createHarness(overrides?: {
   const controller = new WrfcController(bus, messageBus, {
     agentManager,
     configManager,
-    projectRoot: '/tmp/test-project',
+    projectRoot,
     createWorktree: () => ({
-      merge: async (_agentId: string) => true,
-      cleanup: async (_agentId: string) => {},
+      merge: async (agentId: string) => {
+        mergedAgentIds.push(agentId);
+        return true;
+      },
+      cleanup: async (agentId: string) => {
+        cleanedAgentIds.push(agentId);
+      },
+      commitWorkingTree: async (message: string) => {
+        directCommitMessages.push(message);
+        return 'direct-commit-hash';
+      },
+      currentHead: async () => {
+        currentHeadCalls += 1;
+        return 'merged-head-hash';
+      },
     }),
   });
   controller.setWorkPlanService({
@@ -241,7 +270,22 @@ function createHarness(overrides?: {
     if (record) record.fullOutput = fullOutput;
   };
 
-  return { bus, controller, agentStore, spawnedRecords, workflowEvents, workPlanCalls, setOutput, addAgent };
+  return {
+    bus,
+    controller,
+    agentStore,
+    spawnedRecords,
+    workflowEvents,
+    workPlanCalls,
+    mergedAgentIds,
+    cleanedAgentIds,
+    directCommitMessages,
+    get currentHeadCalls() {
+      return currentHeadCalls;
+    },
+    setOutput,
+    addAgent,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -315,6 +359,65 @@ describe('WrfcController — happy path', () => {
     h.controller.dispose();
   });
 
+  test('autoCommit commits direct workspace changes and merges only write-capable WRFC agents', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true });
+
+    const ownerRecord = h.addAgent('owner-autocommit-1', 'implement auto commit feature');
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitMessages).toEqual(['WRFC: implement auto commit feature']);
+    expect(h.mergedAgentIds).toEqual([chain.engineerAgentId]);
+    expect(h.mergedAgentIds).not.toContain(reviewerRecord.id);
+    expect(h.cleanedAgentIds).toEqual(expect.arrayContaining(chain.allAgentIds));
+    expect(h.workflowEvents.map((e) => e.type)).toContain('WORKFLOW_AUTO_COMMITTED');
+
+    h.controller.dispose();
+  });
+
+  test('autoCommit merges the latest fixer output instead of superseded engineer output', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true, maxFixAttempts: 2 });
+
+    const ownerRecord = h.addAgent('owner-autocommit-fix-1', 'implement fixed auto commit feature');
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'Initial implementation.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const firstReviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(firstReviewer.id, FAILING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, firstReviewer.id);
+    await flushMicrotasks();
+
+    const fixer = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
+    h.setOutput(fixer.id, 'Fixed implementation.');
+    emitAgentCompleted(h.bus, fixer.id);
+    await flushMicrotasks();
+
+    const secondReviewer = h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer').at(-1)!;
+    h.setOutput(secondReviewer.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, secondReviewer.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.mergedAgentIds).toEqual([fixer.id]);
+    expect(h.mergedAgentIds).not.toContain(chain.engineerAgentId);
+    expect(h.mergedAgentIds).not.toContain(firstReviewer.id);
+    expect(h.mergedAgentIds).not.toContain(secondReviewer.id);
+
+    h.controller.dispose();
+  });
+
   test('compound chain runs parallel engineers, then per-deliverable reviews, then integrator, then final review', async () => {
     const h = createHarness();
 
@@ -374,6 +477,53 @@ describe('WrfcController — happy path', () => {
       'spawn_integrator',
       'chain_passed',
     ]));
+
+    h.controller.dispose();
+  });
+
+  test('compound autoCommit merges subtask writers and integrator, not reviewers', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true });
+
+    const ownerRecord = h.addAgent('owner-compound-autocommit', 'Build a rate limiter and request logger.', 'orchestrator');
+    ownerRecord.wrfcSubtasks = [
+      { task: 'Implement token bucket rate limiter module.', template: 'engineer' },
+      { task: 'Implement request logging middleware.', template: 'engineer' },
+    ];
+    const chain = h.controller.createChain(ownerRecord);
+
+    for (const subtask of chain.subtasks!) {
+      h.setOutput(subtask.engineerAgentId!, `Implemented ${subtask.id}.`);
+      emitAgentCompleted(h.bus, subtask.engineerAgentId!);
+      await flushMicrotasks(20);
+    }
+
+    const subtaskReviewers = h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer');
+    for (const reviewer of subtaskReviewers) {
+      h.setOutput(reviewer.id, PASSING_REVIEW_OUTPUT);
+      emitAgentCompleted(h.bus, reviewer.id);
+      await flushMicrotasks(20);
+    }
+
+    const integrator = latestSpawnedByWrfcRole(h.spawnedRecords, 'integrator');
+    h.setOutput(integrator.id, 'Integrated both deliverables.');
+    emitAgentCompleted(h.bus, integrator.id);
+    await flushMicrotasks(20);
+
+    const finalReviewer = h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer').at(-1)!;
+    h.setOutput(finalReviewer.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, finalReviewer.id);
+    await flushMicrotasks(20);
+
+    const writerIds = [
+      ...chain.subtasks!.map((subtask) => subtask.engineerAgentId),
+      integrator.id,
+    ];
+    expect(chain.state).toBe('passed');
+    expect(h.mergedAgentIds).toEqual(writerIds);
+    for (const reviewer of h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer')) {
+      expect(h.mergedAgentIds).not.toContain(reviewer.id);
+    }
+    expect(h.workflowEvents.map((e) => e.type)).toContain('WORKFLOW_AUTO_COMMITTED');
 
     h.controller.dispose();
   });
