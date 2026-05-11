@@ -8,6 +8,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.26] - 2026-05-10
+
+### Fixed
+- Fixed WRFC `autoCommit` after passing review and gates. The SDK now commits
+  direct workspace edits produced by live agents, uses a GoodVibes fallback git
+  identity when a fresh machine has no local git user configured, and avoids
+  staging `.goodvibes` internal runtime state.
+- Fixed WRFC auto-commit candidate selection so reviewer/verifier branches are
+  not merged as if they contained accepted implementation changes. Single-chain
+  commits now prefer the accepted fixer when present, and compound chains commit
+  the accepted sub-deliverable writer plus integrator outputs.
+- Made missing legacy per-agent git worktree branches a non-fatal skip during
+  auto-commit cleanup, matching the current direct-workspace agent execution
+  model.
+
+---
+
 ## [0.33.25] - 2026-05-10
 
 ### Added

@@ -48,17 +48,26 @@ export class AgentWorktree {
 
     logger.debug('AgentWorktree.merge', { agentId, worktreePath, branch });
 
+    if (!(await this._branchExists(branch))) {
+      logger.debug('AgentWorktree.merge: branch missing, skipping merge', { agentId, branch });
+      return false;
+    }
+
     // Check if the agent branch has any commits beyond base
     const hasChanges = await this._hasChanges(worktreePath, branch);
     if (!hasChanges) {
       logger.debug('AgentWorktree.merge: no changes, skipping merge', { agentId });
-      await this._removeWorktree(worktreePath);
+      if (existsSync(worktreePath)) {
+        await this._removeWorktree(worktreePath);
+      }
       await this._deleteBranch(branch);
       return false;
     }
 
     // Remove worktree first (required before merging the branch)
-    await this._removeWorktree(worktreePath);
+    if (existsSync(worktreePath)) {
+      await this._removeWorktree(worktreePath);
+    }
 
     // Merge the branch
     await this.git.merge(branch);
@@ -68,6 +77,51 @@ export class AgentWorktree {
 
     logger.debug('AgentWorktree.merge: complete', { agentId });
     return true;
+  }
+
+  async commitWorkingTree(message: string): Promise<string | null> {
+    const git = simpleGit({ baseDir: this.git.getCwd() });
+    const status = await git.raw([
+      'status',
+      '--porcelain',
+      '--untracked-files=all',
+      '--',
+      '.',
+      ':(exclude).goodvibes',
+      ':(exclude).goodvibes/**',
+    ]);
+    if (status.trim().length === 0) {
+      logger.debug('AgentWorktree.commitWorkingTree: no direct working tree changes');
+      return null;
+    }
+
+    await git.raw(['add', '--all', '--', '.', ':(exclude).goodvibes', ':(exclude).goodvibes/**']);
+    try {
+      const result = await this.git.commit(message, {
+        fallbackIdentity: { name: 'GoodVibes', email: 'goodvibes@local' },
+      });
+      logger.debug('AgentWorktree.commitWorkingTree: committed direct working tree changes', {
+        hash: result.hash,
+      });
+      return result.hash;
+    } catch (error) {
+      const message = summarizeError(error).toLowerCase();
+      if (message.includes('nothing to commit') || message.includes('no changes added to commit')) {
+        logger.debug('AgentWorktree.commitWorkingTree: no committable changes after staging');
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async currentHead(): Promise<string | null> {
+    try {
+      const git = simpleGit({ baseDir: this.git.getCwd() });
+      return (await git.raw(['rev-parse', 'HEAD'])).trim();
+    } catch (error) {
+      logger.warn('AgentWorktree.currentHead failed', { error: summarizeError(error) });
+      return null;
+    }
   }
 
   /**
@@ -115,6 +169,16 @@ export class AgentWorktree {
     } catch (err) {
       // If rev-list fails (e.g. brand-new worktree with no commits), treat as no changes
       logger.warn('AgentWorktree._hasChanges: rev-list failed, treating as no changes', { branch, worktreeDir: worktreePath, error: summarizeError(err) });
+      return false;
+    }
+  }
+
+  private async _branchExists(branch: string): Promise<boolean> {
+    try {
+      const wgit = simpleGit({ baseDir: this.git.getCwd() });
+      await wgit.raw(['rev-parse', '--verify', '--quiet', branch]);
+      return true;
+    } catch {
       return false;
     }
   }
