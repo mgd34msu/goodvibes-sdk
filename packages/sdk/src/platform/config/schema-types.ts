@@ -399,6 +399,7 @@ export interface GoodVibesConfig {
     qemuGuestUser: string;
     qemuWorkspacePath: string;
     qemuSessionMode: 'attach' | 'launch-per-command';
+    replJavaScriptCommand: string;
   };
   ui: {
     voiceEnabled: boolean;
@@ -525,6 +526,7 @@ export type ConfigKey =
   | 'sandbox.qemuGuestUser'
   | 'sandbox.qemuWorkspacePath'
   | 'sandbox.qemuSessionMode'
+  | 'sandbox.replJavaScriptCommand'
   | 'ui.voiceEnabled'
   | 'ui.systemMessages'
   | 'ui.operationalMessages'
@@ -783,6 +785,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'sandbox.qemuGuestUser' ? string :
   K extends 'sandbox.qemuWorkspacePath' ? string :
   K extends 'sandbox.qemuSessionMode' ? 'attach' | 'launch-per-command' :
+  K extends 'sandbox.replJavaScriptCommand' ? string :
   K extends 'ui.voiceEnabled' ? boolean :
   K extends 'ui.systemMessages' ? 'panel' | 'conversation' | 'both' :
   K extends 'ui.operationalMessages' ? 'panel' | 'conversation' | 'both' :

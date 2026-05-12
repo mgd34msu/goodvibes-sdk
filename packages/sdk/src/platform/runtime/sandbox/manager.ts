@@ -49,6 +49,7 @@ export function getSandboxConfigSnapshot(
     qemuGuestUser: readConfigValue(manager, 'sandbox.qemuGuestUser') as string,
     qemuWorkspacePath: readConfigValue(manager, 'sandbox.qemuWorkspacePath') as string,
     qemuSessionMode: readConfigValue(manager, 'sandbox.qemuSessionMode') as SandboxQemuSessionMode,
+    replJavaScriptCommand: readConfigValue(manager, 'sandbox.replJavaScriptCommand') as string,
   });
 }
 
@@ -160,6 +161,7 @@ export function listSandboxPresets(): readonly SandboxPreset[] {
         qemuGuestUser: 'goodvibes',
         qemuWorkspacePath: '/workspace',
         qemuSessionMode: 'attach',
+        replJavaScriptCommand: 'bun',
       },
       notes: ['recommended default', 'strong isolation without forcing per-server MCP for every case'],
     } satisfies SandboxPreset),
@@ -180,6 +182,7 @@ export function listSandboxPresets(): readonly SandboxPreset[] {
         qemuGuestUser: 'goodvibes',
         qemuWorkspacePath: '/workspace',
         qemuSessionMode: 'attach',
+        replJavaScriptCommand: 'bun',
       },
       notes: ['strongest isolation', 'higher startup and memory cost'],
     } satisfies SandboxPreset),
@@ -200,6 +203,7 @@ export function listSandboxPresets(): readonly SandboxPreset[] {
         qemuGuestUser: 'goodvibes',
         qemuWorkspacePath: '/workspace',
         qemuSessionMode: 'attach',
+        replJavaScriptCommand: 'bun',
       },
       notes: ['best latency', 'weaker cross-runtime isolation than dedicated profiles'],
     } satisfies SandboxPreset),
@@ -220,6 +224,7 @@ export function listSandboxPresets(): readonly SandboxPreset[] {
         qemuGuestUser: 'goodvibes',
         qemuWorkspacePath: '/workspace',
         qemuSessionMode: 'attach',
+        replJavaScriptCommand: 'bun',
       },
       notes: ['intended for native Windows without WSL', 'core runtime only; not secure sandbox mode'],
     } satisfies SandboxPreset),
@@ -259,6 +264,7 @@ export function renderSandboxReview(
     `  qemu guest user: ${review.config.qemuGuestUser || '(not configured)'}`,
     `  qemu workspace: ${review.config.qemuWorkspacePath || '(not configured)'}`,
     `  qemu session mode: ${review.config.qemuSessionMode}`,
+    `  repl javascript command: ${review.config.replJavaScriptCommand || 'bun'}`,
     `  resolved backend: ${review.backendProbe?.resolvedBackend ?? 'local'}`,
     `  platform: ${review.host.platform}${review.host.runningInWsl ? ' (WSL)' : ''}`,
     `  secure sandbox mode: ${review.host.secureSandboxReady ? 'available' : 'unavailable on this host'}`,

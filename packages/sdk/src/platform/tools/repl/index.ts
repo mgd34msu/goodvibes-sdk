@@ -51,6 +51,15 @@ function requireReplSandbox(launchPlan: SandboxLaunchPlan | undefined): SandboxL
   return launchPlan;
 }
 
+export function resolveReplJavaScriptCommand(
+  launchPlan: Pick<SandboxLaunchPlan, 'backend'>,
+  configManager: ConfigManagerLike,
+): string {
+  if (launchPlan.backend !== 'qemu') return process.execPath;
+  const configured = `${configManager.get('sandbox.replJavaScriptCommand') ?? ''}`.trim();
+  return configured || 'bun';
+}
+
 async function loadHistory(historyPath: string): Promise<ReplHistoryEntry[]> {
   try {
     return JSON.parse(await readFile(historyPath, 'utf-8')) as ReplHistoryEntry[];
@@ -96,12 +105,12 @@ const value = eval(payload.expression);
 process.stdout.write(typeof value === 'string' ? value : JSON.stringify(value));
 `;
   const result = sessionId
-    ? sandboxSessionRegistry.execute(sessionId, process.execPath, ['-e', runner], configManager, {
+    ? sandboxSessionRegistry.execute(sessionId, resolveReplJavaScriptCommand(launchPlan, configManager), ['-e', runner], configManager, {
         timeoutMs: 1000,
         inheritHostEnv: false,
         env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       })
-    : executeSandboxCommand(launchPlan, process.execPath, ['-e', runner], {
+    : executeSandboxCommand(launchPlan, resolveReplJavaScriptCommand(launchPlan, configManager), ['-e', runner], {
         timeoutMs: 1000,
         inheritHostEnv: false,
         env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
@@ -175,12 +184,12 @@ const rows = db.query(payload.expression).all();
 process.stdout.write(JSON.stringify(rows));
 `;
   const result = sessionId
-    ? sandboxSessionRegistry.execute(sessionId, process.execPath, ['-e', script], configManager, {
+    ? sandboxSessionRegistry.execute(sessionId, resolveReplJavaScriptCommand(launchPlan, configManager), ['-e', script], configManager, {
         timeoutMs: 5000,
         inheritHostEnv: false,
         env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       })
-    : executeSandboxCommand(launchPlan, process.execPath, ['-e', script], {
+    : executeSandboxCommand(launchPlan, resolveReplJavaScriptCommand(launchPlan, configManager), ['-e', script], {
         timeoutMs: 5000,
         inheritHostEnv: false,
         env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
@@ -212,12 +221,12 @@ process.stdout.write(JSON.stringify({
 }));
 `;
   const result = sessionId
-    ? sandboxSessionRegistry.execute(sessionId, process.execPath, ['-e', script], configManager, {
+    ? sandboxSessionRegistry.execute(sessionId, resolveReplJavaScriptCommand(launchPlan, configManager), ['-e', script], configManager, {
         timeoutMs: 2000,
         inheritHostEnv: false,
         env: createReplEnv({ GV_REPL_PAYLOAD: payload }),
       })
-    : executeSandboxCommand(launchPlan, process.execPath, ['-e', script], {
+    : executeSandboxCommand(launchPlan, resolveReplJavaScriptCommand(launchPlan, configManager), ['-e', script], {
         timeoutMs: 2000,
         inheritHostEnv: false,
         env: createReplEnv({ GV_REPL_PAYLOAD: payload }),

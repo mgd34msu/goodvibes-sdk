@@ -18,6 +18,7 @@ export interface SandboxConfigSnapshot {
   readonly qemuGuestUser: string;
   readonly qemuWorkspacePath: string;
   readonly qemuSessionMode: SandboxQemuSessionMode;
+  readonly replJavaScriptCommand: string;
 }
 
 export interface SandboxHostStatus {

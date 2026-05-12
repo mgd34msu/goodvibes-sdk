@@ -71,6 +71,7 @@ export const coreConfigDefaults = {
     qemuGuestUser: 'goodvibes',
     qemuWorkspacePath: '/workspace',
     qemuSessionMode: 'attach',
+    replJavaScriptCommand: 'bun',
   },
   ui: {
     voiceEnabled: false,
@@ -468,6 +469,12 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     enumValues: ['attach', 'launch-per-command'],
     default: 'attach',
     description: 'Whether the QEMU wrapper attaches to an already running guest or launches a guest per command',
+  },
+  {
+    key: 'sandbox.replJavaScriptCommand',
+    type: 'string',
+    default: 'bun',
+    description: 'Guest command used for JavaScript-family REPL runtimes inside QEMU, including JavaScript, TypeScript, SQL, and GraphQL',
   },
   {
     key: 'ui.voiceEnabled',
