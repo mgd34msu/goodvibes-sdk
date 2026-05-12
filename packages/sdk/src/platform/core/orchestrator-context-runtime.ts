@@ -2,7 +2,7 @@ import type { ConversationManager } from './conversation.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { ModelDefinition, ProviderRegistry } from '../providers/registry.js';
 import { logger } from '../utils/logger.js';
-import { estimateConversationTokens, COMPACTION_BUFFER_TOKENS, SMALL_WINDOW_THRESHOLD, compactSmallWindow, shouldAutoCompact } from './context-compaction.js';
+import { estimateConversationTokens, COMPACTION_BUFFER_TOKENS, SMALL_WINDOW_THRESHOLD, compactSmallWindow, getAutoCompactDecision } from './context-compaction.js';
 import type { CompactionContext } from './context-compaction.js';
 import type { SessionMemoryStore } from './session-memory.js';
 import type { SessionLineageTracker } from './session-lineage.js';
@@ -50,6 +50,18 @@ function findLargerContextModels(
     .map(({ id, displayName, context }) => ({ id, displayName, context }));
 }
 
+function readAutoCompactThreshold(configManager: Pick<ConfigManager, 'get'>): number {
+  const raw = Number(configManager.get('behavior.autoCompactThreshold') ?? 0);
+  return Number.isFinite(raw) ? raw : 0;
+}
+
+function formatAutoCompactTrigger(decision: ReturnType<typeof getAutoCompactDecision>): string {
+  if (decision.reason === 'safety-buffer') {
+    return `leaving ${decision.remainingTokens.toLocaleString()} tokens, inside the ${decision.safetyBufferTokens.toLocaleString()} token safety buffer`;
+  }
+  return `crossing the ${decision.thresholdPercent}% auto-compact threshold`;
+}
+
 export type PreflightDeps = {
   conversation: ConversationManager;
   requestRender: () => void;
@@ -80,21 +92,32 @@ export async function checkContextWindowPreflight(
 
   const messages = deps.conversation.getMessagesForLLM();
   const estimatedTokens = estimateConversationTokens(messages);
-  if (estimatedTokens <= contextWindow) return 'ok';
-
-  const threshold = deps.configManager.get('behavior.autoCompactThreshold') as number;
+  const threshold = readAutoCompactThreshold(deps.configManager);
   const autoCompactEnabled = threshold > 0;
+  const preflightDecision = getAutoCompactDecision({
+    currentTokens: estimatedTokens,
+    contextWindow,
+    isCompacting: deps.isCompacting,
+    thresholdPercent: threshold,
+  });
+  if (!preflightDecision.shouldCompact && estimatedTokens <= contextWindow) return 'ok';
 
-  if (autoCompactEnabled && !deps.isCompacting) {
+  if (autoCompactEnabled && !deps.isCompacting && preflightDecision.shouldCompact) {
     logger.info('Orchestrator: context window pre-flight - auto-compacting before chat call', {
       modelId: model.id,
       estimatedTokens,
       contextWindow,
+      usagePct: Math.round(preflightDecision.usagePct),
+      thresholdPercent: preflightDecision.thresholdPercent,
+      thresholdTokens: preflightDecision.thresholdTokens,
+      remainingTokens: preflightDecision.remainingTokens,
+      safetyBufferTokens: preflightDecision.safetyBufferTokens,
+      reason: preflightDecision.reason,
     });
 
     deps.setIsCompacting(true);
     deps.conversation.addSystemMessage(
-      `Context pre-check: request (~${Math.round(estimatedTokens / 1000)}K tokens) exceeds ${model.displayName} context window (${Math.round(contextWindow / 1000)}K). Auto-compacting...`
+      `Context pre-check: request is at ${Math.round(preflightDecision.usagePct)}% (${estimatedTokens}/${contextWindow} tokens), ${formatAutoCompactTrigger(preflightDecision)}. Auto-compacting...`
     );
     deps.requestRender();
 
@@ -106,7 +129,17 @@ export async function checkContextWindowPreflight(
         specific: 'preflight',
         sessionId: deps.sessionId,
         timestamp: Date.now(),
-        payload: { trigger: 'preflight', estimatedTokens, contextWindow },
+        payload: {
+          trigger: 'preflight',
+          estimatedTokens,
+          contextWindow,
+          usagePct: Math.round(preflightDecision.usagePct),
+          thresholdPercent: preflightDecision.thresholdPercent,
+          thresholdTokens: preflightDecision.thresholdTokens,
+          remainingTokens: preflightDecision.remainingTokens,
+          safetyBufferTokens: preflightDecision.safetyBufferTokens,
+          reason: preflightDecision.reason,
+        },
       }).catch((err: unknown): HookResult => {
         logger.warn('Pre:compact:preflight hook error', { error: summarizeError(err) });
         return { ok: true };
@@ -142,7 +175,17 @@ export async function checkContextWindowPreflight(
           specific: 'preflight',
           sessionId: deps.sessionId,
           timestamp: Date.now(),
-          payload: { trigger: 'preflight', estimatedTokens, contextWindow },
+          payload: {
+            trigger: 'preflight',
+            estimatedTokens,
+            contextWindow,
+            usagePct: Math.round(preflightDecision.usagePct),
+            thresholdPercent: preflightDecision.thresholdPercent,
+            thresholdTokens: preflightDecision.thresholdTokens,
+            remainingTokens: preflightDecision.remainingTokens,
+            safetyBufferTokens: preflightDecision.safetyBufferTokens,
+            reason: preflightDecision.reason,
+          },
         }).catch((err: unknown) => { logger.warn('Post:compact:preflight hook error', { error: summarizeError(err) }); });
       }
     } catch (compactErr) {
@@ -157,7 +200,18 @@ export async function checkContextWindowPreflight(
           specific: 'preflight',
           sessionId: deps.sessionId,
           timestamp: Date.now(),
-          payload: { trigger: 'preflight', estimatedTokens, contextWindow, error: msg },
+          payload: {
+            trigger: 'preflight',
+            estimatedTokens,
+            contextWindow,
+            usagePct: Math.round(preflightDecision.usagePct),
+            thresholdPercent: preflightDecision.thresholdPercent,
+            thresholdTokens: preflightDecision.thresholdTokens,
+            remainingTokens: preflightDecision.remainingTokens,
+            safetyBufferTokens: preflightDecision.safetyBufferTokens,
+            reason: preflightDecision.reason,
+            error: msg,
+          },
         }).catch((err: unknown) => { logger.warn('Fail:compact:preflight hook error', { error: summarizeError(err) }); });
       }
     } finally {
@@ -258,28 +312,36 @@ export async function handlePostTurnContextMaintenance(
   const maxTokens = deps.providerRegistry.getContextWindowForModel(currentModel);
   if (maxTokens <= 0) return;
 
-  const usagePct = Math.round((totalTokens / maxTokens) * 100);
-  const configuredThreshold = deps.configManager.get('behavior.autoCompactThreshold') as number;
+  const configuredThreshold = readAutoCompactThreshold(deps.configManager);
   const warningsEnabled = deps.configManager.get('behavior.staleContextWarnings') as boolean;
   const autoCompactEnabled = configuredThreshold > 0;
+  const autoDecision = getAutoCompactDecision({
+    currentTokens: totalTokens,
+    contextWindow: maxTokens,
+    isCompacting: deps.isCompacting,
+    thresholdPercent: configuredThreshold,
+  });
+  const usagePct = Math.round(autoDecision.usagePct);
   const bracket = Math.floor(usagePct / 10) * 10;
 
   if (
     autoCompactEnabled &&
-    shouldAutoCompact({
-      currentTokens: totalTokens,
-      contextWindow: maxTokens,
-      isCompacting: deps.isCompacting,
-    })
+    autoDecision.shouldCompact
   ) {
     deps.setIsCompacting(true);
     deps.conversation.addSystemMessage(
-      `Context usage at ${usagePct}% (${totalTokens}/${maxTokens} tokens). Auto-compacting conversation...`
+      `Context usage at ${usagePct}% (${totalTokens}/${maxTokens} tokens), ${formatAutoCompactTrigger(autoDecision)}. Auto-compacting conversation...`
     );
     if (deps.runtimeBus) {
       emitOpsContextWarning(deps.runtimeBus, deps.emitterContext(turnId), {
         usage: usagePct,
-        threshold: COMPACTION_BUFFER_TOKENS,
+        threshold: autoDecision.thresholdPercent,
+        currentTokens: totalTokens,
+        contextWindow: maxTokens,
+        thresholdTokens: autoDecision.thresholdTokens,
+        remainingTokens: autoDecision.remainingTokens,
+        safetyBufferTokens: autoDecision.safetyBufferTokens,
+        reason: autoDecision.reason ?? 'threshold',
       });
     }
     deps.requestRender();
@@ -293,7 +355,17 @@ export async function handlePostTurnContextMaintenance(
         specific: 'auto',
         sessionId: deps.sessionId,
         timestamp: Date.now(),
-        payload: { trigger: 'auto', usagePct, totalTokens, maxTokens },
+        payload: {
+          trigger: 'auto',
+          usagePct,
+          totalTokens,
+          maxTokens,
+          thresholdPercent: autoDecision.thresholdPercent,
+          thresholdTokens: autoDecision.thresholdTokens,
+          remainingTokens: autoDecision.remainingTokens,
+          safetyBufferTokens: autoDecision.safetyBufferTokens,
+          reason: autoDecision.reason,
+        },
       }).catch((err: unknown): HookResult => {
         logger.warn('Pre:compact:auto hook error', { error: summarizeError(err) });
         return { ok: true };
@@ -349,7 +421,17 @@ export async function handlePostTurnContextMaintenance(
           deps.setLastWarningBracket(0);
           deps.conversation.addSystemMessage('Context auto-compacted. Conversation history summarized to free context window.');
           deps.requestRender();
-          logger.info('Orchestrator: auto-compact complete', { modelId: currentModel.registryKey, usagePct });
+          logger.info('Orchestrator: auto-compact complete', {
+            modelId: currentModel.registryKey,
+            usagePct,
+            totalTokens,
+            maxTokens,
+            thresholdPercent: autoDecision.thresholdPercent,
+            thresholdTokens: autoDecision.thresholdTokens,
+            remainingTokens: autoDecision.remainingTokens,
+            safetyBufferTokens: autoDecision.safetyBufferTokens,
+            reason: autoDecision.reason,
+          });
           if (deps.hookDispatcher) {
             deps.hookDispatcher.fire({
               path: 'Post:compact:auto',
@@ -358,7 +440,17 @@ export async function handlePostTurnContextMaintenance(
               specific: 'auto',
               sessionId: deps.sessionId,
               timestamp: Date.now(),
-              payload: { trigger: 'auto', usagePct, totalTokens, maxTokens },
+              payload: {
+                trigger: 'auto',
+                usagePct,
+                totalTokens,
+                maxTokens,
+                thresholdPercent: autoDecision.thresholdPercent,
+                thresholdTokens: autoDecision.thresholdTokens,
+                remainingTokens: autoDecision.remainingTokens,
+                safetyBufferTokens: autoDecision.safetyBufferTokens,
+                reason: autoDecision.reason,
+              },
             }).catch((err: unknown) => { logger.warn('Post:compact:auto hook error', { error: summarizeError(err) }); });
           }
         }).catch((err: unknown) => {
@@ -375,7 +467,18 @@ export async function handlePostTurnContextMaintenance(
               specific: 'auto',
               sessionId: deps.sessionId,
               timestamp: Date.now(),
-              payload: { trigger: 'auto', usagePct, totalTokens, maxTokens, error: msg },
+              payload: {
+                trigger: 'auto',
+                usagePct,
+                totalTokens,
+                maxTokens,
+                thresholdPercent: autoDecision.thresholdPercent,
+                thresholdTokens: autoDecision.thresholdTokens,
+                remainingTokens: autoDecision.remainingTokens,
+                safetyBufferTokens: autoDecision.safetyBufferTokens,
+                reason: autoDecision.reason,
+                error: msg,
+              },
             }).catch((err: unknown) => { logger.warn('Fail:compact:auto hook error', { error: summarizeError(err) }); });
           }
         });
@@ -389,17 +492,23 @@ export async function handlePostTurnContextMaintenance(
   } else if (
     warningsEnabled &&
     autoCompactEnabled &&
-    (maxTokens - totalTokens) <= COMPACTION_BUFFER_TOKENS * 2 &&
+    usagePct >= Math.max(0, configuredThreshold - 10) &&
     bracket > deps.lastWarningBracket
   ) {
     deps.setLastWarningBracket(bracket);
     deps.conversation.addSystemMessage(
-      `Context usage at ${usagePct}% (${totalTokens}/${maxTokens} tokens). Auto-compact will trigger within ${COMPACTION_BUFFER_TOKENS.toLocaleString()} remaining tokens.`
+      `Context usage at ${usagePct}% (${totalTokens}/${maxTokens} tokens). Auto-compact will trigger at ${configuredThreshold}% or when the ${COMPACTION_BUFFER_TOKENS.toLocaleString()} token safety buffer is reached.`
     );
     if (deps.runtimeBus) {
       emitOpsContextWarning(deps.runtimeBus, deps.emitterContext(turnId), {
         usage: usagePct,
-        threshold: COMPACTION_BUFFER_TOKENS,
+        threshold: configuredThreshold,
+        currentTokens: totalTokens,
+        contextWindow: maxTokens,
+        thresholdTokens: Math.floor((maxTokens * configuredThreshold) / 100),
+        remainingTokens: Math.max(0, maxTokens - totalTokens),
+        safetyBufferTokens: COMPACTION_BUFFER_TOKENS,
+        reason: 'threshold',
       });
     }
     deps.requestRender();

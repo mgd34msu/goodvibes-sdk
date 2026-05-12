@@ -23,7 +23,12 @@ export const EXEC_TOOL_SCHEMA = {
           },
           cwd: {
             type: 'string',
-            description: 'Working directory for this command. Overrides working_dir.',
+            description: 'Per-command working directory override. Prefer top-level working_dir for the project root.',
+          },
+          working_dir: {
+            type: 'string',
+            description:
+              'Alias for cwd on a command item. For a single-command call, this can also supply the required top-level working_dir.',
           },
           timeout_ms: {
             type: 'integer',
@@ -254,6 +259,7 @@ export interface ExecCommandInput {
   cmd?: string | undefined;
   cmd_base64?: string | undefined;
   cwd?: string | undefined;
+  working_dir?: string | undefined;
   timeout_ms?: number | undefined;
   env?: Record<string, string> | undefined;
   expect?: ExecExpect | undefined;

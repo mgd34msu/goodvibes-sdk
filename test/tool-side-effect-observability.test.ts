@@ -92,6 +92,23 @@ describe('tool side-effect observability', () => {
     expect(output.warnings?.some((warning) => warning.includes('Could not inspect'))).toBe(true);
   });
 
+  test('exec accepts command-level working_dir for a single command', async () => {
+    const root = tempRoot('gv-exec-command-working-dir-');
+    const tool = createExecTool(new ProcessManager(), {
+      overflowHandler: new OverflowHandler({ baseDir: root }),
+    });
+
+    const result = await tool.execute({
+      commands: [{ cmd: 'pwd', working_dir: root }],
+      verbosity: 'verbose',
+    });
+
+    expect(result.success).toBe(true);
+    const output = JSON.parse(result.output ?? '{}') as { stdout?: string; cwd?: string };
+    expect(output.stdout?.trim()).toBe(root);
+    expect(output.cwd).toBe(root);
+  });
+
   test('auto-repair returns warning metadata instead of throwing on clone failures', () => {
     const result = repairToolCall(
       'example',

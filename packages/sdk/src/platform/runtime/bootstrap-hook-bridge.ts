@@ -163,9 +163,10 @@ export function registerBootstrapHookBridge(
       ...(payload.toRole !== undefined ? { toRole: payload.toRole } : {}),
     });
   }));
-  unsubs.push(runtimeBus.on<Extract<OpsEvent, { type: 'OPS_CONTEXT_WARNING' }>>('OPS_CONTEXT_WARNING', ({ payload: { usage, threshold } }) => {
-    const specific = usage >= threshold ? 'exceeded' : 'warning';
-    fireHook(fireOptions, `Change:budget:${specific}` as HookEventPath, 'Change', 'budget', specific, { usage, threshold });
+  unsubs.push(runtimeBus.on<Extract<OpsEvent, { type: 'OPS_CONTEXT_WARNING' }>>('OPS_CONTEXT_WARNING', ({ payload }) => {
+    const { usage, threshold } = payload;
+    const specific = payload.reason === 'safety-buffer' || usage >= threshold ? 'exceeded' : 'warning';
+    fireHook(fireOptions, `Change:budget:${specific}` as HookEventPath, 'Change', 'budget', specific, payload);
   }));
 
   return unsubs;
