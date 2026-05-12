@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.29] - 2026-05-11
+
+### Fixed
+- Prevented retrospective documentation and setup-guide prompts from being
+  classified as project execution simply because they are long or mention a
+  workflow. Requests such as "list what you did", "summarize the workflow", and
+  "write an instruction guide" now avoid `[Project mode]` priming unless they
+  also ask for concrete implementation work.
+
+---
+
 ## [0.33.28] - 2026-05-11
 
 ### Fixed

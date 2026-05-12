@@ -34,6 +34,10 @@ const DELIVERABLE_SEPARATORS = /\band\b.+\band\b|;|\n-\s|\n\*\s|\n\d+\.\s/i;
 // Multiple sentences: two or more sentence-ending punctuation marks (. ! ?) followed by whitespace + capital
 const MULTI_SENTENCE = /[.!?][\s]+[A-Z].*[.!?][\s]+[A-Z]/;
 
+const RETROSPECTIVE_DOCUMENTATION_REQUEST = /(\bthings you did\b|\bfrom start to finish\b|\bwhat (?:you|we) did\b|\bsetup steps\b|\binstruction guide\b|\beasy to follow guide\b|\bfed to llms?\b|\bworkflow to follow\b|\bsummarize(?: the)? workflow\b|\bdocument(?: the)? setup\b|\blist\b.{0,120}\b(?:things|steps|installed|installations?|workflow|setup)\b|\b(?:write|draft|create|make|produce|generate|document|summarize)\b.{0,100}\b(?:instruction guide|guide|runbook|playbook|checklist|documentation|docs|setup steps|workflow summary|workflow to follow)\b)/i;
+
+const CONCRETE_IMPLEMENTATION_ACTION = /\b(build|implement|develop|add|refactor|migrate|scaffold|configure|integrate|deploy|fix|update|delete|remove|rename)\b/i;
+
 // ---------------------------------------------------------------------------
 // Classifier
 // ---------------------------------------------------------------------------
@@ -85,6 +89,16 @@ export function classifyIntent(message: string): ClassificationResult {
   if (SPEC_PLAN_WORDS.test(trimmed)) {
     projectScore += 1;
     signals.push('spec_plan_reference');
+  }
+
+  const isRetrospectiveDocumentationRequest = RETROSPECTIVE_DOCUMENTATION_REQUEST.test(trimmed);
+  if (isRetrospectiveDocumentationRequest) {
+    signals.push('documentation_request');
+    chatScore += 2;
+
+    if (!CONCRETE_IMPLEMENTATION_ACTION.test(trimmed)) {
+      projectScore = Math.min(projectScore, 2);
+    }
   }
 
   // ── Chat signals ───────────────────────────────────────────────────────────
