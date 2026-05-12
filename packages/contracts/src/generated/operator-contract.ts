@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.26"
+    "version": "0.33.27"
   },
   "auth": {
     "modes": [
@@ -51080,6 +51080,1092 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "mcp.config.get",
+        "title": "MCP Effective Config",
+        "description": "Return effective MCP config from global, external, and project sources. Environment values are redacted to envKeys.",
+        "category": "mcp",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:mcp"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/mcp/config"
+        },
+        "events": [
+          "runtime.mcp"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "locations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "writable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "scope",
+                  "kind",
+                  "path",
+                  "writable"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "servers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "command": {
+                    "type": "string"
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "envKeys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "role": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "trustMode": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "allowedPaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "allowedHosts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "writable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "kind",
+                      "path",
+                      "writable"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "command",
+                  "args",
+                  "envKeys",
+                  "role",
+                  "trustMode",
+                  "allowedPaths",
+                  "allowedHosts",
+                  "source"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "locations",
+            "servers"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "mcp.config.reload",
+        "title": "Reload MCP Config",
+        "description": "Reload effective MCP config and reconnect added, removed, or changed servers without daemon restart.",
+        "category": "mcp",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:mcp"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/mcp/reload"
+        },
+        "events": [
+          "runtime.mcp"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "reload": {
+              "type": "object",
+              "properties": {
+                "added": {
+                  "type": "number"
+                },
+                "changed": {
+                  "type": "number"
+                },
+                "removed": {
+                  "type": "number"
+                },
+                "unchanged": {
+                  "type": "number"
+                },
+                "servers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "added",
+                          "changed",
+                          "removed",
+                          "unchanged"
+                        ]
+                      },
+                      "connected": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "action",
+                      "connected"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "added",
+                "changed",
+                "removed",
+                "unchanged",
+                "servers"
+              ],
+              "additionalProperties": false
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "writable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "kind",
+                      "path",
+                      "writable"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "servers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "command": {
+                        "type": "string"
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "envKeys": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "role": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "trustMode": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "allowedPaths": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "allowedHosts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "source": {
+                        "type": "object",
+                        "properties": {
+                          "scope": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "writable": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "scope",
+                          "kind",
+                          "path",
+                          "writable"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "command",
+                      "args",
+                      "envKeys",
+                      "role",
+                      "trustMode",
+                      "allowedPaths",
+                      "allowedHosts",
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "locations",
+                "servers"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "reload",
+            "config"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "mcp.servers.list",
+        "title": "MCP Servers List",
+        "description": "Return configured MCP servers, runtime security posture, and sandbox bindings.",
+        "category": "mcp",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:mcp"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/mcp/servers"
+        },
+        "events": [
+          "runtime.mcp"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "servers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "connected": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "connected"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "security": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            },
+            "sandboxBindings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "servers",
+            "security",
+            "sandboxBindings"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "mcp.servers.remove",
+        "title": "Remove MCP Server",
+        "description": "Remove a project/global MCP server config and disconnect it without daemon restart.",
+        "category": "mcp",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:mcp"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/mcp/config/servers/{serverName}"
+        },
+        "events": [
+          "runtime.mcp"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "serverName": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "project",
+                "global"
+              ]
+            }
+          },
+          "required": [
+            "serverName"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "project",
+                "global"
+              ]
+            },
+            "path": {
+              "type": "string"
+            },
+            "removed": {
+              "type": "boolean"
+            },
+            "reload": {
+              "type": "object",
+              "properties": {
+                "added": {
+                  "type": "number"
+                },
+                "changed": {
+                  "type": "number"
+                },
+                "removed": {
+                  "type": "number"
+                },
+                "unchanged": {
+                  "type": "number"
+                },
+                "servers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "added",
+                          "changed",
+                          "removed",
+                          "unchanged"
+                        ]
+                      },
+                      "connected": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "action",
+                      "connected"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "added",
+                "changed",
+                "removed",
+                "unchanged",
+                "servers"
+              ],
+              "additionalProperties": false
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "writable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "kind",
+                      "path",
+                      "writable"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "servers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "command": {
+                        "type": "string"
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "envKeys": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "role": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "trustMode": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "allowedPaths": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "allowedHosts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "source": {
+                        "type": "object",
+                        "properties": {
+                          "scope": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "writable": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "scope",
+                          "kind",
+                          "path",
+                          "writable"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "command",
+                      "args",
+                      "envKeys",
+                      "role",
+                      "trustMode",
+                      "allowedPaths",
+                      "allowedHosts",
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "locations",
+                "servers"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "scope",
+            "path",
+            "reload",
+            "config"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "mcp.servers.upsert",
+        "title": "Upsert MCP Server",
+        "description": "Persist a project/global MCP server config and reconnect the changed runtime server without daemon restart.",
+        "category": "mcp",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:mcp"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/mcp/config/servers"
+        },
+        "events": [
+          "runtime.mcp"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "project",
+                "global"
+              ]
+            },
+            "server": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": true
+                },
+                "envKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "role": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "trustMode": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "allowedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "allowedHosts": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "command"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "server"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "project",
+                "global"
+              ]
+            },
+            "path": {
+              "type": "string"
+            },
+            "removed": {
+              "type": "boolean"
+            },
+            "reload": {
+              "type": "object",
+              "properties": {
+                "added": {
+                  "type": "number"
+                },
+                "changed": {
+                  "type": "number"
+                },
+                "removed": {
+                  "type": "number"
+                },
+                "unchanged": {
+                  "type": "number"
+                },
+                "servers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "added",
+                          "changed",
+                          "removed",
+                          "unchanged"
+                        ]
+                      },
+                      "connected": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "action",
+                      "connected"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "added",
+                "changed",
+                "removed",
+                "unchanged",
+                "servers"
+              ],
+              "additionalProperties": false
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "writable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "kind",
+                      "path",
+                      "writable"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "servers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "command": {
+                        "type": "string"
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "envKeys": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "role": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "trustMode": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "allowedPaths": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "allowedHosts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "source": {
+                        "type": "object",
+                        "properties": {
+                          "scope": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "writable": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "scope",
+                          "kind",
+                          "path",
+                          "writable"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "command",
+                      "args",
+                      "envKeys",
+                      "role",
+                      "trustMode",
+                      "allowedPaths",
+                      "allowedHosts",
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "locations",
+                "servers"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "scope",
+            "path",
+            "reload",
+            "config"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "mcp.tools.list",
+        "title": "MCP Tools List",
+        "description": "Return currently connected MCP tools.",
+        "category": "mcp",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:mcp"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/mcp/tools"
+        },
+        "events": [
+          "runtime.mcp"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "qualifiedName": {
+                    "type": "string"
+                  },
+                  "serverName": {
+                    "type": "string"
+                  },
+                  "toolName": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "qualifiedName",
+                  "serverName",
+                  "toolName",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "tools"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "media.analyze",
         "title": "Analyze Media Artifact",
         "description": "Analyze an artifact through a registered media provider.",
@@ -73874,10 +74960,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 273,
-      "typedInputs": 273,
+      "methods": 279,
+      "typedInputs": 279,
       "genericInputs": 0,
-      "typedOutputs": 273,
+      "typedOutputs": 279,
       "genericOutputs": 0
     },
     "eventCoverage": {

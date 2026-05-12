@@ -430,6 +430,8 @@ export function createDaemonFacadeCollaborators(
     watcherRegistry: runtime.watcherRegistry,
     voiceService: runtime.voiceService,
     webSearchService: runtime.webSearchService,
+    mcpRegistry: runtime.runtimeServices.mcpRegistry,
+    mcpConfigRoots: runtime.runtimeServices.shellPaths,
     knowledgeService: runtime.knowledgeService,
     homeGraphService: runtime.homeGraphService,
     projectPlanningService: runtime.projectPlanningService,

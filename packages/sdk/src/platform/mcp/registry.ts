@@ -8,7 +8,11 @@
  * Tool namespace: mcp:<server-name>:<tool-name>
  */
 import { logger } from '../utils/logger.js';
-import { loadMcpConfig } from './config.js';
+import {
+  loadMcpEffectiveConfig,
+  removeMcpServerConfig,
+  upsertMcpServerConfig,
+} from './config.js';
 import { McpClient } from './client.js';
 import type {
   McpClientNotification,
@@ -17,7 +21,12 @@ import type {
   McpProcessSpec,
 } from './client.js';
 import type { McpToolInfo, McpToolSchema } from './client.js';
-import type { McpServerConfig } from './config.js';
+import type {
+  McpConfigRoots,
+  McpConfigScope,
+  McpEffectiveConfig,
+  McpServerConfig,
+} from './config.js';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
 import type { HookEvent } from '../hooks/types.js';
 import { McpPermissionManager } from '../runtime/mcp/permissions.js';
@@ -26,12 +35,12 @@ import type { McpDecisionRecord, QuarantineReason, SchemaFreshness } from '../ru
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {
   emitMcpConfigured,
+  emitMcpDisconnected,
   emitMcpPolicyUpdated,
   emitMcpSchemaQuarantineApproved,
   emitMcpSchemaQuarantined,
 } from '../runtime/emitters/mcp.js';
 import type { ConfigManager } from '../config/manager.js';
-import type { McpConfigRoots } from './config.js';
 import { getSandboxConfigSnapshot } from '../runtime/sandbox/manager.js';
 import {
   type SandboxSessionRegistry,
@@ -53,8 +62,27 @@ export interface RegisteredTool {
   description: string;
 }
 
+export interface McpReloadServerResult {
+  readonly name: string;
+  readonly action: 'added' | 'changed' | 'removed' | 'unchanged';
+  readonly connected: boolean;
+}
+
+export interface McpReloadResult {
+  readonly added: number;
+  readonly changed: number;
+  readonly removed: number;
+  readonly unchanged: number;
+  readonly servers: readonly McpReloadServerResult[];
+}
+
+function sameServerConfig(a: McpServerConfig | undefined, b: McpServerConfig | undefined): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
 export class McpRegistry {
   private clients = new Map<string, McpClient>();
+  private serverConfigs = new Map<string, McpServerConfig>();
   private permissions = new McpPermissionManager();
   private freshness = new McpSchemaFreshnessTracker();
   private runtimeBus: RuntimeEventBus | null = null;
@@ -85,10 +113,7 @@ export class McpRegistry {
    * Errors on individual servers are logged but do not abort the whole startup.
    */
   async connectAll(roots: McpConfigRoots): Promise<void> {
-    const mcpConfig = loadMcpConfig(roots);
-    await Promise.allSettled(
-      mcpConfig.servers.map((serverConfig) => this._connectServer(serverConfig)),
-    );
+    await this.reload(roots);
   }
 
   /**
@@ -96,7 +121,80 @@ export class McpRegistry {
    * Exposed for programmatic use (testing, dynamic registration).
    */
   async connectServer(serverConfig: McpServerConfig): Promise<void> {
+    this.serverConfigs.set(serverConfig.name, serverConfig);
     await this._connectServer(serverConfig);
+  }
+
+  async reload(roots: McpConfigRoots): Promise<McpReloadResult> {
+    const effective = loadMcpEffectiveConfig(roots);
+    return this.applyConfig(effective.servers.map((entry) => entry.server));
+  }
+
+  getEffectiveConfig(roots: McpConfigRoots): McpEffectiveConfig {
+    return loadMcpEffectiveConfig(roots);
+  }
+
+  async upsertServerConfig(
+    roots: McpConfigRoots,
+    scope: McpConfigScope,
+    serverConfig: McpServerConfig,
+  ): Promise<{ readonly path: string; readonly reload: McpReloadResult }> {
+    const written = upsertMcpServerConfig(roots, scope, serverConfig);
+    return { path: written.path, reload: await this.reload(roots) };
+  }
+
+  async removeServerConfig(
+    roots: McpConfigRoots,
+    scope: McpConfigScope,
+    serverName: string,
+  ): Promise<{ readonly path: string; readonly removed: boolean; readonly reload: McpReloadResult }> {
+    const written = removeMcpServerConfig(roots, scope, serverName);
+    return { path: written.path, removed: written.removed, reload: await this.reload(roots) };
+  }
+
+  async applyConfig(serverConfigs: readonly McpServerConfig[]): Promise<McpReloadResult> {
+    const next = new Map(serverConfigs.map((serverConfig) => [serverConfig.name, serverConfig] as const));
+    const results: McpReloadServerResult[] = [];
+    let added = 0;
+    let changed = 0;
+    let removed = 0;
+    let unchanged = 0;
+
+    for (const name of [...this.serverConfigs.keys()]) {
+      if (next.has(name)) continue;
+      await this.disconnectServer(name, 'config-removed');
+      this.serverConfigs.delete(name);
+      removed += 1;
+      results.push({ name, action: 'removed', connected: false });
+    }
+
+    for (const [name, serverConfig] of next) {
+      const previous = this.serverConfigs.get(name);
+      if (previous && sameServerConfig(previous, serverConfig)) {
+        unchanged += 1;
+        const client = this.clients.get(name);
+        if (!client?.isConnected) {
+          await this._connectServer(serverConfig);
+        }
+        results.push({ name, action: 'unchanged', connected: this.clients.get(name)?.isConnected ?? false });
+        continue;
+      }
+      if (previous) {
+        await this.disconnectServer(name, 'config-changed');
+        changed += 1;
+      } else {
+        added += 1;
+      }
+      this.serverConfigs.set(name, serverConfig);
+      await this._connectServer(serverConfig);
+      results.push({
+        name,
+        action: previous ? 'changed' : 'added',
+        connected: this.clients.get(name)?.isConnected ?? false,
+      });
+    }
+
+    return { added, changed, removed, unchanged, servers: results };
   }
 
   /**
@@ -244,6 +342,38 @@ export class McpRegistry {
     this.sandboxSessionByServer.clear();
   }
 
+  async disconnectServer(serverName: string, reason = 'manual'): Promise<boolean> {
+    const client = this.clients.get(serverName);
+    if (!client) return false;
+    await client.disconnect();
+    this.clients.delete(serverName);
+    const sessionId = this.sandboxSessionByServer.get(serverName);
+    if (sessionId) {
+      this.sandboxSessions.stop(sessionId);
+      this.sandboxSessionByServer.delete(serverName);
+    }
+    if (this.runtimeBus) {
+      emitMcpDisconnected(this.runtimeBus, {
+        sessionId: 'mcp-registry',
+        traceId: `mcp-registry:${serverName}:disconnected`,
+        source: 'mcp-registry',
+      }, { serverId: serverName, reason, willRetry: false });
+    }
+    const disconnectedEvent: HookEvent = {
+      path: 'Lifecycle:mcp:disconnected',
+      phase: 'Lifecycle',
+      category: 'mcp',
+      specific: 'disconnected',
+      sessionId: '',
+      timestamp: Date.now(),
+      payload: { server: serverName, reason },
+    };
+    this.hookDispatcher.fire(disconnectedEvent).catch((err: unknown) => {
+      logger.warn('Lifecycle:mcp:disconnected hook error', { error: summarizeError(err) });
+    });
+    return true;
+  }
+
   /**
    * getClient — Get the McpClient for a given server name (for advanced use).
    */
@@ -253,16 +383,16 @@ export class McpRegistry {
 
   /** Connected server names. */
   get serverNames(): string[] {
-    return Array.from(this.clients.keys());
+    return Array.from(new Set([...this.serverConfigs.keys(), ...this.clients.keys()])).sort();
   }
 
   /**
    * listServers — Return status info for all known servers (connected or not).
    */
   listServers(): Array<{ name: string; connected: boolean }> {
-    return Array.from(this.clients.entries()).map(([name, client]) => ({
+    return this.serverNames.map((name) => ({
       name,
-      connected: client.isConnected,
+      connected: this.clients.get(name)?.isConnected ?? false,
     }));
   }
 
@@ -362,9 +492,13 @@ export class McpRegistry {
 
   private async _connectServer(serverConfig: McpServerConfig): Promise<void> {
     const { name } = serverConfig;
-    if (this.clients.has(name)) {
+    const existing = this.clients.get(name);
+    if (existing?.isConnected) {
       logger.info('McpRegistry: server already registered', { name });
       return;
+    }
+    if (existing) {
+      await this.disconnectServer(name, 'reconnect');
     }
     let sandboxSessionId: string | null = null;
     let processSpec: McpProcessSpec | undefined;

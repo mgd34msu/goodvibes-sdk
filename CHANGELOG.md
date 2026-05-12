@@ -8,6 +8,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.27] - 2026-05-11
+
+### Added
+- Added SDK-owned runtime MCP config management so hosts can add, remove, and
+  reload MCP servers without restarting the daemon. New daemon/operator routes
+  expose effective config, runtime server status, connected tools, config
+  reload, and project/global server upsert/remove.
+- Added durable MCP config helpers for writable project/global GoodVibes MCP
+  config files, including effective source metadata and project-over-global
+  precedence.
+
+### Fixed
+- MCP runtime reload now reconnects only added/changed/removed servers and keeps
+  configured-but-failed servers visible in runtime status so UI surfaces can
+  repair bad config without losing the record.
+- MCP config list responses redact environment values and expose env keys only.
+
+---
+
 ## [0.33.26] - 2026-05-10
 
 ### Fixed
