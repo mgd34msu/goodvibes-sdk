@@ -1,4 +1,6 @@
 import type { RegisteredTool } from './registry.js';
+import type { McpConfigRoots, McpConfigScope, McpEffectiveConfig, McpServerConfig } from './config.js';
+import type { McpReloadResult } from './registry.js';
 import type { McpDecisionRecord, McpServerRole, McpTrustMode, QuarantineReason, SchemaFreshness } from '../runtime/mcp/types.js';
 
 export interface McpServerRecord {
@@ -29,6 +31,18 @@ export interface McpSandboxBindingRecord {
 }
 
 export interface McpApi {
+  getEffectiveConfig(roots: McpConfigRoots): McpEffectiveConfig;
+  reload(roots: McpConfigRoots): Promise<McpReloadResult>;
+  upsertServerConfig(
+    roots: McpConfigRoots,
+    scope: McpConfigScope,
+    serverConfig: McpServerConfig,
+  ): Promise<{ readonly path: string; readonly reload: McpReloadResult }>;
+  removeServerConfig(
+    roots: McpConfigRoots,
+    scope: McpConfigScope,
+    serverName: string,
+  ): Promise<{ readonly path: string; readonly removed: boolean; readonly reload: McpReloadResult }>;
   listServerNames(): readonly string[];
   listServers(): readonly McpServerRecord[];
   listServerSecurity(): readonly McpServerSecurityRecord[];
@@ -43,6 +57,18 @@ export interface McpApi {
 
 export interface McpApiRegistry {
   readonly serverNames: readonly string[];
+  getEffectiveConfig(roots: McpConfigRoots): McpEffectiveConfig;
+  reload(roots: McpConfigRoots): Promise<McpReloadResult>;
+  upsertServerConfig(
+    roots: McpConfigRoots,
+    scope: McpConfigScope,
+    serverConfig: McpServerConfig,
+  ): Promise<{ readonly path: string; readonly reload: McpReloadResult }>;
+  removeServerConfig(
+    roots: McpConfigRoots,
+    scope: McpConfigScope,
+    serverName: string,
+  ): Promise<{ readonly path: string; readonly removed: boolean; readonly reload: McpReloadResult }>;
   listServers(): readonly McpServerRecord[];
   listServerSecurity(): readonly McpServerSecurityRecord[];
   listServerSandboxBindings(): readonly McpSandboxBindingRecord[];
@@ -56,6 +82,18 @@ export interface McpApiRegistry {
 
 export function createMcpApi(registry: McpApiRegistry): McpApi {
   return {
+    getEffectiveConfig(roots) {
+      return registry.getEffectiveConfig(roots);
+    },
+    reload(roots) {
+      return registry.reload(roots);
+    },
+    upsertServerConfig(roots, scope, serverConfig) {
+      return registry.upsertServerConfig(roots, scope, serverConfig);
+    },
+    removeServerConfig(roots, scope, serverName) {
+      return registry.removeServerConfig(roots, scope, serverName);
+    },
     listServerNames(): readonly string[] {
       return registry.serverNames;
     },

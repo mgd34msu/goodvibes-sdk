@@ -1,6 +1,7 @@
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 import {
   EMPTY_OBJECT_SCHEMA,
+  BOOLEAN_SCHEMA,
   STRING_SCHEMA,
   NUMBER_SCHEMA,
   objectSchema,
@@ -9,8 +10,9 @@ import {
   bodyEnvelopeSchema,
   methodDescriptor,
   runtimeEventId,
+  arraySchema,
 } from './method-catalog-shared.js';
-import { nullableSchema } from './operator-contract-schemas-shared.js';
+import { enumSchema, nullableSchema } from './operator-contract-schemas-shared.js';
 import {
   CONTINUITY_SNAPSHOT_SCHEMA,
   DISTRIBUTED_NODE_HOST_CONTRACT_SCHEMA,
@@ -42,7 +44,156 @@ import {
   WORKTREE_SNAPSHOT_SCHEMA,
 } from './operator-contract-schemas.js';
 
+const MCP_SCOPE_SCHEMA = enumSchema(['project', 'global']);
+const MCP_SERVER_CONFIG_SCHEMA = objectSchema({
+  name: STRING_SCHEMA,
+  command: STRING_SCHEMA,
+  args: arraySchema(STRING_SCHEMA),
+  env: objectSchema({}, [], { additionalProperties: true }),
+  envKeys: arraySchema(STRING_SCHEMA),
+  role: nullableSchema(STRING_SCHEMA),
+  trustMode: nullableSchema(STRING_SCHEMA),
+  allowedPaths: arraySchema(STRING_SCHEMA),
+  allowedHosts: arraySchema(STRING_SCHEMA),
+}, ['name', 'command']);
+const MCP_CONFIG_SOURCE_SCHEMA = objectSchema({
+  scope: STRING_SCHEMA,
+  kind: STRING_SCHEMA,
+  path: STRING_SCHEMA,
+  writable: BOOLEAN_SCHEMA,
+}, ['scope', 'kind', 'path', 'writable']);
+const MCP_CONFIG_SERVER_SCHEMA = objectSchema({
+  name: STRING_SCHEMA,
+  command: STRING_SCHEMA,
+  args: arraySchema(STRING_SCHEMA),
+  envKeys: arraySchema(STRING_SCHEMA),
+  role: nullableSchema(STRING_SCHEMA),
+  trustMode: nullableSchema(STRING_SCHEMA),
+  allowedPaths: arraySchema(STRING_SCHEMA),
+  allowedHosts: arraySchema(STRING_SCHEMA),
+  source: MCP_CONFIG_SOURCE_SCHEMA,
+}, ['name', 'command', 'args', 'envKeys', 'role', 'trustMode', 'allowedPaths', 'allowedHosts', 'source']);
+const MCP_RELOAD_SERVER_SCHEMA = objectSchema({
+  name: STRING_SCHEMA,
+  action: enumSchema(['added', 'changed', 'removed', 'unchanged']),
+  connected: BOOLEAN_SCHEMA,
+}, ['name', 'action', 'connected']);
+const MCP_RELOAD_RESULT_SCHEMA = objectSchema({
+  added: NUMBER_SCHEMA,
+  changed: NUMBER_SCHEMA,
+  removed: NUMBER_SCHEMA,
+  unchanged: NUMBER_SCHEMA,
+  servers: arraySchema(MCP_RELOAD_SERVER_SCHEMA),
+}, ['added', 'changed', 'removed', 'unchanged', 'servers']);
+const MCP_CONFIG_RESPONSE_SCHEMA = objectSchema({
+  locations: arraySchema(MCP_CONFIG_SOURCE_SCHEMA),
+  servers: arraySchema(MCP_CONFIG_SERVER_SCHEMA),
+}, ['locations', 'servers']);
+const MCP_CONFIG_MUTATION_RESPONSE_SCHEMA = objectSchema({
+  scope: MCP_SCOPE_SCHEMA,
+  path: STRING_SCHEMA,
+  removed: BOOLEAN_SCHEMA,
+  reload: MCP_RELOAD_RESULT_SCHEMA,
+  config: MCP_CONFIG_RESPONSE_SCHEMA,
+}, ['scope', 'path', 'reload', 'config']);
+const MCP_SERVER_STATUS_SCHEMA = objectSchema({
+  name: STRING_SCHEMA,
+  connected: BOOLEAN_SCHEMA,
+}, ['name', 'connected']);
+const MCP_SERVERS_RESPONSE_SCHEMA = objectSchema({
+  servers: arraySchema(MCP_SERVER_STATUS_SCHEMA),
+  security: arraySchema(objectSchema({}, [], { additionalProperties: true })),
+  sandboxBindings: arraySchema(objectSchema({}, [], { additionalProperties: true })),
+}, ['servers', 'security', 'sandboxBindings']);
+const MCP_TOOL_SCHEMA = objectSchema({
+  qualifiedName: STRING_SCHEMA,
+  serverName: STRING_SCHEMA,
+  toolName: STRING_SCHEMA,
+  description: STRING_SCHEMA,
+}, ['qualifiedName', 'serverName', 'toolName', 'description']);
+const MCP_TOOLS_RESPONSE_SCHEMA = objectSchema({
+  tools: arraySchema(MCP_TOOL_SCHEMA),
+}, ['tools']);
+
 export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescriptor[] = [
+  methodDescriptor({
+    id: 'mcp.config.get',
+    title: 'MCP Effective Config',
+    description: 'Return effective MCP config from global, external, and project sources. Environment values are redacted to envKeys.',
+    category: 'mcp',
+    scopes: ['read:mcp'],
+    http: { method: 'GET', path: '/api/mcp/config' },
+    events: [runtimeEventId('mcp')],
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: MCP_CONFIG_RESPONSE_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'mcp.servers.list',
+    title: 'MCP Servers List',
+    description: 'Return configured MCP servers, runtime security posture, and sandbox bindings.',
+    category: 'mcp',
+    scopes: ['read:mcp'],
+    http: { method: 'GET', path: '/api/mcp/servers' },
+    events: [runtimeEventId('mcp')],
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: MCP_SERVERS_RESPONSE_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'mcp.tools.list',
+    title: 'MCP Tools List',
+    description: 'Return currently connected MCP tools.',
+    category: 'mcp',
+    scopes: ['read:mcp'],
+    http: { method: 'GET', path: '/api/mcp/tools' },
+    events: [runtimeEventId('mcp')],
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: MCP_TOOLS_RESPONSE_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'mcp.config.reload',
+    title: 'Reload MCP Config',
+    description: 'Reload effective MCP config and reconnect added, removed, or changed servers without daemon restart.',
+    category: 'mcp',
+    scopes: ['write:mcp'],
+    access: 'admin',
+    http: { method: 'POST', path: '/api/mcp/reload' },
+    events: [runtimeEventId('mcp')],
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: objectSchema({
+      reload: MCP_RELOAD_RESULT_SCHEMA,
+      config: MCP_CONFIG_RESPONSE_SCHEMA,
+    }, ['reload', 'config']),
+  }),
+  methodDescriptor({
+    id: 'mcp.servers.upsert',
+    title: 'Upsert MCP Server',
+    description: 'Persist a project/global MCP server config and reconnect the changed runtime server without daemon restart.',
+    category: 'mcp',
+    scopes: ['write:mcp'],
+    access: 'admin',
+    http: { method: 'POST', path: '/api/mcp/config/servers' },
+    events: [runtimeEventId('mcp')],
+    inputSchema: bodyEnvelopeSchema({
+      scope: MCP_SCOPE_SCHEMA,
+      server: MCP_SERVER_CONFIG_SCHEMA,
+    }, ['server']),
+    outputSchema: MCP_CONFIG_MUTATION_RESPONSE_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'mcp.servers.remove',
+    title: 'Remove MCP Server',
+    description: 'Remove a project/global MCP server config and disconnect it without daemon restart.',
+    category: 'mcp',
+    scopes: ['write:mcp'],
+    access: 'admin',
+    http: { method: 'DELETE', path: '/api/mcp/config/servers/{serverName}' },
+    events: [runtimeEventId('mcp')],
+    inputSchema: objectSchema({
+      serverName: STRING_SCHEMA,
+      scope: MCP_SCOPE_SCHEMA,
+    }, ['serverName']),
+    outputSchema: MCP_CONFIG_MUTATION_RESPONSE_SCHEMA,
+  }),
   methodDescriptor({
     id: 'remote.snapshot',
     title: 'Remote Runtime Snapshot',

@@ -76,6 +76,7 @@ import { dispatchCompanionChatRoutes } from '../../companion/companion-chat-rout
 import { dispatchModelRoutes } from './model-routes.js';
 import { dispatchBatchRoutes } from './batch-routes.js';
 import { dispatchCloudflareRoutes } from './cloudflare-routes.js';
+import { dispatchMcpRoutes } from './mcp-routes.js';
 import { HomeAssistantConversationRoutes } from './homeassistant-routes.js';
 import { HomeGraphRoutes } from './home-graph-routes.js';
 import { dispatchOpenAICompatibleRoutes } from './openai-compatible-routes.js';
@@ -105,6 +106,8 @@ interface DaemonHttpRouterContext {
   readonly watcherRegistry: WatcherRegistry;
   readonly voiceService: VoiceService;
   readonly webSearchService: WebSearchService;
+  readonly mcpRegistry: import('../../mcp/registry.js').McpRegistry;
+  readonly mcpConfigRoots: import('../../mcp/config.js').McpConfigRoots;
   readonly knowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
   readonly projectPlanningService: ProjectPlanningService;
@@ -347,6 +350,17 @@ export class DaemonHttpRouter {
         parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
       });
       if (cloudflareResponse) return cloudflareResponse;
+    }
+
+    if (url.pathname.startsWith('/api/mcp')) {
+      const mcpResponse = await dispatchMcpRoutes(req, {
+        mcpRegistry: this.context.mcpRegistry,
+        roots: this.context.mcpConfigRoots,
+        parseJsonBody: (request: Request) => this.parseJsonBody(request),
+        parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
+        requireAdmin: (request) => this.context.requireAdmin(request),
+      });
+      if (mcpResponse) return mcpResponse;
     }
 
     if (url.pathname.startsWith('/api/homeassistant')) {
