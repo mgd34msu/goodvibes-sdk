@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.30] - 2026-05-11
+
+### Fixed
+- Made JavaScript-family REPL execution inside QEMU use a guest runtime command
+  instead of the host `process.execPath`. The SDK now defaults to `bun` for
+  JavaScript, TypeScript, SQL, and GraphQL REPL snippets in QEMU and exposes
+  `sandbox.replJavaScriptCommand` for guest-specific overrides such as
+  `/home/goodvibes/.bun/bin/bun`.
+
+---
+
 ## [0.33.29] - 2026-05-11
 
 ### Fixed

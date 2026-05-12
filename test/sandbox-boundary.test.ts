@@ -18,6 +18,7 @@ import {
   buildSandboxLaunchPlan,
   probeSandboxBackends,
 } from '../packages/sdk/src/platform/runtime/sandbox/backend.js';
+import { resolveReplJavaScriptCommand } from '../packages/sdk/src/platform/tools/repl/index.js';
 
 const sandboxConfig = {
   'sandbox.replIsolation': 'shared-vm',
@@ -32,6 +33,7 @@ const sandboxConfig = {
   'sandbox.qemuGuestUser': 'goodvibes',
   'sandbox.qemuWorkspacePath': '/workspace',
   'sandbox.qemuSessionMode': 'attach',
+  'sandbox.replJavaScriptCommand': 'bun',
 } as const;
 
 function makeConfigManager() {
@@ -72,6 +74,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
       qemuGuestUser: 'goodvibes',
       qemuWorkspacePath: '/workspace',
       qemuSessionMode: 'attach',
+      replJavaScriptCommand: 'bun',
     });
   });
 
@@ -101,6 +104,21 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
     expect(presets).toBeInstanceOf(Array);
     const ids = (presets as Array<Record<string, unknown>>).map((p) => p.id);
     expect(ids).toContain('secure-balanced');
+    expect(presets.every((preset) => preset.config.replJavaScriptCommand === 'bun')).toBe(true);
+  });
+
+  test('QEMU JavaScript-family REPL uses guest runtime command instead of host process path', () => {
+    const command = resolveReplJavaScriptCommand({ backend: 'qemu' }, makeConfigManager());
+    expect(command).toBe('bun');
+    expect(command).not.toBe(process.execPath);
+  });
+
+  test('QEMU JavaScript-family REPL honors configured guest runtime command', () => {
+    const command = resolveReplJavaScriptCommand(
+      { backend: 'qemu' },
+      makeConfigManagerWith({ 'sandbox.replJavaScriptCommand': '/home/goodvibes/.bun/bin/bun' }),
+    );
+    expect(command).toBe('/home/goodvibes/.bun/bin/bun');
   });
 
   test('getSandboxPreset returns the preset for secure-balanced with id and label', () => {
