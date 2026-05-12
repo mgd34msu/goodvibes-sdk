@@ -23,6 +23,12 @@ export type OpsEvent =
       type: 'OPS_CONTEXT_WARNING';
       usage: number;
       threshold: number;
+      currentTokens?: number | undefined;
+      contextWindow?: number | undefined;
+      thresholdTokens?: number | undefined;
+      remainingTokens?: number | undefined;
+      safetyBufferTokens?: number | undefined;
+      reason?: 'threshold' | 'safety-buffer' | undefined;
     }
   /** Cache hit-rate and token metrics snapshot. */
   | {

@@ -13,12 +13,20 @@ import type { OpsInterventionReason } from '../../../events/ops.js';
 export function emitOpsContextWarning(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { usage: number; threshold: number }
+  data: {
+    usage: number;
+    threshold: number;
+    currentTokens?: number | undefined;
+    contextWindow?: number | undefined;
+    thresholdTokens?: number | undefined;
+    remainingTokens?: number | undefined;
+    safetyBufferTokens?: number | undefined;
+    reason?: 'threshold' | 'safety-buffer' | undefined;
+  }
 ): void {
   bus.emit('ops', createEventEnvelope('OPS_CONTEXT_WARNING', {
     type: 'OPS_CONTEXT_WARNING',
-    usage: data.usage,
-    threshold: data.threshold,
+    ...data,
   }, ctx));
 }
 

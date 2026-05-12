@@ -15,7 +15,7 @@
  * Public API:
  *   estimateConversationTokens(messages)   — rough token count for a message array
  *   estimateTokens(text)                   — rough token count for a string
- *   shouldAutoCompact(opts)                — check if 15k token buffer threshold is exceeded
+ *   shouldAutoCompact(opts)                — check if configured usage threshold or safety buffer is exceeded
  *   compactSmallWindow(messages, keepRecent) — simplified compaction for small context windows
  *   compactMessages(ctx, registry)         — structured compaction entry point
  *   checkAndCompact(autoOpts, ctx)         — check and compact if threshold exceeded
@@ -59,6 +59,22 @@ export interface AutoCompactOptions {
   contextWindow: number;
   /** Whether auto-compact is already in progress (prevent re-entry). */
   isCompacting: boolean;
+  /** Usage percentage that triggers compaction. Defaults to 80. */
+  thresholdPercent?: number | undefined;
+  /** Remaining-token safety buffer that also triggers compaction. Defaults to 15000. */
+  minRemainingTokens?: number | undefined;
+}
+
+export interface AutoCompactDecision {
+  readonly shouldCompact: boolean;
+  readonly reason: 'threshold' | 'safety-buffer' | null;
+  readonly currentTokens: number;
+  readonly contextWindow: number;
+  readonly usagePct: number;
+  readonly thresholdPercent: number;
+  readonly thresholdTokens: number;
+  readonly remainingTokens: number;
+  readonly safetyBufferTokens: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +87,7 @@ export interface AutoCompactOptions {
  * 15k gives room for the ~6.5k compaction output + LLM extraction calls.
  */
 export const COMPACTION_BUFFER_TOKENS = 15_000;
+export const DEFAULT_AUTO_COMPACT_THRESHOLD_PERCENT = 80;
 
 /**
  * Context windows smaller than this use simplified compaction (summarize last N messages)
@@ -121,18 +138,50 @@ export { estimateTokens } from './compaction-types.js';
 // Should compact?
 // ---------------------------------------------------------------------------
 
+function normalizeThresholdPercent(value: number | undefined): number {
+  if (value === undefined) return DEFAULT_AUTO_COMPACT_THRESHOLD_PERCENT;
+  if (!Number.isFinite(value)) return DEFAULT_AUTO_COMPACT_THRESHOLD_PERCENT;
+  return Math.max(0, Math.min(100, value));
+}
+
+export function getAutoCompactDecision(opts: AutoCompactOptions): AutoCompactDecision {
+  const currentTokens = Math.max(0, opts.currentTokens);
+  const contextWindow = Math.max(0, opts.contextWindow);
+  const thresholdPercent = normalizeThresholdPercent(opts.thresholdPercent);
+  const safetyBufferTokens = Math.max(0, opts.minRemainingTokens ?? COMPACTION_BUFFER_TOKENS);
+  const usagePct = contextWindow > 0 ? (currentTokens / contextWindow) * 100 : 0;
+  const thresholdTokens = contextWindow > 0 ? Math.floor((contextWindow * thresholdPercent) / 100) : 0;
+  const remainingTokens = Math.max(0, contextWindow - currentTokens);
+  let reason: AutoCompactDecision['reason'] = null;
+
+  if (!opts.isCompacting && contextWindow > 0 && thresholdPercent > 0) {
+    if (currentTokens >= thresholdTokens) {
+      reason = 'threshold';
+    } else if (remainingTokens <= safetyBufferTokens) {
+      reason = 'safety-buffer';
+    }
+  }
+
+  return {
+    shouldCompact: reason !== null,
+    reason,
+    currentTokens,
+    contextWindow,
+    usagePct,
+    thresholdPercent,
+    thresholdTokens,
+    remainingTokens,
+    safetyBufferTokens,
+  };
+}
+
 /**
- * Returns true if the remaining context window is within COMPACTION_BUFFER_TOKENS
- * and compaction has not already been triggered.
- *
- * Triggers when: contextWindow - currentTokens <= 15000
- * The 15k buffer gives room for the ~6.5k compaction output + LLM extraction calls
- * + post-compaction work before the window is exhausted.
+ * Returns true when context usage reaches the configured percentage threshold
+ * or the remaining-token safety buffer is exhausted, unless compaction is
+ * already active.
  */
 export function shouldAutoCompact(opts: AutoCompactOptions): boolean {
-  const { currentTokens, contextWindow, isCompacting } = opts;
-  if (isCompacting || contextWindow <= 0) return false;
-  return (contextWindow - currentTokens) <= COMPACTION_BUFFER_TOKENS;
+  return getAutoCompactDecision(opts).shouldCompact;
 }
 
 // ---------------------------------------------------------------------------

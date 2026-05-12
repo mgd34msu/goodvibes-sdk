@@ -43,6 +43,31 @@ function requireWorkingDirectory(input: ExecInput): string {
   return input.working_dir;
 }
 
+function normalizeExecInput(input: ExecInput): ExecInput {
+  const hasTopLevelWorkingDir = Boolean(input.working_dir?.trim());
+  const commandWorkingDir = input.commands[0]?.working_dir?.trim();
+  const commandCwd = input.commands[0]?.cwd?.trim();
+  const promotedWorkingDir = !hasTopLevelWorkingDir && input.commands.length === 1
+    ? commandWorkingDir || commandCwd
+    : undefined;
+  const commands = input.commands.map((command) => {
+    const itemWorkingDir = command.working_dir?.trim();
+    const itemCwd = command.cwd?.trim();
+    if (itemWorkingDir) {
+      if (!hasTopLevelWorkingDir && input.commands.length === 1 && promotedWorkingDir === itemWorkingDir && !itemCwd) {
+        return command;
+      }
+      return { ...command, cwd: itemCwd || itemWorkingDir };
+    }
+    if (!hasTopLevelWorkingDir && input.commands.length === 1 && promotedWorkingDir === itemCwd) {
+      return { ...command, cwd: undefined };
+    }
+    return command;
+  });
+  const workingDir = hasTopLevelWorkingDir ? input.working_dir : promotedWorkingDir;
+  return { ...input, working_dir: workingDir, commands };
+}
+
 function truncate(
   overflowHandler: OverflowHandler,
   s: string,
@@ -707,7 +732,7 @@ export function createExecTool(
         if ((args['commands'] as unknown[]).length > MAX_EXEC_COMMANDS) {
           return { success: false, error: `Too many commands: maximum ${MAX_EXEC_COMMANDS} per exec call` };
         }
-        const input = args as unknown as ExecInput;
+        const input = normalizeExecInput(args as unknown as ExecInput);
         const workingDirectory = requireWorkingDirectory(input);
         const verbosity: ExecVerbosity = (input.verbosity as ExecVerbosity) ?? 'standard';
         const globalTimeout = input.timeout_ms ?? DEFAULT_TIMEOUT_MS;

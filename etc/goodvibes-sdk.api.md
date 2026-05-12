@@ -1185,7 +1185,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.27";
+    readonly productVersion: "0.33.28";
     readonly operatorMethodCount: 279;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -13510,6 +13510,12 @@ export type OpsEvent =
     type: 'OPS_CONTEXT_WARNING';
     usage: number;
     threshold: number;
+    currentTokens?: number | undefined;
+    contextWindow?: number | undefined;
+    thresholdTokens?: number | undefined;
+    remainingTokens?: number | undefined;
+    safetyBufferTokens?: number | undefined;
+    reason?: 'threshold' | 'safety-buffer' | undefined;
 }
 /** Cache hit-rate and token metrics snapshot. */
 | {

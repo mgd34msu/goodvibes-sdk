@@ -8,6 +8,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.28] - 2026-05-11
+
+### Fixed
+- Honored `behavior.autoCompactThreshold` as a percentage threshold for
+  preflight and post-turn auto-compaction, while retaining the remaining-token
+  safety buffer. Context warnings and compaction hooks now include effective
+  token counts, threshold tokens, remaining tokens, safety-buffer tokens, and
+  trigger reason.
+- Made the `exec` tool accept command-level `working_dir` as a `cwd` alias and
+  promote it to the required top-level working directory for single-command
+  calls, matching common model-generated tool payloads.
+
+---
+
 ## [0.33.27] - 2026-05-11
 
 ### Added
