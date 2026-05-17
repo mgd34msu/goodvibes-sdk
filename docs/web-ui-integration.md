@@ -57,8 +57,8 @@ not call `sessions.followUp`.
 ```ts
 const created = await sdk.chat.sessions.create({
   title: 'WebUI chat',
-  provider: 'openai',
-  model: 'openai:gpt-5.5',
+  provider: 'openai-subscriber',
+  model: 'gpt-5.5',
 });
 
 await sdk.chat.events.stream(created.sessionId, {
@@ -72,10 +72,12 @@ await sdk.chat.messages.create(created.sessionId, {
 });
 ```
 
-`model` should be the provider-qualified registry key from the model catalog.
-`provider` should normally be the registry-key prefix. Subscription-backed
-OpenAI routes also accept the runtime provider id `openai-subscriber`; the
-daemon normalizes both forms to the same model definition.
+`provider` is the selected runtime provider row id from the model catalog, for
+example `openai-subscriber`. `model` is the selected model id for that provider
+row, for example `gpt-5.5`. When a runtime provider is an alias for a catalog
+provider, the daemon also accepts the provider-qualified registry key as
+`model`, such as `openai:gpt-5.5`, as long as `provider` remains the selected
+runtime provider row id.
 
 Use `sdk.chat.sessions.list()` for the chat sidebar and
 `sdk.chat.sessions.update(sessionId, { provider, model })` when a user changes

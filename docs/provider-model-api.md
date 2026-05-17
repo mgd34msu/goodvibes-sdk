@@ -79,7 +79,7 @@ List all registered providers and their models. Returns configured status, auth 
 | `providers[].envVars` | `string[]` | Environment variable names that configure this provider |
 | `providers[].routes` | `ProviderAuthRouteDescriptor[] \| undefined` | Runtime auth routes declared by the provider, such as `"api-key"`, `"secret-ref"`, `"service-oauth"`, `"subscription-oauth"`, or `"anonymous"`. Each route includes `configured`, optional `usable`, optional `freshness`, and repair metadata when available. |
 | `providers[].models` | `ProviderModelEntry[]` | All models exposed by this provider |
-| `providers[].models[].registryKey` | `string` | Provider-qualified model identity. Use it with `PATCH /api/models/current` for shared/TUI model selection, or store it as the companion chat session's `model` for remote-session-local selection. Do not use bare model ids for selection because different providers can expose the same `id`. |
+| `providers[].models[].registryKey` | `string` | Provider-qualified model identity. Use it with `PATCH /api/models/current` for shared/TUI model selection. For companion chat sessions, pair the selected runtime provider row id with that row's model id, or with the registry key when the runtime provider is an alias for the catalog provider. Do not use a bare model id without a provider because different providers can expose the same `id`. |
 | `currentModel` | `ProviderModelRef \| null` | Daemon/TUI currently-selected model; `null` if none configured |
 | `secretsResolutionSkipped` | `boolean` | `true` when no `SecretsManager` was available during this response; `false` when a secrets manager was consulted regardless of whether it resolved any keys. Always present. |
 
@@ -287,7 +287,7 @@ If the currently-selected provider is unconfigured and a companion chat turn is 
 }
 ```
 
-The error arrives on the existing SSE `companion-chat.turn_error` event.
+The error arrives on the existing SSE `companion-chat.turn.error` event.
 
 ---
 
@@ -307,14 +307,27 @@ Remote session-local selection:
 POST /api/companion/chat/sessions
 Content-Type: application/json
 
-{ "title": "Mobile chat", "provider": "openai", "model": "openai:gpt-5.5" }
+{ "title": "Mobile chat", "provider": "openai-subscriber", "model": "gpt-5.5" }
 ```
+
+`provider` is the selected runtime provider row id from `GET /api/models`.
+`model` is the selected model id for that provider row. If the provider row is
+an alias for a catalog provider, such as `openai-subscriber` routing catalog
+model `openai:gpt-5.5`, the daemon also accepts the provider-qualified registry
+key as the `model` value:
+
+```json
+{ "provider": "openai-subscriber", "model": "openai:gpt-5.5" }
+```
+
+Do not send `provider: "openai"` for a subscription-backed runtime provider
+row whose id is `openai-subscriber`; that is a different runtime route.
 
 ```http
 PATCH /api/companion/chat/sessions/{sessionId}
 Content-Type: application/json
 
-{ "provider": "anthropic", "model": "anthropic:claude-sonnet-4-5" }
+{ "provider": "anthropic", "model": "claude-sonnet-4-5" }
 ```
 
 `PATCH /api/companion/chat/sessions/{sessionId}` updates only that companion chat session. The daemon still hosts the turn and supplies runtime context such as working directory and tool/runtime services, but it does not mutate the TUI's current provider/model.

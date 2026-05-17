@@ -33,6 +33,47 @@ The daemon never initiates planning. It exposes storage/evaluation routes only.
 Home Assistant, companion apps, ntfy, Slack, webhooks, and other programmatic
 surfaces are not routed into planning loops by this feature.
 
+## Work Plans
+
+Project work plans are the shared durable task model for TUI, WebUI, APK,
+daemon planning, and WRFC correlation. They replace surface-local task lists
+when a client needs project-scoped work tracking that survives process restarts
+and is visible across surfaces.
+
+Work-plan task records include a stable task id, title, notes, owner, status,
+priority/order, timestamps, source, tags, optional parent task id, and
+correlation fields for WRFC/planning/agent integration such as `chainId`,
+`phaseId`, `agentId`, `turnId`, `decisionId`, `sourceMessageId`, linked
+artifact/source/node ids, and origin surface.
+
+The SDK validates the status vocabulary:
+
+- `pending`
+- `in_progress`
+- `blocked`
+- `done`
+- `failed`
+- `cancelled`
+
+Operator methods are exposed under `projectPlanning.workPlan.*` and daemon
+routes under `/api/projects/planning/work-plan`. Clients should use those
+routes instead of reading TUI-local files. TUI-local work-plan storage can be
+used as a migration/fallback cache, but the SDK store is the shared product
+model.
+
+Task changes emit planner-domain events so clients can refresh snapshots or
+apply deltas instead of polling:
+
+- `WORK_PLAN_TASK_CREATED`
+- `WORK_PLAN_TASK_UPDATED`
+- `WORK_PLAN_TASK_STATUS_CHANGED`
+- `WORK_PLAN_TASK_DELETED`
+- `WORK_PLAN_SNAPSHOT_INVALIDATED`
+
+WRFC and planning integrations should link visible tasks to owner chains and
+phase children through the correlation fields rather than presenting child
+agents as unrelated work.
+
 ## Knowledge Spaces
 
 Planning artifacts live in project knowledge spaces:

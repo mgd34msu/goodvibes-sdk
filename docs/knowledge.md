@@ -24,9 +24,12 @@ Accessible via `@pellux/goodvibes-sdk/platform/knowledge` (daemon embedders). Co
 
 Knowledge records can carry `metadata.knowledgeSpaceId` to isolate a feature or
 client domain from the default GoodVibes knowledge space. Records without this
-metadata are treated as the default space. Space helpers live in
-`knowledge/spaces.ts` and normalize the default space plus Home Assistant
-spaces such as `homeassistant:<installationId>`.
+metadata are treated as the default space. The regular wiki is stored in the
+default knowledge store (`knowledge-wiki.sqlite`). Home Assistant Home Graph
+uses a separate store instance (`knowledge-home-graph.sqlite`) while preserving
+the same base knowledge engine and namespace semantics inside that store. Space
+helpers live in `knowledge/spaces.ts` and normalize the default space plus Home
+Assistant spaces such as `homeassistant:<installationId>`.
 For generic Knowledge Ask calls, `knowledgeSpaceId: "homeassistant"` is a
 virtual namespace alias that searches all `homeassistant:*` spaces. Use the
 fully scoped `homeassistant:<installationId>` id when a client should stay tied
@@ -138,7 +141,8 @@ eligible as answer evidence. This keeps a question about "the TV" from ranking
 unrelated NAS, Matter, service, or other-device facts merely because those
 records share generic words such as "smart", "feature", or "support".
 That object inference is shared by the generic ask route and Home Graph ask, so
-Home Assistant extensions do not fork a separate knowledge/retrieval system.
+Home Assistant extensions reuse the base knowledge/retrieval system even though
+their rows live in the Home Graph store.
 
 Self-improvement is not limited to Ask. After ingest, reindex, and Home Graph
 snapshot sync, the SDK runs bounded semantic maintenance. The pass looks for
@@ -352,9 +356,10 @@ data. See [Browser knowledge ingestion](./knowledge-browser-history.md).
 ## Home Graph
 
 Home Graph is a first-class Home Assistant knowledge space built on the same
-store. It keeps Home Assistant data out of the default wiki while reusing
-sources, artifacts, extractions, nodes, edges, issues, markdown artifacts, and
-operator contracts.
+knowledge engine and persisted in its own store instance. It keeps Home
+Assistant data out of the default wiki while reusing source, artifact,
+extraction, node, edge, issue, markdown, refinement, and operator-contract
+semantics.
 
 The SDK-owned `HomeGraphService` supports:
 

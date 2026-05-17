@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.30.x (latest pre-1.0 line) | :white_check_mark: |
-| < 0.30.0 | :x: |
+| Latest published pre-1.0 minor line | :white_check_mark: |
+| Earlier pre-1.0 minor lines | :x: |
 
 Pre-1.0 policy: security fixes land in the latest published pre-1.0 line. Earlier minor lines are not patched; upgrade to the latest release to receive security updates.
 

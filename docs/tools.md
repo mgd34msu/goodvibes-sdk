@@ -19,7 +19,7 @@ Accessible via `@pellux/goodvibes-sdk/platform/tools` (daemon embedders). Consum
 | `fetch` | Fetch HTTP resources | raw/text/markdown/structured extraction, rate limits, sanitization, trusted hosts |
 | `analyze` | Analyze code and changes | impact, dependencies, dead code, security, diff, preview, upgrade, surface |
 | `inspect` | Inspect project shape | project, API, database, components, layout, accessibility, scaffold |
-| `agent` | Spawn and manage agents | spawn, batch-spawn, status, cancel, list, templates, get, budget, plan, wait, message, WRFC, cohorts |
+| `agent` | Spawn and manage agents | spawn, batch-spawn for independent roots, status, cancel, list, templates, get, budget, plan, wait, message, WRFC, cohorts |
 | `goodvibes_context` | Inspect the current GoodVibes harness safely | runtime summary, redacted config reads/schema, integrations, tool catalog, Cloudflare status/token requirements |
 | `goodvibes_settings` | Change GoodVibes settings through the config manager | set, reset with explicit confirmation; rejects raw credential persistence |
 | `state` | Store and inspect runtime state | get, set, list, clear, budget, context, memory, telemetry, hooks, mode, analytics |
@@ -124,7 +124,14 @@ transaction modes so hosts can roll back failed multi-file changes.
 
 ## Agent And WRFC Integration
 
-The `agent` tool can spawn individual agents, spawn batches, group agents into
-cohorts, send messages, wait for completion, inspect budgets/plans, and inspect
-WRFC chain history. WRFC chains use engineer, reviewer, and fixer roles with
-quality gates and constraint propagation.
+The `agent` tool can spawn individual agents, spawn batches of independent
+root work, group agents into cohorts, send messages, wait for completion,
+inspect budgets/plans, and inspect WRFC chain history. WRFC chains use
+engineer, reviewer, fixer, verifier, and gate phases with quality gates and
+constraint propagation.
+
+Batch spawn is not the mechanism for pre-spawning reviewer/tester/fixer roots
+for the same deliverable. If a batch request looks like role decomposition for
+one deliverable, the SDK treats the original user ask as the authoritative WRFC
+scope and runs one owner chain whose children are created by the WRFC
+controller as each phase becomes reviewable.
