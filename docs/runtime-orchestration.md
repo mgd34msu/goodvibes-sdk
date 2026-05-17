@@ -93,8 +93,21 @@ WRFC chains run engineering, review, and fix phases with quality gates. Chain
 states are pending, engineering, reviewing, fixing, awaiting gates, gating,
 passed, failed, and committing.
 
+Each WRFC request has one authoritative owner chain. The owner stays visible
+and non-terminal until the chain passes, fails, or is cancelled. Engineer,
+reviewer, fixer, verifier, and gate agents are lifecycle children of that owner;
+they are not sibling root agents and do not independently decide when the chain
+is done. Reviews always evaluate the complete current result against the
+original WRFC ask.
+
+Batch spawning remains valid for genuinely independent deliverables. Role
+fanout for one deliverable, such as `Engineer + Reviewer` or
+`Engineer + Tester`, is normalized into a WRFC owner chain instead of launching
+parallel reviewer/tester roots before there is work to review.
+
 The WRFC controller tracks:
 
+- owner, phase, and child-agent ids
 - engineer, reviewer, and fixer agent ids
 - review scores and review cycles
 - fix attempts and gate retry depth

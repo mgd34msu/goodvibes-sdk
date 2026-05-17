@@ -1,6 +1,10 @@
 # Home Graph Extension
 
-Home Graph is a base-knowledge extension for Home Assistant data.
+Home Graph is a base-knowledge extension for Home Assistant data. It uses the
+same knowledge engine, refinement pipeline, answer synthesis, generated-page
+renderer, and contract style as the regular wiki, but it runs against a
+separate Home Graph store instance so Home Assistant records do not appear in
+the default knowledge/wiki surface.
 
 The extension contributes:
 
@@ -11,9 +15,10 @@ The extension contributes:
 - Home Graph page templates
 - Home Assistant-specific quality checks
 
-The extension does not own a separate knowledge system. It delegates source
-repair, fact extraction, source ranking, generated page refresh, refinement
-tasks, and answer synthesis to the base knowledge layer.
+The extension does not fork a second knowledge implementation. It delegates
+source repair, fact extraction, source ranking, generated page refresh,
+refinement tasks, and answer synthesis to the base knowledge layer while
+persisting graph rows in the Home Graph store.
 
 ## Generated Pages
 

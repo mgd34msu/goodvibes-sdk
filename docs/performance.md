@@ -177,19 +177,45 @@ The SDK tracks token usage continuously against the active model's context windo
 | `COMPACTION_BUFFER_TOKENS` | 15,000 | Safety buffer kept free below the window ceiling |
 | `SMALL_WINDOW_THRESHOLD` | 12,000 | Models with windows ≤ this use simplified compaction |
 
-`shouldAutoCompact` returns true when `currentTokens >= contextWindow - COMPACTION_BUFFER_TOKENS`.
+Automatic compaction is controlled by `behavior.autoCompactThreshold`, a
+percentage of the active context window. The default is `80`, meaning
+compaction becomes eligible at 80% context usage. The safety buffer is still
+enforced as a floor: `shouldAutoCompact` returns true when the configured
+percentage is crossed **or** when remaining tokens are at or below
+`COMPACTION_BUFFER_TOKENS`.
+
+Preflight checks run before provider calls, including follow-up calls inside
+tool loops. They use the same percentage/buffer decision so a turn can compact
+before the next model request rather than waiting for post-turn maintenance
+after the conversation has already exceeded the practical provider budget.
 
 ### Compaction Strategies
 
 Compaction collapses conversation history into a structured return-context document that preserves essential context while reducing token count.
 
-**Automatic compaction** fires when token usage crosses the buffer threshold:
+**Automatic compaction** fires when token usage crosses the configured
+percentage threshold or the safety buffer:
 
 ```ts
-import { checkAndCompact } from '@pellux/goodvibes-sdk/platform/core';
+import {
+  checkAndCompact,
+  getAutoCompactDecision,
+} from '@pellux/goodvibes-sdk/platform/core';
+
+const decision = getAutoCompactDecision({
+  currentTokens,
+  contextWindow,
+  isCompacting: false,
+  thresholdPercent: 80,
+});
 
 const result = await checkAndCompact(
-  { currentTokens, contextWindow, isCompacting: false },
+  {
+    currentTokens,
+    contextWindow,
+    isCompacting: false,
+    thresholdPercent: 80,
+  },
   compactionContext,
   providerRegistry,
 );
