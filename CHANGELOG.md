@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.35] - 2026-05-21
+
+### Fixed
+- Hid default-space GitHub navigation memory records whose title is
+  `Navigation Menu`, including reviewed project memory records that were not
+  linked back to their original source.
+- Hid default-space `semantic-gap-repair` GitHub sources that only expose
+  GitHub navigation chrome, preventing regular Knowledge/Wiki packet and ask
+  surfaces from matching unrelated repair-source pages.
+- Expanded Knowledge/Wiki scoping regressions to cover standalone navigation
+  memory records and non-GoodVibes GitHub repair pages in default sources,
+  nodes, projections, map, packet, and ask results.
+
+---
+
 ## [0.33.34] - 2026-05-20
 
 ### Fixed

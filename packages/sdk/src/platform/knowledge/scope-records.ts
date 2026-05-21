@@ -180,6 +180,7 @@ function isDefaultExtensionContaminatedSource(source: KnowledgeSourceRecord): bo
   ].join(' ');
   return hasLegacyDefaultAgentWikiMarker(text)
     || hasDefaultGoodVibesProductNavigationMarker(text)
+    || hasDefaultSemanticRepairGithubChromeMarker(source, text)
     || hasExtensionOnlyKnowledgeMarker(text);
 }
 
@@ -187,6 +188,7 @@ function isDefaultExtensionContaminatedNode(node: KnowledgeNodeRecord, lookup: K
   if (getKnowledgeSpaceId(node) !== DEFAULT_KNOWLEDGE_SPACE_ID) return false;
   if (isDefaultAnswerGapNode(node)) return true;
   if (/^ha[_:-]/i.test(node.kind)) return true;
+  if (isDefaultNavigationChromeNode(node)) return true;
   if (nodeReferencesDefaultExtensionSource(node, lookup)) return true;
   if (nodeReferencesExtensionObject(node, lookup)) return true;
   const text = [
@@ -387,7 +389,42 @@ function hasDefaultGoodVibesProductNavigationMarker(value: string): boolean {
   const isGoodVibesRepo = /\bgithub\.com\/mgd34msu\/goodvibes(?:\b|[-_][a-z0-9._-]+\b)/.test(lower)
     || /\bmgd34msu\/goodvibes(?:\b|[-_][a-z0-9._-]+\b)/.test(lower);
   if (!isGoodVibesRepo) return false;
+  return hasGithubNavigationChromeMarker(lower);
+}
+
+function hasDefaultSemanticRepairGithubChromeMarker(source: KnowledgeSourceRecord, value: string): boolean {
+  const lower = value.toLowerCase();
+  const sourceDiscovery = typeof source.metadata.sourceDiscovery === 'object' && source.metadata.sourceDiscovery !== null
+    ? source.metadata.sourceDiscovery as Record<string, unknown>
+    : {};
+  const isSemanticRepairSource = source.connectorId === 'semantic-gap-repair'
+    || source.tags.some((tag) => tag.toLowerCase() === 'semantic-gap-repair' || tag.toLowerCase() === 'gap-repair')
+    || readString(sourceDiscovery.purpose) === 'semantic-gap-repair';
+  if (!isSemanticRepairSource) return false;
+  if (!/\bgithub\.com\//.test(lower)) return false;
+  return hasGithubNavigationChromeMarker(lower);
+}
+
+function isDefaultNavigationChromeNode(node: KnowledgeNodeRecord): boolean {
+  if (node.title.trim().toLowerCase() !== 'navigation menu') return false;
+  if (node.kind === 'memory') return true;
+  const text = [
+    node.summary,
+    node.slug,
+    metadataSearchText(node.metadata),
+  ].join(' ').toLowerCase();
+  return hasGithubNavigationChromeMarker(text)
+    || /\bgithub\.com\//.test(text)
+    || /\bgithub\b/.test(text)
+    || /\brepository files navigation\b/.test(text);
+}
+
+function hasGithubNavigationChromeMarker(lower: string): boolean {
   return /\bnavigation\s+menu\b/.test(lower)
     || /\bskip\s+to\s+content\b/.test(lower)
-    || /\bgithub\s+navigation\b/.test(lower);
+    || /\bgithub\s+navigation\b/.test(lower)
+    || /\brepository\s+files\s+navigation\b/.test(lower)
+    || /\bsearch\s+code,\s*repositories,\s*users,\s*issues,\s*pull\s+requests\b/.test(lower)
+    || /\bsaved\s+searches\b/.test(lower)
+    || /\bwe\s+read\s+every\s+piece\s+of\s+feedback\b/.test(lower);
 }
