@@ -1023,6 +1023,65 @@ describe('knowledge generated projections and maps', () => {
       relation: 'supports_fact',
       metadata: knowledgeSpaceMetadata('default'),
     });
+    const productNavigationSources = await Promise.all([
+      store.upsertSource({
+        id: 'source-goodvibes-plugin-navigation',
+        connectorId: 'url',
+        sourceType: 'webpage',
+        title: 'Navigation Menu',
+        url: 'https://github.com/mgd34msu/goodvibes-plugin',
+        canonicalUri: 'https://github.com/mgd34msu/goodvibes-plugin',
+        summary: 'GitHub repository navigation for GoodVibes Plugin.',
+        tags: ['github'],
+        status: 'indexed',
+        metadata: knowledgeSpaceMetadata('default', { hostname: 'github.com' }),
+      }),
+      store.upsertSource({
+        id: 'source-goodvibes-tui-navigation',
+        connectorId: 'url',
+        sourceType: 'webpage',
+        title: 'Navigation Menu',
+        url: 'https://github.com/mgd34msu/goodvibes-tui',
+        canonicalUri: 'https://github.com/mgd34msu/goodvibes-tui',
+        summary: 'GitHub repository navigation for GoodVibes TUI.',
+        tags: ['github'],
+        status: 'indexed',
+        metadata: knowledgeSpaceMetadata('default', { hostname: 'github.com' }),
+      }),
+      store.upsertSource({
+        id: 'source-goodvibes-desktop-navigation',
+        connectorId: 'url',
+        sourceType: 'webpage',
+        title: 'Navigation Menu',
+        url: 'https://github.com/mgd34msu/goodvibes-desktop',
+        canonicalUri: 'https://github.com/mgd34msu/goodvibes-desktop',
+        summary: 'GitHub repository navigation for GoodVibes Desktop.',
+        tags: ['github'],
+        status: 'indexed',
+        metadata: knowledgeSpaceMetadata('default', { hostname: 'github.com' }),
+      }),
+    ]);
+    const productNavigationFact = await store.upsertNode({
+      id: 'sem-fact-goodvibes-navigation-tv-fragment',
+      kind: 'knowledge_fact',
+      slug: 'goodvibes-navigation-tv-fragment',
+      title: 'Input and output ports',
+      summary: 'The TV has HDMI and audio output ports.',
+      sourceId: productNavigationSources[0].id,
+      metadata: knowledgeSpaceMetadata('default', {
+        semanticKind: 'fact',
+        factKind: 'feature',
+        sourceId: productNavigationSources[0].id,
+      }),
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: productNavigationSources[0].id,
+      toKind: 'node',
+      toId: productNavigationFact.id,
+      relation: 'supports_fact',
+      metadata: knowledgeSpaceMetadata('default'),
+    });
     const legacyAgentWikiSource = await store.upsertSource({
       id: 'source-legacy-goodvibes-agents',
       connectorId: 'wiki',
@@ -1070,8 +1129,12 @@ describe('knowledge generated projections and maps', () => {
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(orphanCatalogTopic.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(tvFact.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(productNavigationFact.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(legacyAgentWikiNode.id);
     expect(service.querySources({ limit: 100 }).items.map((source) => source.id)).not.toContain(agentAmbiguitySource.id);
+    for (const source of productNavigationSources) {
+      expect(service.querySources({ limit: 100 }).items.map((entry) => entry.id)).not.toContain(source.id);
+    }
     expect(service.querySources({ limit: 100 }).items.map((source) => source.id)).not.toContain(legacyAgentWikiSource.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(leakedNode.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(explicitDefaultGap.id);
@@ -1080,8 +1143,12 @@ describe('knowledge generated projections and maps', () => {
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).toContain(orphanCatalogTopic.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(tvFact.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(productNavigationFact.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(legacyAgentWikiNode.id);
     expect(service.querySources({ limit: 100, includeAllSpaces: true }).items.map((source) => source.id)).not.toContain(agentAmbiguitySource.id);
+    for (const source of productNavigationSources) {
+      expect(service.querySources({ limit: 100, includeAllSpaces: true }).items.map((entry) => entry.id)).not.toContain(source.id);
+    }
     expect(service.querySources({ limit: 100, includeAllSpaces: true }).items.map((source) => source.id)).not.toContain(legacyAgentWikiSource.id);
     expect(service.queryNodes({ limit: 100, knowledgeSpaceId: 'homeassistant:test' }).items.map((node) => node.id)).toContain(edgeOnlyTopic.id);
     expect(service.queryNodes({ limit: 100, knowledgeSpaceId: 'homeassistant:test' }).items.map((node) => node.id)).toContain(edgeOnlyDomain.id);
@@ -1107,6 +1174,7 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultTargets.map((target) => target.id)).not.toContain(orphanCatalogTopic.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(tvFact.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(productNavigationFact.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(legacyAgentWikiNode.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedIssue.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(explicitDefaultIssue.id);
@@ -1119,6 +1187,7 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(orphanCatalogTopic.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(tvFact.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(productNavigationFact.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(legacyAgentWikiNode.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedNode.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedIssue.id);
@@ -1129,6 +1198,10 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(tvFact.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(agentAmbiguitySource.id);
+    for (const source of productNavigationSources) {
+      expect(defaultMap.nodes.map((node) => node.id)).not.toContain(source.id);
+    }
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(productNavigationFact.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(legacyAgentWikiNode.id);
 
     const defaultAnswer = await service.ask({
@@ -1147,9 +1220,18 @@ describe('knowledge generated projections and maps', () => {
       includeConfidence: true,
     });
     expect(agentAnswer.answer.sources.map((source) => source.id)).not.toContain(agentAmbiguitySource.id);
+    for (const source of productNavigationSources) {
+      expect(agentAnswer.answer.sources.map((entry) => entry.id)).not.toContain(source.id);
+    }
     expect(agentAnswer.answer.sources.map((source) => source.id)).not.toContain(legacyAgentWikiSource.id);
     expect(agentAnswer.answer.facts.map((fact) => fact.id)).not.toContain(tvFact.id);
+    expect(agentAnswer.answer.facts.map((fact) => fact.id)).not.toContain(productNavigationFact.id);
     expect(agentAnswer.results.map((result) => result.id)).not.toContain(legacyAgentWikiNode.id);
+    expect(agentAnswer.results.map((result) => result.id)).not.toContain(productNavigationFact.id);
+    expect(agentAnswer.results).toEqual([]);
+    expect(agentAnswer.answer.sources).toEqual([]);
+    expect(agentAnswer.answer.facts).toEqual([]);
+    expect(agentAnswer.answer.confidence).toBe(0);
     expect(agentAnswer.answer.gaps).toEqual([]);
   });
 });
