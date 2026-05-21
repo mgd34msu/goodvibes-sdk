@@ -1025,6 +1025,18 @@ describe('knowledge generated projections and maps', () => {
     });
     const productNavigationSources = await Promise.all([
       store.upsertSource({
+        id: 'source-goodvibes-root-navigation',
+        connectorId: 'url',
+        sourceType: 'webpage',
+        title: 'Navigation Menu',
+        url: 'https://github.com/mgd34msu/goodvibes',
+        canonicalUri: 'https://github.com/mgd34msu/goodvibes',
+        summary: 'GitHub repository navigation for the root GoodVibes repository.',
+        tags: ['github'],
+        status: 'indexed',
+        metadata: knowledgeSpaceMetadata('default', { hostname: 'github.com' }),
+      }),
+      store.upsertSource({
         id: 'source-goodvibes-plugin-navigation',
         connectorId: 'url',
         sourceType: 'webpage',
@@ -1082,6 +1094,28 @@ describe('knowledge generated projections and maps', () => {
       relation: 'supports_fact',
       metadata: knowledgeSpaceMetadata('default'),
     });
+    const productNavigationMemory = await store.upsertNode({
+      id: 'memory-goodvibes-root-navigation',
+      kind: 'memory',
+      slug: 'memory-goodvibes-root-navigation',
+      title: 'Navigation Menu',
+      summary: 'Remembered GitHub navigation from https://github.com/mgd34msu/goodvibes.',
+      sourceId: productNavigationSources[0].id,
+      metadata: knowledgeSpaceMetadata('default', {
+        memoryId: 'memory-goodvibes-root-navigation',
+        sourceId: productNavigationSources[0].id,
+        sourceUri: 'https://github.com/mgd34msu/goodvibes',
+        reviewState: 'reviewed',
+      }),
+    });
+    await store.upsertEdge({
+      fromKind: 'source',
+      fromId: productNavigationSources[0].id,
+      toKind: 'node',
+      toId: productNavigationMemory.id,
+      relation: 'documents',
+      metadata: knowledgeSpaceMetadata('default'),
+    });
     const legacyAgentWikiSource = await store.upsertSource({
       id: 'source-legacy-goodvibes-agents',
       connectorId: 'wiki',
@@ -1130,6 +1164,7 @@ describe('knowledge generated projections and maps', () => {
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(tvFact.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(productNavigationFact.id);
+    expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(productNavigationMemory.id);
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).not.toContain(legacyAgentWikiNode.id);
     expect(service.querySources({ limit: 100 }).items.map((source) => source.id)).not.toContain(agentAmbiguitySource.id);
     for (const source of productNavigationSources) {
@@ -1144,6 +1179,7 @@ describe('knowledge generated projections and maps', () => {
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(orphanAnswerGap.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(tvFact.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(productNavigationFact.id);
+    expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(productNavigationMemory.id);
     expect(service.queryNodes({ limit: 100, includeAllSpaces: true }).items.map((node) => node.id)).not.toContain(legacyAgentWikiNode.id);
     expect(service.querySources({ limit: 100, includeAllSpaces: true }).items.map((source) => source.id)).not.toContain(agentAmbiguitySource.id);
     for (const source of productNavigationSources) {
@@ -1175,6 +1211,7 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultTargets.map((target) => target.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(tvFact.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(productNavigationFact.id);
+    expect(defaultTargets.map((target) => target.id)).not.toContain(productNavigationMemory.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(legacyAgentWikiNode.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(leakedIssue.id);
     expect(defaultTargets.map((target) => target.id)).not.toContain(explicitDefaultIssue.id);
@@ -1188,6 +1225,7 @@ describe('knowledge generated projections and maps', () => {
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(orphanAnswerGap.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(tvFact.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(productNavigationFact.id);
+    expect(defaultPacket?.items.map((item) => item.id)).not.toContain(productNavigationMemory.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(legacyAgentWikiNode.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedNode.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(leakedIssue.id);
@@ -1202,6 +1240,7 @@ describe('knowledge generated projections and maps', () => {
       expect(defaultMap.nodes.map((node) => node.id)).not.toContain(source.id);
     }
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(productNavigationFact.id);
+    expect(defaultMap.nodes.map((node) => node.id)).not.toContain(productNavigationMemory.id);
     expect(defaultMap.nodes.map((node) => node.id)).not.toContain(legacyAgentWikiNode.id);
 
     const defaultAnswer = await service.ask({
@@ -1228,6 +1267,7 @@ describe('knowledge generated projections and maps', () => {
     expect(agentAnswer.answer.facts.map((fact) => fact.id)).not.toContain(productNavigationFact.id);
     expect(agentAnswer.results.map((result) => result.id)).not.toContain(legacyAgentWikiNode.id);
     expect(agentAnswer.results.map((result) => result.id)).not.toContain(productNavigationFact.id);
+    expect(agentAnswer.results.map((result) => result.id)).not.toContain(productNavigationMemory.id);
     expect(agentAnswer.results).toEqual([]);
     expect(agentAnswer.answer.sources).toEqual([]);
     expect(agentAnswer.answer.facts).toEqual([]);

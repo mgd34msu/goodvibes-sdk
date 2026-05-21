@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.34] - 2026-05-20
+
+### Fixed
+- Extended default Knowledge/Wiki contamination filtering to the root
+  `github.com/mgd34msu/goodvibes` repository navigation page and source-derived
+  memory nodes, preventing unscoped list, map, packet, projection, and ask
+  surfaces from using root GoodVibes GitHub navigation debris as regular
+  knowledge.
+
+---
+
 ## [0.33.33] - 2026-05-20
 
 ### Fixed
