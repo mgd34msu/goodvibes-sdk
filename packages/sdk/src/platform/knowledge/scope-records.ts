@@ -165,7 +165,7 @@ function isUngroundedSemanticAnswerGapNode(node: KnowledgeNodeRecord): boolean {
 
 function isDefaultExtensionContaminatedSource(source: KnowledgeSourceRecord): boolean {
   if (getKnowledgeSpaceId(source) !== DEFAULT_KNOWLEDGE_SPACE_ID) return false;
-  return hasExtensionOnlyKnowledgeMarker([
+  const text = [
     source.id,
     source.connectorId,
     source.sourceType,
@@ -177,7 +177,8 @@ function isDefaultExtensionContaminatedSource(source: KnowledgeSourceRecord): bo
     source.url,
     source.tags.join(' '),
     metadataSearchText(source.metadata),
-  ].join(' '));
+  ].join(' ');
+  return hasLegacyDefaultAgentWikiMarker(text) || hasExtensionOnlyKnowledgeMarker(text);
 }
 
 function isDefaultExtensionContaminatedNode(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLookup): boolean {
@@ -186,14 +187,16 @@ function isDefaultExtensionContaminatedNode(node: KnowledgeNodeRecord, lookup: K
   if (/^ha[_:-]/i.test(node.kind)) return true;
   if (nodeReferencesDefaultExtensionSource(node, lookup)) return true;
   if (nodeReferencesExtensionObject(node, lookup)) return true;
-  return hasExtensionOnlyKnowledgeMarker([
+  const text = [
     node.id,
     node.kind,
+    node.slug,
     node.title,
     node.summary,
     node.aliases.join(' '),
     metadataSearchText(node.metadata),
-  ].join(' '));
+  ].join(' ');
+  return hasLegacyDefaultAgentWikiMarker(text) || hasExtensionOnlyKnowledgeMarker(text);
 }
 
 function nodeReferencesExtensionObject(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLookup): boolean {
@@ -217,14 +220,15 @@ function isDefaultExtensionContaminatedIssue(issue: KnowledgeIssueRecord, lookup
     const node = lookupNode(lookup, nodeId);
     if (node && isDefaultExtensionContaminatedNode(node, lookup)) return true;
   }
-  return hasExtensionOnlyKnowledgeMarker([
+  const text = [
     issue.id,
     issue.code,
     issue.message,
     issue.sourceId,
     issue.nodeId,
     metadataSearchText(issue.metadata),
-  ].join(' '));
+  ].join(' ');
+  return hasLegacyDefaultAgentWikiMarker(text) || hasExtensionOnlyKnowledgeMarker(text);
 }
 
 function isDefaultAnswerGapNode(node: KnowledgeNodeRecord): boolean {
@@ -359,4 +363,15 @@ function hasExtensionOnlyKnowledgeMarker(value: string): boolean {
     || /\bgoodvibes[-_]?homeassistant\b/.test(lower)
     || /\bha_(?:device|entity|area|integration|device_passport|room)\b/.test(lower)
     || /\bhomeassistant:/.test(lower);
+}
+
+function hasLegacyDefaultAgentWikiMarker(value: string): boolean {
+  const lower = value.toLowerCase();
+  const mentionsGoodVibesAgent = /\bgoodvibes\s+agents?\b/.test(lower)
+    || /\bgoodvibes[-_]?agents?\b/.test(lower);
+  if (!mentionsGoodVibesAgent) return false;
+  return /\bdefault[-_]?specification\b/.test(lower)
+    || /\byaml\s+frontmatter\b/.test(lower)
+    || /\bfrontmatter\b/.test(lower)
+    || /\bgoodvibes:\/\/wiki\/default\b/.test(lower);
 }
