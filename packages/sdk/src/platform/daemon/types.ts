@@ -146,6 +146,7 @@ export interface DaemonRouteContext {
   readonly voiceService: VoiceService;
   readonly webSearchService: WebSearchService;
   readonly knowledgeService: KnowledgeService;
+  readonly agentKnowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
   readonly projectPlanningService: ProjectPlanningService;
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;

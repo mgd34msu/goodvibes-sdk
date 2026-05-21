@@ -549,7 +549,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
           canonicalUri: 'https://example.test/lg-tv-specs',
           tags: ['semantic-gap-repair'],
           status: 'indexed',
-          metadata: { knowledgeSpaceId: 'default', sourceDiscovery: { purpose: 'semantic-gap-repair' } },
+          metadata: { knowledgeSpaceId: 'homeassistant:test', sourceDiscovery: { purpose: 'semantic-gap-repair' } },
         });
         await store.upsertExtraction({
           sourceId: 'repair-source',
@@ -558,7 +558,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
           structure: {
             searchText: 'LG 86NANO90UNA specifications include a NanoCell 4K display, Dolby Vision, HDR10, HDMI eARC, webOS smart TV features, Wi-Fi, Bluetooth, and Game Optimizer.',
           },
-          metadata: { knowledgeSpaceId: 'default' },
+          metadata: { knowledgeSpaceId: 'homeassistant:test' },
         });
         return {
           searched: true,
@@ -575,6 +575,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       canonicalUri: 'manual://lg-tv-gap',
       tags: ['manual', 'tv'],
       status: 'indexed',
+      metadata: knowledgeSpaceMetadata('homeassistant:test'),
     });
     const device = await store.upsertNode({
       kind: 'ha_device',
@@ -582,7 +583,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
+      metadata: knowledgeSpaceMetadata('homeassistant:test', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     await store.upsertEdge({
       fromKind: 'source',
@@ -600,10 +601,10 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       },
     });
 
-    await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
+    await semantic.answer({ query: 'what features does the TV have?', knowledgeSpaceId: 'homeassistant:test', includeSources: true });
     await waitFor(() => store.listEdges().some((edge) => edge.relation === 'repairs_gap'), 250);
     await waitFor(() => store.listNodes(10).some((node) => node.kind === 'knowledge_gap' && node.metadata.repairStatus === 'repaired'), 250);
-    const secondAnswer = await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
+    const secondAnswer = await semantic.answer({ query: 'what features does the TV have?', knowledgeSpaceId: 'homeassistant:test', includeSources: true });
     await waitFor(() => calls.length >= 1, 250);
 
     expect(calls).toHaveLength(1);
@@ -623,7 +624,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       tags: ['semantic-gap-repair'],
       status: 'indexed',
       metadata: {
-        knowledgeSpaceId: 'default',
+        knowledgeSpaceId: 'homeassistant:test',
         sourceDiscovery: {
           purpose: 'semantic-gap-repair',
           trustReason: 'official-vendor-domain, model:86NANO90UNA',
@@ -638,6 +639,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       canonicalUri: 'manual://lg-tv-gap',
       tags: ['manual', 'tv'],
       status: 'indexed',
+      metadata: knowledgeSpaceMetadata('homeassistant:test'),
     });
     const device = await store.upsertNode({
       kind: 'ha_device',
@@ -645,7 +647,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
+      metadata: knowledgeSpaceMetadata('homeassistant:test', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     const gap = await store.upsertNode({
       kind: 'knowledge_gap',
@@ -675,12 +677,12 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     });
 
     const startedAt = Date.now();
-    const result = await semantic.selfImprove({ knowledgeSpaceId: 'default', gapIds: [gap.id], maxRunMs: 5_000 });
+    const result = await semantic.selfImprove({ knowledgeSpaceId: 'homeassistant:test', gapIds: [gap.id], maxRunMs: 5_000 });
 
     expect(Date.now() - startedAt).toBeLessThan(4_000);
     expect(result.blockedGaps).toBe(1);
     expect(result.promotedFactCount).toBe(0);
-    const task = store.listRefinementTasks(10, { spaceId: 'default' })[0];
+    const task = store.listRefinementTasks(10, { spaceId: 'homeassistant:test' })[0];
     expect(task?.state).toBe('blocked');
     expect(task?.nextRepairAttemptAt).toBeGreaterThan(Date.now());
   });
@@ -697,7 +699,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       tags: ['semantic-gap-repair'],
       status: 'indexed',
       metadata: {
-        knowledgeSpaceId: 'default',
+        knowledgeSpaceId: 'homeassistant:test',
         sourceDiscovery: {
           purpose: 'semantic-gap-repair',
           trustReason: 'official-vendor-domain, model:86NANO90UNA',
@@ -712,7 +714,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       structure: {
         searchText: 'LG 86NANO90UNA specifications include an 86-inch 4K UHD NanoCell display, 120 Hz refresh rate, HDR10, Dolby Vision, HLG, HDMI eARC, USB ports, Ethernet, Wi-Fi, Bluetooth, webOS smart TV features, Apple AirPlay 2, HomeKit, FreeSync VRR, Game Optimizer, ATSC tuner support, and 2 x 10W speakers.',
       },
-      metadata: { knowledgeSpaceId: 'default' },
+      metadata: { knowledgeSpaceId: 'homeassistant:test' },
     });
     const device = await store.upsertNode({
       kind: 'ha_device',
@@ -720,7 +722,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
+      metadata: knowledgeSpaceMetadata('homeassistant:test', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     const gap = await store.upsertNode({
       kind: 'knowledge_gap',
@@ -729,7 +731,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       summary: 'Existing evidence lacks a full feature and specification profile.',
       aliases: [],
       confidence: 70,
-      metadata: knowledgeSpaceMetadata('default', {
+      metadata: knowledgeSpaceMetadata('homeassistant:test', {
         semanticKind: 'gap',
         gapKind: 'answer',
         linkedObjectIds: [device.id],
@@ -748,7 +750,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     });
 
     const startedAt = Date.now();
-    const result = await semantic.selfImprove({ knowledgeSpaceId: 'default', gapIds: [gap.id], maxRunMs: 5_000 });
+    const result = await semantic.selfImprove({ knowledgeSpaceId: 'homeassistant:test', gapIds: [gap.id], maxRunMs: 5_000 });
 
     expect(Date.now() - startedAt).toBeLessThan(1_500);
     expect(result.closedGaps).toBe(1);
@@ -768,7 +770,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       tags: ['semantic-gap-repair'],
       status: 'indexed',
       metadata: {
-        knowledgeSpaceId: 'default',
+        knowledgeSpaceId: 'homeassistant:test',
         sourceDiscovery: {
           purpose: 'semantic-gap-repair',
           trustReason: 'official-vendor-domain, model:86NANO90UNA',
@@ -782,7 +784,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'LG webOS Smart TV',
       aliases: ['LG 86NANO90UNA'],
       confidence: 90,
-      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'LG', model: '86NANO90UNA' }),
+      metadata: knowledgeSpaceMetadata('homeassistant:test', { manufacturer: 'LG', model: '86NANO90UNA' }),
     });
     const otherDevice = await store.upsertNode({
       kind: 'ha_device',
@@ -790,7 +792,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       title: 'Sony BRAVIA TV',
       aliases: ['XBR-55X850B'],
       confidence: 90,
-      metadata: knowledgeSpaceMetadata('default', { manufacturer: 'Sony', model: 'XBR-55X850B' }),
+      metadata: knowledgeSpaceMetadata('homeassistant:test', { manufacturer: 'Sony', model: 'XBR-55X850B' }),
     });
     const gap = await store.upsertNode({
       kind: 'knowledge_gap',
@@ -799,7 +801,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       summary: 'Existing evidence lacks a full feature and specification profile.',
       aliases: [],
       confidence: 70,
-      metadata: knowledgeSpaceMetadata('default', {
+      metadata: knowledgeSpaceMetadata('homeassistant:test', {
         semanticKind: 'gap',
         gapKind: 'answer',
         linkedObjectIds: [device.id],
@@ -854,7 +856,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       }),
     });
 
-    const result = await semantic.selfImprove({ knowledgeSpaceId: 'default', gapIds: [gap.id], maxRunMs: 5_000 });
+    const result = await semantic.selfImprove({ knowledgeSpaceId: 'homeassistant:test', gapIds: [gap.id], maxRunMs: 5_000 });
 
     expect(result.closedGaps).toBe(1);
     expect(result.promotedFactCount).toBe(3);
@@ -888,6 +890,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       canonicalUri: 'manual://lg-tv-answer-gap',
       tags: ['manual', 'tv'],
       status: 'indexed',
+      metadata: knowledgeSpaceMetadata('homeassistant:test'),
     });
     await store.upsertExtraction({
       sourceId: source.id,
@@ -899,12 +902,59 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     });
 
     const startedAt = Date.now();
-    const answer = await semantic.answer({ query: 'what features does the TV have?', includeSources: true });
+    const answer = await semantic.answer({ query: 'what features does the TV have?', knowledgeSpaceId: 'homeassistant:test', includeSources: true });
 
     expect(Date.now() - startedAt).toBeLessThan(250);
     expect(answer.answer.refinementTaskIds).toHaveLength(1);
     await waitFor(() => calls.length === 1, 250);
     await waitFor(() => store.listRefinementTasks(10, { state: 'blocked' }).length === 1, 1_000);
+  });
+
+  test('default unanchored no-match answers do not persist repairable semantic gaps', async () => {
+    const { store } = createStores();
+    const semantic = new KnowledgeSemanticService(store);
+
+    const answer = await semantic.answer({
+      query: 'What is GoodVibes Agent?',
+      includeSources: true,
+      includeLinkedObjects: true,
+      includeConfidence: true,
+    });
+
+    expect(answer.answer.sources).toEqual([]);
+    expect(answer.answer.linkedObjects).toEqual([]);
+    expect(answer.answer.facts).toEqual([]);
+    expect(answer.answer.gaps).toEqual([]);
+    expect(store.listNodes(100).filter((node) => node.kind === 'knowledge_gap')).toEqual([]);
+    expect(store.listIssues(100).filter((issue) => issue.code === 'knowledge.answer_gap')).toEqual([]);
+  });
+
+  test('deterministic profile enrichment ignores generic extension docs in default knowledge', async () => {
+    const { store } = createStores();
+    const source = await store.upsertSource({
+      id: 'source-goodvibes-homeassistant-doc',
+      connectorId: 'url',
+      sourceType: 'webpage',
+      title: 'Navigation Menu',
+      canonicalUri: 'https://github.com/mgd34msu/goodvibes-homeassistant',
+      tags: ['github'],
+      status: 'indexed',
+      metadata: knowledgeSpaceMetadata('default'),
+    });
+    await store.upsertExtraction({
+      sourceId: source.id,
+      extractorId: 'web',
+      format: 'html',
+      structure: {
+        searchText: 'GoodVibes Home Assistant conversation agent docs mention apps, audio, network, API setup, and installation instructions.',
+      },
+      metadata: knowledgeSpaceMetadata('default'),
+    });
+    const semantic = new KnowledgeSemanticService(store);
+
+    await semantic.enrichSource(source.id, { knowledgeSpaceId: 'default' });
+
+    expect(store.listNodes(100).filter((node) => node.metadata.semanticKind === 'fact')).toEqual([]);
   });
 
 });

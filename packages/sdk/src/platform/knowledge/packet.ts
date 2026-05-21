@@ -1,11 +1,9 @@
 import type { KnowledgeStore } from './store.js';
-import {
-  isInKnowledgeSpaceScope,
-  type KnowledgeSpaceScopeInput,
-} from './spaces.js';
+import type { KnowledgeSpaceScopeInput } from './spaces.js';
 import {
   type KnowledgeScopeLookup,
   knowledgeNodeMatchesScope,
+  knowledgeSourceMatchesScope,
 } from './scope-records.js';
 import type {
   KnowledgePacket,
@@ -56,7 +54,7 @@ export function searchKnowledge(
   const taskTokens = tokenize(query);
   if (taskTokens.length === 0) return [];
   const scopeLookup = knowledgeScopeLookup(context);
-  const sourceResults = context.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => isInKnowledgeSpaceScope(source, scope)).map((source) => {
+  const sourceResults = context.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => knowledgeSourceMatchesScope(source, scope)).map((source) => {
     const extraction = context.store.getExtractionBySourceId(source.id);
     const haystack = [
       source.title ?? '',
@@ -169,7 +167,7 @@ function buildKnowledgePacketFromCurrentState(
   const candidates: Array<{ score: number; item: KnowledgePacketItem }> = [];
 
   for (const source of context.store.listSources(Number.MAX_SAFE_INTEGER)) {
-    if (!isInKnowledgeSpaceScope(source, options)) continue;
+    if (!knowledgeSourceMatchesScope(source, options)) continue;
     const extraction = context.store.getExtractionBySourceId(source.id);
     const haystack = [
       source.title ?? '',
@@ -309,7 +307,7 @@ function collectRelatedLabels(
       if (node && knowledgeNodeMatchesScope(node, scope, scopeLookup)) labels.push(node.title);
     } else if (otherKind === 'source') {
       const source = context.store.getSource(otherId);
-      if (source && isInKnowledgeSpaceScope(source, scope)) labels.push(source.title ?? source.canonicalUri ?? source.id);
+      if (source && knowledgeSourceMatchesScope(source, scope)) labels.push(source.title ?? source.canonicalUri ?? source.id);
     }
   }
   return [...new Set(labels)].slice(0, 8);

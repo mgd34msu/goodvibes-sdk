@@ -5,6 +5,7 @@ import {
 
 export const REGULAR_KNOWLEDGE_DB_FILE = DEFAULT_KNOWLEDGE_DB_FILE;
 export const HOME_GRAPH_KNOWLEDGE_DB_FILE = 'knowledge-home-graph.sqlite';
+export const GOODVIBES_AGENT_KNOWLEDGE_DB_FILE = 'knowledge-agent.sqlite';
 
 export interface KnowledgeStoreConfig {
   readonly dbPath?: string | undefined;

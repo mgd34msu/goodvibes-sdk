@@ -9,6 +9,7 @@ import type {
 export type KnowledgeSpaceId = string;
 
 export const DEFAULT_KNOWLEDGE_SPACE_ID = 'default';
+export const GOODVIBES_AGENT_KNOWLEDGE_SPACE_PREFIX = 'goodvibes-agent:';
 export const HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX = 'homeassistant:';
 export const PROJECT_KNOWLEDGE_SPACE_PREFIX = 'project:';
 
@@ -28,6 +29,19 @@ export interface KnowledgeSpaceScopeInput {
 export function normalizeKnowledgeSpaceId(value?: string | null): KnowledgeSpaceId {
   const trimmed = typeof value === 'string' ? value.trim() : '';
   return trimmed.length > 0 ? trimmed : DEFAULT_KNOWLEDGE_SPACE_ID;
+}
+
+export function goodVibesAgentKnowledgeSpaceId(agentId?: string | null): KnowledgeSpaceId {
+  const normalized = normalizeGoodVibesAgentId(agentId ?? 'default');
+  return `${GOODVIBES_AGENT_KNOWLEDGE_SPACE_PREFIX}${normalized}`;
+}
+
+export function normalizeGoodVibesAgentId(value?: string | null): string {
+  return normalizeSpaceComponent(value ?? 'default');
+}
+
+export function isGoodVibesAgentKnowledgeSpace(spaceId: string): boolean {
+  return normalizeKnowledgeSpaceId(spaceId).startsWith(GOODVIBES_AGENT_KNOWLEDGE_SPACE_PREFIX);
 }
 
 export function homeAssistantKnowledgeSpaceId(installationId?: string | null): KnowledgeSpaceId {

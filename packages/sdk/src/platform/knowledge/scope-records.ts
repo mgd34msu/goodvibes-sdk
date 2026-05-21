@@ -25,6 +25,9 @@ export function knowledgeSourceMatchesScope(
   source: KnowledgeSourceRecord,
   scope: KnowledgeSpaceScopeInput = {},
 ): boolean {
+  const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
+  if (isDefaultExtensionContaminatedSource(source)) return false;
+  if (scopedSpaceId === null) return true;
   return isInKnowledgeSpaceScope(source, scope);
 }
 
@@ -34,9 +37,10 @@ export function knowledgeNodeMatchesScope(
   lookup: KnowledgeScopeLookup = {},
 ): boolean {
   const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
-  if (scopedSpaceId === null) return true;
   const relatedSpaces = relatedNodeSpaceIds(node, lookup);
   const ownSpace = getKnowledgeSpaceId(node);
+  if (isDefaultExtensionContaminatedNode(node, lookup)) return false;
+  if (scopedSpaceId === null) return true;
   if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID
     && relatedSpaces.length === 0
     && (isUngroundedSemanticAnswerGapNode(node) || isUngroundedCatalogDerivedNode(node))) return false;
@@ -52,9 +56,10 @@ export function knowledgeIssueMatchesScope(
   lookup: KnowledgeScopeLookup = {},
 ): boolean {
   const scopedSpaceId = resolveKnowledgeSpaceScope(scope);
-  if (scopedSpaceId === null) return true;
   const relatedSpaces = relatedIssueSpaceIds(issue, lookup);
   const ownSpace = getKnowledgeSpaceId(issue);
+  if (isDefaultExtensionContaminatedIssue(issue, lookup)) return false;
+  if (scopedSpaceId === null) return true;
   if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID
     && (isUngroundedSemanticAnswerGapIssue(issue, lookup) || isIssueLinkedOnlyToUngroundedAnswerGap(issue, lookup))) return false;
   if (scopedSpaceId === DEFAULT_KNOWLEDGE_SPACE_ID) {
@@ -158,6 +163,107 @@ function isUngroundedSemanticAnswerGapNode(node: KnowledgeNodeRecord): boolean {
     ]).length === 0;
 }
 
+function isDefaultExtensionContaminatedSource(source: KnowledgeSourceRecord): boolean {
+  if (getKnowledgeSpaceId(source) !== DEFAULT_KNOWLEDGE_SPACE_ID) return false;
+  return hasExtensionOnlyKnowledgeMarker([
+    source.id,
+    source.connectorId,
+    source.sourceType,
+    source.title,
+    source.summary,
+    source.description,
+    source.sourceUri,
+    source.canonicalUri,
+    source.url,
+    source.tags.join(' '),
+    metadataSearchText(source.metadata),
+  ].join(' '));
+}
+
+function isDefaultExtensionContaminatedNode(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLookup): boolean {
+  if (getKnowledgeSpaceId(node) !== DEFAULT_KNOWLEDGE_SPACE_ID) return false;
+  if (isDefaultAnswerGapNode(node)) return true;
+  if (/^ha[_:-]/i.test(node.kind)) return true;
+  if (nodeReferencesDefaultExtensionSource(node, lookup)) return true;
+  if (nodeReferencesExtensionObject(node, lookup)) return true;
+  return hasExtensionOnlyKnowledgeMarker([
+    node.id,
+    node.kind,
+    node.title,
+    node.summary,
+    node.aliases.join(' '),
+    metadataSearchText(node.metadata),
+  ].join(' '));
+}
+
+function nodeReferencesExtensionObject(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLookup): boolean {
+  for (const nodeId of uniqueStrings([
+    ...readStringArray(node.metadata.linkedObjectIds),
+    ...readStringArray(node.metadata.subjectIds),
+  ])) {
+    const linked = lookupNode(lookup, nodeId);
+    if (!linked) continue;
+    if (/^ha[_:-]/i.test(linked.kind)) return true;
+    if (hasExtensionOnlyKnowledgeMarker(`${linked.kind} ${linked.title} ${metadataSearchText(linked.metadata)}`)) return true;
+  }
+  return false;
+}
+
+function isDefaultExtensionContaminatedIssue(issue: KnowledgeIssueRecord, lookup: KnowledgeScopeLookup): boolean {
+  if (getKnowledgeSpaceId(issue) !== DEFAULT_KNOWLEDGE_SPACE_ID) return false;
+  if (issue.code === 'knowledge.answer_gap') return true;
+  if (issueReferencesDefaultExtensionSource(issue, lookup)) return true;
+  for (const nodeId of issueNodeIds(issue)) {
+    const node = lookupNode(lookup, nodeId);
+    if (node && isDefaultExtensionContaminatedNode(node, lookup)) return true;
+  }
+  return hasExtensionOnlyKnowledgeMarker([
+    issue.id,
+    issue.code,
+    issue.message,
+    issue.sourceId,
+    issue.nodeId,
+    metadataSearchText(issue.metadata),
+  ].join(' '));
+}
+
+function isDefaultAnswerGapNode(node: KnowledgeNodeRecord): boolean {
+  return node.kind === 'knowledge_gap'
+    && readString(node.metadata.semanticKind) === 'gap'
+    && readString(node.metadata.gapKind) === 'answer'
+    && readString(node.metadata.visibility) === 'refinement';
+}
+
+function nodeReferencesDefaultExtensionSource(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLookup): boolean {
+  for (const sourceId of uniqueStrings([
+    node.sourceId,
+    readString(node.metadata.sourceId),
+    ...readStringArray(node.metadata.sourceIds),
+  ])) {
+    const source = lookupSource(lookup, sourceId);
+    if (source && isDefaultExtensionContaminatedSource(source)) return true;
+  }
+  for (const edge of lookup.edges ?? []) {
+    if (!edgeTouchesRecord(edge, 'node', node.id)) continue;
+    const sourceId = edge.fromKind === 'source' ? edge.fromId : edge.toKind === 'source' ? edge.toId : undefined;
+    const source = lookupSource(lookup, sourceId);
+    if (source && isDefaultExtensionContaminatedSource(source)) return true;
+  }
+  return false;
+}
+
+function issueReferencesDefaultExtensionSource(issue: KnowledgeIssueRecord, lookup: KnowledgeScopeLookup): boolean {
+  for (const sourceId of uniqueStrings([
+    issue.sourceId,
+    readString(issue.metadata.sourceId),
+    ...readStringArray(issue.metadata.sourceIds),
+  ])) {
+    const source = lookupSource(lookup, sourceId);
+    if (source && isDefaultExtensionContaminatedSource(source)) return true;
+  }
+  return false;
+}
+
 function isUngroundedSemanticAnswerGapIssue(issue: KnowledgeIssueRecord, lookup: KnowledgeScopeLookup): boolean {
   return issue.code === 'knowledge.answer_gap'
     && (issue.metadata.semantic === true || readString(issue.metadata.semantic) === 'true')
@@ -227,4 +333,30 @@ function uniqueStrings(values: readonly (string | undefined)[]): readonly string
 
 function readOnlyMetadataKeys(metadata: Record<string, unknown>): readonly string[] {
   return Object.keys(metadata).filter((key) => !['knowledgeSpaceId', 'namespace'].includes(key));
+}
+
+function metadataSearchText(metadata: Record<string, unknown>): string {
+  return Object.entries(metadata)
+    .filter(([key]) => !['content', 'raw', 'html'].includes(key))
+    .flatMap(([, value]) => flattenMetadataText(value))
+    .join(' ');
+}
+
+function flattenMetadataText(value: unknown): readonly string[] {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return [String(value)];
+  if (Array.isArray(value)) return value.flatMap(flattenMetadataText);
+  if (!value || typeof value !== 'object') return [];
+  return Object.values(value as Record<string, unknown>).flatMap(flattenMetadataText);
+}
+
+function hasExtensionOnlyKnowledgeMarker(value: string): boolean {
+  const lower = value.toLowerCase();
+  return /\bhome\s*assistant\b/.test(lower)
+    || /\bhome[-_]?assistant\b/.test(lower)
+    || /\bhome\s*graph\b/.test(lower)
+    || /\bhome[-_]?graph\b/.test(lower)
+    || /\bhomegraph\b/.test(lower)
+    || /\bgoodvibes[-_]?homeassistant\b/.test(lower)
+    || /\bha_(?:device|entity|area|integration|device_passport|room)\b/.test(lower)
+    || /\bhomeassistant:/.test(lower);
 }

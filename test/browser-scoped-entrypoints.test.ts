@@ -4,6 +4,9 @@ import {
   createBrowserHomeAssistantSdk,
 } from '../packages/sdk/dist/browser-homeassistant.js';
 import {
+  createBrowserAgentSdk,
+} from '../packages/sdk/dist/browser-agent.js';
+import {
   createBrowserKnowledgeSdk,
 } from '../packages/sdk/dist/browser-knowledge.js';
 import sdkPackage from '../packages/sdk/package.json' with { type: 'json' };
@@ -45,10 +48,14 @@ async function bundleEntrypoint(entrypoint: string): Promise<string> {
 }
 
 describe('scoped browser SDK entrypoints', () => {
-  test('package exports expose knowledge and home assistant browser seams', () => {
+  test('package exports expose knowledge, agent, and home assistant browser seams', () => {
     expect(sdkPackage.exports['./browser/knowledge']).toEqual({
       types: './dist/browser-knowledge.d.ts',
       import: './dist/browser-knowledge.js',
+    });
+    expect(sdkPackage.exports['./browser/agent']).toEqual({
+      types: './dist/browser-agent.d.ts',
+      import: './dist/browser-agent.js',
     });
     expect(sdkPackage.exports['./browser/homeassistant']).toEqual({
       types: './dist/browser-homeassistant.d.ts',
@@ -186,12 +193,54 @@ describe('scoped browser SDK entrypoints', () => {
     ).rejects.toThrow('is not available from this scoped browser SDK entrypoint');
   });
 
+  test('agent browser sdk routes knowledge methods to the isolated agent knowledge wiki', async () => {
+    const transport = createRecordingFetch({
+      ready: true,
+      storagePath: '/tmp/goodvibes-agent',
+      sourceCount: 0,
+      nodeCount: 0,
+      edgeCount: 0,
+      issueCount: 0,
+      extractionCount: 0,
+      jobRunCount: 0,
+      usageCount: 0,
+      candidateCount: 0,
+      reportCount: 0,
+      scheduleCount: 0,
+    });
+    const sdk = createBrowserAgentSdk({
+      baseUrl: 'https://daemon.example.test',
+      fetch: transport.fetch,
+    });
+
+    await sdk.knowledge.status();
+    expect(transport.calls).toEqual(['https://daemon.example.test/api/goodvibes-agent/knowledge/status']);
+    await sdk.knowledge.ask({ query: 'What is GoodVibes Agent?' });
+    expect(transport.calls.at(-1)).toBe('https://daemon.example.test/api/goodvibes-agent/knowledge/ask');
+    await sdk.chat.sessions.create({ title: 'Agent chat' });
+    expect(transport.calls.at(-1)).toBe('https://daemon.example.test/api/companion/chat/sessions');
+    await expect(
+      (sdk.operator as { invoke(methodId: string, input?: unknown): Promise<unknown> })
+        .invoke('homeassistant.homeGraph.status', {}),
+    ).rejects.toThrow('is not available from this scoped browser SDK entrypoint');
+  });
+
   test('bundled knowledge entrypoint does not include Home Graph contract metadata', async () => {
     const bundle = await bundleEntrypoint('packages/sdk/src/browser-knowledge.ts');
 
     expect(bundle).not.toContain('homeassistant.homeGraph');
     expect(bundle).not.toContain('/api/homeassistant/home-graph');
     expect(bundle).toContain('companion.chat.sessions.create');
+  });
+
+  test('bundled agent entrypoint does not include Home Graph route metadata', async () => {
+    const bundle = await bundleEntrypoint('packages/sdk/src/browser-agent.ts');
+
+    expect(bundle).not.toContain('homeassistant.homeGraph');
+    expect(bundle).not.toContain('/api/homeassistant/home-graph');
+    expect(bundle).not.toContain('/api/knowledge/ask');
+    expect(bundle).toContain('/api/goodvibes-agent/knowledge');
+    expect(bundle).toContain('/ask');
   });
 
   test('bundled home assistant entrypoint does not include base knowledge/wiki contract metadata', async () => {

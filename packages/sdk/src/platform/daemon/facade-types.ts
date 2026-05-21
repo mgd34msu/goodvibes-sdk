@@ -65,6 +65,7 @@ export interface ResolvedDaemonFacadeRuntime {
   readonly voiceService: RuntimeServices['voiceService'];
   readonly webSearchService: RuntimeServices['webSearchService'];
   readonly knowledgeService: KnowledgeService;
+  readonly agentKnowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
   readonly projectPlanningService: ProjectPlanningService;
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;

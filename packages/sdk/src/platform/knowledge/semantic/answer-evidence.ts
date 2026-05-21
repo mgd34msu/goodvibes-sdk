@@ -9,6 +9,10 @@ import {
   isHomeAssistantKnowledgeSpace,
   normalizeKnowledgeSpaceId,
 } from '../spaces.js';
+import {
+  knowledgeNodeMatchesScope,
+  knowledgeSourceMatchesScope,
+} from '../scope-records.js';
 import { isActiveKnowledgeEdge } from '../projection-utils.js';
 import type { KnowledgeObjectProfilePolicy } from '../extensions.js';
 import type { KnowledgeSemanticAnswerInput } from './types.js';
@@ -355,14 +359,28 @@ function listAnswerSources(store: KnowledgeStore, spaceId: string): KnowledgeSou
   const sources = isBroadKnowledgeSpaceAlias(spaceId)
     ? store.listSources(Number.MAX_SAFE_INTEGER)
     : store.listSourcesInSpace(spaceId);
-  return sources.filter((source) => source.status !== 'stale');
+  return sources
+    .filter((source) => source.status !== 'stale')
+    .filter((source) => knowledgeSourceMatchesScope(source, answerEvidenceScope(spaceId)));
 }
 
 function listAnswerNodes(store: KnowledgeStore, spaceId: string): KnowledgeNodeRecord[] {
   const nodes = isBroadKnowledgeSpaceAlias(spaceId)
     ? store.listNodes(Number.MAX_SAFE_INTEGER)
     : store.listNodesInSpace(spaceId);
-  return nodes.filter((node) => node.status !== 'stale');
+  const lookup = {
+    getSource: (id: string) => store.getSource(id),
+    getNode: (id: string) => store.getNode(id),
+    edges: store.listEdges(),
+  };
+  return nodes
+    .filter((node) => node.status !== 'stale')
+    .filter((node) => knowledgeNodeMatchesScope(node, answerEvidenceScope(spaceId), lookup));
+}
+
+function answerEvidenceScope(spaceId: string): { readonly knowledgeSpaceId?: string; readonly includeAllSpaces?: boolean } {
+  if (isBroadKnowledgeSpaceAlias(spaceId)) return { includeAllSpaces: true };
+  return { knowledgeSpaceId: normalizeKnowledgeSpaceId(spaceId) };
 }
 
 function sourceIdsLinkedToNodes(store: KnowledgeStore, nodeIds: ReadonlySet<string>, spaceId: string): Set<string> {

@@ -8,6 +8,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.31] - 2026-05-20
+
+### Added
+- Added a scoped `@pellux/goodvibes-sdk/browser/agent` entrypoint whose
+  Knowledge/Wiki calls route to an Agent-owned knowledge environment instead of
+  the regular Knowledge/Wiki or Home Assistant Home Graph stores.
+- Added a daemon-backed GoodVibes Agent knowledge store using
+  `knowledge-agent.sqlite` and `/api/goodvibes-agent/knowledge/*` routes.
+
+### Fixed
+- Hardened default Knowledge/Wiki scoping so Home Assistant/Home Graph-derived
+  sources, semantic gaps, answer-gap issues, orphan source-derived nodes, and
+  extension-only repair artifacts do not leak into regular Knowledge/Wiki
+  surfaces by default.
+- Prevented unanchored default-space no-match answer gaps from being persisted
+  and automatically web-repaired, keeping generic regular Knowledge/Wiki asks
+  from creating extension contamination.
+- Prevented generic extension documentation in the default space from receiving
+  deterministic semantic enrichment.
+
+---
+
 ## [0.33.30] - 2026-05-11
 
 ### Fixed

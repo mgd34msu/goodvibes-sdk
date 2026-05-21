@@ -1,5 +1,6 @@
 import type { KnowledgeStore } from '../store.js';
 import { getKnowledgeSpaceId } from '../spaces.js';
+import { knowledgeSourceMatchesScope } from '../scope-records.js';
 import type {
   KnowledgeEdgeRecord,
   KnowledgeExtractionRecord,
@@ -70,6 +71,12 @@ export async function enrichKnowledgeSource(
   const existingSemantic = readRecord(source.metadata.semanticEnrichment);
   const currentExtractor = readString(existingSemantic.extractor);
   const shouldUpgradeDeterministic = Boolean(context.llm && existingSemantic.textHash === textHash && currentExtractor !== 'llm');
+  if (!knowledgeSourceMatchesScope(source, { includeAllSpaces: true })) {
+    await markSourceSemanticState(context.store, source, textHash, {
+      skippedReason: 'source is outside active knowledge scope',
+    });
+    return emptyResult(source, true, 'source is outside active knowledge scope');
+  }
   if (!options.force && existingSemantic.textHash === textHash && !shouldUpgradeDeterministic) {
     return emptyResult(source, true, 'semantic enrichment is current');
   }
@@ -180,19 +187,21 @@ function deterministicSemanticExtraction(
 ): KnowledgeSemanticExtraction {
   const factText = cleanDeterministicSourceText(deterministicFactSourceText(extraction) || text);
   const sentences = splitSentences(factText);
-  const profileFacts = deriveRepairProfileFacts({
-    query: 'complete features specifications capabilities',
-    source,
-    text: factText,
-  }).map((fact) => ({
-    kind: fact.kind,
-    title: fact.title,
-    value: fact.value,
-    summary: fact.summary,
-    evidence: fact.evidence,
-    confidence: 72,
-    labels: fact.labels,
-  }));
+  const profileFacts = shouldDeriveDeterministicProfileFacts(source, factText)
+    ? deriveRepairProfileFacts({
+      query: 'complete features specifications capabilities',
+      source,
+      text: factText,
+    }).map((fact) => ({
+      kind: fact.kind,
+      title: fact.title,
+      value: fact.value,
+      summary: fact.summary,
+      evidence: fact.evidence,
+      confidence: 72,
+      labels: fact.labels,
+    }))
+    : [];
   const facts = [
     ...profileFacts,
     ...sentences
@@ -223,6 +232,26 @@ function deterministicSemanticExtraction(
     },
     extractor: 'deterministic',
   };
+}
+
+function shouldDeriveDeterministicProfileFacts(source: KnowledgeSourceRecord, text: string): boolean {
+  const discovery = readRecord(source.metadata.sourceDiscovery);
+  if (readStringArray(discovery.linkedObjectIds).length > 0) return true;
+  if (/\bmodel:[a-z0-9][a-z0-9._-]{2,}\b/i.test(readString(discovery.trustReason) ?? '')) return true;
+  const sourceIdentity = [
+    source.title,
+    source.summary,
+    source.sourceUri,
+    source.canonicalUri,
+    source.url,
+    source.tags.join(' '),
+  ].filter(Boolean).join(' ');
+  const hasModelIdentity = /\b[A-Z]{2,}[-_ ]?[0-9][A-Z0-9._-]{2,}\b/.test(sourceIdentity);
+  if (!hasModelIdentity) return false;
+  const sourceLooksLikeSpecProfile = /\b(specifications?|specs?|product|manual|datasheet|support|features?)\b/i.test(sourceIdentity);
+  const textLooksLikeSpecProfile = /\b(?:hdmi|hdr10|dolby vision|refresh rate|bluetooth|wi-?fi|speaker|usb|ethernet|optical|rf antenna|rs-?232|webos|airplay|homekit)\b/i.test(text)
+    && /\b(?:\d{2,3}(?:\.0)?\s*(?:inch|inches|in\.|")|4k|uhd|3840\s*(?:x|×)\s*2160|[A-Z]{2,}[-_ ]?[0-9][A-Z0-9._-]{2,})\b/i.test(text);
+  return sourceLooksLikeSpecProfile || textLooksLikeSpecProfile;
 }
 
 function deterministicFactSourceText(extraction: KnowledgeExtractionRecord | null): string {

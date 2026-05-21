@@ -5,6 +5,10 @@ import type {
   KnowledgeSourceRecord,
 } from '../types.js';
 import { isActiveKnowledgeEdge } from '../projection-utils.js';
+import {
+  knowledgeNodeMatchesScope,
+  knowledgeSourceMatchesScope,
+} from '../scope-records.js';
 
 export interface KnowledgeSemanticGraphIndex {
   readonly edges: readonly KnowledgeEdgeRecord[];
@@ -16,13 +20,19 @@ export function buildKnowledgeSemanticGraphIndex(
   store: KnowledgeStore,
   spaceId: string,
 ): KnowledgeSemanticGraphIndex {
-  const nodes = store.listNodesInSpace(spaceId).filter((node) => node.status !== 'stale');
-  const sources = store.listSourcesInSpace(spaceId).filter((source) => source.status !== 'stale');
+  const scope = { knowledgeSpaceId: spaceId };
+  const rawSources = store.listSourcesInSpace(spaceId).filter((source) => source.status !== 'stale');
+  const sourceMap = new Map(rawSources.map((source) => [source.id, source]));
+  const rawNodes = store.listNodesInSpace(spaceId).filter((node) => node.status !== 'stale');
+  const edgeCandidates = store.listEdges().filter(isActiveKnowledgeEdge);
+  const rawNodeMap = new Map(rawNodes.map((node) => [node.id, node]));
+  const lookup = { sources: sourceMap, nodes: rawNodeMap, edges: edgeCandidates };
+  const sources = rawSources.filter((source) => knowledgeSourceMatchesScope(source, scope));
+  const nodes = rawNodes.filter((node) => knowledgeNodeMatchesScope(node, scope, lookup));
   const nodeIds = new Set(nodes.map((node) => node.id));
   const sourceIds = new Set(sources.map((source) => source.id));
-  const edges = store.listEdges().filter((edge) => (
-    isActiveKnowledgeEdge(edge)
-    && (edge.fromKind !== 'node' || nodeIds.has(edge.fromId))
+  const edges = edgeCandidates.filter((edge) => (
+    (edge.fromKind !== 'node' || nodeIds.has(edge.fromId))
     && (edge.toKind !== 'node' || nodeIds.has(edge.toId))
     && (edge.fromKind !== 'source' || sourceIds.has(edge.fromId))
     && (edge.toKind !== 'source' || sourceIds.has(edge.toId))

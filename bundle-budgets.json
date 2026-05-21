@@ -12,6 +12,10 @@
     "gzip_bytes": 1102,
     "rationale": "companion browser surface with localStorage token store; measured 918 B gzip @ commit 4e5a5e2; headroom max(ceil(918*1.2)=1102, 918+50=968) → 1102 (1.2x dominates by 134 B)"
   },
+  "./browser/agent": {
+    "gzip_bytes": 1235,
+    "rationale": "scoped GoodVibes Agent browser surface with Agent-owned Knowledge/Wiki routes plus shared companion chat/work-plan helpers; measured 1029 B gzip @ v0.33.31 release verification; headroom max(ceil(1029*1.2)=1235, 1029+50=1079) -> 1235 (1.2x dominates)"
+  },
   "./browser/homeassistant": {
     "gzip_bytes": 909,
     "rationale": "scoped Home Assistant browser surface; measured 757 B gzip @ v0.33.6 release verification; headroom max(ceil(757*1.2)=909, 757+50=807) -> 909 (1.2x dominates)"

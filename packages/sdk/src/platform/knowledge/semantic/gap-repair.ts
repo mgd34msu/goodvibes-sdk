@@ -575,7 +575,8 @@ function domainManufacturerHints(value: string): readonly string[] {
   const hints: string[] = [];
   for (const match of value.toLowerCase().matchAll(/\b(?:https?:\/\/)?(?:www\.|support\.|docs\.|developer\.)?([a-z0-9-]+)\.(?:com|net|org|io|dev|tv|ca|co\.uk)\b/g)) {
     const label = match[1]?.replace(/-/g, ' ').trim();
-    if (label && !isGenericManufacturerSlug(manufacturerDomainSlug(label))) hints.push(label);
+    const slug = manufacturerDomainSlug(label ?? '');
+    if (label && !isGenericManufacturerSlug(slug) && !isGenericDomainManufacturerSlug(slug)) hints.push(label);
   }
   return hints;
 }
@@ -606,6 +607,19 @@ function isGenericManufacturerSlug(slug: string): boolean {
     'store',
     'home',
     'assistant',
+  ].includes(slug);
+}
+
+function isGenericDomainManufacturerSlug(slug: string): boolean {
+  return [
+    'github',
+    'gitlab',
+    'bitbucket',
+    'sourceforge',
+    'readthedocs',
+    'githubio',
+    'pages',
+    'docs',
   ].includes(slug);
 }
 

@@ -1,5 +1,9 @@
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
+import {
+  DEFAULT_KNOWLEDGE_SPACE_ID,
+  normalizeKnowledgeSpaceId,
+} from '../spaces.js';
 import type { KnowledgeSemanticGapInput } from './types.js';
 import {
   normalizeWhitespace,
@@ -22,6 +26,7 @@ export function shouldPersistNoMatchGap(
   linkedObjects: readonly KnowledgeNodeRecord[],
 ): boolean {
   if (linkedObjects.length > 0) return true;
+  if (normalizeKnowledgeSpaceId(spaceId) === DEFAULT_KNOWLEDGE_SPACE_ID) return false;
   if (!isBroadKnowledgeSpaceAlias(spaceId)) return true;
   const subjectTokens = tokenizeSemanticQuery(query).filter((token) => !GENERIC_ANSWER_INTENT_TOKENS.has(token));
   return subjectTokens.length > 0;
