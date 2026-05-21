@@ -384,8 +384,8 @@ function hasLegacyDefaultAgentWikiMarker(value: string): boolean {
 
 function hasDefaultGoodVibesProductNavigationMarker(value: string): boolean {
   const lower = value.toLowerCase();
-  const isGoodVibesRepo = /\bgithub\.com\/mgd34msu\/goodvibes[-_][a-z0-9._-]+\b/.test(lower)
-    || /\bmgd34msu\/goodvibes[-_][a-z0-9._-]+\b/.test(lower);
+  const isGoodVibesRepo = /\bgithub\.com\/mgd34msu\/goodvibes(?:\b|[-_][a-z0-9._-]+\b)/.test(lower)
+    || /\bmgd34msu\/goodvibes(?:\b|[-_][a-z0-9._-]+\b)/.test(lower);
   if (!isGoodVibesRepo) return false;
   return /\bnavigation\s+menu\b/.test(lower)
     || /\bskip\s+to\s+content\b/.test(lower)
