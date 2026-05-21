@@ -23,6 +23,7 @@ import {
   projectPlanningProjectIdFromPath,
 } from '../knowledge/index.js';
 import {
+  GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
   HOME_GRAPH_KNOWLEDGE_DB_FILE,
   REGULAR_KNOWLEDGE_DB_FILE,
 } from '../knowledge/store-config.js';
@@ -131,6 +132,7 @@ export interface RuntimeServices {
   readonly gatewayMethods: GatewayMethodCatalog;
   readonly artifactStore: ArtifactStore;
   readonly knowledgeService: KnowledgeService;
+  readonly agentKnowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
   readonly projectPlanningService: ProjectPlanningService;
   readonly memoryStore: MemoryStore;
@@ -400,6 +402,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
     dbFileName: REGULAR_KNOWLEDGE_DB_FILE,
   });
+  const agentKnowledgeStore = new KnowledgeStore({
+    configManager,
+    dbFileName: GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
+  });
   const homeGraphKnowledgeStore = new KnowledgeStore({
     configManager,
     dbFileName: HOME_GRAPH_KNOWLEDGE_DB_FILE,
@@ -417,12 +423,22 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     maxLlmSourcesPerReindex: 3,
     objectProfiles: HOME_GRAPH_KNOWLEDGE_EXTENSION.objectProfiles,
   });
+  const agentKnowledgeSemanticService = new KnowledgeSemanticService(agentKnowledgeStore, {
+    llm: knowledgeSemanticLlm,
+    maxLlmSourcesPerReindex: 3,
+  });
   const knowledgeService = new KnowledgeService(knowledgeStore, artifactStore, undefined, {
     memoryRegistry,
     runtimeBus: options.runtimeBus,
     semanticService: knowledgeSemanticService,
   });
   knowledgeService.attachRuntimeBus(options.runtimeBus);
+  const agentKnowledgeService = new KnowledgeService(agentKnowledgeStore, artifactStore, undefined, {
+    memoryRegistry,
+    runtimeBus: options.runtimeBus,
+    semanticService: agentKnowledgeSemanticService,
+  });
+  agentKnowledgeService.attachRuntimeBus(options.runtimeBus);
   const homeGraphService = new HomeGraphService(homeGraphKnowledgeStore, artifactStore, {
     semanticService: homeGraphSemanticService,
   });
@@ -445,6 +461,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   knowledgeSemanticService.setGapRepairer(createWebKnowledgeGapRepairer({
     searchService: webSearchService,
     ingestService: knowledgeService,
+  }));
+  agentKnowledgeSemanticService.setGapRepairer(createWebKnowledgeGapRepairer({
+    searchService: webSearchService,
+    ingestService: agentKnowledgeService,
   }));
   homeGraphSemanticService.setGapRepairer(createWebKnowledgeGapRepairer({
     searchService: webSearchService,
@@ -584,6 +604,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     gatewayMethods,
     artifactStore,
     knowledgeService,
+    agentKnowledgeService,
     homeGraphService,
     projectPlanningService,
     memoryStore,

@@ -1,4 +1,8 @@
 import type { KnowledgeObjectProfilePolicy } from '../extensions.js';
+import {
+  DEFAULT_KNOWLEDGE_SPACE_ID,
+  getKnowledgeSpaceId,
+} from '../spaces.js';
 import type { KnowledgeStore } from '../store.js';
 import type {
   KnowledgeEdgeRecord,
@@ -108,6 +112,9 @@ export function classifyGap(
   if (!force && repairedWithFacts) return { action: 'skip', reason: 'Gap already has promoted repair facts.', status: 'repaired' };
   if (!force && status !== 'repaired' && nextAttemptAt && nextAttemptAt > Date.now()) return { action: 'skip', reason: 'Gap repair retry window has not elapsed.', status: 'retry_wait', markAttempt: true };
   if (!force && hasRepairEdge(context) && hasRepairFactEvidence(context)) return { action: 'skip', reason: 'Gap already has promoted repair facts.', status: 'already_repaired' };
+  if (isDefaultUnanchoredAnswerGap(context)) {
+    return { action: 'skip', reason: 'Default answer gaps without a linked subject are not automatically web-repaired.', status: 'needs_context', markAttempt: true };
+  }
   if (isNotApplicableGap(context, objectProfiles)) return { action: 'suppress', reason: 'The gap is not applicable to the linked subject.' };
   if (!hasConcreteSubject(context, objectProfiles)) {
     return { action: 'skip', reason: 'Gap has no concrete source or subject for automatic repair.', status: 'needs_context', markAttempt: true };
@@ -116,6 +123,13 @@ export function classifyGap(
     return { action: 'skip', reason: 'Gap has no source context for automatic repair.', status: 'needs_context', markAttempt: true };
   }
   return { action: 'repair' };
+}
+
+function isDefaultUnanchoredAnswerGap(context: GapContext): boolean {
+  return getKnowledgeSpaceId(context.gap) === DEFAULT_KNOWLEDGE_SPACE_ID
+    && readString(context.gap.metadata.semanticKind) === 'gap'
+    && readString(context.gap.metadata.gapKind) === 'answer'
+    && context.linkedObjects.length === 0;
 }
 
 export async function linkRepairSources(

@@ -24,8 +24,8 @@ import {
 import type { RouteBindingManager, ChannelPolicyManager, ChannelPluginRegistry, SurfaceRegistry } from '../../channels/index.js';
 import type { WatcherRegistry } from '../../watchers/index.js';
 import type { DistributedPeerAuth, DistributedRuntimeManager } from '../../runtime/remote/index.js';
-import type { HomeGraphService, KnowledgeGraphqlService, KnowledgeService, ProjectPlanningService } from '../../knowledge/index.js';
-import { inspectKnowledgeGraphqlAccess } from '../../knowledge/index.js';
+import type { HomeGraphService, KnowledgeService, ProjectPlanningService } from '../../knowledge/index.js';
+import { inspectKnowledgeGraphqlAccess, KnowledgeGraphqlService } from '../../knowledge/index.js';
 import type { VoiceService } from '../../voice/index.js';
 import type { WebSearchService } from '../../web-search/index.js';
 import type { ArtifactStore } from '../../artifacts/index.js';
@@ -109,6 +109,7 @@ interface DaemonHttpRouterContext {
   readonly mcpRegistry: import('../../mcp/registry.js').McpRegistry;
   readonly mcpConfigRoots: import('../../mcp/config.js').McpConfigRoots;
   readonly knowledgeService: KnowledgeService;
+  readonly agentKnowledgeService: KnowledgeService;
   readonly homeGraphService: HomeGraphService;
   readonly projectPlanningService: ProjectPlanningService;
   readonly knowledgeGraphqlService: KnowledgeGraphqlService;
@@ -642,7 +643,32 @@ export class DaemonHttpRouter {
         }),
       }),
     };
-    return dispatchDaemonApiRoutes(req, handlers);
+    const agentKnowledgeHandlers = {
+      ...handlers,
+      ...createDaemonKnowledgeRouteHandlers({
+        ...buildKnowledgeRouteContext({
+          artifactStore: this.context.artifactStore,
+          configManager: this.context.configManager,
+          inspectGraphqlAccess: inspectKnowledgeGraphqlAccess,
+          normalizeAtSchedule,
+          normalizeEverySchedule,
+          normalizeCronSchedule,
+          parseJsonBody: (request) => this.parseJsonBody(request),
+          parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
+          parseJsonText: (raw) => this.parseJsonText(raw),
+          requireAdmin: (request) => this.context.requireAdmin(request),
+          resolveAuthenticatedPrincipal: (request) => {
+            const token = this.context.extractAuthToken(request);
+            return token ? this.context.describeAuthenticatedPrincipal(token) : null;
+          },
+          knowledgeService: this.context.agentKnowledgeService,
+          knowledgeGraphqlService: new KnowledgeGraphqlService(this.context.agentKnowledgeService),
+        }),
+      }),
+    };
+    return dispatchDaemonApiRoutes(req, handlers, [
+      (candidate) => dispatchAliasedKnowledgeRoutes(candidate, '/api/goodvibes-agent/knowledge', agentKnowledgeHandlers),
+    ]);
   }
 
   private getHomeAssistantRoutes(): HomeAssistantConversationRoutes {
@@ -783,4 +809,16 @@ export class DaemonHttpRouter {
   async handleGenericWebhook(req: Request): Promise<Response> {
     return handleGenericWebhookSurface(req, this.context.buildGenericWebhookAdapterContext());
   }
+}
+
+function dispatchAliasedKnowledgeRoutes(
+  req: Request,
+  aliasPrefix: string,
+  handlers: Parameters<typeof dispatchDaemonApiRoutes>[1],
+): Promise<Response | null> | Response | null {
+  const url = new URL(req.url);
+  if (!url.pathname.startsWith(aliasPrefix)) return null;
+  const suffix = url.pathname.slice(aliasPrefix.length);
+  url.pathname = `/api/knowledge${suffix}`;
+  return dispatchDaemonApiRoutes(new Request(url.toString(), req), handlers);
 }

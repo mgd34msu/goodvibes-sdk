@@ -98,6 +98,7 @@ import {
   type KnowledgeScopeLookup,
   knowledgeIssueMatchesScope,
   knowledgeNodeMatchesScope,
+  knowledgeSourceMatchesScope,
 } from './scope-records.js';
 import {
   isInKnowledgeSpaceScope,
@@ -270,7 +271,7 @@ export class KnowledgeService {
     const offset = Math.max(0, input.offset ?? 0);
     const queryTokens = tokenize(input.query ?? '');
     const items = this.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => {
-      if (!isInKnowledgeSpaceScope(source, input)) return false;
+      if (!knowledgeSourceMatchesScope(source, input)) return false;
       if (input.status && source.status !== input.status) return false;
       if (input.connectorId && source.connectorId !== input.connectorId) return false;
       if (input.sourceType && source.sourceType !== input.sourceType) return false;
@@ -374,7 +375,10 @@ export class KnowledgeService {
     const records = this.store.listExtractions(sourceId ? 10_000 : limit);
     return records
       .filter((entry) => !sourceId || entry.sourceId === sourceId)
-      .filter((entry) => isInKnowledgeSpaceScope(this.store.getSource(entry.sourceId) ?? entry, scope))
+      .filter((entry) => {
+        const source = this.store.getSource(entry.sourceId);
+        return source ? knowledgeSourceMatchesScope(source, scope) : isInKnowledgeSpaceScope(entry, scope);
+      })
       .slice(0, Math.max(1, limit));
   }
 
@@ -416,7 +420,7 @@ export class KnowledgeService {
     if (!item || !primary || !this.recordMatchesKnowledgeSpaceScope(primary, scope)) return null;
     const scoped: KnowledgeItemView = {
       ...item,
-      linkedSources: item.linkedSources.filter((source) => isInKnowledgeSpaceScope(source, scope)),
+      linkedSources: item.linkedSources.filter((source) => knowledgeSourceMatchesScope(source, scope)),
       linkedNodes: item.linkedNodes.filter((node) => this.nodeMatchesKnowledgeSpaceScope(node, scope)),
       relatedEdges: item.relatedEdges.filter((edge) => this.edgeInKnowledgeSpaceScope(edge, scope)),
     };
@@ -436,7 +440,10 @@ export class KnowledgeService {
   }
 
   private recordReferenceInKnowledgeSpaceScope(kind: string, id: string, scope: KnowledgeSpaceScopeInput): boolean {
-    if (kind === 'source') return isInKnowledgeSpaceScope(this.store.getSource(id), scope);
+    if (kind === 'source') {
+      const source = this.store.getSource(id);
+      return Boolean(source && knowledgeSourceMatchesScope(source, scope));
+    }
     if (kind === 'node') {
       const node = this.store.getNode(id);
       return Boolean(node && this.nodeMatchesKnowledgeSpaceScope(node, scope));
@@ -452,7 +459,7 @@ export class KnowledgeService {
     record: KnowledgeSourceRecord | KnowledgeNodeRecord | KnowledgeIssueRecord,
     scope: KnowledgeSpaceScopeInput,
   ): boolean {
-    if ('sourceType' in record) return isInKnowledgeSpaceScope(record, scope);
+    if ('sourceType' in record) return knowledgeSourceMatchesScope(record, scope);
     if ('kind' in record) return this.nodeMatchesKnowledgeSpaceScope(record, scope);
     return this.issueMatchesKnowledgeSpaceScope(record, scope);
   }

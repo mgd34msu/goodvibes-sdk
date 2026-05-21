@@ -2,11 +2,9 @@ import {
   isGeneratedKnowledgeSource,
 } from './generated-projections.js';
 import {
-  isInKnowledgeSpaceScope,
-} from './spaces.js';
-import {
   knowledgeIssueMatchesScope,
   knowledgeNodeMatchesScope,
+  knowledgeSourceMatchesScope,
 } from './scope-records.js';
 import type {
   KnowledgeEdgeRecord,
@@ -49,7 +47,7 @@ export function applyKnowledgeMapFilters(
     ? []
     : state.sources
         .filter((source) => source.status !== 'stale')
-        .filter((source) => isInKnowledgeSpaceScope(source, filters))
+        .filter((source) => knowledgeSourceMatchesScope(source, filters))
         .filter((source) => options.includeGenerated !== false || !isGeneratedKnowledgeSource(source))
         .filter((source) => matchesSet(filters.sourceTypes, source.sourceType))
         .filter((source) => matchesSet(filters.sourceStatuses, source.status))

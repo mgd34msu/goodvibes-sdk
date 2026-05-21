@@ -15,7 +15,7 @@ import {
 } from './browser-scoped.js';
 import type { ServerSentEventHandlers } from './transport-http.js';
 
-const KNOWLEDGE_BROWSER_ROUTES = {
+export const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.ask': { method: 'POST', path: '/api/knowledge/ask' },
   'knowledge.candidate.decide': { method: 'POST', path: '/api/knowledge/candidates/{id}/decide' },
   'knowledge.candidate.get': { method: 'GET', path: '/api/knowledge/candidates/{id}' },
@@ -84,7 +84,7 @@ const KNOWLEDGE_BROWSER_ROUTES = {
   'companion.chat.sessions.update': { method: 'PATCH', path: '/api/companion/chat/sessions/{sessionId}' },
 } as const satisfies Partial<Record<OperatorTypedMethodId, BrowserScopedRouteDefinition>>;
 
-const KNOWLEDGE_BROWSER_DOMAINS = [
+export const KNOWLEDGE_BROWSER_DOMAINS = [
   'session',
   'turn',
   'tasks',
@@ -158,10 +158,17 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
 }
 
 export function createBrowserKnowledgeSdk(options: ScopedBrowserSdkOptions = {}): BrowserKnowledgeSdk {
+  return createBrowserKnowledgeSdkFromRoutes(KNOWLEDGE_BROWSER_ROUTES, options);
+}
+
+export function createBrowserKnowledgeSdkFromRoutes(
+  knowledgeRoutes: Partial<Record<BrowserKnowledgeMethodId, BrowserScopedRouteDefinition>>,
+  options: ScopedBrowserSdkOptions = {},
+): BrowserKnowledgeSdk {
   const sdk = createScopedBrowserSdk<BrowserKnowledgeMethodId, BrowserKnowledgeDomain>(
     {
       ...SHARED_BROWSER_ROUTES,
-      ...KNOWLEDGE_BROWSER_ROUTES,
+      ...knowledgeRoutes,
     } as Record<BrowserKnowledgeMethodId, BrowserScopedRouteDefinition>,
     KNOWLEDGE_BROWSER_DOMAINS,
     options,

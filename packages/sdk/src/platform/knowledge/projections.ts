@@ -14,6 +14,7 @@ import {
   type KnowledgeScopeLookup,
   knowledgeIssueMatchesScope,
   knowledgeNodeMatchesScope,
+  knowledgeSourceMatchesScope,
 } from './scope-records.js';
 import {
   buildBulletList,
@@ -168,7 +169,7 @@ export class KnowledgeProjectionService {
     if (!id?.trim()) return null;
     if (kind === 'source') {
       const source = this.store.getSource(id);
-      return source && isInKnowledgeSpaceScope(source, scope) ? this.createSourceTarget(source) : null;
+      return source && knowledgeSourceMatchesScope(source, scope) ? this.createSourceTarget(source) : null;
     }
     if (kind === 'node') {
       const node = this.store.getNode(id);
@@ -430,7 +431,7 @@ export class KnowledgeProjectionService {
         buildBulletList(entry.incoming.map((edge) => {
           if (edge.fromKind === 'source') {
             const linked = this.store.getSource(edge.fromId);
-            return linked && isInKnowledgeSpaceScope(linked, scope) ? `${this.linkToTarget(this.createSourceTarget(linked))} via \`${edge.relation}\`` : `source:${edge.fromId}`;
+            return linked && knowledgeSourceMatchesScope(linked, scope) ? `${this.linkToTarget(this.createSourceTarget(linked))} via \`${edge.relation}\`` : `source:${edge.fromId}`;
           }
           if (edge.fromKind === 'node') {
             const node = this.store.getNode(edge.fromId);
@@ -490,7 +491,7 @@ export class KnowledgeProjectionService {
 
   private renderSourcePage(id: string, scope: KnowledgeSpaceScopeInput): KnowledgeProjectionPage {
     const source = this.store.getSource(id);
-    if (!source || !isInKnowledgeSpaceScope(source, scope)) throw new Error(`Unknown knowledge source: ${id}`);
+    if (!source || !knowledgeSourceMatchesScope(source, scope)) throw new Error(`Unknown knowledge source: ${id}`);
     const extraction = this.store.getExtractionBySourceId(id);
     const view = this.store.getItem(id);
     const target = this.createSourceTarget(source);
@@ -536,7 +537,7 @@ export class KnowledgeProjectionService {
       ].join('\n'),
       [
         '## Related Sources',
-        buildBulletList(relatedSources.filter((entry) => isInKnowledgeSpaceScope(entry, scope)).map((entry) => this.linkToTarget(this.createSourceTarget(entry)))),
+        buildBulletList(relatedSources.filter((entry) => knowledgeSourceMatchesScope(entry, scope)).map((entry) => this.linkToTarget(this.createSourceTarget(entry)))),
       ].join('\n'),
       [
         '## Backlinks',
@@ -584,12 +585,12 @@ export class KnowledgeProjectionService {
         '## Linked Sources',
         buildBulletList((view?.linkedSources ?? [])
           .filter((source) => !isGeneratedKnowledgeSource(source))
-          .filter((source) => isInKnowledgeSpaceScope(source, scope))
+          .filter((source) => knowledgeSourceMatchesScope(source, scope))
           .map((source) => this.linkToTarget(this.createSourceTarget(source)))),
       ].join('\n'),
       [
         '## Linked Nodes',
-        buildBulletList((view?.linkedNodes ?? []).filter((entry) => entry.id !== node.id && isInKnowledgeSpaceScope(entry, scope)).map((entry) => this.linkToTarget(this.createNodeTarget(entry), `${entry.title} (${entry.kind})`))),
+        buildBulletList((view?.linkedNodes ?? []).filter((entry) => entry.id !== node.id && this.nodeInScope(entry, scope)).map((entry) => this.linkToTarget(this.createNodeTarget(entry), `${entry.title} (${entry.kind})`))),
       ].join('\n'),
       [
         '## Backlinks',
@@ -623,8 +624,8 @@ export class KnowledgeProjectionService {
     const target = this.createIssueTarget(issue);
     const linkedSource = issue.sourceId ? this.store.getSource(issue.sourceId) : null;
     const linkedNode = issue.nodeId ? this.store.getNode(issue.nodeId) : null;
-    const source = linkedSource && isInKnowledgeSpaceScope(linkedSource, scope) ? linkedSource : null;
-    const node = linkedNode && isInKnowledgeSpaceScope(linkedNode, scope) ? linkedNode : null;
+    const source = linkedSource && knowledgeSourceMatchesScope(linkedSource, scope) ? linkedSource : null;
+    const node = linkedNode && this.nodeInScope(linkedNode, scope) ? linkedNode : null;
     const content = joinSections(
       `# ${target.title}`,
       [
@@ -678,14 +679,16 @@ export class KnowledgeProjectionService {
         if (edge.toKind === 'source') return this.store.getSource(edge.toId);
         return null;
       })
-      .filter((source): source is KnowledgeSourceRecord => Boolean(source) && isInKnowledgeSpaceScope(source, scope));
+      .filter((source): source is KnowledgeSourceRecord => Boolean(source))
+      .filter((source) => knowledgeSourceMatchesScope(source, scope));
     const linkedNodes = edges
       .map((edge) => {
         if (edge.fromKind === 'node' && edge.fromId !== node.id) return this.store.getNode(edge.fromId);
         if (edge.toKind === 'node' && edge.toId !== node.id) return this.store.getNode(edge.toId);
         return null;
       })
-      .filter((entry): entry is KnowledgeNodeRecord => Boolean(entry) && isInKnowledgeSpaceScope(entry, scope));
+      .filter((entry): entry is KnowledgeNodeRecord => Boolean(entry))
+      .filter((entry) => this.nodeInScope(entry, scope));
     const content = joinSections(
       `# ${target.title}`,
       node.summary,
@@ -798,7 +801,7 @@ export class KnowledgeProjectionService {
   private recordReferenceInScope(kind: string, id: string, scope: KnowledgeSpaceScopeInput): boolean {
     if (kind === 'source') {
       const source = this.store.getSource(id);
-      return Boolean(source && isInKnowledgeSpaceScope(source, scope));
+      return Boolean(source && knowledgeSourceMatchesScope(source, scope));
     }
     if (kind === 'node') {
       const node = this.store.getNode(id);
@@ -813,7 +816,7 @@ export class KnowledgeProjectionService {
 
   private scopedSources(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER): KnowledgeSourceRecord[] {
     return this.store.listSources(Number.MAX_SAFE_INTEGER)
-      .filter((source) => isInKnowledgeSpaceScope(source, scope))
+      .filter((source) => knowledgeSourceMatchesScope(source, scope))
       .slice(0, Math.max(1, limit));
   }
 
@@ -833,7 +836,10 @@ export class KnowledgeProjectionService {
 
   private scopedExtractions(scope: KnowledgeSpaceScopeInput, limit = Number.MAX_SAFE_INTEGER) {
     return this.store.listExtractions(Number.MAX_SAFE_INTEGER)
-      .filter((extraction) => isInKnowledgeSpaceScope(extraction, scope))
+      .filter((extraction) => {
+        const source = this.store.getSource(extraction.sourceId);
+        return source ? knowledgeSourceMatchesScope(source, scope) : isInKnowledgeSpaceScope(extraction, scope);
+      })
       .slice(0, Math.max(1, limit));
   }
 

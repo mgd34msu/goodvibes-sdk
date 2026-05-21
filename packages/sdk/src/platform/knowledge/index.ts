@@ -1,4 +1,9 @@
 export { KnowledgeConnectorRegistry, createDefaultKnowledgeConnectorRegistry } from './connectors.js';
+export {
+  GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
+  HOME_GRAPH_KNOWLEDGE_DB_FILE,
+  REGULAR_KNOWLEDGE_DB_FILE,
+} from './store-config.js';
 export type { MemoryApi } from './knowledge-api.js';
 export { createMemoryApi } from './knowledge-api.js';
 export { renderPacket } from './shared.js';
@@ -28,14 +33,18 @@ export { KnowledgeGraphqlService, getKnowledgeGraphqlSchemaText, inspectKnowledg
 export type { KnowledgeGraphqlAccessProfile, KnowledgeGraphqlExecuteInput } from './graphql.js';
 export {
   DEFAULT_KNOWLEDGE_SPACE_ID,
+  GOODVIBES_AGENT_KNOWLEDGE_SPACE_PREFIX,
   HOME_ASSISTANT_KNOWLEDGE_SPACE_PREFIX,
   PROJECT_KNOWLEDGE_SPACE_PREFIX,
   getKnowledgeSpaceId,
+  goodVibesAgentKnowledgeSpaceId,
   homeAssistantKnowledgeSpaceId,
+  isGoodVibesAgentKnowledgeSpace,
   isHomeAssistantKnowledgeSpace,
   isInKnowledgeSpace,
   isProjectKnowledgeSpace,
   knowledgeSpaceMetadata,
+  normalizeGoodVibesAgentId,
   normalizeProjectId,
   normalizeHomeAssistantInstallationId,
   normalizeKnowledgeSpaceId,
