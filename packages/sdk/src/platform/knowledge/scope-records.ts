@@ -178,7 +178,9 @@ function isDefaultExtensionContaminatedSource(source: KnowledgeSourceRecord): bo
     source.tags.join(' '),
     metadataSearchText(source.metadata),
   ].join(' ');
-  return hasLegacyDefaultAgentWikiMarker(text) || hasExtensionOnlyKnowledgeMarker(text);
+  return hasLegacyDefaultAgentWikiMarker(text)
+    || hasDefaultGoodVibesProductNavigationMarker(text)
+    || hasExtensionOnlyKnowledgeMarker(text);
 }
 
 function isDefaultExtensionContaminatedNode(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLookup): boolean {
@@ -196,7 +198,9 @@ function isDefaultExtensionContaminatedNode(node: KnowledgeNodeRecord, lookup: K
     node.aliases.join(' '),
     metadataSearchText(node.metadata),
   ].join(' ');
-  return hasLegacyDefaultAgentWikiMarker(text) || hasExtensionOnlyKnowledgeMarker(text);
+  return hasLegacyDefaultAgentWikiMarker(text)
+    || hasDefaultGoodVibesProductNavigationMarker(text)
+    || hasExtensionOnlyKnowledgeMarker(text);
 }
 
 function nodeReferencesExtensionObject(node: KnowledgeNodeRecord, lookup: KnowledgeScopeLookup): boolean {
@@ -228,7 +232,9 @@ function isDefaultExtensionContaminatedIssue(issue: KnowledgeIssueRecord, lookup
     issue.nodeId,
     metadataSearchText(issue.metadata),
   ].join(' ');
-  return hasLegacyDefaultAgentWikiMarker(text) || hasExtensionOnlyKnowledgeMarker(text);
+  return hasLegacyDefaultAgentWikiMarker(text)
+    || hasDefaultGoodVibesProductNavigationMarker(text)
+    || hasExtensionOnlyKnowledgeMarker(text);
 }
 
 function isDefaultAnswerGapNode(node: KnowledgeNodeRecord): boolean {
@@ -374,4 +380,14 @@ function hasLegacyDefaultAgentWikiMarker(value: string): boolean {
     || /\byaml\s+frontmatter\b/.test(lower)
     || /\bfrontmatter\b/.test(lower)
     || /\bgoodvibes:\/\/wiki\/default\b/.test(lower);
+}
+
+function hasDefaultGoodVibesProductNavigationMarker(value: string): boolean {
+  const lower = value.toLowerCase();
+  const isGoodVibesRepo = /\bgithub\.com\/mgd34msu\/goodvibes[-_][a-z0-9._-]+\b/.test(lower)
+    || /\bmgd34msu\/goodvibes[-_][a-z0-9._-]+\b/.test(lower);
+  if (!isGoodVibesRepo) return false;
+  return /\bnavigation\s+menu\b/.test(lower)
+    || /\bskip\s+to\s+content\b/.test(lower)
+    || /\bgithub\s+navigation\b/.test(lower);
 }

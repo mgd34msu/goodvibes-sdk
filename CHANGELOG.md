@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.33] - 2026-05-20
+
+### Fixed
+- Rejected default-space GoodVibes repository navigation debris from regular
+  Knowledge/Wiki scopes so unscoped `knowledge.ask` no longer answers
+  GoodVibes Agent questions from unrelated plugin/TUI/desktop navigation pages
+  or their stale semantic facts.
+- Added regression coverage for default `What is GoodVibes Agent?` asks to
+  return no results, no sources, no facts, no gaps, and confidence `0` when
+  only default-space product navigation contaminants exist.
+
+---
+
 ## [0.33.32] - 2026-05-20
 
 ### Fixed
