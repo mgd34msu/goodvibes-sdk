@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.32] - 2026-05-20
+
+### Fixed
+- Fixed daemon startup normalization for embedded runtime services that are
+  missing the isolated GoodVibes Agent knowledge service, preventing
+  `/api/goodvibes-agent/knowledge/*` routes from wiring undefined
+  `knowledgeService` handlers.
+- Added regression coverage for Agent knowledge status, ask, and search routes
+  backed by the isolated `knowledge-agent.sqlite` store.
+- Hid legacy default-space GoodVibes Agent wiki records from regular
+  Knowledge/Wiki lists, projections, packets, maps, and asks so Agent content
+  only appears through the Agent-specific knowledge environment.
+
+---
+
 ## [0.33.31] - 2026-05-20
 
 ### Added

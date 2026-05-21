@@ -11,7 +11,15 @@ import {
 } from '../channels/index.js';
 import { ControlPlaneGateway } from '../control-plane/index.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
-import { KnowledgeGraphqlService } from '../knowledge/index.js';
+import {
+  GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
+  KnowledgeGraphqlService,
+  KnowledgeSemanticService,
+  KnowledgeService,
+  KnowledgeStore,
+  createProviderBackedKnowledgeSemanticLlm,
+  createWebKnowledgeGapRepairer,
+} from '../knowledge/index.js';
 import { DaemonControlPlaneHelper } from './control-plane.js';
 import { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
 import { DaemonSurfaceActionHelper } from './surface-actions.js';
@@ -41,6 +49,51 @@ import type {
 } from './facade-types.js';
 
 type JsonBody = Record<string, unknown>;
+
+function hasKnowledgeService(value: unknown): value is KnowledgeService {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.getStatus === 'function'
+    && typeof candidate.ask === 'function'
+    && typeof candidate.searchScoped === 'function';
+}
+
+function ensureAgentKnowledgeService(runtimeServices: RuntimeServices): RuntimeServices {
+  const mutableRuntime = runtimeServices as RuntimeServices & { agentKnowledgeService?: KnowledgeService };
+  if (hasKnowledgeService(mutableRuntime.agentKnowledgeService)) {
+    return runtimeServices;
+  }
+
+  const store = new KnowledgeStore({
+    configManager: runtimeServices.configManager,
+    dbFileName: GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
+  });
+  const semanticLlm = createProviderBackedKnowledgeSemanticLlm(runtimeServices.providerRegistry, {
+    timeoutMs: 20_000,
+    maxConcurrent: 1,
+  });
+  const semanticService = new KnowledgeSemanticService(store, {
+    llm: semanticLlm,
+    maxLlmSourcesPerReindex: 3,
+  });
+  const service = new KnowledgeService(store, runtimeServices.artifactStore, undefined, {
+    memoryRegistry: runtimeServices.memoryRegistry,
+    runtimeBus: runtimeServices.runtimeBus,
+    semanticService,
+  });
+  semanticService.setGapRepairer(createWebKnowledgeGapRepairer({
+    searchService: runtimeServices.webSearchService,
+    ingestService: service,
+  }));
+  service.attachRuntimeBus(runtimeServices.runtimeBus);
+  Object.defineProperty(mutableRuntime, 'agentKnowledgeService', {
+    value: service,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+  return mutableRuntime as RuntimeServices;
+}
 
 /**
  * Creates the CompanionLLMProvider adapter that bridges the daemon's
@@ -202,7 +255,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
 
   const resolvedConfigManager = configManager ?? config.runtimeServices!.configManager;
   const ownedRuntimeBus = config.runtimeServices?.runtimeBus ?? config.runtimeBus ?? new RuntimeEventBus();
-  const runtimeServices = config.runtimeServices ?? createRuntimeServices({
+  const runtimeServices = ensureAgentKnowledgeService(config.runtimeServices ?? createRuntimeServices({
     configManager: resolvedConfigManager,
     runtimeBus: ownedRuntimeBus,
     runtimeStore: createRuntimeStore(),
@@ -210,7 +263,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     getConversationTitle: () => 'goodvibes daemon',
     workingDir: ownedWorkingDir!,
     homeDirectory: ownedHomeDirectory!,
-  });
+  }));
   const runtimeBus = runtimeServices.runtimeBus;
   const runtimeStore = runtimeServices.runtimeStore;
   const controlPlaneGateway = new ControlPlaneGateway({
@@ -230,6 +283,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
   });
 
   runtimeServices.knowledgeService.attachRuntimeBus(runtimeBus);
+  runtimeServices.agentKnowledgeService.attachRuntimeBus(runtimeBus);
   runtimeServices.sessionBroker.attachRuntimeBus(runtimeBus, (agentId) => {
     for (const s of runtimeServices.sessionBroker.listSessions(1000)) {
       if (s.activeAgentId === agentId) return s.id;
