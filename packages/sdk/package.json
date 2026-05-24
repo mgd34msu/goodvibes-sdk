@@ -462,14 +462,14 @@
     "@pellux/goodvibes-transport-realtime": "workspace:*"
   },
   "optionalDependencies": {
-    "@agentclientprotocol/sdk": "^0.21.0",
+    "@agentclientprotocol/sdk": "^0.22.1",
     "@anthropic-ai/bedrock-sdk": "^0.29.1",
-    "@anthropic-ai/sdk": "^0.92.0",
+    "@anthropic-ai/sdk": "^0.98.0",
     "@ast-grep/napi": "^0.42.0",
     "@mozilla/readability": "^0.6.0",
     "bash-language-server": "^5.6.0",
     "bplist-parser": "^0.3.2",
-    "cloudflare": "6.0.0",
+    "cloudflare": "6.3.0",
     "fuse.js": "^7.1.0",
     "google-auth-library": "10.6.2",
     "graphql": "^16.13.2",
