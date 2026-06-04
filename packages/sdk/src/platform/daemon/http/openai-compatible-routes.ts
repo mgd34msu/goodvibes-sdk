@@ -18,6 +18,8 @@ interface ResolvedModel {
   readonly responseModel: string;
 }
 
+type ProviderModelDefinition = ReturnType<ProviderRegistry['getCurrentModel']>;
+
 interface ChatCompletionRequest {
   readonly model?: unknown | undefined;
   readonly messages?: unknown | undefined;
@@ -54,8 +56,8 @@ export async function dispatchOpenAICompatibleRoutes(
 function handleListModels(context: OpenAICompatibleRouteContext): Response {
   const created = Math.floor(Date.now() / 1000);
   const models = context.providerRegistry.listModels();
-  const current = context.providerRegistry.getCurrentModel();
-  const ids = new Set<string>(['goodvibes/current']);
+  const current = tryGetCurrentModel(context.providerRegistry);
+  const ids = new Set<string>(current ? ['goodvibes/current'] : []);
 
   for (const model of models) {
     ids.add(model.registryKey);
@@ -67,7 +69,7 @@ function handleListModels(context: OpenAICompatibleRouteContext): Response {
       id,
       object: 'model',
       created,
-      owned_by: id.startsWith('goodvibes/') ? 'goodvibes' : modelOwnerFor(id, models, current.provider),
+      owned_by: id.startsWith('goodvibes/') ? 'goodvibes' : modelOwnerFor(id, models, current?.provider ?? 'goodvibes'),
     })),
   });
 }
@@ -127,12 +129,12 @@ function resolveModel(
   registry: Pick<ProviderRegistry, 'listModels' | 'getCurrentModel' | 'getForModel'>,
   requested: string | undefined,
 ): ResolvedModel {
-  const current = registry.getCurrentModel();
   const raw = requested?.trim();
   if (!raw) {
     throw new Error('Missing required field: model.');
   }
   if (raw === 'goodvibes/current') {
+    const current = registry.getCurrentModel();
     return {
       provider: registry.getForModel(current.registryKey, current.provider),
       providerId: current.provider,
@@ -157,6 +159,16 @@ function resolveModel(
       ? `Model '${raw}' not found.`
       : `Model '${raw}' must be requested as a provider-qualified registryKey.`,
   );
+}
+
+function tryGetCurrentModel(
+  registry: Pick<ProviderRegistry, 'getCurrentModel'>,
+): ProviderModelDefinition | null {
+  try {
+    return registry.getCurrentModel();
+  } catch {
+    return null;
+  }
 }
 
 function prepareChatRequest(input: ChatCompletionRequest): {

@@ -8,6 +8,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.36] - 2026-06-04
+
+### Added
+- Added telephony surface schema coverage, adapter registration, bridge delivery
+  metadata, and channel policy support so phone-call style delivery can be
+  treated as a first-class channel surface.
+
+### Fixed
+- Normalized `/api/goodvibes-agent/knowledge/*` alias responses to the public
+  Agent Knowledge scope identifier, including nested `spaceId`,
+  `knowledgeSpaceId`, and namespace metadata, so Agent-facing clients do not
+  receive default-scope identifiers from the connected host.
+- Added `authToken` service-registry credential support for token-backed
+  channel accounts while preserving existing password-field compatibility.
+- Kept the OpenAI-compatible `/v1/models` route available when a fresh host has
+  no resolvable current model yet; explicit model resolution still fails clearly
+  when the requested model is missing.
+
+---
+
 ## [0.33.35] - 2026-05-21
 
 ### Fixed

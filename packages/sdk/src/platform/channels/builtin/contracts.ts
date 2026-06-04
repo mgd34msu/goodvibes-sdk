@@ -149,6 +149,15 @@ export async function getBuiltinDoctorReport(
   if (surface === 'whatsapp' && !surfaces.whatsapp.phoneNumberId && surfaces.whatsapp.provider === 'meta-cloud') {
     pushCheck('provider-shape', 'Provider metadata', 'warn', 'Meta Cloud mode works best with a phone number id configured.', 'setup');
   }
+  if (surface === 'telephony' && surfaces.telephony.provider === 'bridge' && !surfaces.telephony.bridgeUrl) {
+    pushCheck('bridge-url', 'Bridge URL', 'fail', 'Bridge mode requires a telephony bridge URL.', 'setup');
+  }
+  if (surface === 'telephony' && surfaces.telephony.provider === 'twilio' && (!surfaces.telephony.accountSid || !surfaces.telephony.authToken || !surfaces.telephony.fromNumber)) {
+    pushCheck('twilio-credentials', 'Twilio credentials', 'fail', 'Direct provider mode requires account SID, auth token, and a sender/caller number.', 'setup');
+  }
+  if (surface === 'telephony' && !surfaces.telephony.defaultRecipient) {
+    pushCheck('default-recipient', 'Default recipient', 'warn', 'No default phone recipient is configured; proactive delivery requires a route binding or explicit target.', 'setup');
+  }
   if (surface === 'imessage' && !surfaces.imessage.bridgeUrl) {
     pushCheck('bridge-url', 'Bridge URL', 'fail', 'iMessage requires a bridge URL or local companion endpoint.', 'setup');
   }

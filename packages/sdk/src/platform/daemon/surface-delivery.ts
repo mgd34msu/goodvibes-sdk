@@ -25,6 +25,7 @@ type DeliverySurface =
   | 'google-chat'
   | 'signal'
   | 'whatsapp'
+  | 'telephony'
   | 'imessage'
   | 'msteams'
   | 'bluebubbles'
@@ -43,6 +44,7 @@ function isSupportedDeliverySurface(surface: string): surface is DeliverySurface
     || surface === 'google-chat'
     || surface === 'signal'
     || surface === 'whatsapp'
+    || surface === 'telephony'
     || surface === 'imessage'
     || surface === 'msteams'
     || surface === 'bluebubbles'
@@ -432,6 +434,7 @@ export class DaemonSurfaceDeliveryHelper {
       case 'google-chat':
       case 'signal':
       case 'whatsapp':
+      case 'telephony':
       case 'imessage':
       case 'msteams':
       case 'bluebubbles':
