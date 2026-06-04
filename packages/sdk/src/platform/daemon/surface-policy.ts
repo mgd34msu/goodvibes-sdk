@@ -10,6 +10,7 @@ type SurfaceDeliveryTarget =
   | 'google-chat'
   | 'signal'
   | 'whatsapp'
+  | 'telephony'
   | 'imessage'
   | 'msteams'
   | 'bluebubbles'
@@ -54,6 +55,16 @@ export function isSurfaceDeliveryEnabled(
   }
   if (surface === 'whatsapp') {
     return Boolean(surfaces.whatsapp.enabled || surfaces.whatsapp.accessToken || surfaces.whatsapp.phoneNumberId || process.env.WHATSAPP_ACCESS_TOKEN);
+  }
+  if (surface === 'telephony') {
+    return Boolean(
+      surfaces.telephony.enabled
+      || surfaces.telephony.bridgeUrl
+      || surfaces.telephony.accountSid
+      || surfaces.telephony.defaultRecipient
+      || process.env.TELEPHONY_BRIDGE_URL
+      || process.env.TWILIO_ACCOUNT_SID,
+    );
   }
   if (surface === 'imessage') {
     return Boolean(surfaces.imessage.enabled || surfaces.imessage.bridgeUrl || surfaces.imessage.account || process.env.IMESSAGE_BRIDGE_TOKEN);

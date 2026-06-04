@@ -119,6 +119,7 @@ const AUTOMATION_SURFACE_KIND_SCHEMA = enumSchema([
   'google-chat',
   'signal',
   'whatsapp',
+  'telephony',
   'imessage',
   'msteams',
   'bluebubbles',

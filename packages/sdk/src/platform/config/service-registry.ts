@@ -46,6 +46,10 @@ export interface ServiceConfig {
   passwordKey?: string | undefined;
   /** Optional external/local secret reference for the basic-auth password. */
   passwordRef?: SecretRefInput | undefined;
+  /** Optional provider auth-token key for services that expose token + auth-token credentials. */
+  authTokenKey?: string | undefined;
+  /** Optional external/local secret reference for provider auth-token credentials. */
+  authTokenRef?: SecretRefInput | undefined;
   /** For api-key auth: the header name. Defaults to X-API-Key. */
   apiKeyHeader?: string | undefined;
   /** Optional secret key holding a webhook or callback URL for this service. */
@@ -73,6 +77,7 @@ export interface ServiceConfig {
 export type ServiceSecretField =
   | 'primary'
   | 'password'
+  | 'authToken'
   | 'webhookUrl'
   | 'signingSecret'
   | 'publicKey'
@@ -82,6 +87,7 @@ export interface ServiceInspection {
   readonly config: ServiceConfig;
   readonly hasPrimaryCredential: boolean;
   readonly hasPasswordCredential: boolean;
+  readonly hasAuthTokenCredential: boolean;
   readonly hasWebhookUrl: boolean;
   readonly hasSigningSecret: boolean;
   readonly hasPublicKey: boolean;
@@ -249,6 +255,13 @@ export class ServiceRegistry {
         return this.resolveConfiguredSecret(serviceName, field, config.tokenKey, config.tokenRef);
       case 'password':
         return this.resolveConfiguredSecret(serviceName, field, config.passwordKey, config.passwordRef);
+      case 'authToken':
+        return this.resolveConfiguredSecret(
+          serviceName,
+          field,
+          config.authTokenKey ?? config.passwordKey,
+          config.authTokenRef ?? config.passwordRef,
+        );
       case 'webhookUrl':
         return this.resolveConfiguredSecret(serviceName, field, config.webhookUrlKey, config.webhookUrlRef);
       case 'signingSecret':
@@ -267,6 +280,7 @@ export class ServiceRegistry {
     const [
       primary,
       password,
+      authToken,
       webhookUrl,
       signingSecret,
       publicKey,
@@ -274,6 +288,7 @@ export class ServiceRegistry {
     ] = await Promise.all([
       this.resolveSecret(serviceName, 'primary'),
       this.resolveSecret(serviceName, 'password'),
+      this.resolveSecret(serviceName, 'authToken'),
       this.resolveSecret(serviceName, 'webhookUrl'),
       this.resolveSecret(serviceName, 'signingSecret'),
       this.resolveSecret(serviceName, 'publicKey'),
@@ -284,6 +299,7 @@ export class ServiceRegistry {
       config,
       hasPrimaryCredential: primary !== null && primary.length > 0,
       hasPasswordCredential: password !== null && password.length > 0,
+      hasAuthTokenCredential: authToken !== null && authToken.length > 0,
       hasWebhookUrl: webhookUrl !== null && webhookUrl.length > 0,
       hasSigningSecret: signingSecret !== null && signingSecret.length > 0,
       hasPublicKey: publicKey !== null && publicKey.length > 0,

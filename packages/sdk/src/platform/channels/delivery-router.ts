@@ -17,6 +17,7 @@ import {
   createBlueBubblesDeliveryStrategy,
   createIMessageDeliveryStrategy,
   createSignalDeliveryStrategy,
+  createTelephonyDeliveryStrategy,
   createWhatsAppDeliveryStrategy,
 } from './delivery/strategies-bridge.js';
 import {
@@ -61,6 +62,7 @@ export function createDefaultChannelDeliveryStrategies(
     createGoogleChatDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createSignalDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createWhatsAppDeliveryStrategy(configManager, serviceRegistry, artifactStore),
+    createTelephonyDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createIMessageDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createMSTeamsDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createBlueBubblesDeliveryStrategy(configManager, serviceRegistry, artifactStore),
