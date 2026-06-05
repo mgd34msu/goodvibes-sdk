@@ -25,12 +25,7 @@ import type { RouteBindingManager, ChannelPolicyManager, ChannelPluginRegistry, 
 import type { WatcherRegistry } from '../../watchers/index.js';
 import type { DistributedPeerAuth, DistributedRuntimeManager } from '../../runtime/remote/index.js';
 import type { HomeGraphService, KnowledgeService, ProjectPlanningService } from '../../knowledge/index.js';
-import {
-  DEFAULT_KNOWLEDGE_SPACE_ID,
-  goodVibesAgentKnowledgeSpaceId,
-  inspectKnowledgeGraphqlAccess,
-  KnowledgeGraphqlService,
-} from '../../knowledge/index.js';
+import { inspectKnowledgeGraphqlAccess, KnowledgeGraphqlService } from '../../knowledge/index.js';
 import type { VoiceService } from '../../voice/index.js';
 import type { WebSearchService } from '../../web-search/index.js';
 import type { ArtifactStore } from '../../artifacts/index.js';
@@ -162,7 +157,7 @@ interface DaemonHttpRouterContext {
     input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string },
   ) => void;
   readonly surfaceDeliveryEnabled: (
-    surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'telephony' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
+    surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
   ) => boolean;
   readonly syncSpawnedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: import('../../tools/agent/index.js').AgentRecord) => void;
@@ -745,7 +740,6 @@ export class DaemonHttpRouter {
       | 'google-chat'
       | 'signal'
       | 'whatsapp'
-      | 'telephony'
       | 'imessage'
       | 'msteams'
       | 'bluebubbles'
@@ -817,57 +811,14 @@ export class DaemonHttpRouter {
   }
 }
 
-const AGENT_KNOWLEDGE_PUBLIC_SPACE_ID = goodVibesAgentKnowledgeSpaceId();
-const AGENT_KNOWLEDGE_SCOPE_FIELDS = new Set(['spaceId', 'knowledgeSpaceId', 'namespace']);
-
-function normalizeAgentKnowledgeAliasPayload(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(normalizeAgentKnowledgeAliasPayload);
-  if (!value || typeof value !== 'object') return value;
-  const output: Record<string, unknown> = {};
-  let changed = false;
-  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-    if (AGENT_KNOWLEDGE_SCOPE_FIELDS.has(key) && nested === DEFAULT_KNOWLEDGE_SPACE_ID) {
-      output[key] = AGENT_KNOWLEDGE_PUBLIC_SPACE_ID;
-      changed = true;
-      continue;
-    }
-    const normalized = normalizeAgentKnowledgeAliasPayload(nested);
-    output[key] = normalized;
-    if (normalized !== nested) changed = true;
-  }
-  return changed ? output : value;
-}
-
-async function normalizeAgentKnowledgeAliasResponse(response: Response): Promise<Response> {
-  const contentType = response.headers.get('content-type') ?? '';
-  if (!contentType.toLowerCase().includes('application/json')) return response;
-  let parsed: unknown;
-  try {
-    parsed = await response.clone().json();
-  } catch {
-    return response;
-  }
-  const normalized = normalizeAgentKnowledgeAliasPayload(parsed);
-  if (normalized === parsed) return response;
-  const headers = new Headers(response.headers);
-  headers.delete('content-length');
-  headers.set('content-type', 'application/json');
-  return Response.json(normalized, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
-
-async function dispatchAliasedKnowledgeRoutes(
+function dispatchAliasedKnowledgeRoutes(
   req: Request,
   aliasPrefix: string,
   handlers: Parameters<typeof dispatchDaemonApiRoutes>[1],
-): Promise<Response | null> {
+): Promise<Response | null> | Response | null {
   const url = new URL(req.url);
   if (!url.pathname.startsWith(aliasPrefix)) return null;
   const suffix = url.pathname.slice(aliasPrefix.length);
   url.pathname = `/api/knowledge${suffix}`;
-  const response = await dispatchDaemonApiRoutes(new Request(url.toString(), req), handlers);
-  return response ? normalizeAgentKnowledgeAliasResponse(response) : null;
+  return dispatchDaemonApiRoutes(new Request(url.toString(), req), handlers);
 }

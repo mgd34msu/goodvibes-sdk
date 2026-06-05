@@ -21,7 +21,6 @@ export type ManagedSurface =
   | 'google-chat'
   | 'signal'
   | 'whatsapp'
-  | 'telephony'
   | 'imessage'
   | 'msteams'
   | 'bluebubbles'
@@ -86,8 +85,6 @@ export function configSectionForSurface(surface: ManagedSurface): SurfaceConfigS
       return 'signal';
     case 'whatsapp':
       return 'whatsapp';
-    case 'telephony':
-      return 'telephony';
     case 'imessage':
       return 'imessage';
     case 'msteams':

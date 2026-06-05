@@ -700,7 +700,6 @@ export class DaemonServer {
       | 'google-chat'
       | 'signal'
       | 'whatsapp'
-      | 'telephony'
       | 'imessage'
       | 'msteams'
       | 'bluebubbles'
@@ -810,7 +809,7 @@ export class DaemonServer {
       error: record.error,
     }, 'daemon.server.agent-finish');
   }
-  private surfaceDeliveryEnabled(surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'telephony' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix'): boolean {
+  private surfaceDeliveryEnabled(surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix'): boolean {
     return isSurfaceFeatureGateEnabled(this.runtimeServices.featureFlags, surface)
       && isSurfaceDeliveryEnabled(this.configManager, surface);
   }

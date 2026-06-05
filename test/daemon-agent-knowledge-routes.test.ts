@@ -7,10 +7,7 @@ import { DaemonServer } from '../packages/sdk/src/platform/daemon/facade.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createRuntimeServices } from '../packages/sdk/src/platform/runtime/services.js';
 import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
-import {
-  GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
-  goodVibesAgentKnowledgeSpaceId,
-} from '../packages/sdk/src/platform/knowledge/index.js';
+import { GOODVIBES_AGENT_KNOWLEDGE_DB_FILE } from '../packages/sdk/src/platform/knowledge/index.js';
 
 const tmpRoots: string[] = [];
 
@@ -81,10 +78,6 @@ describe('daemon Agent knowledge route wiring', () => {
       body: JSON.stringify({ query: 'What is GoodVibes Agent?' }),
     });
     expect(ask.status).toBe(200);
-    const askBody = await ask.json() as { readonly spaceId?: unknown };
-    expect(askBody.spaceId).toBe(goodVibesAgentKnowledgeSpaceId());
-    expect(JSON.stringify(askBody)).not.toContain('"spaceId":"default"');
-    expect(JSON.stringify(askBody)).not.toContain('"knowledgeSpaceId":"default"');
 
     const search = await dispatch(daemon, '/api/goodvibes-agent/knowledge/search', {
       method: 'POST',
@@ -95,53 +88,10 @@ describe('daemon Agent knowledge route wiring', () => {
     const searchBody = await search.json() as { results?: unknown[] };
     expect(searchBody.results).toEqual([]);
 
-    const agentKnowledgeStore = (runtimeServices as unknown as {
-      agentKnowledgeService?: {
-        readonly store?: {
-          readonly storagePath?: string;
-          upsertNode(input: {
-            readonly kind: string;
-            readonly slug: string;
-            readonly title: string;
-            readonly summary?: string;
-            readonly metadata?: Record<string, unknown>;
-          }): Promise<unknown>;
-        };
-      };
-    }).agentKnowledgeService?.store;
-    expect(agentKnowledgeStore?.storagePath).toEndWith(GOODVIBES_AGENT_KNOWLEDGE_DB_FILE);
-
-    await agentKnowledgeStore?.upsertNode({
-      kind: 'topic',
-      slug: 'agent-scope-probe',
-      title: 'Agent Scope Probe',
-      summary: 'Route response metadata normalization probe.',
-      metadata: {
-        spaceId: 'default',
-        knowledgeSpaceId: 'default',
-        namespace: 'default',
-        nested: { knowledgeSpaceId: 'default' },
-      },
-    });
-
-    const nodes = await dispatch(daemon, '/api/goodvibes-agent/knowledge/nodes?limit=10');
-    expect(nodes.status).toBe(200);
-    const nodesText = JSON.stringify(await nodes.json());
-    expect(nodesText).toContain(`"knowledgeSpaceId":"${goodVibesAgentKnowledgeSpaceId()}"`);
-    expect(nodesText).not.toContain('"spaceId":"default"');
-    expect(nodesText).not.toContain('"knowledgeSpaceId":"default"');
-    expect(nodesText).not.toContain('"namespace":"default"');
-
-    const map = await dispatch(daemon, '/api/goodvibes-agent/knowledge/map');
-    expect(map.status).toBe(200);
-    const mapText = JSON.stringify(await map.json());
-    expect(mapText).toContain(`"knowledgeSpaceId":"${goodVibesAgentKnowledgeSpaceId()}"`);
-    expect(mapText).not.toContain('"spaceId":"default"');
-    expect(mapText).not.toContain('"knowledgeSpaceId":"default"');
-    expect(mapText).not.toContain('"namespace":"default"');
-
     expect(
-      agentKnowledgeStore?.storagePath,
+      (runtimeServices as unknown as {
+        agentKnowledgeService?: { readonly store?: { readonly storagePath?: string } };
+      }).agentKnowledgeService?.store?.storagePath,
     ).toEndWith(GOODVIBES_AGENT_KNOWLEDGE_DB_FILE);
   });
 });

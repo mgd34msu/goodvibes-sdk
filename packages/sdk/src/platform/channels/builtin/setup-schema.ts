@@ -378,60 +378,6 @@ export function getBuiltinSetupSchema(surface: ChannelSurface): ChannelSetupSche
         ],
         metadata: {},
       };
-    case 'telephony':
-      return {
-        surface,
-        version: CHANNEL_SETUP_VERSION,
-        label: 'Telephony',
-        setupMode: 'bridge',
-        description: 'Telephony supports bridge-backed SMS/voice delivery or direct Twilio SMS and voice-call delivery.',
-        fields: [
-          setupField('enabled', 'Enabled', 'boolean', false, { configKey: 'surfaces.telephony.enabled', defaultValue: false }),
-          setupField('provider', 'Provider', 'select', true, {
-            configKey: 'surfaces.telephony.provider',
-            options: [{ value: 'twilio', label: 'Twilio' }, { value: 'bridge', label: 'Bridge' }],
-          }),
-          setupField('mode', 'Mode', 'select', true, {
-            configKey: 'surfaces.telephony.mode',
-            options: [{ value: 'sms', label: 'SMS' }, { value: 'voice', label: 'Voice call' }, { value: 'bridge', label: 'Bridge' }],
-          }),
-          setupField('bridgeUrl', 'Bridge URL', 'url', false, { configKey: 'surfaces.telephony.bridgeUrl', placeholder: 'https://telephony-bridge.example.test' }),
-          setupField('accountSid', 'Account SID', 'string', false, { configKey: 'surfaces.telephony.accountSid' }),
-          setupField('authToken', 'Auth token', 'secret', false, { configKey: 'surfaces.telephony.authToken', secretTargetId: 'authToken' }),
-          setupField('fromNumber', 'From number', 'string', false, { configKey: 'surfaces.telephony.fromNumber', placeholder: '+15551234567' }),
-          setupField('defaultRecipient', 'Default recipient', 'string', false, { configKey: 'surfaces.telephony.defaultRecipient', placeholder: '+15557654321' }),
-          setupField('token', 'Bridge token', 'secret', false, { configKey: 'surfaces.telephony.token', secretTargetId: 'primary' }),
-          setupField('webhookSecret', 'Webhook secret', 'secret', false, { configKey: 'surfaces.telephony.webhookSecret', secretTargetId: 'signingSecret' }),
-          setupField('voiceLanguage', 'Voice language', 'string', false, { configKey: 'surfaces.telephony.voiceLanguage', defaultValue: 'en-US' }),
-        ],
-        secretTargets: [
-          secretTarget(surface, 'authToken', 'Auth token', false, 'Used for direct Twilio SMS or voice delivery.', {
-            serviceName: 'telephony',
-            serviceField: 'authToken',
-            envKeys: ['TWILIO_AUTH_TOKEN'],
-            configKeys: ['surfaces.telephony.authToken'],
-          }),
-          secretTarget(surface, 'primary', 'Bridge token', false, 'Used to authenticate against a telephony bridge.', {
-            serviceName: 'telephony',
-            serviceField: 'primary',
-            envKeys: ['TELEPHONY_BRIDGE_TOKEN'],
-            configKeys: ['surfaces.telephony.token'],
-          }),
-          secretTarget(surface, 'signingSecret', 'Webhook secret', false, 'Used to verify inbound telephony callbacks.', {
-            serviceName: 'telephony',
-            serviceField: 'signingSecret',
-            envKeys: ['TELEPHONY_WEBHOOK_SECRET', 'TWILIO_WEBHOOK_SECRET'],
-            configKeys: ['surfaces.telephony.webhookSecret'],
-          }),
-        ],
-        externalSteps: [
-          'Choose bridge mode or direct Twilio provider mode.',
-          'For bridge mode, configure the bridge URL and bridge token.',
-          'For direct provider mode, store the account SID, auth token, and sender/caller number.',
-          'Configure a webhook secret before accepting inbound SMS or voice callbacks.',
-        ],
-        metadata: {},
-      };
     case 'imessage':
       return {
         surface,

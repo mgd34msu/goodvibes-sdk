@@ -670,7 +670,7 @@ describe('knowledge generated projections and maps', () => {
       title: 'Audio capabilities',
       value: '2 x 10W speakers',
       subjectIds: ['device-tv'],
-      fallbackScope: 'alpha-scope',
+      fallbackScope: 'source-a',
     });
     const second = semanticFactId({
       spaceId: 'homeassistant:house-1',
@@ -678,7 +678,7 @@ describe('knowledge generated projections and maps', () => {
       title: 'Audio capabilities',
       value: '2 x 10W speakers',
       subjectIds: ['device-tv'],
-      fallbackScope: 'beta-scope',
+      fallbackScope: 'source-b',
     });
 
     expect(second).toBe(first);

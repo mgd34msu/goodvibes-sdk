@@ -17,7 +17,6 @@ export function isManagedSurface(surface: ChannelSurface): surface is ManagedSur
     || surface === 'google-chat'
     || surface === 'signal'
     || surface === 'whatsapp'
-    || surface === 'telephony'
     || surface === 'imessage'
     || surface === 'msteams'
     || surface === 'bluebubbles'

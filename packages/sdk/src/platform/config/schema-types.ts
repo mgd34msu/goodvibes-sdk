@@ -181,21 +181,6 @@ export interface WhatsAppSurfaceConfig {
   setupVersion: number;
 }
 
-export interface TelephonySurfaceConfig {
-  enabled: boolean;
-  provider: 'twilio' | 'bridge';
-  mode: 'sms' | 'voice' | 'bridge';
-  bridgeUrl: string;
-  token: string;
-  accountSid: string;
-  authToken: string;
-  fromNumber: string;
-  defaultRecipient: string;
-  webhookSecret: string;
-  voiceLanguage: string;
-  setupVersion: number;
-}
-
 export interface IMessageSurfaceConfig {
   enabled: boolean;
   bridgeUrl: string;
@@ -254,7 +239,6 @@ export interface SurfacesConfig {
   googleChat: GoogleChatSurfaceConfig;
   signal: SignalSurfaceConfig;
   whatsapp: WhatsAppSurfaceConfig;
-  telephony: TelephonySurfaceConfig;
   imessage: IMessageSurfaceConfig;
   msteams: MSTeamsSurfaceConfig;
   bluebubbles: BlueBubblesSurfaceConfig;
@@ -660,17 +644,6 @@ export type ConfigKey =
   | 'surfaces.whatsapp.phoneNumberId'
   | 'surfaces.whatsapp.businessAccountId'
   | 'surfaces.whatsapp.defaultRecipient'
-  | 'surfaces.telephony.enabled'
-  | 'surfaces.telephony.provider'
-  | 'surfaces.telephony.mode'
-  | 'surfaces.telephony.bridgeUrl'
-  | 'surfaces.telephony.token'
-  | 'surfaces.telephony.accountSid'
-  | 'surfaces.telephony.authToken'
-  | 'surfaces.telephony.fromNumber'
-  | 'surfaces.telephony.defaultRecipient'
-  | 'surfaces.telephony.webhookSecret'
-  | 'surfaces.telephony.voiceLanguage'
   | 'surfaces.imessage.enabled'
   | 'surfaces.imessage.bridgeUrl'
   | 'surfaces.imessage.account'
@@ -930,17 +903,6 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.whatsapp.phoneNumberId' ? string :
   K extends 'surfaces.whatsapp.businessAccountId' ? string :
   K extends 'surfaces.whatsapp.defaultRecipient' ? string :
-  K extends 'surfaces.telephony.enabled' ? boolean :
-  K extends 'surfaces.telephony.provider' ? 'twilio' | 'bridge' :
-  K extends 'surfaces.telephony.mode' ? 'sms' | 'voice' | 'bridge' :
-  K extends 'surfaces.telephony.bridgeUrl' ? string :
-  K extends 'surfaces.telephony.token' ? string :
-  K extends 'surfaces.telephony.accountSid' ? string :
-  K extends 'surfaces.telephony.authToken' ? string :
-  K extends 'surfaces.telephony.fromNumber' ? string :
-  K extends 'surfaces.telephony.defaultRecipient' ? string :
-  K extends 'surfaces.telephony.webhookSecret' ? string :
-  K extends 'surfaces.telephony.voiceLanguage' ? string :
   K extends 'surfaces.imessage.enabled' ? boolean :
   K extends 'surfaces.imessage.bridgeUrl' ? string :
   K extends 'surfaces.imessage.account' ? string :

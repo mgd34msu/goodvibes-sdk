@@ -27,7 +27,6 @@ export type AutomationSurfaceKind =
   | 'google-chat'
   | 'signal'
   | 'whatsapp'
-  | 'telephony'
   | 'imessage'
   | 'msteams'
   | 'bluebubbles'

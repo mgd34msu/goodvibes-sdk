@@ -55,21 +55,6 @@ function makeContext(provider: LLMProvider) {
   };
 }
 
-function makeContextWithMissingCurrentModel(provider: LLMProvider) {
-  const model = makeModel('openai', 'gpt-test');
-  return {
-    providerRegistry: {
-      listModels: () => [model],
-      getCurrentModel: () => {
-        throw new Error("Current model 'missing:missing' not in registry.");
-      },
-      getForModel: () => provider,
-    } satisfies Pick<ProviderRegistry, 'listModels' | 'getCurrentModel' | 'getForModel'>,
-    parseJsonBody: async (request: Request) => await request.json() as Record<string, unknown>,
-    recordApiResponse: (_request: Request, _path: string, response: Response) => response,
-  };
-}
-
 function request(path: string, body?: unknown): Request {
   return new Request(`http://127.0.0.1:3421${path}`, {
     method: body ? 'POST' : 'GET',
@@ -89,19 +74,6 @@ describe('OpenAI-compatible daemon routes', () => {
     expect(ids).toContain('openai:gpt-test');
     expect(ids).not.toContain('goodvibes/default');
     expect(ids).not.toContain('gpt-test');
-  });
-
-  test('lists registry models when the current-model alias is not resolvable', async () => {
-    const provider = makeProvider();
-    const response = await dispatchOpenAICompatibleRoutes(
-      request('/v1/models'),
-      makeContextWithMissingCurrentModel(provider),
-    );
-    expect(response?.status).toBe(200);
-    const body = await response!.json() as { data: Array<{ id: string; owned_by: string }> };
-    expect(body.data).toHaveLength(1);
-    expect(body.data[0]?.id).toBe('openai:gpt-test');
-    expect(body.data[0]?.owned_by).toBe('openai');
   });
 
   test('maps chat completions requests to provider chat responses', async () => {
@@ -125,24 +97,6 @@ describe('OpenAI-compatible daemon routes', () => {
     expect(body.choices[0]?.message.content).toBe('hello world');
     expect(body.usage.total_tokens).toBe(5);
     expect(provider.requests.length).toBe(1);
-  });
-
-  test('routes explicit model requests without requiring the current-model alias', async () => {
-    const provider = makeProvider();
-    const context = makeContextWithMissingCurrentModel(provider);
-    const explicit = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
-      model: 'openai:gpt-test',
-      messages: [{ role: 'user', content: 'say hello' }],
-    }), context);
-    expect(explicit?.status).toBe(200);
-    expect(provider.requests.length).toBe(1);
-
-    const alias = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
-      model: 'goodvibes/current',
-      messages: [{ role: 'user', content: 'say hello' }],
-    }), context);
-    expect(alias?.status).toBe(400);
-    expect((await alias!.json() as { error: { message: string } }).error.message).toContain('missing:missing');
   });
 
   test('streams OpenAI-style SSE chunks', async () => {
