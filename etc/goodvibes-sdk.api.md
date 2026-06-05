@@ -650,7 +650,7 @@ export interface ContractStreamOptions extends ContractInvokeOptions {
 }
 
 // @public
-export const CONTROL_PLANE_CLIENT_KINDS: readonly ["tui", "web", "slack", "discord", "ntfy", "daemon", "webhook", "homeassistant", "service", "telegram", "google-chat", "signal", "whatsapp", "telephony", "imessage", "msteams", "bluebubbles", "mattermost", "matrix"];
+export const CONTROL_PLANE_CLIENT_KINDS: readonly ["tui", "web", "slack", "discord", "ntfy", "daemon", "webhook", "homeassistant", "service", "telegram", "google-chat", "signal", "whatsapp", "imessage", "msteams", "bluebubbles", "mattermost", "matrix"];
 
 // @public (undocumented)
 export const CONTROL_PLANE_PRINCIPAL_KINDS: readonly ["user", "bot", "service", "token"];
@@ -1185,7 +1185,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.36";
+    readonly productVersion: "0.33.35";
     readonly operatorMethodCount: 279;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -14964,7 +14964,7 @@ export function resolveHttpRetryPolicy(defaultPolicy?: HttpRetryPolicy, override
 export const RETRYABLE_STATUS_CODES: readonly number[];
 
 // @public
-const ROUTE_SURFACE_KINDS: readonly ["tui", "web", "slack", "discord", "ntfy", "webhook", "homeassistant", "telegram", "google-chat", "signal", "whatsapp", "telephony", "imessage", "msteams", "bluebubbles", "mattermost", "matrix", "service"];
+const ROUTE_SURFACE_KINDS: readonly ["tui", "web", "slack", "discord", "ntfy", "webhook", "homeassistant", "telegram", "google-chat", "signal", "whatsapp", "imessage", "msteams", "bluebubbles", "mattermost", "matrix", "service"];
 export { ROUTE_SURFACE_KINDS }
 export { ROUTE_SURFACE_KINDS as SURFACE_KINDS }
 

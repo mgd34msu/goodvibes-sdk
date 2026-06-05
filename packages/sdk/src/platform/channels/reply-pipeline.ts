@@ -142,15 +142,6 @@ const DEFAULT_POLICY: Record<ChannelSurface, ChannelRenderPolicy> = {
     maxEventsPerUpdate: 10,
     metadata: {},
   },
-  telephony: {
-    surface: 'telephony',
-    reasoningVisibility: 'suppress',
-    format: 'plain',
-    supportsThreads: false,
-    maxChunkChars: 1_400,
-    maxEventsPerUpdate: 6,
-    metadata: {},
-  },
   imessage: {
     surface: 'imessage',
     reasoningVisibility: 'summary',

@@ -25,7 +25,6 @@ The channel contract includes:
 - `google-chat`
 - `signal`
 - `whatsapp`
-- `telephony`
 - `imessage`
 - `msteams`
 - `bluebubbles`
@@ -33,8 +32,8 @@ The channel contract includes:
 - `matrix`
 
 Built-in managed external surfaces are Slack, Discord, ntfy, generic webhook,
-Home Assistant, Telegram, Google Chat, Signal, WhatsApp, Telephony, iMessage,
-Microsoft Teams, BlueBubbles, Mattermost, and Matrix.
+Home Assistant, Telegram, Google Chat, Signal, WhatsApp, iMessage, Microsoft
+Teams, BlueBubbles, Mattermost, and Matrix.
 
 ## Capabilities
 
@@ -63,8 +62,8 @@ Adapters parse provider-specific payloads into GoodVibes work:
 - Home Assistant signed webhooks and Assist conversation requests
 - Telegram webhook updates
 - Google Chat webhook events
-- Signal, WhatsApp, Telephony, iMessage, BlueBubbles, Mattermost, Matrix, and
-  generic webhook payloads
+- Signal, WhatsApp, iMessage, BlueBubbles, Mattermost, Matrix, and generic
+  webhook payloads
 - GitHub automation webhooks
 
 Ingress applies request-size limits, signature/token checks where configured,
@@ -140,9 +139,6 @@ or Home Assistant service target before dispatching work.
   bot-token resolution, and service-backed secret refs.
 - Discord supports interactions, gateway dispatch, commands, and component
   responses.
-- Telephony supports bridge-backed SMS/voice delivery or direct Twilio SMS/voice
-  calls, token-authenticated inbound callbacks, default recipient routing, and
-  plain-text reply rendering tuned for phone channels.
 - Generic webhooks support signed ingress and generic reply delivery.
 
 ## Operator Methods

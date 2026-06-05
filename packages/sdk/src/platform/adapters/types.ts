@@ -63,7 +63,7 @@ export interface SurfaceAdapterContext {
   readonly routeBindings: RouteBindingManager;
   readonly sessionBroker: SharedSessionBroker;
   readonly authorizeSurfaceIngress: (input: {
-    surface: Extract<AutomationSurfaceKind, 'slack' | 'discord' | 'ntfy' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'telephony' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix'>;
+    surface: Extract<AutomationSurfaceKind, 'slack' | 'discord' | 'ntfy' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix'>;
     userId?: string | undefined;
     channelId?: string | undefined;
     groupId?: string | undefined;

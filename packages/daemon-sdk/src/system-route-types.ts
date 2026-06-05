@@ -12,7 +12,6 @@ export type DaemonApiClientKind =
   | 'google-chat'
   | 'signal'
   | 'whatsapp'
-  | 'telephony'
   | 'imessage'
   | 'msteams'
   | 'bluebubbles'

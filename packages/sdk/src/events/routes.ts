@@ -16,7 +16,6 @@ export const ROUTE_SURFACE_KINDS = [
   'google-chat',
   'signal',
   'whatsapp',
-  'telephony',
   'imessage',
   'msteams',
   'bluebubbles',

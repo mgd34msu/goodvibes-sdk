@@ -12,7 +12,6 @@ export { handleTelegramSurfaceWebhook } from './telegram/index.js';
 export { handleGoogleChatSurfaceWebhook } from './google-chat/index.js';
 export { handleSignalSurfaceWebhook } from './signal/index.js';
 export { handleWhatsAppSurfaceWebhook } from './whatsapp/index.js';
-export { handleTelephonySurfaceWebhook } from './telephony/index.js';
 export { handleIMessageSurfaceWebhook } from './imessage/index.js';
 export { handleMSTeamsSurfaceWebhook } from './msteams/index.js';
 export { handleBlueBubblesSurfaceWebhook } from './bluebubbles/index.js';

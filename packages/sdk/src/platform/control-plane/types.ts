@@ -17,7 +17,6 @@ export type ControlPlaneClientSurface =
   | 'google-chat'
   | 'signal'
   | 'whatsapp'
-  | 'telephony'
   | 'imessage'
   | 'msteams'
   | 'bluebubbles'

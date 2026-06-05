@@ -68,7 +68,7 @@ interface DaemonSurfaceActionContext {
     readonly callbackSignature?: import('./types.js').PendingSurfaceReply['callbackSignature'] | undefined;
   }) => void;
   readonly surfaceDeliveryEnabled: (
-    surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'telephony' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
+    surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
   ) => boolean;
   readonly signWebhookPayload: (body: string, secret: string) => string;
   readonly handleApprovalAction: (

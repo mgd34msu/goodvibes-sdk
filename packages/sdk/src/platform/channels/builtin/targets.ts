@@ -427,24 +427,6 @@ export async function lookupBuiltinProviderDirectory(
     }], needle, limit);
   }
 
-  if (surface === 'telephony') {
-    if (!surfaces.telephony.defaultRecipient && !surfaces.telephony.fromNumber && !surfaces.telephony.accountSid) return [];
-    return filterProviderDirectory([{
-      id: surfaces.telephony.defaultRecipient || surfaces.telephony.fromNumber || surfaces.telephony.accountSid,
-      surface,
-      kind: 'user',
-      label: surfaces.telephony.defaultRecipient || surfaces.telephony.fromNumber || surfaces.telephony.accountSid,
-      handle: surfaces.telephony.defaultRecipient || surfaces.telephony.fromNumber || surfaces.telephony.accountSid,
-      isDirect: true,
-      searchText: [
-        surfaces.telephony.defaultRecipient,
-        surfaces.telephony.fromNumber,
-        surfaces.telephony.accountSid,
-      ].filter(Boolean).join(' '),
-      metadata: { provider: 'telephony', mode: surfaces.telephony.mode },
-    }], needle, limit);
-  }
-
   if (surface === 'imessage') {
     if (!surfaces.imessage.defaultChatId && !surfaces.imessage.account) return [];
     return filterProviderDirectory([{
