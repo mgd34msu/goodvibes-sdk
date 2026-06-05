@@ -18,6 +18,7 @@ export const CONTROL_PLANE_CLIENT_KINDS = [
   'google-chat',
   'signal',
   'whatsapp',
+  'telephony',
   'imessage',
   'msteams',
   'bluebubbles',

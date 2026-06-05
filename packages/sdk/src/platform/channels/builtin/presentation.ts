@@ -33,6 +33,7 @@ export function renderBuiltinPolicy(surface: ChannelSurface): ChannelRenderPolic
       return { ...base, reasoningVisibility: 'summary', format: 'json', supportsThreads: true, maxChunkChars: 8_000 };
     case 'signal':
     case 'whatsapp':
+    case 'telephony':
     case 'imessage':
     case 'bluebubbles':
       return { ...base, reasoningVisibility: 'summary', format: 'plain', supportsThreads: false, maxChunkChars: 3_500 };
@@ -63,6 +64,8 @@ export function surfaceLabelForBuiltin(surface: ChannelSurface): string {
       return 'Signal';
     case 'whatsapp':
       return 'WhatsApp';
+    case 'telephony':
+      return 'Telephony';
     case 'imessage':
       return 'iMessage';
     case 'msteams':
