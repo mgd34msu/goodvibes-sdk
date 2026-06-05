@@ -221,6 +221,31 @@ export async function buildBuiltinAccount(
         },
       });
     }
+    case 'telephony': {
+      const surfaces = context.deps.configManager.getCategory('surfaces');
+      const secrets = await Promise.all([
+        describeBuiltinSecret(context.deps, 'accountSid', 'Account SID', surfaces.telephony.accountSid, ['TWILIO_ACCOUNT_SID']),
+        describeBuiltinSecret(context.deps, 'authToken', 'Auth token', surfaces.telephony.authToken, ['TWILIO_AUTH_TOKEN'], 'telephony', 'authToken'),
+        describeBuiltinSecret(context.deps, 'primary', 'Bridge token', surfaces.telephony.token, ['TELEPHONY_BRIDGE_TOKEN'], 'telephony', 'primary'),
+        describeBuiltinSecret(context.deps, 'signingSecret', 'Webhook secret', surfaces.telephony.webhookSecret, ['TELEPHONY_WEBHOOK_SECRET', 'TWILIO_WEBHOOK_SECRET'], 'telephony', 'signingSecret'),
+      ]);
+      return finalizeBuiltinChannelAccount({
+        surface,
+        label: 'Telephony',
+        enabled: context.deps.surfaceDeliveryEnabled('telephony'),
+        accountId: surfaces.telephony.accountSid || surfaces.telephony.fromNumber || 'surface:telephony',
+        secrets,
+        metadata: {
+          provider: surfaces.telephony.provider,
+          mode: surfaces.telephony.mode,
+          bridgeUrl: surfaces.telephony.bridgeUrl,
+          fromNumber: surfaces.telephony.fromNumber,
+          defaultRecipient: surfaces.telephony.defaultRecipient,
+          voiceLanguage: surfaces.telephony.voiceLanguage,
+          setupVersion: surfaces.telephony.setupVersion,
+        },
+      });
+    }
     case 'imessage': {
       const surfaces = context.deps.configManager.getCategory('surfaces');
       const secrets = await Promise.all([

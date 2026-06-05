@@ -16,6 +16,7 @@ export type ChannelSurface =
   | 'google-chat'
   | 'signal'
   | 'whatsapp'
+  | 'telephony'
   | 'imessage'
   | 'msteams'
   | 'bluebubbles'

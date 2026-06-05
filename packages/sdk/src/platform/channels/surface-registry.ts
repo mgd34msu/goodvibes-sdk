@@ -57,6 +57,7 @@ export class SurfaceRegistry {
       if (surface === 'google-chat') return Boolean(surfaces.googleChat.enabled || surfaces.googleChat.webhookUrl || surfaces.googleChat.spaceId);
       if (surface === 'signal') return Boolean(surfaces.signal.enabled || surfaces.signal.bridgeUrl || surfaces.signal.account);
       if (surface === 'whatsapp') return Boolean(surfaces.whatsapp.enabled || surfaces.whatsapp.accessToken || surfaces.whatsapp.phoneNumberId);
+      if (surface === 'telephony') return Boolean(surfaces.telephony.enabled || surfaces.telephony.bridgeUrl || surfaces.telephony.accountSid || surfaces.telephony.defaultRecipient);
       if (surface === 'imessage') return Boolean(surfaces.imessage.enabled || surfaces.imessage.bridgeUrl || surfaces.imessage.account);
       if (surface === 'msteams') return Boolean(surfaces.msteams.enabled || surfaces.msteams.appId || surfaces.msteams.defaultConversationId);
       if (surface === 'bluebubbles') return Boolean(surfaces.bluebubbles.enabled || surfaces.bluebubbles.serverUrl || surfaces.bluebubbles.defaultChatGuid);
@@ -73,6 +74,7 @@ export class SurfaceRegistry {
       if (surface === 'google-chat') return surfaces.googleChat.appId || surfaces.googleChat.spaceId || undefined;
       if (surface === 'signal') return surfaces.signal.account || surfaces.signal.defaultRecipient || undefined;
       if (surface === 'whatsapp') return surfaces.whatsapp.phoneNumberId || surfaces.whatsapp.defaultRecipient || undefined;
+      if (surface === 'telephony') return surfaces.telephony.accountSid || surfaces.telephony.fromNumber || surfaces.telephony.defaultRecipient || undefined;
       if (surface === 'imessage') return surfaces.imessage.account || surfaces.imessage.defaultChatId || undefined;
       if (surface === 'msteams') return surfaces.msteams.botId || surfaces.msteams.defaultConversationId || undefined;
       if (surface === 'bluebubbles') return surfaces.bluebubbles.account || surfaces.bluebubbles.defaultChatGuid || undefined;

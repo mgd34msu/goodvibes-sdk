@@ -63,6 +63,7 @@ function toEventSurfaceKind(surfaceKind: AutomationSurfaceKind): RouteSurfaceKin
     case 'google-chat':
     case 'signal':
     case 'whatsapp':
+    case 'telephony':
     case 'imessage':
     case 'msteams':
     case 'bluebubbles':

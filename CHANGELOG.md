@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ---
 
+## [0.33.37] - 2026-06-05
+
+### Added
+- Added telephony surface schema coverage, adapter registration, bridge delivery
+  metadata, and channel policy support so phone-call style delivery can be
+  treated as a first-class channel surface.
+
+---
+
 ## [0.33.35] - 2026-05-21
 
 ### Fixed

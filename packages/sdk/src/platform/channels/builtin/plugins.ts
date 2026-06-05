@@ -12,6 +12,7 @@ import {
   handleNtfySurfaceWebhook,
   handleSignalSurfaceWebhook,
   handleSlackSurfaceWebhook,
+  handleTelephonySurfaceWebhook,
   handleTelegramSurfaceWebhook,
   handleWhatsAppSurfaceWebhook,
 } from '../../adapters/index.js';
@@ -264,6 +265,7 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
   registerRouterBackedPlugin(context, 'google-chat', 'Google Chat', ['ingress', 'egress', 'threaded_reply', 'interactive_actions', 'account_lifecycle', 'target_resolution', 'agent_tools'], '/webhook/google-chat', handleGoogleChatSurfaceWebhook);
   registerRouterBackedPlugin(context, 'signal', 'Signal', ['ingress', 'egress', 'account_lifecycle', 'target_resolution', 'agent_tools'], '/webhook/signal', handleSignalSurfaceWebhook);
   registerRouterBackedPlugin(context, 'whatsapp', 'WhatsApp', ['ingress', 'egress', 'interactive_actions', 'account_lifecycle', 'target_resolution', 'agent_tools'], '/webhook/whatsapp', handleWhatsAppSurfaceWebhook);
+  registerRouterBackedPlugin(context, 'telephony', 'Telephony', ['ingress', 'egress', 'delivery_only', 'account_lifecycle', 'target_resolution', 'agent_tools'], '/webhook/telephony', handleTelephonySurfaceWebhook);
   registerRouterBackedPlugin(context, 'imessage', 'iMessage', ['ingress', 'egress', 'account_lifecycle', 'target_resolution', 'agent_tools'], '/webhook/imessage', handleIMessageSurfaceWebhook);
   registerRouterBackedPlugin(context, 'msteams', 'Microsoft Teams', ['ingress', 'egress', 'threaded_reply', 'interactive_actions', 'account_lifecycle', 'target_resolution', 'agent_tools'], '/webhook/msteams', handleMSTeamsSurfaceWebhook);
   registerRouterBackedPlugin(context, 'bluebubbles', 'BlueBubbles', ['ingress', 'egress', 'account_lifecycle', 'target_resolution', 'agent_tools'], '/webhook/bluebubbles', handleBlueBubblesSurfaceWebhook);
