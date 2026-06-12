@@ -764,13 +764,28 @@ export class DaemonHttpRouter {
 
     const username = typeof body.username === 'string' ? body.username : '';
     const password = typeof body.password === 'string' ? body.password : '';
-    const user = this.context.userAuth.authenticate(username, password);
+    const authResult = this.context.userAuth.authenticate(username, password);
 
-    if (!user) {
+    if (!authResult.ok) {
+      if (authResult.lockedUntilMs) {
+        const retryAfterSeconds = Math.ceil((authResult.lockedUntilMs - Date.now()) / 1_000);
+        return Response.json(
+          { error: 'Too many requests' },
+          { status: 429, headers: { 'Retry-After': String(Math.max(1, retryAfterSeconds)) } },
+        );
+      }
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
+    const { user } = authResult;
     const session = this.context.userAuth.createSession(user.username);
+
+    // Auto-retire the bootstrap credential file ONLY after the first
+    // NON-bootstrap login (mirrors http-listener.ts handleLogin behaviour).
+    if (!authResult.usedBootstrapCredential && this.context.userAuth.inspect().bootstrapCredentialPresent) {
+      this.context.userAuth.clearBootstrapCredentialFile();
+    }
+
     return Response.json({
       authenticated: true,
       token: session.token,

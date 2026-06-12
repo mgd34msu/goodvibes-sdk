@@ -23,24 +23,38 @@ import {
   type WithoutKeys,
 } from '@pellux/goodvibes-transport-http';
 
+/** Per-call options forwarded to the transport's `invokeContractRoute`. */
 export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions {}
 
+/** Per-call options forwarded to the transport's `openContractRouteStream`. */
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {}
 
+/** Internal options for `createOperatorRemoteClient`. */
 export interface OperatorRemoteClientOptions {
+  /** Factory that maps a method id to its Zod response schema, when available. */
   readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined;
   /**
    * Applies to JSON request/response methods. Server-sent event stream payloads
    * are validated by their realtime event schemas at the transport boundary.
+   *
+   * @defaultValue true
    */
   readonly validateResponses?: boolean | undefined;
 }
 
+/**
+ * Argument tuple for a fully-typed `invoke()` call on a given operator method id.
+ * Used internally by the named-method facades (e.g. `sdk.operator.sessions.create`).
+ */
 export type KnownMethodArgs<TMethodId extends OperatorTypedMethodId> = MethodArgs<
   OperatorMethodInput<TMethodId>,
   OperatorRemoteClientInvokeOptions
 >;
 
+/**
+ * Like `KnownMethodArgs` but with some input keys omitted (used for path-parameter
+ * methods whose prefix keys are supplied as positional function arguments).
+ */
 export type KnownPathMethodArgs<
   TMethodId extends OperatorTypedMethodId,
   TKeys extends PropertyKey,
@@ -49,15 +63,30 @@ export type KnownPathMethodArgs<
   OperatorRemoteClientInvokeOptions
 >;
 
+/**
+ * Argument tuple for a fully-typed `stream()` call on a given operator stream method id.
+ */
 export type KnownStreamArgs<TMethodId extends OperatorStreamMethodId> = MethodArgs<
   OperatorMethodInput<TMethodId>,
   OperatorRemoteClientStreamOptions
 >;
 
+/**
+ * Low-level operator remote client. Returned by `createOperatorRemoteClient`.
+ * Prefer `OperatorSdk` (from `createOperatorSdk`) which adds schema validation
+ * and typed method facades.
+ */
 export interface OperatorRemoteClient {
+  /** The underlying HTTP transport used to issue all requests. */
   readonly transport: HttpTransport;
+  /** The operator contract manifest describing all available methods and events. */
   readonly contract: OperatorContractManifest;
+  /** Return all method descriptors in the operator contract. */
   listOperations(): readonly OperatorMethodContract[];
+  /**
+   * Look up a contract method descriptor by its string id.
+   * @throws `GoodVibesSdkError` when the method id is not in the contract.
+   */
   getOperation(methodId: string): OperatorMethodContract;
   invoke<TMethodId extends OperatorTypedMethodId>(
     methodId: TMethodId,
@@ -172,6 +201,17 @@ function methodHttpRoute(method: OperatorMethodContract): ContractRouteDefinitio
   };
 }
 
+/**
+ * Construct a low-level operator remote client from a transport and contract manifest.
+ *
+ * Typically called by `createOperatorSdk`; use that factory unless you need to
+ * supply a custom contract manifest or a non-standard transport.
+ *
+ * @param transport - The HTTP transport to use for all requests.
+ * @param contract - The operator contract manifest.
+ * @param clientOptions - Optional response validation settings.
+ * @returns An `OperatorRemoteClient` with typed invoke/stream methods.
+ */
 export function createOperatorRemoteClient(
   transport: HttpTransport,
   contract: OperatorContractManifest,

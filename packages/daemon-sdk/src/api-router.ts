@@ -15,6 +15,26 @@ import type { DaemonApiRouteHandlers } from './context.js';
  */
 export type DaemonApiRouteExtension = (req: Request) => Promise<Response | null> | Response | null;
 
+/**
+ * Dispatch an incoming HTTP request against the full daemon API route set.
+ *
+ * Routes are tried in order: remote → operator → automation → session → task → extensions.
+ * Returns the first non-null `Response`, or `null` if no route matched.
+ *
+ * @param req - The incoming HTTP request.
+ * @param handlers - Object implementing `DaemonApiRouteHandlers`.
+ * @param extensions - Optional additional dispatchers tried after built-in routes.
+ * @returns The matched route's `Response`, or `null` if unmatched.
+ *
+ * @example
+ * ```ts
+ * import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-daemon-sdk';
+ *
+ * const response = await dispatchDaemonApiRoutes(req, myHandlers);
+ * if (response) return response;
+ * return new Response('Not found', { status: 404 });
+ * ```
+ */
 export async function dispatchDaemonApiRoutes(
   req: Request,
   handlers: DaemonApiRouteHandlers,

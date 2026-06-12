@@ -16,4 +16,12 @@ export {
   forSessionRuntime,
   WebSocketTransportError,
 } from './runtime-events.js';
-export type { AuthTokenSource, RuntimeEventConnectorOptions } from './runtime-events.js';
+export type {
+  AuthTokenSource,
+  BackpressureInfo,
+  ConnectionState,
+  ConnectorTransportEvent,
+  ReconnectAttemptInfo,
+  RuntimeEventConnectorOptions,
+} from './runtime-events.js';
+export { createWebSocketRemoteError } from './runtime-events.js';

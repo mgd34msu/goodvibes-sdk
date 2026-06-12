@@ -5,6 +5,7 @@ import {
 } from './http-policy.js';
 import { GoodVibesSdkError, DaemonErrorCategory } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse } from './error-response.js';
+import { paginateItems, hasPaginationParams } from './pagination.js';
 import { createArtifactFromUploadRequest, isArtifactUploadRequest } from './artifact-upload.js';
 import {
   createRouteBodySchema,
@@ -70,18 +71,8 @@ export function createDaemonKnowledgeRouteHandlers(
 ): DaemonKnowledgeRouteHandlers {
   return {
     getKnowledgeStatus: async (url) => Response.json(await context.knowledgeService.getStatus(readKnowledgeSpaceQuery(url))),
-    getKnowledgeSources: async (url) => Response.json({
-      sources: context.knowledgeService.querySources({
-        limit: readLimit(url, 100),
-        ...readKnowledgeSpaceQuery(url),
-      }).items,
-    }),
-    getKnowledgeNodes: async (url) => Response.json({
-      nodes: context.knowledgeService.queryNodes({
-        limit: readLimit(url, 100),
-        ...readKnowledgeSpaceQuery(url),
-      }).items,
-    }),
+    getKnowledgeSources: async (url) => handleGetKnowledgeSources(context, url),
+    getKnowledgeNodes: async (url) => handleGetKnowledgeNodes(context, url),
     getKnowledgeIssues: async (url) => Response.json({
       issues: context.knowledgeService.queryIssues({
         limit: readLimit(url, 100),
@@ -751,8 +742,14 @@ async function handleKnowledgeReviewIssue(context: DaemonKnowledgeRouteContext, 
   } catch (error) {
     // map status from error code, not English-prefix match.
     const isNotFound = error instanceof Error && (
-      (error as { code?: unknown }).code === 'NOT_FOUND'
-      || (error as { code?: unknown }).code === 'KNOWLEDGE_ISSUE_NOT_FOUND'
+      // Domain-specific not-found codes are always explicit (never auto-inferred).
+      (error as { code?: unknown }).code === 'KNOWLEDGE_ISSUE_NOT_FOUND'
+      // Bare NOT_FOUND only maps to 404 when the error carries an actual HTTP 404
+      // status, preventing auto-inferred NOT_FOUND from category-only errors
+      // (which now always have code='NOT_FOUND' via inferCodeFromCategory)
+      // from silently becoming 404 responses.
+      || ((error as { code?: unknown }).code === 'NOT_FOUND'
+        && (error as { status?: unknown }).status === 404)
     );
     return jsonErrorResponse(error, { status: isNotFound ? 404 : 400 });
   }
@@ -779,8 +776,14 @@ async function handleKnowledgeDecideCandidate(context: DaemonKnowledgeRouteConte
   } catch (error) {
     // map status from error code, not English-prefix match.
     const isNotFound = error instanceof Error && (
-      (error as { code?: unknown }).code === 'NOT_FOUND'
-      || (error as { code?: unknown }).code === 'KNOWLEDGE_CANDIDATE_NOT_FOUND'
+      // Domain-specific not-found codes are always explicit (never auto-inferred).
+      (error as { code?: unknown }).code === 'KNOWLEDGE_CANDIDATE_NOT_FOUND'
+      // Bare NOT_FOUND only maps to 404 when the error carries an actual HTTP 404
+      // status, preventing auto-inferred NOT_FOUND from category-only errors
+      // (which now always have code='NOT_FOUND' via inferCodeFromCategory)
+      // from silently becoming 404 responses.
+      || ((error as { code?: unknown }).code === 'NOT_FOUND'
+        && (error as { status?: unknown }).status === 404)
     );
     return jsonErrorResponse(error, { status: isNotFound ? 404 : 400 });
   }
@@ -800,8 +803,14 @@ async function handleKnowledgeRunJob(context: DaemonKnowledgeRouteContext, jobId
   } catch (error) {
     // map status from error code, not English-prefix match.
     const isNotFound = error instanceof Error && (
-      (error as { code?: unknown }).code === 'NOT_FOUND'
-      || (error as { code?: unknown }).code === 'KNOWLEDGE_JOB_NOT_FOUND'
+      // Domain-specific not-found codes are always explicit (never auto-inferred).
+      (error as { code?: unknown }).code === 'KNOWLEDGE_JOB_NOT_FOUND'
+      // Bare NOT_FOUND only maps to 404 when the error carries an actual HTTP 404
+      // status, preventing auto-inferred NOT_FOUND from category-only errors
+      // (which now always have code='NOT_FOUND' via inferCodeFromCategory)
+      // from silently becoming 404 responses.
+      || ((error as { code?: unknown }).code === 'NOT_FOUND'
+        && (error as { status?: unknown }).status === 404)
     );
     return jsonErrorResponse(error, { status: isNotFound ? 404 : 400 });
   }
@@ -873,4 +882,121 @@ async function handleKnowledgeMaterializeProjection(context: DaemonKnowledgeRout
   } catch (error) {
     return jsonErrorResponse(error, { status: 400 });
   }
+}
+
+/** Extract the `id` from an opaque knowledge item (sources/nodes are `unknown` at the SDK boundary). */
+function extractKnowledgeItemId(item: unknown): string | undefined {
+  if (typeof item === 'object' && item !== null && 'id' in item) {
+    const id = (item as Record<string, unknown>).id;
+    return typeof id === 'string' ? id : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Extract the `updatedAt` timestamp from an opaque knowledge item for cursor-based
+ * pagination recovery.
+ *
+ * Knowledge source and node records carry a `readonly updatedAt: number` field
+ * (see `KnowledgeSourceRecord` / `KnowledgeNodeRecord` in
+ * `platform/knowledge/types.ts`).  The production store sorts both collections
+ * by `byUpdatedAtDesc` (newest-first by updatedAt), so the cursor's position
+ * key MUST encode `updatedAt` — not `createdAt` — to land at the correct
+ * insertion point after a mid-walk deletion.
+ *
+ * Semantic note: `updatedAt` mutates when an item is modified.  A mid-walk
+ * update moves the item to the front of the list (it gains a new updatedAt
+ * value) and its old position disappears — identical in effect to a deletion.
+ * The insertion-point scan (findIndex(ts < cursor.value)) handles this
+ * correctly: the old position is gone, so the scan skips past it naturally.
+ *
+ * Returns `undefined` when the field is absent or not a number (tolerant of
+ * missing values at the SDK boundary).
+ */
+function extractKnowledgeItemUpdatedAt(item: unknown): number | undefined {
+  if (typeof item === 'object' && item !== null && 'updatedAt' in item) {
+    const ts = (item as Record<string, unknown>).updatedAt;
+    return typeof ts === 'number' ? ts : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Handle GET /api/knowledge/sources.
+ *
+ * Without pagination params (`?limit=` / `?cursor=`): returns `{ sources: [...] }` (backward compat).
+ * With pagination params: returns `PaginatedResponse`-shaped `{ items, nextCursor, hasMore }`.
+ *
+ * ### Fetch cap
+ * The knowledge store accepts a `limit` argument but does not support
+ * cursor/offset range queries — the full in-memory collection must be loaded to
+ * perform cursor-based slicing.  We cap the load at 5 000 items.  If the store
+ * grows beyond this, source-level pagination on the store API should be added
+ * and this cap raised accordingly.
+ */
+function handleGetKnowledgeSources(
+  context: DaemonKnowledgeRouteContext,
+  url: URL,
+): Response {
+  const spaceQuery = readKnowledgeSpaceQuery(url);
+  if (!hasPaginationParams(url)) {
+    const { items: sources } = context.knowledgeService.querySources({ limit: readLimit(url, 100), ...spaceQuery });
+    return Response.json({ sources });
+  }
+  const limit = readLimit(url, 100);
+  const rawCursor = url.searchParams.get('cursor');
+  // Load the full in-memory collection (capped at 5_000 — see JSDoc note above).
+  const { items: allItems } = context.knowledgeService.querySources({ limit: 5_000, ...spaceQuery });
+  const items = allItems as readonly unknown[];
+  const result = paginateItems(
+    items,
+    limit,
+    rawCursor,
+    (item) => extractKnowledgeItemId(item) ?? '',
+    // NOTE: cursor position key encodes updatedAt (matches byUpdatedAtDesc store order).
+    extractKnowledgeItemUpdatedAt,
+    { descending: true },
+  );
+  if ('error' in result) {
+    return jsonErrorResponse({ error: result.error }, { status: 400 });
+  }
+  return Response.json(result);
+}
+
+/**
+ * Handle GET /api/knowledge/nodes.
+ *
+ * Without pagination params (`?limit=` / `?cursor=`): returns `{ nodes: [...] }` (backward compat).
+ * With pagination params: returns `PaginatedResponse`-shaped `{ items, nextCursor, hasMore }`.
+ *
+ * ### Fetch cap
+ * Same limitation as `handleGetKnowledgeSources` — capped at 5 000 items.
+ */
+function handleGetKnowledgeNodes(
+  context: DaemonKnowledgeRouteContext,
+  url: URL,
+): Response {
+  const spaceQuery = readKnowledgeSpaceQuery(url);
+  if (!hasPaginationParams(url)) {
+    const { items: nodes } = context.knowledgeService.queryNodes({ limit: readLimit(url, 100), ...spaceQuery });
+    return Response.json({ nodes });
+  }
+  const limit = readLimit(url, 100);
+  const rawCursor = url.searchParams.get('cursor');
+  // Load the full in-memory collection (capped at 5_000 — see JSDoc note above).
+  const { items: allItems } = context.knowledgeService.queryNodes({ limit: 5_000, ...spaceQuery });
+  const items = allItems as readonly unknown[];
+  const result = paginateItems(
+    items,
+    limit,
+    rawCursor,
+    (item) => extractKnowledgeItemId(item) ?? '',
+    // NOTE: cursor position key encodes updatedAt (matches byUpdatedAtDesc store order).
+    extractKnowledgeItemUpdatedAt,
+    { descending: true },
+  );
+  if ('error' in result) {
+    return jsonErrorResponse({ error: result.error }, { status: 400 });
+  }
+  return Response.json(result);
 }

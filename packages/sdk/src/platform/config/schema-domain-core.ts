@@ -84,6 +84,7 @@ export const coreConfigDefaults = {
     voice: '',
     llmProvider: '',
     llmModel: '',
+    speed: 1.0,
   },
   release: {
     channel: 'stable',
@@ -104,6 +105,7 @@ export const coreConfigDefaults = {
     scoreThreshold: 9.9,
     maxFixAttempts: 5,
     autoCommit: true,
+    agentHeartbeatTimeoutMs: 0,
     gates: [
       { name: 'typecheck', command: 'npx tsc --noEmit', enabled: true },
       { name: 'lint', command: 'npx eslint . --max-warnings 0', enabled: true },
@@ -514,6 +516,14 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     description: 'Optional LLM model override for spoken-output turns; empty means use the active chat model',
   },
   {
+    key: 'tts.speed',
+    type: 'number',
+    default: 1.0,
+    description: 'Playback speed multiplier for TTS synthesis (0.25–4.0); 1.0 is normal speed',
+    validate: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0.25 && v <= 4.0,
+    validationHint: 'finite number in [0.25, 4.0]',
+  },
+  {
     key: 'ui.operationalMessages',
     type: 'enum',
     default: 'panel',
@@ -605,6 +615,13 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: true,
     description: 'Auto-commit when WRFC chain passes review and quality gates',
+  },
+  {
+    key: 'wrfc.agentHeartbeatTimeoutMs',
+    type: 'number',
+    default: 0,
+    description: 'Watchdog timeout in ms for silent WRFC child agents. 0 = disabled.',
+    validate: (v) => typeof v === 'number' && v >= 0,
   },
   {
     key: 'cache.enabled',

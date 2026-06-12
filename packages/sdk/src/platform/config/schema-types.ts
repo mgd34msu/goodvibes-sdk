@@ -35,6 +35,8 @@ export interface TtsConfig {
   voice: string;
   llmProvider: string;
   llmModel: string;
+  /** Playback speed multiplier (0.25–4.0); 1.0 = normal speed. */
+  speed: number;
 }
 
 export interface AutomationConfig {
@@ -485,6 +487,11 @@ export interface ConfigSetting {
   description: string;
   enumValues?: string[] | undefined;
   validate?: ((value: unknown) => boolean) | undefined;
+  /**
+   * Optional hint appended to the validation-failure message when `validate`
+   * returns false. E.g. `'finite number in [0.25, 4.0]'`.
+   */
+  validationHint?: string | undefined;
 }
 
 /** Dot-path config keys for all settings. */
@@ -551,6 +558,7 @@ export type ConfigKey =
   | 'tts.voice'
   | 'tts.llmProvider'
   | 'tts.llmModel'
+  | 'tts.speed'
   | 'release.channel'
   | 'danger.daemon'
   | 'danger.httpListener'
@@ -563,6 +571,7 @@ export type ConfigKey =
   | 'wrfc.scoreThreshold'
   | 'wrfc.maxFixAttempts'
   | 'wrfc.autoCommit'
+  | 'wrfc.agentHeartbeatTimeoutMs'
   | 'cache.enabled'
   | 'cache.stableTtl'
   | 'cache.monitorHitRate'
@@ -821,6 +830,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'tts.voice' ? string :
   K extends 'tts.llmProvider' ? string :
   K extends 'tts.llmModel' ? string :
+  K extends 'tts.speed' ? number :
   K extends 'release.channel' ? 'stable' | 'preview' :
   K extends 'danger.daemon' ? boolean :
   K extends 'danger.httpListener' ? boolean :
@@ -833,6 +843,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'wrfc.scoreThreshold' ? number :
   K extends 'wrfc.maxFixAttempts' ? number :
   K extends 'wrfc.autoCommit' ? boolean :
+  K extends 'wrfc.agentHeartbeatTimeoutMs' ? number :
   K extends 'cache.enabled' ? boolean :
   K extends 'cache.stableTtl' ? '5m' | '1h' :
   K extends 'cache.monitorHitRate' ? boolean :

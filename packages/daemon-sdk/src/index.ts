@@ -162,4 +162,11 @@ export {
   handleRemotePeerWorkComplete,
 } from './remote-routes.js';
 export { buildErrorResponseBody, jsonErrorResponse, summarizeErrorForRecord } from './error-response.js';
+export {
+  decodeCursor,
+  encodeCursor,
+  hasPaginationParams,
+  paginateItems,
+} from './pagination.js';
+export type { PaginatedResponse } from './pagination.js';
 export type { JsonErrorResponseOptions } from './error-response.js';

@@ -12,6 +12,37 @@ export type KnowledgeEvent =
       sourceType: string;
       uri?: string | undefined;
     }
+  /**
+   * Granular progress update during a knowledge ingest pipeline run.
+   *
+   * Emitted by the knowledge ingest engine at each processing phase so UIs can
+   * render live progress bars for long-running ingest operations (e.g. large
+   * document sets, semantic indexing).
+   *
+   * **Integration note:** Emission sites live in `platform/knowledge`. Wire by calling
+   * `bus.emit('knowledge', { type: 'KNOWLEDGE_INGEST_PROGRESS', ... })` at each
+   * phase-transition or item-complete checkpoint in the ingest pipeline. The contract
+   * is defined here so SDK consumers can subscribe without depending on the internal
+   * knowledge module.
+   *
+   * **Scope note:** `operationId` is operation-scoped (not task-scoped). See `lifecycle.ts`
+   * for the guard that ties progress events to their originating operation lifecycle.
+   */
+  | {
+      type: 'KNOWLEDGE_INGEST_PROGRESS';
+      /** Stable ingest operation identifier (matches KNOWLEDGE_INGEST_STARTED.sourceId). */
+      operationId: string;
+      /** Current pipeline phase (e.g. `'downloading'`, `'parsing'`, `'chunking'`, `'embedding'`, `'indexing'`). */
+      phase: string;
+      /** Items processed in the current phase so far. */
+      completed: number;
+      /** Total items for this phase (undefined if not yet determined). */
+      total?: number | undefined;
+      /** Completion percentage 0–100 (undefined if total unknown). */
+      percent?: number | undefined;
+      /** Optional human-readable status message (e.g. current file name). */
+      message?: string | undefined;
+    }
   | {
       type: 'KNOWLEDGE_INGEST_COMPLETED';
       sourceId: string;

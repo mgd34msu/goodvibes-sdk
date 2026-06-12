@@ -171,6 +171,7 @@ export const OPERATOR_METHOD_IDS = [
   "media.transform",
   "memory.doctor",
   "memory.embeddings.default.set",
+  "memory.review-queue",
   "memory.vector.rebuild",
   "memory.vector.stats",
   "multimodal.analyze",

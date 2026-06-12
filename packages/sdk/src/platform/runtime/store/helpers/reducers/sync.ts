@@ -317,6 +317,10 @@ function transportStateForEvent(event: TransportEvent): AcpTransportState | Daem
     case 'TRANSPORT_RETRY_EXECUTED':
     case 'STREAM_SUBSCRIBER_CONNECTED':
     case 'STREAM_SUBSCRIBER_DISCONNECTED':
+    // UX-enhancement observability events — no transport state change.
+    case 'TRANSPORT_BACKPRESSURE':
+    case 'TRANSPORT_CONNECTION_STATE':
+    case 'TRANSPORT_RECONNECT_ATTEMPT':
       return null;
   }
 }

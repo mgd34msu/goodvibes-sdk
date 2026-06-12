@@ -19,17 +19,33 @@ import {
   type WithoutKeys,
 } from '@pellux/goodvibes-transport-http';
 
+/** Per-call options forwarded to the transport's `invokeContractRoute`. */
 export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {}
 
+/** Internal options for `createPeerRemoteClient`. */
 export interface PeerRemoteClientOptions {
+  /**
+   * When `true` (default), response bodies are checked against the peer
+   * contract's JSON Schema shape.
+   *
+   * @defaultValue true
+   */
   readonly validateResponses?: boolean | undefined;
 }
 
+/**
+ * Argument tuple for a fully-typed `invoke()` call on a given peer endpoint id.
+ * Used internally by the named-endpoint facades (e.g. `sdk.peer.pairing.request`).
+ */
 export type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<
   PeerEndpointInput<TEndpointId>,
   PeerRemoteClientInvokeOptions
 >;
 
+/**
+ * Like `KnownEndpointArgs` but with some input keys omitted (used for
+ * path-parameter endpoints whose prefix keys are positional function arguments).
+ */
 export type KnownPathEndpointArgs<
   TEndpointId extends PeerTypedEndpointId,
   TKeys extends PropertyKey,
@@ -38,10 +54,21 @@ export type KnownPathEndpointArgs<
   PeerRemoteClientInvokeOptions
 >;
 
+/**
+ * Low-level peer remote client. Returned by `createPeerRemoteClient`.
+ * Prefer `PeerSdk` (from `createPeerSdk`) which adds typed endpoint facades.
+ */
 export interface PeerRemoteClient {
+  /** The underlying HTTP transport used to issue all requests. */
   readonly transport: HttpTransport;
+  /** The peer contract manifest describing all available endpoints. */
   readonly contract: PeerContractManifest;
+  /** Return all endpoint descriptors in the peer contract. */
   listOperations(): readonly PeerEndpointContract[];
+  /**
+   * Look up a contract endpoint descriptor by its string id.
+   * @throws `GoodVibesSdkError` when the endpoint id is not in the contract.
+   */
   getOperation(endpointId: string): PeerEndpointContract;
   invoke<TEndpointId extends PeerTypedEndpointId>(
     endpointId: TEndpointId,
@@ -75,6 +102,17 @@ function requireEndpoint(
   return requireContractRoute(contract.endpoints, endpointId, 'peer endpoint');
 }
 
+/**
+ * Construct a low-level peer remote client from a transport and contract manifest.
+ *
+ * Typically called by `createPeerSdk`; use that factory unless you need to
+ * supply a custom contract manifest or a non-standard transport.
+ *
+ * @param transport - The HTTP transport to use for all requests.
+ * @param contract - The peer contract manifest.
+ * @param clientOptions - Optional response validation settings.
+ * @returns A `PeerRemoteClient` with typed invoke methods.
+ */
 export function createPeerRemoteClient(
   transport: HttpTransport,
   contract: PeerContractManifest,

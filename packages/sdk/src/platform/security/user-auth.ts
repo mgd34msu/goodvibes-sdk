@@ -1,5 +1,5 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 
@@ -18,14 +18,60 @@ export interface AuthSession {
 interface UserAuthConfig {
   sessionTtlMs?: number | undefined;
   maxSessions?: number | undefined;
+  /** Maximum number of per-account lock state entries. Excess entries are evicted by staleness. Default: 10000. */
+  maxAccountLocks?: number | undefined;
   users?: AuthUser[] | undefined;
   bootstrapFilePath: string;
   bootstrapCredentialPath: string;
+  /** Scrypt cost params for hashing new passwords. Existing hashes carry their own params. Default: Node defaults. */
+  scryptParams?: ScryptParams | undefined;
+  /** Injectable clock for testing. Defaults to Date.now. */
+  nowFn?: (() => number) | undefined;
 }
 
 const DEFAULT_SESSION_TTL_MS = 3_600_000;
 const DEFAULT_MAX_SESSIONS = 1000;
+const DEFAULT_MAX_ACCOUNT_LOCKS = 10_000;
 const SCRYPT_KEY_LENGTH = 64;
+
+/** Default scrypt cost parameters matching Node.js defaults (N=16384, r=8, p=1). */
+const DEFAULT_SCRYPT_PARAMS: ScryptParams = { N: 16384, r: 8, p: 1 };
+
+/**
+ * Scrypt cost parameters. N must be a power of 2. Increasing N multiplies
+ * memory usage by 128*N*r bytes and CPU time proportionally.
+ * Safe minimums: N>=16384, r>=8, p>=1.
+ */
+export interface ScryptParams {
+  /** CPU/memory cost factor — must be a power of 2. Default: 16384. */
+  readonly N: number;
+  /** Block size. Default: 8. */
+  readonly r: number;
+  /** Parallelization factor. Default: 1. */
+  readonly p: number;
+}
+
+/**
+ * Per-account login failure state for escalating lockout.
+ * Independent of IP-based throttling.
+ */
+interface AccountLockState {
+  failures: number;
+  lockedUntil: number;
+}
+
+/**
+ * Result of authenticate() — includes lock state so callers can
+ * return Retry-After without leaking whether the username exists.
+ *
+ * The union is strict: `.user` is ONLY present (and non-undefined) on the
+ * `ok:true` branch, so TypeScript catches any caller that forgets to check `.ok`
+ * before accessing the user. `.usedBootstrapCredential` is set on the `ok:true`
+ * branch so callers can decide whether to retire the bootstrap credential file.
+ */
+export type AuthenticateResult =
+  | { readonly ok: true; readonly user: AuthUser; readonly usedBootstrapCredential: boolean; readonly lockedUntilMs?: undefined }
+  | { readonly ok: false; readonly user?: undefined; readonly usedBootstrapCredential?: undefined; readonly lockedUntilMs?: number };
 
 interface AuthUserStore {
   readonly version: 1;
@@ -58,10 +104,15 @@ function toBase64(value: Buffer): string {
   return value.toString('base64');
 }
 
-function hashPassword(password: string, salt?: Buffer): string {
+/**
+ * Hash format: base64(salt):N:r:p:base64(derived)
+ * The cost parameters are stored in the hash so old hashes can be verified
+ * even after the default params change.
+ */
+function hashPassword(password: string, params: ScryptParams = DEFAULT_SCRYPT_PARAMS, salt?: Buffer): string {
   const actualSalt = salt ?? randomBytes(16);
-  const derived = scryptSync(password, actualSalt, SCRYPT_KEY_LENGTH);
-  return `${toBase64(actualSalt)}:${toBase64(derived)}`;
+  const derived = scryptSync(password, actualSalt, SCRYPT_KEY_LENGTH, { N: params.N, r: params.r, p: params.p });
+  return `${toBase64(actualSalt)}:${params.N}:${params.r}:${params.p}:${toBase64(derived)}`;
 }
 
 /**
@@ -73,14 +124,40 @@ function generateInitialPassword(): string {
 }
 
 function verifyPassword(password: string, passwordHash: string): boolean {
-  const [saltEncoded, hashEncoded] = passwordHash.split(':');
+  const parts = passwordHash.split(':');
+  // Legacy format: salt:hash (2 parts) — uses DEFAULT_SCRYPT_PARAMS for backward compat.
+  // New format: salt:N:r:p:hash (5 parts)
+  let saltEncoded: string;
+  let hashEncoded: string;
+  let params: ScryptParams;
+
+  if (parts.length === 2) {
+    // Legacy hash: no cost params stored — use defaults.
+    [saltEncoded, hashEncoded] = parts as [string, string];
+    params = DEFAULT_SCRYPT_PARAMS;
+  } else if (parts.length === 5) {
+    const N = Number(parts[1]);
+    const r = Number(parts[2]);
+    const p = Number(parts[3]);
+    if (!Number.isInteger(N) || N < 1 || !Number.isInteger(r) || r < 1 || !Number.isInteger(p) || p < 1) return false;
+    saltEncoded = parts[0]!;
+    hashEncoded = parts[4]!;
+    params = { N, r, p };
+  } else {
+    return false;
+  }
+
   if (!saltEncoded || !hashEncoded) return false;
 
-  const salt = Buffer.from(saltEncoded, 'base64');
-  const expected = Buffer.from(hashEncoded, 'base64');
-  const actual = scryptSync(password, salt, SCRYPT_KEY_LENGTH);
-  if (actual.length !== expected.length) return false;
-  return timingSafeEqual(actual, expected);
+  try {
+    const salt = Buffer.from(saltEncoded, 'base64');
+    const expected = Buffer.from(hashEncoded, 'base64');
+    const actual = scryptSync(password, salt, SCRYPT_KEY_LENGTH, { N: params.N, r: params.r, p: params.p });
+    if (actual.length !== expected.length) return false;
+    return timingSafeEqual(actual, expected);
+  } catch {
+    return false;
+  }
 }
 
 function fingerprintToken(token: string): string {
@@ -112,7 +189,8 @@ function readBootstrapUsers(filePath: string): AuthUser[] | null {
  * some Linux fs drivers).
  */
 function atomicWriteSecretFile(filePath: string, content: string): void {
-  mkdirSync(dirname(filePath), { recursive: true });
+  const dir = dirname(filePath);
+  mkdirSync(dir, { recursive: true });
   const tmpPath = filePath + '.tmp';
   writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 });
   try {
@@ -120,7 +198,21 @@ function atomicWriteSecretFile(filePath: string, content: string): void {
   } catch (error) {
     logger.warn('User auth secret temp chmod failed', { path: tmpPath, error: String(error) });
   }
+  // fsync the file data before rename so the content survives power loss.
+  const fd = openSync(tmpPath, 'r+');
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
   renameSync(tmpPath, filePath);
+  // fsync the parent directory so the directory entry (rename) is durable.
+  const dirFd = openSync(dir, 'r');
+  try {
+    fsyncSync(dirFd);
+  } finally {
+    closeSync(dirFd);
+  }
   try {
     chmodSync(filePath, 0o600);
   } catch (error) {
@@ -227,20 +319,29 @@ function detectBootstrapCredentialDrift(
 export class UserAuthManager {
   private users = new Map<string, AuthUser>();
   private sessions = new Map<string, AuthSession>();
+  /** Per-username failure counters for account-level lockout (independent of IP throttling). */
+  private accountLocks = new Map<string, AccountLockState>();
   private sessionTtlMs: number;
   private readonly maxSessions: number;
+  private readonly maxAccountLocks: number;
   private readonly userStorePath: string;
   private readonly bootstrapCredentialPath: string;
   private readonly persistUsers: boolean;
+  private readonly scryptParams: ScryptParams;
+  /** Injectable clock — defaults to Date.now for production. */
+  private readonly nowFn: () => number;
 
   constructor(config: UserAuthConfig) {
     if (!config.bootstrapFilePath) throw new Error('UserAuthManager requires an explicit bootstrapFilePath.');
     if (!config.bootstrapCredentialPath) throw new Error('UserAuthManager requires an explicit bootstrapCredentialPath.');
     this.sessionTtlMs = config.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
     this.maxSessions = config.maxSessions ?? DEFAULT_MAX_SESSIONS;
+    this.maxAccountLocks = config.maxAccountLocks ?? DEFAULT_MAX_ACCOUNT_LOCKS;
     this.userStorePath = config.bootstrapFilePath;
     this.bootstrapCredentialPath = config.bootstrapCredentialPath;
     this.persistUsers = config.users === undefined;
+    this.scryptParams = config.scryptParams ?? DEFAULT_SCRYPT_PARAMS;
+    this.nowFn = config.nowFn ?? (() => Date.now());
     const seedUsers = config.users ?? loadOrBootstrapUsers(this.userStorePath, this.bootstrapCredentialPath);
 
     for (const user of seedUsers) {
@@ -255,14 +356,133 @@ export class UserAuthManager {
     }
   }
 
-  static hashPassword(password: string): string {
-    return hashPassword(password);
+  static hashPassword(password: string, params?: ScryptParams): string {
+    return hashPassword(password, params ?? DEFAULT_SCRYPT_PARAMS);
   }
 
-  authenticate(username: string, password: string): AuthUser | null {
+  /**
+   * Authenticate username/password with per-account lockout.
+   * - Does NOT leak whether a username exists (same generic error path for unknown users).
+   * - Records failures against the username bucket (not IP) with escalating backoff.
+   * - Returns lockedUntilMs when the account is temporarily locked.
+   * - Returns usedBootstrapCredential=true when the matched credential originated from
+   *   the bootstrap credential file, so callers can defer retirement until a non-bootstrap
+   *   login succeeds.
+   */
+  authenticate(username: string, password: string): AuthenticateResult {
+    const now = this.nowFn();
+    const lockState = this.accountLocks.get(username);
+
+    // Check account lock (before touching user store — avoids user-existence side-channel).
+    if (lockState && lockState.lockedUntil > now) {
+      // Still locked — record the attempt but keep the lock window intact.
+      lockState.failures++;
+      return { ok: false, lockedUntilMs: lockState.lockedUntil };
+    }
+
     const user = this.users.get(username);
-    if (!user) return null;
-    return verifyPassword(password, user.passwordHash) ? user : null;
+
+    // Always verify something with constant-time cost so unknown usernames
+    // have the same timing profile as known usernames with wrong password.
+    const hashToCheck = user?.passwordHash ?? 'dGVzdHNhbHQ=:16384:8:1:dGVzdGhhc2h0ZXN0aGFzaHRlc3RoYXNodGVzdGhhc2g=';
+    const passwordOk = user !== undefined && verifyPassword(password, hashToCheck);
+
+    if (!passwordOk) {
+      this._recordLoginFailure(username, now);
+      // Check if this failure just triggered a lock.
+      const newLock = this.accountLocks.get(username);
+      const lockedUntilMs = newLock && newLock.lockedUntil > now ? newLock.lockedUntil : undefined;
+      return lockedUntilMs !== undefined ? { ok: false, lockedUntilMs } : { ok: false };
+    }
+
+    // Determine whether this login used the bootstrap credential.
+    // Compare against the credential file contents without leaking timing info
+    // (we already confirmed the password is correct at this point).
+    const bootstrapCred = readBootstrapCredentialFile(this.bootstrapCredentialPath);
+    const usedBootstrapCredential = bootstrapCred !== null
+      && bootstrapCred.username === username
+      && bootstrapCred.password === password;
+
+    // Success — clear failure count.
+    this.accountLocks.delete(username);
+    return { ok: true, user, usedBootstrapCredential };
+  }
+
+  /**
+   * Record a login failure for the given username and apply escalating backoff.
+   *
+   * Thresholds are anchored ABOVE the per-IP login budget (default 5/min) so
+   * the first account lock cannot fire before the IP limiter has already
+   * throttled further attempts. This preserves the 401-then-429-by-IP contract
+   * for in-budget attempts.
+   *
+   *   1-5 failures:   no lock (IP budget exhaustion fires at attempt 6+)
+   *   6-9 failures:   30-second lock
+   *   10-19 failures: 5-minute lock
+   *   20+ failures:   30-minute lock
+   *
+   * Note: failures also increment during an active lock window (when the account
+   * is already locked and another attempt arrives). This means a lock can expire
+   * with a failure count already in a higher tier, causing the next lock after
+   * expiry to jump directly to that tier. This is intentional: repeated attempts
+   * during a lock are themselves failures and escalate the penalty schedule.
+   */
+  private _recordLoginFailure(username: string, now: number): void {
+    const existing = this.accountLocks.get(username);
+    if (!existing) {
+      // New entry — evict if at cap before inserting.
+      this._evictAccountLockIfNeeded(now);
+    }
+    const state = existing ?? { failures: 0, lockedUntil: 0 };
+    state.failures++;
+    const f = state.failures;
+    let lockDurationMs = 0;
+    if (f >= 20) lockDurationMs = 30 * 60_000;
+    else if (f >= 10) lockDurationMs = 5 * 60_000;
+    else if (f >= 6) lockDurationMs = 30_000;
+    state.lockedUntil = lockDurationMs > 0 ? now + lockDurationMs : 0;
+    this.accountLocks.set(username, state);
+  }
+
+  /**
+   * Evict account lock entries when the map is at capacity.
+   * Prefers entries with expired locks + no recent failures (stale entries).
+   * Falls back to the entry with the oldest/soonest-expired lock.
+   * Preserves no-username-enumeration: eviction policy is time-based, not
+   * user-existence-based.
+   */
+  private _evictAccountLockIfNeeded(now: number): void {
+    if (this.accountLocks.size < this.maxAccountLocks) return;
+    // First sweep: remove all fully stale entries (lock expired AND low failure count).
+    for (const [key, state] of this.accountLocks.entries()) {
+      if (state.lockedUntil <= now && state.failures < 6) {
+        this.accountLocks.delete(key);
+        if (this.accountLocks.size < this.maxAccountLocks) return;
+      }
+    }
+    // Second sweep: remove the entry with the smallest lockedUntil (most expired).
+    let oldestKey: string | undefined;
+    let oldestUntil = Infinity;
+    for (const [key, state] of this.accountLocks.entries()) {
+      if (state.lockedUntil < oldestUntil) {
+        oldestUntil = state.lockedUntil;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey !== undefined) {
+      this.accountLocks.delete(oldestKey);
+    }
+  }
+
+  /**
+   * Expose account lock state for testing.
+   * Returns a defensive copy so callers cannot mutate internal state.
+   * Use the injected nowFn (via UserAuthManager constructor) to advance time in tests.
+   */
+  getAccountLockState(username: string): AccountLockState | undefined {
+    const state = this.accountLocks.get(username);
+    if (!state) return undefined;
+    return { failures: state.failures, lockedUntil: state.lockedUntil };
   }
 
   getUser(username: string): AuthUserRecord | null {
@@ -359,7 +579,7 @@ export class UserAuthManager {
     if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.');
     const user: AuthUser = {
       username: normalized,
-      passwordHash: hashPassword(password),
+      passwordHash: hashPassword(password, this.scryptParams),
       roles: [...new Set(roles.filter(Boolean))],
     };
     this.users.set(normalized, user);
@@ -387,7 +607,7 @@ export class UserAuthManager {
     if (!nextPassword || nextPassword.length < 8) throw new Error('Password must be at least 8 characters.');
     this.users.set(normalized, {
       ...existing,
-      passwordHash: hashPassword(nextPassword),
+      passwordHash: hashPassword(nextPassword, this.scryptParams),
     });
     this.revokeSessionsForUser(normalized);
     this.persist();

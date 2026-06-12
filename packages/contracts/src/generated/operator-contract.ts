@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.37"
+    "version": "0.33.38"
   },
   "auth": {
     "modes": [
@@ -5772,7 +5772,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "automation.jobs.list",
         "title": "List Automation Jobs",
-        "description": "Return automation jobs and recent runs.",
+        "description": "Return automation jobs and recent runs. Without ?limit/?cursor returns { jobs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -5792,7 +5792,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "inputSchema": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
           "additionalProperties": false
         },
         "outputSchema": {
@@ -10117,7 +10124,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "automation.runs.list",
         "title": "List Automation Runs",
-        "description": "Return automation run history.",
+        "description": "Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -10134,7 +10141,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         },
         "inputSchema": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
           "additionalProperties": false
         },
         "outputSchema": {
@@ -39213,7 +39227,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "knowledge.nodes.list",
         "title": "List Knowledge Nodes",
-        "description": "Return compiled knowledge nodes.",
+        "description": "Return compiled knowledge nodes. Without ?limit/?cursor returns { nodes: [...] } (backward compatible). With ?limit=N (1–1000, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Fetch cap is 5 000 items per request (knowledge store does not support cursor/offset range queries natively). Invalid cursors return HTTP 400.",
         "category": "knowledge",
         "source": "builtin",
         "access": "authenticated",
@@ -39233,6 +39247,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {
             "limit": {
               "type": "number"
+            },
+            "cursor": {
+              "type": "string"
             },
             "knowledgeSpaceId": {
               "type": "string"
@@ -43073,7 +43090,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "knowledge.sources.list",
         "title": "List Knowledge Sources",
-        "description": "Return ingested structured knowledge sources.",
+        "description": "Return ingested structured knowledge sources. Without ?limit/?cursor returns { sources: [...] } (backward compatible). With ?limit=N (1–1000, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Fetch cap is 5 000 items per request (knowledge store does not support cursor/offset range queries natively). Invalid cursors return HTTP 400.",
         "category": "knowledge",
         "source": "builtin",
         "access": "authenticated",
@@ -43093,6 +43110,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "properties": {
             "limit": {
               "type": "number"
+            },
+            "cursor": {
+              "type": "string"
             },
             "knowledgeSpaceId": {
               "type": "string"
@@ -54790,6 +54810,60 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "vector",
             "embeddings",
             "checkedAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "memory.review-queue",
+        "title": "Memory Review Queue",
+        "description": "Return memory records prioritised for review. Accepts optional limit (?limit=N) and scope filter (?scope=session|project|team). A scope query parameter that is present but not one of the three valid values returns 400.",
+        "category": "memory",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:memory"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/memory/review-queue"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "session",
+                "project",
+                "team"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "records"
           ],
           "additionalProperties": false
         },
@@ -75037,10 +75111,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 279,
-      "typedInputs": 279,
+      "methods": 280,
+      "typedInputs": 280,
       "genericInputs": 0,
-      "typedOutputs": 279,
+      "typedOutputs": 280,
       "genericOutputs": 0
     },
     "eventCoverage": {

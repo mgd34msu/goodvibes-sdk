@@ -82,7 +82,7 @@ export interface MemoryApi {
   rebuildVectors(): MemoryVectorStats;
   rebuildVectorsAsync(): Promise<MemoryVectorStats>;
   doctor(): Promise<MemoryDoctorReport>;
-  reviewQueue(limit?: number): readonly MemoryRecord[];
+  reviewQueue(limit?: number, scope?: MemoryScope): readonly MemoryRecord[];
   exportBundle(filter?: MemorySearchFilter): MemoryBundle;
   importBundle(bundle: MemoryBundle): Promise<MemoryImportResult>;
   get(id: string): MemoryRecord | null;
@@ -278,7 +278,7 @@ export function createMemoryApi(memoryRegistry: MemoryApiRegistry): MemoryApi {
     rebuildVectors: () => memoryRegistry.rebuildVectors(),
     rebuildVectorsAsync: () => memoryRegistry.rebuildVectorsAsync(),
     doctor: () => memoryRegistry.doctor(),
-    reviewQueue: (limit = 10) => memoryRegistry.reviewQueue(limit),
+    reviewQueue: (limit = 10, scope?: MemoryScope) => memoryRegistry.reviewQueue(limit, scope),
     exportBundle: (filter: MemorySearchFilter = {}) => memoryRegistry.exportBundle(filter),
     importBundle: (bundle: MemoryBundle) => memoryRegistry.importBundle(bundle),
     get: (id: string) => memoryRegistry.get(id),

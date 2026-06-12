@@ -8,6 +8,7 @@ import {
   buildReviewTask,
   parseEngineerCompletionReport,
   parseReviewerCompletionReport,
+  verifyEngineerClaims,
 } from './wrfc-reporting.js';
 import type {
   QualityGateResult,
@@ -47,6 +48,7 @@ import {
   getWrfcAutoCommit,
   getWrfcMaxFixAttempts,
   getWrfcScoreThreshold,
+  getWrfcAgentHeartbeatTimeoutMs,
   type AgentManagerLike,
 } from './wrfc-config.js';
 import {
@@ -68,6 +70,12 @@ import {
 import { runWrfcGateChecks } from './wrfc-gate-runtime.js';
 
 export { extractScoreFromText, extractPassedFromText, extractIssuesFromText } from './wrfc-reporting.js';
+
+/**
+ * Schema version for the serialized WRFC chain envelope.
+ * Increment when the WrfcChain shape changes in an incompatible way.
+ */
+export const CURRENT_WRFC_CHAIN_SCHEMA_VERSION = 1;
 
 const VALID_TRANSITIONS: Partial<Record<WrfcState, WrfcState[]>> = {
   pending: ['engineering'],
@@ -103,6 +111,9 @@ export class WrfcController {
   private readonly sessionId: string;
   private readonly workmap: WrfcWorkmap;
   private readonly projectRoot: string;
+  private readonly skipClaimVerification: boolean;
+  /** Cached at construction time: whether projectRoot existed on disk when this controller was created. */
+  private readonly projectRootExistedAtStartup: boolean;
   private runtimeBus: RuntimeEventBus;
   private readonly messageBus: Pick<AgentMessageBus, 'registerAgent'>;
   private planManager: Pick<ExecutionPlanManager, 'getActive' | 'updateItem'> | null = null;
@@ -112,6 +123,10 @@ export class WrfcController {
   private readonly selectChildRoute: WrfcChildRouteSelector | null;
   private workPlanService: WrfcWorkPlanService | null = null;
   private readonly workPlanTaskQueues = new Map<string, Promise<void>>();
+  /** Tracks last-seen timestamp per agent for watchdog timeout. */
+  private readonly agentLastSeen = new Map<string, number>();
+  /** Active watchdog timer handle, if any. */
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     runtimeBus: RuntimeEventBus,
@@ -123,6 +138,13 @@ export class WrfcController {
       readonly surfaceRoot?: string | undefined;
       readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
       readonly selectChildRoute?: WrfcChildRouteSelector | undefined;
+      /**
+       * When true, skip verifyEngineerClaims for both engineer and fixer completions.
+       * Use ONLY in test harnesses where projectRoot is a synthetic path without real files.
+       * Production code must NEVER set this flag — it disables the phantom-work guard.
+       * Prefer the environment-driven skip (nonexistent projectRoot) where possible.
+       */
+      readonly skipClaimVerification?: boolean;
     },
   ) {
     this.runtimeBus = runtimeBus;
@@ -130,6 +152,10 @@ export class WrfcController {
     this.agentManager = deps.agentManager;
     this.configManager = deps.configManager;
     this.projectRoot = deps.projectRoot;
+    this.skipClaimVerification = deps.skipClaimVerification ?? false;
+    // Cache existsSync at construction time — the workmap will mkdir under projectRoot
+    // during the first appendOwnerDecision, so checking later would always return true.
+    this.projectRootExistedAtStartup = existsSync(deps.projectRoot);
     this.createWorktree = deps.createWorktree ?? (() => new AgentWorktree(this.projectRoot));
     this.selectChildRoute = deps.selectChildRoute ?? null;
     this.sessionId = crypto.randomUUID().slice(0, 8);
@@ -192,16 +218,70 @@ export class WrfcController {
       this.appendOwnerDecision(chain, 'resume_skipped', 'WRFC chain already has an active child agent');
       return true;
     }
-    if (chain.state !== 'pending') {
-      this.appendOwnerDecision(chain, 'resume_skipped', `WRFC chain state ${chain.state} cannot be resumed without an active phase result`);
-      return true;
-    }
     if (this.activeChainCount >= MAX_ACTIVE_CHAINS) {
       if (!this.chainQueue.some((queued) => queued.record.id === chain.ownerAgentId)) {
         const owner = this.agentManager.getStatus(chain.ownerAgentId);
         if (owner) this.chainQueue.push({ record: owner, queuedAt: Date.now() });
       }
       this.appendOwnerDecision(chain, 'resume_skipped', 'WRFC chain is queued because active chain capacity is full');
+      return true;
+    }
+    // Item 3: Resume interrupted chains from their recorded state.
+    if (chain.state === 'reviewing') {
+      // Re-spawn reviewer using the last engineer report on record.
+      const report = chain.engineerReport;
+      if (report) {
+        this.appendOwnerDecision(chain, 'resume_started', `WRFC owner re-spawning reviewer for interrupted chain (was reviewing)`);
+        // MIN-6: Re-inject phantom-work synthetic issue on resume if claimsVerified was false,
+        // so the flag is not silently laundered by the startReview synthetic-issue clear.
+        // NOTE: We intentionally only re-inject for claimsVerified===false (kind='unverified').
+        // The 'unverifiable_no_claims' path leaves claimsVerified===undefined; if that chain
+        // was interrupted mid-review, the reviewer already received the synthetic issue in
+        // its task text during startReview — it does not need re-injection on resume.
+        if (chain.claimsVerified === false) {
+          chain.syntheticIssues ??= [];
+          const alreadyInjected = chain.syntheticIssues.some((issue) =>
+            issue.description.includes('Claimed work not found on disk') ||
+            issue.description.includes('No work claimed and no git diff')
+          );
+          if (!alreadyInjected) {
+            chain.syntheticIssues.push({
+              severity: 'critical',
+              description: 'Claimed work not found on disk (re-injected on resume): claimsVerified=false from prior engineering phase',
+            });
+          }
+        }
+        // Reset to engineering so transition() accepts reviewing.
+        chain.state = 'engineering';
+        this.startReview(chain, report);
+        return true;
+      }
+      this.appendOwnerDecision(chain, 'resume_skipped', 'WRFC chain in reviewing state but no engineer report found for re-review');
+      return true;
+    }
+    if (chain.state === 'fixing') {
+      // Re-spawn fixer using the last reviewer report.
+      const reviewerReport = chain.reviewerReport;
+      if (reviewerReport) {
+        this.appendOwnerDecision(chain, 'resume_started', `WRFC owner re-spawning fixer for interrupted chain (was fixing)`);
+        // Reset to reviewing so transition() will allow fixing.
+        chain.state = 'reviewing';
+        this.startFix(chain, reviewerReport);
+        return true;
+      }
+      this.appendOwnerDecision(chain, 'resume_skipped', 'WRFC chain in fixing state but no reviewer report found for re-fix');
+      return true;
+    }
+    if (chain.state === 'awaiting_gates') {
+      this.appendOwnerDecision(chain, 'resume_started', `WRFC owner re-running gates for interrupted chain (was awaiting_gates)`);
+      this.checkAndRunGatesForAll().catch((error) => {
+        logger.error('WrfcController.resumeChain: gate phase error', { chainId: chain.id, error: summarizeError(error) });
+        this.failChain(chain, `Gate phase error during resume: ${summarizeError(error)}`);
+      });
+      return true;
+    }
+    if (chain.state !== 'pending') {
+      this.appendOwnerDecision(chain, 'resume_skipped', `WRFC chain state ${chain.state} cannot be resumed`);
       return true;
     }
     this.appendOwnerDecision(chain, 'resume_started', 'WRFC owner resumed pending chain');
@@ -217,9 +297,114 @@ export class WrfcController {
     return resumed;
   }
 
+  /**
+   * Item 3: Serialize a chain to a JSON string for durable storage.
+   * Returns null if the chain does not exist.
+   */
+  serializeChain(chainId: string): string | null {
+    const chain = this.chains.get(chainId);
+    if (!chain) return null;
+    try {
+      return JSON.stringify({ schemaVersion: CURRENT_WRFC_CHAIN_SCHEMA_VERSION, chain });
+    } catch (error) {
+      logger.error('WrfcController.serializeChain: JSON serialization failed', { chainId, error: summarizeError(error) });
+      return null;
+    }
+  }
+
+  /**
+   * Item 3: Deserialize a chain from a JSON string.
+   * Returns null if the JSON is invalid, the required fields are missing, or
+   * the schema version is newer than this runtime supports.
+   *
+   * Schema versioning:
+   * - Missing schemaVersion (v0/legacy): accepted for back-compat — the JSON
+   *   is the raw chain object directly.
+   * - schemaVersion === CURRENT_WRFC_CHAIN_SCHEMA_VERSION (1): unwrap { schemaVersion, chain }.
+   * - schemaVersion > CURRENT_WRFC_CHAIN_SCHEMA_VERSION: rejected — fail closed.
+   */
+  deserializeChain(json: string): WrfcChain | null {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(json);
+    } catch (error) {
+      logger.error('WrfcController.deserializeChain: JSON parse failed', { error: summarizeError(error) });
+      return null;
+    }
+
+    // Unwrap schema-versioned envelope or treat as legacy (v0) raw chain.
+    let candidate: unknown;
+    if (
+      raw !== null
+      && typeof raw === 'object'
+      && 'schemaVersion' in raw
+      && typeof (raw as { schemaVersion: unknown }).schemaVersion === 'number'
+    ) {
+      const version = (raw as { schemaVersion: number }).schemaVersion;
+      if (version > CURRENT_WRFC_CHAIN_SCHEMA_VERSION) {
+        logger.error('WrfcController.deserializeChain: future schemaVersion rejected — upgrade runtime to read this payload', {
+          schemaVersion: version,
+          supportedVersion: CURRENT_WRFC_CHAIN_SCHEMA_VERSION,
+        });
+        return null;
+      }
+      // version <= current: unwrap the chain field.
+      candidate = (raw as { chain?: unknown }).chain;
+    } else {
+      // Legacy v0: the JSON payload IS the chain directly.
+      candidate = raw;
+    }
+
+    // Structural validation of required fields.
+    if (
+      !candidate
+      || typeof candidate !== 'object'
+      || !('id' in candidate) || typeof (candidate as { id: unknown }).id !== 'string'
+      || !('state' in candidate) || typeof (candidate as { state: unknown }).state !== 'string'
+      || !('ownerAgentId' in candidate) || typeof (candidate as { ownerAgentId: unknown }).ownerAgentId !== 'string'
+      || !('task' in candidate) || typeof (candidate as { task: unknown }).task !== 'string'
+    ) {
+      logger.warn('WrfcController.deserializeChain: invalid chain JSON — missing required fields (id, state, ownerAgentId, task)');
+      return null;
+    }
+    return candidate as WrfcChain;
+  }
+
+  /**
+   * Item 3: Import a deserialized chain into this controller instance.
+   * After importing, call resumeChain(chain.id) to continue from recorded state.
+   *
+   * Refuses to overwrite a non-terminal chain (state is not 'passed' or 'failed')
+   * to prevent accidental clobber of live chains. Use force=true to override.
+   * Always overwrites terminal chains (idempotent replay is safe for completed work).
+   *
+   * Returns true if the chain was imported, false if refused.
+   */
+  importChain(chain: WrfcChain, force = false): boolean {
+    const existing = this.chains.get(chain.id);
+    if (existing && existing.state !== 'passed' && existing.state !== 'failed' && !force) {
+      logger.warn('WrfcController.importChain: refused — existing chain is non-terminal; use force=true to overwrite', {
+        chainId: chain.id,
+        existingState: existing.state,
+      });
+      return false;
+    }
+    this.chains.set(chain.id, chain);
+    logger.info('WrfcController.importChain: chain imported', {
+      chainId: chain.id,
+      state: chain.state,
+      overwroteExisting: existing !== undefined,
+    });
+    return true;
+  }
+
   dispose(): void {
     for (const unsub of this.unsubscribers) unsub();
     this.unsubscribers = [];
+    if (this.watchdogTimer !== null) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = null;
+    }
   }
 
   private transition(chain: WrfcChain, to: WrfcState): void {
@@ -333,6 +518,7 @@ export class WrfcController {
     const unsubComplete = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_COMPLETED' }>>(
       'AGENT_COMPLETED',
       ({ payload }) => {
+        this.agentLastSeen.set(payload.agentId, Date.now());
         this.onAgentComplete(payload.agentId).catch((error) => {
           logger.error('WrfcController.onAgentComplete unhandled error', {
             agentId: payload.agentId,
@@ -344,16 +530,116 @@ export class WrfcController {
     const unsubError = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_FAILED' }>>(
       'AGENT_FAILED',
       ({ payload }) => {
+        this.agentLastSeen.set(payload.agentId, Date.now());
         this.onAgentFailed(payload.agentId, payload.error);
       },
     );
     const unsubCancelled = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_CANCELLED' }>>(
       'AGENT_CANCELLED',
       ({ payload }) => {
+        this.agentLastSeen.set(payload.agentId, Date.now());
         this.onAgentCancelled(payload.agentId, payload.reason);
       },
     );
-    this.unsubscribers.push(unsubComplete, unsubError, unsubCancelled);
+    const unsubRunning = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_RUNNING' }>>(
+      'AGENT_RUNNING',
+      ({ payload }) => {
+        this.agentLastSeen.set(payload.agentId, Date.now());
+      },
+    );
+    const unsubStreamDelta = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_STREAM_DELTA' }>>(
+      'AGENT_STREAM_DELTA',
+      ({ payload }) => {
+        // MAJ-3: Reset agentLastSeen on streaming output so watchdog does not
+        // time out a streaming-only agent that emits no PROGRESS events.
+        this.agentLastSeen.set(payload.agentId, Date.now());
+      },
+    );
+    const unsubProgress = this.runtimeBus.on<Extract<AgentEvent, { type: 'AGENT_PROGRESS' }>>(
+      'AGENT_PROGRESS',
+      ({ payload }) => {
+        this.agentLastSeen.set(payload.agentId, Date.now());
+      },
+    );
+    this.unsubscribers.push(unsubComplete, unsubError, unsubCancelled, unsubRunning, unsubProgress, unsubStreamDelta);
+    this.resetWatchdog();
+  }
+
+  /**
+   * Start (or restart) the watchdog timer based on current config.
+   * Called once on setup and whenever the timeout config may have changed.
+   */
+  private resetWatchdog(): void {
+    if (this.watchdogTimer !== null) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = null;
+    }
+    const timeoutMs = getWrfcAgentHeartbeatTimeoutMs(this.configManager);
+    if (timeoutMs <= 0) return;
+    // Check at 1/4 the timeout interval, but no less than 50ms (for testability)
+    // and no more than 5 seconds (to avoid excessive polling in production).
+    const intervalMs = Math.min(5_000, Math.max(50, Math.floor(timeoutMs / 4)));
+    this.watchdogTimer = setInterval(() => {
+      this.tickWatchdog(timeoutMs);
+    }, intervalMs);
+    this.watchdogTimer.unref?.();
+  }
+
+  /** Tick: fail any chain whose active child agent has been silent longer than timeoutMs. */
+  private tickWatchdog(timeoutMs: number): void {
+    const now = Date.now();
+    for (const chain of this.chains.values()) {
+      if (chain.state === 'passed' || chain.state === 'failed' || chain.state === 'pending') continue;
+      // Find the active child agent for this chain.
+      const activeAgentId = this.activeChildAgentId(chain);
+      if (!activeAgentId) continue;
+      const record = this.agentManager.getStatus(activeAgentId);
+      if (!record || (record.status !== 'running' && record.status !== 'pending')) continue;
+      const lastSeen = this.agentLastSeen.get(activeAgentId) ?? record.startedAt ?? now;
+      const silentMs = now - lastSeen;
+      if (silentMs >= timeoutMs) {
+        logger.error('WrfcController.watchdog: agent silent, failing chain', {
+          chainId: chain.id,
+          agentId: activeAgentId,
+          silentMs,
+          timeoutMs,
+        });
+        this.failChain(
+          chain,
+          `Agent ${activeAgentId} went silent for ${Math.round(silentMs / 1000)}s (timeout: ${Math.round(timeoutMs / 1000)}s)`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Returns true when verifyEngineerClaims should be skipped for a completion event.
+   *
+   * Skip conditions (applied uniformly to engineer AND fixer completions):
+   *   1. `this.skipClaimVerification` is true — explicit opt-out for test harnesses that
+   *      use real /tmp paths (directories that exist on disk) where files are never actually
+   *      written to disk by agents. Use this when the environment-driven skip does not apply.
+   *   2. `!this.projectRootExistedAtStartup` — environment-driven skip: projectRoot did not
+   *      exist on disk when this controller was constructed. Cached at construction time because
+   *      the WrfcWorkmap mkdir's the directory tree on the first appendOwnerDecision call,
+   *      making a late-bound existsSync check unreliable (would always return true after that).
+   *      Preferred mechanism; harnesses should use nonexistent projectRoot paths when feasible.
+   *
+   * PRODUCTION INVARIANT: In any real GoodVibes session the projectRoot is the cloned
+   * repo root which always exists at startup. Both skip conditions are false in production;
+   * claim verification always runs for both engineer and fixer completions.
+   */
+  private shouldSkipClaimVerification(): boolean {
+    return this.skipClaimVerification || !this.projectRootExistedAtStartup;
+  }
+
+  /** Returns the single currently-active child agent ID for a chain, if deterministic. */
+  private activeChildAgentId(chain: WrfcChain): string | null {
+    if (chain.state === 'reviewing') return chain.reviewerAgentId ?? null;
+    if (chain.state === 'fixing') return chain.fixerAgentId ?? null;
+    if (chain.state === 'engineering') return chain.engineerAgentId ?? null;
+    if (chain.state === 'integrating') return chain.integratorAgentId ?? null;
+    return null;
   }
 
   private async onAgentComplete(agentId: string): Promise<void> {
@@ -554,7 +840,8 @@ export class WrfcController {
       unsatisfiedConstraintIds,
       constraintFailure,
     } = constraintEvaluation;
-    const passed = review.score >= threshold && !constraintFailure;
+    // MIN-4: claimsVerified===false is a mechanical block — cannot pass review regardless of score.
+    const passed = review.score >= threshold && !constraintFailure && chain.claimsVerified !== false;
 
     this.completeCurrentNode(chain, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
@@ -1483,6 +1770,61 @@ export class WrfcController {
       // original enumeration from the initial engineer turn.
     }
 
+    // Item 2 / MAJ-1 / MAJ-9: Verify claims before handing off to reviewer.
+    // Runs for BOTH the initial engineer pass (chain.state === 'engineering') AND fixer
+    // re-runs (chain.state === 'fixing'). A lying fixer that claims files it did not write
+    // is the same phantom-work pattern as a lying engineer — the same tri-state logic applies.
+    //
+    // Skip conditions (see shouldSkipClaimVerification for full rationale):
+    //   - Explicit opt-out (skipClaimVerification constructor flag) — harness use only.
+    //   - Environment-driven: projectRoot does not exist on disk (existsSync false).
+    //
+    // Tri-state kind logic (same for engineer and fixer passes):
+    //   'files_verified'          → claimsVerified=true,     no synthetic issue.
+    //   'git_corroborated'        → claimsVerified=true,     no synthetic issue.
+    //   'verified_empty'          → claimsVerified=true,     no synthetic issue (git confirms real work, no file list required).
+    //   'unverifiable_no_claims'  → claimsVerified=undefined, inject advisory synthetic issue.
+    //                               NOTE: claimsVerified is left undefined (not false) because we cannot confirm
+    //                               work WAS done, but we also cannot confirm it WASN't. The synthetic issue
+    //                               is the enforcement mechanism — the mechanical MIN-4 gate is NOT applied.
+    //                               For fixers, a zero-claims completion is MORE suspicious (a fix round
+    //                               by definition follows concrete reviewer findings) — but we keep the same
+    //                               advisory contract for consistency; the reviewer sees the synthetic issue.
+    //   'unverified'              → claimsVerified=false,    inject synthetic issue; MIN-4 gate will block pass.
+    if (!this.shouldSkipClaimVerification()) {
+      const claimVerification = verifyEngineerClaims(reportForReview, this.projectRoot);
+      if (claimVerification.kind === 'unverifiable_no_claims') {
+        // Leave chain.claimsVerified as undefined — not a confirmed false, but suspicious.
+        const agentClass = chain.state === 'fixing' ? 'fixer' : 'engineer';
+        logger.warn(`WrfcController: ${agentClass} sent success prose with no claims and no git diff — suspected phantom work`, {
+          chainId: chain.id,
+          kind: claimVerification.kind,
+          summary: claimVerification.summary,
+        });
+        chain.syntheticIssues ??= [];
+        chain.syntheticIssues.push({
+          severity: 'critical',
+          description: `No work claimed and no git diff detected — suspected phantom work: ${claimVerification.summary}`,
+        });
+      } else {
+        chain.claimsVerified = claimVerification.verified;
+        if (!claimVerification.verified) {
+          // kind === 'unverified': claims present but missing on disk and no git corroboration.
+          const agentClass = chain.state === 'fixing' ? 'fixer' : 'engineer';
+          logger.warn(`WrfcController: ${agentClass} claim verification failed — phantom work detected`, {
+            chainId: chain.id,
+            kind: claimVerification.kind,
+            summary: claimVerification.summary,
+            missingPaths: claimVerification.missingPaths,
+          });
+          chain.syntheticIssues ??= [];
+          chain.syntheticIssues.push({
+            severity: 'critical',
+            description: `Claimed work not found on disk: ${claimVerification.summary}`,
+          });
+        }
+      }
+    }
     this.startReview(chain, reportForReview);
   }
 
@@ -1630,6 +1972,45 @@ export class WrfcController {
     }
 
     subtask.engineerReport = reportForReview;
+    // Item 2 / MAJ-1: Verify engineer claims for compound subtask before handing off to reviewer.
+    // Tri-state kind logic (mirrors handleEngineerCompletion):
+    //   'files_verified'          → claimsVerified=true,     no synthetic issue.
+    //   'git_corroborated'        → claimsVerified=true,     no synthetic issue.
+    //   'verified_empty'          → claimsVerified=true,     no synthetic issue.
+    //   'unverifiable_no_claims'  → claimsVerified=undefined, inject advisory synthetic issue only (no MIN-4 mechanical block).
+    //   'unverified'              → claimsVerified=false,    inject synthetic issue; MIN-4 gate blocks pass.
+    const subtaskClaimVerification = verifyEngineerClaims(reportForReview, this.projectRoot);
+    if (subtaskClaimVerification.kind === 'unverifiable_no_claims') {
+      // Leave subtask.claimsVerified as undefined — suspicious but not a confirmed false.
+      logger.warn('WrfcController: compound subtask engineer sent success prose with no claims and no git diff — suspected phantom work', {
+        chainId: chain.id,
+        subtaskId: subtask.id,
+        kind: subtaskClaimVerification.kind,
+        summary: subtaskClaimVerification.summary,
+      });
+      subtask.syntheticIssues ??= [];
+      subtask.syntheticIssues.push({
+        severity: 'critical',
+        description: `No work claimed and no git diff detected for subtask ${subtask.id} — suspected phantom work: ${subtaskClaimVerification.summary}`,
+      });
+    } else {
+      subtask.claimsVerified = subtaskClaimVerification.verified;
+      if (!subtaskClaimVerification.verified) {
+        // kind === 'unverified': claims present but missing on disk and no git corroboration.
+        logger.warn('WrfcController: compound engineer claim verification failed — phantom work detected', {
+          chainId: chain.id,
+          subtaskId: subtask.id,
+          kind: subtaskClaimVerification.kind,
+          summary: subtaskClaimVerification.summary,
+          missingPaths: subtaskClaimVerification.missingPaths,
+        });
+        subtask.syntheticIssues ??= [];
+        subtask.syntheticIssues.push({
+          severity: 'critical',
+          description: `Claimed work not found on disk (${subtask.id}): ${subtaskClaimVerification.summary}`,
+        });
+      }
+    }
     this.startCompoundSubtaskReview(chain, subtask, reportForReview);
   }
 
@@ -1688,7 +2069,8 @@ export class WrfcController {
   ): Promise<void> {
     const threshold = getWrfcScoreThreshold(this.configManager);
     const constraintEvaluation = this.evaluateSubtaskConstraints(subtask, review);
-    const passed = review.score >= threshold && !constraintEvaluation.constraintFailure;
+    // MIN-4: claimsVerified===false is a mechanical block on compound subtasks too.
+    const passed = review.score >= threshold && !constraintEvaluation.constraintFailure && subtask.claimsVerified !== false;
     this.completeSubtaskNode(chain, subtask, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
     emitWorkflowReviewCompleted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {

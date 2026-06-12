@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { UserAuthManager } from './user-auth.js';
 
 export const OPERATOR_SESSION_COOKIE_NAME = 'goodvibes_session';
@@ -66,9 +66,17 @@ export function extractOperatorAuthToken(
   return '';
 }
 
+/**
+ * Compare two tokens in constant time without leaking length via early-exit.
+ * Hash both sides with SHA-256 so the Buffers are always 32 bytes before
+ * calling timingSafeEqual, eliminating the length-based side-channel that a
+ * plain Buffer.from(token).length check or early-return on length mismatch
+ * would have exposed.
+ */
 function matchesSharedToken(token: string, sharedToken: string): boolean {
-  if (token.length !== sharedToken.length) return false;
-  return timingSafeEqual(Buffer.from(token), Buffer.from(sharedToken));
+  const aHash = createHash('sha256').update(token).digest();
+  const bHash = createHash('sha256').update(sharedToken).digest();
+  return timingSafeEqual(aHash, bHash);
 }
 
 export function authenticateOperatorToken(

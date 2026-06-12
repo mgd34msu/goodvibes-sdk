@@ -164,6 +164,23 @@ export class ConfigManager {
     return this.homeDirectory;
   }
 
+  /**
+   * Returns the absolute path to the global (surface-level) settings.json file.
+   * Consumers should use this instead of casting through `as unknown` to access
+   * the private `configPath` field.
+   */
+  getConfigPath(): string {
+    return this.configPath;
+  }
+
+  /**
+   * Returns the absolute path to the project-level settings.json file, or
+   * `undefined` if no `workingDir` was provided at construction time.
+   */
+  getProjectConfigPath(): string | undefined {
+    return this.projectConfigPath ?? undefined;
+  }
+
   attachHookDispatcher(hookDispatcher: Pick<HookDispatcher, 'fire'> | null): void {
     this.hookDispatcher = hookDispatcher;
   }
@@ -202,7 +219,8 @@ export class ConfigManager {
   set<K extends ConfigKey>(key: K, value: ConfigValue<K>, options: ConfigSetOptions = {}): void {
     const schema = CONFIG_SCHEMA.find(s => s.key === key);
     if (schema?.validate && !schema.validate(value)) {
-      throw new ConfigError(`Invalid value for ${key}: ${String(value)}`);
+      const hint = schema.validationHint ? ` (${schema.validationHint})` : '';
+      throw new ConfigError(`Invalid value for ${key}: ${String(value)}${hint}`);
     }
     if (schema?.type === 'enum' && schema.enumValues && !schema.enumValues.includes(value as string)) {
       throw new ConfigError(`Invalid value for ${key}: "${String(value)}". Allowed: ${schema.enumValues.join(', ')}`);

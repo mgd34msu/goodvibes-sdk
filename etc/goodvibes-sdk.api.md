@@ -339,6 +339,14 @@ export interface BackoffPolicy {
 }
 
 // @public
+export interface BackpressureInfo {
+    readonly droppedCount: number;
+    readonly queueBytes: number;
+    readonly queueLength: number;
+    readonly reason: 'message_too_large' | 'queue_full';
+}
+
+// @public
 export interface BrowserGoodVibesSdkOptions extends Omit<GoodVibesSdkOptions, 'baseUrl' | 'fetch' | 'WebSocketImpl'> {
     // (undocumented)
     readonly baseUrl?: string | undefined;
@@ -582,6 +590,30 @@ export const ConfiguredViaSchema: z.ZodEnum<{
     env: "env";
 }>;
 
+// @public
+export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
+
+// @public
+export type ConnectorTransportEvent = {
+    type: 'TRANSPORT_CONNECTION_STATE';
+    transportId: string;
+    state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
+} | {
+    type: 'TRANSPORT_RECONNECT_ATTEMPT';
+    transportId: string;
+    attempt: number;
+    maxAttempts: number;
+    delayMs: number;
+    reason: string;
+} | {
+    type: 'TRANSPORT_BACKPRESSURE';
+    transportId: string;
+    droppedCount: number;
+    queueLength: number;
+    queueBytes: number;
+    reason: 'message_too_large' | 'queue_full';
+};
+
 // @public (undocumented)
 export interface ConsoleObserverOptions {
     readonly level?: 'debug' | 'info' | undefined;
@@ -699,27 +731,17 @@ export const ControlAuthLoginResponseSchema: z.ZodObject<{
 // @public
 export type ControlPlaneAuthMode = 'anonymous' | 'invalid' | 'session' | 'shared-token';
 
-// @public (undocumented)
+// @public
 export interface ControlPlaneAuthSnapshot {
-    // (undocumented)
     readonly admin: boolean;
-    // (undocumented)
     readonly authenticated: boolean;
-    // (undocumented)
     readonly authMode: ControlPlaneAuthMode;
-    // (undocumented)
     readonly authorizationHeaderPresent: boolean;
-    // (undocumented)
     readonly principalId: string | null;
-    // (undocumented)
     readonly principalKind: 'user' | 'bot' | 'service' | 'token' | null;
-    // (undocumented)
     readonly roles: readonly string[];
-    // (undocumented)
     readonly scopes: readonly string[];
-    // (undocumented)
     readonly sessionCookiePresent: boolean;
-    // (undocumented)
     readonly tokenPresent: boolean;
 }
 
@@ -814,7 +836,7 @@ export function createGoodVibesCloudflareWorker(options?: GoodVibesCloudflareWor
 // @public
 export function createGoodVibesSdk(options: GoodVibesSdkOptions): GoodVibesSdk;
 
-// @public (undocumented)
+// @public
 export function createHttpStatusError(status: number, url: string, method: string, body: unknown, fallbackHint?: string): HttpStatusError;
 
 // @public (undocumented)
@@ -832,16 +854,16 @@ export function createMemoryTokenStore(initialToken?: string | null, initialExpi
 // @public
 export function createOpenTelemetryObserver(tracer: OtelTracer, meter: OtelMeter): SDKObserver;
 
-// @public (undocumented)
+// @public
 export function createOperatorRemoteClient(transport: HttpTransport, contract: OperatorContractManifest, clientOptions?: OperatorRemoteClientOptions): OperatorRemoteClient;
 
-// @public (undocumented)
+// @public
 export function createOperatorSdk(options: OperatorSdkOptions): OperatorSdk;
 
-// @public (undocumented)
+// @public
 export function createPeerRemoteClient(transport: HttpTransport, contract: PeerContractManifest, clientOptions?: PeerRemoteClientOptions): PeerRemoteClient;
 
-// @public (undocumented)
+// @public
 export function createPeerSdk(options: PeerSdkOptions): PeerSdk;
 
 // @public
@@ -870,6 +892,13 @@ export function createWebGoodVibesSdk(options?: WebGoodVibesSdkOptions): GoodVib
 
 // @public (undocumented)
 export function createWebSocketConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(baseUrl: string, token: AuthTokenSource, WebSocketImpl: typeof WebSocket, options?: RuntimeEventConnectorOptions): DomainEventConnector<RuntimeEventDomain, TEvent>;
+
+// @public (undocumented)
+export function createWebSocketRemoteError(fallbackMessage: string, body: unknown, options?: {
+    readonly code?: string;
+    readonly hint?: string;
+    readonly cause?: unknown;
+}): WebSocketTransportError;
 
 // @public (undocumented)
 export type CurrentModelResponse = z.infer<typeof CurrentModelResponseSchema>;
@@ -1185,8 +1214,8 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.33.37";
-    readonly operatorMethodCount: 279;
+    readonly productVersion: "0.33.38";
+    readonly operatorMethodCount: 280;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
 };
@@ -1240,9 +1269,8 @@ export interface GoodVibesAuthClient {
     readonly writable: boolean;
 }
 
-// @public (undocumented)
+// @public
 export interface GoodVibesAuthLoginOptions {
-    // (undocumented)
     readonly persistToken?: boolean | undefined;
 }
 
@@ -1324,7 +1352,7 @@ export interface GoodVibesCloudflareWorkerOptions {
     readonly workerAuthToken?: string | undefined;
 }
 
-// @public (undocumented)
+// @public
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
 
 // @public
@@ -1338,27 +1366,22 @@ export interface GoodVibesExpiringTokenStore extends GoodVibesTokenStore {
     setTokenEntry(token: string | null, expiresAt?: number): Promise<void>;
 }
 
-// @public (undocumented)
+// @public
 export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;
 
-// @public (undocumented)
+// @public
 export type GoodVibesLoginOutput = OperatorMethodOutput<'control.auth.login'>;
 
 // @public
 export interface GoodVibesRealtime {
-    // (undocumented)
     viaSse(): RemoteRuntimeEvents<AnyRuntimeEvent>;
-    // (undocumented)
     viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<AnyRuntimeEvent>;
 }
 
 // @public
 export interface GoodVibesRealtimeOptions {
-    // (undocumented)
     readonly onError?: ((error: unknown) => void) | undefined;
-    // (undocumented)
     readonly sseReconnect?: StreamReconnectPolicy | undefined;
-    // (undocumented)
     readonly webSocketReconnect?: StreamReconnectPolicy | undefined;
 }
 
@@ -1382,8 +1405,7 @@ export class GoodVibesSdkError extends Error {
     readonly category: ErrorCategory;
     // (undocumented)
     readonly cause?: unknown | undefined;
-    // (undocumented)
-    readonly code?: string | undefined;
+    readonly code: SDKErrorCode | (string & {});
     // (undocumented)
     readonly hint?: string | undefined;
     // (undocumented)
@@ -1424,8 +1446,7 @@ export interface GoodVibesSdkErrorOptions {
     readonly category?: ErrorCategory | undefined;
     // (undocumented)
     readonly cause?: unknown | undefined;
-    // (undocumented)
-    readonly code?: string | undefined;
+    readonly code?: SDKErrorCode | (string & {}) | undefined;
     // (undocumented)
     readonly hint?: string | undefined;
     // (undocumented)
@@ -1471,13 +1492,10 @@ export interface GoodVibesSdkOptions {
     readonly WebSocketImpl?: typeof WebSocket | undefined;
 }
 
-// @public (undocumented)
+// @public
 export interface GoodVibesTokenStore {
-    // (undocumented)
     clearToken(): Promise<void>;
-    // (undocumented)
     getToken(): Promise<string | null>;
-    // (undocumented)
     setToken(token: string | null): Promise<void>;
 }
 
@@ -1657,6 +1675,16 @@ export function invokeTransportObserver(fn: () => void, onObserverError?: ((err:
 // @public (undocumented)
 export function isAbortError(error: unknown): boolean;
 
+// @public
+export function isErrorCode<C extends SDKErrorCode>(err: {
+    readonly code?: SDKErrorCode | (string & {}) | undefined;
+}, code: C): err is {
+    readonly code: C;
+};
+
+// @public
+export function isKnownErrorCode(value: string): value is SDKErrorCode;
+
 // @public (undocumented)
 export function isKnownEventType(type: unknown): type is string;
 
@@ -1711,6 +1739,31 @@ export type KnowledgeEvent = {
     connectorId: string;
     sourceType: string;
     uri?: string | undefined;
+}
+/**
+* Granular progress update during a knowledge ingest pipeline run.
+*
+* Emitted by the knowledge ingest engine at each processing phase so UIs can
+* render live progress bars for long-running ingest operations (e.g. large
+* document sets, semantic indexing).
+*
+* **Integration note:** Emission sites live in `platform/knowledge`. Wire by calling
+* `bus.emit('knowledge', { type: 'KNOWLEDGE_INGEST_PROGRESS', ... })` at each
+* phase-transition or item-complete checkpoint in the ingest pipeline. The contract
+* is defined here so SDK consumers can subscribe without depending on the internal
+* knowledge module.
+*
+* **Scope note:** `operationId` is operation-scoped (not task-scoped). See `lifecycle.ts`
+* for the guard that ties progress events to their originating operation lifecycle.
+*/
+| {
+    type: 'KNOWLEDGE_INGEST_PROGRESS';
+    operationId: string;
+    phase: string;
+    completed: number;
+    total?: number | undefined;
+    percent?: number | undefined;
+    message?: string | undefined;
 } | {
     type: 'KNOWLEDGE_INGEST_COMPLETED';
     sourceId: string;
@@ -1786,19 +1839,19 @@ export type KnowledgeSpaceScopeInput = {
     includeAllSpaces?: boolean;
 };
 
-// @public (undocumented)
+// @public
 export type KnownEndpointArgs<TEndpointId extends PeerTypedEndpointId> = MethodArgs<PeerEndpointInput<TEndpointId>, PeerRemoteClientInvokeOptions>;
 
-// @public (undocumented)
+// @public
 export type KnownMethodArgs<TMethodId extends OperatorTypedMethodId> = MethodArgs<OperatorMethodInput<TMethodId>, OperatorRemoteClientInvokeOptions>;
 
-// @public (undocumented)
+// @public
 export type KnownPathEndpointArgs<TEndpointId extends PeerTypedEndpointId, TKeys extends PropertyKey> = MethodArgs<WithoutKeys<PeerEndpointInput<TEndpointId>, TKeys>, PeerRemoteClientInvokeOptions>;
 
-// @public (undocumented)
+// @public
 export type KnownPathMethodArgs<TMethodId extends OperatorTypedMethodId, TKeys extends PropertyKey> = MethodArgs<WithoutKeys<OperatorMethodInput<TMethodId>, TKeys>, OperatorRemoteClientInvokeOptions>;
 
-// @public (undocumented)
+// @public
 export type KnownStreamArgs<TMethodId extends OperatorStreamMethodId> = MethodArgs<OperatorMethodInput<TMethodId>, OperatorRemoteClientStreamOptions>;
 
 // @public (undocumented)
@@ -2049,7 +2102,7 @@ export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: s
 export const OPERATOR_CONTRACT: OperatorContractManifest;
 
 // @public (undocumented)
-export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "mcp.config.get", "mcp.config.reload", "mcp.servers.list", "mcp.servers.remove", "mcp.servers.upsert", "mcp.tools.list", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "projectPlanning.workPlan.clearCompleted", "projectPlanning.workPlan.snapshot", "projectPlanning.workPlan.task.create", "projectPlanning.workPlan.task.delete", "projectPlanning.workPlan.task.get", "projectPlanning.workPlan.task.status", "projectPlanning.workPlan.task.update", "projectPlanning.workPlan.tasks.list", "projectPlanning.workPlan.tasks.reorder", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
+export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "mcp.config.get", "mcp.config.reload", "mcp.servers.list", "mcp.servers.remove", "mcp.servers.upsert", "mcp.tools.list", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.review-queue", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "projectPlanning.workPlan.clearCompleted", "projectPlanning.workPlan.snapshot", "projectPlanning.workPlan.task.create", "projectPlanning.workPlan.task.delete", "projectPlanning.workPlan.task.get", "projectPlanning.workPlan.task.status", "projectPlanning.workPlan.task.update", "projectPlanning.workPlan.tasks.list", "projectPlanning.workPlan.tasks.reorder", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.reopen", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
 
 // @public (undocumented)
 export interface OperatorContractManifest {
@@ -13348,7 +13401,7 @@ export interface OperatorMethodOutputMap {
     };
 }
 
-// @public (undocumented)
+// @public
 export interface OperatorRemoteClient {
     // (undocumented)
     readonly accounts: {
@@ -13362,7 +13415,6 @@ export interface OperatorRemoteClient {
         deny(approvalId: string, ...args: KnownPathMethodArgs<'approvals.deny', 'approvalId'>): Promise<OperatorMethodOutput<'approvals.deny'>>;
         cancel(approvalId: string, ...args: KnownPathMethodArgs<'approvals.cancel', 'approvalId'>): Promise<OperatorMethodOutput<'approvals.cancel'>>;
     };
-    // (undocumented)
     readonly contract: OperatorContractManifest;
     // (undocumented)
     readonly control: {
@@ -13382,13 +13434,11 @@ export interface OperatorRemoteClient {
             stream(...args: KnownStreamArgs<'control.events.stream'>): Promise<() => void>;
         };
     };
-    // (undocumented)
     getOperation(methodId: string): OperatorMethodContract;
     // (undocumented)
     invoke<TMethodId extends OperatorTypedMethodId>(methodId: TMethodId, ...args: KnownMethodArgs<TMethodId>): Promise<OperatorMethodOutput<TMethodId>>;
     // (undocumented)
     invoke<T = unknown>(methodId: string, input?: Record<string, unknown>, options?: OperatorRemoteClientInvokeOptions): Promise<T>;
-    // (undocumented)
     listOperations(): readonly OperatorMethodContract[];
     // (undocumented)
     readonly localAuth: {
@@ -13442,22 +13492,20 @@ export interface OperatorRemoteClient {
         };
         stream(...args: KnownStreamArgs<'telemetry.stream'>): Promise<() => void>;
     };
-    // (undocumented)
     readonly transport: HttpTransport;
 }
 
-// @public (undocumented)
+// @public
 export interface OperatorRemoteClientInvokeOptions extends ContractInvokeOptions {
 }
 
-// @public (undocumented)
+// @public
 export interface OperatorRemoteClientOptions {
-    // (undocumented)
     readonly getResponseSchema?: ((methodId: string) => ContractInvokeOptions['responseSchema']) | undefined;
     readonly validateResponses?: boolean | undefined;
 }
 
-// @public (undocumented)
+// @public
 export interface OperatorRemoteClientStreamOptions extends ContractStreamOptions {
 }
 
@@ -13475,7 +13523,7 @@ export interface OperatorSchemaCoverageContract {
     readonly typedOutputs: number;
 }
 
-// @public (undocumented)
+// @public
 export type OperatorSdk = Omit<OperatorRemoteClient, 'getOperation'> & {
     readonly transport: HttpTransport;
     getOperation(methodId: OperatorMethodId): OperatorMethodContract;
@@ -13485,7 +13533,7 @@ export type OperatorSdk = Omit<OperatorRemoteClient, 'getOperation'> & {
     [Symbol.asyncDispose](): Promise<void>;
 };
 
-// @public (undocumented)
+// @public
 export interface OperatorSdkOptions extends HttpTransportOptions {
     readonly validateResponses?: boolean | undefined;
 }
@@ -14429,17 +14477,14 @@ export interface PeerEndpointOutputMap {
 export interface PeerInvokeOptions extends PeerRemoteClientInvokeOptions {
 }
 
-// @public (undocumented)
+// @public
 export interface PeerRemoteClient {
-    // (undocumented)
     readonly contract: PeerContractManifest;
-    // (undocumented)
     getOperation(endpointId: string): PeerEndpointContract;
     // (undocumented)
     invoke<TEndpointId extends PeerTypedEndpointId>(endpointId: TEndpointId, ...args: KnownEndpointArgs<TEndpointId>): Promise<PeerEndpointOutput<TEndpointId>>;
     // (undocumented)
     invoke<T = unknown>(endpointId: string, input?: Record<string, unknown>, options?: PeerRemoteClientInvokeOptions): Promise<T>;
-    // (undocumented)
     listOperations(): readonly PeerEndpointContract[];
     // (undocumented)
     readonly operator: {
@@ -14454,7 +14499,6 @@ export interface PeerRemoteClient {
     readonly peer: {
         heartbeat(...args: KnownEndpointArgs<'peer.heartbeat'>): Promise<PeerEndpointOutput<'peer.heartbeat'>>;
     };
-    // (undocumented)
     readonly transport: HttpTransport;
     // (undocumented)
     readonly work: {
@@ -14463,17 +14507,16 @@ export interface PeerRemoteClient {
     };
 }
 
-// @public (undocumented)
+// @public
 export interface PeerRemoteClientInvokeOptions extends ContractInvokeOptions {
 }
 
-// @public (undocumented)
+// @public
 export interface PeerRemoteClientOptions {
-    // (undocumented)
     readonly validateResponses?: boolean | undefined;
 }
 
-// @public (undocumented)
+// @public
 export type PeerSdk = Omit<PeerRemoteClient, 'getOperation'> & {
     readonly transport: HttpTransport;
     getOperation(endpointId: PeerEndpointId): PeerEndpointContract;
@@ -14483,12 +14526,12 @@ export type PeerSdk = Omit<PeerRemoteClient, 'getOperation'> & {
     [Symbol.asyncDispose](): Promise<void>;
 };
 
-// @public (undocumented)
+// @public
 export interface PeerSdkBehaviorOptions {
     readonly validateResponses?: boolean | undefined;
 }
 
-// @public (undocumented)
+// @public
 export type PeerSdkOptions = HttpTransportOptions & PeerSdkBehaviorOptions;
 
 // @public (undocumented)
@@ -14881,6 +14924,14 @@ export interface ReactNativeGoodVibesSdkOptions extends GoodVibesSdkOptions {
 // @public (undocumented)
 export function readJsonBody(response: Response): Promise<unknown>;
 
+// @public
+export interface ReconnectAttemptInfo {
+    readonly attempt: number;
+    readonly delayMs: number;
+    readonly maxAttempts: number;
+    readonly reason: string;
+}
+
 // @public (undocumented)
 export function registeredEventTypes(): readonly string[];
 
@@ -15191,13 +15242,17 @@ export type RuntimeDomainEventType<TDomain extends RuntimeEventTypedDomain> = ke
 export interface RuntimeEventConnectorOptions {
     // (undocumented)
     readonly observer?: TransportObserver | undefined;
+    readonly onBackpressure?: ((info: BackpressureInfo) => void) | undefined;
+    readonly onConnectionStateChange?: ((state: ConnectionState) => void) | undefined;
     readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined;
     // (undocumented)
     readonly onError?: ((error: unknown) => void) | undefined;
     // (undocumented)
     readonly onOpen?: (() => void) | undefined;
-    // (undocumented)
+    // @deprecated (undocumented)
     readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined;
+    readonly onReconnectAttempt?: ((info: ReconnectAttemptInfo) => void) | undefined;
+    readonly onTransportEvent?: ((event: ConnectorTransportEvent) => void) | undefined;
     // (undocumented)
     readonly reconnect?: StreamReconnectPolicy | undefined;
 }
@@ -15238,6 +15293,35 @@ export const RuntimeEventRecordSchema: z.ZodObject<{
 
 // @public (undocumented)
 export type RuntimeEventTypedDomain = keyof RuntimeDomainEventPayloadMap & string;
+
+// @public
+export type SDKErrorCode = 'AUTH_REQUIRED' | 'TOKEN_EXPIRED' | 'PERMISSION_DENIED' | 'PAYMENT_REQUIRED' | 'RATE_LIMITED' | 'NETWORK_UNREACHABLE' | 'TIMEOUT' | 'CANCELLED' | 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION_FAILED' | 'AGENT_TIMEOUT' | 'AGENT_FAILED' | 'TOOL_EXEC_FAILED' | 'SERVICE_UNAVAILABLE' | 'CONTRACT_MISMATCH' | 'PROTOCOL_ERROR' | 'INTERNAL_ERROR' | 'SDK_CONFIGURATION_ERROR' | 'SDK_CONTRACT_ERROR' | 'SDK_HTTP_STATUS_ERROR' | 'UNKNOWN';
+
+// @public
+export const SDKErrorCodes: {
+    readonly AUTH_REQUIRED: "AUTH_REQUIRED";
+    readonly TOKEN_EXPIRED: "TOKEN_EXPIRED";
+    readonly PERMISSION_DENIED: "PERMISSION_DENIED";
+    readonly PAYMENT_REQUIRED: "PAYMENT_REQUIRED";
+    readonly RATE_LIMITED: "RATE_LIMITED";
+    readonly NETWORK_UNREACHABLE: "NETWORK_UNREACHABLE";
+    readonly TIMEOUT: "TIMEOUT";
+    readonly CANCELLED: "CANCELLED";
+    readonly NOT_FOUND: "NOT_FOUND";
+    readonly CONFLICT: "CONFLICT";
+    readonly VALIDATION_FAILED: "VALIDATION_FAILED";
+    readonly AGENT_TIMEOUT: "AGENT_TIMEOUT";
+    readonly AGENT_FAILED: "AGENT_FAILED";
+    readonly TOOL_EXEC_FAILED: "TOOL_EXEC_FAILED";
+    readonly SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE";
+    readonly CONTRACT_MISMATCH: "CONTRACT_MISMATCH";
+    readonly PROTOCOL_ERROR: "PROTOCOL_ERROR";
+    readonly INTERNAL_ERROR: "INTERNAL_ERROR";
+    readonly SDK_CONFIGURATION_ERROR: "SDK_CONFIGURATION_ERROR";
+    readonly SDK_CONTRACT_ERROR: "SDK_CONTRACT_ERROR";
+    readonly SDK_HTTP_STATUS_ERROR: "SDK_HTTP_STATUS_ERROR";
+    readonly UNKNOWN: "UNKNOWN";
+};
 
 // @public
 export type SDKErrorKind = 'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown';
@@ -15607,6 +15691,52 @@ export type TaskEvent =
     taskId: string;
     agentId?: string | undefined;
     reason?: string | undefined;
+}
+/**
+* Granular progress update for a batch job running as a task.
+*
+* Emitted by the batch processor as each item completes. UIs should use this
+* to render progress bars and ETA estimates for long-running batch operations.
+*
+* **Integration note:** Emission sites live in `platform/batch`. Wire by calling
+* `bus.emit('tasks', { type: 'BATCH_JOB_PROGRESS', ... })` at each item-complete
+* checkpoint inside the batch runner. The contract is defined here so SDK consumers
+* can subscribe to it without depending on the internal batch module.
+*
+* **Scope note:** `operationId` is operation-scoped (not task-scoped). See `lifecycle.ts`
+* for the guard that ties progress events to their originating operation lifecycle.
+*/
+| {
+    type: 'BATCH_JOB_PROGRESS';
+    operationId: string;
+    phase: string;
+    completed: number;
+    total?: number | undefined;
+    percent?: number | undefined;
+    message?: string | undefined;
+}
+/**
+* Granular progress update for an export operation.
+*
+* Emitted by the export engine as records are serialised. UIs should use this
+* to render progress indicators for long-running export jobs.
+*
+* **Integration note:** Emission sites live in `platform/export`. Wire by calling
+* `bus.emit('tasks', { type: 'EXPORT_PROGRESS', ... })` at each record-write
+* checkpoint inside the export runner. The contract is defined here so SDK consumers
+* can subscribe without depending on the internal export module.
+*
+* **Scope note:** `operationId` is operation-scoped (not task-scoped). See `lifecycle.ts`
+* for the guard that ties progress events to their originating operation lifecycle.
+*/
+| {
+    type: 'EXPORT_PROGRESS';
+    operationId: string;
+    phase: string;
+    completed: number;
+    total?: number | undefined;
+    percent?: number | undefined;
+    message?: string | undefined;
 };
 
 // @public
@@ -15874,6 +16004,54 @@ export type TransportEvent =
     subscriberId: string;
     streamType: string;
     reason?: string;
+}
+/**
+* The outbound WebSocket queue has saturated and messages are being dropped.
+*
+* This event is emitted when `MAX_OUTBOUND_QUEUE` entries or `MAX_OUTBOUND_QUEUE_BYTES`
+* total bytes are exceeded, or when a single message exceeds `MAX_OUTBOUND_MESSAGE_BYTES`.
+* Subscribe to this in UI layers to show a "connection lagging" indicator.
+*
+* The `onBackpressure` callback in `RuntimeEventConnectorOptions` fires at the same
+* time and provides identical information for non-event-bus consumers.
+*/
+| {
+    type: 'TRANSPORT_BACKPRESSURE';
+    transportId: string;
+    droppedCount: number;
+    queueLength: number;
+    queueBytes: number;
+    reason: 'message_too_large' | 'queue_full';
+}
+/**
+* The realtime transport connection state has changed.
+*
+* Emitted by `createWebSocketConnector` on every state transition. Subscribe
+* to this in UI layers to drive connection-state badges (e.g. online/reconnecting
+* indicators).
+*
+* The `onConnectionStateChange` callback in `RuntimeEventConnectorOptions` fires
+* at the same time and provides the same state string for non-event-bus consumers.
+*/
+| {
+    type: 'TRANSPORT_CONNECTION_STATE';
+    transportId: string;
+    state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
+}
+/**
+* A realtime transport reconnect attempt is scheduled.
+*
+* Provides richer reconnect metadata than `TRANSPORT_RECONNECTING` (which only
+* carries `attempt` and `maxAttempts`). Subscribe to this for detailed backoff
+* visualisation in diagnostic UIs.
+*/
+| {
+    type: 'TRANSPORT_RECONNECT_ATTEMPT';
+    transportId: string;
+    attempt: number;
+    maxAttempts: number;
+    delayMs: number;
+    reason: string;
 };
 
 // @public
@@ -16171,6 +16349,13 @@ export class WebSocketTransportError extends GoodVibesSdkError {
         readonly cause?: unknown;
         readonly hint?: string;
         readonly code: string;
+        readonly category?: ErrorCategory | undefined;
+        readonly recoverable?: boolean | undefined;
+        readonly status?: number | undefined;
+        readonly requestId?: string | undefined;
+        readonly provider?: string | undefined;
+        readonly operation?: string | undefined;
+        readonly phase?: string | undefined;
     });
 }
 

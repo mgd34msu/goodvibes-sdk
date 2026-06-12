@@ -4,6 +4,16 @@ function isZodSchema(value: unknown): value is ZodType {
   return Boolean(value && typeof value === 'object' && 'safeParse' in value && typeof (value as { readonly safeParse?: unknown }).safeParse === 'function');
 }
 
+/**
+ * Convert a contract method id (e.g. `'sessions.create'`) to the corresponding
+ * Zod schema export name (e.g. `'SessionsCreateResponseSchema'`).
+ *
+ * Convention: dot-separated + underscore-separated segments are each
+ * title-cased and concatenated, then `ResponseSchema` is appended.
+ *
+ * @param methodId - A dot-separated operator contract method id.
+ * @returns The expected exported Zod schema identifier.
+ */
 export function methodIdToSchemaName(methodId: string): string {
   const pascal = methodId
     .split('.')
@@ -20,6 +30,19 @@ export function methodIdToSchemaName(methodId: string): string {
   return `${pascal}ResponseSchema`;
 }
 
+/**
+ * Build a map from operator method id → Zod response schema by scanning the
+ * exported symbols of the contracts package for names matching
+ * `methodIdToSchemaName(methodId)`.
+ *
+ * Only entries where the exported value satisfies the `ZodType` interface
+ * (has a `safeParse` method) are included. Unknown schema names are silently
+ * skipped.
+ *
+ * @param methodIds - All operator contract method ids to map.
+ * @param schemas - The module namespace object from `@pellux/goodvibes-contracts`.
+ * @returns A partial record from method id to Zod schema.
+ */
 export function buildSchemaRegistry(
   methodIds: readonly string[],
   schemas: Record<string, unknown>,

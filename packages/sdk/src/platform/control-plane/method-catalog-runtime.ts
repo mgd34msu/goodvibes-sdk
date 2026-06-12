@@ -465,6 +465,19 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     outputSchema: MEMORY_DOCTOR_REPORT_SCHEMA,
   }),
   methodDescriptor({
+    id: 'memory.review-queue',
+    title: 'Memory Review Queue',
+    description: 'Return memory records prioritised for review. Accepts optional limit (?limit=N) and scope filter (?scope=session|project|team). A scope query parameter that is present but not one of the three valid values returns 400.',
+    category: 'memory',
+    scopes: ['read:memory'],
+    http: { method: 'GET', path: '/api/memory/review-queue' },
+    inputSchema: objectSchema({
+      limit: NUMBER_SCHEMA,
+      scope: enumSchema(['session', 'project', 'team']),
+    }),
+    outputSchema: objectSchema({ records: arraySchema(objectSchema({}, [], { additionalProperties: true })) }, ['records']),
+  }),
+  methodDescriptor({
     id: 'scheduler.capacity',
     title: 'Scheduler Capacity',
     description: 'Return the current automation-scheduler capacity snapshot: total slots, in-use slots, queue depth, and age of the oldest queued run.',
