@@ -414,8 +414,8 @@ export class MemoryStore {
       .slice(0, requestedLimit);
   }
 
-  reviewQueue(limit = 10): MemoryRecord[] {
-    const records = this.search({ limit: Math.max(limit * 4, 25) });
+  reviewQueue(limit = 10, scope?: MemoryScope): MemoryRecord[] {
+    const records = this.search({ limit: Math.max(limit * 4, 25), ...(scope ? { scope } : {}) });
     const candidates = records.filter((record) => isReviewCandidate(record));
     return candidates
       .sort((a, b) => reviewQueueScore(b) - reviewQueueScore(a) || b.updatedAt - a.updatedAt || b.createdAt - a.createdAt)

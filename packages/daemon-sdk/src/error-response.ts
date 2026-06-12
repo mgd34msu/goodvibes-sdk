@@ -6,9 +6,13 @@ import {
   type StructuredDaemonErrorBody,
 } from '@pellux/goodvibes-errors';
 
+/** Options for `jsonErrorResponse` and `buildErrorResponseBody`. */
 export interface JsonErrorResponseOptions {
+  /** HTTP status code for the response (defaults to `500` or the error's own status). */
   readonly status?: number | undefined;
+  /** Human-readable message to use when the error object carries no message. */
   readonly fallbackMessage?: string | undefined;
+  /** Override or supply the `source` field on the structured error body. */
   readonly source?: DaemonErrorSource | undefined;
   /**
    * when false (default), internal pipeline fields (`provider`,
@@ -275,6 +279,18 @@ function readBooleanProperty(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
 }
 
+/**
+ * Normalize any thrown value into a `StructuredDaemonErrorBody`.
+ *
+ * Handles `GoodVibesSdkError`, structured error-like objects, plain error-property
+ * objects, and raw strings or `Error` instances. Internal pipeline fields
+ * (`provider`, `operation`, `phase`, `providerCode`, `providerType`) are stripped
+ * from the response unless `options.isPrivileged` is `true`.
+ *
+ * @param error - The caught value (any type).
+ * @param options - Status code, fallback message, source override, and privilege flag.
+ * @returns A normalized `StructuredDaemonErrorBody` ready for JSON serialization.
+ */
 export function buildErrorResponseBody(
   error: unknown,
   options: JsonErrorResponseOptions = {},
@@ -392,6 +408,14 @@ export function buildErrorResponseBody(
   };
 }
 
+/**
+ * Produce a JSON `Response` from any thrown value, normalizing to a
+ * `StructuredDaemonErrorBody` before writing the wire response.
+ *
+ * @param error - The caught value (any type).
+ * @param options - Optional status, fallback message, source, and privilege flag.
+ * @returns A `Response` with `Content-Type: application/json` and the resolved status.
+ */
 export function jsonErrorResponse(error: unknown, options: JsonErrorResponseOptions = {}): Response {
   const body = buildErrorResponseBody(error, options);
   const status = options.status ?? body.status ?? 500;
@@ -401,6 +425,14 @@ export function jsonErrorResponse(error: unknown, options: JsonErrorResponseOpti
   );
 }
 
+/**
+ * Extract the human-readable error string from any thrown value, using the same
+ * normalization logic as `buildErrorResponseBody`.
+ *
+ * @param error - The caught value (any type).
+ * @param options - Optional fallback message and status for category inference.
+ * @returns The normalized error message string.
+ */
 export function summarizeErrorForRecord(error: unknown, options: JsonErrorResponseOptions = {}): string {
   return buildErrorResponseBody(error, options).error;
 }

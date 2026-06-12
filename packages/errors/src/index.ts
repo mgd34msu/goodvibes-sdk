@@ -48,6 +48,144 @@ export type SDKErrorKind =
   | 'validation'
   | 'unknown';
 
+/**
+ * Exhaustive string-literal union of the canonical error codes produced by the
+ * GoodVibes SDK. Use this type when you need to pattern-match on `err.code`
+ * without losing exhaustiveness checking.
+ *
+ * The `code` field on {@link GoodVibesSdkError} is typed as
+ * `SDKErrorCode | (string & {})` so that:
+ * - SDK-produced errors surface as one of the known literals (IDE autocomplete
+ *   and exhaustive switches work).
+ * - Caller-supplied arbitrary string codes still type-check without casting.
+ *
+ * ### Consumer pattern
+ * ```ts
+ * import { isErrorCode, SDKErrorCodes } from '@pellux/goodvibes-errors';
+ *
+ * catch (err) {
+ *   if (err instanceof GoodVibesSdkError) {
+ *     if (isErrorCode(err, SDKErrorCodes.RATE_LIMITED)) {
+ *       await delay(err.retryAfterMs ?? 1000);
+ *     } else if (isErrorCode(err, SDKErrorCodes.AUTH_REQUIRED)) {
+ *       await refreshToken();
+ *     } else if (isErrorCode(err, SDKErrorCodes.TOKEN_EXPIRED)) {
+ *       await refreshToken();
+ *     }
+ *   }
+ * }
+ * ```
+ */
+export type SDKErrorCode =
+  // Authentication / authorization
+  | 'AUTH_REQUIRED'
+  | 'TOKEN_EXPIRED'
+  | 'PERMISSION_DENIED'
+  | 'PAYMENT_REQUIRED'
+  // Rate limiting
+  | 'RATE_LIMITED'
+  // Networking
+  | 'NETWORK_UNREACHABLE'
+  | 'TIMEOUT'
+  | 'CANCELLED'
+  // Resource
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  // Validation
+  | 'VALIDATION_FAILED'
+  // Agent execution
+  | 'AGENT_TIMEOUT'
+  | 'AGENT_FAILED'
+  // Tool execution
+  | 'TOOL_EXEC_FAILED'
+  // Service-level
+  | 'SERVICE_UNAVAILABLE'
+  // SDK contract / internals
+  | 'CONTRACT_MISMATCH'
+  | 'PROTOCOL_ERROR'
+  | 'INTERNAL_ERROR'
+  | 'SDK_CONFIGURATION_ERROR'
+  | 'SDK_CONTRACT_ERROR'
+  | 'SDK_HTTP_STATUS_ERROR'
+  // Catch-all
+  | 'UNKNOWN';
+
+/**
+ * Runtime-accessible const object mirroring the {@link SDKErrorCode} union.
+ * Prefer referencing these constants over raw string literals for refactor safety.
+ *
+ * @example
+ * import { SDKErrorCodes } from '@pellux/goodvibes-errors';
+ *
+ * if (err.code === SDKErrorCodes.RATE_LIMITED) {
+ *   await delay(err.retryAfterMs ?? 1000);
+ * }
+ */
+export const SDKErrorCodes = {
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  PERMISSION_DENIED: 'PERMISSION_DENIED',
+  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
+  RATE_LIMITED: 'RATE_LIMITED',
+  NETWORK_UNREACHABLE: 'NETWORK_UNREACHABLE',
+  TIMEOUT: 'TIMEOUT',
+  CANCELLED: 'CANCELLED',
+  NOT_FOUND: 'NOT_FOUND',
+  CONFLICT: 'CONFLICT',
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  AGENT_TIMEOUT: 'AGENT_TIMEOUT',
+  AGENT_FAILED: 'AGENT_FAILED',
+  TOOL_EXEC_FAILED: 'TOOL_EXEC_FAILED',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  CONTRACT_MISMATCH: 'CONTRACT_MISMATCH',
+  PROTOCOL_ERROR: 'PROTOCOL_ERROR',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  SDK_CONFIGURATION_ERROR: 'SDK_CONFIGURATION_ERROR',
+  SDK_CONTRACT_ERROR: 'SDK_CONTRACT_ERROR',
+  SDK_HTTP_STATUS_ERROR: 'SDK_HTTP_STATUS_ERROR',
+  UNKNOWN: 'UNKNOWN',
+} as const satisfies Record<SDKErrorCode, SDKErrorCode>;
+
+/**
+ * The set of known {@link SDKErrorCode} values for runtime membership tests.
+ * @internal
+ */
+const SDK_ERROR_CODE_SET = new Set<string>(Object.values(SDKErrorCodes));
+
+/**
+ * Returns `true` when `err.code` equals the given {@link SDKErrorCode},
+ * narrowing the type of `err.code` to the specific literal.
+ *
+ * Works with any object that has a `code?: string` field — not limited to
+ * {@link GoodVibesSdkError} subclasses.
+ *
+ * @example
+ * import { isErrorCode, SDKErrorCodes, GoodVibesSdkError } from '@pellux/goodvibes-errors';
+ *
+ * if (err instanceof GoodVibesSdkError && isErrorCode(err, SDKErrorCodes.RATE_LIMITED)) {
+ *   console.log('retry after', err.retryAfterMs);
+ * }
+ *
+ * @param err - Any object with an optional `code` string field.
+ * @param code - The {@link SDKErrorCode} literal to match against.
+ */
+export function isErrorCode<C extends SDKErrorCode>(
+  err: { readonly code?: SDKErrorCode | (string & {}) | undefined },
+  code: C,
+): err is { readonly code: C } {
+  return err.code === code;
+}
+
+/**
+ * Returns `true` when `value` is a known {@link SDKErrorCode} string.
+ * Useful for discriminating structured errors received over the wire.
+ *
+ * @param value - The string to test.
+ */
+export function isKnownErrorCode(value: string): value is SDKErrorCode {
+  return SDK_ERROR_CODE_SET.has(value);
+}
+
 function inferKind(category: ErrorCategory): SDKErrorKind {
   switch (category) {
     case 'authentication':
@@ -82,8 +220,41 @@ function inferKind(category: ErrorCategory): SDKErrorKind {
   }
 }
 
+/**
+ * Infers the canonical {@link SDKErrorCode} from an {@link ErrorCategory}.
+ * Used internally to populate `code` when no explicit code is provided.
+ * @internal
+ */
+function inferCodeFromCategory(category: ErrorCategory): SDKErrorCode {
+  switch (category) {
+    case 'authentication': return 'AUTH_REQUIRED';
+    case 'authorization': return 'PERMISSION_DENIED';
+    case 'billing': return 'PAYMENT_REQUIRED';
+    case 'permission': return 'PERMISSION_DENIED';
+    case 'config': return 'SDK_CONFIGURATION_ERROR';
+    case 'contract': return 'CONTRACT_MISMATCH';
+    case 'network': return 'NETWORK_UNREACHABLE';
+    case 'timeout': return 'TIMEOUT';
+    case 'not_found': return 'NOT_FOUND';
+    case 'rate_limit': return 'RATE_LIMITED';
+    case 'protocol': return 'PROTOCOL_ERROR';
+    case 'internal': return 'INTERNAL_ERROR';
+    case 'service': return 'SERVICE_UNAVAILABLE';
+    case 'bad_request': return 'VALIDATION_FAILED';
+    case 'tool': return 'TOOL_EXEC_FAILED';
+    case 'unknown':
+    default:
+      return 'UNKNOWN';
+  }
+}
+
 export interface GoodVibesSdkErrorOptions {
-  readonly code?: string | undefined;
+  /**
+   * A typed error code for programmatic matching. May be an {@link SDKErrorCode}
+   * literal or any custom string for caller-supplied codes.
+   * When omitted, the SDK infers a code from `category` or `status`.
+   */
+  readonly code?: SDKErrorCode | (string & {}) | undefined;
   readonly category?: ErrorCategory | undefined;
   readonly source?: ErrorSource | undefined;
   readonly recoverable?: boolean | undefined;
@@ -111,9 +282,33 @@ function inferCategory(status?: number): ErrorCategory {
   if (status === 403) return 'authorization';
   if (status === 404) return 'not_found';
   if (status === 408) return 'timeout';
+  if (status === 409) return 'unknown'; // 409 Conflict — caller must supply category explicitly
   if (status === 429) return 'rate_limit';
   if (status !== undefined && status >= 500) return 'service';
   return 'unknown';
+}
+
+/**
+ * Infers the canonical {@link SDKErrorCode} for HTTP status codes that have a
+ * direct 1-to-1 mapping, used when no explicit code is present in the response
+ * body. Returns `undefined` when the code should fall through to category-based
+ * inference (e.g. for structured-body responses that supply their own category).
+ * @internal
+ */
+function inferCodeFromStatus(status: number): SDKErrorCode | undefined {
+  switch (status) {
+    case 400: return 'VALIDATION_FAILED';
+    case 401: return 'AUTH_REQUIRED';
+    case 402: return 'PAYMENT_REQUIRED';
+    case 403: return 'PERMISSION_DENIED';
+    case 404: return 'NOT_FOUND';
+    case 408: return 'TIMEOUT';
+    case 409: return 'CONFLICT';
+    case 429: return 'RATE_LIMITED';
+    default:
+      if (status >= 500) return 'SERVICE_UNAVAILABLE';
+      return undefined;
+  }
 }
 
 const ERROR_CATEGORIES = new Set<ErrorCategory>([
@@ -136,6 +331,7 @@ const ERROR_CATEGORIES = new Set<ErrorCategory>([
 ]);
 
 const GOODVIBES_SDK_ERROR_BRAND = Symbol.for('pellux.goodvibes.sdk.error');
+const HTTP_STATUS_ERROR_BRAND = Symbol.for('pellux.goodvibes.sdk.http-status-error');
 
 function readErrorCategory(value: unknown): ErrorCategory | undefined {
   return typeof value === 'string' && ERROR_CATEGORIES.has(value as ErrorCategory)
@@ -167,10 +363,29 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth 
 /**
  * Base error class for all errors thrown by the GoodVibes SDK.
  *
- * Every error carries a structured `category` and `source` that allow
+ * Every error carries a structured `category`, `source`, and `code` that allow
  * callers to handle specific failure modes without string-matching messages.
  *
- * ### Narrowing pattern
+ * The `code` field is typed as `SDKErrorCode | (string & {})` — SDK-produced
+ * errors always carry a known {@link SDKErrorCode}, while caller-supplied codes
+ * remain valid arbitrary strings.
+ *
+ * ### Narrowing by code
+ * ```ts
+ * import { GoodVibesSdkError, isErrorCode, SDKErrorCodes } from '@pellux/goodvibes-errors';
+ *
+ * catch (err) {
+ *   if (err instanceof GoodVibesSdkError) {
+ *     if (isErrorCode(err, SDKErrorCodes.RATE_LIMITED)) {
+ *       await delay(err.retryAfterMs ?? 1000);
+ *     } else if (isErrorCode(err, SDKErrorCodes.TOKEN_EXPIRED)) {
+ *       await refreshToken();
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * ### Narrowing by kind
  * ```ts
  * import { GoodVibesSdkError, HttpStatusError, ConfigurationError } from '@pellux/goodvibes-errors';
  *
@@ -189,7 +404,18 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth 
  */
 export class GoodVibesSdkError extends Error {
   public readonly kind: SDKErrorKind;
-  public readonly code?: string | undefined;
+  /**
+   * Typed error code for programmatic matching. SDK-produced errors always set
+   * a {@link SDKErrorCode}; caller-supplied codes may be any string.
+   *
+   * **Note:** `code` and `category` are inferred independently and can diverge.
+   * For example, `new GoodVibesSdkError('…', { status: 409 })` yields
+   * `code === 'CONFLICT'` (from `inferCodeFromStatus`) while
+   * `category === 'unknown'` (because `inferCategory` intentionally returns
+   * `'unknown'` for 409 — the caller must supply `category` explicitly to get
+   * a meaningful category for conflict-style errors).
+   */
+  public readonly code: SDKErrorCode | (string & {});
   public readonly category: ErrorCategory;
   public readonly source: ErrorSource;
   public readonly recoverable: boolean;
@@ -229,7 +455,11 @@ export class GoodVibesSdkError extends Error {
       enumerable: false,
       configurable: false,
     });
-    this.code = options.code;
+    // Infer code from status first (most specific), then from category.
+    // Explicit caller-supplied code always wins.
+    this.code = options.code
+      ?? (options.status !== undefined ? inferCodeFromStatus(options.status) : undefined)
+      ?? inferCodeFromCategory(category);
     this.category = category;
     this.kind = inferKind(this.category);
     this.source = options.source ?? 'unknown';
@@ -309,7 +539,7 @@ function omitUndefined(record: Record<string, unknown>): Record<string, unknown>
  * implementation available, or calling a mutation on a read-only auth resolver).
  *
  * Always non-recoverable (`recoverable: false`).
- * Category: `'config'`. Kind: `'config'`.
+ * Category: `'config'`. Kind: `'config'`. Code: `'SDK_CONFIGURATION_ERROR'`.
  *
  * @example
  * import { ConfigurationError } from '@pellux/goodvibes-errors';
@@ -358,7 +588,7 @@ export class ConfigurationError extends GoodVibesSdkError {
  * (unexpected shape, missing required fields, etc.).
  *
  * Always non-recoverable (`recoverable: false`).
- * Category: `'contract'`. Kind: `'contract'`.
+ * Category: `'contract'`. Kind: `'contract'`. Code: `'SDK_CONTRACT_ERROR'`.
  *
  * @example
  * import { ContractError } from '@pellux/goodvibes-errors';
@@ -412,6 +642,17 @@ export class ContractError extends GoodVibesSdkError {
  * - `5xx` → `'service'`
  * - Any other status (or when constructed without a `status`) → `'unknown'`
  *
+ * The `code` field is inferred from `status` automatically:
+ * - `400` → `'VALIDATION_FAILED'`
+ * - `401` → `'AUTH_REQUIRED'`
+ * - `402` → `'PAYMENT_REQUIRED'`
+ * - `403` → `'PERMISSION_DENIED'`
+ * - `404` → `'NOT_FOUND'`
+ * - `408` → `'TIMEOUT'`
+ * - `409` → `'CONFLICT'`
+ * - `429` → `'RATE_LIMITED'`
+ * - `5xx` → `'SERVICE_UNAVAILABLE'`
+ *
  * When constructed without a `status` argument (e.g. as a typed
  * wrapper around a structured daemon error that provides its own `category`),
  * the category defaults to `'unknown'`. Callers relying on category-based
@@ -439,10 +680,14 @@ export class ContractError extends GoodVibesSdkError {
  */
 export class HttpStatusError extends GoodVibesSdkError {
   /**
-   * Brand contract — `code` is the source of truth, not the prototype chain.
+   * Brand contract: `instanceof HttpStatusError` relies on a dedicated Symbol
+   * brand stamped in the constructor, enabling cross-realm identity checks that
+   * are independent of the `code` field.
+   *
    * A `GoodVibesSdkError` constructed directly with `code: 'SDK_HTTP_STATUS_ERROR'`
-   * will pass `instanceof HttpStatusError` even if its prototype is only
-   * `GoodVibesSdkError`. Callers that need strict prototype checking should use
+   * will also pass `instanceof HttpStatusError` for backward compatibility with
+   * callers that serialise/deserialise errors by code. Callers that need strict
+   * prototype checking should use
    * `Object.getPrototypeOf(err) === HttpStatusError.prototype` instead.
    */
   static override [Symbol.hasInstance](value: unknown): boolean {
@@ -451,17 +696,28 @@ export class HttpStatusError extends GoodVibesSdkError {
         && value !== null
         && this.prototype.isPrototypeOf(value);
     }
-    // Require both the brand (real SDK error instance) and matching code
-    // to prevent plain objects like { code: 'SDK_HTTP_STATUS_ERROR' } from passing.
-    return GoodVibesSdkError[Symbol.hasInstance](value)
-      && (value as Record<PropertyKey, unknown>).code === 'SDK_HTTP_STATUS_ERROR';
+    if (!GoodVibesSdkError[Symbol.hasInstance](value)) return false;
+    const record = value as Record<PropertyKey, unknown>;
+    // Primary: dedicated brand symbol (set in constructor — works in same realm).
+    if (record[HTTP_STATUS_ERROR_BRAND] === true) return true;
+    // Fallback: code-based brand for cross-realm / serialised-error compat.
+    return record.code === 'SDK_HTTP_STATUS_ERROR';
   }
 
   constructor(message: string, options: GoodVibesSdkErrorOptions = {}) {
     super(message, {
       ...options,
+      // Default code retains 'SDK_HTTP_STATUS_ERROR' when no explicit code is
+      // supplied. Use createHttpStatusError() for status-specific semantic codes.
       code: options.code ?? 'SDK_HTTP_STATUS_ERROR',
       source: options.source ?? 'transport',
+    });
+    // Stamp the brand AFTER super() so the symbol is always present on instances
+    // produced by this constructor (regardless of which code was stored).
+    Object.defineProperty(this, HTTP_STATUS_ERROR_BRAND, {
+      value: true,
+      enumerable: false,
+      configurable: false,
     });
   }
 }
@@ -470,6 +726,23 @@ export function isStructuredDaemonErrorBody(value: unknown): value is Structured
   return typeof value === 'object' && value !== null && typeof (value as { error?: unknown }).error === 'string';
 }
 
+/**
+ * Creates an {@link HttpStatusError} from an HTTP response.
+ *
+ * When `body` is a {@link StructuredDaemonErrorBody}, its fields are used
+ * directly (including any explicit `code`). When the body is unstructured,
+ * the `code` is inferred from `status` via status-based inference (`inferCodeFromStatus`).
+ *
+ * The structured body path respects the body-supplied `code` over status
+ * inference, preserving full backward compatibility for callers that supply
+ * custom codes in the daemon response.
+ *
+ * @param status - HTTP status code.
+ * @param url - Request URL.
+ * @param method - HTTP method.
+ * @param body - Parsed response body (may be structured or unstructured).
+ * @param fallbackHint - Human-readable hint when the body provides none.
+ */
 export function createHttpStatusError(
   status: number,
   url: string,
@@ -478,8 +751,18 @@ export function createHttpStatusError(
   fallbackHint?: string,
 ): HttpStatusError {
   if (isStructuredDaemonErrorBody(body)) {
+    // Code precedence (highest to lowest):
+    //   1. Explicit code in the body (daemon-supplied)
+    //   2. Category-derived code when body supplies a category (category is
+    //      more semantically specific than the HTTP status in this case)
+    //   3. Status-derived code as final fallback
+    const structuredCode =
+      body.code
+      ?? (body.category !== undefined ? inferCodeFromCategory(body.category) : undefined)
+      ?? inferCodeFromStatus(status)
+      ?? 'UNKNOWN';
     return new HttpStatusError(body.error, {
-      code: body.code,
+      code: structuredCode,
       category: body.category,
       source: body.source ?? 'transport',
       recoverable: body.recoverable,
@@ -503,6 +786,9 @@ export function createHttpStatusError(
     : `Request failed with status ${status}`;
 
   return new HttpStatusError(message, {
+    // Explicitly inject the status-inferred code so HttpStatusError's own
+    // default ('SDK_HTTP_STATUS_ERROR') does not suppress the specific code.
+    code: inferCodeFromStatus(status) ?? 'SDK_HTTP_STATUS_ERROR',
     status,
     url,
     method,

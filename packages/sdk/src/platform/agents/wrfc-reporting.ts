@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { isAbsolute, resolve } from 'node:path';
 import type { CompletionReport, Constraint, ConstraintFinding, EngineerReport, ReviewerReport } from './completion-report.js';
 import { parseCompletionReport } from './completion-report.js';
 import { buildFixerConstraintAddendum, buildReviewerConstraintAddendum } from './wrfc-prompt-addenda.js';
@@ -38,11 +41,23 @@ export function extractScoreFromText(text: string): number | null {
   return null;
 }
 
+/**
+ * Determines whether a review verdict passes.
+ *
+ * Score >= threshold is a NECESSARY condition. Prose language ("passed",
+ * "approved") is treated as confirmation only — it can never elevate a
+ * sub-threshold score to a pass verdict.
+ *
+ * This is intentionally fail-closed: if the score is below threshold,
+ * the result is always false regardless of what the reviewer wrote.
+ */
 export function extractPassedFromText(text: string, score: number, threshold: number): boolean {
-  if (score >= threshold) return true;
-  if (/\bpass(ed|es|ing)?\b/i.test(text) && !/\bfail/i.test(text)) return true;
-  if (/\bapproved?\b/i.test(text)) return true;
-  return false;
+  // Score must meet or exceed threshold — no exceptions.
+  if (score < threshold) return false;
+  // Score meets threshold: treat prose as optional confirmation (ignored either way).
+  // We check for explicit fail language as a safety override even when score >= threshold.
+  if (/\bfail(ed|s|ing)?\b/i.test(text) && !/\bpassed?\b/i.test(text)) return false;
+  return true;
 }
 
 export function extractIssuesFromText(text: string): ReviewerReport['issues'] {
@@ -78,6 +93,166 @@ export function parseEngineerCompletionReport(rawOutput: string, _template?: str
     issues: [],
     uncertainties: [],
   } as EngineerReport;
+}
+
+/**
+ * Discriminator for claim verification outcome:
+ * - 'files_verified': claims present and all found on disk.
+ * - 'git_corroborated': claims present, some missing on disk, but git diff shows changes.
+ * - 'verified_empty': no claims made but git diff shows changes (engineer did real work without listing files).
+ * - 'unverifiable_no_claims': no claims AND no git diff — suspicious; treated as phantom work.
+ * - 'unverified': claims present but not found on disk and git shows no changes.
+ */
+export type ClaimVerificationKind =
+  | 'files_verified'
+  | 'git_corroborated'
+  | 'verified_empty'
+  | 'unverifiable_no_claims'
+  | 'unverified';
+
+/** Per-file result for claim verification. */
+export interface ClaimVerificationResult {
+  /** All paths claimed as created, modified, or deleted. */
+  claimedPaths: string[];
+  /** Paths that exist on disk (for created/modified claims). */
+  foundPaths: string[];
+  /** Paths that were claimed but not found on disk. */
+  missingPaths: string[];
+  /** Whether git diff/status shows any changes since the engineer started. */
+  gitDiffDetected: boolean | null;
+  /**
+   * Tri-state discriminator. Use this instead of the bare `verified` boolean
+   * to distinguish 'unverifiable_no_claims' (suspicious) from 'verified_empty'
+   * (legit no-file work with a git diff). Controllers must treat 'unverifiable_no_claims'
+   * as phantom work and inject a synthetic issue.
+   */
+  kind: ClaimVerificationKind;
+  /**
+   * Convenience: true iff kind is NOT 'unverified' or 'unverifiable_no_claims'.
+   * NOTE: Callers should use `kind` directly when deciding whether to set `chain.claimsVerified`.
+   * In particular, `unverifiable_no_claims` returns `verified: false` here but the controller
+   * intentionally leaves `chain.claimsVerified` as `undefined` (not `false`) because suspicion
+   * cannot be confirmed. Do NOT blindly propagate `result.verified` into chain state.
+   */
+  verified: boolean;
+  /** Human-readable summary of what was and wasn't found. */
+  summary: string;
+}
+
+/**
+ * Verifies that an engineer's self-reported work actually materialised on disk.
+ *
+ * Strategy:
+ * 1. Stat every path claimed in filesCreated/filesModified.
+ * 2. If any claimed paths are missing, check git diff/status as a fallback
+ *    (the engineer may have written to a path not literally listed).
+ * 3. If no paths were claimed at all, fall through to git as the sole signal.
+ *
+ * This is intentionally lenient about the git check — a non-empty diff is
+ * treated as corroborating evidence even when individual file stats fail.
+ */
+export function verifyEngineerClaims(
+  report: CompletionReport,
+  projectRoot: string,
+): ClaimVerificationResult {
+  const isEngineerShape = (r: CompletionReport): r is EngineerReport => r.archetype === 'engineer';
+  if (!isEngineerShape(report)) {
+    return {
+      claimedPaths: [],
+      foundPaths: [],
+      missingPaths: [],
+      gitDiffDetected: null,
+      kind: 'verified_empty',
+      verified: true,
+      summary: 'Non-engineer report; claim verification skipped.',
+    };
+  }
+
+  const claimedPaths = [
+    ...report.filesCreated,
+    ...report.filesModified,
+    // Note: filesDeleted are intentionally excluded — we expect them to be gone.
+  ];
+
+  const foundPaths: string[] = [];
+  const missingPaths: string[] = [];
+
+  for (const p of claimedPaths) {
+    const absolute = isAbsolute(p) ? p : resolve(projectRoot, p);
+    if (existsSync(absolute)) {
+      foundPaths.push(p);
+    } else {
+      missingPaths.push(p);
+    }
+  }
+
+  // Fall through to git when paths are missing or none were claimed.
+  let gitDiffDetected: boolean | null = null;
+  if (missingPaths.length > 0 || claimedPaths.length === 0) {
+    try {
+      const result = execSync('git diff --stat HEAD', {
+        cwd: projectRoot,
+        timeout: 10_000,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }).trim();
+      gitDiffDetected = result.length > 0;
+    } catch {
+      // git not available or not a git repo — treat as inconclusive
+      gitDiffDetected = null;
+    }
+  }
+
+  const allClaimedFound = claimedPaths.length > 0 && missingPaths.length === 0;
+  const gitCorroborates = gitDiffDetected === true;
+
+  // Determine the tri-state kind:
+  // - files_verified: had claims and all found on disk.
+  // - git_corroborated: had claims but some missing; git diff shows work happened.
+  // - verified_empty: no claims at all but git diff shows changes (legit no-list work).
+  // - unverifiable_no_claims: no claims AND no git diff — suspicious phantom work.
+  // - unverified: had claims, some missing, and git shows nothing.
+  let kind: ClaimVerificationKind;
+  if (allClaimedFound) {
+    kind = 'files_verified';
+  } else if (claimedPaths.length > 0 && gitCorroborates) {
+    kind = 'git_corroborated';
+  } else if (claimedPaths.length === 0 && gitCorroborates) {
+    kind = 'verified_empty';
+  } else if (claimedPaths.length === 0 && !gitCorroborates) {
+    // Either git showed no changes (gitDiffDetected === false) or git was unavailable (null).
+    // Both cases are treated as unverifiable — we cannot confirm any work was done.
+    kind = 'unverifiable_no_claims';
+  } else {
+    // claimedPaths.length > 0 && missingPaths.length > 0 && !gitCorroborates
+    kind = 'unverified';
+  }
+
+  const verified = kind === 'files_verified' || kind === 'git_corroborated' || kind === 'verified_empty';
+
+  const summaryParts: string[] = [];
+  if (claimedPaths.length > 0) {
+    summaryParts.push(`${foundPaths.length}/${claimedPaths.length} claimed paths found on disk`);
+    if (missingPaths.length > 0) {
+      summaryParts.push(`missing: ${missingPaths.slice(0, 5).join(', ')}${missingPaths.length > 5 ? ` (+${missingPaths.length - 5} more)` : ''}`);
+    }
+  } else {
+    summaryParts.push('no file paths claimed');
+  }
+  if (gitDiffDetected !== null) {
+    summaryParts.push(`git diff: ${gitDiffDetected ? 'changes detected' : 'no changes detected'}`);
+  }
+  summaryParts.push(`kind: ${kind}`);
+
+  return {
+    claimedPaths,
+    foundPaths,
+    missingPaths,
+    gitDiffDetected,
+    kind,
+    verified,
+    summary: summaryParts.join('; '),
+  };
 }
 
 export function parseReviewerCompletionReport(

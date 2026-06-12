@@ -6,6 +6,73 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.33.38] - 2026-06-12
+
+### Added
+- `@pellux/goodvibes-daemon-sdk` / `@pellux/goodvibes-sdk`: Added cursor-based pagination on 4 list endpoints: `GET /api/automation/jobs`, `GET /api/automation/runs`, `GET /api/knowledge/sources`, `GET /api/knowledge/nodes`. Pass `?limit=N&cursor=<opaque>` to activate; omit both params for the legacy array response (backward compatible). `GET /api/sessions` returns the session broker snapshot only (the integration helper is consumer-supplied and cannot be range-queried in daemon-sdk). New types: `PaginatedResponse<T>` (exported from `@pellux/goodvibes-daemon-sdk`). New helpers: `encodeCursor`, `decodeCursor`, `paginateItems`, `hasPaginationParams`. Paginated responses return `{ items, hasMore, nextCursor? }`; invalid cursors return HTTP 400 matching the existing error contract. `paginateItems` now accepts an optional `getCreatedAt` extractor: when a cursor’s item has been deleted mid-walk, the stable timestamp is used to locate the insertion point instead of restarting from index 0. `paginateItems` also accepts a `PaginateItemsOptions` argument (with `descending` flag) for stores sorted newest-first. Insertion-point recovery is **active** on `GET /api/knowledge/sources` and `GET /api/knowledge/nodes` (via `KnowledgeSourceRecord.updatedAt` / `KnowledgeNodeRecord.updatedAt`, matching the store’s `byUpdatedAtDesc` sort order; if an item is updated mid-walk its `updatedAt` increases and its old position vanishes — the insertion-point scan handles this identically to a deletion) and `GET /api/automation/runs` (via `AutomationRunLike.queuedAt`, descending order). `GET /api/automation/jobs` uses restart-from-0 fallback because `AutomationJobLike` exposes no timestamp field at the SDK boundary.
+- `@pellux/goodvibes-transport-realtime`: Added `ConnectorTransportEvent` discriminated union and
+  `onTransportEvent` callback to `RuntimeEventConnectorOptions`. The connector now dispatches typed
+  `TRANSPORT_CONNECTION_STATE`, `TRANSPORT_RECONNECT_ATTEMPT`, and `TRANSPORT_BACKPRESSURE` events
+  directly to `onTransportEvent` in addition to the existing dedicated callbacks. Subscribe to
+  `onTransportEvent` to receive a unified stream of observability events suitable for forwarding to
+  a UI state store or event bus.
+- `@pellux/goodvibes-sdk` / `events/tasks.ts`: Added `BATCH_JOB_PROGRESS` and `EXPORT_PROGRESS`
+  progress event contracts. `operationId` on both is operation-scoped (not task-scoped); see
+  `lifecycle.ts` for the guard.
+- `@pellux/goodvibes-sdk` / `events/knowledge.ts`: Added `KNOWLEDGE_INGEST_PROGRESS` progress event
+  contract. `operationId` is operation-scoped; see `lifecycle.ts` for the guard.
+- `@pellux/goodvibes-sdk` / `events/transport.ts`: Added `TRANSPORT_BACKPRESSURE`,
+  `TRANSPORT_CONNECTION_STATE`, and `TRANSPORT_RECONNECT_ATTEMPT` members to the `TransportEvent`
+  union.
+
+### Changed
+- `@pellux/goodvibes-transport-realtime` `createWebSocketConnector`: Reconnect is now **only**
+  suppressed for genuine clean closes (`wasClean === true && code === 1000`). All other closes —
+  including code 1005 (No Status Received, synthesized by runtimes for abnormal drops with no close
+  frame) — schedule a reconnect as per RFC 6455 §7.4.1. The connector transitions directly to
+  `disconnected` only on deliberate clean server-side closes.
+
+### Deprecated
+- `RuntimeEventConnectorOptions.onReconnect(attempt, delayMs)` — use `onReconnectAttempt(info)`
+  instead, which carries the same `attempt` and `delayMs` values plus `maxAttempts` and `reason`.
+  The legacy `onReconnect` callback continues to fire alongside `onReconnectAttempt` for backward
+  compatibility and will be removed in a future major release.
+
+### Added
+- `@pellux/goodvibes-errors`: Added `SDKErrorCode` string-literal union, `SDKErrorCodes` const object,
+  `isErrorCode()` type guard, and `isKnownErrorCode()` helper for exhaustive consumer pattern-matching.
+  The `code` field on `GoodVibesSdkError` is now typed as `SDKErrorCode | (string & {})` and is always
+  present (never `undefined`) — the SDK infers a canonical code from `status` or `category` when none
+  is explicitly supplied. HTTP status codes are mapped to specific codes (e.g. `429` → `RATE_LIMITED`,
+  `401` → `AUTH_REQUIRED`, `404` → `NOT_FOUND`, `409` → `CONFLICT`). Existing callers that supply
+  custom string codes are backward compatible.
+  Wire behavior: daemon error envelopes now always include a `code` field (`'UNKNOWN'` is the floor
+  when no explicit code or inferrable status/category is available). Knowledge route 404-mapping:
+  the bare `NOT_FOUND` code only maps to HTTP 404 when the error also carries `status: 404` (i.e.
+  it originated from a real HTTP 404 response); domain-specific not-found codes
+  (`KNOWLEDGE_ISSUE_NOT_FOUND`, `KNOWLEDGE_CANDIDATE_NOT_FOUND`, `KNOWLEDGE_JOB_NOT_FOUND`) always
+  map to 404 regardless of status, as they are explicitly thrown by the service layer and are never
+  auto-inferred.
+- `SessionManager`: session/recovery files now include `schemaVersion` (currently `1`) in the JSONL
+  meta line. Readers gate on version: legacy files without `schemaVersion` are accepted as
+  version 0 (backward compatible), files with a newer unknown version are accepted with
+  best-effort parsing and a log warning. `SessionMeta` exposes the parsed `schemaVersion? number`
+  field. `CURRENT_SESSION_SCHEMA_VERSION` is exported for consumers.
+- `ConfigManager`: added public `getConfigPath(): string` and
+  `getProjectConfigPath(): string | undefined` accessors so consumers no longer need to cast
+  through `as unknown` to reach the private path fields.
+- `TtsConfig`: added `speed: number` field (playback speed multiplier, range 0.25–4.0;
+  default `1.0`; required — always present with its default). Mirrors the existing `speed` field
+  on `VoiceSynthesisRequest`. The config key `tts.speed` is now available in `ConfigKey`,
+  `ConfigValue`, and `CONFIG_SCHEMA`. Values outside [0.25, 4.0] or non-finite values are rejected
+  with `ConfigError` at `ConfigManager.set()` time.
+- `MemoryRegistry.reviewQueue()` / `MemoryApi.reviewQueue()`: added optional `scope` parameter
+  (`'session' | 'project' | 'team'`) to filter the review queue at the registry level before
+  applying the `limit`. Fully backward compatible — existing calls with only `limit` are
+  unaffected. The daemon HTTP route `GET /api/memory/review-queue` also accepts the new
+  `?scope=session|project|team` query parameter. A `scope` value that is present but not one of
+  the three valid enum members returns HTTP 400.
+
 ---
 
 ## [0.33.37] - 2026-06-05

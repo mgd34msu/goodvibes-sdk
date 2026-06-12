@@ -17,6 +17,8 @@ export interface SessionMeta {
   timestamp: number;
   titleSource?: ConversationTitleSource | undefined;
   returnContext?: SessionReturnContextSummary | undefined;
+  /** File format version written into the JSONL meta line. Present on files saved after schemaVersion was introduced. Missing on older files (treat as version 0). */
+  schemaVersion?: number | undefined;
 }
 
 /**
@@ -42,6 +44,14 @@ export interface SessionInfo {
  *   Line 0: { type: 'meta', ...SessionMeta }
  *   Line N: { type: 'message', ...message fields }
  */
+/**
+ * Current schema version written to session files.
+ * Increment when the file format changes in a backward-incompatible way.
+ * Readers accept: version undefined (legacy, treated as 0), version <= CURRENT, and
+ * version > CURRENT (future — logged as a warning, accepted with best-effort parsing).
+ */
+export const CURRENT_SESSION_SCHEMA_VERSION = 1;
+
 export class SessionManager {
   private sessionsDir: string;
 
@@ -82,20 +92,35 @@ export class SessionManager {
   }
 
   /**
-   * Atomically write content to filePath via a temp file + fsync + rename.
-   * Protects against partial writes on crash.
+   * Atomically write content to filePath via a temp file + fsync(file) + rename + fsync(dir).
+   * Protects against partial writes and directory-entry reversion on power loss:
+   *   1. Write content to a tmp file in the same directory.
+   *   2. fsync the tmp file to flush its data to storage.
+   *   3. rename the tmp file into place (atomic on POSIX).
+   *   4. fsync the parent directory to flush the directory entry — without
+   *      this step, on power loss after rename the directory entry can
+   *      revert and the renamed file disappears.
+   * Mirrors the reference implementation in platform/security/user-auth.ts
+   * (atomicWriteSecretFile), which performs both fsyncs.
    */
   private _atomicWrite(filePath: string, content: string): void {
     const tmpPath = join(this.sessionsDir, `.tmp-${process.pid}-${Date.now()}`);
     writeFileSync(tmpPath, content, 'utf-8');
-    // fsync to flush OS write buffers before rename
-    const fd = openSync(tmpPath, 'r+');
+    // fsync the file to flush data buffers before rename
+    const fileFd = openSync(tmpPath, 'r+');
     try {
-      fsyncSync(fd);
+      fsyncSync(fileFd);
     } finally {
-      closeSync(fd);
+      closeSync(fileFd);
     }
     renameSync(tmpPath, filePath);
+    // fsync the directory to flush the directory entry (makes rename durable)
+    const dirFd = openSync(this.sessionsDir, 'r');
+    try {
+      fsyncSync(dirFd);
+    } finally {
+      closeSync(dirFd);
+    }
   }
 
   /**
@@ -119,6 +144,7 @@ export class SessionManager {
     // First line: meta record
     const metaRecord = {
       type: 'meta' as const,
+      schemaVersion: CURRENT_SESSION_SCHEMA_VERSION,
       timestamp: meta.timestamp,
       title: meta.title,
       model: meta.model,
@@ -179,6 +205,14 @@ export class SessionManager {
       }
 
       if (record.type === 'meta') {
+        const fileVersion = typeof record.schemaVersion === 'number' ? record.schemaVersion : 0;
+        if (fileVersion > CURRENT_SESSION_SCHEMA_VERSION) {
+          logger.warn('SessionManager: session file has a newer schemaVersion — loading with best-effort parsing', {
+            name,
+            fileVersion,
+            currentVersion: CURRENT_SESSION_SCHEMA_VERSION,
+          });
+        }
         meta = {
           title: String(record.title ?? ''),
           model: String(record.model ?? ''),
@@ -188,6 +222,7 @@ export class SessionManager {
           returnContext: (record.returnContext && typeof record.returnContext === 'object')
             ? (record.returnContext as SessionReturnContextSummary)
             : undefined,
+          schemaVersion: fileVersion,
         };
       } else if (record.type === 'message') {
         if (record.removed === true) continue;
@@ -242,6 +277,7 @@ export class SessionManager {
           try {
             const first = JSON.parse(lines[0]!) as Record<string, unknown>;
             if (first.type === 'meta') {
+              const fileVersion = typeof first.schemaVersion === 'number' ? first.schemaVersion : 0;
               meta = {
                 title: String(first.title ?? ''),
                 model: String(first.model ?? ''),
@@ -251,6 +287,7 @@ export class SessionManager {
                 returnContext: (first.returnContext && typeof first.returnContext === 'object')
                   ? (first.returnContext as SessionReturnContextSummary)
                   : undefined,
+                schemaVersion: fileVersion,
               };
             }
           } catch (err: unknown) {
@@ -317,6 +354,7 @@ export class SessionManager {
       if (!firstLine?.trim()) return null;
       const record = JSON.parse(firstLine) as Record<string, unknown>;
       if (record.type !== 'meta') return null;
+      const fileVersion = typeof record.schemaVersion === 'number' ? record.schemaVersion : 0;
       return {
         title: String(record.title ?? ''),
         model: String(record.model ?? ''),
@@ -326,6 +364,7 @@ export class SessionManager {
         returnContext: (record.returnContext && typeof record.returnContext === 'object')
           ? (record.returnContext as SessionReturnContextSummary)
           : undefined,
+        schemaVersion: fileVersion,
       };
     } catch (err: unknown) {
       // Session file unreadable or missing meta: return null to caller.

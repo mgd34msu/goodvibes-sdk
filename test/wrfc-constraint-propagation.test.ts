@@ -188,6 +188,11 @@ function createHarness(opts?: {
     agentManager,
     configManager,
     projectRoot: '/tmp/test-propagation',
+    // skipClaimVerification: the harness uses a real /tmp path (not nonexistent) so the
+    // environment-driven skip does not apply. Set the explicit flag so fixer completions
+    // with zero claimed files do not inject phantom-work synthetic issues and break the
+    // constraint-continuity assertions (A3-A5, A8) which test fixer file output separately.
+    skipClaimVerification: true,
     createWorktree: () => ({
       merge: async (_agentId: string) => true,
       cleanup: async (_agentId: string) => {},

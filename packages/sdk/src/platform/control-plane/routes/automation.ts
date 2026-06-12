@@ -32,9 +32,9 @@ export async function dispatchAutomationRoutes(
   if (pathname === '/api/review' && method === 'GET') return handlers.getReview();
   if (pathname === '/api/session' && method === 'GET') return handlers.getIntegrationSession();
   if (pathname === '/api/automation' && method === 'GET') return handlers.getIntegrationAutomation();
-  if (pathname === '/api/automation/jobs' && method === 'GET') return handlers.getAutomationJobs();
+  if (pathname === '/api/automation/jobs' && method === 'GET') return handlers.getAutomationJobs(url);
   if (pathname === '/api/automation/jobs' && method === 'POST') return handlers.postAutomationJob(req);
-  if (pathname === '/api/automation/runs' && method === 'GET') return handlers.getAutomationRuns();
+  if (pathname === '/api/automation/runs' && method === 'GET') return handlers.getAutomationRuns(url);
 
   const automationRunMatch = pathname.match(/^\/api\/automation\/runs\/([^/]+)$/);
   if (automationRunMatch && method === 'GET' && automationRunMatch[1]) return handlers.getAutomationRun(automationRunMatch[1]);

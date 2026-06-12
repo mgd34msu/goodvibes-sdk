@@ -193,8 +193,9 @@ describe('authenticateOperatorToken session validation when sharedToken is set',
     const dir = makeTmpDir();
     cleanupDirs.push(dir);
     const userAuth = makeUserAuth(dir);
-    const user = userAuth.authenticate('testuser', 'testpass123')!;
-    const session = userAuth.createSession(user.username);
+    const authResult = userAuth.authenticate('testuser', 'testpass123');
+    if (!authResult.ok) throw new Error('Expected successful auth');
+    const session = userAuth.createSession(authResult.user.username);
     const sharedToken = 'operator-shared-token-xyz';
 
     const result = authenticateOperatorToken(session.token, { sharedToken, userAuth });
@@ -231,8 +232,9 @@ describe('authenticateOperatorToken session validation when sharedToken is set',
     const dir = makeTmpDir();
     cleanupDirs.push(dir);
     const userAuth = makeUserAuth(dir);
-    const user = userAuth.authenticate('testuser', 'testpass123')!;
-    const session = userAuth.createSession(user.username);
+    const authResult = userAuth.authenticate('testuser', 'testpass123');
+    if (!authResult.ok) throw new Error('Expected successful auth');
+    const session = userAuth.createSession(authResult.user.username);
 
     const result = authenticateOperatorToken(session.token, { sharedToken: null, userAuth });
     expect(result).not.toBeNull();
@@ -245,8 +247,9 @@ describe('authenticateOperatorToken session validation when sharedToken is set',
     const userAuth = makeUserAuth(dir);
     const sharedToken = 'operator-shared-token-xyz';
 
-    const user = userAuth.authenticate('testuser', 'testpass123')!;
-    const session = userAuth.createSession(user.username);
+    const authResult = userAuth.authenticate('testuser', 'testpass123');
+    if (!authResult.ok) throw new Error('Expected successful auth');
+    const session = userAuth.createSession(authResult.user.username);
     // Revoke the session — it should no longer validate
     userAuth.revokeSession(session.token);
 
@@ -267,8 +270,9 @@ describe('session-cookie auth HTTP round-trip', () => {
     const sharedToken = 'daemon-operator-shared-token';
 
     // Simulate what POST /login does: authenticate + createSession + build cookie
-    const user = userAuth.authenticate('testuser', 'testpass123')!;
-    const session = userAuth.createSession(user.username);
+    const loginAuth = userAuth.authenticate('testuser', 'testpass123');
+    if (!loginAuth.ok) throw new Error('Expected successful auth');
+    const session = userAuth.createSession(loginAuth.user.username);
     const loginReq = new Request('http://127.0.0.1/login', { method: 'POST' });
     const cookieHeader = buildOperatorSessionCookie(session.token, {
       req: loginReq,
@@ -368,8 +372,9 @@ describe('companion-chat session creation via session-cookie auth', () => {
     cleanupManagers.push(manager);
 
     // Simulate login
-    const user = userAuth.authenticate('testuser', 'testpass123')!;
-    const session = userAuth.createSession(user.username);
+    const loginAuth2 = userAuth.authenticate('testuser', 'testpass123');
+    if (!loginAuth2.ok) throw new Error('Expected successful auth');
+    const session = userAuth.createSession(loginAuth2.user.username);
     const loginReq = new Request('http://127.0.0.1/login', { method: 'POST' });
     const cookieHeader = buildOperatorSessionCookie(session.token, {
       req: loginReq,

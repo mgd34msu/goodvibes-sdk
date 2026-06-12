@@ -59,8 +59,8 @@ export class MemoryRegistry {
     return this.store.doctor();
   }
 
-  reviewQueue(limit = 10): MemoryRecord[] {
-    return this.store.reviewQueue(limit);
+  reviewQueue(limit = 10, scope?: MemoryScope): MemoryRecord[] {
+    return this.store.reviewQueue(limit, scope);
   }
 
   exportBundle(filter: MemorySearchFilter = {}): MemoryBundle {

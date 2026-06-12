@@ -94,6 +94,12 @@ export interface WrfcSubtask {
   constraints: Constraint[];
   constraintsEnumerated: boolean;
   syntheticIssues?: Array<{ severity: 'critical'; description: string }> | undefined;
+  /**
+   * Whether the engineer's self-reported work claims were verified on disk.
+   * Undefined until claim verification runs (after engineering/fixing phase).
+   * false = verification ran and found missing claims (phantom work detected).
+   */
+  claimsVerified?: boolean | undefined;
 }
 
 /** A single WRFC chain instance. */
@@ -138,6 +144,12 @@ export interface WrfcChain {
    * violations). Prepended to the next review task body, then cleared so they fire once per cycle.
    */
   syntheticIssues?: Array<{ severity: 'critical'; description: string }> | undefined;
+  /**
+   * Whether the engineer's self-reported work claims were verified on disk.
+   * Undefined until claim verification runs (after engineering/fixing phase).
+   * false = verification ran and found missing claims (phantom work detected).
+   */
+  claimsVerified?: boolean | undefined;
 }
 
 /** Quality gate definition. */

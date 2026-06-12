@@ -50,12 +50,15 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'automation.jobs.list',
     title: 'List Automation Jobs',
-    description: 'Return automation jobs and recent runs.',
+    description: 'Return automation jobs and recent runs. Without ?limit/?cursor returns { jobs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.',
     category: 'automation',
     scopes: ['read:automation'],
     http: { method: 'GET', path: '/api/automation/jobs' },
     events: [runtimeEventId('automation')],
-    inputSchema: EMPTY_OBJECT_SCHEMA,
+    inputSchema: objectSchema({
+      limit: NUMBER_SCHEMA,
+      cursor: STRING_SCHEMA,
+    }),
     outputSchema: AUTOMATION_JOBS_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
@@ -207,11 +210,14 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'automation.runs.list',
     title: 'List Automation Runs',
-    description: 'Return automation run history.',
+    description: 'Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.',
     category: 'automation',
     scopes: ['read:automation'],
     http: { method: 'GET', path: '/api/automation/runs' },
-    inputSchema: EMPTY_OBJECT_SCHEMA,
+    inputSchema: objectSchema({
+      limit: NUMBER_SCHEMA,
+      cursor: STRING_SCHEMA,
+    }),
     outputSchema: AUTOMATION_RUNS_OUTPUT_SCHEMA,
   }),
   methodDescriptor({

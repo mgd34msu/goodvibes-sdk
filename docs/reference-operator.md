@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `279`
+- Methods: `280`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -5625,7 +5625,7 @@ Enable a durable automation job.
 
 #### `automation.jobs.list`
 
-Return automation jobs and recent runs.
+Return automation jobs and recent runs. Without ?limit/?cursor returns { jobs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.
 
 - Title: `List Automation Jobs`
 - Source: `builtin`
@@ -5642,7 +5642,14 @@ Return automation jobs and recent runs.
 ```json
 {
   "type": "object",
-  "properties": {},
+  "properties": {
+    "limit": {
+      "type": "number"
+    },
+    "cursor": {
+      "type": "string"
+    }
+  },
   "additionalProperties": false
 }
 ```
@@ -9983,7 +9990,7 @@ Return a single automation run record.
 
 #### `automation.runs.list`
 
-Return automation run history.
+Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.
 
 - Title: `List Automation Runs`
 - Source: `builtin`
@@ -10000,7 +10007,14 @@ Return automation run history.
 ```json
 {
   "type": "object",
-  "properties": {},
+  "properties": {
+    "limit": {
+      "type": "number"
+    },
+    "cursor": {
+      "type": "string"
+    }
+  },
   "additionalProperties": false
 }
 ```
@@ -39516,7 +39530,7 @@ Return a deterministic visual map of structured knowledge nodes, sources, edges,
 
 #### `knowledge.nodes.list`
 
-Return compiled knowledge nodes.
+Return compiled knowledge nodes. Without ?limit/?cursor returns { nodes: [...] } (backward compatible). With ?limit=N (1–1000, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Fetch cap is 5 000 items per request (knowledge store does not support cursor/offset range queries natively). Invalid cursors return HTTP 400.
 
 - Title: `List Knowledge Nodes`
 - Source: `builtin`
@@ -39536,6 +39550,9 @@ Return compiled knowledge nodes.
   "properties": {
     "limit": {
       "type": "number"
+    },
+    "cursor": {
+      "type": "string"
     },
     "knowledgeSpaceId": {
       "type": "string"
@@ -43452,7 +43469,7 @@ Return the structured extraction record for a single knowledge source.
 
 #### `knowledge.sources.list`
 
-Return ingested structured knowledge sources.
+Return ingested structured knowledge sources. Without ?limit/?cursor returns { sources: [...] } (backward compatible). With ?limit=N (1–1000, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Fetch cap is 5 000 items per request (knowledge store does not support cursor/offset range queries natively). Invalid cursors return HTTP 400.
 
 - Title: `List Knowledge Sources`
 - Source: `builtin`
@@ -43472,6 +43489,9 @@ Return ingested structured knowledge sources.
   "properties": {
     "limit": {
       "type": "number"
+    },
+    "cursor": {
+      "type": "string"
     },
     "knowledgeSpaceId": {
       "type": "string"
@@ -55305,6 +55325,64 @@ Set the active default memory embedding provider.
     "vector",
     "embeddings",
     "checkedAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.review-queue`
+
+Return memory records prioritised for review. Accepts optional limit (?limit=N) and scope filter (?scope=session|project|team). A scope query parameter that is present but not one of the three valid values returns 400.
+
+- Title: `Memory Review Queue`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/memory/review-queue`
+- Scopes: `read:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "number"
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "session",
+        "project",
+        "team"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "records"
   ],
   "additionalProperties": false
 }

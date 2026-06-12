@@ -2,14 +2,19 @@ import type { DaemonRuntimeAutomationRouteHandlers } from './context.js';
 import type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
 import { withAdmin } from './auth-helpers.js';
 import { jsonErrorResponse } from './error-response.js';
+import { hasPaginationParams, paginateItems } from './pagination.js';
 import {
   createRouteBodySchema,
   createRouteBodySchemaRegistry,
   readBoundedBodyInteger,
+  readBoundedPositiveInteger,
   readOptionalStringField,
   readStringArrayField,
   type JsonRecord,
 } from './route-helpers.js';
+
+const DEFAULT_AUTOMATION_LIST_LIMIT = 100;
+const MAX_AUTOMATION_LIST_LIMIT = 500;
 
 type AutomationScheduleBody = {
   readonly prompt: string;
@@ -26,9 +31,9 @@ export function createDaemonRuntimeAutomationRouteHandlers(
   context: DaemonRuntimeRouteContext,
 ): DaemonRuntimeAutomationRouteHandlers {
   return {
-    getAutomationJobs: () => Response.json({ jobs: context.automationManager.listJobs() }),
+    getAutomationJobs: (url?: URL) => handleGetAutomationJobs(context, url),
     postAutomationJob: async (request) => withAdmin(context, request, () => handlePostSchedule(context, request)),
-    getAutomationRuns: () => Response.json({ runs: context.automationManager.listRuns() }),
+    getAutomationRuns: (url?: URL) => handleGetAutomationRuns(context, url),
     getAutomationRun: (runId) => handleGetAutomationRun(context, runId),
     getAutomationHeartbeat: () => Response.json({ pending: [] }),
     postAutomationHeartbeat: async (request) => withAdmin(context, request, () => handlePostAutomationHeartbeat(context, request)),
@@ -229,4 +234,58 @@ function handleGetAutomationRun(context: DaemonRuntimeRouteContext, runId: strin
 function findAutomationJob(context: DaemonRuntimeRouteContext, id: string) {
   // exact-match only — prefix match was non-deterministic when multiple ids share a prefix.
   return context.automationManager.listJobs().find((entry) => entry.id === id);
+}
+
+/**
+ * Handle GET /api/automation/jobs.
+ *
+ * Without pagination params (`?limit=` / `?cursor=`): returns `{ jobs: [...] }` (backward compat).
+ * With pagination params: returns `PaginatedResponse<AutomationJobLike>` as `{ items, nextCursor, hasMore }`.
+ *
+ * ### Deletion recovery
+ * `AutomationJobLike` exposes only `{ id: string }` at the SDK boundary — there is
+ * no stable timestamp field on jobs.  Insertion-point recovery on mid-walk deletion
+ * is therefore **not available** for this endpoint; if the cursor item is deleted,
+ * the walk restarts from index 0.  If a timestamp is added to `AutomationJobLike`
+ * in the future, thread it as `getCreatedAt` here.
+ */
+function handleGetAutomationJobs(context: DaemonRuntimeRouteContext, url: URL | undefined): Response {
+  const jobs = context.automationManager.listJobs();
+  if (!url || !hasPaginationParams(url)) {
+    return Response.json({ jobs });
+  }
+  const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), DEFAULT_AUTOMATION_LIST_LIMIT, MAX_AUTOMATION_LIST_LIMIT);
+  const rawCursor = url.searchParams.get('cursor');
+  const result = paginateItems(jobs, limit, rawCursor, (j) => j.id);
+  if ('error' in result) {
+    return jsonErrorResponse({ error: result.error }, { status: 400 });
+  }
+  return Response.json(result);
+}
+
+/**
+ * Handle GET /api/automation/runs.
+ *
+ * Without pagination params (`?limit=` / `?cursor=`): returns `{ runs: [...] }` (backward compat).
+ * With pagination params: returns `PaginatedResponse<AutomationRunLike>` as `{ items, nextCursor, hasMore }`.
+ *
+ * ### Deletion recovery
+ * `AutomationRunLike` carries a required `queuedAt: number` field which serves as
+ * the stable creation-time timestamp.  Insertion-point recovery on mid-walk
+ * deletion is **active** for this endpoint via `getCreatedAt: (r) => r.queuedAt`.
+ * Runs are listed in descending `queuedAt` order (newest first), so
+ * `descending: true` is passed to `paginateItems` for correct recovery.
+ */
+function handleGetAutomationRuns(context: DaemonRuntimeRouteContext, url: URL | undefined): Response {
+  const runs = context.automationManager.listRuns();
+  if (!url || !hasPaginationParams(url)) {
+    return Response.json({ runs });
+  }
+  const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), DEFAULT_AUTOMATION_LIST_LIMIT, MAX_AUTOMATION_LIST_LIMIT);
+  const rawCursor = url.searchParams.get('cursor');
+  const result = paginateItems(runs, limit, rawCursor, (r) => r.id, (r) => r.queuedAt, { descending: true });
+  if ('error' in result) {
+    return jsonErrorResponse({ error: result.error }, { status: 400 });
+  }
+  return Response.json(result);
 }

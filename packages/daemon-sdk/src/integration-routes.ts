@@ -4,6 +4,7 @@ import type { DaemonIntegrationRouteContext, IntegrationHelperServiceLike, Runti
 import {
   createRouteBodySchema,
   createRouteBodySchemaRegistry,
+  readBoundedPositiveInteger,
   readOptionalStringField,
   readStringArrayField,
 } from './route-helpers.js';
@@ -69,7 +70,7 @@ export function createDaemonIntegrationRouteHandlers(
     getIntegrationSession: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getSessionSnapshot())),
     getIntegrationTasks: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getTaskSnapshot())),
     getIntegrationAutomation: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getAutomationSnapshot())),
-    getIntegrationSessions: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getSessionBrokerSnapshot())),
+    getIntegrationSessions: (url?: URL) => handleGetIntegrationSessions(context.integrationHelpers, url),
     getDeliveries: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getDeliverySnapshot())),
     getDelivery: (deliveryId) => {
       const runtimeStore = context.integrationHelpers?.getRuntimeStore() ?? null;
@@ -110,6 +111,15 @@ export function createDaemonIntegrationRouteHandlers(
     getIntelligence: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getIntelligenceSnapshot())),
     getMemoryDoctor: async () => Response.json(await context.memoryRegistry.doctor()),
     getMemoryVectorStats: () => Response.json({ vector: context.memoryRegistry.vectorStats() }),
+    getMemoryReviewQueue: (url) => {
+      const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), 10, 1_000);
+      const rawScope = url.searchParams.get('scope');
+      if (rawScope !== null && rawScope !== 'session' && rawScope !== 'project' && rawScope !== 'team') {
+        return jsonErrorResponse({ error: `Invalid scope: ${rawScope}. Allowed: session, project, team` }, { status: 400 });
+      }
+      const scope = rawScope ?? undefined;
+      return Response.json({ records: context.memoryRegistry.reviewQueue(limit, scope) });
+    },
     postMemoryVectorRebuild: async (req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;
@@ -213,4 +223,24 @@ function withHelpers<T>(
     return jsonErrorResponse({ error: 'Integration helper service unavailable' }, { status: 503 });
   }
   return run(helpers);
+}
+
+/**
+ * Handle GET /api/sessions.
+ *
+ * Returns the session broker snapshot from the integration helper service.
+ * Pagination (`?limit=` / `?cursor=`) is not supported on this endpoint —
+ * `IntegrationHelperServiceLike` is a consumer-supplied structural interface
+ * whose concrete implementation lives outside daemon-sdk and cannot be
+ * range-queried here.  Requests containing pagination params receive the
+ * same snapshot response as non-paginated requests (backward compatible).
+ */
+function handleGetIntegrationSessions(
+  helpers: IntegrationHelperServiceLike | null | undefined,
+  _url: URL | undefined,
+): Response {
+  if (!helpers) {
+    return jsonErrorResponse({ error: 'Integration helper service unavailable' }, { status: 503 });
+  }
+  return Response.json(helpers.getSessionBrokerSnapshot());
 }

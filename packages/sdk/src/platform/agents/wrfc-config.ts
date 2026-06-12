@@ -7,6 +7,11 @@ export type WrfcConfigLike = {
   maxFixAttempts: number;
   autoCommit: boolean;
   gates: Array<{ name: string; command: string; enabled: boolean }>;
+  /**
+   * How long (in ms) to wait for an agent event before treating a running agent
+   * as hung/silent and failing the chain. Default: 0 (disabled).
+   */
+  agentHeartbeatTimeoutMs: number;
 };
 
 export type WrfcConfigReader = Pick<ConfigManager, 'get' | 'getCategory'>;
@@ -27,7 +32,15 @@ export function readWrfcConfig(configManager: WrfcConfigReader): WrfcConfigLike 
         ? (configManager.get('wrfc.autoCommit') as boolean)
         : wrfcConfig?.autoCommit ?? false,
     gates: Array.isArray(wrfcConfig?.gates) ? wrfcConfig.gates : [],
+    agentHeartbeatTimeoutMs:
+      typeof configManager.get('wrfc.agentHeartbeatTimeoutMs') === 'number'
+        ? (configManager.get('wrfc.agentHeartbeatTimeoutMs') as number)
+        : wrfcConfig?.agentHeartbeatTimeoutMs ?? 0,
   };
+}
+
+export function getWrfcAgentHeartbeatTimeoutMs(configManager: WrfcConfigReader): number {
+  return readWrfcConfig(configManager).agentHeartbeatTimeoutMs ?? 0;
 }
 
 export function getWrfcScoreThreshold(configManager: WrfcConfigReader): number {

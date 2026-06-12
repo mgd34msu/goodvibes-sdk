@@ -48,6 +48,7 @@ export interface MemoryRegistryLike {
   doctor(): Promise<unknown>;
   vectorStats(): unknown;
   rebuildVectorsAsync(): Promise<unknown>;
+  reviewQueue(limit?: number, scope?: string): unknown[];
 }
 
 export interface MemoryEmbeddingRegistryLike {

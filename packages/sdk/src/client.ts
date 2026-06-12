@@ -210,8 +210,11 @@ export interface GoodVibesSdkOptions {
  * Options controlling realtime transport behaviour.
  */
 export interface GoodVibesRealtimeOptions {
+  /** Reconnect policy for the SSE event-source connection. */
   readonly sseReconnect?: StreamReconnectPolicy | undefined;
+  /** Reconnect policy for the WebSocket connection. */
   readonly webSocketReconnect?: StreamReconnectPolicy | undefined;
+  /** Called when the realtime transport encounters an unrecoverable error. */
   readonly onError?: ((error: unknown) => void) | undefined;
 }
 
@@ -240,7 +243,26 @@ export interface GoodVibesRealtimeOptions {
  * });
  */
 export interface GoodVibesRealtime {
+  /**
+   * Open a Server-Sent Events stream and return a typed event bus.
+   *
+   * The connection is established lazily on the first `.on()` subscription.
+   * Each call to `viaSse()` returns a fresh, independent event bus.
+   *
+   * @returns A `RemoteRuntimeEvents` instance subscribed to all runtime event domains.
+   */
   viaSse(): RemoteRuntimeEvents<AnyRuntimeEvent>;
+  /**
+   * Open a WebSocket connection and return a typed event bus.
+   *
+   * Optionally pass a custom `WebSocket` constructor (required in Node.js < 21
+   * or when using a polyfill). Falls back to `options.WebSocketImpl` supplied
+   * at SDK construction time, then `globalThis.WebSocket`.
+   *
+   * @param webSocketImpl - Optional WebSocket constructor override.
+   * @returns A `RemoteRuntimeEvents` instance subscribed to all runtime event domains.
+   * @throws `ConfigurationError` when no WebSocket implementation is available.
+   */
   viaWebSocket(webSocketImpl?: typeof WebSocket): RemoteRuntimeEvents<AnyRuntimeEvent>;
 }
 
