@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `280`
+- Methods: `297`
 - Events: `30`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -15137,6 +15137,386 @@ Trigger a schedule immediately.
 }
 ```
 
+### calendar
+
+#### `calendar.events.create`
+
+Create an event on the configured CalDAV calendar. Requires explicit confirmation.
+
+- Title: `Create Calendar Event`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/calendar/events`
+- Scopes: `write:calendar`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "start": {
+      "type": "string"
+    },
+    "end": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "attendees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "location": {
+      "type": "string"
+    },
+    "calendarId": {
+      "type": "string"
+    },
+    "confirm": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "title",
+    "start",
+    "end",
+    "confirm"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "eventId": {
+      "type": "string"
+    },
+    "uid": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "eventId",
+    "uid",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `calendar.events.get`
+
+Return the full event object including attendees, recurrence, and raw iCalendar UID.
+
+- Title: `Get Calendar Event`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/calendar/events/{eventId}`
+- Scopes: `read:calendar`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "eventId": {
+      "type": "string"
+    },
+    "calendarId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "eventId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "uid": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "start": {
+      "type": "string"
+    },
+    "end": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "attendees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recurrence": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "start",
+    "end"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `calendar.events.list`
+
+Return calendar event summaries from the configured CalDAV calendar within an optional time window.
+
+- Title: `List Calendar Events`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/calendar/events`
+- Scopes: `read:calendar`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "calendarId": {
+      "type": "string"
+    },
+    "from": {
+      "type": "string"
+    },
+    "to": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "start",
+          "end"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "events"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `calendar.ics.export`
+
+Export events from the configured CalDAV calendar as raw .ics content within an optional time window.
+
+- Title: `Export iCalendar`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/calendar/ics/export`
+- Scopes: `read:calendar`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "calendarId": {
+      "type": "string"
+    },
+    "from": {
+      "type": "string"
+    },
+    "to": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "icsContent": {
+      "type": "string"
+    },
+    "eventCount": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "icsContent",
+    "eventCount"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `calendar.ics.import`
+
+Import raw .ics content into the configured CalDAV calendar. Requires explicit confirmation.
+
+- Title: `Import iCalendar`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/calendar/ics/import`
+- Scopes: `write:calendar`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "icsContent": {
+      "type": "string"
+    },
+    "calendarId": {
+      "type": "string"
+    },
+    "confirm": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "icsContent",
+    "confirm"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "imported": {
+      "type": "number"
+    },
+    "eventIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "imported",
+    "eventIds",
+    "errors"
+  ],
+  "additionalProperties": false
+}
+```
+
 ### channels
 
 #### `channels.accounts.action.default`
@@ -18301,6 +18681,527 @@ Return doctor checks and repair posture for a channel surface.
 }
 ```
 
+#### `channels.drafts.delete`
+
+Remove a channel draft from the daemon-side store.
+
+- Title: `Delete Channel Draft`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/channels/drafts/{draftId}`
+- Scopes: `write:channels`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "draftId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "draftId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "deleted": {
+      "type": "boolean"
+    },
+    "draftId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "deleted",
+    "draftId"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.drafts.get`
+
+Return a single daemon-mirrored channel draft by id, or a notFound marker.
+
+- Title: `Get Channel Draft`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/channels/drafts/{draftId}`
+- Scopes: `read:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "draftId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "draftId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number"
+    },
+    "id": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "string"
+    },
+    "route": {
+      "type": "string"
+    },
+    "webhook": {
+      "type": "string"
+    },
+    "link": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sentResponseId": {
+      "type": "string"
+    },
+    "sendError": {
+      "type": "string"
+    },
+    "notFound": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+#### `channels.drafts.list`
+
+Return daemon-mirrored channel drafts for cross-device sync. Webhook values are stored redacted.
+
+- Title: `List Channel Drafts`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/channels/drafts`
+- Scopes: `read:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "drafts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "webhook": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sentResponseId": {
+            "type": "string"
+          },
+          "sendError": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "id",
+          "createdAt",
+          "updatedAt",
+          "status",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "drafts",
+    "total"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.drafts.save`
+
+Mirror a channel draft to the daemon-side store. Webhook values must be redacted before transmission; raw webhook tokens are rejected. Requires explicit confirmation.
+
+- Title: `Save Channel Draft`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/channels/drafts`
+- Scopes: `write:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number"
+    },
+    "id": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "string"
+    },
+    "route": {
+      "type": "string"
+    },
+    "webhook": {
+      "type": "string"
+    },
+    "link": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sentResponseId": {
+      "type": "string"
+    },
+    "sendError": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "id",
+    "createdAt",
+    "updatedAt",
+    "status",
+    "message"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "draft": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "channel": {
+          "type": "string"
+        },
+        "route": {
+          "type": "string"
+        },
+        "webhook": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sentResponseId": {
+          "type": "string"
+        },
+        "sendError": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "createdAt",
+        "updatedAt",
+        "status",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "created": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "draft",
+    "created"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.inbox.list`
+
+Return per-provider inbound message feeds (Slack DMs, Discord messages, email threads) fetched live from provider APIs. Read-only; no provider write.
+
+- Title: `List Channel Inbox`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/channels/inbox`
+- Scopes: `read:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "since": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "fromAddress": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "bodyPreview": {
+            "type": "string"
+          },
+          "receivedAt": {
+            "type": "number"
+          },
+          "unread": {
+            "type": "boolean"
+          },
+          "routeId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "attachmentCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "kind",
+          "from",
+          "bodyPreview",
+          "receivedAt",
+          "unread"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "number"
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "cursor": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "items",
+    "total",
+    "truncated"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `channels.lifecycle.get`
 
 Return lifecycle version posture for a channel surface.
@@ -19258,6 +20159,233 @@ Return repair actions exposed by a channel surface.
   },
   "required": [
     "actions"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.routing.assign`
+
+Create or update a channel-to-profile routing rule in the daemon-persisted routing table. Requires explicit confirmation.
+
+- Title: `Assign Channel Routing Rule`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/channels/routing`
+- Scopes: `write:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "channelId": {
+      "type": "string"
+    },
+    "surfaceKind": {
+      "type": "string"
+    },
+    "routeId": {
+      "type": "string"
+    },
+    "profileId": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "surfaceKind",
+    "profileId"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "assignmentId": {
+      "type": "string"
+    },
+    "channelId": {
+      "type": "string"
+    },
+    "surfaceKind": {
+      "type": "string"
+    },
+    "routeId": {
+      "type": "string"
+    },
+    "profileId": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "assignmentId",
+    "surfaceKind",
+    "profileId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.routing.delete`
+
+Remove a channel-to-profile routing rule from the daemon-persisted routing table.
+
+- Title: `Delete Channel Routing Rule`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/channels/routing/{assignmentId}`
+- Scopes: `write:channels`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "assignmentId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "assignmentId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "deleted": {
+      "type": "boolean"
+    },
+    "assignmentId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "deleted",
+    "assignmentId"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.routing.list`
+
+Return the daemon-persisted channel-to-profile routing table.
+
+- Title: `List Channel Routing Rules`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/channels/routing`
+- Scopes: `read:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "profileId": {
+      "type": "string"
+    },
+    "surfaceKind": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "surfaceKind": {
+            "type": "string"
+          },
+          "routeId": {
+            "type": "string"
+          },
+          "profileId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "updatedAt",
+          "surfaceKind",
+          "profileId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "routes",
+    "total"
   ],
   "additionalProperties": false
 }
@@ -24355,6 +25483,326 @@ Return delivery records and integration snapshot data.
   "required": [
     "totals",
     "attempts"
+  ],
+  "additionalProperties": false
+}
+```
+
+### email
+
+#### `email.draft.create`
+
+Append a draft message to the configured IMAP Drafts folder. Distinct from the local channel draft store. Requires explicit confirmation.
+
+- Title: `Create Email Draft`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/email/drafts`
+- Scopes: `write:email`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "to": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "inReplyTo": {
+      "type": "string"
+    },
+    "references": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "to",
+    "subject",
+    "body"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "uid": {
+      "type": "number"
+    },
+    "draftId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "uid",
+    "draftId"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `email.inbox.list`
+
+Return inbox message summaries fetched live from the configured IMAP account. Read-only (EXAMINE / BODY.PEEK); never marks messages read.
+
+- Title: `List Email Inbox`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/email/inbox`
+- Scopes: `read:email`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "number"
+    },
+    "since": {
+      "type": "string"
+    },
+    "unreadOnly": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "number"
+          },
+          "from": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "unread": {
+            "type": "boolean"
+          },
+          "bodyPreview": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid",
+          "from",
+          "subject",
+          "date",
+          "unread",
+          "bodyPreview",
+          "messageId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "messages",
+    "total"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `email.inbox.read`
+
+Return the full body and attachment metadata for a single inbox message by IMAP UID. Read-only (BODY.PEEK; does not mark as read).
+
+- Title: `Read Email Message`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/email/inbox/{uid}`
+- Scopes: `read:email`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "uid": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "uid"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "uid": {
+      "type": "number"
+    },
+    "from": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    },
+    "bodyText": {
+      "type": "string"
+    },
+    "bodyHtml": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "filename",
+          "contentType",
+          "sizeBytes"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "uid",
+    "from",
+    "subject",
+    "date",
+    "messageId",
+    "bodyText"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `email.send`
+
+Send a composed email via the configured SMTP account. Irreversible external send; requires confirm: true and explicit user review of recipients and body.
+
+- Title: `Send Email`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/email/send`
+- Scopes: `write:email`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "to": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "inReplyTo": {
+      "type": "string"
+    },
+    "confirm": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "to",
+    "subject",
+    "body",
+    "confirm"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string"
+    },
+    "sentAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "messageId",
+    "sentAt"
   ],
   "additionalProperties": false
 }

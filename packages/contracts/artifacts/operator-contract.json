@@ -3,7 +3,7 @@
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "0.33.38"
+    "version": "0.34.0"
   },
   "auth": {
     "modes": [
@@ -15238,6 +15238,364 @@
         "invokable": true
       },
       {
+        "id": "calendar.events.create",
+        "title": "Create Calendar Event",
+        "description": "Create an event on the configured CalDAV calendar. Requires explicit confirmation.",
+        "category": "calendar",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:calendar"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/calendar/events"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "start": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "attendees": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "location": {
+              "type": "string"
+            },
+            "calendarId": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "title",
+            "start",
+            "end",
+            "confirm"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string"
+            },
+            "uid": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "eventId",
+            "uid",
+            "createdAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "calendar.events.get",
+        "title": "Get Calendar Event",
+        "description": "Return the full event object including attendees, recurrence, and raw iCalendar UID.",
+        "category": "calendar",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:calendar"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/calendar/events/{eventId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string"
+            },
+            "calendarId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "eventId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "uid": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "start": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "attendees": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "recurrence": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "start",
+            "end"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "calendar.events.list",
+        "title": "List Calendar Events",
+        "description": "Return calendar event summaries from the configured CalDAV calendar within an optional time window.",
+        "category": "calendar",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:calendar"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/calendar/events"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "calendarId": {
+              "type": "string"
+            },
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "start": {
+                    "type": "string"
+                  },
+                  "end": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "attendees": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "start",
+                  "end"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "events"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "calendar.ics.export",
+        "title": "Export iCalendar",
+        "description": "Export events from the configured CalDAV calendar as raw .ics content within an optional time window.",
+        "category": "calendar",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:calendar"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/calendar/ics/export"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "calendarId": {
+              "type": "string"
+            },
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "icsContent": {
+              "type": "string"
+            },
+            "eventCount": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "icsContent",
+            "eventCount"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "calendar.ics.import",
+        "title": "Import iCalendar",
+        "description": "Import raw .ics content into the configured CalDAV calendar. Requires explicit confirmation.",
+        "category": "calendar",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:calendar"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/calendar/ics/import"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "icsContent": {
+              "type": "string"
+            },
+            "calendarId": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "icsContent",
+            "confirm"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "imported": {
+              "type": "number"
+            },
+            "eventIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "imported",
+            "eventIds",
+            "errors"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "channels.accounts.action.default",
         "title": "Run Channel Account Action",
         "description": "Run a lifecycle action on the default channel account for a surface.",
@@ -18332,6 +18690,508 @@
         "invokable": true
       },
       {
+        "id": "channels.drafts.delete",
+        "title": "Delete Channel Draft",
+        "description": "Remove a channel draft from the daemon-side store.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:channels"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/channels/drafts/{draftId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "draftId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "draftId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            },
+            "draftId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "deleted",
+            "draftId"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "channels.drafts.get",
+        "title": "Get Channel Draft",
+        "description": "Return a single daemon-mirrored channel draft by id, or a notFound marker.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:channels"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/channels/drafts/{draftId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "draftId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "draftId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "channel": {
+              "type": "string"
+            },
+            "route": {
+              "type": "string"
+            },
+            "webhook": {
+              "type": "string"
+            },
+            "link": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sentResponseId": {
+              "type": "string"
+            },
+            "sendError": {
+              "type": "string"
+            },
+            "notFound": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "channels.drafts.list",
+        "title": "List Channel Drafts",
+        "description": "Return daemon-mirrored channel drafts for cross-device sync. Webhook values are stored redacted.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:channels"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/channels/drafts"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "drafts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "number"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "channel": {
+                    "type": "string"
+                  },
+                  "route": {
+                    "type": "string"
+                  },
+                  "webhook": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sentResponseId": {
+                    "type": "string"
+                  },
+                  "sendError": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "version",
+                  "id",
+                  "createdAt",
+                  "updatedAt",
+                  "status",
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "total": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "drafts",
+            "total"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "channels.drafts.save",
+        "title": "Save Channel Draft",
+        "description": "Mirror a channel draft to the daemon-side store. Webhook values must be redacted before transmission; raw webhook tokens are rejected. Requires explicit confirmation.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:channels"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/channels/drafts"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "channel": {
+              "type": "string"
+            },
+            "route": {
+              "type": "string"
+            },
+            "webhook": {
+              "type": "string"
+            },
+            "link": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sentResponseId": {
+              "type": "string"
+            },
+            "sendError": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "version",
+            "id",
+            "createdAt",
+            "updatedAt",
+            "status",
+            "message"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "draft": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "number"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "channel": {
+                  "type": "string"
+                },
+                "route": {
+                  "type": "string"
+                },
+                "webhook": {
+                  "type": "string"
+                },
+                "link": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "sentResponseId": {
+                  "type": "string"
+                },
+                "sendError": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "version",
+                "id",
+                "createdAt",
+                "updatedAt",
+                "status",
+                "message"
+              ],
+              "additionalProperties": false
+            },
+            "created": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "draft",
+            "created"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "channels.inbox.list",
+        "title": "List Channel Inbox",
+        "description": "Return per-provider inbound message feeds (Slack DMs, Discord messages, email threads) fetched live from provider APIs. Read-only; no provider write.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:channels"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/channels/inbox"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "since": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "fromAddress": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "bodyPreview": {
+                    "type": "string"
+                  },
+                  "receivedAt": {
+                    "type": "number"
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "routeId": {
+                    "type": "string"
+                  },
+                  "threadId": {
+                    "type": "string"
+                  },
+                  "attachmentCount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "provider",
+                  "kind",
+                  "from",
+                  "bodyPreview",
+                  "receivedAt",
+                  "unread"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "total": {
+              "type": "number"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "items",
+            "total",
+            "truncated"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "channels.lifecycle.get",
         "title": "Get Channel Lifecycle State",
         "description": "Return lifecycle version posture for a channel surface.",
@@ -19268,6 +20128,222 @@
           },
           "required": [
             "actions"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "channels.routing.assign",
+        "title": "Assign Channel Routing Rule",
+        "description": "Create or update a channel-to-profile routing rule in the daemon-persisted routing table. Requires explicit confirmation.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:channels"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/channels/routing"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "channelId": {
+              "type": "string"
+            },
+            "surfaceKind": {
+              "type": "string"
+            },
+            "routeId": {
+              "type": "string"
+            },
+            "profileId": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "surfaceKind",
+            "profileId"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "assignmentId": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            },
+            "surfaceKind": {
+              "type": "string"
+            },
+            "routeId": {
+              "type": "string"
+            },
+            "profileId": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "assignmentId",
+            "surfaceKind",
+            "profileId",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "channels.routing.delete",
+        "title": "Delete Channel Routing Rule",
+        "description": "Remove a channel-to-profile routing rule from the daemon-persisted routing table.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:channels"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/channels/routing/{assignmentId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "assignmentId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "assignmentId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            },
+            "assignmentId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "deleted",
+            "assignmentId"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "channels.routing.list",
+        "title": "List Channel Routing Rules",
+        "description": "Return the daemon-persisted channel-to-profile routing table.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:channels"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/channels/routing"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "profileId": {
+              "type": "string"
+            },
+            "surfaceKind": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "routes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  },
+                  "surfaceKind": {
+                    "type": "string"
+                  },
+                  "routeId": {
+                    "type": "string"
+                  },
+                  "profileId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "createdAt",
+                  "updatedAt",
+                  "surfaceKind",
+                  "profileId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "total": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "routes",
+            "total"
           ],
           "additionalProperties": false
         },
@@ -24245,6 +25321,309 @@
           ],
           "additionalProperties": false
         },
+        "invokable": true
+      },
+      {
+        "id": "email.draft.create",
+        "title": "Create Email Draft",
+        "description": "Append a draft message to the configured IMAP Drafts folder. Distinct from the local channel draft store. Requires explicit confirmation.",
+        "category": "email",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:email"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/email/drafts"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "inReplyTo": {
+              "type": "string"
+            },
+            "references": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "to",
+            "subject",
+            "body"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "uid": {
+              "type": "number"
+            },
+            "draftId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "uid",
+            "draftId"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "email.inbox.list",
+        "title": "List Email Inbox",
+        "description": "Return inbox message summaries fetched live from the configured IMAP account. Read-only (EXAMINE / BODY.PEEK); never marks messages read.",
+        "category": "email",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:email"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/email/inbox"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "since": {
+              "type": "string"
+            },
+            "unreadOnly": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "uid": {
+                    "type": "number"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "bodyPreview": {
+                    "type": "string"
+                  },
+                  "messageId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "uid",
+                  "from",
+                  "subject",
+                  "date",
+                  "unread",
+                  "bodyPreview",
+                  "messageId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "total": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "messages",
+            "total"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "email.inbox.read",
+        "title": "Read Email Message",
+        "description": "Return the full body and attachment metadata for a single inbox message by IMAP UID. Read-only (BODY.PEEK; does not mark as read).",
+        "category": "email",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:email"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/email/inbox/{uid}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uid": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "uid"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "uid": {
+              "type": "number"
+            },
+            "from": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "messageId": {
+              "type": "string"
+            },
+            "bodyText": {
+              "type": "string"
+            },
+            "bodyHtml": {
+              "type": "string"
+            },
+            "attachments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "filename": {
+                    "type": "string"
+                  },
+                  "contentType": {
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "filename",
+                  "contentType",
+                  "sizeBytes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "uid",
+            "from",
+            "subject",
+            "date",
+            "messageId",
+            "bodyText"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "email.send",
+        "title": "Send Email",
+        "description": "Send a composed email via the configured SMTP account. Irreversible external send; requires confirm: true and explicit user review of recipients and body.",
+        "category": "email",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:email"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/email/send"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "inReplyTo": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "to",
+            "subject",
+            "body",
+            "confirm"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "messageId": {
+              "type": "string"
+            },
+            "sentAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "messageId",
+            "sentAt"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
         "invokable": true
       },
       {
@@ -75109,10 +76488,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 280,
-      "typedInputs": 280,
+      "methods": 297,
+      "typedInputs": 297,
       "genericInputs": 0,
-      "typedOutputs": 280,
+      "typedOutputs": 297,
       "genericOutputs": 0
     },
     "eventCoverage": {
