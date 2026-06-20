@@ -15,6 +15,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   - **Calendar** (new `calendar.*` namespace, scopes `read:calendar` / `write:calendar`): `calendar.events.list` / `calendar.events.get` / `calendar.events.create` and `calendar.ics.import` / `calendar.ics.export` (CalDAV-backed; writes require confirmation).
   - Mutating methods use `access: 'admin'` with `write:*` scopes; irreversible/destructive methods (`email.send`, routing/draft deletes) are flagged `dangerous`. Read methods use `read:*` scopes. The SDK publishes the contract surface only; daemon-side handlers implement the behavior.
 
+### Security
+- Cleared 6 high-severity advisories in build/test/optional transitive dependencies (no runtime SDK code change): added `overrides` pinning `form-data` to 4.0.6 (GHSA-hmw2-7cc7-3qxx), `ws` to 8.21.0 (GHSA-96hv-2xvq-fx4p), and `undici` to 7.28.0 (GHSA-vmh5-mc38-953g, GHSA-vxpw-j846-p89q, GHSA-hm92-r4w5-c3mj); bumped the `@cyclonedx/cyclonedx-npm` SBOM dev tool from 4.2.1 to 5.0.0 (GHSA-v75r-vx73-82pj). See `overridesRationale` for per-pin justification.
+
 ## [0.33.38] - 2026-06-12
 
 ### Added

@@ -79,7 +79,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.2",
     "@cloudflare/workers-types": "4.20260503.1",
-    "@cyclonedx/cyclonedx-npm": "4.2.1",
+    "@cyclonedx/cyclonedx-npm": "5.0.0",
     "@microsoft/api-extractor": "^7.58.4",
     "@types/bun": "1.3.10",
     "@types/jsdom": "^28.0.1",
@@ -112,7 +112,10 @@
     "lodash": "Pinned to 4.18.1 (latest stable; outside the >=4.0.0 <=4.17.23 vulnerable range from GHSA-r5fr-rjxr-66jc — Code Injection via _.template). Bumped from 4.17.21 to escape the audit advisory.",
     "minimatch": "Pinned to a patched glob matcher across build and release transitive dependencies.",
     "uuid": "Vendored CommonJS uuid v4 package for Verdaccio @cypress/request, which still requires a CommonJS uuid entry.",
-    "esbuild": "Pinned to 0.28.1 to close GHSA-gv7w-rqvm-qjhr (missing binary integrity verification in Deno module, enabling RCE via NPM_CONFIG_REGISTRY). Wrangler 4.x pins esbuild <0.28.1; this override forces the patched release across all transitive consumers."
+    "esbuild": "Pinned to 0.28.1 to close GHSA-gv7w-rqvm-qjhr (missing binary integrity verification in Deno module, enabling RCE via NPM_CONFIG_REGISTRY). Wrangler 4.x pins esbuild <0.28.1; this override forces the patched release across all transitive consumers.",
+    "form-data": "Pinned to 4.0.6 to close GHSA-hmw2-7cc7-3qxx (CRLF injection via unescaped multipart field/file names). Forces the patched release across @cypress/request (Verdaccio) and Cloudflare transitive consumers.",
+    "ws": "Pinned to 8.21.0 to close GHSA-96hv-2xvq-fx4p (memory-exhaustion DoS from tiny fragments). Minor bump within the 8.x line forced across miniflare, node-edge-tts, and the openai ws peer.",
+    "undici": "Pinned to 7.28.0 to close GHSA-vmh5-mc38-953g, GHSA-vxpw-j846-p89q, and GHSA-hm92-r4w5-c3mj (TLS bypass, WebSocket DoS, SOCKS5 routing). Kept on the 7.x line that jsdom (^7.25.0) and miniflare require; 8.x would be a breaking major."
   },
   "overrides": {
     "ajv": "8.18.0",
@@ -123,6 +126,9 @@
     "lodash": "4.18.1",
     "minimatch": "^10.2.5",
     "uuid": "file:vendor/uuid-cjs",
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "form-data": "4.0.6",
+    "ws": "8.21.0",
+    "undici": "7.28.0"
   }
 }
