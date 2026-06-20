@@ -33,6 +33,58 @@ import {
   WATCHER_RECORD_SCHEMA,
 } from './operator-contract-schemas.js';
 
+const CHANNEL_INBOX_ITEM_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  provider: STRING_SCHEMA,
+  kind: STRING_SCHEMA,
+  from: STRING_SCHEMA,
+  fromAddress: STRING_SCHEMA,
+  subject: STRING_SCHEMA,
+  bodyPreview: STRING_SCHEMA,
+  receivedAt: NUMBER_SCHEMA,
+  unread: BOOLEAN_SCHEMA,
+  routeId: STRING_SCHEMA,
+  threadId: STRING_SCHEMA,
+  attachmentCount: NUMBER_SCHEMA,
+}, ['id', 'provider', 'kind', 'from', 'bodyPreview', 'receivedAt', 'unread']);
+
+const CHANNEL_ROUTING_RULE_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  createdAt: STRING_SCHEMA,
+  updatedAt: STRING_SCHEMA,
+  surfaceKind: STRING_SCHEMA,
+  routeId: STRING_SCHEMA,
+  profileId: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+}, ['id', 'createdAt', 'updatedAt', 'surfaceKind', 'profileId']);
+
+const CHANNEL_DRAFT_PROPERTIES = {
+  version: NUMBER_SCHEMA,
+  id: STRING_SCHEMA,
+  createdAt: STRING_SCHEMA,
+  updatedAt: STRING_SCHEMA,
+  status: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  message: STRING_SCHEMA,
+  channel: STRING_SCHEMA,
+  route: STRING_SCHEMA,
+  webhook: STRING_SCHEMA,
+  link: STRING_SCHEMA,
+  tags: arraySchema(STRING_SCHEMA),
+  sentResponseId: STRING_SCHEMA,
+  sendError: STRING_SCHEMA,
+} as const;
+
+const CHANNEL_DRAFT_REQUIRED = ['version', 'id', 'createdAt', 'updatedAt', 'status', 'message'] as const;
+
+const CHANNEL_DRAFT_SCHEMA = objectSchema({ ...CHANNEL_DRAFT_PROPERTIES }, [...CHANNEL_DRAFT_REQUIRED]);
+
+const CHANNEL_DRAFT_GET_OUTPUT_SCHEMA = objectSchema(
+  { ...CHANNEL_DRAFT_PROPERTIES, notFound: BOOLEAN_SCHEMA },
+  [],
+  { additionalProperties: true },
+);
+
 export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'channels.accounts.list',
@@ -572,6 +624,139 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
     http: { method: 'POST', path: '/api/service/uninstall' },
     inputSchema: EMPTY_OBJECT_SCHEMA,
     outputSchema: SERVICE_STATUS_SCHEMA,
+    dangerous: true,
+  }),
+  methodDescriptor({
+    id: 'channels.inbox.list',
+    title: 'List Channel Inbox',
+    description:
+      'Return per-provider inbound message feeds (Slack DMs, Discord messages, email threads) fetched live from provider APIs. Read-only; no provider write.',
+    category: 'channels',
+    scopes: ['read:channels'],
+    http: { method: 'GET', path: '/api/channels/inbox' },
+    inputSchema: objectSchema({
+      provider: STRING_SCHEMA,
+      limit: NUMBER_SCHEMA,
+      since: NUMBER_SCHEMA,
+    }),
+    outputSchema: objectSchema({
+      items: arraySchema(CHANNEL_INBOX_ITEM_SCHEMA),
+      total: NUMBER_SCHEMA,
+      truncated: BOOLEAN_SCHEMA,
+      cursor: STRING_SCHEMA,
+    }, ['items', 'total', 'truncated']),
+  }),
+  methodDescriptor({
+    id: 'channels.routing.list',
+    title: 'List Channel Routing Rules',
+    description: 'Return the daemon-persisted channel-to-profile routing table.',
+    category: 'channels',
+    scopes: ['read:channels'],
+    http: { method: 'GET', path: '/api/channels/routing' },
+    inputSchema: objectSchema({
+      profileId: STRING_SCHEMA,
+      surfaceKind: STRING_SCHEMA,
+      limit: NUMBER_SCHEMA,
+    }),
+    outputSchema: objectSchema({
+      routes: arraySchema(CHANNEL_ROUTING_RULE_SCHEMA),
+      total: NUMBER_SCHEMA,
+    }, ['routes', 'total']),
+  }),
+  methodDescriptor({
+    id: 'channels.routing.assign',
+    title: 'Assign Channel Routing Rule',
+    description: 'Create or update a channel-to-profile routing rule in the daemon-persisted routing table. Requires explicit confirmation.',
+    category: 'channels',
+    scopes: ['write:channels'],
+    access: 'admin',
+    http: { method: 'POST', path: '/api/channels/routing' },
+    inputSchema: bodyEnvelopeSchema({
+      channelId: STRING_SCHEMA,
+      surfaceKind: STRING_SCHEMA,
+      routeId: STRING_SCHEMA,
+      profileId: STRING_SCHEMA,
+      label: STRING_SCHEMA,
+    }, ['surfaceKind', 'profileId']),
+    outputSchema: objectSchema({
+      assignmentId: STRING_SCHEMA,
+      channelId: STRING_SCHEMA,
+      surfaceKind: STRING_SCHEMA,
+      routeId: STRING_SCHEMA,
+      profileId: STRING_SCHEMA,
+      label: STRING_SCHEMA,
+      createdAt: STRING_SCHEMA,
+      updatedAt: STRING_SCHEMA,
+    }, ['assignmentId', 'surfaceKind', 'profileId', 'createdAt', 'updatedAt']),
+  }),
+  methodDescriptor({
+    id: 'channels.routing.delete',
+    title: 'Delete Channel Routing Rule',
+    description: 'Remove a channel-to-profile routing rule from the daemon-persisted routing table.',
+    category: 'channels',
+    scopes: ['write:channels'],
+    access: 'admin',
+    http: { method: 'DELETE', path: '/api/channels/routing/{assignmentId}' },
+    inputSchema: objectSchema({ assignmentId: STRING_SCHEMA }, ['assignmentId']),
+    outputSchema: objectSchema({
+      deleted: BOOLEAN_SCHEMA,
+      assignmentId: STRING_SCHEMA,
+    }, ['deleted', 'assignmentId']),
+    dangerous: true,
+  }),
+  methodDescriptor({
+    id: 'channels.drafts.list',
+    title: 'List Channel Drafts',
+    description: 'Return daemon-mirrored channel drafts for cross-device sync. Webhook values are stored redacted.',
+    category: 'channels',
+    scopes: ['read:channels'],
+    http: { method: 'GET', path: '/api/channels/drafts' },
+    inputSchema: objectSchema({
+      status: STRING_SCHEMA,
+      limit: NUMBER_SCHEMA,
+    }),
+    outputSchema: objectSchema({
+      drafts: arraySchema(CHANNEL_DRAFT_SCHEMA),
+      total: NUMBER_SCHEMA,
+    }, ['drafts', 'total']),
+  }),
+  methodDescriptor({
+    id: 'channels.drafts.get',
+    title: 'Get Channel Draft',
+    description: 'Return a single daemon-mirrored channel draft by id, or a notFound marker.',
+    category: 'channels',
+    scopes: ['read:channels'],
+    http: { method: 'GET', path: '/api/channels/drafts/{draftId}' },
+    inputSchema: objectSchema({ draftId: STRING_SCHEMA }, ['draftId']),
+    outputSchema: CHANNEL_DRAFT_GET_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'channels.drafts.save',
+    title: 'Save Channel Draft',
+    description: 'Mirror a channel draft to the daemon-side store. Webhook values must be redacted before transmission; raw webhook tokens are rejected. Requires explicit confirmation.',
+    category: 'channels',
+    scopes: ['write:channels'],
+    access: 'admin',
+    http: { method: 'POST', path: '/api/channels/drafts' },
+    inputSchema: bodyEnvelopeSchema({ ...CHANNEL_DRAFT_PROPERTIES }, [...CHANNEL_DRAFT_REQUIRED]),
+    outputSchema: objectSchema({
+      draft: CHANNEL_DRAFT_SCHEMA,
+      created: BOOLEAN_SCHEMA,
+    }, ['draft', 'created']),
+  }),
+  methodDescriptor({
+    id: 'channels.drafts.delete',
+    title: 'Delete Channel Draft',
+    description: 'Remove a channel draft from the daemon-side store.',
+    category: 'channels',
+    scopes: ['write:channels'],
+    access: 'admin',
+    http: { method: 'DELETE', path: '/api/channels/drafts/{draftId}' },
+    inputSchema: objectSchema({ draftId: STRING_SCHEMA }, ['draftId']),
+    outputSchema: objectSchema({
+      deleted: BOOLEAN_SCHEMA,
+      draftId: STRING_SCHEMA,
+    }, ['deleted', 'draftId']),
     dangerous: true,
   }),
 ];

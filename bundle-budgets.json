@@ -297,8 +297,8 @@
     "rationale": "public facade; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) → 192 (+50 B floor dominates by 21 B)"
   },
   "./platform/mcp": {
-    "gzip_bytes": 166,
-    "rationale": "new public package export budget; measured 116 B gzip @ v0.33.0 release verification; headroom max(ceil(116*1.2)=140, 116+50=166) -> 166 (+50 B floor dominates)"
+    "gzip_bytes": 218,
+    "rationale": "public package export budget; measured 168 B gzip @ v0.34.0 (grew with the expanded operator method id surface from the channels/email/calendar contracts); headroom max(ceil(168*1.2)=202, 168+50=218) -> 218 (+50 B floor dominates)"
   },
   "./platform/media": {
     "gzip_bytes": 209,

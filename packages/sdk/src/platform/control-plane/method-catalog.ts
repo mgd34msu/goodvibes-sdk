@@ -8,6 +8,12 @@ import {
   builtinGatewayControlMethodDescriptors,
 } from './method-catalog-control.js';
 import {
+  builtinGatewayEmailMethodDescriptors,
+} from './method-catalog-email.js';
+import {
+  builtinGatewayCalendarMethodDescriptors,
+} from './method-catalog-calendar.js';
+import {
   builtinGatewayEventDescriptors,
 } from './method-catalog-events.js';
 import {
@@ -57,6 +63,8 @@ const BUILTIN_GATEWAY_EVENTS: readonly GatewayEventDescriptor[] = builtinGateway
 const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayControlMethodDescriptors,
   ...builtinGatewayChannelMethodDescriptors,
+  ...builtinGatewayEmailMethodDescriptors,
+  ...builtinGatewayCalendarMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
   ...builtinGatewayKnowledgeMethodDescriptors,
   ...builtinGatewayMediaMethodDescriptors,

@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-06-20
+
+### Added
+- `@pellux/goodvibes-sdk` / `@pellux/goodvibes-contracts`: Published 17 new operator method contracts so daemon-connected agents can detect and invoke them through the standard operator method protocol. These are additive, typed contract descriptors (no breaking changes to existing methods).
+  - **Channels** (new methods under the existing `channels.*` namespace): `channels.inbox.list` (provider inbound feed — Slack/Discord DMs, email threads; read-only), `channels.routing.list` / `channels.routing.assign` / `channels.routing.delete` (daemon-persisted channel-to-profile routing), and `channels.drafts.list` / `channels.drafts.get` / `channels.drafts.save` / `channels.drafts.delete` (server-side channel draft sync; webhook values must be transmitted redacted).
+  - **Email** (new `email.*` namespace, scopes `read:email` / `write:email`): `email.inbox.list`, `email.inbox.read` (read-only IMAP via BODY.PEEK), `email.draft.create` (IMAP Drafts append), and `email.send` (SMTP send — marked `dangerous`, requires `confirm: true`).
+  - **Calendar** (new `calendar.*` namespace, scopes `read:calendar` / `write:calendar`): `calendar.events.list` / `calendar.events.get` / `calendar.events.create` and `calendar.ics.import` / `calendar.ics.export` (CalDAV-backed; writes require confirmation).
+  - Mutating methods use `access: 'admin'` with `write:*` scopes; irreversible/destructive methods (`email.send`, routing/draft deletes) are flagged `dangerous`. Read methods use `read:*` scopes. The SDK publishes the contract surface only; daemon-side handlers implement the behavior.
+
 ## [0.33.38] - 2026-06-12
 
 ### Added
