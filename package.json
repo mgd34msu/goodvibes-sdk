@@ -91,7 +91,7 @@
     "typescript": "6.0.3",
     "verdaccio": "^6.5.2",
     "wrangler": "4.87.0",
-    "@ast-grep/napi": "^0.42.0",
+    "@ast-grep/napi": "^0.44.0",
     "@pellux/goodvibes-contracts": "workspace:*",
     "@pellux/goodvibes-daemon-sdk": "workspace:*",
     "@pellux/goodvibes-errors": "workspace:*",
