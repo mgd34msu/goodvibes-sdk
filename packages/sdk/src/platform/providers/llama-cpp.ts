@@ -16,7 +16,8 @@ import type {
 } from './interface.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
 import { mapLlamaCppStopReason } from './stop-reason-maps.js';
-import { summarizeError, toProviderError } from '../utils/error-display.js';
+import { summarizeError } from '../utils/error-display.js';
+import { getErrorStatus, normalizeProviderError } from './provider-error.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import {
   extractTextToolCalls,
@@ -382,29 +383,6 @@ async function buildHttpError(
     operation,
     phase,
   });
-}
-
-function normalizeProviderError(err: unknown, provider: string, operation: string, phase = 'request'): ProviderError {
-  const status = getErrorStatus(err);
-  return toProviderError(err, {
-    ...(status !== undefined ? { statusCode: status } : {}),
-    provider,
-    operation,
-    phase,
-  });
-}
-
-function getErrorStatus(err: unknown): number | undefined {
-  if (err && typeof err === 'object') {
-    const record = err as { status?: unknown; statusCode?: unknown };
-    if (typeof record.status === 'number') return record.status;
-    if (typeof record.statusCode === 'number') return record.statusCode;
-  }
-  return undefined;
-}
-
-function getErrorMessage(err: unknown): string {
-  return summarizeError(err);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {

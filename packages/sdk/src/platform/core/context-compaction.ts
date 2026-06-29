@@ -48,6 +48,8 @@ import {
   buildResolvedProblemsPrompt,
   buildPlanProgress,
   buildSessionLineage,
+  extractText,
+  isActiveAgent,
 } from './compaction-sections.js';
 
 export type { CompactionEvent, CompactionResult, CompactionContext } from './compaction-types.js';
@@ -292,9 +294,7 @@ function validateCompaction(
     warnings.push('WARNING: current-task section is missing');
   }
 
-  const hasRunningAgents = ctx.agents.some(
-    (a) => a.status === 'running' || a.status === 'pending',
-  );
+  const hasRunningAgents = ctx.agents.some(isActiveAgent);
   if (hasRunningAgents && !sectionIds.has('running-agents')) {
     warnings.push('WARNING: running agents exist but running-agents section is missing');
   }
@@ -378,11 +378,7 @@ async function runCompaction(
     for (let i = ctx.messages.length - 1; i >= 0; i--) {
       const msg = ctx.messages[i];
       if (msg?.role === 'user') {
-        const text = typeof msg.content === 'string'
-          ? msg.content as string
-          : (msg.content as ContentPart[]).filter(
-              (p): p is { type: 'text'; text: string } => p.type === 'text'
-            ).map((p) => p.text).join('');
+        const text = extractText(msg.content);
         if (text.trim()) return text.trim();
       }
     }
@@ -459,12 +455,7 @@ async function runCompaction(
     } else {
       // Include raw gathered messages if the LLM filter fails.
       const fallbackLines = gatheredMessages.map((m) => {
-        const text = typeof m.content === 'string'
-          ? m.content
-          : (m.content as ContentPart[])
-              .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-              .map((p) => p.text)
-              .join('');
+        const text = extractText(m.content);
         return `[${m.role}]: ${text.trim()}`;
       });
       const fallbackContent = fallbackLines.join('\n\n');

@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import type { CatalogModel } from './model-catalog.js';
 import { summarizeError } from '../utils/error-display.js';
+import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 interface CatalogModelPricing {
@@ -51,7 +52,6 @@ type ModelsDevResponse = Record<string, CatalogProviderShape>;
 
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 const CATALOG_FETCH_TIMEOUT_MS = 30_000;
-const CATALOG_TTL_MS = 86_400_000; // 24 hours
 
 export function getCatalogCachePath(cacheDir: string): string {
   return join(cacheDir, 'model-catalog.json');
@@ -174,19 +174,7 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
 }
 
 function validateCatalogCache(value: unknown): { cache: CatalogCacheFile | null; reason?: string } {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return { cache: null, reason: 'root value is not an object' };
-  }
-  const parsed = value as Partial<CatalogCacheFile>;
-  if (parsed.version !== 1) return { cache: null, reason: 'unsupported cache version' };
-  if (typeof parsed.fetchedAt !== 'number' || !Number.isFinite(parsed.fetchedAt)) {
-    return { cache: null, reason: 'fetchedAt must be a finite number' };
-  }
-  if (typeof parsed.ttlMs !== 'number' || !Number.isFinite(parsed.ttlMs)) {
-    return { cache: null, reason: 'ttlMs must be a finite number' };
-  }
-  if (!Array.isArray(parsed.models)) return { cache: null, reason: 'models must be an array' };
-  return { cache: parsed as CatalogCacheFile };
+  return validateTtlCacheEnvelope<CatalogCacheFile>(value, 'models', 'array');
 }
 
 function loadCatalogCache(cachePath: string): CatalogCacheFile | null {
@@ -216,7 +204,7 @@ function saveCatalogCache(models: CatalogModel[], cachePath: string, tmpPath: st
     const payload: CatalogCacheFile = {
       version: 1,
       fetchedAt: Date.now(),
-      ttlMs: CATALOG_TTL_MS,
+      ttlMs: TTL_24H_MS,
       models,
     };
     fs.writeFileSync(tmpPath, JSON.stringify(payload, null, 2), 'utf-8');
@@ -227,7 +215,7 @@ function saveCatalogCache(models: CatalogModel[], cachePath: string, tmpPath: st
 }
 
 function isCatalogCacheStale(cache: CatalogCacheFile): boolean {
-  return Date.now() - cache.fetchedAt > cache.ttlMs;
+  return isTtlCacheStale(cache);
 }
 
 /**

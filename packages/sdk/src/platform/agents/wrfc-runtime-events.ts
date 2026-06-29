@@ -13,6 +13,7 @@ import {
   emitWorkflowChainPassed,
   emitWorkflowConstraintsEnumerated,
   emitWorkflowGateResult,
+  emitWorkflowScoreRegression,
   emitWorkflowStateChanged,
 } from '../runtime/emitters/index.js';
 
@@ -69,6 +70,15 @@ export function emitWrfcCascadeAbort(
   reason: string,
 ): void {
   emitWorkflowCascadeAborted(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId, reason });
+}
+
+export function emitWrfcScoreRegression(
+  runtimeBus: RuntimeEventBus,
+  sessionId: string,
+  chainId: string,
+  reason: string,
+): void {
+  emitWorkflowScoreRegression(runtimeBus, createWrfcWorkflowContext(sessionId, chainId), { chainId, reason });
 }
 
 /**

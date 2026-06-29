@@ -6,7 +6,7 @@ import type {
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
-import { REASONING_BUDGET_MAP } from './interface.js';
+import { applyAnthropicThinking } from './anthropic-stream.js';
 import { ProviderError } from '../types/errors.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import { withRetry } from '../utils/retry.js';
@@ -156,16 +156,7 @@ export class AnthropicCompatProvider implements LLMProvider {
         body['tools'] = toAnthropicTools(tools);
       }
 
-      if (reasoningEffort && reasoningEffort !== 'instant') {
-        const budget = REASONING_BUDGET_MAP[reasoningEffort]!;
-        if (budget !== undefined && budget > 0) {
-          body['thinking'] = { type: 'enabled', budget_tokens: budget };
-          const currentMax = (body['max_tokens'] as number) ?? 8192;
-          if (currentMax <= budget) {
-            body['max_tokens'] = budget + 4096;
-          }
-        }
-      }
+      applyAnthropicThinking(body, reasoningEffort, Infinity);
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',

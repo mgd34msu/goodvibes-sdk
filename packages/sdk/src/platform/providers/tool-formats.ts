@@ -424,6 +424,20 @@ export function extractTextToolCalls(content: string): {
 }
 
 // ---------------------------------------------------------------------------
+// Anthropic model-id helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Strip the `anthropic:` or `anthropic/` prefix from an Anthropic model identifier.
+ * Single canonical location — imported by anthropic.ts and anthropic-sdk-provider.ts.
+ */
+export function normalizeAnthropicModel(model: string): string {
+  if (model.startsWith('anthropic:')) return model.slice('anthropic:'.length);
+  if (model.startsWith('anthropic/')) return model.slice('anthropic/'.length);
+  return model;
+}
+
+// ---------------------------------------------------------------------------
 // Shared helper
 // ---------------------------------------------------------------------------
 

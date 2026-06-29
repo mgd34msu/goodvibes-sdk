@@ -17,7 +17,8 @@ import type {
 } from './interface.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
 import { toOpenAITools } from './tool-formats.js';
-import { summarizeError, toProviderError } from '../utils/error-display.js';
+import { summarizeError } from '../utils/error-display.js';
+import { getErrorStatus, normalizeProviderError } from './provider-error.js';
 import { mapOllamaStopReason } from './stop-reason-maps.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
@@ -442,33 +443,10 @@ async function buildHttpError(
 
 function shouldFallbackFromNative(err: unknown): boolean {
   const status = getErrorStatus(err);
-  const message = getErrorMessage(err);
+  const message = summarizeError(err);
   if (status === 404 || status === 405 || status === 501) return true;
   if (status === 400 && /tool|messages|unsupported/i.test(message)) return true;
   return /not implemented|unsupported|unknown endpoint/i.test(message);
-}
-
-function getErrorStatus(err: unknown): number | undefined {
-  if (err && typeof err === 'object') {
-    const record = err as { status?: unknown; statusCode?: unknown };
-    if (typeof record.status === 'number') return record.status;
-    if (typeof record.statusCode === 'number') return record.statusCode;
-  }
-  return undefined;
-}
-
-function getErrorMessage(err: unknown): string {
-  return summarizeError(err);
-}
-
-function normalizeProviderError(err: unknown, provider: string, operation: string, phase = 'request'): ProviderError {
-  const status = getErrorStatus(err);
-  return toProviderError(err, {
-    ...(status !== undefined ? { statusCode: status } : {}),
-    provider,
-    operation,
-    phase,
-  });
 }
 
 function toRecord(value: unknown): Record<string, unknown> {

@@ -7,11 +7,12 @@ import type {
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
-import { REASONING_BUDGET_MAP } from './interface.js';
+import { applyAnthropicThinking } from './anthropic-stream.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import {
   fromAnthropicContent,
+  normalizeAnthropicModel,
   parseToolCallArguments,
   toAnthropicMessages,
   toAnthropicTools,
@@ -40,12 +41,6 @@ type AnthropicMessageStream = AsyncIterable<MessageStreamEvent> & {
     };
   }>;
 };
-
-function normalizeAnthropicModel(model: string): string {
-  if (model.startsWith('anthropic:')) return model.slice('anthropic:'.length);
-  if (model.startsWith('anthropic/')) return model.slice('anthropic/'.length);
-  return model;
-}
 
 export interface AnthropicSdkProviderAuthConfig {
   readonly mode: 'api-key' | 'anonymous';
@@ -98,14 +93,7 @@ export class AnthropicSdkProvider implements LLMProvider {
         body['tools'] = toAnthropicTools(params.tools);
       }
 
-      if (params.reasoningEffort && params.reasoningEffort !== 'instant') {
-        const budget = REASONING_BUDGET_MAP[params.reasoningEffort];
-        if (typeof budget === 'number' && budget > 0) {
-          body['thinking'] = { type: 'enabled', budget_tokens: budget };
-          const currentMax = (body['max_tokens'] as number) ?? DEFAULT_MAX_OUTPUT;
-          if (currentMax <= budget) body['max_tokens'] = budget + 4096;
-        }
-      }
+      applyAnthropicThinking(body, params.reasoningEffort, Infinity);
 
       const toolBlocks = new Map<number, { id: string; name: string; args: string }>();
       let responseText = '';

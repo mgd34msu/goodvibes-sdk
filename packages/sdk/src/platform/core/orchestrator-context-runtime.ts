@@ -4,6 +4,7 @@ import type { ModelDefinition, ProviderRegistry } from '../providers/registry.js
 import { logger } from '../utils/logger.js';
 import { estimateConversationTokens, COMPACTION_BUFFER_TOKENS, SMALL_WINDOW_THRESHOLD, compactSmallWindow, getAutoCompactDecision } from './context-compaction.js';
 import type { CompactionContext } from './context-compaction.js';
+import { isActiveAgent } from './compaction-sections.js';
 import type { SessionMemoryStore } from './session-memory.js';
 import type { SessionLineageTracker } from './session-lineage.js';
 import type { AgentManager } from '../tools/agent/index.js';
@@ -401,7 +402,7 @@ export async function handlePostTurnContextMaintenance(
           messages: currentMsgs,
           sessionMemories: deps.sessionMemoryStore?.list() ?? [],
           lineageEntries: deps.sessionLineageTracker.getEntries(),
-          agents: deps.agentManager.list().filter(a => a.status === 'running' || a.status === 'pending'),
+          agents: deps.agentManager.list().filter(isActiveAgent),
           wrfcChains: deps.wrfcController.listChains(),
           activePlan: deps.planManager?.getActive(deps.sessionId) ?? null,
           compactionCount: deps.sessionLineageTracker.getCompactionCount(),
@@ -505,9 +506,9 @@ export async function handlePostTurnContextMaintenance(
         threshold: configuredThreshold,
         currentTokens: totalTokens,
         contextWindow: maxTokens,
-        thresholdTokens: Math.floor((maxTokens * configuredThreshold) / 100),
-        remainingTokens: Math.max(0, maxTokens - totalTokens),
-        safetyBufferTokens: COMPACTION_BUFFER_TOKENS,
+        thresholdTokens: autoDecision.thresholdTokens,
+        remainingTokens: autoDecision.remainingTokens,
+        safetyBufferTokens: autoDecision.safetyBufferTokens,
         reason: 'threshold',
       });
     }

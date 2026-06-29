@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 export interface ModelBenchmarks {
@@ -65,7 +66,6 @@ interface BenchmarksCache {
 
 const ZEROEVAL_URL = 'https://api.zeroeval.com/leaderboard/models/full?justCanonicals=true';
 const FETCH_TIMEOUT_MS = 20_000;
-const CACHE_TTL_MS = 86_400_000;
 
 export const S_TIER_THRESHOLD = 0.80;
 export const A_TIER_THRESHOLD = 0.65;
@@ -134,19 +134,7 @@ function buildNameIndex(entries: readonly BenchmarkEntry[]): Map<string, Benchma
 }
 
 function validateBenchmarksCache(value: unknown): { cache: BenchmarksCache | null; reason?: string } {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return { cache: null, reason: 'root value is not an object' };
-  }
-  const parsed = value as Partial<BenchmarksCache>;
-  if (parsed.version !== 1) return { cache: null, reason: 'unsupported cache version' };
-  if (typeof parsed.fetchedAt !== 'number' || !Number.isFinite(parsed.fetchedAt)) {
-    return { cache: null, reason: 'fetchedAt must be a finite number' };
-  }
-  if (typeof parsed.ttlMs !== 'number' || !Number.isFinite(parsed.ttlMs)) {
-    return { cache: null, reason: 'ttlMs must be a finite number' };
-  }
-  if (!Array.isArray(parsed.entries)) return { cache: null, reason: 'entries must be an array' };
-  return { cache: parsed as BenchmarksCache };
+  return validateTtlCacheEnvelope<BenchmarksCache>(value, 'entries', 'array');
 }
 
 export function compositeScore(benchmarks: ModelBenchmarks): number | null {
@@ -219,7 +207,7 @@ export class BenchmarkStore {
     const next: BenchmarksCache = {
       version: 1,
       fetchedAt: Date.now(),
-      ttlMs: CACHE_TTL_MS,
+      ttlMs: TTL_24H_MS,
       entries,
     };
     this.saveCache(next);
@@ -356,6 +344,6 @@ export class BenchmarkStore {
   }
 
   private isCacheStale(cache: BenchmarksCache): boolean {
-    return Date.now() - cache.fetchedAt > cache.ttlMs;
+    return isTtlCacheStale(cache);
   }
 }

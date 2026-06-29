@@ -124,6 +124,13 @@ export function registerHostRuntimeEvents(
     domainDispatch.dispatchTransportEvent(env.payload);
   }));
 
+  unsubs.push(runtimeBus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_SCORE_REGRESSION' }>>('WORKFLOW_SCORE_REGRESSION', ({ payload }) => {
+    withRouter(getSystemMessageRouter, (router) => {
+      router.wrfc(`[WRFC] Score regression warning: ${payload.reason} (chain ${payload.chainId})`);
+    });
+    requestRender();
+  }));
+
   unsubs.push(runtimeBus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CASCADE_ABORTED' }>>('WORKFLOW_CASCADE_ABORTED', ({ payload }) => {
     withRouter(getSystemMessageRouter, (router) => {
       router.wrfc(`[WRFC] Cascade abort: ${payload.reason} (chain ${payload.chainId})`);

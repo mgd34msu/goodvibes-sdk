@@ -48,6 +48,7 @@ export type WorkflowEvent =
   | { type: 'WORKFLOW_CHAIN_FAILED'; chainId: string; reason: string }
   | { type: 'WORKFLOW_AUTO_COMMITTED'; chainId: string; commitHash?: string | undefined }
   | { type: 'WORKFLOW_CASCADE_ABORTED'; chainId: string; reason: string }
-  | { type: 'WORKFLOW_CONSTRAINTS_ENUMERATED'; chainId: string; constraints: Constraint[] };
+  | { type: 'WORKFLOW_CONSTRAINTS_ENUMERATED'; chainId: string; constraints: Constraint[] }
+  | { type: 'WORKFLOW_SCORE_REGRESSION'; chainId: string; reason: string };
 
 export type WorkflowEventType = WorkflowEvent['type'];

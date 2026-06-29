@@ -1,7 +1,9 @@
 import OpenAI from 'openai';
 import { ProviderError } from '../types/errors.js';
 import type { ToolCall, ToolDefinition } from '../types/tools.js';
-import { summarizeError, toProviderError } from '../utils/error-display.js';
+import { summarizeError } from '../utils/error-display.js';
+import { getErrorStatus } from './provider-error.js';
+export { normalizeProviderError } from './provider-error.js';
 import type {
   ChatRequest,
   ChatResponse,
@@ -308,7 +310,7 @@ export function toRecord(value: unknown): Record<string, unknown> {
 
 export function shouldFallbackFromNative(err: unknown): boolean {
   const status = getErrorStatus(err);
-  const message = getErrorMessage(err);
+  const message = summarizeError(err);
   if (status === 404 || status === 405 || status === 501) return true;
   if (status === 400 && /previous_response_id|response_id/i.test(message)) return true;
   return /not implemented|unsupported|unknown endpoint/i.test(message);
@@ -316,30 +318,8 @@ export function shouldFallbackFromNative(err: unknown): boolean {
 
 export function shouldFallbackFromResponses(err: unknown): boolean {
   const status = getErrorStatus(err);
-  const message = getErrorMessage(err);
+  const message = summarizeError(err);
   if (status === 404 || status === 405 || status === 501) return true;
   return /not implemented|unsupported|unknown endpoint/i.test(message);
 }
 
-function getErrorStatus(err: unknown): number | undefined {
-  if (err && typeof err === 'object') {
-    const record = err as { status?: unknown; statusCode?: unknown };
-    if (typeof record.status === 'number') return record.status;
-    if (typeof record.statusCode === 'number') return record.statusCode;
-  }
-  return undefined;
-}
-
-function getErrorMessage(err: unknown): string {
-  return summarizeError(err);
-}
-
-export function normalizeProviderError(err: unknown, provider: string, operation: string, phase = 'request'): ProviderError {
-  const status = getErrorStatus(err);
-  return toProviderError(err, {
-    ...(status !== undefined ? { statusCode: status } : {}),
-    provider,
-    operation,
-    phase,
-  });
-}

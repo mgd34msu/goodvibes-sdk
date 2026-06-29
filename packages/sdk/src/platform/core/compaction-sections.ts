@@ -18,12 +18,17 @@ import type { CompactionSection, CompactionConfig, SessionMemory } from './compa
 import { estimateTokens } from './compaction-types.js';
 
 /** Extract plain text from a ProviderMessage content field. */
-function extractText(content: string | ContentPart[]): string {
+export function extractText(content: string | ContentPart[]): string {
   if (typeof content === 'string') return content;
   return (content as ContentPart[])
     .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
     .map((p) => p.text)
     .join('');
+}
+
+/** Returns true when an agent should be considered active (running or pending). */
+export function isActiveAgent(a: AgentRecord): boolean {
+  return a.status === 'running' || a.status === 'pending';
 }
 
 /** Build a CompactionSection. Returns null if content is empty. */
@@ -113,9 +118,7 @@ export function buildRunningAgents(
   agents: AgentRecord[],
   chains: WrfcChain[],
 ): CompactionSection | null {
-  const active = agents.filter(
-    (a) => a.status === 'running' || a.status === 'pending',
-  );
+  const active = agents.filter(isActiveAgent);
   if (active.length === 0) return null;
 
   // Build a map from agent ID to chain ID for quick lookup

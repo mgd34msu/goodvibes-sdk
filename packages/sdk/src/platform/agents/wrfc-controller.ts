@@ -63,6 +63,7 @@ import {
   emitWrfcChainPassed,
   emitWrfcConstraintsEnumerated,
   emitWrfcGraphCreated,
+  emitWrfcScoreRegression,
   emitWrfcStateChanged,
   failWrfcOrchestrationNode,
   startWrfcOrchestrationNode,
@@ -87,6 +88,19 @@ const VALID_TRANSITIONS: Partial<Record<WrfcState, WrfcState[]>> = {
   gating: ['passed', 'failed', 'committing', 'fixing'],
   committing: ['passed', 'failed'],
 };
+
+/** Returns true when a chain is in a terminal state (passed or failed). */
+function isChainTerminal(state: WrfcState): boolean {
+  return state === 'passed' || state === 'failed';
+}
+/** Returns true when a chain is actively executing (not terminal and not pending). */
+function isChainActive(state: WrfcState): boolean {
+  return !isChainTerminal(state) && state !== 'pending';
+}
+/** Type guard: returns true when an agent record is in-flight (pending or running). */
+function isAgentInFlight<T extends Pick<AgentRecord, 'status'>>(record: T | null | undefined): record is T {
+  return record != null && (record.status === 'pending' || record.status === 'running');
+}
 
 const MAX_ACTIVE_CHAINS = 6;
 const CHAIN_CLEANUP_DELAY_MS = 60_000;
@@ -213,7 +227,7 @@ export class WrfcController {
 
   resumeChain(chainId: string): boolean {
     const chain = this.chains.get(chainId);
-    if (!chain || chain.state === 'passed' || chain.state === 'failed') return false;
+    if (!chain || isChainTerminal(chain.state)) return false;
     if (this.hasRunningChild(chain)) {
       this.appendOwnerDecision(chain, 'resume_skipped', 'WRFC chain already has an active child agent');
       return true;
@@ -382,7 +396,7 @@ export class WrfcController {
    */
   importChain(chain: WrfcChain, force = false): boolean {
     const existing = this.chains.get(chain.id);
-    if (existing && existing.state !== 'passed' && existing.state !== 'failed' && !force) {
+    if (existing && !isChainTerminal(existing.state) && !force) {
       logger.warn('WrfcController.importChain: refused — existing chain is non-terminal; use force=true to overwrite', {
         chainId: chain.id,
         existingState: existing.state,
@@ -420,7 +434,7 @@ export class WrfcController {
 
     const from = chain.state;
     chain.state = to;
-    if (to !== 'passed' && to !== 'failed') {
+    if (!isChainTerminal(to)) {
       this.keepOwnerAgentActive(chain);
     }
     emitWrfcStateChanged(this.runtimeBus, this.sessionId, chain.id, from, to);
@@ -437,7 +451,7 @@ export class WrfcController {
     if (role === 'owner') {
       record.progress = this.ownerProgress(chain);
     }
-    if (record.status === 'pending' || record.status === 'running') {
+    if (isAgentInFlight(record)) {
       emitAgentProgress(this.runtimeBus, {
         sessionId: this.sessionId,
         traceId: `${this.sessionId}:wrfc-agent-metadata:${record.id}`,
@@ -455,7 +469,7 @@ export class WrfcController {
   }
 
   private keepOwnerAgentActive(chain: WrfcChain, reason?: string): void {
-    if (chain.ownerTerminalEmitted || chain.state === 'passed' || chain.state === 'failed') return;
+    if (chain.ownerTerminalEmitted || isChainTerminal(chain.state)) return;
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
     if (!owner) return;
     this.applyWrfcAgentMetadata(chain, owner, 'owner');
@@ -589,7 +603,7 @@ export class WrfcController {
   private tickWatchdog(timeoutMs: number): void {
     const now = Date.now();
     for (const chain of this.chains.values()) {
-      if (chain.state === 'passed' || chain.state === 'failed' || chain.state === 'pending') continue;
+      if (!isChainActive(chain.state)) continue;
       // Find the active child agent for this chain.
       const activeAgentId = this.activeChildAgentId(chain);
       if (!activeAgentId) continue;
@@ -726,7 +740,7 @@ export class WrfcController {
   private onAgentFailed(agentId: string, errorMessage?: string): void {
     const chain = this.findChainByAgentId(agentId);
     if (!chain) return;
-    if (agentId === chain.ownerAgentId && (chain.state === 'passed' || chain.state === 'failed')) return;
+    if (agentId === chain.ownerAgentId && isChainTerminal(chain.state)) return;
     if (agentId === chain.ownerAgentId) {
       this.keepOwnerAgentActive(chain, 'Ignored premature owner failure event; WRFC lifecycle is still active');
       this.appendOwnerDecision(
@@ -751,7 +765,7 @@ export class WrfcController {
 
   private onAgentCancelled(agentId: string, reason?: string): void {
     const chain = this.findChainByAgentId(agentId);
-    if (!chain || chain.state === 'passed' || chain.state === 'failed') return;
+    if (!chain || isChainTerminal(chain.state)) return;
     if (agentId === chain.ownerAgentId) {
       this.setWrfcWorkPlanTaskStatus(chain, agentId, 'cancelled', reason ?? 'WRFC owner agent cancelled');
       this.cancelChain(chain, reason ?? 'WRFC owner agent cancelled');
@@ -898,7 +912,7 @@ export class WrfcController {
       const initial = scores[0]!;
       const lastTwo = scores.slice(-2);
       if (lastTwo[0]! < initial && lastTwo[1]! < initial) {
-        emitWrfcCascadeAbort(
+        emitWrfcScoreRegression(
           this.runtimeBus,
           this.sessionId,
           chain.id,
@@ -1021,8 +1035,8 @@ export class WrfcController {
     });
   }
 
-  private evaluateConstraints(chain: WrfcChain, review: ReviewerReport): ConstraintEvaluation {
-    if (chain.constraints.length === 0) {
+  private evaluateConstraintSet(constraints: readonly Constraint[], review: ReviewerReport): ConstraintEvaluation {
+    if (constraints.length === 0) {
       return {
         constraintsSatisfied: 0,
         constraintsTotal: 0,
@@ -1032,7 +1046,7 @@ export class WrfcController {
       };
     }
 
-    const expectedIds = new Set(chain.constraints.map((constraint) => constraint.id));
+    const expectedIds = new Set(constraints.map((constraint) => constraint.id));
     const findingMap = new Map<string, NonNullable<ReviewerReport['constraintFindings']>[number]>();
     const ignoredConstraintFindingIds: string[] = [];
     for (const finding of review.constraintFindings ?? []) {
@@ -1047,7 +1061,7 @@ export class WrfcController {
 
     let constraintsSatisfied = 0;
     const unsatisfiedConstraintIds: string[] = [];
-    for (const constraint of chain.constraints) {
+    for (const constraint of constraints) {
       const finding = findingMap.get(constraint.id);
       if (finding?.satisfied === true) {
         constraintsSatisfied += 1;
@@ -1058,55 +1072,19 @@ export class WrfcController {
 
     return {
       constraintsSatisfied,
-      constraintsTotal: chain.constraints.length,
+      constraintsTotal: constraints.length,
       unsatisfiedConstraintIds,
       ignoredConstraintFindingIds,
       constraintFailure: unsatisfiedConstraintIds.length > 0,
     };
   }
 
+  private evaluateConstraints(chain: WrfcChain, review: ReviewerReport): ConstraintEvaluation {
+    return this.evaluateConstraintSet(chain.constraints, review);
+  }
+
   private evaluateSubtaskConstraints(subtask: WrfcSubtask, review: ReviewerReport): ConstraintEvaluation {
-    if (subtask.constraints.length === 0) {
-      return {
-        constraintsSatisfied: 0,
-        constraintsTotal: 0,
-        unsatisfiedConstraintIds: [],
-        ignoredConstraintFindingIds: [],
-        constraintFailure: false,
-      };
-    }
-
-    const expectedIds = new Set(subtask.constraints.map((constraint) => constraint.id));
-    const findingMap = new Map<string, NonNullable<ReviewerReport['constraintFindings']>[number]>();
-    const ignoredConstraintFindingIds: string[] = [];
-    for (const finding of review.constraintFindings ?? []) {
-      if (!expectedIds.has(finding.constraintId)) {
-        ignoredConstraintFindingIds.push(finding.constraintId);
-        continue;
-      }
-      if (!findingMap.has(finding.constraintId)) {
-        findingMap.set(finding.constraintId, finding);
-      }
-    }
-
-    let constraintsSatisfied = 0;
-    const unsatisfiedConstraintIds: string[] = [];
-    for (const constraint of subtask.constraints) {
-      const finding = findingMap.get(constraint.id);
-      if (finding?.satisfied === true) {
-        constraintsSatisfied += 1;
-      } else {
-        unsatisfiedConstraintIds.push(constraint.id);
-      }
-    }
-
-    return {
-      constraintsSatisfied,
-      constraintsTotal: subtask.constraints.length,
-      unsatisfiedConstraintIds,
-      ignoredConstraintFindingIds,
-      constraintFailure: unsatisfiedConstraintIds.length > 0,
-    };
+    return this.evaluateConstraintSet(subtask.constraints, review);
   }
 
   private async processGateResults(chain: WrfcChain, results: QualityGateResult[]): Promise<void> {
@@ -1227,7 +1205,7 @@ export class WrfcController {
 
   private scheduleChainCleanup(chain: WrfcChain): void {
     const timer = setTimeout(() => {
-      if (chain.state === 'passed' || chain.state === 'failed') {
+      if (isChainTerminal(chain.state)) {
         this.chains.delete(chain.id);
       }
     }, CHAIN_CLEANUP_DELAY_MS);
@@ -1236,7 +1214,7 @@ export class WrfcController {
 
   private async checkAndRunGatesForAll(): Promise<void> {
     const allChains = Array.from(this.chains.values()).filter(
-      (chain) => chain.state !== 'passed' && chain.state !== 'failed',
+      (chain) => !isChainTerminal(chain.state),
     );
     const activeWorkChains = allChains.filter((chain) => (
       chain.state === 'pending'
@@ -1263,12 +1241,27 @@ export class WrfcController {
 
     const gateRunner = readyChains[0]!;
     const results = await this.runGates(gateRunner);
-    for (const chain of readyChains) {
-      if (chain.id !== gateRunner.id) {
-        this.transition(chain, 'gating');
-        chain.gateResults = results;
+    const allGatesPassed = results.length === 0 || results.every((r) => r.passed);
+
+    if (allGatesPassed) {
+      // All gates passed: process each waiting chain so it can commit/pass.
+      for (const chain of readyChains) {
+        if (chain.id !== gateRunner.id) {
+          this.transition(chain, 'gating');
+          chain.gateResults = results;
+        }
+        await this.processGateResults(chain, results);
       }
-      await this.processGateResults(chain, results);
+    } else {
+      // Gate failure: spawn exactly ONE fixer (for the gateRunner). Non-owner chains
+      // stay in awaiting_gates — they will be committed/passed once the gateRunner's
+      // fix→review cycle eventually brings gates back to passing.
+      for (const chain of readyChains) {
+        if (chain.id !== gateRunner.id) {
+          chain.gateResults = results; // record for reporting; state stays awaiting_gates
+        }
+      }
+      await this.processGateResults(gateRunner, results);
     }
   }
 
@@ -1370,7 +1363,7 @@ export class WrfcController {
       this.chainQueue = this.chainQueue.filter((queued) => queued.record.id !== chain.ownerAgentId);
     }
 
-    const wasActive = chain.state !== 'passed' && chain.state !== 'failed' && chain.state !== 'pending';
+    const wasActive = isChainActive(chain.state);
     this.failCurrentNode(chain, reason);
     for (const subtask of chain.subtasks ?? []) {
       if (subtask.currentNodeId) {
@@ -1402,13 +1395,16 @@ export class WrfcController {
     logger.error('WrfcController.failChain', { chainId: chain.id, reason });
     this.scheduleChainCleanup(chain);
     this.safeDequeueNext();
+    // Orphan safety: re-promote a gate-runner for any chains still in awaiting_gates
+    // after this chain terminally fails (e.g. gate-retry exhaustion or fixer failure).
+    this.safeCheckAndRunGatesForAll();
   }
 
   private cancelRunningChildren(chain: WrfcChain): void {
     for (const agentId of chain.allAgentIds) {
       if (agentId === chain.ownerAgentId) continue;
       const record = this.agentManager.getStatus(agentId);
-      if (record?.status === 'pending' || record?.status === 'running') {
+      if (isAgentInFlight(record)) {
         this.agentManager.cancel(agentId);
       }
     }
@@ -1418,7 +1414,7 @@ export class WrfcController {
     return chain.allAgentIds.some((agentId) => {
       if (agentId === chain.ownerAgentId) return false;
       const record = this.agentManager.getStatus(agentId);
-      return record?.status === 'pending' || record?.status === 'running';
+      return isAgentInFlight(record);
     });
   }
 
@@ -1446,7 +1442,7 @@ export class WrfcController {
       agentId: chain.ownerAgentId,
     });
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
-    if (owner && (owner.status === 'pending' || owner.status === 'running')) {
+    if (isAgentInFlight(owner)) {
       owner.status = 'cancelled';
       owner.completedAt = Date.now();
       owner.progress = reason;
@@ -2486,6 +2482,12 @@ export class WrfcController {
       ? 'WRFC owner'
       : role.charAt(0).toUpperCase() + role.slice(1);
     return `${label}: ${task.slice(0, 120)}`;
+  }
+
+  private safeCheckAndRunGatesForAll(): void {
+    this.checkAndRunGatesForAll().catch((error) => {
+      logger.error('WrfcController.checkAndRunGatesForAll unhandled error', { error: summarizeError(error) });
+    });
   }
 
   private safeDequeueNext(): void {
