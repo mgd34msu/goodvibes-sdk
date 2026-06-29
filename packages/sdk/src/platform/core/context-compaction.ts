@@ -49,8 +49,8 @@ import {
   buildPlanProgress,
   buildSessionLineage,
   extractText,
-  isActiveAgent,
 } from './compaction-sections.js';
+import { isActiveAgent } from '../tools/agent/predicates.js';
 
 export type { CompactionEvent, CompactionResult, CompactionContext } from './compaction-types.js';
 
