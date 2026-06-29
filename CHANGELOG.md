@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.34.1] - 2026-06-29
+
+### Fixed
+- `@pellux/goodvibes-sdk`: Agent progress no longer firehoses raw model output. The orchestrator stream handler overwrote `record.progress` (surfaced as `RuntimeAgent.latestProgress`) with the last ~100 chars of raw streamed output on every delta, clobbering the concise status strings ("Turn N · <tool>", "Thinking…"). Live output already flows via `record.streamingContent` / `emitStreamDelta`; progress now retains its last meaningful status.
+- `@pellux/goodvibes-sdk`: Family-aware context-window fallback for unknown/new public models (Gemini 1M, Claude 200k, Grok 256k, GPT-5/4.1 400k, o-series 200k) instead of a flat default, plus a `> 0` guard so a `context: 0` from the live catalog no longer propagates as a zero window (which silently disabled auto-compaction). `capabilities.ts` context-window data corrected (xAI 256k, o-series 200k, gpt-5/4.1 400k) and made consistent with the fallback.
+- `@pellux/goodvibes-sdk`: WRFC config now validated with `Number.isFinite` (a NaN `maxFixAttempts` previously made the fix loop never terminate); defaults aligned to the schema.
+- `@pellux/goodvibes-sdk`: WRFC gate-failure handling — a global gate failure now spawns exactly one gate-fixer instead of one per concurrent chain racing the shared project tree (orphan-safety re-check added).
+- `@pellux/goodvibes-sdk`: Anthropic thinking-budget `max_tokens` bump is now clamp-aware (no longer risks exceeding the model output cap).
+- `@pellux/goodvibes-sdk`: `isRecord` array-semantics bug fixed — two copies (`mcp/client.ts`, `runtime/transports/http-helpers.ts`) wrongly treated arrays as records; all copies now use one canonical guard.
+
+### Added
+- `@pellux/goodvibes-sdk`: `WORKFLOW_SCORE_REGRESSION` workflow event (advisory) — distinct from `WORKFLOW_CASCADE_ABORTED`, which was previously overloaded for both a real abort and an advisory score-regression signal.
+- `@pellux/goodvibes-sdk`: Session lineage now records the original task (`originalTask` was previously always undefined in the compaction handoff).
+
+### Changed
+- `@pellux/goodvibes-sdk`: Large internal DRY consolidation (no public API change): shared SSE line-buffer + Anthropic/OpenAI stream assembly, JSON TTL-cache scaffolding, provider error helpers, context-usage/section-token accounting, config range-validator factories, read-model projection helpers, and `isRecord`/`sleep`/fetch-timeout utilities.
+
 ## [0.34.0] - 2026-06-20
 
 ### Added
