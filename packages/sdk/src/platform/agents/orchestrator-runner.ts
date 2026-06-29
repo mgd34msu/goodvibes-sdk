@@ -538,11 +538,13 @@ export async function runAgentTask(
           const onDelta = (delta: StreamDelta) => {
             if (delta.content) {
               streamAccumulated += delta.content;
+              // Live model output goes to streamingContent (rendered in the agent
+              // inspector / detail view) and is emitted via emitStreamDelta below.
+              // Do NOT overwrite record.progress with the raw output tail: progress
+              // is the concise one-line status surfaced as RuntimeAgent.latestProgress
+              // (e.g. the process indicator), so it must keep the last meaningful
+              // status ("Turn N · <tool>" / "Thinking…") rather than firehosing output.
               record.streamingContent = streamAccumulated;
-              const snippet = streamAccumulated.length > 100
-                ? '...' + streamAccumulated.slice(-97)
-                : streamAccumulated;
-              record.progress = snippet.replace(/\n/g, ' ').trim() || 'Streaming...';
             }
             context.emitStreamDelta(record.id, delta.content ?? '', streamAccumulated);
           };
