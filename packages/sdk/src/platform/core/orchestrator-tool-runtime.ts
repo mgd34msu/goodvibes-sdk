@@ -26,7 +26,7 @@ import type { ExecutionPlan, ExecutionPlanManager, PlanItem } from './execution-
 import type { ProviderRegistry } from '../providers/registry.js';
 import { evaluateOrchestrationSpawn } from '../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../utils/error-display.js';
-import { isActiveAgent } from './compaction-sections.js';
+import { isActiveAgent } from '../tools/agent/predicates.js';
 
 type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;

@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.34.2] - 2026-06-29
+
+### Fixed
+- `@pellux/goodvibes-sdk`: Fixed a tool-loop circuit-breaker infinite loop introduced in 0.34.1. The 0.34.1 DRY consolidation moved the `isActiveAgent` predicate into `compaction-sections` and had the orchestrator turn-loop modules (`orchestrator-context-runtime`, `orchestrator-tool-runtime`) and `context-compaction` import it from there. That pulled the heavy `compaction-sections` module into the turn-loop import graph and created a circular dependency, leaving the circuit-breaker threshold constant in its temporal dead zone (undefined) at runtime — so the breaker never tripped and a model that repeatedly calls a missing/failing tool would loop forever instead of failing with `tool_loop_circuit_breaker`. `isActiveAgent` now lives in the dependency-free leaf `tools/agent/predicates`, and a regression guard (`test/orchestrator-active-agent-cycle.test.ts`) prevents the cyclic import from returning.
+
 ## [0.34.1] - 2026-06-29
 
 ### Fixed

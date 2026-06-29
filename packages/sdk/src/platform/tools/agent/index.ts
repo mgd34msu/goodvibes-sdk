@@ -12,6 +12,7 @@ import { toRecord } from '../../utils/record-coerce.js';
 import { evaluateWrfcBatchPolicy } from './wrfc-batch-policy.js';
 export type { AgentExecutor, AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
+export { isActiveAgent } from './predicates.js';
 
 // ---------------------------------------------------------------------------
 // Tool implementation

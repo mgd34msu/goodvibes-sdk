@@ -12,6 +12,7 @@
 
 import type { ProviderMessage, ContentPart } from '../providers/interface.js';
 import type { AgentRecord } from '../tools/agent/index.js';
+import { isActiveAgent } from '../tools/agent/predicates.js';
 import type { WrfcChain } from '../agents/wrfc-types.js';
 import type { ExecutionPlan, PlanItem } from './execution-plan.js';
 import type { CompactionSection, CompactionConfig, SessionMemory } from './compaction-types.js';
@@ -26,10 +27,6 @@ export function extractText(content: string | ContentPart[]): string {
     .join('');
 }
 
-/** Returns true when an agent should be considered active (running or pending). */
-export function isActiveAgent(a: AgentRecord): boolean {
-  return a.status === 'running' || a.status === 'pending';
-}
 
 /** Build a CompactionSection. Returns null if content is empty. */
 function makeSection(
