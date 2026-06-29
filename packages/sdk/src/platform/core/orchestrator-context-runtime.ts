@@ -63,13 +63,47 @@ function formatAutoCompactTrigger(decision: ReturnType<typeof getAutoCompactDeci
   return `crossing the ${decision.thresholdPercent}% auto-compact threshold`;
 }
 
+type AutoCompactionDeps = {
+  sessionMemoryStore: Pick<SessionMemoryStore, 'list'> | null;
+  sessionLineageTracker: Pick<SessionLineageTracker, 'getEntries' | 'getCompactionCount' | 'getOriginalTask'>;
+  agentManager: Pick<AgentManager, 'list'>;
+  wrfcController: Pick<WrfcController, 'listChains'>;
+  planManager: Pick<ExecutionPlanManager, 'getActive'> | null;
+  sessionId: string;
+};
+
+function buildAutoCompactionContext(
+  deps: AutoCompactionDeps,
+  params: {
+    messages: CompactionContext['messages'];
+    contextWindow: number;
+    extractionModelId: string;
+    extractionProvider?: string;
+  },
+): CompactionContext {
+  return {
+    messages: params.messages,
+    sessionMemories: deps.sessionMemoryStore?.list() ?? [],
+    lineageEntries: deps.sessionLineageTracker.getEntries(),
+    agents: deps.agentManager.list().filter(isActiveAgent),
+    wrfcChains: deps.wrfcController.listChains(),
+    activePlan: deps.planManager?.getActive(deps.sessionId) ?? null,
+    compactionCount: deps.sessionLineageTracker.getCompactionCount(),
+    originalTask: deps.sessionLineageTracker.getOriginalTask() ?? undefined,
+    contextWindow: params.contextWindow,
+    trigger: 'auto',
+    extractionModelId: params.extractionModelId,
+    extractionProvider: params.extractionProvider,
+  };
+}
+
 export type PreflightDeps = {
   conversation: ConversationManager;
   requestRender: () => void;
   hookDispatcher: HookDispatcherLike | null;
   configManager: Pick<ConfigManager, 'get'>;
   providerRegistry: ProviderRegistry;
-  sessionLineageTracker: Pick<SessionLineageTracker, 'getEntries' | 'getCompactionCount'>;
+  sessionLineageTracker: Pick<SessionLineageTracker, 'getEntries' | 'getCompactionCount' | 'getOriginalTask'>;
   sessionId: string;
   agentManager: Pick<AgentManager, 'list'>;
   wrfcController: Pick<WrfcController, 'listChains'>;
@@ -153,19 +187,12 @@ export async function checkContextWindowPreflight(
     }
 
     try {
-      const preflightCtx: CompactionContext = {
+      const preflightCtx = buildAutoCompactionContext(deps, {
         messages,
-        sessionMemories: deps.sessionMemoryStore?.list() ?? [],
-        lineageEntries: deps.sessionLineageTracker.getEntries(),
-        agents: deps.agentManager.list().filter(a => a.status === 'running' || a.status === 'pending'),
-        wrfcChains: deps.wrfcController.listChains(),
-        activePlan: deps.planManager?.getActive(deps.sessionId) ?? null,
-        compactionCount: deps.sessionLineageTracker.getCompactionCount(),
         contextWindow,
-        trigger: 'auto',
         extractionModelId: model.registryKey,
         extractionProvider: model.provider,
-      };
+      });
       await deps.conversation.compact(deps.providerRegistry, model.registryKey, 'auto', model.provider, preflightCtx);
       deps.conversation.addSystemMessage('Context compacted. Retrying request...');
       if (deps.hookDispatcher) {
@@ -295,7 +322,7 @@ export type PostTurnContextDeps = {
   hookDispatcher: HookDispatcherLike | null;
   configManager: Pick<ConfigManager, 'get'>;
   providerRegistry: ProviderRegistry;
-  sessionLineageTracker: Pick<SessionLineageTracker, 'getEntries' | 'getCompactionCount'>;
+  sessionLineageTracker: Pick<SessionLineageTracker, 'getEntries' | 'getCompactionCount' | 'getOriginalTask'>;
   sessionId: string;
   requestRender: () => void;
   isCompacting: boolean;
@@ -398,19 +425,12 @@ export async function handlePostTurnContextMaintenance(
           deps.requestRender();
         }
       } else if (!skipAutoCompact) {
-        const compactionCtx: CompactionContext = {
+        const compactionCtx = buildAutoCompactionContext(deps, {
           messages: currentMsgs,
-          sessionMemories: deps.sessionMemoryStore?.list() ?? [],
-          lineageEntries: deps.sessionLineageTracker.getEntries(),
-          agents: deps.agentManager.list().filter(isActiveAgent),
-          wrfcChains: deps.wrfcController.listChains(),
-          activePlan: deps.planManager?.getActive(deps.sessionId) ?? null,
-          compactionCount: deps.sessionLineageTracker.getCompactionCount(),
           contextWindow: maxTokens,
-          trigger: 'auto',
           extractionModelId: currentModel.registryKey,
           extractionProvider: currentModel.provider,
-        };
+        });
         void deps.conversation.compact(
           deps.providerRegistry,
           currentModel.registryKey,

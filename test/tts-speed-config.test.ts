@@ -100,7 +100,7 @@ describe('tts.speed config key (Item 5b)', () => {
     expect(() => mgr.set('tts.speed', 10)).toThrow(ConfigError);
     try { mgr.set('tts.speed', 10); } catch (e) {
       expect(String(e)).toContain('0.25');
-      expect(String(e)).toContain('4.0');
+      expect(String(e)).toContain(', 4]');
     }
   });
 
@@ -112,7 +112,7 @@ describe('tts.speed config key (Item 5b)', () => {
     expect(() => mgr.set('tts.speed', -1)).toThrow(ConfigError);
     try { mgr.set('tts.speed', -1); } catch (e) {
       expect(String(e)).toContain('0.25');
-      expect(String(e)).toContain('4.0');
+      expect(String(e)).toContain(', 4]');
     }
   });
 
@@ -124,7 +124,7 @@ describe('tts.speed config key (Item 5b)', () => {
     expect(() => mgr.set('tts.speed', Number.NaN)).toThrow(ConfigError);
     try { mgr.set('tts.speed', Number.NaN); } catch (e) {
       expect(String(e)).toContain('0.25');
-      expect(String(e)).toContain('4.0');
+      expect(String(e)).toContain(', 4]');
     }
   });
 });

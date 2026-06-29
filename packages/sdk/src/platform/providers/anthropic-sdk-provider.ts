@@ -11,12 +11,12 @@ import { applyAnthropicThinking } from './anthropic-stream.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import {
-  fromAnthropicContent,
   normalizeAnthropicModel,
-  parseToolCallArguments,
   toAnthropicMessages,
   toAnthropicTools,
 } from './tool-formats.js';
+import { assembleAnthropicContentBlocks } from './anthropic-sse-assembler.js';
+import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
@@ -140,28 +140,12 @@ export class AnthropicSdkProvider implements LLMProvider {
         }
 
         const finalMessage = await stream.finalMessage();
-        const contentBlocks: AnthropicContentBlock[] = [];
-        if (responseText) {
-          contentBlocks.push({ type: 'text', text: responseText } as AnthropicContentBlock);
-        }
-        for (const [, block] of [...toolBlocks.entries()].sort(([a], [b]) => a - b)) {
-          const parsedInput = parseToolCallArguments(block.args, {
-            provider: this.name,
-            toolName: block.name,
-            callId: block.id,
-          });
-          if (parsedInput === undefined) continue;
-          contentBlocks.push({
-            type: 'tool_use',
-            id: block.id,
-            name: block.name,
-            input: parsedInput,
-          } as AnthropicContentBlock);
-        }
-
-        const parsed = contentBlocks.length > 0
-          ? fromAnthropicContent(contentBlocks)
-          : fromAnthropicContent(finalMessage.content as AnthropicContentBlock[]);
+        const parsed = assembleAnthropicContentBlocks(
+          toolBlocks,
+          responseText,
+          this.name,
+          finalMessage.content as AnthropicContentBlock[],
+        );
 
         return {
           content: parsed.text,
@@ -172,8 +156,8 @@ export class AnthropicSdkProvider implements LLMProvider {
             ...(finalMessage.usage.cache_read_input_tokens != null ? { cacheReadTokens: finalMessage.usage.cache_read_input_tokens } : {}),
             ...(finalMessage.usage.cache_creation_input_tokens != null ? { cacheWriteTokens: finalMessage.usage.cache_creation_input_tokens } : {}),
           },
-          stopReason: stopReason === 'unknown' && parsed.text ? 'completed' : stopReason,
-          ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
+          stopReason: resolveCompletedStopReason(stopReason, parsed.text),
+          ...withProviderStopReason(rawStopReason),
         };
       } catch (error) {
         throw toProviderError(error, {

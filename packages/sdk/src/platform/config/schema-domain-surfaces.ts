@@ -1,4 +1,4 @@
-import type { ConfigSettingDefinition } from './schema-shared.js';
+import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
 
 export const surfaceConfigDefaults = {
   slack: {
@@ -264,7 +264,7 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 3,
     description: 'Default ntfy priority (1-5)',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5,
+    ...intRange(1, 5),
   },
   {
     key: 'surfaces.webhook.enabled',
@@ -283,7 +283,7 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 10_000,
     description: 'Outbound webhook timeout in milliseconds',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1_000 && v <= 60_000,
+    ...intRange(1_000, 60_000),
   },
   {
     key: 'surfaces.webhook.secret',
@@ -344,7 +344,7 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 20 * 60_000,
     description: 'Idle TTL for Home Assistant remote conversation sessions before the daemon closes them',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 60_000 && v <= 24 * 60 * 60_000,
+    ...intRange(60_000, 24 * 60 * 60_000),
   },
   {
     key: 'surfaces.telegram.enabled',

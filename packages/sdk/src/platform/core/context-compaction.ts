@@ -450,7 +450,7 @@ async function runCompaction(
         id: 'recent-conversation',
         header: '## Recent Conversation',
         content: filteredText,
-        tokens: estimateTokens(filteredText),
+        tokens: estimateTokens('## Recent Conversation\n' + filteredText),
       });
     } else {
       // Include raw gathered messages if the LLM filter fails.
@@ -463,7 +463,7 @@ async function runCompaction(
         id: 'recent-conversation',
         header: '## Recent Conversation',
         content: fallbackContent,
-        tokens: estimateTokens(fallbackContent),
+        tokens: estimateTokens('## Recent Conversation\n' + fallbackContent),
       });
     }
   }
@@ -474,7 +474,7 @@ async function runCompaction(
       id: 'tool-results',
       header: '## Tool Results & Files Modified',
       content: toolSummary,
-      tokens: estimateTokens(toolSummary),
+      tokens: estimateTokens('## Tool Results & Files Modified\n' + toolSummary),
     });
   }
 
@@ -484,7 +484,7 @@ async function runCompaction(
       id: 'older-agent-summary',
       header: '## Older Work Summary',
       content: olderSummary,
-      tokens: estimateTokens(olderSummary),
+      tokens: estimateTokens('## Older Work Summary\n' + olderSummary),
     });
   }
 
@@ -495,7 +495,7 @@ async function runCompaction(
       id: 'resolved-problems',
       header: '## Resolved Problems',
       content: problemsText,
-      tokens: estimateTokens(problemsText),
+      tokens: estimateTokens('## Resolved Problems\n' + problemsText),
     });
   }
 

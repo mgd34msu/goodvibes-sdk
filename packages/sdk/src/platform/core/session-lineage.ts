@@ -49,6 +49,11 @@ export class SessionLineageTracker {
     return this.entries.length;
   }
 
+  /** Get the original task for this session, or null if never set. */
+  getOriginalTask(): string | null {
+    return this.originalTask;
+  }
+
   /** Get a copy of the lineage entries (read-only snapshot). */
   getEntries(): string[] {
     return [...this.entries];

@@ -18,6 +18,7 @@ import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import { mapCodexStopReason } from './stop-reason-maps.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { parseToolCallArguments } from './tool-formats.js';
+import { SseLineBuffer } from './sse-line-buffer.js';
 
 const OPENAI_CODEX_BASE_URL = 'https://chatgpt.com/backend-api';
 const OPENAI_CODEX_PROVIDER_NAME = 'openai-subscriber';
@@ -223,8 +224,7 @@ export async function chatWithOpenAICodex(
       }
 
       try {
-        const decoder = new TextDecoder();
-        let buffer = '';
+        const sseBuffer = new SseLineBuffer();
         let text = '';
         const toolStarts = new Map<string, PartialToolCall>();
         const toolItemIds = new Map<string, string>();
@@ -371,10 +371,7 @@ export async function chatWithOpenAICodex(
           const { done, value } = await reader.read();
           if (done) break;
           if (!value) continue;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split(/\r?\n/);
-          buffer = lines.pop() ?? '';
-          for (const rawLine of lines) {
+          for (const rawLine of sseBuffer.feed(value)) {
             const line = rawLine.trim();
             if (!line.startsWith('data: ')) continue;
             const data = line.slice(6).trim();
@@ -382,9 +379,10 @@ export async function chatWithOpenAICodex(
             handleDataPayload(data);
           }
         }
-        const trailing = buffer.trim();
-        if (trailing.startsWith('data: ')) {
-          const data = trailing.slice(6).trim();
+        for (const rawLine of sseBuffer.flush()) {
+          const line = rawLine.trim();
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
           if (data && data !== '[DONE]') {
             handleDataPayload(data);
           }

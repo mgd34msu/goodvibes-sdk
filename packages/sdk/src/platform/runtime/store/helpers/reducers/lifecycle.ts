@@ -13,7 +13,7 @@ import type {
   OrchestrationNodeRecord,
 } from '../../domains/orchestration.js';
 import type { PermissionCategory } from '../../../../permissions/manager.js';
-import { now, uniq, updateDomainMetadata } from './shared.js';
+import { now, uniq, updateDomainMetadata, isTerminalLifecycleState, computeActiveIds } from './shared.js';
 
 function permissionMachineStateForEvent(event: PermissionEvent): PermissionDecisionMachineState {
   switch (event.type) {
@@ -125,7 +125,7 @@ function updateTaskIndexes(tasks: Map<string, RuntimeTask>) {
 }
 
 function isTerminalTaskStatus(status: TaskLifecycleState): boolean {
-  return status === 'completed' || status === 'failed' || status === 'cancelled';
+  return isTerminalLifecycleState(status);
 }
 
 function countTaskTransition(
@@ -254,7 +254,7 @@ function assertNeverAgentEvent(event: never): never {
 }
 
 function isTerminalAgentStatus(status: AgentLifecycleState): boolean {
-  return status === 'completed' || status === 'failed' || status === 'cancelled';
+  return isTerminalLifecycleState(status);
 }
 
 function isWrfcOwnerRevivalEvent(event: AgentEvent): boolean {
@@ -264,6 +264,29 @@ function isWrfcOwnerRevivalEvent(event: AgentEvent): boolean {
     && typeof event.wrfcId === 'string'
     && event.wrfcId.length > 0
   );
+}
+
+function applyAgentDomainAggregates(
+  domain: AgentDomainState,
+  agents: Map<string, RuntimeAgent>,
+  prevStatus: AgentLifecycleState | undefined,
+  nextStatus: AgentLifecycleState,
+  completedCorrection: number,
+  failedCorrection: number,
+): Pick<AgentDomainState, 'activeAgentIds' | 'totalCompleted' | 'totalFailed' | 'peakConcurrency'> {
+  const activeAgentIds = computeActiveIds(agents);
+  return {
+    activeAgentIds,
+    totalCompleted: Math.max(
+      0,
+      domain.totalCompleted + completedCorrection + (prevStatus !== 'completed' && nextStatus === 'completed' ? 1 : 0),
+    ),
+    totalFailed: Math.max(
+      0,
+      domain.totalFailed + failedCorrection + (prevStatus !== 'failed' && nextStatus === 'failed' ? 1 : 0),
+    ),
+    peakConcurrency: Math.max(domain.peakConcurrency, activeAgentIds.length),
+  };
 }
 
 export function updateAgentState(domain: AgentDomainState, event: AgentEvent): AgentDomainState {
@@ -338,23 +361,13 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
           }
         : revivedWrfcOwner ? undefined : agent.result,
   });
-  const activeAgentIds = [...agents.values()].filter((value) => !['completed', 'failed', 'cancelled'].includes(value.status)).map((value) => value.id);
   const completedCorrection = revivedWrfcOwner && existing?.status === 'completed' ? -1 : 0;
   const failedCorrection = revivedWrfcOwner && existing?.status === 'failed' ? -1 : 0;
   return {
     ...updateDomainMetadata(domain, event.type),
     agents,
-    activeAgentIds,
     totalSpawned: domain.totalSpawned + (!existing && event.type === 'AGENT_SPAWNING' ? 1 : 0),
-    totalCompleted: Math.max(
-      0,
-      domain.totalCompleted + completedCorrection + (existing?.status !== 'completed' && nextStatus === 'completed' ? 1 : 0),
-    ),
-    totalFailed: Math.max(
-      0,
-      domain.totalFailed + failedCorrection + (existing?.status !== 'failed' && nextStatus === 'failed' ? 1 : 0),
-    ),
-    peakConcurrency: Math.max(domain.peakConcurrency, activeAgentIds.length),
+    ...applyAgentDomainAggregates(domain, agents, existing?.status, nextStatus, completedCorrection, failedCorrection),
   };
 }
 
@@ -370,15 +383,11 @@ function transitionAgentDomainRecord(
 
   const agents = new Map(domain.agents);
   agents.set(agentId, { ...existing, ...patch, status });
-  const activeAgentIds = [...agents.values()].filter((value) => !['completed', 'failed', 'cancelled'].includes(value.status)).map((value) => value.id);
 
   return {
     ...updateDomainMetadata(domain, source),
     agents,
-    activeAgentIds,
-    totalCompleted: domain.totalCompleted + (existing.status !== 'completed' && status === 'completed' ? 1 : 0),
-    totalFailed: domain.totalFailed + (existing.status !== 'failed' && status === 'failed' ? 1 : 0),
-    peakConcurrency: Math.max(domain.peakConcurrency, activeAgentIds.length),
+    ...applyAgentDomainAggregates(domain, agents, existing.status, status, 0, 0),
   };
 }
 
@@ -496,7 +505,7 @@ export function updateOrchestrationState(
     }
   }
 
-  const activeGraphIds = [...graphs.values()].filter((graph) => !['completed', 'failed', 'cancelled'].includes(graph.status)).map((graph) => graph.id);
+  const activeGraphIds = computeActiveIds(graphs);
 
   return {
     ...updateDomainMetadata(domain, event.type),

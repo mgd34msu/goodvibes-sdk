@@ -112,9 +112,7 @@ export class AgentMessageBus {
       scope: 'direct',
       ...(fromMeta?.role !== undefined ? { fromRole: fromMeta.role } : {}),
       ...(toMeta?.role !== undefined ? { toRole: toMeta.role } : {}),
-      ...(options.cohort ?? fromMeta?.cohort ?? toMeta?.cohort ? { cohort: options.cohort ?? fromMeta?.cohort ?? toMeta?.cohort } : {}),
-      ...(options.wrfcId ?? fromMeta?.wrfcId ?? toMeta?.wrfcId ? { wrfcId: options.wrfcId ?? fromMeta?.wrfcId ?? toMeta?.wrfcId } : {}),
-      ...(options.parentAgentId ?? fromMeta?.parentAgentId ? { parentAgentId: options.parentAgentId ?? fromMeta?.parentAgentId } : {}),
+      ...this.pickRoutingFields(options, fromMeta, toMeta),
     };
 
     this.store(toId, message);
@@ -205,11 +203,7 @@ export class AgentMessageBus {
 
   private emitSent(message: AgentMessage): void {
     if (!this.runtimeBus) return;
-    emitCommunicationSent(this.runtimeBus, {
-      sessionId: 'agent-communication',
-      traceId: `agent-communication:${message.id}:sent`,
-      source: 'agent-message-bus',
-    }, {
+    emitCommunicationSent(this.runtimeBus, this.commContext(message.id, 'sent'), {
       messageId: message.id,
       fromId: message.from,
       toId: message.to,
@@ -226,11 +220,7 @@ export class AgentMessageBus {
 
   private emitDelivered(message: AgentMessage): void {
     if (!this.runtimeBus) return;
-    emitCommunicationDelivered(this.runtimeBus, {
-      sessionId: 'agent-communication',
-      traceId: `agent-communication:${message.id}:delivered`,
-      source: 'agent-message-bus',
-    }, {
+    emitCommunicationDelivered(this.runtimeBus, this.commContext(message.id, 'delivered'), {
       messageId: message.id,
       fromId: message.from,
       toId: message.to,
@@ -250,11 +240,7 @@ export class AgentMessageBus {
     toMeta?: AgentCommunicationMetadata,
   ): void {
     if (!this.runtimeBus) return;
-    emitCommunicationBlocked(this.runtimeBus, {
-      sessionId: 'agent-communication',
-      traceId: `agent-communication:${messageId}:blocked`,
-      source: 'agent-message-bus',
-    }, {
+    emitCommunicationBlocked(this.runtimeBus, this.commContext(messageId, 'blocked'), {
       messageId,
       fromId,
       toId,
@@ -263,9 +249,7 @@ export class AgentMessageBus {
       reason,
       ...(fromMeta?.role !== undefined ? { fromRole: fromMeta.role } : {}),
       ...(toMeta?.role !== undefined ? { toRole: toMeta.role } : {}),
-      ...(options.cohort ?? fromMeta?.cohort ?? toMeta?.cohort ? { cohort: options.cohort ?? fromMeta?.cohort ?? toMeta?.cohort } : {}),
-      ...(options.wrfcId ?? fromMeta?.wrfcId ?? toMeta?.wrfcId ? { wrfcId: options.wrfcId ?? fromMeta?.wrfcId ?? toMeta?.wrfcId } : {}),
-      ...(options.parentAgentId ?? fromMeta?.parentAgentId ? { parentAgentId: options.parentAgentId ?? fromMeta?.parentAgentId } : {}),
+      ...this.pickRoutingFields(options, fromMeta, toMeta),
     });
     logger.warn('MessageBus: communication blocked', {
       fromId,
@@ -275,6 +259,38 @@ export class AgentMessageBus {
       reason,
       content,
     });
+  }
+
+  /** Build the standard runtime event context for agent-communication bus events. */
+  private commContext(
+    messageId: string,
+    phase: 'sent' | 'delivered' | 'blocked',
+  ): { sessionId: string; traceId: string; source: string } {
+    return {
+      sessionId: 'agent-communication',
+      traceId: `agent-communication:${messageId}:${phase}`,
+      source: 'agent-message-bus',
+    };
+  }
+
+  /**
+   * Extract optional routing fields from options + sender/receiver metadata.
+   *
+   * Coalescing rules (intentionally asymmetric):
+   *   cohort, wrfcId   — options ?? fromMeta ?? toMeta
+   *   parentAgentId    — options ?? fromMeta ONLY (toMeta excluded to avoid
+   *                      leaking the recipient's parent onto unrelated messages).
+   */
+  private pickRoutingFields(
+    options: { cohort?: string | undefined; wrfcId?: string | undefined; parentAgentId?: string | undefined },
+    fromMeta: AgentCommunicationMetadata | undefined,
+    toMeta: AgentCommunicationMetadata | undefined,
+  ): { cohort?: string | undefined; wrfcId?: string | undefined; parentAgentId?: string | undefined } {
+    return {
+      ...(options.cohort ?? fromMeta?.cohort ?? toMeta?.cohort ? { cohort: options.cohort ?? fromMeta?.cohort ?? toMeta?.cohort } : {}),
+      ...(options.wrfcId ?? fromMeta?.wrfcId ?? toMeta?.wrfcId ? { wrfcId: options.wrfcId ?? fromMeta?.wrfcId ?? toMeta?.wrfcId } : {}),
+      ...(options.parentAgentId ?? fromMeta?.parentAgentId ? { parentAgentId: options.parentAgentId ?? fromMeta?.parentAgentId } : {}),
+    };
   }
 
   cleanup(): void {

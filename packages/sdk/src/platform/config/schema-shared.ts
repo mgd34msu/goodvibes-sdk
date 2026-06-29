@@ -14,3 +14,33 @@ export interface ConfigSettingDefinition {
    */
   validationHint?: string | undefined;
 }
+
+/** Returns validate + validationHint for an integer in [min, max]. */
+export function intRange(
+  min: number,
+  max: number,
+): Pick<ConfigSettingDefinition, 'validate' | 'validationHint'> {
+  return {
+    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max,
+    validationHint: `integer in [${min}, ${max}]`,
+  };
+}
+
+/** Returns validate + validationHint for a float in [min, max]. */
+export function numRange(
+  min: number,
+  max: number,
+): Pick<ConfigSettingDefinition, 'validate' | 'validationHint'> {
+  return {
+    validate: (v) => typeof v === 'number' && v >= min && v <= max,
+    validationHint: `number in [${min}, ${max}]`,
+  };
+}
+
+/** Returns validate + validationHint for a TCP port (integer in [1, 65535]). */
+export function port(): Pick<ConfigSettingDefinition, 'validate' | 'validationHint'> {
+  return {
+    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 65535,
+    validationHint: 'integer port in [1, 65535]',
+  };
+}

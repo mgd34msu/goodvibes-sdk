@@ -24,6 +24,7 @@ import {
 import type { GeminiPart } from './tool-formats.js';
 import type { CacheHitTracker } from './cache-strategy.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
+import { SseLineBuffer } from './sse-line-buffer.js';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_CACHE_TTL_SECONDS = 3600;
@@ -284,19 +285,14 @@ export class GeminiProvider implements LLMProvider {
         });
       }
 
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const sseBuffer = new SseLineBuffer();
 
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-
-          for (const line of lines) {
+          for (const line of sseBuffer.feed(value)) {
             if (!line.startsWith('data: ')) continue;
             const data = line.slice(6).trim();
             if (!data || data === '[DONE]') continue;

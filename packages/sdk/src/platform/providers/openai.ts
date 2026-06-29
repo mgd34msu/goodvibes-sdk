@@ -22,9 +22,10 @@ import {
   toOpenAITools,
   toOpenAIMessages,
   fromOpenAIToolCalls,
-  extractTextToolCalls,
 } from './tool-formats.js';
 import type { OpenAIToolCall } from './tool-formats.js';
+import { accumOpenAIToolCall, finalizeOpenAIToolCalls, applyOpenAIChunkUsage, resolveOpenAIToolCallsAndFallback } from './openai-stream-helpers.js';
+import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
 import type { CacheHitTracker } from './cache-strategy.js';
 import { extractOpenAIStreamTextDelta } from './openai-stream-delta.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
@@ -108,17 +109,7 @@ export class OpenAIProvider implements LLMProvider {
           // Accumulate streaming tool_calls deltas
           if (delta?.tool_calls) {
             for (const tc of delta.tool_calls) {
-              const idx = tc.index;
-              if (!accToolCalls.has(idx)) {
-                accToolCalls.set(idx, { id: tc.id ?? '', name: tc.function?.name ?? '', args: '' });
-              }
-              const entry = accToolCalls.get(idx)!;
-              if (tc.id) entry.id = tc.id;
-              if (tc.function?.name) entry.name = tc.function.name;
-              if (tc.function?.arguments) entry.args += tc.function.arguments;
-              if (onDelta) {
-                onDelta({ toolCalls: [{ index: idx, id: tc.id, name: tc.function?.name, arguments: tc.function?.arguments }] });
-              }
+              accumOpenAIToolCall(accToolCalls, tc, onDelta);
             }
           }
 
@@ -128,22 +119,13 @@ export class OpenAIProvider implements LLMProvider {
             stopReason = mapOpenAIStopReason(finishReason);
           }
 
-          const usage = (chunk as { usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } }).usage;
-          if (usage) {
-            inputTokens = usage.prompt_tokens ?? 0;
-            outputTokens = usage.completion_tokens ?? 0;
-            cacheReadTokens = usage.prompt_tokens_details?.cached_tokens ?? cacheReadTokens;
-          }
+          ({ inputTokens, outputTokens, cacheReadTokens } = applyOpenAIChunkUsage(
+            (chunk as { usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } }).usage,
+            { inputTokens, outputTokens, cacheReadTokens },
+          ));
         }
 
-        // Finalise accumulated tool calls
-        for (const [, tc] of [...accToolCalls.entries()].sort(([a], [b]) => a - b)) {
-          rawToolCalls.push({
-            id: tc.id,
-            type: 'function',
-            function: { name: tc.name, arguments: tc.args },
-          });
-        }
+        rawToolCalls = finalizeOpenAIToolCalls(accToolCalls);
       } catch (err: unknown) {
         const { hasStatus } = await import('../utils/retry.js');
         const status = hasStatus(err) ? err.status : undefined;
@@ -157,16 +139,11 @@ export class OpenAIProvider implements LLMProvider {
 
       // Some models may emit tool calls as raw text tokens instead of the
       // OpenAI function-calling wire format. Fall back to text extraction.
-      let toolCalls = rawToolCalls.length > 0 ? fromOpenAIToolCalls(rawToolCalls) : [];
-      if (toolCalls.length === 0 && (responseText.includes('<|toolcallbegin|>') || responseText.includes('<|tool_call_begin|>'))) {
-        const extracted = extractTextToolCalls(responseText);
-        if (extracted.toolCalls.length > 0) {
-          toolCalls = extracted.toolCalls;
-          responseText = extracted.cleanedContent;
-          stopReason = 'tool_call';
-          rawStopReason = rawStopReason ?? 'tool_calls';
-        }
-      }
+      const resolved = resolveOpenAIToolCallsAndFallback(rawToolCalls, responseText, stopReason, rawStopReason);
+      const toolCalls = resolved.toolCalls;
+      responseText = resolved.responseText;
+      stopReason = resolved.stopReason;
+      rawStopReason = resolved.rawStopReason;
 
       this.cacheHitTracker.recordTurn({
         inputTokens,
@@ -181,8 +158,8 @@ export class OpenAIProvider implements LLMProvider {
           outputTokens,
           ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
         },
-        stopReason: stopReason === 'unknown' && responseText ? 'completed' : stopReason,
-        ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
+        stopReason: resolveCompletedStopReason(stopReason, responseText),
+        ...withProviderStopReason(rawStopReason),
       };
     });
   }

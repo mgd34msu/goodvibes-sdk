@@ -1,6 +1,6 @@
 import type { RuntimeServices } from './services.js';
 import type { UiReadModel } from './ui-read-models-base.js';
-import { createStoreBackedReadModel } from './ui-read-model-helpers.js';
+import { createStoreBackedReadModel, projectRecords } from './ui-read-model-helpers.js';
 import type { RemoteSupervisorSnapshot } from './remote/supervisor.js';
 import type { DistributedPendingWork, DistributedPeerRecord, DistributedRuntimePairRequest } from './remote/distributed-runtime-types.js';
 
@@ -54,9 +54,7 @@ export function createRemoteReadModels(runtimeServices: RuntimeServices): UiRemo
         acp: {
           transportState: state.acp.managerTransportState,
           totalMessages: state.acp.totalMessages,
-          activeConnections: state.acp.activeConnectionIds
-            .map((id) => state.acp.connections.get(id))
-            .filter((connection): connection is import('./store/domains/acp.js').AcpConnection => connection !== undefined),
+          activeConnections: projectRecords(state.acp.activeConnectionIds, state.acp.connections),
         },
         pools: runtimeServices.remoteRunnerRegistry.listPools(),
         contracts: runtimeServices.remoteRunnerRegistry.listContracts(),
