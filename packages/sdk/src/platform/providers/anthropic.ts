@@ -18,15 +18,15 @@ import { getDefaultStrategy } from './cache-strategy.js';
 import type { CacheContext, CacheHitTracker } from './cache-strategy.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
-import { logger } from '../utils/logger.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import {
   toAnthropicTools,
   toAnthropicMessages,
   fromAnthropicContent,
-  parseToolCallArguments,
   normalizeAnthropicModel,
 } from './tool-formats.js';
+import { createAnthropicSSEState, readAnthropicSSEStream, assembleAnthropicContentBlocks } from './anthropic-sse-assembler.js';
+import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
@@ -41,29 +41,6 @@ interface AnthropicResponseBody {
   usage: { input_tokens: number; output_tokens: number };
 }
 
-/** Anthropic SSE event types used in streaming responses. */
-interface AnthropicSSEEvent {
-  type: string;
-  index?: number | undefined;
-  delta?: {
-    type?: string | undefined;
-    text?: string | undefined;
-    thinking?: string | undefined;
-    partial_json?: string | undefined;
-    stop_reason?: string | undefined;
-  };
-  content_block?: {
-    type: string;
-    id?: string | undefined;
-    name?: string | undefined;
-    text?: string | undefined;
-    thinking?: string | undefined;
-  };
-  message?: {
-    usage?: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
-  };
-  usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
-}
 
 /** Anthropic model-specific max output token caps. */
 const ANTHROPIC_MAX_OUTPUT: Array<{ match: (m: string) => boolean; cap: number }> = [
@@ -292,16 +269,7 @@ export class AnthropicProvider implements LLMProvider {
       }
 
       // Parse SSE stream
-      let responseText = '';
-      let inputTokens = 0;
-      let outputTokens = 0;
-      let cacheReadTokens = 0;
-      let cacheWriteTokens = 0;
-      let rawStopReason: string | undefined;
-      let stopReason: ChatStopReason = 'unknown';
-
-      // Accumulate tool use blocks by index
-      const toolBlocks = new Map<number, { id: string; name: string; args: string }>();
+      const state = createAnthropicSSEState();
 
       const reader = res.body?.getReader();
       if (!reader) {
@@ -313,118 +281,25 @@ export class AnthropicProvider implements LLMProvider {
         });
       }
 
-      const decoder = new TextDecoder();
-      let buffer = '';
+      await readAnthropicSSEStream(reader, state, onDelta, 'Anthropic');
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          // Keep the last (potentially incomplete) line in buffer
-          buffer = lines.pop() ?? '';
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (!data || data === '[DONE]') continue;
-
-            let event: AnthropicSSEEvent;
-            try {
-              event = JSON.parse(data) as AnthropicSSEEvent;
-            } catch {
-              logger.warn('Anthropic SSE: failed to parse JSON chunk', {
-                chunkPreview: data.slice(0, 200),
-                chunkLength: data.length,
-              });
-              continue;
-            }
-
-            if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
-              const idx = event.index ?? 0;
-              toolBlocks.set(idx, {
-                id: event.content_block.id ?? '',
-                name: event.content_block.name ?? '',
-                args: '',
-              });
-              if (onDelta) {
-                onDelta({ toolCalls: [{ index: idx, id: event.content_block.id, name: event.content_block.name }] });
-              }
-            } else if (event.type === 'content_block_delta') {
-              const idx = event.index ?? 0;
-              if (event.delta?.type === 'text_delta' && event.delta.text) {
-                responseText += event.delta.text;
-                if (onDelta) onDelta({ content: event.delta.text });
-              } else if (event.delta?.type === 'thinking_delta' && event.delta.thinking) {
-                if (onDelta) onDelta({ reasoning: event.delta.thinking });
-              } else if (event.delta?.type === 'input_json_delta' && event.delta.partial_json) {
-                const block = toolBlocks.get(idx);
-                if (block) block.args += event.delta.partial_json;
-                if (onDelta) {
-                  onDelta({ toolCalls: [{ index: idx, arguments: event.delta.partial_json }] });
-                }
-              }
-            } else if (event.type === 'message_delta') {
-              if (event.delta?.stop_reason) {
-                rawStopReason = event.delta.stop_reason;
-                stopReason = mapAnthropicStopReason(rawStopReason);
-              }
-              if (event.usage?.output_tokens) outputTokens = event.usage.output_tokens;
-              if (event.usage?.cache_read_input_tokens != null) cacheReadTokens = event.usage.cache_read_input_tokens;
-              if (event.usage?.cache_creation_input_tokens != null) cacheWriteTokens = event.usage.cache_creation_input_tokens;
-            } else if (event.type === 'message_start') {
-              if (event.message?.usage) {
-                inputTokens = event.message.usage.input_tokens;
-                outputTokens = event.message.usage.output_tokens;
-                cacheReadTokens = event.message.usage.cache_read_input_tokens ?? 0;
-                cacheWriteTokens = event.message.usage.cache_creation_input_tokens ?? 0;
-              }
-            }
-          }
-        }
-      } finally {
-        reader.releaseLock();
-      }
-
-      // Build the content blocks for fromAnthropicContent
-      const contentBlocks: AnthropicContentBlock[] = [];
-      if (responseText) {
-        contentBlocks.push({ type: 'text', text: responseText } as AnthropicContentBlock);
-      }
-      for (const [, block] of [...toolBlocks.entries()].sort(([a], [b]) => a - b)) {
-        const parsedInput = parseToolCallArguments(block.args, {
-          provider: this.name,
-          toolName: block.name,
-          callId: block.id,
-        });
-        if (parsedInput === undefined) continue;
-        contentBlocks.push({
-          type: 'tool_use',
-          id: block.id,
-          name: block.name,
-          input: parsedInput,
-        } as AnthropicContentBlock);
-      }
-
-      const { text, toolCalls } = fromAnthropicContent(contentBlocks);
+      const { text, toolCalls } = assembleAnthropicContentBlocks(state.toolBlocks, state.responseText, this.name);
 
       // Record cache metrics for strategy adaptation.
-      this.cacheHitTracker.recordTurn({ inputTokens, cacheReadTokens, cacheWriteTokens });
+      this.cacheHitTracker.recordTurn({ inputTokens: state.inputTokens, cacheReadTokens: state.cacheReadTokens, cacheWriteTokens: state.cacheWriteTokens });
 
       const cap = getCacheCapability('anthropic');
       // Exclude write tokens from the denominator: writes are a one-time cost and inflate the
       // apparent miss rate on the first request. Read rate = reads / (billed input + reads).
-      const hitRateDenom = inputTokens + cacheReadTokens;
-      const hitRate = hitRateDenom > 0 ? cacheReadTokens / hitRateDenom : undefined;
+      const hitRateDenom = state.inputTokens + state.cacheReadTokens;
+      const hitRate = hitRateDenom > 0 ? state.cacheReadTokens / hitRateDenom : undefined;
 
       return {
         content: text,
         toolCalls,
-        usage: { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens },
-        stopReason: stopReason === 'unknown' && text ? 'completed' : stopReason,
-        ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
+        usage: { inputTokens: state.inputTokens, outputTokens: state.outputTokens, cacheReadTokens: state.cacheReadTokens, cacheWriteTokens: state.cacheWriteTokens },
+        stopReason: resolveCompletedStopReason(state.stopReason, text),
+        ...withProviderStopReason(state.rawStopReason),
         cacheMetrics: {
           strategy: cap.type === 'explicit' ? `explicit-${cap.maxBreakpoints}bp` : cap.type,
           breakpointsPlaced,

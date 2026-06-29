@@ -3,7 +3,7 @@ import type { RuntimeTask } from './store/domains/tasks.js';
 import type { RuntimeAgent } from './store/domains/agents.js';
 import type { SessionDomainState } from './store/domains/session.js';
 import type { TurnState } from './store/domains/conversation.js';
-import { createStoreBackedReadModel, listProviderIds } from './ui-read-model-helpers.js';
+import { createStoreBackedReadModel, listProviderIds, projectRecords, projectValues } from './ui-read-model-helpers.js';
 import type { UiReadModel } from './ui-read-models-base.js';
 
 export interface UiProvidersSnapshot {
@@ -72,9 +72,7 @@ export function createCoreReadModels(runtimeServices: RuntimeServices): UiCoreRe
     }),
     agents: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState().agents;
-      const active = state.activeAgentIds
-        .map((id) => state.agents.get(id))
-        .filter((agent): agent is RuntimeAgent => agent !== undefined);
+      const active = projectRecords(state.activeAgentIds, state.agents);
       return {
         active,
         totalSpawned: state.totalSpawned,
@@ -84,7 +82,7 @@ export function createCoreReadModels(runtimeServices: RuntimeServices): UiCoreRe
     }),
     tasks: createStoreBackedReadModel(runtimeServices, () => {
       const tasksState = runtimeStore.getState().tasks;
-      const tasks = [...tasksState.tasks.values()].sort((a, b) => {
+      const tasks = projectValues(tasksState.tasks, (a, b) => {
         const aTime = a.startedAt ?? a.queuedAt;
         const bTime = b.startedAt ?? b.queuedAt;
         return bTime - aTime || a.title.localeCompare(b.title);

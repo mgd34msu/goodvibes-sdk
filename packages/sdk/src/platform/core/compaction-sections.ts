@@ -177,37 +177,58 @@ export function gatherRecentConversation(
 // LLM substance filter prompt
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Shared delimited-message prompt scaffold
+// ---------------------------------------------------------------------------
+
+function buildDelimitedMessagePrompt(opts: {
+  intro: string[];
+  delimiter: string;
+  messages: ProviderMessage[];
+  render: (msg: ProviderMessage) => string | null;
+  outro: string;
+}): string {
+  if (opts.messages.length === 0) return '';
+  const parts: string[] = [
+    ...opts.intro,
+    '',
+    `--- ${opts.delimiter} ---`,
+    '',
+  ];
+  for (const msg of opts.messages) {
+    const line = opts.render(msg);
+    if (line != null) {
+      parts.push(line);
+      parts.push('');
+    }
+  }
+  parts.push(`--- END ${opts.delimiter} ---`);
+  parts.push('');
+  parts.push(opts.outro);
+  return parts.join('\n');
+}
+
 /**
  * buildToolResultsPrompt — build the prompt for LLM-assisted tool relevance extraction.
  *
  * The caller sends this to the LLM and uses the response as the section content.
  */
 export function buildToolResultsPrompt(toolMessages: ProviderMessage[]): string {
-  if (toolMessages.length === 0) return '';
-
-  const parts: string[] = [
-    'From these tool call results, select the ones that are still relevant for ongoing work.',
-    'Include: file paths touched with what was done (created/edited/deleted), any error outputs',
-    'that have not been resolved, any build/test results.',
-    'Max 1,500 tokens. Use relative paths and short descriptions.',
-    '',
-    '--- TOOL RESULTS ---',
-    '',
-  ];
-
-  for (const msg of toolMessages) {
-    const text = extractText(msg.content);
-    if (text.trim()) {
-      parts.push(`[tool]: ${text.trim().slice(0, 2000)}`);
-      parts.push('');
-    }
-  }
-
-  parts.push('--- END TOOL RESULTS ---');
-  parts.push('');
-  parts.push('Provide a concise summary of relevant tool results now:');
-
-  return parts.join('\n');
+  return buildDelimitedMessagePrompt({
+    intro: [
+      'From these tool call results, select the ones that are still relevant for ongoing work.',
+      'Include: file paths touched with what was done (created/edited/deleted), any error outputs',
+      'that have not been resolved, any build/test results.',
+      'Max 1,500 tokens. Use relative paths and short descriptions.',
+    ],
+    delimiter: 'TOOL RESULTS',
+    messages: toolMessages,
+    render: (msg) => {
+      const text = extractText(msg.content);
+      return text.trim() ? `[tool]: ${text.trim().slice(0, 2000)}` : null;
+    },
+    outro: 'Provide a concise summary of relevant tool results now:',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -224,33 +245,23 @@ export function buildToolResultsPrompt(toolMessages: ProviderMessage[]): string 
 export function buildConversationFilterPrompt(
   gatheredMessages: ProviderMessage[],
 ): string {
-  if (gatheredMessages.length === 0) return '';
-
-  const parts: string[] = [
-    'From these recent messages, remove anything that does not advance the work:',
-    'short acknowledgments, agent count updates, repetitive system nudges, status confirmations.',
-    'Keep: instructions, planning, decisions, task assignments, requirement changes.',
-    'ALL user messages are high-priority — bias toward keeping them even if short.',
-    'Keep user-assistant pairs together: if you keep an assistant message, keep the user message that prompted it.',
-    'Return only the messages worth preserving, in original order.',
-    '',
-    '--- RECENT MESSAGES ---',
-    '',
-  ];
-
-  for (const msg of gatheredMessages) {
-    const text = extractText(msg.content);
-    if (text.trim()) {
-      parts.push(`[${msg.role}]: ${text.trim()}`);
-      parts.push('');
-    }
-  }
-
-  parts.push('--- END RECENT MESSAGES ---');
-  parts.push('');
-  parts.push('Return the filtered messages in the same [role]: content format:');
-
-  return parts.join('\n');
+  return buildDelimitedMessagePrompt({
+    intro: [
+      'From these recent messages, remove anything that does not advance the work:',
+      'short acknowledgments, agent count updates, repetitive system nudges, status confirmations.',
+      'Keep: instructions, planning, decisions, task assignments, requirement changes.',
+      'ALL user messages are high-priority — bias toward keeping them even if short.',
+      'Keep user-assistant pairs together: if you keep an assistant message, keep the user message that prompted it.',
+      'Return only the messages worth preserving, in original order.',
+    ],
+    delimiter: 'RECENT MESSAGES',
+    messages: gatheredMessages,
+    render: (msg) => {
+      const text = extractText(msg.content);
+      return text.trim() ? `[${msg.role}]: ${text.trim()}` : null;
+    },
+    outro: 'Return the filtered messages in the same [role]: content format:',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -385,31 +396,21 @@ export function buildOlderAgentSummaryPrompt(olderChains: WrfcChain[]): string {
 export function buildResolvedProblemsPrompt(
   messages: ProviderMessage[],
 ): string {
-  if (messages.length === 0) return '';
-
-  const parts: string[] = [
-    'Extract problem → resolution pairs from this conversation.',
-    'Only include problems that were actually resolved. One line each.',
-    'Format: problem → resolution.',
-    'Highlight the resolution, not the debugging journey.',
-    '',
-    '--- CONVERSATION ---',
-    '',
-  ];
-
-  for (const msg of messages) {
-    const text = extractText(msg.content);
-    if (text.trim()) {
-      parts.push(`[${msg.role}]: ${text.trim().slice(0, 1000)}`);
-      parts.push('');
-    }
-  }
-
-  parts.push('--- END CONVERSATION ---');
-  parts.push('');
-  parts.push('List resolved problems now (or return empty if none):');
-
-  return parts.join('\n');
+  return buildDelimitedMessagePrompt({
+    intro: [
+      'Extract problem → resolution pairs from this conversation.',
+      'Only include problems that were actually resolved. One line each.',
+      'Format: problem → resolution.',
+      'Highlight the resolution, not the debugging journey.',
+    ],
+    delimiter: 'CONVERSATION',
+    messages,
+    render: (msg) => {
+      const text = extractText(msg.content);
+      return text.trim() ? `[${msg.role}]: ${text.trim().slice(0, 1000)}` : null;
+    },
+    outro: 'List resolved problems now (or return empty if none):',
+  });
 }
 
 // ---------------------------------------------------------------------------

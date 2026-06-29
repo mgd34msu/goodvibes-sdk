@@ -8,7 +8,7 @@ import type { OrchestrationGraphRecord } from './store/domains/orchestration.js'
 import type { RuntimeCommunicationRecord } from './store/domains/communication.js';
 import type { ControlPlaneClientRecord } from './store/domains/control-plane.js';
 import type { AcpConnection } from './store/domains/acp.js';
-import { combineSubscriptions, createStoreBackedReadModel } from './ui-read-model-helpers.js';
+import { combineSubscriptions, createStoreBackedReadModel, projectRecords, projectValues } from './ui-read-model-helpers.js';
 import type { UiReadModel } from './ui-read-models-base.js';
 
 export interface UiAutomationSnapshot {
@@ -94,14 +94,8 @@ export function createOperationsReadModels(
   return {
     automation: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState();
-      const jobs = state.automation.jobIds
-        .map((id) => state.automation.jobs.get(id))
-        .filter((job): job is AutomationJob => job !== undefined)
-        .sort((a, b) => (b.nextRunAt ?? 0) - (a.nextRunAt ?? 0) || a.name.localeCompare(b.name));
-      const runs = state.automation.runIds
-        .map((id) => state.automation.runs.get(id))
-        .filter((run): run is AutomationRun => run !== undefined)
-        .sort((a, b) => b.queuedAt - a.queuedAt || a.id.localeCompare(b.id));
+      const jobs = projectRecords(state.automation.jobIds, state.automation.jobs, (a, b) => (b.nextRunAt ?? 0) - (a.nextRunAt ?? 0) || a.name.localeCompare(b.name));
+      const runs = projectRecords(state.automation.runIds, state.automation.runs, (a, b) => b.queuedAt - a.queuedAt || a.id.localeCompare(b.id));
       return {
         jobs,
         runs,
@@ -119,10 +113,7 @@ export function createOperationsReadModels(
     }),
     routes: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState().routes;
-      const bindings = state.bindingIds
-        .map((id) => state.bindings.get(id))
-        .filter((binding): binding is AutomationRouteBinding => binding !== undefined)
-        .sort((a, b) => b.lastSeenAt - a.lastSeenAt || a.id.localeCompare(b.id));
+      const bindings = projectRecords(state.bindingIds, state.bindings, (a, b) => b.lastSeenAt - a.lastSeenAt || a.id.localeCompare(b.id));
       return {
         bindings,
         bindingIdsBySurface: state.bindingIdsBySurface,
@@ -134,10 +125,7 @@ export function createOperationsReadModels(
     }),
     watchers: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState().watchers;
-      const watchers = state.watcherIds
-        .map((id) => state.watchers.get(id))
-        .filter((watcher): watcher is WatcherRecord => watcher !== undefined)
-        .sort((a, b) => (b.lastHeartbeatAt ?? 0) - (a.lastHeartbeatAt ?? 0) || a.id.localeCompare(b.id));
+      const watchers = projectRecords(state.watcherIds, state.watchers, (a, b) => (b.lastHeartbeatAt ?? 0) - (a.lastHeartbeatAt ?? 0) || a.id.localeCompare(b.id));
       return {
         watchers,
         totalWatchers: state.watcherIds.length,
@@ -148,7 +136,7 @@ export function createOperationsReadModels(
     }),
     orchestration: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState().orchestration;
-      const graphs = [...state.graphs.values()].sort((a, b) => b.createdAt - a.createdAt);
+      const graphs = projectValues(state.graphs, (a, b) => b.createdAt - a.createdAt);
       return {
         graphs,
         totalGraphs: state.totalGraphs,
@@ -160,10 +148,7 @@ export function createOperationsReadModels(
     }),
     communication: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState().communication;
-      const records = state.recentRecordIds
-        .map((id) => state.records.get(id))
-        .filter((record): record is RuntimeCommunicationRecord => record !== undefined)
-        .sort((a, b) => b.timestamp - a.timestamp);
+      const records = projectRecords(state.recentRecordIds, state.records, (a, b) => b.timestamp - a.timestamp);
       return {
         records,
         totalSent: state.totalSent,
@@ -174,10 +159,7 @@ export function createOperationsReadModels(
     controlPlane: {
       getSnapshot() {
         const state = runtimeStore.getState().controlPlane;
-        const clients = state.clientIds
-          .map((id) => state.clients.get(id))
-          .filter((client): client is ControlPlaneClientRecord => client !== undefined)
-          .sort((a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0) || a.id.localeCompare(b.id));
+        const clients = projectRecords(state.clientIds, state.clients, (a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0) || a.id.localeCompare(b.id));
         return {
           connectionState: state.connectionState,
           activeClientIds: state.activeClientIds,

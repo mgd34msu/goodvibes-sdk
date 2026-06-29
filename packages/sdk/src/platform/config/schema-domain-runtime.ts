@@ -1,4 +1,4 @@
-import type { ConfigSettingDefinition } from './schema-shared.js';
+import { type ConfigSettingDefinition, intRange, port } from './schema-shared.js';
 
 export const runtimeConfigDefaults = {
   runtime: {
@@ -141,35 +141,35 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 4,
     description: 'Maximum automation runs that may execute concurrently',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 64,
+    ...intRange(1, 64),
   },
   {
     key: 'automation.runHistoryLimit',
     type: 'number',
     default: 100,
     description: 'Maximum run history entries retained per automation job',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5000,
+    ...intRange(1, 5000),
   },
   {
     key: 'automation.defaultTimeoutMs',
     type: 'number',
     default: 15 * 60 * 1000,
     description: 'Default execution timeout for automation runs in milliseconds',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1_000 && v <= 24 * 60 * 60 * 1000,
+    ...intRange(1_000, 24 * 60 * 60 * 1000),
   },
   {
     key: 'automation.catchUpWindowMinutes',
     type: 'number',
     default: 30,
     description: 'How long after startup the engine should catch up missed runs',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 24 * 60,
+    ...intRange(0, 24 * 60),
   },
   {
     key: 'automation.failureCooldownMs',
     type: 'number',
     default: 5 * 60 * 1000,
     description: 'Cooldown applied after a failed automation run before retrying',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 24 * 60 * 60 * 1000,
+    ...intRange(0, 24 * 60 * 60 * 1000),
   },
   {
     key: 'automation.deleteAfterRun',
@@ -201,7 +201,7 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 3421,
     description: 'Bind port for the control-plane HTTP server',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 65535,
+    ...port(),
   },
   {
     key: 'controlPlane.baseUrl',
@@ -278,7 +278,7 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 3422,
     description: 'Bind port for the webhook HTTP listener',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 65535,
+    ...port(),
   },
   {
     key: 'httpListener.trustProxy',
@@ -329,7 +329,7 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 3423,
     description: 'Bind port for the web surface',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 65535,
+    ...port(),
   },
   {
     key: 'web.publicBaseUrl',
@@ -357,21 +357,21 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 60_000,
     description: 'Polling interval for watcher sources in milliseconds',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1_000 && v <= 24 * 60 * 60 * 1000,
+    ...intRange(1_000, 24 * 60 * 60 * 1000),
   },
   {
     key: 'watchers.heartbeatIntervalMs',
     type: 'number',
     default: 15_000,
     description: 'Heartbeat interval for watcher services in milliseconds',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1_000 && v <= 60 * 60 * 1000,
+    ...intRange(1_000, 60 * 60 * 1000),
   },
   {
     key: 'watchers.recoveryWindowMinutes',
     type: 'number',
     default: 10,
     description: 'Recovery window for watcher restart and missed-event catch-up',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 24 * 60,
+    ...intRange(0, 24 * 60),
   },
   {
     key: 'service.enabled',
@@ -457,7 +457,7 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Maximum number of listeners per event channel (per-type and per-domain) before a warning is emitted in production ' +
       'or a RangeError is thrown in development mode. Raise this only if you have verified there is no subscriber leak.',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 100_000,
+    ...intRange(1, 100_000),
   },
   {
     key: 'telemetry.includeRawPrompts',
@@ -494,35 +494,35 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 60_000,
     description: 'Daemon-local batch scheduler tick interval in milliseconds',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 5_000 && v <= 60 * 60 * 1000,
+    ...intRange(5_000, 60 * 60 * 1000),
   },
   {
     key: 'batch.maxDelayMs',
     type: 'number',
     default: 5 * 60 * 1000,
     description: 'Maximum time a queued local batch job should wait before the daemon submits its provider batch',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 24 * 60 * 60 * 1000,
+    ...intRange(0, 24 * 60 * 60 * 1000),
   },
   {
     key: 'batch.maxJobsPerProviderBatch',
     type: 'number',
     default: 100,
     description: 'Maximum SDK jobs grouped into a single upstream provider batch submission',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 100_000,
+    ...intRange(1, 100_000),
   },
   {
     key: 'batch.maxQueuePayloadBytes',
     type: 'number',
     default: 16 * 1024,
     description: 'Recommended maximum Cloudflare queue message payload size; queue messages should be signals, not full prompt archives',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1024 && v <= 128 * 1024,
+    ...intRange(1024, 128 * 1024),
   },
   {
     key: 'batch.maxQueueMessagesPerDay',
     type: 'number',
     default: 1_000,
     description: 'SDK-side free-tier guardrail for Cloudflare queue message volume',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 10_000_000,
+    ...intRange(0, 10_000_000),
   },
   {
     key: 'cloudflare.enabled',
@@ -710,6 +710,6 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 10_000,
     description: 'Free-tier queue operation budget used by clients to warn before Cloudflare queue usage exceeds the intended budget',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 10_000_000,
+    ...intRange(0, 10_000_000),
   },
 ];

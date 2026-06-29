@@ -1,6 +1,16 @@
 import type { PartialToolCall } from '../../../../providers/interface.js';
 import type { ConversationDomainState } from '../../domains/conversation.js';
 
+export const TERMINAL_LIFECYCLE_STATES = ['completed', 'failed', 'cancelled'] as const;
+
+export function isTerminalLifecycleState(s: string): boolean {
+  return (TERMINAL_LIFECYCLE_STATES as readonly string[]).includes(s);
+}
+
+export function computeActiveIds<T extends { id: string; status: string }>(map: Map<string, T>): string[] {
+  return [...map.values()].filter((v) => !isTerminalLifecycleState(v.status)).map((v) => v.id);
+}
+
 export function uniq<T>(items: T[]): T[] {
   return [...new Set(items)];
 }
@@ -22,7 +32,7 @@ export function updateDomainMetadata<T extends { revision: number; lastUpdatedAt
 }
 
 export function isTerminalTurnState(state: ConversationDomainState['turnState']): boolean {
-  return state === 'completed' || state === 'failed' || state === 'cancelled';
+  return isTerminalLifecycleState(state);
 }
 
 export function canStartNewTurn(domain: ConversationDomainState): boolean {

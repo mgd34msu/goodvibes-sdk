@@ -1,4 +1,4 @@
-import type { ConfigSettingDefinition } from './schema-shared.js';
+import { type ConfigSettingDefinition, intRange, numRange, port } from './schema-shared.js';
 
 export const coreConfigDefaults = {
   display: {
@@ -148,7 +148,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 30,
     description: 'Line count threshold for collapsing tool output',
-    validate: (v) => typeof v === 'number' && v >= 1 && v <= 1000,
+    ...numRange(1, 1000),
   },
   {
     key: 'display.theme',
@@ -221,7 +221,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 80,
     description: 'Compact conversation when context usage exceeds this percentage',
-    validate: (v) => typeof v === 'number' && v >= 10 && v <= 100,
+    ...numRange(10, 100),
   },
   {
     key: 'behavior.staleContextWarnings',
@@ -267,7 +267,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 512 * 1024 * 1024,
     description: 'Maximum stored artifact size for file, URL, multipart, and raw upload ingest in bytes',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 * 1024 * 1024 && v <= 10 * 1024 * 1024 * 1024,
+    ...intRange(1 * 1024 * 1024, 10 * 1024 * 1024 * 1024),
   },
   {
     key: 'permissions.mode',
@@ -385,14 +385,14 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 8,
     description: 'Total active agents allowed across the orchestration tree',
-    validate: (v) => typeof v === 'number' && v >= 1 && v <= 20,
+    ...numRange(1, 20),
   },
   {
     key: 'orchestration.maxDepth',
     type: 'number',
     default: 0,
     description: 'Maximum recursive orchestration depth: 0=disabled, higher values allow deeper bounded recursion',
-    validate: (v) => typeof v === 'number' && v >= 0 && v <= 5,
+    ...numRange(0, 5),
   },
   {
     key: 'sandbox.replIsolation',
@@ -451,7 +451,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 2222,
     description: 'Optional guest SSH port used by the QEMU wrapper for real guest command transport',
-    validate: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 65535,
+    ...port(),
   },
   {
     key: 'sandbox.qemuGuestUser',
@@ -520,8 +520,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 1.0,
     description: 'Playback speed multiplier for TTS synthesis (0.25–4.0); 1.0 is normal speed',
-    validate: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0.25 && v <= 4.0,
-    validationHint: 'finite number in [0.25, 4.0]',
+    ...numRange(0.25, 4.0),
   },
   {
     key: 'ui.operationalMessages',
@@ -588,7 +587,7 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 5000,
     description: 'Default token budget for precision read operations',
-    validate: (v) => typeof v === 'number' && v >= 100 && v <= 100000,
+    ...numRange(100, 100000),
   },
   {
     key: 'tools.hooksFile',
@@ -601,14 +600,14 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 9.9,
     description: 'Minimum review score to pass WRFC (0-10)',
-    validate: (v) => typeof v === 'number' && v >= 0 && v <= 10,
+    ...numRange(0, 10),
   },
   {
     key: 'wrfc.maxFixAttempts',
     type: 'number',
     default: 5,
     description: 'Maximum gate retry depth before aborting WRFC chain',
-    validate: (v) => typeof v === 'number' && v >= 1 && v <= 20,
+    ...numRange(1, 20),
   },
   {
     key: 'wrfc.autoCommit',
@@ -647,7 +646,7 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 0.3,
     description: 'Warn when cache hit rate falls below this fraction (0.0–1.0)',
-    validate: (v) => typeof v === 'number' && v >= 0 && v <= 1,
+    ...numRange(0, 1),
   },
   {
     key: 'helper.enabled',

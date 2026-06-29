@@ -16,10 +16,11 @@ import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import {
   toOpenAITools,
   toOpenAIMessages,
-  fromOpenAIToolCalls,
-  extractTextToolCalls,
 } from './tool-formats.js';
 import type { OpenAIToolCall } from './tool-formats.js';
+import { accumOpenAIToolCall, finalizeOpenAIToolCalls, applyOpenAIChunkUsage, resolveOpenAIToolCallsAndFallback } from './openai-stream-helpers.js';
+import type { OpenAIChunkUsage } from './openai-stream-helpers.js';
+import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
 import { getCacheCapability } from './cache-capability.js';
 import type { ProviderCacheCapability } from './cache-capability.js';
 import type { CacheHitTracker } from './cache-strategy.js';
@@ -443,17 +444,7 @@ export class OpenAICompatProvider implements LLMProvider {
           // Accumulate streaming tool_calls deltas
           if (delta?.tool_calls) {
             for (const tc of delta.tool_calls) {
-              const idx = tc.index;
-              if (!accToolCalls.has(idx)) {
-                accToolCalls.set(idx, { id: tc.id ?? '', name: tc.function?.name ?? '', args: '' });
-              }
-              const entry = accToolCalls.get(idx)!;
-              if (tc.id) entry.id = tc.id;
-              if (tc.function?.name) entry.name = tc.function.name;
-              if (tc.function?.arguments) entry.args += tc.function.arguments;
-              if (onDelta) {
-                onDelta({ toolCalls: [{ index: idx, id: tc.id, name: tc.function?.name, arguments: tc.function?.arguments }] });
-              }
+              accumOpenAIToolCall(accToolCalls, tc, onDelta);
             }
           }
 
@@ -463,25 +454,13 @@ export class OpenAICompatProvider implements LLMProvider {
             stopReason = mapOpenAIStopReason(finishReason);
           }
 
-          if (raw.usage) {
-            const rawUsage = raw.usage as {
-              prompt_tokens?: number | undefined;
-              completion_tokens?: number | undefined;
-              prompt_tokens_details?: { cached_tokens?: number } | undefined;
-            };
-            inputTokens = rawUsage.prompt_tokens ?? 0;
-            outputTokens = rawUsage.completion_tokens ?? 0;
-            cacheReadTokens = rawUsage.prompt_tokens_details?.cached_tokens ?? cacheReadTokens;
-          }
+          ({ inputTokens, outputTokens, cacheReadTokens } = applyOpenAIChunkUsage(
+            raw.usage as OpenAIChunkUsage | undefined,
+            { inputTokens, outputTokens, cacheReadTokens },
+          ));
         }
 
-        for (const [, tc] of [...accToolCalls.entries()].sort(([a], [b]) => a - b)) {
-          rawToolCalls.push({
-            id: tc.id,
-            type: 'function',
-            function: { name: tc.name, arguments: tc.args },
-          });
-        }
+        rawToolCalls = finalizeOpenAIToolCalls(accToolCalls);
       } catch (err: unknown) {
         const diagnostic = extractOpenAICompatErrorDiagnostic(err);
         const phase = streamOpened ? 'stream' : 'request';
@@ -516,16 +495,11 @@ export class OpenAICompatProvider implements LLMProvider {
       // Some models (e.g. kimi-k2-thinking via ollama-cloud) emit tool calls as
       // raw text tokens instead of the OpenAI function-calling wire format.
       // Fall back to text extraction when no structured tool calls were found.
-      let toolCalls = rawToolCalls.length > 0 ? fromOpenAIToolCalls(rawToolCalls) : [];
-      if (toolCalls.length === 0 && (responseText.includes('<|toolcallbegin|>') || responseText.includes('<|tool_call_begin|>'))) {
-        const extracted = extractTextToolCalls(responseText);
-        if (extracted.toolCalls.length > 0) {
-          toolCalls = extracted.toolCalls;
-          responseText = extracted.cleanedContent;
-          stopReason = 'tool_call';
-          rawStopReason = rawStopReason ?? 'tool_calls';
-        }
-      }
+      const resolved = resolveOpenAIToolCallsAndFallback(rawToolCalls, responseText, stopReason, rawStopReason);
+      const toolCalls = resolved.toolCalls;
+      responseText = resolved.responseText;
+      stopReason = resolved.stopReason;
+      rawStopReason = resolved.rawStopReason;
 
       const response: ChatResponse = {
         content: responseText,
@@ -535,8 +509,8 @@ export class OpenAICompatProvider implements LLMProvider {
           outputTokens,
           ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
         },
-        stopReason: stopReason === 'unknown' && responseText ? 'completed' : stopReason,
-        ...(rawStopReason !== undefined ? { providerStopReason: rawStopReason } : {}),
+        stopReason: resolveCompletedStopReason(stopReason, responseText),
+        ...withProviderStopReason(rawStopReason),
       };
 
       if (reasoningSummaryText) {

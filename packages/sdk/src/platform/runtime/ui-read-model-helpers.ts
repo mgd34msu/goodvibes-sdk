@@ -21,6 +21,23 @@ export function createStoreBackedReadModel<TSnapshot>(
   };
 }
 
+export function projectRecords<T>(
+  ids: readonly string[],
+  map: ReadonlyMap<string, T>,
+  compare?: (a: T, b: T) => number,
+): T[] {
+  const items = ids.map((id) => map.get(id)).filter((v): v is T => v !== undefined);
+  return compare ? items.sort(compare) : items;
+}
+
+export function projectValues<T>(
+  map: ReadonlyMap<string, T>,
+  compare?: (a: T, b: T) => number,
+): T[] {
+  const items = [...map.values()];
+  return compare ? items.sort(compare) : items;
+}
+
 export function listProviderIds(runtimeServices: RuntimeServices): readonly string[] {
   const providerIds = new Set<string>(
     runtimeServices.providerRegistry.listProviders().map((provider) => provider.name),

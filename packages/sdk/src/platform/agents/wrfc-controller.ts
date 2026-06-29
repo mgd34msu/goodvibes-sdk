@@ -468,6 +468,34 @@ export class WrfcController {
     }
   }
 
+  /** Wire up a freshly spawned WRFC child agent in one canonical order:
+   * stamp metadata, push to allAgentIds tracking list, register with message bus.
+   * Keeps the role-field assignment at each call site to preserve clarity. */
+  /** Prepend a formatted block of synthetic controller-injected issues to a review task body.
+   * Returns the augmented task string; does NOT clear the issues array (caller's responsibility). */
+  private prependSyntheticIssues(
+    issues: ReadonlyArray<{ readonly severity: string; readonly description: string }>,
+    reviewTask: string,
+  ): string {
+    if (issues.length === 0) return reviewTask;
+    const syntheticBlock = [
+      `## Synthetic issues from controller`,
+      ``,
+      ...issues.map((issue) => `- [${issue.severity.toUpperCase()}] ${issue.description}`),
+    ].join('\n');
+    return syntheticBlock + '\n\n---\n\n' + reviewTask;
+  }
+
+  private registerSpawnedChild(chain: WrfcChain, record: AgentRecord, role: Exclude<WrfcAgentRole, 'owner'>, subtaskId?: string): void {
+    this.applyWrfcAgentMetadata(chain, record, role, subtaskId);
+    chain.allAgentIds.push(record.id);
+    this.messageBus.registerAgent({
+      agentId: record.id,
+      role,
+      wrfcId: chain.id,
+    });
+  }
+
   private keepOwnerAgentActive(chain: WrfcChain, reason?: string): void {
     if (chain.ownerTerminalEmitted || isChainTerminal(chain.state)) return;
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
@@ -781,13 +809,8 @@ export class WrfcController {
     // Prepend any synthetic issues from the controller (e.g. fixer constraint-continuity
     // violations) to the review task body, then clear them so they fire only once.
     let reviewTask = buildReviewTask(chain.id, chain.task, report, getWrfcScoreThreshold(this.configManager), chain.constraints);
-    if (chain.syntheticIssues && chain.syntheticIssues.length > 0) {
-      const syntheticBlock = [
-        `## Synthetic issues from controller`,
-        ``,
-        ...chain.syntheticIssues.map((issue) => `- [${issue.severity.toUpperCase()}] ${issue.description}`),
-      ].join('\n');
-      reviewTask = syntheticBlock + '\n\n---\n\n' + reviewTask;
+    if (chain.syntheticIssues?.length) {
+      reviewTask = this.prependSyntheticIssues(chain.syntheticIssues, reviewTask);
       chain.syntheticIssues = [];
     }
 
@@ -800,13 +823,7 @@ export class WrfcController {
     );
 
     chain.reviewerAgentId = reviewerRecord.id;
-    this.applyWrfcAgentMetadata(chain, reviewerRecord, 'reviewer');
-    chain.allAgentIds.push(reviewerRecord.id);
-    this.messageBus.registerAgent({
-      agentId: reviewerRecord.id,
-      role: 'reviewer',
-      wrfcId: chain.id,
-    });
+    this.registerSpawnedChild(chain, reviewerRecord, 'reviewer');
     chain.currentNodeId = startWrfcOrchestrationNode(
       this.runtimeBus,
       this.sessionId,
@@ -971,13 +988,7 @@ export class WrfcController {
     );
 
     chain.fixerAgentId = fixerRecord.id;
-    this.applyWrfcAgentMetadata(chain, fixerRecord, 'fixer');
-    chain.allAgentIds.push(fixerRecord.id);
-    this.messageBus.registerAgent({
-      agentId: fixerRecord.id,
-      role: 'fixer',
-      wrfcId: chain.id,
-    });
+    this.registerSpawnedChild(chain, fixerRecord, 'fixer');
     chain.currentNodeId = startWrfcOrchestrationNode(
       this.runtimeBus,
       this.sessionId,
@@ -1161,14 +1172,8 @@ export class WrfcController {
 
     const gateFixTask = buildGateFailureTask(chain.id, chain.task, failedGates, chain.constraints);
     const fixerRecord = this.spawnWrfcAgent(chain, 'fixer', 'engineer', gateFixTask, true);
-    this.applyWrfcAgentMetadata(chain, fixerRecord, 'fixer');
     chain.fixerAgentId = fixerRecord.id;
-    chain.allAgentIds.push(fixerRecord.id);
-    this.messageBus.registerAgent({
-      agentId: fixerRecord.id,
-      role: 'fixer',
-      wrfcId: chain.id,
-    });
+    this.registerSpawnedChild(chain, fixerRecord, 'fixer');
     chain.currentNodeId = startWrfcOrchestrationNode(
       this.runtimeBus,
       this.sessionId,
@@ -1346,8 +1351,7 @@ export class WrfcController {
 
     const writeRoles = new Set(['engineer', 'fixer', 'integrator']);
     for (const agentId of chain.allAgentIds) {
-      const recordRole = this.agentManager.getStatus(agentId)?.wrfcRole;
-      const role = recordRole ?? this.workPlanRoleForAgent(chain, agentId);
+      const role = this.resolveWrfcRole(chain, agentId);
       if (role && writeRoles.has(role)) add(agentId);
     }
     return candidates;
@@ -1612,14 +1616,8 @@ export class WrfcController {
       chain.task,
       true,
     );
-    this.applyWrfcAgentMetadata(chain, engineerRecord, 'engineer');
     chain.engineerAgentId = engineerRecord.id;
-    chain.allAgentIds.push(engineerRecord.id);
-    this.messageBus.registerAgent({
-      agentId: engineerRecord.id,
-      role: 'engineer',
-      wrfcId: chain.id,
-    });
+    this.registerSpawnedChild(chain, engineerRecord, 'engineer');
     chain.currentNodeId = startWrfcOrchestrationNode(
       this.runtimeBus,
       this.sessionId,
@@ -1666,14 +1664,8 @@ export class WrfcController {
         true,
         subtask.id,
       );
-      this.applyWrfcAgentMetadata(chain, engineerRecord, 'engineer', subtask.id);
       subtask.engineerAgentId = engineerRecord.id;
-      chain.allAgentIds.push(engineerRecord.id);
-      this.messageBus.registerAgent({
-        agentId: engineerRecord.id,
-        role: 'engineer',
-        wrfcId: chain.id,
-      });
+      this.registerSpawnedChild(chain, engineerRecord, 'engineer', subtask.id);
       subtask.currentNodeId = startWrfcOrchestrationNode(
         this.runtimeBus,
         this.sessionId,
@@ -2019,25 +2011,14 @@ export class WrfcController {
       getWrfcScoreThreshold(this.configManager),
       subtask.constraints,
     );
-    if (subtask.syntheticIssues && subtask.syntheticIssues.length > 0) {
-      const syntheticBlock = [
-        `## Synthetic issues from controller`,
-        ``,
-        ...subtask.syntheticIssues.map((issue) => `- [${issue.severity.toUpperCase()}] ${issue.description}`),
-      ].join('\n');
-      reviewTask = syntheticBlock + '\n\n---\n\n' + reviewTask;
+    if (subtask.syntheticIssues?.length) {
+      reviewTask = this.prependSyntheticIssues(subtask.syntheticIssues, reviewTask);
       subtask.syntheticIssues = [];
     }
 
     const reviewerRecord = this.spawnWrfcAgent(chain, 'reviewer', 'reviewer', reviewTask, true, subtask.id);
     subtask.reviewerAgentId = reviewerRecord.id;
-    this.applyWrfcAgentMetadata(chain, reviewerRecord, 'reviewer', subtask.id);
-    chain.allAgentIds.push(reviewerRecord.id);
-    this.messageBus.registerAgent({
-      agentId: reviewerRecord.id,
-      role: 'reviewer',
-      wrfcId: chain.id,
-    });
+    this.registerSpawnedChild(chain, reviewerRecord, 'reviewer', subtask.id);
     subtask.currentNodeId = startWrfcOrchestrationNode(
       this.runtimeBus,
       this.sessionId,
@@ -2098,6 +2079,19 @@ export class WrfcController {
     });
 
     subtask.reviewScores.push(review.score);
+    const subtaskScores = subtask.reviewScores;
+    if (subtaskScores.length >= 3) {
+      const initial = subtaskScores[0]!;
+      const lastTwo = subtaskScores.slice(-2);
+      if (lastTwo[0]! < initial && lastTwo[1]! < initial) {
+        emitWrfcScoreRegression(
+          this.runtimeBus,
+          this.sessionId,
+          chain.id,
+          `Score regression warning (subtask ${subtask.id}): initial ${initial}/10, last two ${lastTwo[0]}/10, ${lastTwo[1]}/10 — both below initial. Fix quality may be degrading.`,
+        );
+      }
+    }
     if (passed) {
       subtask.state = 'passed';
       this.appendOwnerDecision(chain, 'subtask_review_passed', `Sub-deliverable ${subtask.id} passed review with ${review.score}/10`, {
@@ -2154,13 +2148,7 @@ export class WrfcController {
       subtask.id,
     );
     subtask.fixerAgentId = fixerRecord.id;
-    this.applyWrfcAgentMetadata(chain, fixerRecord, 'fixer', subtask.id);
-    chain.allAgentIds.push(fixerRecord.id);
-    this.messageBus.registerAgent({
-      agentId: fixerRecord.id,
-      role: 'fixer',
-      wrfcId: chain.id,
-    });
+    this.registerSpawnedChild(chain, fixerRecord, 'fixer', subtask.id);
     subtask.currentNodeId = startWrfcOrchestrationNode(
       this.runtimeBus,
       this.sessionId,
@@ -2191,13 +2179,7 @@ export class WrfcController {
       true,
     );
     chain.integratorAgentId = integratorRecord.id;
-    this.applyWrfcAgentMetadata(chain, integratorRecord, 'integrator');
-    chain.allAgentIds.push(integratorRecord.id);
-    this.messageBus.registerAgent({
-      agentId: integratorRecord.id,
-      role: 'integrator',
-      wrfcId: chain.id,
-    });
+    this.registerSpawnedChild(chain, integratorRecord, 'integrator');
     chain.currentNodeId = startWrfcOrchestrationNode(
       this.runtimeBus,
       this.sessionId,
@@ -2398,7 +2380,7 @@ export class WrfcController {
     reason?: string,
   ): void {
     if (!this.workPlanService) return;
-    const role = this.workPlanRoleForAgent(chain, agentId);
+    const role = this.resolveWrfcRole(chain, agentId);
     if (!role) return;
     const taskId = this.workPlanTaskIdForAgent(chain, agentId, role);
     this.enqueueWrfcWorkPlanTaskOperation(taskId, async () => {
@@ -2450,6 +2432,33 @@ export class WrfcController {
         }
       });
     this.workPlanTaskQueues.set(taskId, next);
+  }
+
+  /**
+   * Resolve the work-plan-visible role for an agent in a chain.
+   *
+   * Primary source: the durable `record.wrfcRole` stamped by
+   * `applyWrfcAgentMetadata`. This preserves superseded-agent identity
+   * (e.g. an earlier fixer whose `fixerAgentId` slot was reassigned still
+   * resolves to 'fixer', so autoCommit continues to include its worktree).
+   *
+   * Structural fallback: `workPlanRoleForAgent`, which matches against the
+   * CURRENT chain/subtask agent-id slots. Returns null for any agent no
+   * longer in a current slot.
+   *
+   * Note: 'orchestrator' and 'verifier' are filtered out because they have
+   * no work-plan task representation; workPlanTaskIdForAgent does not
+   * accept those roles.
+   */
+  private resolveWrfcRole(
+    chain: WrfcChain,
+    agentId: string,
+  ): 'owner' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | null {
+    const recordRole = this.agentManager.getStatus(agentId)?.wrfcRole;
+    if (recordRole && recordRole !== 'orchestrator' && recordRole !== 'verifier') {
+      return recordRole;
+    }
+    return this.workPlanRoleForAgent(chain, agentId);
   }
 
   private workPlanRoleForAgent(
