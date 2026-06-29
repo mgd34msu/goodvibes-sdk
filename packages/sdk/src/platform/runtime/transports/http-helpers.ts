@@ -19,6 +19,7 @@ import type {
   HttpTransportTelemetryStreamHandlers,
   HttpTransportTelemetryStreamReady,
 } from './http-types.js';
+import { isRecord } from '../../utils/record-coerce.js';
 
 export function createJsonRequestInit(token: string | null | undefined, body?: unknown, method = 'GET'): RequestInit {
   return createJsonInit(token, body, method);
@@ -28,9 +29,7 @@ export function maybeObject<T extends object>(value: unknown): T | null {
   return typeof value === 'object' && value !== null ? value as T : null;
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 export function readArrayResponse<T>(body: unknown, key: string): readonly T[] {
   if (Array.isArray(body)) return body as readonly T[];

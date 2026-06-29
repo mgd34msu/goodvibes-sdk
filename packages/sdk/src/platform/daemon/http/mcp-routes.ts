@@ -7,6 +7,7 @@ import type {
 } from '../../mcp/config.js';
 import type { JsonRecord } from '../helpers.js';
 import { jsonErrorResponse } from './error-response.js';
+import { isRecord } from '../../utils/record-coerce.js';
 
 interface McpRouteContext {
   readonly mcpRegistry: Pick<
@@ -26,9 +27,6 @@ interface McpRouteContext {
   readonly requireAdmin: (req: Request) => Response | null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function stringArray(value: unknown): string[] | undefined {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')

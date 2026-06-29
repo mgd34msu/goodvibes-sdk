@@ -19,7 +19,7 @@
 
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
-import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -57,21 +57,16 @@ async function probe(
   url: string,
   options: { apiKey?: string | undefined; method?: string; body?: string | undefined } = {},
 ): Promise<Response | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-  timer.unref?.();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (options.apiKey) headers['Authorization'] = `Bearer ${options.apiKey}`;
+  if (options.body) headers['Content-Type'] = 'application/json';
 
   try {
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (options.apiKey) headers['Authorization'] = `Bearer ${options.apiKey}`;
-    if (options.body) headers['Content-Type'] = 'application/json';
-
-    const response = await instrumentedFetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: options.method ?? 'GET',
       headers,
       ...(options.body !== undefined ? { body: options.body } : {}),
-      signal: controller.signal,
-    } as RequestInit);
+    } as RequestInit, PROBE_TIMEOUT_MS, instrumentedFetch);
 
     if (!response.ok) {
       logger.debug('[context-discovery] Non-OK probe response', { url, status: response.status });
@@ -81,14 +76,12 @@ async function probe(
     return response;
   } catch (err) {
     const name = (err as Error)?.name;
-    if (name === 'AbortError') {
+    if (name === 'AbortError' || name === 'TimeoutError') {
       logger.debug('[context-discovery] Probe timed out', { url });
     } else {
       logger.debug('[context-discovery] Probe failed', { url, error: summarizeError(err) });
     }
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 

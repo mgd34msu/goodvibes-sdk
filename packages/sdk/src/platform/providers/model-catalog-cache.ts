@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.js';
 import type { CatalogModel } from './model-catalog.js';
 import { summarizeError } from '../utils/error-display.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
-import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 interface CatalogModelPricing {
   input: number;
@@ -223,27 +223,18 @@ function isCatalogCacheStale(cache: CatalogCacheFile): boolean {
  * Uses a 30-second timeout.
  */
 export async function fetchCatalog(): Promise<CatalogModel[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), CATALOG_FETCH_TIMEOUT_MS);
-  timer.unref?.();
+  const response = await fetchWithTimeout(MODELS_DEV_URL, {
+    headers: { Accept: 'application/json' },
+  }, CATALOG_FETCH_TIMEOUT_MS, instrumentedFetch);
 
-  try {
-    const response = await instrumentedFetch(MODELS_DEV_URL, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-
-    if (!response.ok) {
-      throw new Error(`models.dev API returned ${response.status} ${response.statusText}`);
-    }
-
-    const json = await response.json() as ModelsDevResponse;
-    const models = transformModelsDevResponse(json);
-    logger.debug('[model-catalog] Fetched models from models.dev', { count: models.length });
-    return models;
-  } finally {
-    clearTimeout(timer);
+  if (!response.ok) {
+    throw new Error(`models.dev API returned ${response.status} ${response.statusText}`);
   }
+
+  const json = await response.json() as ModelsDevResponse;
+  const models = transformModelsDevResponse(json);
+  logger.debug('[model-catalog] Fetched models from models.dev', { count: models.length });
+  return models;
 }
 
 export {

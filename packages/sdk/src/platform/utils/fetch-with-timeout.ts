@@ -62,7 +62,40 @@ export async function instrumentedFetch(
 }
 
 /**
- * fetchWithTimeout — wraps the global fetch with an AbortController timeout.
+ * createTimeoutController — creates an AbortController that fires after `timeoutMs`.
+ *
+ * When `parentSignal` is provided the returned signal is merged with it via
+ * AbortSignal.any so whichever fires first wins.
+ *
+ * Uses the faster `AbortSignal.timeout` fast-path when available and no parent
+ * signal needs to be merged.
+ *
+ * @param timeoutMs    - Milliseconds before aborting.
+ * @param parentSignal - Optional caller signal to merge with the timeout.
+ * @returns `{ signal, dispose }` — call `dispose()` in a `finally` block to
+ *   clear the underlying timer and avoid keeping the event loop alive.
+ */
+export function createTimeoutController(
+  timeoutMs: number,
+  parentSignal?: AbortSignal,
+): { readonly signal: AbortSignal; dispose(): void } {
+  if (typeof AbortSignal.timeout === 'function' && !parentSignal) {
+    return { signal: AbortSignal.timeout(timeoutMs), dispose: () => {} };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+    timeoutMs,
+  );
+  timer.unref?.();
+  const signal = parentSignal
+    ? AbortSignal.any([parentSignal, controller.signal])
+    : controller.signal;
+  return { signal, dispose: () => clearTimeout(timer) };
+}
+
+/**
+ * fetchWithTimeout — wraps a fetch implementation with an AbortController timeout.
  *
  * If the caller passes a signal that is already aborted, the request is
  * rejected immediately. When both a caller signal and the internal timeout
@@ -76,28 +109,20 @@ export async function instrumentedFetch(
  * @param url       - The URL or Request to fetch.
  * @param init      - Standard RequestInit (optional).
  * @param timeoutMs - Milliseconds before aborting. Default: 30 000.
+ * @param fetchImpl - Fetch implementation to use. Defaults to global `fetch`.
+ *   Pass `instrumentedFetch` to include OUTBOUND_HTTP logging.
  */
 export async function fetchWithTimeout(
   url: string | URL | Request,
   init?: RequestInit,
   timeoutMs = 30_000,
+  fetchImpl: (url: string | URL | Request, init?: RequestInit) => Promise<Response> = fetch,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new DOMException('Request timed out', 'TimeoutError')), timeoutMs);
-  timer.unref?.();
-
-  let signal: AbortSignal;
-  const callerSignal = init?.signal;
-  if (callerSignal) {
-    // Merge caller signal + our timeout: first one to fire wins
-    signal = AbortSignal.any([callerSignal, controller.signal]);
-  } else {
-    signal = controller.signal;
-  }
-
+  const callerSignal = init?.signal as AbortSignal | undefined;
+  const { signal, dispose } = createTimeoutController(timeoutMs, callerSignal);
   try {
-    return await fetch(url, { ...init, signal });
+    return await fetchImpl(url, { ...init, signal });
   } finally {
-    clearTimeout(timer);
+    dispose();
   }
 }

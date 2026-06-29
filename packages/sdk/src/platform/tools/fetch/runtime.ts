@@ -15,9 +15,9 @@ import {
 import { applyExtract, sniffContentType } from './extract.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { summarizeError } from '../../utils/error-display.js';
-import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+import { instrumentedFetch, createTimeoutController } from '../../utils/fetch-with-timeout.js';
 import { toRecord } from '../../utils/record-coerce.js';
-import { mapWithConcurrency } from '../../utils/concurrency.js';
+import { mapWithConcurrency, sleep } from '../../utils/concurrency.js';
 
 export interface FetchRuntimeDeps {
   readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null | undefined;
@@ -121,7 +121,7 @@ export class FetchRuntimeService {
       results = [];
       for (let i = 0; i < input.urls.length; i++) {
         if (i > 0 && rateLimitMs > 0) {
-          await delay(rateLimitMs);
+          await sleep(rateLimitMs);
         }
         results.push(await fetchOne(input.urls[i]!, fetchOpts, this));
       }
@@ -179,12 +179,7 @@ function cacheKey(
   return `${base}|${extract}|${verbosity}`;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => {
-    const timer = setTimeout(r, ms);
-    timer.unref?.();
-  });
-}
+
 
 interface FetchOneOptions {
   globalExtract: FetchExtractMode;
@@ -242,30 +237,25 @@ async function fetchOneRaw(
   trustTierConfig: TrustTierConfig,
   sanitizationEnabled: boolean,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
-  timer.unref?.();
+  const { signal, dispose } = createTimeoutController(urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
   try {
-    const response = sanitizationEnabled
+    return sanitizationEnabled
       ? await fetchWithValidatedRedirects({
           url: effectiveUrl,
           method,
           headers,
           body,
-          signal: controller.signal,
+          signal,
           trustTierConfig,
         })
       : await instrumentedFetch(effectiveUrl, {
           method,
           ...(Object.keys(headers).length > 0 ? { headers: headers as HeadersInit } : {}),
           ...(body !== undefined ? { body } : {}),
-          signal: controller.signal,
+          signal,
         } as RequestInit);
-    clearTimeout(timer);
-    return response;
-  } catch (err) {
-    clearTimeout(timer);
-    throw err;
+  } finally {
+    dispose();
   }
 }
 

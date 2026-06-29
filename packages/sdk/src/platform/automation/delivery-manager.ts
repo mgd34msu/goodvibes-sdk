@@ -20,13 +20,7 @@ import { classifyDeliveryError } from '../integrations/delivery.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
 import { isFeatureGateEnabled, isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
-  });
-}
+import { sleep } from '../utils/concurrency.js';
 
 function calculateRetryDelay(baseDelayMs: number, attempt: number, strategy: 'fixed' | 'linear' | 'exponential', maxDelayMs?: number, jitterMs?: number): number {
   const multiplier = strategy === 'fixed' ? 1 : strategy === 'linear' ? attempt : Math.pow(2, attempt - 1);

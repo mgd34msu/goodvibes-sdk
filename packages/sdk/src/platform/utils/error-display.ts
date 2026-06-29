@@ -196,6 +196,18 @@ function extractErrorMessage(error: unknown): string {
   return String(error);
 }
 
+/**
+ * redactedErrorMessage — extracts and redacts a human-readable message from any thrown value.
+ *
+ * Use for user-facing error output where the raw message should never leak
+ * bearer tokens, API keys, or other sensitive data. Do NOT use for logger
+ * fields, structured result/error fields, or diagnostic context — use
+ * `summarizeError` or the structured `normalizeError` for those.
+ */
+export function redactedErrorMessage(error: unknown): string {
+  return redactSensitiveData(extractErrorMessage(error));
+}
+
 export function normalizeError(error: unknown, options: ErrorNormalizationOptions = {}): NormalizedError {
   // Redact Bearer tokens and API keys before any further processing.
   const rawMessage = redactSensitiveData(extractErrorMessage(error));

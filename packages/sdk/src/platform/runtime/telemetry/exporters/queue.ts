@@ -19,6 +19,7 @@ import type {
 import { DEFAULT_QUEUE_CONFIG } from './types.js';
 import { summarizeError } from '../../../utils/error-display.js';
 import { logger } from '../../../utils/logger.js';
+import { sleep } from '../../../utils/concurrency.js';
 
 /** Entry held in the ring buffer. */
 interface QueueEntry {
@@ -39,13 +40,7 @@ function computeDelay(attempt: number, config: RetryConfig): number {
   return Math.max(0, Math.round(capped + jitter));
 }
 
-/** Awaitable sleep. */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
-  });
-}
+
 
 /**
  * Bounded in-memory export queue with retry and overflow protection.

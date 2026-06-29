@@ -8,6 +8,7 @@ import type {
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { sleep } from '../utils/concurrency.js';
 
 function readFirstEnv(envVars: readonly string[]): string | null {
   for (const envVar of envVars) {
@@ -122,12 +123,7 @@ function buildRemoteArtifactMetadata(
   };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
-  });
-}
+
 
 function resolveReferenceArtifact(request: MediaGenerationRequest): MediaArtifact | null {
   const options = asRecord(request.options);

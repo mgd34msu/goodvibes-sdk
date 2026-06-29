@@ -2,6 +2,7 @@ import { BaseAnthropic, type ClientOptions } from '@anthropic-ai/sdk/client';
 import * as Resources from '@anthropic-ai/sdk/resources/index';
 import { AuthClient, GoogleAuth } from 'google-auth-library';
 import { AnthropicSdkProvider } from './anthropic-sdk-provider.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 const DEFAULT_VERSION = 'vertex-2023-10-16';
 const MODEL_ENDPOINTS = new Set(['/v1/messages', '/v1/messages?beta=true']);
@@ -25,9 +26,6 @@ function readEnv(name: string): string | null {
   return process.env[name] ?? null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function resolveVertexBaseUrl(region: string): string {
   if (region === 'global') return 'https://aiplatform.googleapis.com/v1';

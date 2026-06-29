@@ -2,7 +2,7 @@ import type { HookDefinition, HookResult, HookEvent } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../../tools/fetch/trust-tiers.js';
-import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+import { instrumentedFetch, fetchWithTimeout } from '../../utils/fetch-with-timeout.js';
 
 /**
  * HTTP hook runner.
@@ -30,24 +30,14 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
   const timeoutMs = (hook.timeout ?? 30) * 1000;
 
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    timer.unref?.();
-
-    let response: Response;
-    try {
-      response = await instrumentedFetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...hook.headers,
-        },
-        body: JSON.stringify(event),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timer);
-    }
+    const response = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...hook.headers,
+      },
+      body: JSON.stringify(event),
+    }, timeoutMs, instrumentedFetch);
 
     if (!response.ok) {
       return {

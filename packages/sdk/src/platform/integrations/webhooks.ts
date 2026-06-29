@@ -1,7 +1,7 @@
 import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/events/index.js';
 import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../tools/fetch/trust-tiers.js';
-import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { instrumentedFetch, createTimeoutController } from '../utils/fetch-with-timeout.js';
 
 // ---------------------------------------------------------------------------
 // WebhookNotifier
@@ -193,7 +193,7 @@ export class WebhookNotifier {
       }
     }
 
-    const signal = createTimeoutSignal(this.timeoutMs);
+    const signal = createTimeoutController(this.timeoutMs);
     try {
       const body = truncateUtf8(text, this.maxBodyBytes);
       const headers: Record<string, string> = { 'Content-Type': 'text/plain' };
@@ -290,16 +290,6 @@ function truncateUtf8(value: string, maxBytes: number): string {
     bytes += next;
   }
   return out;
-}
-
-function createTimeoutSignal(timeoutMs: number): { readonly signal: AbortSignal; dispose: () => void } {
-  if (typeof AbortSignal.timeout === 'function') {
-    return { signal: AbortSignal.timeout(timeoutMs), dispose: () => {} };
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error('Request timed out')), timeoutMs);
-  timer.unref?.();
-  return { signal: controller.signal, dispose: () => clearTimeout(timer) };
 }
 
 async function createWebhookSignatureHeaders(

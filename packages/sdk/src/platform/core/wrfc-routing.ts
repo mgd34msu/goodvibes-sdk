@@ -1,4 +1,5 @@
 import type { ToolResult } from '../types/tools.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 export function isWrfcWorkflowRequest(text: string): boolean {
   const normalized = text.trim().toLowerCase();
@@ -13,9 +14,6 @@ export function buildWrfcWorkflowRoutingPrompt(text: string): string | null {
   return '[WRFC routing] The user is asking for WRFC-owned work. Use the agent tool to start exactly one WRFC owner chain with mode=spawn, template=engineer, reviewMode=wrfc. Do not answer by describing WRFC, and do not spawn reviewer/tester/verifier roots.';
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function parseToolOutput(output: string | undefined): Record<string, unknown> | null {
   if (!output) return null;

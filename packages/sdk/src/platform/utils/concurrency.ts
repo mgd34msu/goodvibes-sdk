@@ -1,3 +1,5 @@
+export { sleep } from '../knowledge/cooperative.js';
+
 /** Run async work with a fixed concurrency cap while preserving input order. */
 export async function mapWithConcurrency<T, R>(
   items: readonly T[],

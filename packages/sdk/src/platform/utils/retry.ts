@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { AppError, RETRYABLE_STATUS_CODES } from '../types/errors.js';
 import { summarizeError } from './error-display.js';
+import { sleep } from './concurrency.js';
 
 /** Configuration for retry behaviour with exponential backoff. */
 export interface RetryConfig {
@@ -94,10 +95,7 @@ export async function withRetry<T>(
 
       const delayMs = computeDelay(attempt, cfg.initialDelayMs, cfg.maxDelayMs);
       onRetry?.(attempt + 1, lastError, delayMs);
-      await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, delayMs);
-        timer.unref?.();
-      });
+      await sleep(delayMs);
     }
   }
 
