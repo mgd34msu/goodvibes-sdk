@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { ModelDefinition, TokenLimits } from './registry.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 interface OpenRouterModelData {
@@ -36,7 +37,6 @@ interface ModelLimitsCache {
 
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 const FETCH_TIMEOUT_MS = 15_000;
-const CACHE_TTL_MS = 86_400_000;
 
 const DEFAULT_TOKEN_LIMITS: Required<TokenLimits> = {
   maxOutputTokens: 8192,
@@ -54,21 +54,7 @@ export function getModelLimitsCachePath(cacheDir: string): string {
 }
 
 function validateModelLimitsCache(value: unknown): { cache: ModelLimitsCache | null; reason?: string } {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return { cache: null, reason: 'root value is not an object' };
-  }
-  const parsed = value as Partial<ModelLimitsCache>;
-  if (parsed.version !== 1) return { cache: null, reason: 'unsupported cache version' };
-  if (typeof parsed.fetchedAt !== 'number' || !Number.isFinite(parsed.fetchedAt)) {
-    return { cache: null, reason: 'fetchedAt must be a finite number' };
-  }
-  if (typeof parsed.ttlMs !== 'number' || !Number.isFinite(parsed.ttlMs)) {
-    return { cache: null, reason: 'ttlMs must be a finite number' };
-  }
-  if (!parsed.models || typeof parsed.models !== 'object' || Array.isArray(parsed.models)) {
-    return { cache: null, reason: 'models must be an object' };
-  }
-  return { cache: parsed as ModelLimitsCache };
+  return validateTtlCacheEnvelope<ModelLimitsCache>(value, 'models', 'object');
 }
 
 function loadCachedLimits(cachePath: string): ModelLimitsCache | null {
@@ -102,7 +88,7 @@ function saveCachedLimits(cache: ModelLimitsCache, cachePath: string): void {
 }
 
 function isCacheStale(cache: ModelLimitsCache): boolean {
-  return Date.now() - cache.fetchedAt > cache.ttlMs;
+  return isTtlCacheStale(cache);
 }
 
 async function fetchOpenRouterModels(): Promise<Map<string, OpenRouterModelData>> {
@@ -282,7 +268,7 @@ export class ModelLimitsService {
     const newCache: ModelLimitsCache = {
       version: 1,
       fetchedAt: Date.now(),
-      ttlMs: CACHE_TTL_MS,
+      ttlMs: TTL_24H_MS,
       models,
     };
 

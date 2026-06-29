@@ -11,7 +11,7 @@ import type {
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
-import { REASONING_BUDGET_MAP } from './interface.js';
+import { applyAnthropicThinking } from './anthropic-stream.js';
 import { getCacheCapability } from './cache-capability.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import { getDefaultStrategy } from './cache-strategy.js';
@@ -25,6 +25,7 @@ import {
   toAnthropicMessages,
   fromAnthropicContent,
   parseToolCallArguments,
+  normalizeAnthropicModel,
 } from './tool-formats.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
@@ -76,12 +77,6 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'>
   getHitRate: () => 0,
   recordTurn: () => {},
 };
-
-function normalizeAnthropicModel(model: string): string {
-  if (model.startsWith('anthropic:')) return model.slice('anthropic:'.length);
-  if (model.startsWith('anthropic/')) return model.slice('anthropic/'.length);
-  return model;
-}
 
 /** Clamp max_tokens to the model's known limit. */
 function clampMaxTokens(model: string, requested: number): number {
@@ -249,17 +244,7 @@ export class AnthropicProvider implements LLMProvider {
 
       body['messages'] = anthropicMessages;
 
-      if (reasoningEffort && reasoningEffort !== 'instant') {
-        const budget = REASONING_BUDGET_MAP[reasoningEffort]!;
-        if (budget !== undefined && budget > 0) {
-          body['thinking'] = { type: 'enabled', budget_tokens: budget };
-          // max_tokens must be strictly greater than thinking.budget_tokens
-          const currentMax = (body['max_tokens'] as number) ?? 8192;
-          if (currentMax <= budget) {
-            body['max_tokens'] = budget + 4096;
-          }
-        }
-      }
+      applyAnthropicThinking(body, reasoningEffort, clampMaxTokens(resolvedModel, Infinity));
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -605,14 +590,7 @@ export class AnthropicProvider implements LLMProvider {
     if (params.tools && params.tools.length > 0) {
       body['tools'] = toAnthropicTools(params.tools);
     }
-    if (params.reasoningEffort && params.reasoningEffort !== 'instant') {
-      const budget = REASONING_BUDGET_MAP[params.reasoningEffort];
-      if (budget !== undefined && budget > 0) {
-        body['thinking'] = { type: 'enabled', budget_tokens: budget };
-        const currentMax = (body['max_tokens'] as number) ?? 8192;
-        if (currentMax <= budget) body['max_tokens'] = budget + 4096;
-      }
-    }
+    applyAnthropicThinking(body, params.reasoningEffort, clampMaxTokens(resolvedModel, Infinity));
     return body;
   }
 

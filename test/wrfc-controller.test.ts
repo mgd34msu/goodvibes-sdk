@@ -710,6 +710,120 @@ describe('WrfcController — gate failure', () => {
 
     controller.dispose();
   });
+
+  test('when multiple chains await gates and gates fail → exactly one gate-fixer is spawned', async () => {
+    const busWithGate = new RuntimeEventBus();
+    const agentStore = new Map<string, AgentRecord>();
+    const spawnedRecords: AgentRecord[] = [];
+
+    const configManager = {
+      get: (key: string): unknown => {
+        if (key === 'wrfc.scoreThreshold') return 9.9;
+        if (key === 'wrfc.maxFixAttempts') return 3;
+        if (key === 'wrfc.autoCommit') return false;
+        return undefined;
+      },
+      getCategory: (category: string): unknown => {
+        if (category === 'wrfc') {
+          return {
+            scoreThreshold: 9.9,
+            maxFixAttempts: 3,
+            autoCommit: false,
+            gates: [{ name: 'always-fail', command: 'exit 1', enabled: true }],
+          };
+        }
+        return undefined;
+      },
+    };
+
+    const agentManager: AgentManagerLike = {
+      spawn: (input) => {
+        const id = `agent-wrfc3-${spawnedRecords.length + 1}`;
+        const record = makeRecord({
+          id,
+          task: (input as { task?: string }).task ?? 'spawned-task',
+          template: (input as { template?: string }).template ?? 'engineer',
+          parentAgentId: (input as { parentAgentId?: string }).parentAgentId,
+          status: 'running',
+        });
+        agentStore.set(id, record);
+        spawnedRecords.push(record);
+        return record;
+      },
+      getStatus: (id: string) => agentStore.get(id) ?? null,
+      list: () => Array.from(agentStore.values()),
+      cancel: () => false,
+      listByCohort: () => [],
+      clear: () => { agentStore.clear(); },
+    };
+
+    const messageBus = { registerAgent: (_opts: unknown) => {} };
+    const controller = new WrfcController(busWithGate, messageBus, {
+      agentManager,
+      configManager,
+      projectRoot: '/tmp/test-project-gate-wrfc3',
+      createWorktree: () => ({
+        merge: async () => true,
+        cleanup: async () => {},
+      }),
+    });
+
+    const owner1 = makeRecord({ id: 'owner-wrfc3-1', task: 'feature A' });
+    const owner2 = makeRecord({ id: 'owner-wrfc3-2', task: 'feature B' });
+    agentStore.set('owner-wrfc3-1', owner1);
+    agentStore.set('owner-wrfc3-2', owner2);
+    const chain1 = controller.createChain(owner1);
+    const chain2 = controller.createChain(owner2);
+
+    // Advance both engineers to completion
+    agentStore.get(chain1.engineerAgentId!)!.fullOutput = 'Done A.';
+    agentStore.get(chain2.engineerAgentId!)!.fullOutput = 'Done B.';
+    emitAgentCompleted(busWithGate, chain1.engineerAgentId!);
+    emitAgentCompleted(busWithGate, chain2.engineerAgentId!);
+    await flushMicrotasks();
+
+    // Both reviewers should now be spawned
+    const reviewer1 = spawnedRecords.find(
+      (r) => r.wrfcRole === 'reviewer' && r.parentAgentId === chain1.ownerAgentId,
+    );
+    const reviewer2 = spawnedRecords.find(
+      (r) => r.wrfcRole === 'reviewer' && r.parentAgentId === chain2.ownerAgentId,
+    );
+    expect(reviewer1).toBeDefined();
+    expect(reviewer2).toBeDefined();
+
+    reviewer1!.fullOutput = PASSING_REVIEW_OUTPUT;
+    reviewer2!.fullOutput = PASSING_REVIEW_OUTPUT;
+
+    // Wait for the gate-fixer to be spawned (WORKFLOW_FIX_ATTEMPTED)
+    const fixAttempted = new Promise<void>((resolve) => {
+      const unsubscribe = busWithGate.onDomain('workflows', (envelope) => {
+        if (envelope.type === 'WORKFLOW_FIX_ATTEMPTED') {
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
+
+    // Complete both reviewers back-to-back so both chains reach awaiting_gates
+    // before checkAndRunGatesForAll executes — WRFC-3 regression scenario.
+    emitAgentCompleted(busWithGate, reviewer1!.id);
+    emitAgentCompleted(busWithGate, reviewer2!.id);
+    await fixAttempted;
+    await flushMicrotasks();
+
+    // WRFC-3 invariant: exactly ONE fixer spawned (gateRunner only)
+    const fixerRecords = spawnedRecords.filter((r) => r.wrfcRole === 'fixer');
+    expect(fixerRecords.length).toBe(1);
+
+    // gateRunner (chain1, first inserted) transitions to 'fixing'
+    expect(chain1.state).toBe('fixing');
+
+    // Non-owner chain stays in 'awaiting_gates' — no fixer, no failed transition
+    expect(chain2.state).toBe('awaiting_gates');
+
+    controller.dispose();
+  });
 });
 
 describe('WrfcController — escalation', () => {

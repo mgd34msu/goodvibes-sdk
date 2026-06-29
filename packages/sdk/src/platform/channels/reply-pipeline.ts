@@ -416,6 +416,10 @@ export function normalizeChannelRenderEventFromRuntime(
       return [renderEvent('status', 'progress', envelope, {
         text: `WRFC changes committed${payload.commitHash ? `: ${payload.commitHash}` : ''}`,
       })];
+    case 'WORKFLOW_SCORE_REGRESSION':
+      return [renderEvent('status', 'progress', envelope, {
+        text: `WRFC score regression warning: ${payload.reason}`,
+      })];
     case 'WORKFLOW_CASCADE_ABORTED':
       return [renderEvent('error', 'progress', envelope, {
         text: `WRFC cascade warning: ${payload.reason}`,

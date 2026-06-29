@@ -16412,6 +16412,10 @@ export type WorkflowEvent = {
     type: 'WORKFLOW_CONSTRAINTS_ENUMERATED';
     chainId: string;
     constraints: Constraint[];
+} | {
+    type: 'WORKFLOW_SCORE_REGRESSION';
+    chainId: string;
+    reason: string;
 };
 
 // @public (undocumented)

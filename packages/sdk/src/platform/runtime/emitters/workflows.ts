@@ -98,3 +98,11 @@ export function emitWorkflowConstraintsEnumerated(
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_CONSTRAINTS_ENUMERATED', { type: 'WORKFLOW_CONSTRAINTS_ENUMERATED', ...data }, ctx));
 }
+
+export function emitWorkflowScoreRegression(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { chainId: string; reason: string }
+): void {
+  bus.emit('workflows', createEventEnvelope('WORKFLOW_SCORE_REGRESSION', { type: 'WORKFLOW_SCORE_REGRESSION', ...data }, ctx));
+}

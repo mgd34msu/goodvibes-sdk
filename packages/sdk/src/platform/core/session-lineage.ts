@@ -53,23 +53,4 @@ export class SessionLineageTracker {
   getEntries(): string[] {
     return [...this.entries];
   }
-
-  /**
-   * Format the lineage for compaction output.
-   * Returns null if originalTask was never set (section is omitted).
-   */
-  format(): string | null {
-    if (this.originalTask === null) {
-      return null;
-    }
-
-    const lines: string[] = [
-      `## Session Lineage`,
-      `Original task: "${this.originalTask}"`,
-      `Compactions: ${this.entries.length}`,
-      ...this.entries,
-    ];
-
-    return lines.join('\n');
-  }
 }

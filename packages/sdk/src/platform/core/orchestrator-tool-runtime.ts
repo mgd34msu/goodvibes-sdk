@@ -26,6 +26,7 @@ import type { ExecutionPlan, ExecutionPlanManager, PlanItem } from './execution-
 import type { ProviderRegistry } from '../providers/registry.js';
 import { evaluateOrchestrationSpawn } from '../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../utils/error-display.js';
+import { isActiveAgent } from './compaction-sections.js';
 
 type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;
@@ -376,7 +377,7 @@ export function autoSpawnPendingItems(
     });
   }
 
-  let running = agentManager.list().filter(a => a.status === 'running' || a.status === 'pending').length;
+  let running = agentManager.list().filter(a => isActiveAgent(a)).length;
   const spawnDecision = evaluateOrchestrationSpawn({
     configManager,
     mode: 'plan-auto',
