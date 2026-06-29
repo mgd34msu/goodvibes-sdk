@@ -133,7 +133,7 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
 
       const inputCost = typeof cost?.input === 'number' ? cost.input : 0;
       const outputCost = typeof cost?.output === 'number' ? cost.output : 0;
-      const contextWindow = typeof limit?.context === 'number' ? limit.context : undefined;
+      const contextWindow = typeof limit?.context === 'number' && limit.context > 0 ? limit.context : undefined;
 
       let tier: 'free' | 'paid' | 'subscription';
       if (providerCategory === 'subscription') {
