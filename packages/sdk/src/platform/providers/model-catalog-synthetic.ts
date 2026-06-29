@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js';
+import { inferFallbackContextWindow } from './context-window-fallback.js';
 import type { BenchmarkEntry } from './model-benchmarks.js';
 import { compositeScore } from './model-benchmarks.js';
 import type { CatalogModel } from './model-catalog.js';
@@ -177,7 +178,7 @@ export function getSyntheticModelDefinitions(
     const displayName = catalogMatch?.name ?? canonical.id;
     const hasReasoning = catalogMatch?.reasoning === true;
 
-    const hasCatalogContextWindow = bestBackend?.contextWindow != null;
+    const hasCatalogContextWindow = bestBackend?.contextWindow != null && bestBackend.contextWindow > 0;
     return {
       id: canonical.id,
       provider: 'synthetic',
@@ -190,7 +191,7 @@ export function getSyntheticModelDefinitions(
         reasoning: hasReasoning,
         multimodal: false,
       },
-      contextWindow: hasCatalogContextWindow ? bestBackend.contextWindow! : 128_000,
+      contextWindow: hasCatalogContextWindow ? bestBackend.contextWindow! : inferFallbackContextWindow('synthetic', canonical.id),
       ...(!hasCatalogContextWindow ? { contextWindowProvenance: 'fallback' as const } : {}),
       selectable: true,
       tier: canonical.tier === 'free' ? 'free' : canonical.tier === 'subscription' ? 'subscription' : 'standard',

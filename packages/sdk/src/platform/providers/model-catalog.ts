@@ -2,6 +2,7 @@ import type { ModelDefinition, ProviderRegistry } from './registry.js';
 import type { ModelLimitsService } from './model-limits.js';
 import type { MinimalModelDefinition, SyntheticModelInfo } from './model-catalog-synthetic.js';
 import { logger } from '../utils/logger.js';
+import { inferFallbackContextWindow } from './context-window-fallback.js';
 
 export interface CatalogProvider {
   id: string;
@@ -167,7 +168,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
     const isAnthropic = providerLower.includes('anthropic');
     const isOpenAI = providerLower.includes('openai');
     const hasReasoning = model.reasoning === true || isAnthropic || isOpenAI || isGoogle;
-    const hasCatalogContextWindow = model.contextWindow != null;
+    const hasCatalogContextWindow = model.contextWindow != null && model.contextWindow > 0;
     return {
       id: model.id,
       provider: model.providerId,
@@ -182,7 +183,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
       },
       contextWindow: hasCatalogContextWindow
         ? model.contextWindow!
-        : (isGoogle ? 1_000_000 : isAnthropic ? 200_000 : 128_000),
+        : inferFallbackContextWindow(model.provider, model.id),
       ...(!hasCatalogContextWindow ? { contextWindowProvenance: 'fallback' as const } : {}),
       selectable: true,
       tier: model.tier === 'subscription' ? 'subscription' : isFree ? 'free' : model.pricing.input >= 3 ? 'premium' : 'standard',

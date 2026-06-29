@@ -18,24 +18,27 @@ export type WrfcConfigReader = Pick<ConfigManager, 'get' | 'getCategory'>;
 
 export function readWrfcConfig(configManager: WrfcConfigReader): WrfcConfigLike {
   const wrfcConfig = configManager.getCategory('wrfc') as Partial<WrfcConfigLike> | undefined;
+  // Number.isFinite (not typeof === 'number') so a NaN/Infinity config value is
+  // rejected rather than poisoning the numeric bounds: a NaN maxFixAttempts makes
+  // `fixAttempts >= maxFixAttempts` always false, so the fix loop never terminates.
+  const rawScore = configManager.get('wrfc.scoreThreshold');
+  const rawMax = configManager.get('wrfc.maxFixAttempts');
+  const rawHeartbeat = configManager.get('wrfc.agentHeartbeatTimeoutMs');
   return {
-    scoreThreshold:
-      typeof configManager.get('wrfc.scoreThreshold') === 'number'
-        ? (configManager.get('wrfc.scoreThreshold') as number)
-        : wrfcConfig?.scoreThreshold ?? 9.9,
-    maxFixAttempts:
-      typeof configManager.get('wrfc.maxFixAttempts') === 'number'
-        ? (configManager.get('wrfc.maxFixAttempts') as number)
-        : wrfcConfig?.maxFixAttempts ?? 3,
+    scoreThreshold: Number.isFinite(rawScore)
+      ? (rawScore as number)
+      : Number.isFinite(wrfcConfig?.scoreThreshold) ? (wrfcConfig?.scoreThreshold as number) : 9.9,
+    maxFixAttempts: Number.isFinite(rawMax)
+      ? (rawMax as number)
+      : Number.isFinite(wrfcConfig?.maxFixAttempts) ? (wrfcConfig?.maxFixAttempts as number) : 5,
     autoCommit:
       typeof configManager.get('wrfc.autoCommit') === 'boolean'
         ? (configManager.get('wrfc.autoCommit') as boolean)
         : wrfcConfig?.autoCommit ?? false,
     gates: Array.isArray(wrfcConfig?.gates) ? wrfcConfig.gates : [],
-    agentHeartbeatTimeoutMs:
-      typeof configManager.get('wrfc.agentHeartbeatTimeoutMs') === 'number'
-        ? (configManager.get('wrfc.agentHeartbeatTimeoutMs') as number)
-        : wrfcConfig?.agentHeartbeatTimeoutMs ?? 0,
+    agentHeartbeatTimeoutMs: Number.isFinite(rawHeartbeat)
+      ? (rawHeartbeat as number)
+      : Number.isFinite(wrfcConfig?.agentHeartbeatTimeoutMs) ? (wrfcConfig?.agentHeartbeatTimeoutMs as number) : 0,
   };
 }
 
@@ -48,7 +51,7 @@ export function getWrfcScoreThreshold(configManager: WrfcConfigReader): number {
 }
 
 export function getWrfcMaxFixAttempts(configManager: WrfcConfigReader): number {
-  return readWrfcConfig(configManager).maxFixAttempts ?? 3;
+  return readWrfcConfig(configManager).maxFixAttempts ?? 5;
 }
 
 export function getWrfcAutoCommit(configManager: WrfcConfigReader): boolean {
