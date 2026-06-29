@@ -3,6 +3,7 @@ import { PersistentStore } from '../state/persistent-store.js';
 import type { PermissionPromptDecision, PermissionPromptRequest, PermissionRequestHandler } from '../permissions/prompt.js';
 import type { ControlPlaneSurfaceMessage } from './types.js';
 import { logger } from '../utils/logger.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 export type SharedApprovalStatus = 'pending' | 'claimed' | 'approved' | 'denied' | 'cancelled' | 'expired';
 
@@ -69,9 +70,6 @@ const APPROVAL_AUDIT_ACTIONS = new Set<SharedApprovalAuditRecord['action']>([
 const PERMISSION_CATEGORIES = new Set(['read', 'write', 'execute', 'delegate']);
 const PERMISSION_RISK_LEVELS = new Set(['low', 'medium', 'high', 'critical']);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

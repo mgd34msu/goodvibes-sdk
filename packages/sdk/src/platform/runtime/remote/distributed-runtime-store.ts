@@ -23,6 +23,7 @@ import {
   sortPeers,
   sortWork,
 } from './distributed-runtime-utils.js';
+import { isRecord } from '../../utils/record-coerce.js';
 
 const MAX_AUDIT = 500;
 const MAX_WORK_HISTORY = 500;
@@ -64,9 +65,6 @@ const AUDIT_ACTIONS = new Set<DistributedRuntimeAuditRecord['action']>([
   'work-expired',
 ]);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

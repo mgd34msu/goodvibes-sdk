@@ -17,6 +17,7 @@ import {
   type ExecutionIntent,
 } from '../../runtime/execution-intents.js';
 import type { DaemonRuntimeRouteContext, DaemonRuntimeRouteHandlerMap } from './runtime-route-types.js';
+import { isRecord } from '../../utils/record-coerce.js';
 
 export type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
 
@@ -71,9 +72,6 @@ const executionRiskClasses = new Set(EXECUTION_RISK_CLASSES);
 const executionNetworkPolicies = new Set(EXECUTION_NETWORK_POLICIES);
 const executionFilesystemPolicies = new Set(EXECUTION_FILESYSTEM_POLICIES);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

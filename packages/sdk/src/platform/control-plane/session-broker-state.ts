@@ -5,14 +5,12 @@ import {
 } from './session-intents.js';
 import type { SharedSessionStoreSnapshot } from './session-broker-helpers.js';
 import type { SharedSessionMessage, SharedSessionParticipant, SharedSessionRecord } from './session-types.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 const SESSION_KINDS = new Set<SharedSessionRecord['kind']>(['tui', 'companion-task', 'companion-chat']);
 const SESSION_STATUSES = new Set<SharedSessionRecord['status']>(['active', 'closed']);
 const MESSAGE_ROLES = new Set<SharedSessionMessage['role']>(['user', 'assistant', 'system']);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

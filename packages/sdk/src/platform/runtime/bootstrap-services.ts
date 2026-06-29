@@ -5,6 +5,7 @@ import { ConfigurationError } from '@pellux/goodvibes-errors';
 import { logger } from '../utils/logger.js';
 import net from 'node:net';
 import { summarizeError } from '../utils/error-display.js';
+import { createTimeoutController } from '../utils/fetch-with-timeout.js';
 
 interface DaemonService {
   enable(config: { daemon: boolean }, token?: string): boolean;
@@ -234,15 +235,13 @@ async function probeGoodVibesDaemonIdentity(
   port: number,
   token?: string,
 ): Promise<DaemonIdentityProbeResult> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DAEMON_IDENTITY_PROBE_TIMEOUT_MS);
-  timeout.unref?.();
+  const { signal, dispose } = createTimeoutController(DAEMON_IDENTITY_PROBE_TIMEOUT_MS);
   try {
     const headers = new Headers();
     if (token?.trim()) headers.set('Authorization', `Bearer ${token.trim()}`);
     const response = await fetch(`${formatBaseUrl(host, port)}/status`, {
       headers,
-      signal: controller.signal,
+      signal,
     });
     if (response.status === 401 || response.status === 403) {
       return {
@@ -271,7 +270,7 @@ async function probeGoodVibesDaemonIdentity(
   } catch (error) {
     return { kind: 'unknown', reason: summarizeError(error) };
   } finally {
-    clearTimeout(timeout);
+    dispose();
   }
 }
 

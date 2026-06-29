@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
-import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 export interface ModelBenchmarks {
   gpqa?: number | undefined;
@@ -293,21 +293,13 @@ export class BenchmarkStore {
   }
 
   private async fetchBenchmarks(): Promise<BenchmarkEntry[]> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    timer.unref?.();
-    try {
-      const response = await instrumentedFetch(ZEROEVAL_URL, {
-        signal: controller.signal,
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) {
-        throw new Error(`ZeroEval API returned ${response.status} ${response.statusText}`);
-      }
-      return parseEntries(await response.json());
-    } finally {
-      clearTimeout(timer);
+    const response = await fetchWithTimeout(ZEROEVAL_URL, {
+      headers: { Accept: 'application/json' },
+    }, FETCH_TIMEOUT_MS, instrumentedFetch);
+    if (!response.ok) {
+      throw new Error(`ZeroEval API returned ${response.status} ${response.statusText}`);
     }
+    return parseEntries(await response.json());
   }
 
   private loadCache(): BenchmarksCache | null {

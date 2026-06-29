@@ -1,6 +1,7 @@
 import { PersistentStore } from '../state/persistent-store.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,9 +53,7 @@ interface StoreData extends Record<string, unknown> {
 
 const TASK_RUN_STATUSES = new Set<TaskRunRecord['status']>(['running', 'completed', 'failed']);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

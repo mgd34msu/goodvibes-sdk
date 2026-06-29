@@ -9,6 +9,7 @@ import { logger } from '../utils/logger.js';
 import { VERSION } from '../version.js';
 import type { McpServerConfig } from './config.js';
 import { summarizeError } from '../utils/error-display.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 export interface McpProcessSpec {
   command: string;
@@ -97,9 +98,6 @@ function jsonRpcIdKey(id: JsonRpcId): string {
   return `${typeof id}:${String(id)}`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
 
 function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
   return isRecord(value)

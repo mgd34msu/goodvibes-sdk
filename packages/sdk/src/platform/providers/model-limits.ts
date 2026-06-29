@@ -4,7 +4,7 @@ import type { ModelDefinition, TokenLimits } from './registry.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
-import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
+import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 interface OpenRouterModelData {
   id: string;
@@ -92,32 +92,23 @@ function isCacheStale(cache: ModelLimitsCache): boolean {
 }
 
 async function fetchOpenRouterModels(): Promise<Map<string, OpenRouterModelData>> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  timer.unref?.();
+  const response = await fetchWithTimeout(OPENROUTER_MODELS_URL, {
+    headers: { Accept: 'application/json' },
+  }, FETCH_TIMEOUT_MS, instrumentedFetch);
+  if (!response.ok) {
+    throw new Error(`OpenRouter API returned ${response.status}`);
+  }
 
-  try {
-    const response = await instrumentedFetch(OPENROUTER_MODELS_URL, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) {
-      throw new Error(`OpenRouter API returned ${response.status}`);
-    }
-
-    const json = await response.json() as OpenRouterResponse;
-    const map = new Map<string, OpenRouterModelData>();
-    if (Array.isArray(json.data)) {
-      for (const model of json.data) {
-        if (typeof model.id === 'string') {
-          map.set(model.id, model);
-        }
+  const json = await response.json() as OpenRouterResponse;
+  const map = new Map<string, OpenRouterModelData>();
+  if (Array.isArray(json.data)) {
+    for (const model of json.data) {
+      if (typeof model.id === 'string') {
+        map.set(model.id, model);
       }
     }
-    return map;
-  } finally {
-    clearTimeout(timer);
   }
+  return map;
 }
 
 function getModelStem(modelId: string): string {

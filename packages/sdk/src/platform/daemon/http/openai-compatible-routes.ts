@@ -2,6 +2,7 @@ import type { ProviderRegistry } from '../../providers/registry.js';
 import type { ChatResponse, ContentPart, LLMProvider, ProviderMessage, StreamDelta } from '../../providers/interface.js';
 import type { ToolCall, ToolDefinition } from '../../types/tools.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { isRecord } from '../../utils/record-coerce.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -485,9 +486,6 @@ function parseDataUrl(value: string): { mediaType: string; data: string } | null
   return { mediaType: match[1]!, data: match[2]! };
 }
 
-function isRecord(value: unknown): value is JsonRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;

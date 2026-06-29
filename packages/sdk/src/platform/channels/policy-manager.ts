@@ -9,6 +9,7 @@ import type {
   ChannelPolicyRecord,
   ChannelSurface,
 } from './types.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 interface ChannelPolicySnapshot extends Record<string, unknown> {
   readonly policies: readonly ChannelPolicyRecord[];
@@ -67,9 +68,6 @@ function commandAllowed(command: string, allowedCommands: readonly string[]): bo
 const CONVERSATION_POLICIES = new Set(['allow', 'deny', 'inherit']);
 const CONVERSATION_KINDS = new Set<ChannelConversationKind>(['direct', 'group', 'channel', 'thread', 'service']);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

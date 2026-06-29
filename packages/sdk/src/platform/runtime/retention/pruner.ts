@@ -13,7 +13,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { CheckpointRecord, PerClassPruneResult, PruneOptions, PruneResult, RetentionClass } from './types.js';
-import { summarizeError } from '../../utils/error-display.js';
+import { redactedErrorMessage } from '../../utils/error-display.js';
 
 // ---------------------------------------------------------------------------
 // SnapshotPruner
@@ -166,8 +166,5 @@ export class SnapshotPruner {
  * Extract a human-readable message from an unknown thrown value.
  */
 function errorMessage(err: unknown): string {
-  if (err instanceof Error) {
-    return err.message;
-  }
-  return summarizeError(err);
+  return redactedErrorMessage(err);
 }

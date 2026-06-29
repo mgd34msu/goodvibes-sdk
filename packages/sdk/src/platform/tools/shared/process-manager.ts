@@ -2,6 +2,7 @@
 
 import { summarizeError } from '../../utils/error-display.js';
 import { logger } from '../../utils/logger.js';
+import { sleep } from '../../utils/concurrency.js';
 
 /**
  * ProcessManager — tracks background processes for a single GoodVibes runtime.
@@ -350,9 +351,4 @@ async function readProcessStream(stream: ReadableStream<Uint8Array>): Promise<st
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
-  });
-}
+

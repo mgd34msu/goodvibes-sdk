@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 import { logger } from '../utils/logger.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
 import { summarizeError } from '../utils/error-display.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 export interface McpServerConfig {
   /** Unique server name, used as namespace prefix: mcp:<name>:<tool> */
@@ -50,9 +51,6 @@ export interface McpEffectiveConfig {
   readonly locations: readonly McpConfigLocation[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function optionalStringArray(value: unknown): string[] | undefined {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')

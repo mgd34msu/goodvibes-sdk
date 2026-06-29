@@ -10,7 +10,7 @@ import { guardExecCommand, formatDenialResponse } from './ast-guard.js';
 import { executeFileOperations } from './file-ops.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
-import { mapWithConcurrency } from '../../utils/concurrency.js';
+import { mapWithConcurrency, sleep } from '../../utils/concurrency.js';
 import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -93,12 +93,7 @@ function resolveCwd(cwd: string | undefined, workingDirectory: string): string {
   return resolve(workingDirectory, effective);
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
-  });
-}
+
 
 function computeRetryDelay(
   attempt: number,

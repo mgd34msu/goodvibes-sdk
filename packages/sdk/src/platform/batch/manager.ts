@@ -13,6 +13,7 @@ import type {
   DaemonBatchTickResult,
 } from './types.js';
 import { DaemonBatchError } from './types.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 const TERMINAL_JOB_STATUSES = new Set<DaemonBatchJob['status']>([
   'completed',
@@ -40,9 +41,6 @@ function estimateJsonBytes(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

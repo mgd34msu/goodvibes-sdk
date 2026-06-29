@@ -16,6 +16,7 @@ import type {
 import { recoverNoRepairerTasks, recoverStaleActiveTasks } from './self-improvement-recovery.js';
 import { sourceKnowledgeSpace, uniqueStrings } from './utils.js';
 import { withTimeout } from './timeouts.js';
+import { createTimeoutController } from '../../utils/fetch-with-timeout.js';
 import { updateRefinementTask, upsertRefinementTaskForGap } from './self-improvement-tasks.js';
 import { promoteRepairSources } from './self-improvement-promotion.js';
 import { discoverIntrinsicGaps } from './self-improvement-intrinsic-gaps.js';
@@ -61,11 +62,6 @@ interface GapRepairOutcome {
   readonly nextRepairAttemptAt?: number | undefined;
 }
 type GapRepairerResult = Awaited<ReturnType<KnowledgeSemanticGapRepairer>>;
-
-interface AbortBudget {
-  readonly signal: AbortSignal;
-  dispose(): void;
-}
 
 interface SelfImproveRunPlan {
   readonly candidates: readonly KnowledgeNodeRecord[];
@@ -442,7 +438,7 @@ async function runGapRepairerWithBudget(input: {
   readonly remainingMs: number;
 }): Promise<GapRepairerResult> {
   const { input: runInput, spaceId, gap, gapContext, gapRepairer, remainingMs } = input;
-  const budget = createAbortBudget(runInput.signal, remainingMs);
+  const budget = createTimeoutController(remainingMs, runInput.signal);
   try {
     return await withTimeout(gapRepairer({
       spaceId,
@@ -458,26 +454,6 @@ async function runGapRepairerWithBudget(input: {
   } finally {
     budget.dispose();
   }
-}
-
-function createAbortBudget(parentSignal: AbortSignal | undefined, timeoutMs: number): AbortBudget {
-  const controller = new AbortController();
-  const abortRepair = () => controller.abort();
-  if (parentSignal?.aborted) {
-    controller.abort();
-  } else {
-    parentSignal?.addEventListener('abort', abortRepair, { once: true });
-  }
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  timer.unref?.();
-  return {
-    signal: controller.signal,
-    dispose() {
-      clearTimeout(timer);
-      parentSignal?.removeEventListener('abort', abortRepair);
-      controller.abort();
-    },
-  };
 }
 
 async function recordGapRepairAssessment(

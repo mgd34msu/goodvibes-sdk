@@ -10,3 +10,11 @@
 export function toRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
+
+/**
+ * Type guard: returns true iff `value` is a plain object (non-null, non-array).
+ * Use this in place of the commonly hand-rolled `typeof x === 'object' && x !== null && !Array.isArray(x)`.
+ */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
