@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-06-30
+
+Full deep-review audit of the SDK: 55 adversarially-verified findings fixed across all 10 subsystem areas (providers, core orchestrator/compaction, agents/WRFC, runtime, channels/operator, tools/mcp/permissions/hooks, transports/contracts, data subsystems, cross-cutting).
+
+### Added
+- `@pellux/goodvibes-sdk`: `inferFallbackContextWindow` and `FALLBACK_CONTEXT_WINDOW` are now exported from the public `./platform/providers` entrypoint so consumers can share the family-aware pre-catalog context-window fallback instead of hardcoding their own.
+
+### Fixed
+- `@pellux/goodvibes-sdk`: **Tool-loop circuit breaker never terminated the loop** — the breaker set `continueLoop = false` which was then unconditionally clobbered by `continueLoop = results.continueLoop` on the next line (orchestrator-turn-loop.ts), so a model repeatedly producing all-failing tool calls looped until the iteration cap instead of tripping the breaker.
+- `@pellux/goodvibes-sdk`: **Auto-compaction safety buffer is now scaled to the context window** (capped at a window fraction) instead of a flat 15k, which forced near-constant compaction on small/medium windows; the buffer remains an independent backstop on large windows regardless of the percentage threshold.
+- `@pellux/goodvibes-sdk`: **`getContextWindowForModel` now honors a user `configured_cap` before the OpenRouter fuzzy lookup**, so an explicit cap is no longer silently widened by a fuzzy id match; and the method floors its result so a 0/NaN window can never poison budget math.
+- `@pellux/goodvibes-sdk`: **McpClient no longer auto-restarts after an intentional disconnect** (which spawned orphan server processes); restart is gated on an intentional-close flag.
+- `@pellux/goodvibes-sdk`: **Registering a transport middleware no longer silently disables HTTP retries** or reclassifies `HttpStatusError`; the retry policy applies through middleware.
+- `@pellux/goodvibes-sdk`: **`openContractRouteStream` now threads the dynamic `getAuthToken` resolver**, so operator/telemetry SSE streams refresh auth instead of opening with a stale (or missing) token.
+- `@pellux/goodvibes-sdk`: Anthropic/Gemini SSE assembly now flushes a trailing un-terminated `data:` line so the final `message_delta`/`usageMetadata` event is not dropped on abrupt close.
+- `@pellux/goodvibes-sdk`: capability-resolution cache key now includes the provider's self-declared capabilities (no cross-call poisoning); image tokens are counted in both `estimateConversationTokens` and the recent-conversation compaction budget; the daemon HTTP route handlers return the structured `StructuredDaemonErrorBody` contract via `jsonErrorResponse`; the error-category classifier uses word boundaries (no false `authentication` match on "authorization"); and the platform/daemon-sdk error classifiers were de-drifted. Plus numerous DRY, dead-code, error-handling, and type-safety fixes across the listed areas.
+
 ## [0.34.2] - 2026-06-29
 
 ### Fixed

@@ -50,6 +50,8 @@ function addImportGraphWarning(diagnostics: ImportGraphDiagnostics, warning: str
 // ---------------------------------------------------------------------------
 
 const IMPORT_RE = /(?:import|export)\s.*?from\s+['"]([^'"]+)['"]/;
+const SIDE_EFFECT_IMPORT_RE = /^\s*import\s+['"]([^'"]+)['"]/;
+const DYNAMIC_IMPORT_RE = /import\(\s*['"]([^'"]+)['"]\s*\)/;
 const REQUIRE_RE = /require\(['"]([^'"]+)['"]\)/;
 
 /**
@@ -61,6 +63,10 @@ function extractRelativeSpecifiers(content: string): string[] {
   for (const line of content.split('\n')) {
     const im = IMPORT_RE.exec(line);
     if (im?.[1]?.startsWith('.')) specs.push(im[1]);
+    const sideEffect = SIDE_EFFECT_IMPORT_RE.exec(line);
+    if (sideEffect?.[1]?.startsWith('.')) specs.push(sideEffect[1]);
+    const dynamic = DYNAMIC_IMPORT_RE.exec(line);
+    if (dynamic?.[1]?.startsWith('.')) specs.push(dynamic[1]);
     const rq = REQUIRE_RE.exec(line);
     if (rq?.[1]?.startsWith('.')) specs.push(rq[1]);
   }

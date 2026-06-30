@@ -9,6 +9,7 @@ import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { sleep } from '../utils/concurrency.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 function readFirstEnv(envVars: readonly string[]): string | null {
   for (const envVar of envVars) {
@@ -36,9 +37,7 @@ function buildStatus(
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
+  return isRecord(value) ? value : null;
 }
 
 function trimString(value: unknown): string | undefined {

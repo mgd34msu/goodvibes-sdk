@@ -203,6 +203,9 @@ export class HookDispatcher {
     for (const [pattern, defs] of this.hooks.entries()) {
       if (matchesEventPath(pattern, event.path)) {
         for (const hook of defs) {
+          // Skip hooks explicitly disabled via disableHook() or `enabled: false`
+          // in hooks.json. Strict === false preserves the default (undefined = enabled).
+          if (hook.enabled === false) continue;
           const specificValue = event.specific;
           if (matchesMatcher(hook.matcher, specificValue)) {
             matchingEntries.push({ pattern, hook });

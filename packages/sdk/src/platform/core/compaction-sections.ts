@@ -16,7 +16,7 @@ import { isActiveAgent } from '../tools/agent/predicates.js';
 import type { WrfcChain } from '../agents/wrfc-types.js';
 import type { ExecutionPlan, PlanItem } from './execution-plan.js';
 import type { CompactionSection, CompactionConfig, SessionMemory } from './compaction-types.js';
-import { estimateTokens } from './compaction-types.js';
+import { estimateTokens, IMAGE_TOKEN_ESTIMATE } from './compaction-types.js';
 
 /** Extract plain text from a ProviderMessage content field. */
 export function extractText(content: string | ContentPart[]): string {
@@ -25,6 +25,12 @@ export function extractText(content: string | ContentPart[]): string {
     .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
     .map((p) => p.text)
     .join('');
+}
+
+/** Count image content parts in a ProviderMessage content field. */
+function countImageParts(content: string | ContentPart[]): number {
+  if (typeof content === 'string') return 0;
+  return (content as ContentPart[]).filter((p) => p.type === 'image').length;
 }
 
 
@@ -161,7 +167,11 @@ export function gatherRecentConversation(
   // Work backward from most recent
   for (let i = eligible.length - 1; i >= 0; i--) {
     const msg = eligible[i]!;
-    const msgTokens = estimateTokens(extractText(msg.content));
+    // Account for image parts separately: extractText drops them, but they carry
+    // real provider token cost (mirror IMAGE_TOKEN_ESTIMATE in estimateConversationTokens).
+    const msgTokens =
+      estimateTokens(extractText(msg.content)) +
+      countImageParts(msg.content) * IMAGE_TOKEN_ESTIMATE;
     if (tokenCount + msgTokens > maxTokens) break;
     gathered.unshift(msg);
     tokenCount += msgTokens;
@@ -474,16 +484,19 @@ export function buildSessionLineage(
   lineageEntries: string[],
   compactionCount: number,
 ): CompactionSection | null {
+  // Omit the section entirely when there is no original task and no recorded
+  // compaction entries, matching the documented omit-on-empty contract.
+  if (!originalTask && lineageEntries.length === 0) return null;
+
   const lines: string[] = [];
 
   if (originalTask) {
     lines.push(`Original task: "${originalTask}"`);
   }
-  lines.push(`Compactions: ${compactionCount}`);
+  lines.push(`Prior compactions: ${compactionCount}`);
   for (const entry of lineageEntries) {
     lines.push(entry);
   }
 
-  if (lines.length === 0) return null;
   return makeSection('session-lineage', '## Session Lineage', lines.join('\n'));
 }

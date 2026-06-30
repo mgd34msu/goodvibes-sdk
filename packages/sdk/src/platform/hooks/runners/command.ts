@@ -48,6 +48,13 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
     }, timeoutMs);
     timer.unref?.();
 
+    // Start draining stdout/stderr concurrently with the exit wait. If we only
+    // read after exit, a hook that writes more than the OS pipe buffer (~64KB)
+    // blocks on write — the child never exits and `await proc.exited` deadlocks
+    // until the timeout kills it, discarding the hook's intended output.
+    const stdoutPromise = new Response(proc.stdout).text();
+    const stderrPromise = new Response(proc.stderr).text();
+
     let exitCode: number;
     try {
       exitCode = await proc.exited;
@@ -55,11 +62,14 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
     } catch (err) {
       clearTimeout(timer);
       killHookProcess(proc, command, 'spawn error');
+      // We're abandoning the drains on this path; settle them with a no-op
+      // catch so a stream rejection can't surface as an unhandled rejection.
+      void stdoutPromise.catch(() => {});
+      void stderrPromise.catch(() => {});
       throw err;
     }
 
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
+    const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
 
     if (exitCode !== 0) {
       logger.error('command hook exited with non-zero code', {

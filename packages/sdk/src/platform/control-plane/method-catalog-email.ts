@@ -92,6 +92,7 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
       uid: NUMBER_SCHEMA,
       draftId: STRING_SCHEMA,
     }, ['uid', 'draftId']),
+    dangerous: true,
   }),
   methodDescriptor({
     id: 'email.send',

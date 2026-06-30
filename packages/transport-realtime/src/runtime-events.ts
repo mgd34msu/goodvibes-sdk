@@ -1,6 +1,6 @@
 import {
   RUNTIME_EVENT_DOMAINS,
-  TypedSerializedEventEnvelopeSchema,
+  SerializedEventEnvelopeSchema,
   type RuntimeEventDomain,
   type RuntimeEventRecord,
 } from '@pellux/goodvibes-contracts';
@@ -426,7 +426,27 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
         onEvent: (eventName, payload) => {
           if (eventName !== domain) return;
           if (!payload || typeof payload !== 'object') return;
-          const envelope = payload as SerializedRuntimeEnvelope<TEvent>;
+          // Validate the inbound envelope STRUCTURE at the transport boundary, mirroring
+          // the WebSocket connector. Use the base envelope schema (payload: unknown): the
+          // discriminant lives on the OUTER `type`, and the `payload` carries event-specific
+          // data with NO inner `type` field, so the typed-payload schema would reject every
+          // real frame. Event-specific payload validation happens at each domain boundary.
+          // Unlike the WS path we must NOT throw here (the SSE flush loop has no try/catch
+          // around onEvent), so route validation failures through the error channels and
+          // drop the frame instead of delivering an unvalidated envelope to typed consumers.
+          const parsed = SerializedEventEnvelopeSchema.safeParse(payload);
+          if (!parsed.success) {
+            const validationError = new GoodVibesSdkError('SSE runtime event payload failed schema validation.', {
+              category: 'protocol',
+              source: 'transport',
+              recoverable: true,
+              cause: parsed.error,
+            });
+            invokeTransportObserver(() => observer?.onError?.(validationError), observer?.onObserverError);
+            handleError?.(validationError);
+            return;
+          }
+          const envelope = parsed.data as SerializedRuntimeEnvelope<TEvent>;
           onEnvelope(envelope);
           // Notify observer of inbound event.
           invokeTransportObserver(() => {
@@ -477,6 +497,12 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     let hasReceivedMessage = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: TimeoutHandle | null = null;
+    // Once a connection stays open this long past 'connected', treat it as
+    // proven-stable and reset the reconnect-attempt budget (see onOpen). This lets a
+    // healthy-but-idle domain (no inbound frames) recover its retry budget, while a
+    // flapping auth-reject loop that closes before the timer fires keeps counting.
+    const CONNECTION_STABILITY_MS = 10_000;
+    let stabilityTimer: TimeoutHandle | null = null;
     // Track last emitted connection state to avoid duplicate emissions.
     let lastConnectionState: ConnectionState | null = null;
     // Derive a stable transportId from the WS URL hostname (same URL for
@@ -495,10 +521,9 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     const outboundQueue: Array<{ readonly data: string; readonly sizeBytes: number }> = [];
     let outboundQueueBytes = 0;
     let droppedOutboundCount = 0;
-    // track overflow notification count so we fire on every overflow burst
-    // rather than once per connection lifetime. queueOverflowNotified is reset in
-    // flushOutboundQueue when the connection restores.
-    let queueOverflowNotified = false;
+    // Track overflow bursts so notifications fire on every burst rather than once per
+    // connection lifetime. overflowEventCount is reset to 0 in flushOutboundQueue on
+    // reconnect, so the first burst after a restore is reported again.
     let overflowEventCount = 0;
     const getAuthToken = normalizeAuthToken(token ?? undefined);
 
@@ -529,7 +554,6 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         // fire on first overflow and every 10th thereafter so bursts between
         // reconnects stay observable after the first.
         if (overflowEventCount === 1 || overflowEventCount % 10 === 0) {
-          queueOverflowNotified = true;
           const bpError = new WebSocketTransportError(
             `WebSocket outbound message too large (${sizeBytes} bytes, limit ${MAX_OUTBOUND_MESSAGE_BYTES}). Dropping the message while the socket reconnects.`,
             {
@@ -568,7 +592,6 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         overflowEventCount += 1;
         // fire on first overflow and every 10th thereafter.
         if (overflowEventCount === 1 || overflowEventCount % 10 === 0) {
-          queueOverflowNotified = true;
           const bpError = new WebSocketTransportError(
             `WebSocket outbound queue full (limit ${MAX_OUTBOUND_QUEUE} messages / ${MAX_OUTBOUND_QUEUE_BYTES} bytes). Dropping oldest messages until the socket reconnects.`,
             {
@@ -609,6 +632,10 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
+      }
+      if (stabilityTimer) {
+        clearTimeout(stabilityTimer);
+        stabilityTimer = null;
       }
       socket.removeEventListener('open', onOpen);
       socket.removeEventListener('message', onMessage);
@@ -675,7 +702,6 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         ws.send(item.data);
       }
       // Reset overflow state on successful reconnect so the next burst is reported.
-      queueOverflowNotified = false;
       overflowEventCount = 0;
     };
 
@@ -718,6 +744,23 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         flushOutboundQueue(openedSocket);
         emitConnectionState('connected');
         options.onOpen?.();
+        // Reset the reconnect-attempt budget only after the connection proves stable.
+        // 'connected' is emitted right after the auth frame is sent (before the server
+        // validates the token), so resetting here directly would defeat the auth-failure
+        // loop guard: an auth-reject that closes immediately must keep counting toward the
+        // give-up limit. A connection that survives CONNECTION_STABILITY_MS is treated as
+        // genuinely healthy and its budget restored, covering quiet/idle domains too.
+        if (stabilityTimer) {
+          clearTimeout(stabilityTimer);
+          stabilityTimer = null;
+        }
+        stabilityTimer = setTimeout(() => {
+          stabilityTimer = null;
+          if (!stopped && socket === openedSocket && isSocketOpen(openedSocket, WebSocketImpl)) {
+            reconnectAttempt = 0;
+          }
+        }, CONNECTION_STABILITY_MS) as TimeoutHandle;
+        stabilityTimer.unref?.();
       } catch (error) {
         const sendError = transportErrorFromUnknown(error, 'WebSocket send failed');
         invokeTransportObserver(() => observer?.onError?.(sendError), observer?.onObserverError);
@@ -754,7 +797,9 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           reconnectAttempt = 0;
         }
         if (frame.type === 'event' && frame.event === domain && frame.payload && typeof frame.payload === 'object') {
-          const parsedPayload = TypedSerializedEventEnvelopeSchema.safeParse(frame.payload);
+          // Validate envelope structure only; the discriminant is the outer `type` and the
+          // `payload` carries event-specific data without an inner `type` (see SSE path).
+          const parsedPayload = SerializedEventEnvelopeSchema.safeParse(frame.payload);
           if (!parsedPayload.success) {
             throw new WebSocketTransportError('WebSocket runtime event payload failed schema validation.', {
               code: 'WS_EVENT_ERROR',
@@ -785,6 +830,10 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
 
     const onClose = (event: CloseEvent) => {
       hasReceivedMessage = false;
+      if (stabilityTimer) {
+        clearTimeout(stabilityTimer);
+        stabilityTimer = null;
+      }
       // RFC 6455 §7.4.1: code 1005 (No Status Received) is synthesized by runtimes
       // when a socket closes WITHOUT a close frame — including abnormal drops (process
       // death, proxy teardown, RST) where wasClean === false. Only a genuine clean

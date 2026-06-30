@@ -688,6 +688,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       createdAt: STRING_SCHEMA,
       updatedAt: STRING_SCHEMA,
     }, ['assignmentId', 'surfaceKind', 'profileId', 'createdAt', 'updatedAt']),
+    dangerous: true,
   }),
   methodDescriptor({
     id: 'channels.routing.delete',
@@ -743,6 +744,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       draft: CHANNEL_DRAFT_SCHEMA,
       created: BOOLEAN_SCHEMA,
     }, ['draft', 'created']),
+    dangerous: true,
   }),
   methodDescriptor({
     id: 'channels.drafts.delete',

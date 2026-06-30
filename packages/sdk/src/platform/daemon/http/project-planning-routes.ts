@@ -13,6 +13,7 @@ import type {
   ProjectWorkPlanTaskStatusInput,
   ProjectWorkPlanTaskUpdateInput,
 } from '../../knowledge/index.js';
+import { jsonErrorResponse } from './error-response.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -132,7 +133,7 @@ export class ProjectPlanningRoutes {
       }
       return Response.json({ error: 'Unknown project planning route' }, { status: 404 });
     } catch (error) {
-      return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
+      return jsonErrorResponse(error, { status: 400 });
     }
   }
 

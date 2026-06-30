@@ -38,8 +38,9 @@ export function scheduleAutomationFailureFollowUp(
   maybeDeliverFailureNotice: (job: AutomationJob, run: AutomationRun) => void,
   job: AutomationJob,
   run: AutomationRun,
+  deliverNotice = true,
 ): void {
-  maybeDeliverFailureNotice(job, run);
+  if (deliverNotice) maybeDeliverFailureNotice(job, run);
   if (!job.enabled) return;
 
   if (job.failure.action === 'cooldown') {
@@ -68,7 +69,7 @@ export function scheduleAutomationFailureFollowUp(
     const latestJob = context.jobs.get(job.id);
     if (!latestJob?.enabled) return;
     if (context.activeRunCount() >= context.maxConcurrentRuns()) {
-      scheduleAutomationFailureFollowUp(context, maybeDeliverFailureNotice, latestJob, run);
+      scheduleAutomationFailureFollowUp(context, maybeDeliverFailureNotice, latestJob, run, false);
       return;
     }
     void context.executeJob(latestJob, 'scheduled', false, run.attempt + 1).catch((error) => {

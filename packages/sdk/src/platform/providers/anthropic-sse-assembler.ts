@@ -151,6 +151,27 @@ export async function readAnthropicSSEStream(
         processAnthropicSSEEvent(event, state, onDelta);
       }
     }
+    // Drain any bytes left after the last newline: servers (notably home-grown
+    // anthropic-compat proxies) may close the connection right after a final
+    // `data: {...}` line with no trailing newline, which would otherwise drop the
+    // closing message_delta (stop_reason + usage). flush() returns [] for
+    // newline-terminated streams, so this is a no-op for compliant servers.
+    for (const line of sseBuffer.flush()) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === '[DONE]') continue;
+      let event: AnthropicSSEEvent;
+      try {
+        event = JSON.parse(data) as AnthropicSSEEvent;
+      } catch {
+        logger.warn(`${providerLabel} SSE: failed to parse JSON chunk`, {
+          chunkPreview: data.slice(0, 200),
+          chunkLength: data.length,
+        });
+        continue;
+      }
+      processAnthropicSSEEvent(event, state, onDelta);
+    }
   } finally {
     reader.releaseLock();
   }

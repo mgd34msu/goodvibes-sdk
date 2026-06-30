@@ -51,7 +51,7 @@ export function restoreBranchMap(branches?: Record<string, Message[]>): Map<stri
   const restored = new Map<string, Message[]>();
   if (!branches) return restored;
   for (const [name, msgs] of Object.entries(branches)) {
-    restored.set(name, msgs);
+    restored.set(name, cloneMessages(msgs));
   }
   return restored;
 }

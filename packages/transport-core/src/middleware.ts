@@ -138,8 +138,15 @@ export function composeMiddleware(
           ctx.activeMiddlewareName = undefined;
         } catch (err) {
           // Mark that the error originated from this middleware (not the real fetch).
-          ctx.middlewareError = true;
-          ctx.activeMiddlewareName = mwName;
+          // innerFetch sets `ctx.error = err` before rethrowing, so a transport/fetch
+          // error that merely bubbled up through this middleware is reference-identical
+          // to `ctx.error`. Only flag errors thrown by the middleware body itself,
+          // otherwise genuine transport errors would be reclassified and lose their
+          // HttpStatusError identity (status/category/retryAfterMs), disabling retries.
+          if (err !== ctx.error) {
+            ctx.middlewareError = true;
+            ctx.activeMiddlewareName = mwName;
+          }
           throw err;
         }
       } else {

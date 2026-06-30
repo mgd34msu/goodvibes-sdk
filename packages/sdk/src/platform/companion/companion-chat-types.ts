@@ -40,6 +40,7 @@ export interface CompanionChatMessage {
   readonly role: CompanionChatMessageRole;
   readonly content: string;
   readonly attachments: readonly CompanionChatMessageAttachment[];
+  readonly metadata?: Record<string, unknown> | undefined;
   readonly createdAt: number;
 }
 

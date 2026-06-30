@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
 import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import { inferFallbackContextWindow } from './context-window-fallback.js';
 
 interface OpenRouterModelData {
   id: string;
@@ -218,7 +219,14 @@ export class ModelLimitsService {
   }
 
   getContextWindowForModel(modelDef: ModelDefinition): number {
-    if (modelDef.contextWindowProvenance === 'provider_api' && modelDef.contextWindow > 0) {
+    // An explicit user-configured cap (configured_cap) is authoritative and must
+    // never be widened — or narrowed — by a fuzzy OpenRouter match. provider_api
+    // values are likewise trusted. Both short-circuit ahead of the OpenRouter lookup.
+    if (
+      (modelDef.contextWindowProvenance === 'provider_api' ||
+        modelDef.contextWindowProvenance === 'configured_cap') &&
+      modelDef.contextWindow > 0
+    ) {
       return modelDef.contextWindow;
     }
     const orMap = this.ensureOpenRouterMap();
@@ -228,7 +236,13 @@ export class ModelLimitsService {
         return orMatch.context_length;
       }
     }
-    return modelDef.contextWindow;
+    // Never emit 0/NaN: a non-positive or non-finite window would poison
+    // downstream budget math (used / contextWindow -> Infinity/NaN). Fall back to
+    // the family-aware floor instead.
+    const cw = modelDef.contextWindow;
+    return Number.isFinite(cw) && cw > 0
+      ? cw
+      : inferFallbackContextWindow(modelDef.provider, modelDef.id);
   }
 
   getToolResultMaxCharsForModel(model: ModelDefinition | null | undefined): number {

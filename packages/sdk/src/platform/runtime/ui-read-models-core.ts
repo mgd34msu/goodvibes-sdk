@@ -6,6 +6,9 @@ import type { TurnState } from './store/domains/conversation.js';
 import { createStoreBackedReadModel, listProviderIds, projectRecords, projectValues } from './ui-read-model-helpers.js';
 import type { UiReadModel } from './ui-read-models-base.js';
 
+/** Fraction of the model context window at which the context-warning flag activates. */
+const CONTEXT_WARNING_THRESHOLD = 0.85;
+
 export interface UiProvidersSnapshot {
   readonly providerIds: readonly string[];
 }
@@ -65,7 +68,9 @@ export function createCoreReadModels(runtimeServices: RuntimeServices): UiCoreRe
         contextWindow: state.model.tokenLimits.contextWindow,
         turnState: state.conversation.turnState,
         streamToolPreview: state.conversation.stream.partialToolPreview,
-        contextWarningActive: state.conversation.contextWarningActive,
+        contextWarningActive:
+          state.model.tokenLimits.contextWindow > 0 &&
+          state.conversation.estimatedContextTokens >= state.model.tokenLimits.contextWindow * CONTEXT_WARNING_THRESHOLD,
         pendingApproval: state.permissions.awaitingDecision,
         denialCount: state.permissions.denialCount,
       };

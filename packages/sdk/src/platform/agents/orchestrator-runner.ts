@@ -39,7 +39,6 @@ const MAX_TURNS = 50; // hard cap per agent run to prevent unbounded loops
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000]; // exponential back-off on transient network errors
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // fixed pause on 429/quota responses
 const RATE_LIMIT_MAX_RETRIES = 3; // cap retries so a sustained quota violation terminates cleanly
-const MAX_CHAT_RETRY_ITERATIONS = NETWORK_RETRY_DELAYS_MS.length + RATE_LIMIT_MAX_RETRIES + 4; // total iteration budget across all retry categories
 const CONTEXT_COMPACT_THRESHOLD = 0.85; // fraction of context window at which compaction is triggered
 const MIN_WINDOW_FOR_LLM_COMPACT = 12_000; // don't attempt LLM-driven compaction below this token floor
 
@@ -477,6 +476,15 @@ export async function runAgentTask(
     const LOOP_USER_THRESHOLD = 5;
     const CALL_HISTORY_WINDOW = 20;
     const circuitBreaker = new ConsecutiveErrorBreaker();
+    // Track which inter-agent messages have already been injected so a single
+    // directive/broadcast is appended to the conversation exactly once (getMessages
+    // returns all unexpired messages every turn until their TTL elapses).
+    const injectedMessageIds = new Set<string>();
+    // Iteration budget for the chat retry loop. Includes one slot per fallback
+    // route so fallback-model transitions don't cannibalize the network/rate-limit
+    // retry allowances.
+    const maxChatRetryIterations =
+      NETWORK_RETRY_DELAYS_MS.length + RATE_LIMIT_MAX_RETRIES + fallbackRoutes.length + 4;
 
     while (continueLoop) {
       if ((record as { status: string }).status === 'cancelled') {
@@ -507,6 +515,11 @@ export async function runAgentTask(
       session.appendMessage({ type: 'llm_request', turn, messageCount: conversation.getMessagesForLLM().length, timestamp: new Date().toISOString() });
       const pending = context.messageBus.getMessages(record.id);
       for (const msg of pending) {
+        // Skip the agent's own broadcasts and any message already injected on a
+        // prior turn so each directive is surfaced to the model exactly once.
+        if (msg.from === record.id) continue;
+        if (injectedMessageIds.has(msg.id)) continue;
+        injectedMessageIds.add(msg.id);
         const kindLabel = (msg.kind[0] ?? '').toUpperCase() + msg.kind.slice(1);
         conversation.addUserMessage(`[${kindLabel} from ${msg.from}]: ${msg.content}`);
       }
@@ -531,7 +544,7 @@ export async function runAgentTask(
         let networkAttempt = 0;
         let rateLimitAttempt = 0;
         let contextRetried = false;
-        for (let chatRetryIteration = 0; chatRetryIteration < MAX_CHAT_RETRY_ITERATIONS; chatRetryIteration++) {
+        for (let chatRetryIteration = 0; chatRetryIteration < maxChatRetryIterations; chatRetryIteration++) {
           let streamAccumulated = '';
           record.streamingContent = undefined;
 
@@ -639,7 +652,7 @@ export async function runAgentTask(
           }
         }
         if (response === undefined) {
-          throw new Error(`Agent ${record.id}: chat retry loop exceeded ${MAX_CHAT_RETRY_ITERATIONS} iterations`);
+          throw new Error(`Agent ${record.id}: chat retry loop exceeded ${maxChatRetryIterations} iterations`);
         }
         record.streamingContent = undefined;
         record.progress = `Turn ${turn} · Thinking…`;

@@ -67,6 +67,13 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+/**
+ * Rough token cost for a single image content part. Image parts carry real provider
+ * token cost (Anthropic bills up to ~1600 tokens per image) but contribute no text,
+ * so threshold and overflow estimates must not treat them as free.
+ */
+export const IMAGE_TOKEN_ESTIMATE = 1600;
+
 // ---------------------------------------------------------------------------
 // Context data sources (read-only, passed in as plain data — no singletons)
 // ---------------------------------------------------------------------------
@@ -94,7 +101,7 @@ export interface CompactionContext {
   /** Original task description for lineage. Set on first compaction. */
   originalTask?: string | undefined;
 
-  /** Number of compactions performed so far (including this one). */
+  /** Number of compactions already recorded before this one (excludes the in-flight compaction). */
   compactionCount: number;
 
   /** Context window size for the current model (used for threshold scaling). */

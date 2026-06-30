@@ -768,7 +768,10 @@ export class WrfcController {
   private onAgentFailed(agentId: string, errorMessage?: string): void {
     const chain = this.findChainByAgentId(agentId);
     if (!chain) return;
-    if (agentId === chain.ownerAgentId && isChainTerminal(chain.state)) return;
+    // A non-owner child failure on an already-terminal chain must be a no-op:
+    // mirrors onAgentCancelled and prevents duplicate WORKFLOW_CHAIN_FAILED events
+    // and passed→failed flips when a late/second child failure arrives.
+    if (isChainTerminal(chain.state)) return;
     if (agentId === chain.ownerAgentId) {
       this.keepOwnerAgentActive(chain, 'Ignored premature owner failure event; WRFC lifecycle is still active');
       this.appendOwnerDecision(
@@ -940,9 +943,13 @@ export class WrfcController {
 
     const maxFixAttempts = getWrfcMaxFixAttempts(this.configManager);
     if (chain.fixAttempts >= maxFixAttempts) {
-      const failureReason = constraintFailure && review.score >= threshold
-        ? `Unsatisfied constraints [${unsatisfiedConstraintIds.join(',')}] after ${chain.fixAttempts} fix attempt${chain.fixAttempts !== 1 ? 's' : ''}`
-        : `Score ${review.score}/10 below threshold ${threshold}/10 after ${chain.fixAttempts} fix attempt${chain.fixAttempts !== 1 ? 's' : ''} — below threshold`;
+      const attemptsLabel = `${chain.fixAttempts} fix attempt${chain.fixAttempts !== 1 ? 's' : ''}`;
+      const failureReason =
+        chain.claimsVerified === false && review.score >= threshold && !constraintFailure
+          ? `Engineer/fixer claims could not be verified on disk (suspected phantom work) after ${attemptsLabel}`
+          : constraintFailure && review.score >= threshold
+            ? `Unsatisfied constraints [${unsatisfiedConstraintIds.join(',')}] after ${attemptsLabel}`
+            : `Score ${review.score}/10 below threshold ${threshold}/10 after ${attemptsLabel} — below threshold`;
       this.failChain(
         chain,
         failureReason,

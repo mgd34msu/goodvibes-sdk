@@ -446,12 +446,12 @@ export class MultimodalService {
       });
     }
 
-    if (audioArtifactId || transcriptArtifactId) {
-      const audioDescriptor = this.artifactStore.get(audioArtifactId ?? transcriptArtifactId!);
+    if (audioArtifactId) {
+      const audioDescriptor = this.artifactStore.get(audioArtifactId);
       if (audioDescriptor) {
         const audioResult = await this.analyzeAudio(
           audioDescriptor,
-          (await this.artifactStore.readContent(audioArtifactId ?? transcriptArtifactId!)).buffer,
+          (await this.artifactStore.readContent(audioArtifactId)).buffer,
           {
             audioProviderId: request.audioProviderId,
             modelId: request.modelId,
@@ -463,6 +463,20 @@ export class MultimodalService {
         for (const providerId of audioResult.providerIds) providerIds.add(providerId);
         labels.push(...audioResult.labels);
         sceneSegments.push(...audioResult.segments.slice(0, 6));
+      }
+    } else if (transcriptArtifactId) {
+      const transcriptDescriptor = this.artifactStore.get(transcriptArtifactId);
+      if (transcriptDescriptor) {
+        const transcriptText = (await this.artifactStore.readContent(transcriptArtifactId)).buffer
+          .toString('utf-8')
+          .trim();
+        if (transcriptText) {
+          sceneSegments.push({
+            kind: 'transcript',
+            text: compactText(transcriptText, 4_000) ?? transcriptText,
+            metadata: { transcriptArtifactId },
+          });
+        }
       }
     }
 

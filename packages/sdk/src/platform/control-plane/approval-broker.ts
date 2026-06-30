@@ -57,6 +57,16 @@ function sortApprovals(records: Iterable<SharedApprovalRecord>): SharedApprovalR
   return [...records].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
 }
 
+/**
+ * Maximum number of terminal (resolved) approval records retained in memory and
+ * on disk. Mirrors ChannelPolicyManager's MAX_AUDIT_RECORDS so a long-running
+ * control-plane daemon does not grow the snapshot without bound. Pending and
+ * claimed approvals are never counted or evicted — they have a live awaited
+ * promise + resolver and must survive until resolved.
+ */
+const MAX_APPROVAL_RECORDS = 500;
+const TERMINAL_APPROVAL_STATUSES = new Set<SharedApprovalStatus>(['approved', 'denied', 'cancelled', 'expired']);
+
 const APPROVAL_STATUSES = new Set<SharedApprovalStatus>(['pending', 'claimed', 'approved', 'denied', 'cancelled', 'expired']);
 const APPROVAL_AUDIT_ACTIONS = new Set<SharedApprovalAuditRecord['action']>([
   'created',
@@ -226,6 +236,7 @@ export class ApprovalBroker {
     for (const approval of snapshot?.approvals ?? []) {
       this.approvals.set(approval.id, approval);
     }
+    this.pruneTerminalApprovals();
     this.loaded = true;
   }
 
@@ -439,7 +450,26 @@ export class ApprovalBroker {
     }
   }
 
+  /**
+   * Drop the oldest terminal (approved/denied/cancelled/expired) approvals once
+   * they exceed MAX_APPROVAL_RECORDS, bounding both the in-memory Map and the
+   * persisted snapshot. Pending/claimed approvals are excluded and never evicted,
+   * so their awaiting callers and pendingResolvers are never orphaned.
+   */
+  private pruneTerminalApprovals(): void {
+    const terminal: SharedApprovalRecord[] = [];
+    for (const record of this.approvals.values()) {
+      if (TERMINAL_APPROVAL_STATUSES.has(record.status)) terminal.push(record);
+    }
+    if (terminal.length <= MAX_APPROVAL_RECORDS) return;
+    terminal.sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
+    for (const record of terminal.slice(MAX_APPROVAL_RECORDS)) {
+      this.approvals.delete(record.id);
+    }
+  }
+
   private async persist(): Promise<void> {
+    this.pruneTerminalApprovals();
     await this.store.persist({
       approvals: sortApprovals(this.approvals.values()),
     });
