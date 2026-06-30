@@ -464,10 +464,14 @@ export class CompanionChatManager {
     sessionId: string,
     content: string,
     clientId = '',
-    options: { readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined } = {},
+    options: {
+      readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
+    } = {},
   ): Promise<string> {
     return await this._postMessageInternal(sessionId, content, clientId, {
       attachments: options.attachments,
+      metadata: options.metadata,
     });
   }
 
@@ -510,6 +514,7 @@ export class CompanionChatManager {
     options: {
       readonly pendingReply?: PendingReply | undefined;
       readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
     } = {},
   ): Promise<string> {
     const session = this.sessions.get(sessionId);
@@ -537,6 +542,7 @@ export class CompanionChatManager {
       role: 'user',
       content,
       attachments,
+      ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
       createdAt: now,
     };
 
@@ -821,6 +827,15 @@ export class CompanionChatManager {
           session.conversation.addAssistantMessage(fallbackResponse);
           completed = true;
         }
+      }
+
+      // A detected abort (session closed/disposed/GC'd) where the provider ended
+      // its stream gracefully instead of throwing must be treated as a cancellation,
+      // not recorded as a successful partial reply. Mirror the catch-block's aborted
+      // handling and short-circuit before push/persist/turn.completed.
+      if (abortSignal.aborted) {
+        this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: 'Turn cancelled' });
+        return;
       }
 
       const now = Date.now();

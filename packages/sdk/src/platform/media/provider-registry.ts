@@ -93,7 +93,10 @@ export class MediaProviderRegistry {
     if (this.providers.has(id) && !options.replace) {
       throw new Error(`Media provider already registered: ${id}`);
     }
-    const registered = { ...provider, id };
+    const registered: MediaProvider =
+      id === provider.id
+        ? provider
+        : Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, { id });
     this.providers.set(id, registered);
     return () => {
       if (this.providers.get(id) === registered) this.unregister(id);

@@ -287,7 +287,9 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       usage: context.normalizeUsage(response.usage),
     };
 
-    void context.favoritesStore?.recordUsage(model.registryKey);
+    void context.favoritesStore?.recordUsage(model.registryKey).catch((err) => logger.warn('favoritesStore.recordUsage failed', {
+      error: err instanceof Error ? err.message : String(err),
+    }));
     context.usage.input += response.usage.inputTokens;
     context.usage.output += response.usage.outputTokens;
     context.usage.cacheRead += response.usage.cacheReadTokens ?? 0;
@@ -421,7 +423,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
             });
           }
           context.markTurnFailed();
-          continueLoop = false;
+          break;
         } else if (breakerResult === 'warn') {
           context.conversation.addSystemMessage(
             `WARNING: You have made ${circuitBreaker.consecutiveErrors} consecutive tool calls that ALL failed. `

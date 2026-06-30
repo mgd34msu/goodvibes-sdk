@@ -356,7 +356,6 @@ export class DeliveryQueue {
     try {
       await entry.deliver();
       this._delivered += 1;
-      if (entry.attempts > 1) this._retrying = Math.max(0, this._retrying - 1);
       this._pending.delete(entry.id);
       logger.debug('DeliveryQueue: delivered', {
         channel: entry.channel,

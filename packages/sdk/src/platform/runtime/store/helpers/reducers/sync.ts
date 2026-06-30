@@ -58,9 +58,14 @@ export function updateCommunicationState(
   }
 
   const recentRecordIds = uniq([event.messageId, ...domain.recentRecordIds]).slice(0, 200);
+  const retainedRecords = new Map<string, RuntimeCommunicationRecord>();
+  for (const id of recentRecordIds) {
+    const record = records.get(id);
+    if (record) retainedRecords.set(id, record);
+  }
   return {
     ...updateDomainMetadata(domain, event.type),
-    records,
+    records: retainedRecords,
     recentRecordIds,
     totalSent: domain.totalSent + (event.type === 'COMMUNICATION_SENT' ? 1 : 0),
     totalDelivered: domain.totalDelivered + (event.type === 'COMMUNICATION_DELIVERED' ? 1 : 0),

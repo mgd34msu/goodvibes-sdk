@@ -134,8 +134,6 @@ export interface ConversationDomainState {
   // ── Context window ─────────────────────────────────────────────────────────
   /** Estimated token count of the current context window. */
   estimatedContextTokens: number;
-  /** Whether a context warning threshold has been crossed. */
-  contextWarningActive: boolean;
   /** Message count in the current session conversation. */
   messageCount: number;
 }
@@ -175,7 +173,6 @@ export function createInitialConversationState(): ConversationDomainState {
     currentTurnUsage: makeEmptyUsage(),
     sessionUsage: makeEmptyUsage(),
     estimatedContextTokens: 0,
-    contextWarningActive: false,
     messageCount: 0,
   };
 }

@@ -58,14 +58,23 @@ export function clientInputRecord<TInput>(input: TInput | undefined): Record<str
     : undefined;
 }
 
-/** Merge fixed path fields with the optional typed client input record. */
+/**
+ * Merge fixed path fields with the optional typed client input record.
+ *
+ * Fixed path fields are spread LAST so the explicit positional path parameter the
+ * caller named always wins over a same-named field on the input object. The public
+ * `WithoutKeys` type already strips path keys from the input for TypeScript callers,
+ * but JS consumers get no such protection — without this ordering a stray
+ * `{ sessionId: 'other' }` could redirect the request to a different resource id
+ * than the caller positionally specified.
+ */
 export function mergeClientInput<TInput>(
   fixed: Record<string, unknown>,
   input: TInput | undefined,
 ): Record<string, unknown> {
   return {
-    ...fixed,
     ...(clientInputRecord(input) ?? {}),
+    ...fixed,
   };
 }
 

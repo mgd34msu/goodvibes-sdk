@@ -87,6 +87,7 @@ export async function openContractRouteStream(
     options.handlers,
     {
       authToken: transport.authToken,
+      getAuthToken: transport.getAuthToken.bind(transport),
       headers: options.headers,
       signal: options.signal,
     },

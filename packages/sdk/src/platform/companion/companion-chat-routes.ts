@@ -397,6 +397,7 @@ async function handlePostMessage(
   try {
     const messageId = await context.chatManager.postMessage(sessionId, input.content, '', {
       attachments: input.attachments,
+      ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
     });
     return Response.json({ messageId }, { status: 202 });
   } catch (err: unknown) {

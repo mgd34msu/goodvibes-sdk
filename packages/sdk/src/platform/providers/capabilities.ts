@@ -429,13 +429,31 @@ export class ProviderCapabilityRegistry {
     modelId: string,
     provider?: Pick<LLMProvider, 'capabilities'>,
   ): ProviderCapability {
-    const key = `${providerId}::${modelId}`;
+    // Self-declared capabilities (custom/discovered providers) change the
+    // resolved record, so they must participate in the cache key. Otherwise a
+    // call WITHOUT a provider instance could poison the entry a later call WITH
+    // one — or with different declarations — reads back.
+    const key = `${providerId}::${modelId}::${this._selfCapabilitiesKey(provider?.capabilities)}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
 
     const resolved = this._resolve(providerId, modelId, provider);
     this.cache.set(key, resolved);
     return resolved;
+  }
+
+  /**
+   * Build a stable, order-independent key fragment from a provider's
+   * self-declared capabilities so cache entries with vs without an instance
+   * (or with differing declarations) never collide.
+   */
+  private _selfCapabilitiesKey(caps: Partial<ProviderCapability> | undefined): string {
+    if (!caps) return '';
+    const keys = Object.keys(caps).sort();
+    if (keys.length === 0) return '';
+    return keys
+      .map((k) => `${k}=${JSON.stringify((caps as Record<string, unknown>)[k])}`)
+      .join('&');
   }
 
   /**
@@ -506,7 +524,7 @@ export class ProviderCapabilityRegistry {
     modelId: string,
     provider?: Pick<LLMProvider, 'capabilities'>,
   ): ProviderCapability {
-    const providerDefaults = PROVIDER_DEFAULTS[providerId]! ?? {};
+    const providerDefaults = PROVIDER_DEFAULTS[providerId] ?? {};
     const selfDeclared: Partial<ProviderCapability> = provider?.capabilities ?? {};
     const modelOverride: Partial<ProviderCapability> = MODEL_OVERRIDES[modelId] ?? {};
 

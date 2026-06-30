@@ -75,7 +75,7 @@ export function applyPerMethodPolicy(
   base: ResolvedHttpRetryPolicy,
   methodId: string,
 ): ResolvedHttpRetryPolicy {
-  const override = base.perMethodPolicy[methodId]!;
+  const override = base.perMethodPolicy[methodId];
   if (!override) return base;
   return {
     ...base,

@@ -18945,7 +18945,7 @@ Mirror a channel draft to the daemon-side store. Webhook values must be redacted
 - HTTP: `POST /api/channels/drafts`
 - Scopes: `write:channels`
 - Emits events: none
-- Dangerous: `no`
+- Dangerous: `yes`
 - Invokable: `yes`
 
 ##### Input schema
@@ -20175,7 +20175,7 @@ Create or update a channel-to-profile routing rule in the daemon-persisted routi
 - HTTP: `POST /api/channels/routing`
 - Scopes: `write:channels`
 - Emits events: none
-- Dangerous: `no`
+- Dangerous: `yes`
 - Invokable: `yes`
 
 ##### Input schema
@@ -25501,7 +25501,7 @@ Append a draft message to the configured IMAP Drafts folder. Distinct from the l
 - HTTP: `POST /api/email/drafts`
 - Scopes: `write:email`
 - Emits events: none
-- Dangerous: `no`
+- Dangerous: `yes`
 - Invokable: `yes`
 
 ##### Input schema

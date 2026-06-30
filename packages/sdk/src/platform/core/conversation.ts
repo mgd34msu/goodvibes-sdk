@@ -394,7 +394,7 @@ export class ConversationManager {
     title?: string | undefined;
     titleSource?: ConversationTitleSource | undefined;
   }): void {
-    this.messages = data.messages ?? [];
+    this.messages = cloneMessages(data.messages ?? []);
     this._title = typeof data.title === 'string' ? data.title : '';
     this._titleSource = data.titleSource === 'user' || data.titleSource === 'system'
       ? data.titleSource

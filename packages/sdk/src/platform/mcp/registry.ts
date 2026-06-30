@@ -553,6 +553,10 @@ export class McpRegistry {
       };
       this.hookDispatcher.fire(connectedEvent).catch((err: unknown) => { logger.warn('Lifecycle:mcp:connected hook error', { error: summarizeError(err) }); });
     } catch (err) {
+      // Kill any half-started process so a failed handshake does not leak an
+      // orphan server. intentionalClose (set inside disconnect) suppresses the
+      // client's auto-restart, so this teardown does not resurrect the process.
+      await client.disconnect().catch((e) => logger.warn('McpRegistry: failed to clean up half-connected client', { name, err: summarizeError(e) }));
       if (sandboxSessionId) {
         this.sandboxSessions.stop(sandboxSessionId);
         this.sandboxSessionByServer.delete(name);

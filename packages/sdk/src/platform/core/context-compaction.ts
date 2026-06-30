@@ -33,7 +33,7 @@ import type {
   CompactionEvent,
   CompactionConfig,
 } from './compaction-types.js';
-import { DEFAULT_COMPACTION_CONFIG, estimateTokens } from './compaction-types.js';
+import { DEFAULT_COMPACTION_CONFIG, IMAGE_TOKEN_ESTIMATE, estimateTokens } from './compaction-types.js';
 import { summarizeError } from '../utils/error-display.js';
 import {
   buildHandoffHeader,
@@ -61,7 +61,10 @@ export interface AutoCompactOptions {
   contextWindow: number;
   /** Whether auto-compact is already in progress (prevent re-entry). */
   isCompacting: boolean;
-  /** Usage percentage that triggers compaction. Defaults to 80. */
+  /**
+   * Usage percentage that triggers compaction. Defaults to 80. Set to 0 to disable
+   * the percentage trigger; the safety buffer still applies as an independent backstop.
+   */
   thresholdPercent?: number | undefined;
   /** Remaining-token safety buffer that also triggers compaction. Defaults to 15000. */
   minRemainingTokens?: number | undefined;
@@ -84,11 +87,24 @@ export interface AutoCompactDecision {
 // ---------------------------------------------------------------------------
 
 /**
- * Tokens remaining in the context window at which auto-compaction triggers.
- * Compact when contextWindow - currentTokens <= COMPACTION_BUFFER_TOKENS.
- * 15k gives room for the ~6.5k compaction output + LLM extraction calls.
+ * Default remaining-token safety buffer for auto-compaction. Acts as a backstop:
+ * compaction triggers when the remaining context drops below this buffer. 15k gives
+ * room for the ~6.5k compaction output + LLM extraction calls on large windows.
+ * The effective buffer is capped at SAFETY_BUFFER_MAX_WINDOW_FRACTION of the context
+ * window (see getAutoCompactDecision) so it scales down on small/medium windows instead
+ * of forcing near-constant compaction, while remaining an independent backstop on large windows.
  */
 export const COMPACTION_BUFFER_TOKENS = 15_000;
+/**
+ * The remaining-token safety buffer is capped at this fraction of the context
+ * window. A fixed token buffer (COMPACTION_BUFFER_TOKENS) must not reserve an
+ * outsized share of small/medium windows, so the effective buffer is the lesser
+ * of the configured buffer and this fraction of the window. On a 128k window the
+ * full buffer applies (128k * 0.125 = 16k >= 15k); on smaller windows it scales
+ * down so the backstop fires near the window edge rather than on near-empty
+ * conversations, while still firing independently of high percentage thresholds.
+ */
+export const SAFETY_BUFFER_MAX_WINDOW_FRACTION = 0.125;
 export const DEFAULT_AUTO_COMPACT_THRESHOLD_PERCENT = 80;
 
 /**
@@ -127,6 +143,8 @@ export function estimateConversationTokens(messages: ProviderMessage[]): number 
       for (const part of msg.content as ContentPart[]) {
         if (part.type === 'text') {
           total += estimateTokens(part.text);
+        } else if (part.type === 'image') {
+          total += IMAGE_TOKEN_ESTIMATE;
         }
       }
     }
@@ -154,12 +172,26 @@ export function getAutoCompactDecision(opts: AutoCompactOptions): AutoCompactDec
   const usagePct = contextWindow > 0 ? (currentTokens / contextWindow) * 100 : 0;
   const thresholdTokens = contextWindow > 0 ? Math.floor((contextWindow * thresholdPercent) / 100) : 0;
   const remainingTokens = Math.max(0, contextWindow - currentTokens);
+  // Scale the flat safety buffer to the window so a fixed token buffer never
+  // reserves an outsized share of small/medium windows. A flat 15k buffer would
+  // trip a 20k window at ~25% usage, and would fire on every request — even an
+  // empty conversation — for any window at or below the buffer size. Capping the
+  // buffer at a fraction of the window keeps the full configured buffer on large
+  // windows (e.g. 128k) while scaling it down on small ones, WITHOUT collapsing
+  // the backstop for high (or disabled) percentage thresholds, where the buffer
+  // is the only thing standing between usage and the window edge. (Clamping to
+  // the threshold headroom instead would make the buffer fire no earlier than the
+  // threshold itself, nullifying it as an independent backstop.)
+  const effectiveBuffer = Math.min(
+    safetyBufferTokens,
+    Math.floor(contextWindow * SAFETY_BUFFER_MAX_WINDOW_FRACTION),
+  );
   let reason: AutoCompactDecision['reason'] = null;
 
-  if (!opts.isCompacting && contextWindow > 0 && thresholdPercent > 0) {
-    if (currentTokens >= thresholdTokens) {
+  if (!opts.isCompacting && contextWindow > 0) {
+    if (thresholdPercent > 0 && currentTokens >= thresholdTokens) {
       reason = 'threshold';
-    } else if (remainingTokens <= safetyBufferTokens) {
+    } else if (currentTokens > 0 && effectiveBuffer > 0 && remainingTokens <= effectiveBuffer) {
       reason = 'safety-buffer';
     }
   }

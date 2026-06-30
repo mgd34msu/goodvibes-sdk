@@ -126,6 +126,8 @@ export class McpClient {
   private readLoopRunning = false;
   private restartCount = 0;
   private initialized = false;
+  /** Set true by disconnect() to suppress the read-loop's auto-restart. Reset on each successful _startProcess(). */
+  private intentionalClose = false;
 
   /** Cache: tool name → full schema (populated lazily on first callTool) */
   private schemaCache = new Map<string, McpToolSchema>();
@@ -227,6 +229,10 @@ export class McpClient {
    * disconnect — Stop the server process and clean up.
    */
   async disconnect(): Promise<void> {
+    // Mark this as a deliberate shutdown so the read-loop finally does not
+    // resurrect the process via _scheduleRestart(). Set synchronously before
+    // any await so it is already true when the detached read loop runs.
+    this.intentionalClose = true;
     if (!this.proc) return;
     // Reject all pending requests
     for (const [, pending] of this.pendingRequests) {
@@ -271,6 +277,7 @@ export class McpClient {
       });
       this.buffer = '';
       this.restartCount = 0;
+      this.intentionalClose = false;
       this._startReadLoop();
     } catch (err) {
       logger.error('McpClient: failed to start process', { server: this.config.name, err: summarizeError(err) });
@@ -372,8 +379,10 @@ export class McpClient {
         }
         this.pendingRequests.clear();
 
-        // Auto-restart if process crashed and we haven't exceeded retry limit
-        if (this.restartCount < MAX_RESTART_ATTEMPTS) {
+        // Auto-restart only on an unexpected crash — never after a deliberate disconnect.
+        if (this.intentionalClose) {
+          // Deliberate shutdown: leave the process down.
+        } else if (this.restartCount < MAX_RESTART_ATTEMPTS) {
           this._scheduleRestart();
         } else {
           logger.info('McpClient: exceeded max restart attempts', { server: this.config.name });
@@ -528,12 +537,15 @@ export class McpClient {
     logger.info('McpClient: scheduling restart', { server: this.config.name, attempt: this.restartCount, delayMs: delay });
 
     const timer = setTimeout(async () => {
+      if (this.intentionalClose) return; // Deliberately disconnected — do not restart
       if (this.proc && this.isConnected) return; // Already restarted by something else
       try {
         await this._startProcess();
         await this._initialize();
-        // Invalidate tool cache so it's re-fetched after restart
+        // Invalidate tool caches so they're re-fetched after restart (the
+        // restarted server may advertise changed tool lists or schemas).
         this.toolInfoCache = null;
+        this.schemaCache.clear();
         logger.info('McpClient: restart successful', { server: this.config.name });
       } catch (err) {
         logger.error('McpClient: restart failed', { server: this.config.name, err: summarizeError(err) });

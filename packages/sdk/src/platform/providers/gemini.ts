@@ -287,58 +287,66 @@ export class GeminiProvider implements LLMProvider {
 
       const sseBuffer = new SseLineBuffer();
 
+      const processSseLine = (line: string): void => {
+        if (!line.startsWith('data: ')) return;
+        const data = line.slice(6).trim();
+        if (!data || data === '[DONE]') return;
+
+        let chunk: GeminiResponseBody;
+        try {
+          chunk = JSON.parse(data) as GeminiResponseBody;
+        } catch {
+          logger.warn('Gemini SSE: failed to parse JSON chunk', {
+            chunkPreview: data.slice(0, 200),
+            chunkLength: data.length,
+          });
+          return;
+        }
+
+        const candidate = chunk.candidates?.[0];
+        if (candidate) {
+          const parts = candidate.content?.parts ?? [];
+          for (const part of parts) {
+            allParts.push(part);
+            if (part.text && onDelta) {
+              streamedText += part.text;
+              onDelta({ content: part.text });
+            }
+            if (part.functionCall) {
+              // Capture thoughtSignature if present (Gemini thinking models)
+              if ((part as Record<string, unknown>).thoughtSignature) {
+                this.thoughtSignatures.set(part.functionCall.name, (part as Record<string, unknown>).thoughtSignature as string);
+              }
+              if (onDelta) {
+                onDelta({ toolCalls: [{ index: 0, name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args) }] });
+              }
+            }
+          }
+          if (candidate.finishReason) {
+            lastFinishReason = candidate.finishReason;
+          }
+        }
+
+        if (chunk.usageMetadata) {
+          inputTokens = chunk.usageMetadata.promptTokenCount ?? inputTokens;
+          outputTokens = chunk.usageMetadata.candidatesTokenCount ?? outputTokens;
+          cacheReadTokens = chunk.usageMetadata.cachedContentTokenCount ?? cacheReadTokens;
+        }
+      };
+
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          for (const line of sseBuffer.feed(value)) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (!data || data === '[DONE]') continue;
-
-            let chunk: GeminiResponseBody;
-            try {
-              chunk = JSON.parse(data) as GeminiResponseBody;
-            } catch {
-              logger.warn('Gemini SSE: failed to parse JSON chunk', {
-                chunkPreview: data.slice(0, 200),
-                chunkLength: data.length,
-              });
-              continue;
-            }
-
-            const candidate = chunk.candidates?.[0];
-            if (candidate) {
-              const parts = candidate.content?.parts ?? [];
-              for (const part of parts) {
-                allParts.push(part);
-                if (part.text && onDelta) {
-                  streamedText += part.text;
-                  onDelta({ content: part.text });
-                }
-                if (part.functionCall) {
-                  // Capture thoughtSignature if present (Gemini thinking models)
-                  if ((part as Record<string, unknown>).thoughtSignature) {
-                    this.thoughtSignatures.set(part.functionCall.name, (part as Record<string, unknown>).thoughtSignature as string);
-                  }
-                  if (onDelta) {
-                    onDelta({ toolCalls: [{ index: 0, name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args) }] });
-                  }
-                }
-              }
-              if (candidate.finishReason) {
-                lastFinishReason = candidate.finishReason;
-              }
-            }
-
-            if (chunk.usageMetadata) {
-              inputTokens = chunk.usageMetadata.promptTokenCount ?? inputTokens;
-              outputTokens = chunk.usageMetadata.candidatesTokenCount ?? outputTokens;
-              cacheReadTokens = chunk.usageMetadata.cachedContentTokenCount ?? cacheReadTokens;
-            }
-          }
+          for (const line of sseBuffer.feed(value)) processSseLine(line);
         }
+        // Drain any bytes left after the last newline: a server that closes the
+        // connection right after a final `data:` line with no trailing newline
+        // would otherwise drop that last chunk (usageMetadata / finishReason).
+        // flush() returns [] for newline-terminated streams, so this is a no-op
+        // for compliant servers.
+        for (const line of sseBuffer.flush()) processSseLine(line);
       } finally {
         reader.releaseLock();
       }

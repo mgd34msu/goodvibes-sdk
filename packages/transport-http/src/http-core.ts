@@ -373,7 +373,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
     // (contract-marked or has a per-method policy override). Sending keys on all
     // mutating methods could cause duplicate suppression for a non-retried request
     // if a proxy retries it outside the SDK's control.
-    const hasPerMethodOverride = methodId !== undefined && resolveHttpRetryPolicy(retryPolicy, requestOptions.retry).perMethodPolicy[methodId] !== undefined;
+    const hasPerMethodOverride = methodId !== undefined && baseRetry.perMethodPolicy[methodId] !== undefined;
     const idempotencyKey = isMutatingMethod && (contractIdempotent || hasPerMethodOverride)
       ? generateIdempotencyKey()
       : undefined;
@@ -519,6 +519,15 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         const status = typeof wrappedError === 'object' && wrappedError !== null && 'transport' in wrappedError
           ? (wrappedError as { readonly transport?: { readonly status?: unknown } }).transport?.status
           : undefined;
+        // Never retry a request the caller deliberately aborted.
+        if (requestOptions.signal?.aborted) {
+          throw wrappedError;
+        }
+        // Honor the computed `recoverable` flag for network (status 0) failures so that
+        // non-recoverable errors (e.g. AbortError, programmer TypeErrors) are not retried.
+        const recoverable = typeof wrappedError === 'object' && wrappedError !== null && 'recoverable' in wrappedError
+          ? (wrappedError as { readonly recoverable?: unknown }).recoverable
+          : undefined;
         // Mutating methods (POST/PUT/PATCH/DELETE) without idempotent contract mark:
         // do NOT retry on 5xx to avoid duplicate side effects.
         // Precedence: explicit perMethodPolicy > contract.idempotent flag > HTTP-verb default.
@@ -526,12 +535,20 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         const canRetry = !isMutatingMethod || hasPerMethodOverride || contractIdempotent;
         const shouldRetry = canRetry && attempt < resolvedRetry.maxAttempts && (
           (typeof status === 'number' && status > 0 && isRetryableHttpStatus(method, status, resolvedRetry))
-          || (typeof status === 'number' && status === 0 && isRetryableNetworkError(method, resolvedRetry))
+          || (typeof status === 'number' && status === 0 && recoverable !== false && isRetryableNetworkError(method, resolvedRetry))
         );
         if (!shouldRetry) {
           throw wrappedError;
         }
-        const backoffMs = getHttpRetryDelay(attempt, resolvedRetry);
+        // Respect a server-supplied Retry-After (parsed onto transport.retryAfterMs) as a
+        // floor over the computed exponential backoff so we don't hammer a rate-limited server.
+        const retryAfterMs = typeof wrappedError === 'object' && wrappedError !== null && 'transport' in wrappedError
+          ? (wrappedError as { readonly transport?: { readonly retryAfterMs?: number } }).transport?.retryAfterMs
+          : undefined;
+        const backoffMs = Math.min(
+          MAX_RETRY_AFTER_MS,
+          Math.max(getHttpRetryDelay(attempt, resolvedRetry), retryAfterMs ?? 0),
+        );
         const retryReason = typeof status === 'number' && status > 0 ? `http-${status}` : 'network-error';
         // Notify callers before the retry sleep starts.
         onRetryScheduled?.({ attempt, maxAttempts: resolvedRetry.maxAttempts, backoffMs, reason: retryReason });

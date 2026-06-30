@@ -1,5 +1,5 @@
 import type { TurnEvent, ToolEvent } from '../events.js';
-import type { ConversationDomainState, ActiveToolCall, ToolExecutionState } from '../../domains/conversation.js';
+import type { ConversationDomainState, ActiveToolCall, ToolExecutionState, TurnUsage } from '../../domains/conversation.js';
 import { canStartNewTurn, formatPartialToolPreview, isCurrentTurnEvent, isTerminalTurnState, now, resetStreamState, updateDomainMetadata } from './shared.js';
 
 function formatToolArgs(event: ToolEvent | TurnEvent): string {
@@ -7,6 +7,20 @@ function formatToolArgs(event: ToolEvent | TurnEvent): string {
     return JSON.stringify(event.args);
   }
   return '{}';
+}
+
+function makeEmptyUsage(): TurnUsage {
+  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
+}
+
+function addUsage(usage: TurnUsage, event: Extract<TurnEvent, { type: 'LLM_RESPONSE_RECEIVED' }>): TurnUsage {
+  return {
+    inputTokens: usage.inputTokens + event.inputTokens,
+    outputTokens: usage.outputTokens + event.outputTokens,
+    cacheReadTokens: usage.cacheReadTokens + (event.cacheReadTokens ?? 0),
+    cacheWriteTokens: usage.cacheWriteTokens + (event.cacheWriteTokens ?? 0),
+    reasoningTokens: usage.reasoningTokens,
+  };
 }
 
 export function updateConversationState(
@@ -84,6 +98,8 @@ export function updateConversationState(
         activeToolCalls: new Map(),
         toolCallsThisTurn: 0,
         lastToolReconciliation: undefined,
+        currentTurnUsage: makeEmptyUsage(),
+        messageCount: domain.messageCount + 1,
       };
     case 'PREFLIGHT_OK':
       if (!isCurrentTurnEvent(domain, event.turnId) || domain.turnState !== 'preflight') return domain;
@@ -142,13 +158,16 @@ export function updateConversationState(
       return {
         ...updateDomainMetadata(domain, source),
         currentTurnId: event.turnId,
+        currentTurnUsage: addUsage(domain.currentTurnUsage, event),
+        sessionUsage: addUsage(domain.sessionUsage, event),
+        estimatedContextTokens: event.inputTokens,
       };
     case 'TOOL_BATCH_READY':
-      if (!isCurrentTurnEvent(domain, event.turnId) || domain.turnState !== 'tool_dispatch') return domain;
+      if (!isCurrentTurnEvent(domain, event.turnId) || domain.turnState !== 'streaming') return domain;
       return {
         ...updateDomainMetadata(domain, source),
         currentTurnId: event.turnId,
-        turnState: 'post_hooks',
+        turnState: 'tool_dispatch',
       };
     case 'TOOLS_DONE':
       if (!isCurrentTurnEvent(domain, event.turnId) || domain.turnState !== 'tool_dispatch') return domain;
@@ -186,6 +205,7 @@ export function updateConversationState(
         turnState: 'completed',
         turnEndedAt: now(),
         totalTurns: domain.totalTurns + 1,
+        messageCount: domain.messageCount + 1,
         lastTurnResponse: event.response,
         lastTurnStopReason: event.stopReason,
         stream: {

@@ -72,6 +72,10 @@ export {
   resolveContextWindow,
 } from './local-context-ingestion.js';
 export {
+  FALLBACK_CONTEXT_WINDOW,
+  inferFallbackContextWindow,
+} from './context-window-fallback.js';
+export {
   createModelCatalog,
   getCatalogModelDefinitionsFrom,
   getCostFromPricingCatalog,

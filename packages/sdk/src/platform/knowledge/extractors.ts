@@ -8,6 +8,7 @@ import { KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS } from './extraction-policy.j
 import type { KnowledgeExtractionFormat } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
+import { isRecord } from '../utils/record-coerce.js';
 
 export interface KnowledgeExtractionResult {
   readonly extractorId: string;
@@ -231,8 +232,8 @@ function extractJson(buffer: Buffer): KnowledgeExtractionResult {
   const text = decodeBuffer(buffer);
   try {
     const parsed = JSON.parse(text) as unknown;
-    const rootKeys = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-      ? Object.keys(parsed as Record<string, unknown>).slice(0, 24)
+    const rootKeys = isRecord(parsed)
+      ? Object.keys(parsed).slice(0, 24)
       : [];
     const title = rootKeys.length > 0 ? `JSON object: ${rootKeys.slice(0, 3).join(', ')}` : 'JSON document';
     const summary = Array.isArray(parsed)
@@ -532,6 +533,30 @@ function chooseFormat(artifact: Pick<ArtifactDescriptor, 'mimeType' | 'filename'
   return 'unknown';
 }
 
+async function extractOfficeWithFallback(
+  buffer: Buffer,
+  format: 'docx' | 'xlsx' | 'pptx',
+  extractor: (input: Buffer) => Promise<KnowledgeExtractionResult>,
+): Promise<KnowledgeExtractionResult> {
+  try {
+    return await extractor(buffer);
+  } catch (error) {
+    const parseWarning = `${format} parsing failed; used text fallback: ${summarizeError(error)}`;
+    logger.debug('Knowledge extraction: office parse failed; using text fallback', {
+      format,
+      error: summarizeError(error),
+    });
+    const fallback = extractTextLike(buffer, format, `${format}-fallback`);
+    return {
+      ...fallback,
+      metadata: {
+        ...fallback.metadata,
+        warnings: [parseWarning],
+      },
+    };
+  }
+}
+
 export async function extractKnowledgeArtifact(
   artifact: Pick<ArtifactRecord, 'id' | 'mimeType' | 'filename'>,
   buffer: Buffer,
@@ -553,12 +578,17 @@ export async function extractKnowledgeArtifact(
     case 'yaml':
       return extractYaml(buffer);
     case 'docx':
-      return extractDocx(buffer);
+      return extractOfficeWithFallback(buffer, 'docx', extractDocx);
     case 'xlsx':
-      return extractXlsx(buffer);
+      return extractOfficeWithFallback(buffer, 'xlsx', extractXlsx);
     case 'pptx':
-      return extractPptx(buffer);
+      return extractOfficeWithFallback(buffer, 'pptx', extractPptx);
     case 'pdf':
+      // PDFs must reject when no readable text can be extracted. extractPdf already
+      // performs its own pdfjs -> raw-stream fallbacks internally and only throws as a
+      // terminal failure; do NOT wrap it in the office text fallback. Decoding PDF binary
+      // as text yields garbage and would swallow 'PDF extraction failed', which callers
+      // rely on to know OCR / a dedicated PDF provider is required.
       return extractPdf(buffer);
     case 'text':
       return extractTextLike(buffer, 'text', 'text');

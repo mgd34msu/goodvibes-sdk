@@ -402,6 +402,9 @@ function orchestrationGraphStatus(graph: OrchestrationGraphRecord): Orchestratio
   if (nodes.every((node) => node.status === 'pending' || node.status === 'ready')) {
     return nodes.some((node) => node.status === 'ready') ? 'ready' : 'planning';
   }
+  if (nodes.every((node) => node.status === 'completed' || node.status === 'cancelled')) {
+    return nodes.some((node) => node.status === 'completed') ? 'completed' : 'cancelled';
+  }
   return 'running';
 }
 

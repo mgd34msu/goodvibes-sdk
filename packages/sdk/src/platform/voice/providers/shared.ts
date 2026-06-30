@@ -4,6 +4,7 @@ import type {
   VoiceProviderStatus,
 } from '../types.js';
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+import { isRecord } from '../../utils/record-coerce.js';
 
 export function trimToUndefined(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -14,9 +15,7 @@ export function asFiniteNumber(value: unknown): number | undefined {
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
+  return isRecord(value) ? value : undefined;
 }
 
 export function readFirstEnv(envVars: readonly string[]): string | null {

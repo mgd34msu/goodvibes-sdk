@@ -4,6 +4,13 @@ import { redactSensitiveData } from './redaction.js';
 
 const MAX_ERROR_LENGTH = 240;
 
+// NOTE: The error classifier below (NETWORK_ERROR_PATTERNS, inferCategory, inferHint,
+// buildSummary, getNetworkErrorMessage) is intentionally duplicated from
+// packages/daemon-sdk/src/error-response.ts. The two copies operate on different error
+// hierarchies (platform AppError/NormalizedError vs daemon GoodVibesSdkError) and are
+// deliberately NOT extracted into @pellux/goodvibes-errors in this patch to avoid a
+// risky cross-package move in a published library. Keep this classifier in sync with
+// that twin so the two cannot drift further.
 const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: PlatformErrorCategory; message: (provider?: string) => string }> = [
   {
     pattern: /ECONNREFUSED/i,
@@ -11,7 +18,7 @@ const NETWORK_ERROR_PATTERNS: Array<{ pattern: RegExp; category: PlatformErrorCa
     message: (provider) => `Cannot connect to ${provider ?? 'the provider'}. Check whether the service is reachable.`,
   },
   {
-    pattern: /ETIMEDOUT|ECONNABORTED|timed?[\s_-]?out/i,
+    pattern: /ETIMEDOUT|ECONNABORTED/i,
     category: 'timeout',
     message: () => 'Connection timed out before the request completed.',
   },
@@ -106,12 +113,13 @@ function inferCategory(message: string, statusCode?: number): PlatformErrorCateg
   if (statusCode === 402) return 'billing';
   if (statusCode === 403) return 'authorization';
   if (statusCode === 404) return 'not_found';
-  if (statusCode === 408) return 'timeout';
+  if (statusCode === 408 || statusCode === 504) return 'timeout';
   if (statusCode === 429) return 'rate_limit';
   if (statusCode === 400) return 'bad_request';
   if (statusCode !== undefined && statusCode >= 500) return 'service';
 
-  if (/api[_\s-]?key|auth|token|credential|jwt|unauthoriz/.test(msg)) return 'authentication';
+  // Word boundaries avoid false positives on "authorization"/"author"/"authority" (matches the daemon-sdk twin).
+  if (/api[_\s-]?key|\bauth\b|\btoken\b|credential|\bjwt\b|unauthoriz/.test(msg)) return 'authentication';
   if (/forbidden|access denied|permission denied|not allowed/.test(msg)) return 'authorization';
   if (/billing|payment required|credits?|quota|depleted|insufficient balance/.test(msg)) return 'billing';
   if (/rate.limit|too many requests|throttl/.test(msg)) return 'rate_limit';
@@ -128,9 +136,9 @@ function inferHint(category: PlatformErrorCategory, statusCode?: number): string
     case 'rate_limit':
       return 'The caller may retry automatically. If this persists, wait, lower request volume, or switch models/providers.';
     case 'authentication':
-      return 'Possible causes: invalid or expired credentials, missing subscription/session state, account restrictions, or the wrong provider/endpoint receiving the request.';
+      return 'The provider rejected authentication. Possible causes include invalid or expired credentials, missing account/session state, account restrictions, or the wrong provider/endpoint receiving the request.';
     case 'authorization':
-      return 'Possible causes: missing model access, account permissions, safety/policy restrictions, or provider routing to a service that does not expose this model.';
+      return 'Possible causes include missing model access, account permissions, safety/policy restrictions, or provider routing to a service that does not expose this model.';
     case 'billing':
       return 'Check credits, subscription status, usage limits, or account entitlements.';
     case 'timeout':
@@ -338,7 +346,7 @@ export function toProviderError(error: unknown, options: ProviderErrorNormalizat
     ...(options.requestId ?? normalized.requestId ? { requestId: options.requestId ?? normalized.requestId } : {}),
     ...(options.providerCode ?? normalized.providerCode ? { providerCode: options.providerCode ?? normalized.providerCode } : {}),
     ...(options.providerType ?? normalized.providerType ? { providerType: options.providerType ?? normalized.providerType } : {}),
-    ...(options.retryAfterMs ?? normalized.retryAfterMs !== undefined
+    ...((options.retryAfterMs ?? normalized.retryAfterMs) !== undefined
       ? { retryAfterMs: options.retryAfterMs ?? normalized.retryAfterMs }
       : {}),
     ...(options.rawMessage

@@ -1,7 +1,7 @@
 import type { ConversationManager } from './conversation.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { ToolCall, ToolResult } from '../types/tools.js';
-import { PermissionError, ProviderError, ToolError, isNonTransientProviderFailure } from '../types/errors.js';
+import { ProviderError, isNonTransientProviderFailure } from '../types/errors.js';
 import type { HookEvent, HookResult } from '../hooks/types.js';
 import { formatError, summarizeError } from '../utils/error-display.js';
 import type { ModelDefinition } from '../providers/registry.js';
@@ -11,9 +11,7 @@ import { logger } from '../utils/logger.js';
 import type { PermissionManager } from '../permissions/manager.js';
 import type { AcpManager } from '../acp/manager.js';
 import type { SubagentTask } from '../acp/protocol.js';
-import { ConsecutiveErrorBreaker } from './circuit-breaker.js';
 import type { ExecutionPlan, PlanItem } from './execution-plan.js';
-import { classifyIntent } from './intent-classifier.js';
 import { estimateConversationTokens } from './context-compaction.js';
 import { SessionLineageTracker } from './session-lineage.js';
 import { EventReplayQueue } from './event-replay.js';
@@ -465,13 +463,40 @@ export class Orchestrator {
 
     await this.runTurn(text, content, options);
 
-    // Process any messages queued while the LLM was thinking (iterative, not recursive)
-    while (this.messageQueue.length > 0) {
+    // Process any messages queued while the LLM was thinking. Draining is gated on
+    // isCompacting so a queued turn cannot start while a background auto-compaction is
+    // mid-flight (which would let compact() replace the message array and drop the
+    // in-flight turn's freshly appended messages). Messages left queued during
+    // compaction are drained by setCompacting() once compaction settles.
+    await this.drainMessageQueue();
+  }
+
+  /**
+   * Drain queued user messages sequentially. Skips draining while a turn is in
+   * flight or a background auto-compaction is running; in the latter case
+   * setCompacting() re-triggers the drain once compaction settles, so no queued
+   * message is lost.
+   */
+  private async drainMessageQueue(): Promise<void> {
+    while (this.messageQueue.length > 0 && !this.isThinking && !this.isCompacting) {
       const next = this.messageQueue.shift()!;
       await this.runTurn(next.text, next.content, next.options);
     }
-
     this.followUpRuntime.scheduleFlush();
+  }
+
+  /**
+   * Single funnel for mutating the compaction flag. On the true->false edge it
+   * resumes draining any messages that were queued while compaction was in flight.
+   */
+  private setCompacting(value: boolean): void {
+    const wasCompacting = this.isCompacting;
+    this.isCompacting = value;
+    if (wasCompacting && !value && !this.isThinking && this.messageQueue.length > 0) {
+      void this.drainMessageQueue().catch((err) => logger.error('Orchestrator: queued message drain after compaction failed', {
+        error: err instanceof Error ? err.message : String(err),
+      }));
+    }
   }
 
   private startThinking(estimatedInputTokens?: number): void {
@@ -661,7 +686,10 @@ export class Orchestrator {
       getMessageQueueLength: () => this.messageQueue.length,
       isReconciliationEnabled: () => this.isReconciliationEnabled(),
       setPendingToolCalls: (calls) => { this._pendingToolCalls = calls; },
-      setAutoSpawnTimeout: (timeout) => { this.autoSpawnTimeout = timeout; },
+      setAutoSpawnTimeout: (timeout) => {
+        if (this.autoSpawnTimeout !== null) clearTimeout(this.autoSpawnTimeout);
+        this.autoSpawnTimeout = timeout;
+      },
       setStreamingActive: (value) => { this.isStreaming = value; },
       setStreamingInputTokens: (value) => { this.streamingInputTokens = value; },
       addStreamingOutputTokens: (value) => { this.streamingOutputTokens += value; },
@@ -693,7 +721,7 @@ export class Orchestrator {
       sessionId: this.sessionId,
       requestRender: this.requestRender,
       isCompacting: this.isCompacting,
-      setIsCompacting: (value) => { this.isCompacting = value; },
+      setIsCompacting: (value) => { this.setCompacting(value); },
       lastWarningBracket: this.lastWarningBracket,
       setLastWarningBracket: (value) => { this.lastWarningBracket = value; },
     }, turnId, this.lastInputTokens);
@@ -843,7 +871,7 @@ export class Orchestrator {
       runtimeBus: this.runtimeBus,
       emitterContext: (id) => createEmitterContext(this.sessionId, id),
       isCompacting: this.isCompacting,
-      setIsCompacting: (value) => { this.isCompacting = value; },
+      setIsCompacting: (value) => { this.setCompacting(value); },
     }, turnId, model);
   }
 

@@ -10,6 +10,7 @@ import type {
   ChannelSurface,
 } from './types.js';
 import { isRecord } from '../utils/record-coerce.js';
+import { logger } from '../utils/logger.js';
 
 interface ChannelPolicySnapshot extends Record<string, unknown> {
   readonly policies: readonly ChannelPolicyRecord[];
@@ -17,6 +18,14 @@ interface ChannelPolicySnapshot extends Record<string, unknown> {
 }
 
 const MAX_AUDIT_RECORDS = 500;
+
+/**
+ * Audit writes are coalesced and flushed on this debounce interval instead of
+ * synchronously on every inbound message. Policy mutations (upsertPolicy) remain
+ * synchronously persisted; only the append-only audit telemetry is debounced, so
+ * a busy ingress path is not blocked behind a full-snapshot disk write per message.
+ */
+const AUDIT_FLUSH_INTERVAL_MS = 1_000;
 
 function defaultPolicy(surface: ChannelSurface): ChannelPolicyRecord {
   return {
@@ -178,6 +187,8 @@ export class ChannelPolicyManager {
   private readonly policies = new Map<ChannelSurface, ChannelPolicyRecord>();
   private readonly audit: ChannelPolicyAuditRecord[] = [];
   private loaded = false;
+  private auditFlushTimer: ReturnType<typeof setTimeout> | null = null;
+  private auditFlushChain: Promise<void> = Promise.resolve();
 
   constructor(
     options: {
@@ -346,7 +357,10 @@ export class ChannelPolicyManager {
     if (this.audit.length > MAX_AUDIT_RECORDS) {
       this.audit.length = MAX_AUDIT_RECORDS;
     }
-    await this.persist();
+    // Audit telemetry is durability-decoupled from the per-message decision path:
+    // schedule a coalesced flush rather than awaiting a full-snapshot disk write on
+    // every inbound message. Call stop() to force a final flush on graceful shutdown.
+    this.scheduleAuditFlush();
 
     return {
       allowed,
@@ -357,6 +371,35 @@ export class ChannelPolicyManager {
       effectiveRequireMention: requireMention,
       effectiveAllowedCommands: allowedCommands,
     };
+  }
+
+  private scheduleAuditFlush(): void {
+    if (this.auditFlushTimer) return;
+    const timer = setTimeout(() => {
+      this.auditFlushTimer = null;
+      this.auditFlushChain = this.auditFlushChain
+        .then(() => this.persist())
+        .catch((error: unknown) => {
+          logger.warn('Channel policy audit flush failed', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }, AUDIT_FLUSH_INTERVAL_MS);
+    timer.unref?.();
+    this.auditFlushTimer = timer;
+  }
+
+  /**
+   * Flush any pending debounced audit writes and stop the flush timer. Call on
+   * graceful shutdown so the last batch of audit records is durably persisted.
+   */
+  async stop(): Promise<void> {
+    if (this.auditFlushTimer) {
+      clearTimeout(this.auditFlushTimer);
+      this.auditFlushTimer = null;
+    }
+    await this.auditFlushChain.catch(() => undefined);
+    if (this.loaded) await this.persist();
   }
 
   private async persist(): Promise<void> {
