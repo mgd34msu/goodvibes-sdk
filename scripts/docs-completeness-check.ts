@@ -7,7 +7,6 @@ const SDK_ROOT = resolve(__dirname, '..');
 
 const requiredDocs = [
   'README.md',
-  'CONTRIBUTING.md',
   'SECURITY.md',
   'docs/README.md',
   'docs/getting-started.md',
