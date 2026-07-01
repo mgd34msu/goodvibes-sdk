@@ -20,6 +20,12 @@ function makeContext() {
   return {
     env: {} as Record<string, string | undefined>,
     serviceRegistry: { get: (_id: string) => undefined },
+    // Hermetic fetcher so this smoke test never touches the network. Without it
+    // providers fall back to real fetch; most endpoints error fast, but the
+    // Firecrawl POST can hang past the 5s test timeout when the host is slow or
+    // unreachable in CI. Returning an empty JSON payload lets every provider
+    // resolve deterministically and fast.
+    fetcher: async () => ({ results: [{ status: 200, content: '{}' }] }),
   };
 }
 
