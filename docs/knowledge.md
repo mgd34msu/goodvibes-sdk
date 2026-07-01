@@ -46,7 +46,7 @@ domain defaults.
 
 ## Ingestion
 
-Current ingest paths:
+Current ingest paths (operator method ids):
 
 - `knowledge.ingest.url`: fetch, snapshot, extract, and compile a URL.
 - `knowledge.ingest.bookmarks`: parse a browser bookmark export.
@@ -55,8 +55,16 @@ Current ingest paths:
 - `knowledge.ingest.artifact`: snapshot a path, remote URI, existing artifact,
   multipart file upload, or raw binary upload and run extraction.
 - `knowledge.ingest.browserHistory`: index local browser history and bookmarks as metadata-first knowledge.
-- SDK API: `knowledge.ingest.*` on `createKnowledgeApi()`.
-- Service API: `KnowledgeService` methods including `syncBrowserHistory()`, URL/artifact ingest, connector ingest, bookmark import, and URL-list import.
+
+The bullets above are operator method ids, not SDK method names. The SDK ingest
+helpers on `createKnowledgeApi().ingest.*` use their own camelCase names: `url()`,
+`artifact()`, `browserHistory()`, `bookmarksFile()`, `urlsFile()`,
+`bookmarkSeeds()`, `withConnector()`, and `connectorInput()`. So a valid operator
+id such as `knowledge.ingest.bookmarks` is not a callable SDK method — call
+`knowledge.ingest.bookmarksFile()` instead. These helpers wrap the
+`KnowledgeService` methods `ingestUrl()`, `ingestArtifact()`,
+`syncBrowserHistory()`, `importBookmarksFromFile()`, `importUrlsFromFile()`,
+`ingestBookmarkSeeds()`, `ingestWithConnector()`, and `ingestConnectorInput()`.
 
 The daemon route `POST /api/knowledge/ingest/artifact` accepts normal JSON
 requests when the caller already has an `artifactId`, a daemon-local `path`, or
@@ -379,6 +387,9 @@ The SDK-owned `HomeGraphService` supports:
 - packet generation with field inclusion/exclusion profiles
 - issue listing and review actions
 - durable semantic review decisions for generated issues
+- base knowledge refinement task listing and on-demand runs over
+  `GET /api/homeassistant/home-graph/refinement/tasks` and
+  `POST /api/homeassistant/home-graph/refinement/run`
 - integration documentation-candidate source discovery
 - source inventory, graph browse, export, and import
 
@@ -494,8 +505,9 @@ apply semantic facts such as `batteryPowered: false`, `batteryType: "none"`,
 or `manualRequired: false`, and those facts suppress later generated issues
 for the same subject.
 
-See [Home Assistant integration](./homeassistant-integration.md) for daemon
-routes and operator method ids.
+See [Home Graph extension](./home-graph.md) for an orientation to the extension
+model, and [Home Assistant integration](./homeassistant-integration.md) for
+daemon routes and operator method ids.
 
 ## Project Planning
 
@@ -528,6 +540,14 @@ are `projectPlanning.status`, `projectPlanning.state.get`,
 `projectPlanning.decisions.list`, `projectPlanning.decisions.record`,
 `projectPlanning.language.get`, and `projectPlanning.language.upsert`.
 
+The work-plan task board adds nine more ids over
+`/api/projects/planning/work-plan/*`: `projectPlanning.workPlan.snapshot`,
+`projectPlanning.workPlan.tasks.list`, `projectPlanning.workPlan.tasks.reorder`,
+`projectPlanning.workPlan.clearCompleted`,
+`projectPlanning.workPlan.task.create`, `projectPlanning.workPlan.task.get`,
+`projectPlanning.workPlan.task.update`, `projectPlanning.workPlan.task.status`,
+and `projectPlanning.workPlan.task.delete`.
+
 See [Project Planning](./project-planning.md) for route details and TUI
 integration guidance.
 
@@ -537,11 +557,11 @@ Knowledge retrieval uses current store state, lexical scoring, graph relations,
 freshness, extraction availability, and usage history. Packet APIs build
 token-bounded context bundles for agents:
 
-- `knowledge.search`
-- `knowledge.packet`
-- `knowledge.packets.build()`
-- `knowledge.packets.buildPrompt()`
-- `buildCuratedKnowledgePromptSync()`
+- `knowledge.search` (operator id)
+- `knowledge.packet` (operator id)
+- `knowledge.packets.build()` and `knowledge.packets.buildSync()` (SDK)
+- `knowledge.packets.buildPrompt()` and `knowledge.packets.buildPromptSync()` (SDK)
+- `buildCuratedKnowledgePromptSync()` (SDK helper)
 
 Packet items include source/node identity, summary, URI, related labels,
 evidence snippets, score, estimated tokens, and metadata.
@@ -570,6 +590,9 @@ files are inspectable outputs, not the canonical database.
 Generated projection sources are filtered out of source/node backlinks and
 linked-source lists while rendering pages. That prevents generated wiki pages
 from feeding back into later projections or competing with original evidence.
+
+See [Generated knowledge pages](./knowledge-pages.md) for the generated-page
+input, metadata, and quality model.
 
 ## Visual Map
 
@@ -639,6 +662,11 @@ Built-in job kinds:
 - `light-consolidation`
 - `deep-consolidation`
 
+These are `KnowledgeJobKind` values. Each job and schedule has an id of the form
+`knowledge-<kind>` (for example kind `sync-browser-history` has id
+`knowledge-sync-browser-history`), and `knowledge.jobs.run()` takes that id, not
+the bare kind.
+
 Jobs can run inline or in the background. Schedules are persisted and can be
 created, enabled, disabled, listed, and deleted through the knowledge API. New
 stores get bootstrap schedules for daily light consolidation, weekly deep
@@ -665,3 +693,10 @@ connector discovery, ingest, search, packets, usage, consolidation, jobs,
 schedules, projections, visual maps, GraphQL, lint, and reindex methods. The generated
 [Operator API reference](./reference-operator.md) is the complete method/schema
 inventory.
+
+Base knowledge refinement is part of the same operator surface:
+`knowledge.refinement.run`, `knowledge.refinement.tasks.list`,
+`knowledge.refinement.task.get`, and `knowledge.refinement.task.cancel`, served
+over `/api/knowledge/refinement/*` (`POST /run`, `GET /tasks`,
+`GET /tasks/{id}`, and `POST /tasks/{id}/cancel`). See
+[Knowledge refinement](./knowledge-refinement.md).

@@ -62,11 +62,19 @@ Example:
 {
   "provider": "openai",
   "model": "openai:gpt-5.5",
+  "executionMode": "batch",
   "request": {
     "messages": [
       { "role": "user", "content": "Summarize this repository status." }
     ],
-    "systemPrompt": "You are a concise engineering assistant."
+    "systemPrompt": "You are a concise engineering assistant.",
+    "tools": [],
+    "maxTokens": 1024,
+    "reasoningEffort": "medium",
+    "reasoningSummary": false
+  },
+  "source": {
+    "kind": "daemon-api"
   },
   "metadata": {
     "client": "goodvibes-tui"
@@ -76,6 +84,39 @@ Example:
 ```
 
 Jobs are persisted under the daemon config directory in `batch-jobs.json`.
+
+**`POST /api/batch/jobs` body fields**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `provider` | `string` (optional) | Provider id; defaults to the daemon's current provider when omitted. |
+| `model` | `string` (optional) | Model id or a `provider:modelId` registry key. |
+| `executionMode` | `"batch" \| "live"` (optional) | How the job runs; batch queuing is the default path. |
+| `request.messages` | `array` | Chat messages for the turn. |
+| `request.tools` | `array` (optional) | Tool definitions to expose to the model. |
+| `request.systemPrompt` | `string` (optional) | System prompt. |
+| `request.maxTokens` | `number` (optional) | Maximum output tokens. |
+| `request.reasoningEffort` | `"instant" \| "low" \| "medium" \| "high"` (optional) | Reasoning-effort hint. |
+| `request.reasoningSummary` | `boolean` (optional) | Request a reasoning summary. |
+| `source.kind` | `"daemon-api" \| "cloudflare-worker" \| "cloudflare-queue" \| "automation" \| "client"` (optional) | Origin of the job. |
+| `source.id` | `string` (optional) | Caller-supplied source identifier. |
+| `metadata` | `object` (optional) | String key/value metadata. |
+| `flush` | `boolean` (optional) | Submit eligible jobs immediately after queuing. |
+
+**Error responses**
+
+| Status | `code` | Meaning |
+|--------|--------|---------|
+| `404` | `BATCH_JOB_NOT_FOUND` | `GET /api/batch/jobs/{jobId}` was given an unknown job id. |
+| `409` | `BATCH_DISABLED` | Batch mode is off (`batch.mode` is `"off"`). |
+| `400` | `LIVE_REQUEST_NOT_ACCEPTED` | A live/immediate request was sent to a batch-only endpoint; use the live daemon route for immediate execution. |
+| `400` | `INVALID_BATCH_REQUEST` | The job is missing required fields (for example `request.messages`). |
+| `413` | `QUEUE_PAYLOAD_TOO_LARGE` | The queued job payload exceeds the maximum allowed size. |
+| `409` | `BATCH_JOB_ALREADY_SUBMITTED` | The job has already been submitted and cannot be submitted again. |
+| `409` | `BATCH_PROVIDER_UNSUPPORTED` | The target provider does not expose a provider Batch API adapter. |
+| `409` | `BATCH_PROVIDER_NOT_CONFIGURED` | The target provider lacks the API-key credentials required for Batch API use. |
+| `500` | `BATCH_STORE_INVALID` | The daemon batch store snapshot is invalid. |
+| `500` | `BATCH_ERROR` | An unexpected batch failure not covered by a more specific `DaemonBatchError` code. |
 
 ## Cloudflare Integration
 
@@ -238,9 +279,19 @@ Manual Worker deployments can still use that entry point, but SDK provisioning u
 
 Every Worker route except `/health` and `/batch/health` requires `Authorization: Bearer <token>` by default. Set the token with the Worker secret `GOODVIBES_WORKER_TOKEN` or `createGoodVibesCloudflareWorker({ workerAuthToken })`. The SDK provisioning flow generates and installs `GOODVIBES_WORKER_TOKEN` automatically. Manual deployments that intentionally put the Worker behind another trusted auth layer can pass `allowUnauthenticated: true`, but that is an explicit opt-out.
 
-By default, the Worker does not queue full prompt/job payloads. Queue messages should be small signals, not prompt archives or secrets. This keeps usage free-tier friendly and avoids putting sensitive prompt bodies into Cloudflare Queues. Full job payload queueing requires `createGoodVibesCloudflareWorker({ queueJobPayloads: true })`.
+By default, the Worker does not queue full prompt/job payloads. Queue messages should be small signals, not prompt archives or secrets. This keeps usage free-tier friendly and avoids putting sensitive prompt bodies into Cloudflare Queues. Full job payload queueing requires `createGoodVibesCloudflareWorker({ queueJobPayloads: true })` or the Worker environment binding `GOODVIBES_QUEUE_JOB_PAYLOADS=true`.
 
 The SDK provisioning route configures the queue consumer with `dead_letter_queue`. Manual deployments must configure the dead-letter queue in Cloudflare or Wrangler for the queue binding; the SDK Worker consumes retries and allows failed messages to flow to the configured DLQ.
+
+**Worker HTTP error codes**
+
+| Status | `code` | Meaning |
+|--------|--------|---------|
+| `404` | `NOT_FOUND` | The request path does not map to a `/batch/*` daemon route. |
+| `409` | `QUEUE_PAYLOADS_DISABLED` | `POST /batch/jobs/enqueue` was called without payload queueing enabled. |
+| `503` | `QUEUE_NOT_CONFIGURED` | A queue route was called but the `GOODVIBES_BATCH_QUEUE` binding is missing. |
+
+`/health` and `/batch/health` are always reachable without authentication; every other route requires `Authorization: Bearer <token>` unless `allowUnauthenticated` is set.
 
 ## Free-Tier Guardrails
 

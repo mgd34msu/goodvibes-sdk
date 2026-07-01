@@ -16,9 +16,9 @@ The type that represents a single constraint:
 
 ```ts
 interface Constraint {
-  id: string;                         // "c1", "c2", …
-  text: string;                       // quoted or minimally paraphrased user phrasing
-  source: 'prompt';                   // engineer enumerated from this prompt
+  readonly id: string;                // "c1", "c2", …
+  readonly text: string;              // quoted or minimally paraphrased user phrasing
+  readonly source: 'prompt';          // engineer enumerated from this prompt
 }
 ```
 
@@ -59,7 +59,7 @@ The engineer applies the following decision:
 
 ### Hard cap
 
-At most 16 constraints. Real prompts almost never produce more than 5–10. More than 16 indicates over-enumeration — consolidate.
+At most ~16 constraints. Real prompts almost never produce more than 5–10. More than ~16 indicates over-enumeration — consolidate.
 
 ### Constraints as acceptance criteria
 
@@ -125,12 +125,12 @@ When the engineer emitted `constraints: []`, the reviewer emits `constraintFindi
 The controller computes pass/fail for each review cycle using:
 
 ```
-passed = review.score >= threshold && !constraintFailure
+passed = review.score >= threshold && !constraintFailure && chain.claimsVerified !== false
 ```
 
 where `constraintFailure = (unsatisfiedConstraints.length > 0)`.
 
-Any unsatisfied constraint forces chain failure regardless of rubric score. Score-below-threshold still fails independently — constraint satisfaction never overrides a low score. Both conditions must be true (score passes AND all constraints satisfied) for the review to pass.
+Any unsatisfied constraint forces chain failure regardless of rubric score. Score-below-threshold still fails independently — constraint satisfaction never overrides a low score. All three gates must hold for the review to pass: the score is at or above threshold, all constraints are satisfied, and the engineer/fixer work claims were verified on disk (`claimsVerified !== false`).
 
 When constraints are present, `WORKFLOW_REVIEW_COMPLETED` carries the constraint summary:
 
@@ -208,6 +208,36 @@ The original `constraints[]` list remains authoritative for the chain. Fixer rep
 | `constraintsEnumerated` | `boolean` | `true` once `WORKFLOW_CONSTRAINTS_ENUMERATED` has been emitted for this chain; prevents duplicate emission on fixer re-runs |
 | `syntheticIssues` | `Array<{ severity: 'critical'; description: string }> \| undefined` | Controller-injected critical issues (e.g. continuity violations); prepended to the next review task, then cleared |
 | `ownerDecisions` | `WrfcOwnerDecision[]` | Durable audit of the owner’s chain-keeping decisions: child spawns, review pass/fail decisions, gate decisions, resume decisions, and terminal decisions |
+| `subtasks` | `WrfcSubtask[] \| undefined` | Present on compound chains; each subtask carries its own `constraints[]`, `constraintsEnumerated`, and `claimsVerified`, and runs its own engineer/reviewer/fixer cycle |
+| `integratorAgentId` | `string \| undefined` | Integrator child that merges passed subtasks before the chain’s final review |
+| `integratorReport` | `CompletionReport \| undefined` | The integrator’s completion report |
+| `claimsVerified` | `boolean \| undefined` | Whether the engineer/fixer self-reported work claims were verified on disk; `false` means verification ran and found missing claims (phantom work) |
+
+## Compound chains and subtasks
+
+A large WRFC ask can be decomposed into a **compound chain**: the owner splits
+the work into `WrfcSubtask` records and runs each through its own
+engineer/reviewer/fixer cycle, tracked by `WrfcSubtaskState` (`pending`,
+`engineering`, `reviewing`, `fixing`, `passed`, `failed`). Each subtask
+enumerates and verifies its **own** constraint list — `WrfcSubtask` carries the
+same `constraints` and `constraintsEnumerated` fields as the parent chain — so
+the propagation rules above apply per subtask exactly as they do for a single
+chain.
+
+Two roles extend the engineer/reviewer/fixer set (`WrfcAgentRole`):
+
+- **integrator** (`'integrator'`) — merges the passed subtasks into the chain
+  result before the final full-scope review; tracked on `chain.integratorAgentId`
+  and `chain.integratorReport`.
+- **verifier** (`'verifier'`) — checks engineer/fixer self-reports against the
+  actual on-disk changes. The result is recorded on `claimsVerified`: `false`
+  means verification ran and found missing claims (phantom work), surfacing it
+  rather than letting an unverified report pass.
+
+Owner orchestration choices for compound chains — `compound_started`,
+`spawn_integrator`, `subtask_review_passed`, and `subtask_review_failed` — are
+recorded in `ownerDecisions`. The complete `WORKFLOW_*` event enumeration lives
+in the [Runtime events reference](./reference-runtime-events.md).
 
 ## Owner role and external adapters
 

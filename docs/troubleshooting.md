@@ -30,7 +30,7 @@ Check:
 - required scopes
 - auth mode expected by the endpoint
 
-Structured errors expose:
+Structured errors expose `err.kind` (an `SDKErrorKind` value) and `err.code` as the primary fields for programmatic handling, plus:
 - `status`
 - `category`
 - `source`

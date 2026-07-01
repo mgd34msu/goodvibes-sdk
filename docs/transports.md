@@ -31,9 +31,38 @@ network, protocol, timeout, and configuration failures without message parsing.
 ## Realtime events
 
 The realtime package validates inbound runtime event envelopes before dispatch.
-SSE and WebSocket connectors share reconnect policy shapes; WebSocket adds
-`onOpen` and `onReconnect` hooks so clients can distinguish connected,
-reconnecting, and queueing states.
+SSE and WebSocket connectors share reconnect policy shapes. The WebSocket
+connector (`createWebSocketConnector`) adds connection-lifecycle hooks that the
+SSE connector (`createEventSourceConnector`) does not fire:
+
+- `onConnectionStateChange(state)` — `state` is one of `'connecting'`,
+  `'connected'`, `'reconnecting'`, `'disconnected'`, `'failed'`.
+- `onReconnectAttempt(info)` — `info` is `{ attempt, maxAttempts, delayMs, reason }`.
+  The legacy `onReconnect(attempt, delayMs)` is `@deprecated` but still fired.
+- `onOpen()` and `onBackpressure(info)` signal connect and outbound-queue saturation.
+
+```ts
+import {
+  createRemoteRuntimeEvents,
+  createWebSocketConnector,
+} from '@pellux/goodvibes-sdk/transport-realtime';
+
+const events = createRemoteRuntimeEvents(
+  createWebSocketConnector('https://goodvibes.example.com', token, WebSocket, {
+    onConnectionStateChange: (state) => updateBadge(state),
+    onReconnectAttempt: (info) => log('reconnect attempt', info.attempt),
+  }),
+);
+```
+
+See [Realtime and telemetry](./realtime-and-telemetry.md) for the full connector
+surface — domain events, outbound-queue backpressure caps, and the `ws://` auth guard.
 
 Transport errors should preserve useful event fields and use typed SDK error
 classes. Retryable HTTP status codes come from `@pellux/goodvibes-errors`.
+
+## See also
+
+- [Realtime and telemetry](./realtime-and-telemetry.md)
+- [Retries and reconnect](./retries-and-reconnect.md)
+- [Observability](./observability.md)

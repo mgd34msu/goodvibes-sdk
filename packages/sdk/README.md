@@ -25,13 +25,23 @@ const sdk = createGoodVibesSdk({
 console.log(await sdk.operator.control.snapshot());
 ```
 
-Entry points:
+Primary entry points (see [public-surface.md](../../docs/public-surface.md) and the package `exports` map for the complete list):
 - `@pellux/goodvibes-sdk`
 - `@pellux/goodvibes-sdk/auth`
+- `@pellux/goodvibes-sdk/client-auth`
 - `@pellux/goodvibes-sdk/operator`
 - `@pellux/goodvibes-sdk/peer`
 - `@pellux/goodvibes-sdk/contracts`
+- `@pellux/goodvibes-sdk/contracts/node`
+- `@pellux/goodvibes-sdk/errors`
+- `@pellux/goodvibes-sdk/events`
+- `@pellux/goodvibes-sdk/observer`
+- `@pellux/goodvibes-sdk/transport-core`
+- `@pellux/goodvibes-sdk/transport-http`
+- `@pellux/goodvibes-sdk/transport-realtime`
+- `@pellux/goodvibes-sdk/transport-direct`
 - `@pellux/goodvibes-sdk/browser`
+- `@pellux/goodvibes-sdk/browser/agent`
 - `@pellux/goodvibes-sdk/browser/knowledge`
 - `@pellux/goodvibes-sdk/browser/homeassistant`
 - `@pellux/goodvibes-sdk/web`

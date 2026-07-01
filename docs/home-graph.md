@@ -20,16 +20,16 @@ source repair, fact extraction, source ranking, generated page refresh,
 refinement tasks, and answer synthesis to the base knowledge layer while
 persisting graph rows in the Home Graph store.
 
-## Generated Pages
+## Where To Read More
 
-Device passports and room pages are generated pages backed by the same graph
-facts and source links as other knowledge pages. Pages should render useful
-verified facts, related objects, and navigation links. They should not render
-global gap dumps, resolved issues, or raw manual boilerplate.
+This page is a short orientation. The authoritative description of Home Graph
+node kinds, relation names, `HomeGraphService` capabilities, ask behavior, and
+daemon routes lives in the
+[Home Graph section of the knowledge system doc](./knowledge.md#home-graph).
 
-## Ask Behavior
-
-Home Graph Ask narrows candidate objects and sources to the matched HA subject,
-then calls base knowledge Ask. Concrete questions such as "what features does
-the TV have?" should resolve the real HA object, repair gaps when needed, and
-return source-backed facts or explicit deferred repair metadata.
+Generated pages (device passports, room/area pages) and gap repair are shared
+base capabilities documented in
+[Generated knowledge pages](./knowledge-pages.md) and
+[Knowledge refinement](./knowledge-refinement.md). See
+[Home Assistant integration](./homeassistant-integration.md) for the broader
+Home Assistant daemon routes and operator method ids.

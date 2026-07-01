@@ -17,6 +17,51 @@ Use the platform this way:
 - secure token storage for mobile and service clients
 - periodic snapshot refresh around major lifecycle changes like foreground/resume
 
+## Companion Flow Example
+
+The shape below is the same on every companion surface: bootstrap state over
+HTTP, subscribe to a live event channel, and re-read the snapshot on resume.
+This example uses the browser entrypoint; React Native is identical except it
+uses `createReactNativeGoodVibesSdk` and prefers `sdk.realtime.viaWebSocket()`.
+
+```ts
+import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
+
+// `token` and `render()` are provided by your app; omit `authToken` for
+// same-origin cookie-backed sessions.
+const sdk = createBrowserGoodVibesSdk({
+  baseUrl: 'https://goodvibes.example.com',
+  authToken: token,
+});
+
+async function refresh(): Promise<void> {
+  // The snapshot is the authoritative copy of state.
+  render(await sdk.operator.control.snapshot());
+}
+
+// 1. HTTP bootstrap — load the snapshot before opening any stream.
+await refresh();
+
+// 2. Subscribe — keep a live event channel open. Use viaSse() for operator
+//    dashboards; use sdk.realtime.viaWebSocket() on mobile/React Native.
+const events = sdk.realtime.viaSse();
+const unsubscribe = events.agents.on('AGENT_COMPLETED', () => {
+  // Treat realtime as a wake-up signal, then re-read authoritative state.
+  void refresh();
+});
+
+// 3. Snapshot refresh on resume — events can be missed while backgrounded, so
+//    re-read state on foreground/resume and after network transitions.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void refresh();
+});
+
+// Tear down the subscription when the view is destroyed.
+function dispose(): void {
+  unsubscribe();
+}
+```
+
 ## Typical Companion Flows
 
 ### Operator dashboard

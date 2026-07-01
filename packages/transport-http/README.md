@@ -4,13 +4,15 @@ Public GoodVibes HTTP transport package for JSON requests, auth headers, retry/b
 
 Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goodvibes-sdk/transport-http`. Install this package directly when you only need the HTTP transport subset.
 
-Exports include:
-- contract route invocation helpers
-- HTTP transport creation
-- direct JSON request helpers
-- header and auth token resolution helpers
-- retry/backoff helpers
-- SSE streaming helpers
+Key exports:
+- Contract routes: `invokeContractRoute`, `openContractRouteStream`, `requireContractRoute`.
+- HTTP transport: `createHttpTransport`, `createFetch`, `requestJsonRaw`, `createJsonRequestInit`.
+- Idempotency: `generateIdempotencyKey`.
+- Retry / backoff: `DEFAULT_HTTP_RETRY_POLICY`, `resolveHttpRetryPolicy`, `computeBackoffDelay`, `normalizeBackoffPolicy`, `sleepWithSignal`.
+- SSE streaming: `openServerSentEventStream`, `openRawServerSentEventStream`.
+- Auth / headers: `normalizeAuthToken`, `resolveAuthToken`, `mergeHeaders`.
+- Paths: `buildUrl`, `normalizeBaseUrl`, `createTransportPaths`.
+- Middleware: `TransportMiddleware` / `TransportContext` types (compose chains with `composeMiddleware` from `transport-core`).
 
 Use this surface when you need lower-level HTTP/SSE control or when you are building a custom GoodVibes client on top of the synced contracts.
 

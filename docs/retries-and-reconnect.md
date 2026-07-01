@@ -78,17 +78,25 @@ For non-GET mutations, the SDK automatically injects an `Idempotency-Key` header
 
 When an idempotent call is retried, the same `Idempotency-Key` UUID is used on each attempt. This lets the daemon detect and deduplicate retried requests.
 
-For application-level idempotency on mutations not covered by the contract, generate and manage your own key (any UUID v4 string) and pass it as a request option:
+There is no per-call `idempotencyKey` request option. The per-call options accepted by the transport layer (`ContractInvokeOptions`) are `signal`, `headers`, and `responseSchema` only. The `Idempotency-Key` is generated internally (`generateIdempotencyKey`) and is attached only when the resolved method is a mutation (POST/PUT/PATCH/DELETE) **and** either the contract marks the route `idempotent: true` or a `perMethodPolicy` entry exists for that method ID.
+
+For application-level idempotency on a mutation the contract does not already mark idempotent, register a `perMethodPolicy` entry keyed by the method ID. That both enables retries for the method and causes the SDK to attach a stable `Idempotency-Key` on each attempt:
 
 ```ts
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
-// Generate a stable key for the operation (e.g. using the Web Crypto API or a UUID library).
-const key = crypto.randomUUID();
+const sdk = createGoodVibesSdk({
+  baseUrl: 'http://127.0.0.1:3421',
+  authToken: process.env.GOODVIBES_TOKEN ?? null,
+  retry: {
+    perMethodPolicy: {
+      'sessions.create': { maxAttempts: 3 },
+    },
+  },
+});
 
-// Pass the key in the per-call options accepted by the transport layer.
-// On retry with the same key, the daemon returns the cached result.
-const result = await sdk.operator.sessions.create({ body: payload }, { idempotencyKey: key });
+// The Idempotency-Key is generated and reused across retries automatically.
+const result = await sdk.operator.sessions.create({ title: 'My session' });
 ```
 
 Never retry unsafe mutations blindly. Only operations with application-level or contract-level idempotency guarantees are safe to retry.
@@ -101,6 +109,14 @@ If a long-lived client can rotate tokens, prefer:
 
 That lets reconnects use fresh credentials instead of a stale startup token.
 
+## Default Behavior
+
+Out of the box the SDK is conservative — retries and reconnect are **off** by default and must be opted into:
+
+- **HTTP retry is off.** `DEFAULT_HTTP_RETRY_POLICY.maxAttempts` is `1` (one attempt, no retries). When you enable retries, only safe methods are retried by default (`retryOnMethods: ['GET', 'HEAD', 'OPTIONS']`) and `retryOnNetworkError` is `true`; default delays are `baseDelayMs: 250`, `maxDelayMs: 2000`, `backoffFactor: 2`.
+- **Stream / SSE reconnect is off.** `DEFAULT_STREAM_RECONNECT_POLICY.enabled` is `false`. When enabled, `maxAttempts` defaults to `10` (`DEFAULT_STREAM_MAX_ATTEMPTS`), with `baseDelayMs: 500` and `maxDelayMs: 30000`.
+- **WebSocket reconnect** likewise defaults to a finite `maxAttempts` of `10` (`DEFAULT_WS_MAX_ATTEMPTS`) when enabled, to prevent infinite auth-failure loops.
+
 ## Recommended Defaults
 
 - Bun full-surface service:
@@ -109,3 +125,9 @@ That lets reconnects use fresh credentials instead of a stale startup token.
   retry reads, SSE reconnect enabled
 - React Native / Expo:
   retry reads, WebSocket reconnect enabled
+
+## Next Reads
+
+- [Transports](./transports.md)
+- [Performance and tuning](./performance.md)
+- [Observability](./observability.md)

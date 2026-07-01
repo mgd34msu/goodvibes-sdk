@@ -28,6 +28,25 @@ Returned refinement metadata can include status, repair status, task ids,
 accepted source ids, promoted fact count, waited time, defer reason, next repair
 attempt, and page refresh state.
 
+## Operator Surface
+
+Refinement is part of the base knowledge operator contract, not a separate
+service. The operator method ids are `knowledge.refinement.run`,
+`knowledge.refinement.tasks.list`, `knowledge.refinement.task.get`, and
+`knowledge.refinement.task.cancel`, served over `/api/knowledge/refinement/*`:
+
+- `POST /api/knowledge/refinement/run`
+- `GET /api/knowledge/refinement/tasks`
+- `GET /api/knowledge/refinement/tasks/{id}`
+- `POST /api/knowledge/refinement/tasks/{id}/cancel`
+
+Home Graph reuses this same pipeline through its own
+`/api/homeassistant/home-graph/refinement/*` routes.
+
+See [Knowledge system](./knowledge.md) for the broader knowledge data model and
+operator surface, and [Home Graph extension](./home-graph.md) for the Home
+Assistant extension.
+
 ## Quality Gates
 
 Facts are rejected when they are raw snippets, URL/title-only fragments,

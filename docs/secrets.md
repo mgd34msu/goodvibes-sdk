@@ -31,7 +31,7 @@ Examples:
 
 ```text
 goodvibes://secrets/env/OPENAI_API_KEY
-goodvibes://secrets/goodvibes/cloudflare/GOODVIBES_WORKER_TOKEN
+goodvibes://secrets/goodvibes/GOODVIBES_WORKER_TOKEN
 goodvibes://secrets/file/%2Fhome%2Fme%2F.token
 goodvibes://secrets/1password?vault=Private&item=OpenAI&field=password
 goodvibes://secrets/bitwarden/My%20Login?field=password
@@ -64,3 +64,7 @@ and other daemon-owned integration credentials.
 
 Store secret refs in config; store the secret values in the backing secret
 provider.
+
+## Related
+
+This page is the canonical reference for the secret sources and `goodvibes://` URI syntax. For how secret refs and the `SecretsManager` storage layers fit the daemon security model, see [Security Best Practices](./security.md).

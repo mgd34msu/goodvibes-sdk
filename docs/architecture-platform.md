@@ -2,7 +2,7 @@
 
 > **Internal source map:** This document describes the internal source layout under `packages/sdk/src/platform/`. It is an orientation guide for contributors navigating the codebase — **not** a consumer import reference.
 >
-> Consumers access these modules via explicit `./platform/...` entrypoints as documented in [Public Surface Reference](./public-surface.md). See [Runtime Surfaces](./surfaces.md) for the distinction between the full surface (Bun) and companion surfaces (Hermes/browser/React Native).
+> Consumers access these modules via explicit `./platform/...` entrypoints as documented in [Public Surface Reference](./public-surface.md). See [Published Surface Matrix](./surfaces.md) for the distinction between the full surface (Bun) and companion surfaces (Hermes/browser/React Native).
 
 This document maps every top-level directory under `packages/sdk/src/platform/`. Each directory is a bounded subsystem with a single responsibility. Use this as an orientation guide when navigating the codebase.
 
@@ -10,11 +10,10 @@ This document maps every top-level directory under `packages/sdk/src/platform/`.
 
 | Directory | Purpose |
 |---|---|
-| `acp/` | Agent Communication Protocol — message envelope types, handshake state machine, per-agent connection lifecycle, and `AcpManager` |
+| `acp/` | Agent Control Protocol — message envelope types, handshake state machine, per-agent connection lifecycle, and `AcpManager` |
 | `adapters/` | Shared adapter helpers and types; concrete platform adapters live under `adapters/<platform>/` (Slack, Discord, Telegram, etc.) — see Channel System |
 | `agents/` | Sub-agent orchestration: `AgentOrchestrator`, `AgentMessageBus`, WRFC controller and all WRFC support files, worktree management, agent archetypes |
 | `artifacts/` | Ephemeral artifact store — typed blobs (images, files, diffs) produced during agent runs, keyed by artifact ID |
-| `auth/` | Focused auth classes: `TokenStore`, `SessionManager`, `OAuthClient`, `PermissionResolver`; thin `GoodVibesAuthClient` facade re-exported here |
 | `automation/` | Scheduled job engine: job definitions, run records, schedule management, delivery, reconcile loop, and the `AutomationManager` runtime |
 | `batch/` | Opt-in daemon batch queue manager, provider batch adapters, local queueing, and batch job lifecycle helpers |
 | `bookmarks/` | Session bookmark manager — named save-points within a session for quick navigation and branching |
@@ -35,6 +34,7 @@ This document maps every top-level directory under `packages/sdk/src/platform/`.
 | `mcp/` | MCP client (stdio JSON-RPC 2.0 transport), server registry, and per-server configuration; connects external MCP server processes and exposes their tools to the LLM |
 | `media/` | Media provider registry: metadata, image-understanding, transform, generate, and attachment-store capability surfaces for images and binary attachments |
 | `multimodal/` | Multimodal content service — encodes images and files into provider-specific prompt structures for vision-capable models |
+| `node/` | Runtime capability metadata and Node-like runtime-boundary detection helpers (no Bun globals); backs the public `./platform/node` and `./platform/node/runtime-boundary` subpaths |
 | `pairing/` | Companion pairing: token generation, `CompanionConnectionInfo` encoding, QR matrix generation and ASCII rendering, token revocation |
 | `permissions/` | `PermissionManager`, layered policy evaluation (allow/deny/auto-approve), per-call approval prompting, and brief generation for operator review |
 | `plugins/` | Plugin loader, `PluginManager` lifecycle (registration → activation → hook dispatch → deactivation), `PluginApi`, hook dispatcher |
@@ -54,6 +54,8 @@ This document maps every top-level directory under `packages/sdk/src/platform/`.
 | `web-search/` | Web search provider registry and service: supports Tavily, Exa, Brave, DuckDuckGo, SearXNG, Perplexity, and Firecrawl |
 | `workflow/` | Trigger executor — evaluates hook-event conditions against registered `TriggerDefinition`s and dispatches shell or agent actions on match |
 | `workspace/` | Workspace-level helpers for project roots, worktree context, and runtime workspace metadata |
+
+> **Note:** There is no `platform/auth/` directory. The client auth classes live outside `platform/`: `TokenStore`, `SessionManager`, and `PermissionResolver` in `src/client-auth/`, and `OAuthClient` in `platform/runtime/auth/oauth-client.ts`, with the `GoodVibesAuthClient` facade in `src/auth.ts`. Server-side user authentication is the separate `security/` subsystem (see the `security/` row), not a `platform/auth/` module.
 
 ---
 
@@ -75,12 +77,11 @@ automation ───────────────────────
 batch ──────────────────────────────────────────► providers, runtime
 channels ───────────────────────────────────────► adapters, config, runtime
 cloudflare ─────────────────────────────────────► config, batch
-auth ───────────────────────────────────────────► config (token storage paths)
 pairing ────────────────────────────────────────► config (surface-root resolution)
 runtime ────────────────────────────────────────► types, utils
 providers ──────────────────────────────────────► config (API keys, model routing)
 integrations ───────────────────────────────────► config, runtime
-companion ──────────────────────────────────────► core, auth
+companion ──────────────────────────────────────► core
 artifacts ──────────────────────────────────────► types, utils
 bookmarks ──────────────────────────────────────► sessions, runtime
 security ───────────────────────────────────────► utils
@@ -134,7 +135,6 @@ Not all directories are equal candidates for eventual extraction to their own np
 |---|---|---|
 | `acp/` | Possibly | Protocol is stable and could be useful to third-party agent runtimes |
 | `adapters/` | Yes (per-adapter) | Each adapter is already isolated; natural package boundary |
-| `auth/` | Possibly | Auth logic is self-contained but depends on `config/` path resolution |
 | `automation/` | Yes | The job-scheduling engine is generic and useful outside GoodVibes |
 | `batch/` | Possibly | Batch job records and provider adapters are generic, but daemon routing and provider policy are GoodVibes-specific |
 | `channels/` | Possibly | Delivery routing is generic, but `builtin-runtime.ts` is GoodVibes-specific |

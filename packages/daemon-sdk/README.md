@@ -19,15 +19,7 @@ This surface is for:
 - dispatch operator, automation, session, task, or remote API calls
 - reuse shared daemon auth/error helpers
 
-Typical entrypoints:
-
-```ts
-import {
-  createDaemonControlRouteHandlers,
-  createDaemonTelemetryRouteHandlers,
-  dispatchDaemonApiRoutes,
-} from '@pellux/goodvibes-sdk/daemon';
-```
+See [Daemon Embedding](../../docs/daemon-embedding.md) for the full daemon surface, dispatchers, and the recommended embedding pattern.
 
 This package gives you reusable route modules, but your host still owns:
 - request routing

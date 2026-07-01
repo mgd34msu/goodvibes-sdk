@@ -112,7 +112,7 @@ The `daemonUrl` should be the address reachable by the companion device. For loc
 import { generateQrMatrix } from '@pellux/goodvibes-sdk/platform/pairing';
 
 const matrix = generateQrMatrix(JSON.stringify(payload));
-// matrix is a 2D boolean array: true = dark module, false = light module
+// matrix is a QrMatrix object: { size: number; modules: readonly boolean[][] } — modules[row][col] === true means a dark module
 ```
 
 ### Step 4: Host renders the QR matrix
@@ -127,7 +127,7 @@ console.log(qrString);
 // Prints a block-character QR code suitable for terminal output
 ```
 
-For graphical surfaces, iterate `matrix` directly to draw cells.
+For graphical surfaces, iterate `matrix.modules` over `matrix.size` rows and columns — each `matrix.modules[row][col]` is a boolean (`true` = dark cell) — to draw the cells.
 
 ### Step 5: Companion scans the QR, extracts the payload
 
@@ -136,11 +136,11 @@ The companion app's QR scanner decodes the image and parses the JSON:
 ```ts
 // Companion-side (pseudocode)
 const raw = qrScanner.scan();
-const payload = JSON.parse(raw) as CompanionConnectionPayload;
+const payload = JSON.parse(raw) as CompanionConnectionInfo;
 
-// Persist the token for future sessions
+// Persist the token, then build a normal SDK client (see Step 6 below).
 await tokenStore.setToken(payload.token);
-const client = createCompanionClient({ baseUrl: payload.url, token: payload.token });
+const sdk = createGoodVibesSdk({ baseUrl: payload.url, tokenStore });
 ```
 
 ### Step 6: Companion uses the token as a Bearer header
@@ -219,6 +219,8 @@ There is no dedicated `readCompanionToken` export. To inspect the stored record 
 
 ## Security Considerations
 
+> These notes are companion-pairing specific. For the daemon's full security model — authentication modes, token management, and secret handling — see [Security Best Practices](./security.md).
+
 ### Token storage on the host
 
 The companion/operator token is stored as a plaintext JSON file at `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`). This file should have user-only read permissions. The SDK sets `0600` on creation and re-enforces it via `chmodSync` after write. Do not commit this file to source control; the daemon home directory should be outside any project tree.
@@ -277,6 +279,8 @@ goodvibes-daemon --qrcode
 ```
 
 The output is a block-character QR code followed by the raw JSON payload for debugging.
+
+> **SDK vs host wiring:** The `/qrcode` TUI command and the `goodvibes-daemon --qrcode` flag are host-application wrappers (a TUI slash command and a CLI flag), not SDK exports. The QR primitives they call — `getOrCreateCompanionToken`, `buildCompanionConnectionInfo`, `encodeConnectionPayload`, `generateQrMatrix`, and `renderQrToString` — are exported from `@pellux/goodvibes-sdk/platform/pairing` and can be composed directly by any embedder.
 
 ---
 
@@ -340,7 +344,7 @@ ws://<daemon-host>:<port>/api/control-plane/ws
 
 with the same `Authorization: Bearer <token>` header (or as a query parameter if the WebSocket client library does not support custom headers).
 
-Event envelopes arrive as JSON-serialized `RuntimeEventEnvelope` objects. The schema is defined in `@pellux/goodvibes-sdk/contracts`.
+Event envelopes arrive as JSON-serialized `SerializedEventEnvelope` objects. The schema is exported as `SerializedEventEnvelopeSchema` from `@pellux/goodvibes-sdk/contracts`.
 
 ### Handling token invalidation
 

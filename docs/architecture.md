@@ -1,6 +1,6 @@
 # GoodVibes SDK — Architecture Overview
 
-> **Surface scope:** The SDK exposes two consumer-visible surfaces — the full surface (Bun runtime) and the companion surface (Hermes/browser/React Native). This document describes the **internal source organization** that backs the full surface. For the distinction between surfaces and their public barrel exports, see [Runtime Surfaces](./surfaces.md) and [Public Surface Reference](./public-surface.md).
+> **Surface scope:** The SDK exposes two consumer-visible surfaces — the full surface (Bun runtime) and the companion surface (Hermes/browser/React Native). This document describes the **internal source organization** that backs the full surface. For the distinction between surfaces and their public barrel exports, see [Published Surface Matrix](./surfaces.md) and [Public Surface Reference](./public-surface.md).
 >
 > Consumers import via explicit public entrypoints such as `@pellux/goodvibes-sdk/platform/runtime`, `@pellux/goodvibes-sdk/platform/knowledge`, and `@pellux/goodvibes-sdk/platform/tools`. Source paths described here are implementation layout, not import paths.
 
@@ -75,7 +75,7 @@ All of these share the same orchestration core, permission system, knowledge sto
 | `packages/peer-sdk` | Companion/peer client with limited API surface (companion apps, 3rd-party integrators). |
 | `packages/transport-core` | `ClientTransport`, direct in-process transport, and `EventEnvelope` types. |
 | `packages/transport-http` | HTTP + SSE transport implementation with auth, retry, backoff, and reconnect. |
-| `packages/transport-realtime` | Real-time domain and runtime event subscriptions over SSE. |
+| `packages/transport-realtime` | Real-time domain and runtime event subscriptions over SSE and WebSocket. |
 | `packages/errors` | Structured error types shared across the SDK. |
 
 ---
@@ -116,7 +116,7 @@ The `Orchestrator` class is the central engine of every agent session. It owns t
 
 ## Daemon Architecture
 
-**Source:** `packages/daemon-sdk/src/`, re-exported by `packages/sdk/src/daemon.ts`
+**Source:** The full route set and the `DaemonServer` host live in `packages/sdk/src/platform/daemon/` (route-group files under `platform/daemon/http/`). `packages/daemon-sdk/src/` provides the embeddable dispatch subset (`dispatchDaemonApiRoutes`), re-exported through `packages/sdk/src/daemon.ts`
 
 The daemon is an HTTP server (built on Bun) that exposes the agent runtime to external clients over HTTP and SSE. It is the single point of access for operator and peer clients.
 
@@ -145,8 +145,16 @@ The daemon is an HTTP server (built on Bun) that exposes the agent runtime to ex
 | `integration-routes.ts` | Third-party integration management |
 | `remote-routes.ts` | Remote fetch proxy with private-host policy enforcement |
 | `runtime-automation-routes.ts` | Automation job scheduling and execution |
+| `batch-routes.ts` | Opt-in provider Batch API queueing and batch job lifecycle |
+| `cloudflare-routes.ts` | Cloudflare provisioning: tokens, Workers, Queues, Tunnel, Access, DNS, KV, Durable Objects, R2, and Secrets Store |
+| `home-graph-routes.ts` | Home Assistant Home Graph knowledge queries |
+| `homeassistant-routes.ts` | Home Assistant signed webhook ingress and authenticated Assist conversation routes |
+| `mcp-routes.ts` | MCP server registry and client management |
+| `model-routes.ts` | Provider/model catalog, health, pricing, and context limits |
+| `openai-compatible-routes.ts` | OpenAI-compatible API surface for external clients |
+| `project-planning-routes.ts` | Project-scoped planning artifacts |
 
-**WebSocket / SSE Upgrade:** The daemon upgrades HTTP connections to SSE streams for real-time event delivery. `transport-realtime` subscribes to domain events and runtime events over these streams.
+**WebSocket / SSE Upgrade:** The daemon upgrades HTTP connections to SSE or WebSocket streams for real-time event delivery. `transport-realtime` subscribes to domain events and runtime events over these streams.
 
 ---
 
@@ -160,7 +168,7 @@ The agent system enables the orchestrator to spawn parallel sub-agents and coord
 
 **Source:** `platform/acp/`
 
-The Agent Communication Protocol (ACP) governs how the orchestrator and sub-agents exchange messages and handshakes. Key files:
+The Agent Control Protocol (ACP) governs how the orchestrator and sub-agents exchange messages and handshakes. Key files:
 - `protocol.ts` — message envelope types and handshake state machine
 - `connection.ts` — per-agent connection lifecycle
 - `manager.ts` — `AcpManager` tracks all active ACP connections; the orchestrator registers the delegate tool through it
@@ -175,7 +183,7 @@ The Agent Communication Protocol (ACP) governs how the orchestrator and sub-agen
 
 ### WRFC Workflow
 
-The Write-Review-Fix-Commit (WRFC) controller (`agents/wrfc-controller.ts`) orchestrates multi-agent quality loops:
+The Work-Review-Fix-Commit (WRFC) controller (`agents/wrfc-controller.ts`) orchestrates multi-agent quality loops:
 
 ```
 pending → engineering → reviewing → fixing → awaiting_gates → gating → passed
@@ -382,7 +390,7 @@ The `RuntimeStore` is a Redux-style store (using a custom reducer + dispatch pat
 
 ### RuntimeEventBus
 
-The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport — it is synchronous and in-process only. Note: the RuntimeEventBus is not the same as the 21 runtime event domains documented in [Runtime events reference](./reference-runtime-events.md); those are the SSE/WebSocket-facing event streams exposed to SDK consumers, while the bus is daemon-internal only.
+The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport — it is synchronous and in-process only. Note: the RuntimeEventBus is not the same as the 27 runtime event domains documented in [Runtime events reference](./reference-runtime-events.md); those are the SSE/WebSocket-facing event streams exposed to SDK consumers, while the bus is daemon-internal only.
 
 ---
 
@@ -470,5 +478,6 @@ interface CompanionConnectionInfo {
   readonly username: string; // Defaults to 'admin'
   readonly version: string;  // Daemon version string
   readonly surface: string;  // Surface identifier
+  readonly password?: string; // Bootstrap password for companion auth (omitted when not applicable)
 }
 ```

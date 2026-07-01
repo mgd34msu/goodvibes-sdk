@@ -6,7 +6,7 @@ and the transport/client packages. Normal application code should still install
 `@pellux/goodvibes-sdk`; the sibling packages are public dependencies and
 source-of-truth facades, not separate setup steps for most consumers.
 
-See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun) vs. companion surface (Hermes / browser / Workers).
+See the [Published Surface Matrix](./surfaces.md) for the two-tier model: full surface (Bun) vs. companion surface (Hermes / browser / Workers). For the internal runtime-boundary model, see [Runtime Surfaces](./runtime-surfaces.md).
 
 ## Consumer Decision Matrix
 
@@ -20,10 +20,11 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 | Browser SPA needing all operator methods | `@pellux/goodvibes-sdk/browser` | `npm install @pellux/goodvibes-sdk` | [Browser integration](./browser-integration.md) |
 | Base knowledge/wiki WebUI | `@pellux/goodvibes-sdk/browser/knowledge` | `npm install @pellux/goodvibes-sdk` | [Web UI integration](./web-ui-integration.md) |
 | Home Assistant panel | `@pellux/goodvibes-sdk/browser/homeassistant` | `npm install @pellux/goodvibes-sdk` | [Browser integration](./browser-integration.md) |
+| Agent knowledge browser panel | `@pellux/goodvibes-sdk/browser/agent` | `npm install @pellux/goodvibes-sdk` | [Web UI integration](./web-ui-integration.md) |
 | Web app needing the full operator contract | `@pellux/goodvibes-sdk/web` | `npm install @pellux/goodvibes-sdk` | [Web UI integration](./web-ui-integration.md) |
 | Cloudflare Worker batch bridge and provisioning routes | `@pellux/goodvibes-sdk/workers` plus daemon `/api/cloudflare/*` | `npm install @pellux/goodvibes-sdk` | [Daemon batch processing](./daemon-batch-processing.md) |
-| iOS native | JSON contracts via `/contracts` | N/A | [iOS integration](./ios-integration.md) |
-| Android native | JSON contracts via `/contracts` | N/A | [Android integration](./android-integration.md) |
+| iOS native | JSON contracts via `/contracts/operator-contract.json` and `/contracts/peer-contract.json` | N/A | [iOS integration](./ios-integration.md) |
+| Android native | JSON contracts via `/contracts/operator-contract.json` and `/contracts/peer-contract.json` | N/A | [Android integration](./android-integration.md) |
 
 `/browser` and `/web` are both companion-safe browser runtime entrypoints. Use
 `/browser` for generic browser applications and `/web` for web UI hosts.
@@ -44,7 +45,7 @@ See [Runtime Surfaces](./surfaces.md) for the two-tier model: full surface (Bun)
 The platform surface is explicit. There is no root
 `@pellux/goodvibes-sdk/platform` entry and no public
 `@pellux/goodvibes-sdk/platform/*` wildcard export. Import only subpaths listed
-in `package.json` and [Public surface](./public-surface.md).
+in `package.json` and the canonical [Public surface](./public-surface.md) reference.
 
 Treat `platform/...` modules as full-platform/server-side unless a specific
 document marks the entry point as companion-safe. Today the full surface is
@@ -64,6 +65,7 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 | `@pellux/goodvibes-sdk/browser` | Full browser defaults and complete operator contract |
 | `@pellux/goodvibes-sdk/browser/knowledge` | Scoped base knowledge/wiki browser client |
 | `@pellux/goodvibes-sdk/browser/homeassistant` | Scoped Home Assistant Home Graph browser client |
+| `@pellux/goodvibes-sdk/browser/agent` | Scoped browser client for the Agent-owned knowledge environment; routes Knowledge/Wiki calls to the agent knowledge routes |
 | `@pellux/goodvibes-sdk/web` | Full web UI companion defaults |
 | `@pellux/goodvibes-sdk/workers` | Manual Cloudflare Worker bridge for optional daemon batch queue/tick integration; SDK-owned provisioning is done through daemon `/api/cloudflare/*` routes |
 | `@pellux/goodvibes-sdk/auth` | Token storage and auth flows |
@@ -147,3 +149,14 @@ The `@pellux/goodvibes-sdk/contracts` entry is runtime-neutral. Raw JSON artifac
 - `@pellux/goodvibes-sdk/operator` and `/peer` build contract-driven clients on top of transport.
 - `@pellux/goodvibes-sdk` (root) composes those pieces into a Bun-optimized full-surface SDK.
 - `@pellux/goodvibes-sdk/daemon` is the reusable server/daemon route layer for Bun hosts.
+
+## Sibling-Package Deep Subpaths
+
+The source-of-truth sibling packages (`@pellux/goodvibes-contracts`, `@pellux/goodvibes-daemon-sdk`,
+`@pellux/goodvibes-transport-core`, `@pellux/goodvibes-transport-http`, `@pellux/goodvibes-operator-sdk`,
+`@pellux/goodvibes-peer-sdk`, and `@pellux/goodvibes-errors`) each publish additional deep subpaths —
+for example `contracts/generated/*`, `contracts/zod-schemas/*`, `daemon-sdk/*` route helpers,
+`transport-core/*`, `transport-http/*`, the operator/peer `client*` entries, and
+`errors/daemon-error-contract`. These back the `@pellux/goodvibes-sdk` facade and are not part of the
+supported consumer contract; import the matching `@pellux/goodvibes-sdk/...` subpath instead. See
+[Public exports](./exports.md) for the same guidance.

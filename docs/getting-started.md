@@ -5,7 +5,7 @@
 > orchestrates those on your behalf. If you need to call a provider directly, use their official
 > SDK instead. If you don't have a daemon yet, see [Daemon embedding](./daemon-embedding.md).
 
-This SDK has two surfaces. Read [Runtime Surfaces](./surfaces.md) to understand which applies to you:
+This SDK has two surfaces. Read the [Published Surface Matrix](./surfaces.md) (the consumer surface map; the internal runtime-boundary model lives in [Runtime Surfaces](./runtime-surfaces.md)) to understand which applies to you:
 - **Full surface** — Bun consumers (TUI, daemon, CLI).
 - **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers.
 
@@ -45,11 +45,19 @@ const sdk = createGoodVibesSdk({
 });
 ```
 
-For daemon embedding in a Bun server host:
+For daemon embedding in a Bun server host, call `dispatchDaemonApiRoutes(req, handlers)` inside your server's `fetch` handler. It returns `Promise<Response | null>`; when the result is `null`, no daemon route matched, so fall through to your own router:
 
 ```ts
 import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-sdk/daemon';
-// Pass handler to your server: server.fetch = dispatchDaemonApiRoutes(contract, options);
+
+// handlers: DaemonApiRouteHandlers; an optional extensions array can inject extra route dispatchers.
+Bun.serve({
+  async fetch(req) {
+    const res = await dispatchDaemonApiRoutes(req, handlers);
+    if (res) return res;
+    return new Response('Not found', { status: 404 }); // your own router goes here
+  },
+});
 ```
 
 ## Companion quickstart (React Native / Expo / browser / Cloudflare Workers)
@@ -216,18 +224,19 @@ See [Observability](./observability.md) for the `SDKObserver` interface and avai
 - `@pellux/goodvibes-sdk/browser` — browser apps that need the full operator contract.
 - `@pellux/goodvibes-sdk/browser/knowledge` — base knowledge/wiki WebUI apps.
 - `@pellux/goodvibes-sdk/browser/homeassistant` — Home Assistant browser panels.
+- `@pellux/goodvibes-sdk/browser/agent` — agent-scoped browser companion; routes Knowledge/Wiki calls to the Agent-owned knowledge environment.
 - `@pellux/goodvibes-sdk/web` — full browser + service-worker defaults for apps that need the complete operator contract. See [Web UI integration](./web-ui-integration.md).
 - `@pellux/goodvibes-sdk/operator` — operator/control-plane client only.
 - `@pellux/goodvibes-sdk/peer` — peer/distributed-runtime client only.
 - `@pellux/goodvibes-sdk/auth` — token storage helpers and auth flows.
 - `@pellux/goodvibes-sdk/errors` — typed error classes.
-- `@pellux/goodvibes-sdk/transport-*` — low-level transport primitives.
+- `@pellux/goodvibes-sdk/transport-*` — low-level transport primitives, including `@pellux/goodvibes-sdk/transport-direct` for an in-process direct transport.
 
-See [Package guide](./packages.md) for a full decision matrix.
+See [Package guide](./packages.md) for a full decision matrix, and the canonical [Public surface](./public-surface.md) for every published entry point.
 
 ## Next Reads
 
-- [Runtime surfaces](./surfaces.md)
+- [Published surface matrix](./surfaces.md)
 - [Authentication](./authentication.md)
 - [Error handling](./error-handling.md)
 - [Error kinds reference](./error-kinds.md)

@@ -129,10 +129,12 @@ export default createGoodVibesCloudflareWorker();
 | `@pellux/goodvibes-sdk/browser` | Full browser client factory with browser defaults and the complete operator route contract |
 | `@pellux/goodvibes-sdk/browser/knowledge` | Scoped browser client for the base knowledge/wiki system plus shared sessions/auth/provider routes |
 | `@pellux/goodvibes-sdk/browser/homeassistant` | Scoped browser client for the Home Assistant Home Graph extension plus shared sessions/auth/provider routes |
+| `@pellux/goodvibes-sdk/browser/agent` | Scoped browser client for the Agent-owned knowledge environment; routes Knowledge/Wiki calls to the agent knowledge routes plus shared sessions/auth/provider routes |
 | `@pellux/goodvibes-sdk/web` | Web UI client factory with browser runtime defaults |
 | `@pellux/goodvibes-sdk/react-native` | React Native client factory and mobile secure stores |
 | `@pellux/goodvibes-sdk/expo` | Expo client factory with Expo token store exports |
 | `@pellux/goodvibes-sdk/workers` | Cloudflare Worker bridge for daemon batch endpoints |
+| `@pellux/goodvibes-sdk/transport-direct` | In-process direct transport (zero-latency, same-process communication) |
 | `@pellux/goodvibes-sdk/platform/node` | Runtime capability metadata and Node-like runtime-boundary helpers for server hosts |
 | `@pellux/goodvibes-sdk/platform/runtime` | Runtime bootstrap, observability, operations, security, shell, state, transport, and UI namespaces |
 | `@pellux/goodvibes-sdk/platform/knowledge` | Base self-improving knowledge/wiki system |
@@ -140,7 +142,7 @@ export default createGoodVibesCloudflareWorker();
 
 There is no root `@pellux/goodvibes-sdk/platform` entry and no
 `@pellux/goodvibes-sdk/platform/*` wildcard contract.
-Import only explicit subpaths listed in `package.json` and
+Import only explicit subpaths listed in `package.json` and the canonical list in
 [`docs/public-surface.md`](./docs/public-surface.md).
 
 ## Current Documentation
@@ -184,6 +186,6 @@ the current dependency and runtime security posture.
 
 ## Maintainers
 
-- Contributor workflow: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Security process: [SECURITY.md](./SECURITY.md)
 - Release history: [CHANGELOG.md](./CHANGELOG.md)
+- Test coverage: [COVERAGE.md](./COVERAGE.md)

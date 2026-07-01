@@ -1,6 +1,6 @@
 # Performance and Tuning
 
-> **Surface scope:** This document covers performance tuning for the **full surface (Bun runtime)**. Code examples use `createGoodVibesSdk` from the full-surface entry point. Companion-surface consumers (React Native, browser) use surface-specific constructors — see [Runtime Surfaces](./surfaces.md) for the full breakdown.
+> **Surface scope:** This document covers performance tuning for the **full surface (Bun runtime)**. Code examples use `createGoodVibesSdk` from the full-surface entry point. Companion-surface consumers (React Native, browser) use surface-specific constructors — see [Published Surface Matrix](./surfaces.md) for the full breakdown.
 
 This guide covers the tuning knobs, runtime contracts, and internal subsystems that govern SDK performance across provider calls, context management, component rendering, and tool execution.
 
@@ -8,7 +8,7 @@ This guide covers the tuning knobs, runtime contracts, and internal subsystems t
 
 ### Retry Strategy
 
-The SDK uses exponential backoff with jitter for all retryable HTTP failures. The `withRetry` utility is the underlying primitive; runtime-specific entrypoints expose it through the top-level `retry` config.
+The SDK uses deterministic exponential backoff (no jitter) for all retryable HTTP failures. The top-level `retry` config is an `HttpRetryPolicy` resolved by the transport-http retry layer (`resolveHttpRetryPolicy`) and applied via `computeBackoffDelay` in the HTTP transport loop; it is not handled by the `platform/utils` `withRetry` helper, which has a different config shape and is not wired to this config.
 
 ```ts
 import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
@@ -24,11 +24,11 @@ const sdk = createGoodVibesSdk({
 });
 ```
 
-Delay for attempt `n` is: `min(baseDelay * 2^n + jitter, maxDelay)`. Jitter is uniform random up to `baseDelayMs` and prevents thundering-herd on shared infrastructure.
+Delay for a one-based attempt `n` is: `min(baseDelayMs * backoffFactor^(attempt-1), maxDelayMs)` — so attempt 1 waits `baseDelayMs`, attempt 2 applies one backoff factor, and so on. `backoffFactor` defaults to `2` and is configurable. There is no jitter. When a server sends a `Retry-After` header on a retryable response, it is honored as a floor on the computed delay.
 
-Retries are only triggered for retryable errors. An error is retryable when:
-- It is an `AppError` with `recoverable: true`, or
-- Its HTTP status code is in `RETRYABLE_STATUS_CODES` (typically 429, 500, 502, 503, 504).
+Retries are only triggered for retryable errors. In the transport-http retry loop an error is retryable when:
+- Its HTTP status is in `RETRYABLE_STATUS_CODES` (408, 429, 500, 502, 503, 504) and the request method is eligible for retry — a safe method (`GET`/`HEAD`/`OPTIONS`), or a mutation the contract marks `idempotent` or that has a `perMethodPolicy` entry; or
+- It is a network-level failure (status `0`) surfaced as a `GoodVibesSdkError` with `recoverable: true` (the transport flags fetch/connection errors recoverable).
 
 Never retry unsafe mutations blindly. Only idempotent reads and operations with application-level idempotency guarantees are safe to retry.
 
@@ -62,7 +62,7 @@ console.log(decision.selected);    // 'cohort'
 console.log(decision.reasonCode);  // 'COHORT_CAPABLE'
 ```
 
-The planner keeps a rolling audit log of the last 100 decisions. Use `planner.explain()` to see a human-readable breakdown of the most recent decision, or `planner.getHistory()` to retrieve the full log.
+The planner keeps a rolling audit log of the last 100 decisions (`MAX_HISTORY`). Use `planner.explain()` to see a human-readable breakdown of the most recent decision, or `planner.getHistory(limit = 20)` to retrieve the most recent decisions — the default `limit` is `20`; pass a higher value (up to the 100-entry cap) to read further back.
 
 User overrides take absolute precedence over automatic scoring:
 
@@ -107,37 +107,19 @@ Choose based on runtime environment:
 
 SSE is simpler (standard HTTP, firewall-friendly, works in all browser environments). WebSocket provides bidirectional communication and lower overhead for high-frequency event streams on mobile.
 
-### SSE Reconnect
+### SSE and WebSocket Reconnect
 
-```ts
-const sdk = createBrowserGoodVibesSdk({
-  realtime: {
-    sseReconnect: {
-      enabled: true,
-      baseDelayMs: 500,
-      maxDelayMs: 5_000,
-    },
-  },
-});
-```
+Reconnect is **off by default** for both transports and is opted into via
+`realtime.sseReconnect` / `realtime.webSocketReconnect`. The underlying HTTP
+retry policy is also off by default (`maxAttempts: 1`). When reconnect is
+enabled, both stream/SSE and WebSocket reconnect default to a finite
+`maxAttempts` of `10` (`DEFAULT_STREAM_MAX_ATTEMPTS` / `DEFAULT_WS_MAX_ATTEMPTS`),
+using exponential backoff with the same `baseDelayMs * backoffFactor^(attempt-1)`
+formula as HTTP retry. On SSE reconnect the SDK sends `Last-Event-ID` so the server can replay
+missed events when supported.
 
-On reconnect the SDK sends `Last-Event-ID` so the server can replay missed events when supported. The reconnect delay uses exponential backoff with the same `baseDelayMs * 2^n` formula as HTTP retry.
-
-### WebSocket Reconnect
-
-```ts
-const sdk = createReactNativeGoodVibesSdk({
-  baseUrl: 'https://goodvibes.example.com',
-  authToken: token,
-  realtime: {
-    webSocketReconnect: {
-      enabled: true,
-      baseDelayMs: 500,
-      maxDelayMs: 5_000,
-    },
-  },
-});
-```
+For the configuration shapes, per-surface examples, and the full default table,
+see [Retries and reconnect](./retries-and-reconnect.md).
 
 ### SSE Backpressure
 
@@ -150,6 +132,25 @@ new ReadableStream(..., new CountQueuingStrategy({ highWaterMark: 256 }));
 When a subscriber falls behind, the stream stops pulling new chunks from the producer rather than buffering indefinitely. Producers (the event bus) are not blocked — the back-pressure is isolated to the per-subscriber stream. A subscriber that stays behind long enough to drop events will surface as a `TRANSPORT_STALE` or disconnect event; reconnect with `Last-Event-ID` replays missed events where the server retains them.
 
 Startup events (initial snapshot, recent-event replay) are delivered before the `highWaterMark` gate engages in practice, but high-volume workloads should still prefer domain-filtered subscriptions to reduce the event rate per subscriber.
+
+### WebSocket Outbound-Queue Backpressure
+
+The control-plane strategy above governs the **server → client** SSE stream. The
+transport-realtime WebSocket connector applies separate **client → server**
+outbound backpressure. Messages enqueued while the socket is connecting or
+reconnecting are held in a bounded, drop-oldest queue:
+
+| Cap | Value |
+|---|---|
+| `MAX_OUTBOUND_QUEUE` | 1,024 messages |
+| `MAX_OUTBOUND_QUEUE_BYTES` | 16 MiB total |
+| `MAX_OUTBOUND_MESSAGE_BYTES` | 1 MiB per message |
+
+A single message larger than 1 MiB is rejected rather than queued. On overflow
+the oldest entry is dropped and the connector's `onBackpressure(info)` hook fires
+with `{ droppedCount, queueLength, queueBytes, reason }`. To avoid flooding
+callers during sustained disconnects, `onBackpressure` fires on the first overflow
+and every tenth overflow thereafter; `droppedCount` is always the cumulative total.
 
 ### Token Rotation on Long-Lived Connections
 
@@ -285,7 +286,7 @@ const estimate = estimateConversationTokens(messages); // number
 The SDK defines two categories of performance budgets: **bundle size budgets** and **runtime SLO gates**.
 
 **Bundle size budgets** are defined per entry point via `bundle-budgets.json` at
-the repo root. Each entry has a gzip ceiling (measured actual × 1.2 headroom).
+the repo root. Each entry has a gzip ceiling of `max(ceil(actual × 1.2), actual + 50 B)` (the `+50 B` floor dominates for tiny entries below ~250 B).
 The CI `bundle-budget-check` job runs the same command used locally:
 
 ```bash

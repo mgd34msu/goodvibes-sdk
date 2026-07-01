@@ -54,6 +54,13 @@ const result = await knowledge.ingest.browserHistory({
 });
 ```
 
+The `browsers` filter selects specific browser kinds (`BrowserKnowledgeKind`),
+not whole families. `'chromium'` is both a family name and a discrete kind, so
+`browsers: ['chromium', 'firefox']` matches only the Chromium and Firefox apps.
+To target an entire family, list its kinds explicitly — for example the whole
+Chromium family as
+`['chrome', 'chromium', 'brave', 'edge', 'vivaldi', 'arc', 'opera']`.
+
 Equivalent service API:
 
 ```ts
@@ -93,3 +100,8 @@ opt-in action, show which browsers will be scanned, and disclose that the SDK
 stores URL, title, timestamp, profile, folder, and visit-count metadata in the
 GoodVibes knowledge database. Some platforms may require extra filesystem
 permission, such as macOS Full Disk Access for Safari history.
+
+## See Also
+
+- [Knowledge system](./knowledge.md) — data model, ingestion paths, and operator surface
+- [Knowledge refinement](./knowledge-refinement.md) — how gaps detected from ingested sources get repaired

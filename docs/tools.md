@@ -7,6 +7,8 @@ contract checks.
 
 Accessible via `@pellux/goodvibes-sdk/platform/tools` (daemon embedders). Consumer apps interact through sessions and operator methods.
 
+For how tool-call arguments are parsed, validated, and dropped when malformed, see [Tool Safety](./tool-safety.md).
+
 ## Built-In Tools
 
 | Tool | Purpose | Main modes or operations |
@@ -83,21 +85,75 @@ agents or WRFC chains for ordinary questions or direct environment inspection.
 
 ## Contract Verification
 
-The `tool-contract-verification` feature flag is enabled by default. When
-enabled, built-in and registered tools are checked for schema validity,
-permission class mapping, timeout/cancellation semantics, output policy
-compatibility, and idempotency declarations before registration completes.
+The `tool-contract-verification` feature flag is enabled by default, so built-in
+and registered tools are verified at registration time. Hosts can disable the
+flag explicitly, but the safer default is verification on.
 
-Hosts can disable the flag explicitly, but the safer default is verification on.
+See [Tool Safety — Tool Contract Verification](./tool-safety.md#tool-contract-verification)
+for what the verifier checks (schema shape, permission class, timeout/cancellation
+support, output policy, and idempotency metadata) and how error- versus
+warning-level violations are handled.
 
 ## Permissions
 
 Tool permissions are configured under `permissions.tools.*` and enforced by the
-runtime permission layer. The default posture allows read/find/analyze/inspect/
-state/registry and prompts for write/edit/exec/fetch/agent/workflow/delegate/MCP.
+runtime permission layer. `permissions.mode` selects the approval mode
+(`prompt` default, `allow-all`, or `custom`), and each tool category has its own
+key with a built-in default:
 
-The permissions policy engine, simulation mode, divergence dashboard, and
-policy-as-code features add stricter policy evaluation when enabled.
+| Config key | Default | Covers |
+|---|---|---|
+| `permissions.tools.read` | `allow` | file read (read/find/analyze paths) |
+| `permissions.tools.write` | `prompt` | file write |
+| `permissions.tools.edit` | `prompt` | file edit/patch |
+| `permissions.tools.exec` | `prompt` | shell command execution |
+| `permissions.tools.find` | `allow` | file/directory search |
+| `permissions.tools.fetch` | `prompt` | outbound network fetch (custom mode) |
+| `permissions.tools.analyze` | `allow` | code/project analysis |
+| `permissions.tools.inspect` | `allow` | runtime/object inspection |
+| `permissions.tools.agent` | `prompt` | spawning subagents / delegating tasks |
+| `permissions.tools.state` | `allow` | runtime/session state reads |
+| `permissions.tools.workflow` | `prompt` | multi-step workflow automation |
+| `permissions.tools.registry` | `allow` | tool/skill registry queries |
+| `permissions.tools.mcp` | `prompt` | MCP (external server) tool calls |
+| `permissions.tools.delegate` | `prompt` | unknown or unregistered tools (see below) |
+
+The default posture therefore allows read/find/fetch/analyze/inspect/state/registry
+and prompts for write/edit/exec/agent/workflow/delegate/MCP. The
+`permissions.tools.fetch` default of `prompt` applies only in `custom` mode; in the
+default `prompt` mode `fetch` is treated as a read-category tool and auto-approved.
+For the broader security posture and how these keys interact with secrets, see
+[Security](./security.md) and [Secrets](./secrets.md).
+
+### The two meanings of `delegate`
+
+`delegate` names two distinct things:
+
+- **`permissions.tools.delegate`** is the catch-all permission category for
+  unknown or unregistered tools. `PermissionManager.getCategory()` maps any tool
+  name that is not in the built-in category table to `'delegate'`
+  (`TOOL_CATEGORIES[toolName] ?? 'delegate'`), so this key gates anything the
+  runtime does not otherwise recognize.
+- A separate, **conditionally-registered ACP `delegate` tool** exists. It is
+  registered by `Orchestrator.registerDelegateTool()` only after an `AcpManager`
+  is attached, which is why it is absent from the Built-In Tools table above even
+  though `delegate` appears in the permission list.
+
+### Policy engine and tool feature flags
+
+The permissions policy engine, simulation mode, and policy-as-code features add
+stricter policy evaluation when enabled. Several tool-related feature flags are
+defined and default to disabled:
+
+- `permission-divergence-dashboard` — aggregates permission-simulation divergence
+  by tool/prefix/mode and gates enforce-mode transitions on the divergence rate.
+- `runtime-tools-budget-enforcement` — enforces per-phase wall-clock, token, and
+  cost budgets across tool execution pipelines, terminating on a hard breach.
+- `overflow-spill-backends` — enables pluggable overflow spill backends
+  (`file`, `ledger`, or `diagnostics`); when disabled, overflow uses the file
+  backend.
+
+See [Feature Flags](./feature-flags.md) for the full flag catalog.
 
 ## Fetch Safety
 
@@ -127,8 +183,8 @@ transaction modes so hosts can roll back failed multi-file changes.
 The `agent` tool can spawn individual agents, spawn batches of independent
 root work, group agents into cohorts, send messages, wait for completion,
 inspect budgets/plans, and inspect WRFC chain history. WRFC chains use
-engineer, reviewer, fixer, verifier, and gate phases with quality gates and
-constraint propagation.
+engineer, reviewer, fixer, integrator, and verifier roles plus a gate phase with
+quality gates and constraint propagation.
 
 Batch spawn is not the mechanism for pre-spawning reviewer/tester/fixer roots
 for the same deliverable. If a batch request looks like role decomposition for

@@ -6,9 +6,25 @@ Most applications should install `@pellux/goodvibes-sdk` and import `@pellux/goo
 
 Use this surface only when you are composing your own transport/client abstraction.
 
-Exports include:
-- event envelope helpers
-- runtime event feed primitives
-- generic client transport helpers
+Key exports:
+- Event envelopes: `createEventEnvelope` (with the `EventEnvelope` / `EventEnvelopeContext` types).
+- Client transport: `createClientTransport`, `createDirectClientTransport`.
+- Middleware: `composeMiddleware` (with the `TransportMiddleware` / `TransportContext` types).
+- Transport error helpers: `transportErrorFromUnknown`, `isAbortError`, `describeUnknownTransportError`.
+- Runtime event feeds: `createRuntimeEventFeed`, `createRuntimeEventFeeds`.
+- Utilities: `createUuidV4`.
+
+```ts
+import {
+  createEventEnvelope,
+  createUuidV4,
+} from '@pellux/goodvibes-sdk/transport-core';
+
+const envelope = createEventEnvelope(
+  'TURN_SUBMITTED',
+  { turnId: createUuidV4(), prompt: 'Hello' },
+  { sessionId: 'sess_abc', source: 'orchestrator' },
+);
+```
 
 Most consumers should use `@pellux/goodvibes-sdk`, `@pellux/goodvibes-sdk/operator`, or `@pellux/goodvibes-sdk/peer` instead.

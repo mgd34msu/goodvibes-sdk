@@ -86,22 +86,18 @@ try {
   await sdk.operator.accounts.snapshot();
 } catch (error) {
   if (error instanceof HttpStatusError) {
+    if (error.status === 401) {
+      // redirect to login, refresh token, or surface auth UI
+    }
     console.error(error.status, error.category, error.hint);
   }
+  throw error;
 }
 ```
 
 ## Useful fields
 
-- `status`
-- `category`
-- `source`
-- `hint`
-- `provider`
-- `operation`
-- `phase`
-- `requestId`
-- `retryAfterMs`
+Every error exposes the full set of 18 structured fields. See the canonical [Useful fields on every `GoodVibesSdkError`](./error-kinds.md#useful-fields-on-every-goodvibessdkerror) table for the complete list and types.
 
 Do not parse `message` strings when the structured fields are available.
 
@@ -112,34 +108,39 @@ Do not parse `message` strings when the structured fields are available.
 - `ContractError`
 - `HttpStatusError`
 
-## Typical handling pattern
-
-```ts
-import { HttpStatusError } from '@pellux/goodvibes-sdk/errors';
-
-try {
-  await sdk.operator.control.snapshot();
-} catch (error) {
-  if (error instanceof HttpStatusError && error.status === 401) {
-    // redirect to login, refresh token, or surface auth UI
-  }
-  throw error;
-}
-```
-
 ## Category guidance
+
+`ErrorCategory` has 16 values: the 15 daemon wire categories plus `contract`, which is added by the SDK (`index.ts:20`) and is never marshalled over the wire.
 
 - `authentication`
   Missing or invalid credentials.
 - `authorization`
   Valid credentials, insufficient scopes/roles.
+- `billing`
+  Payment required or quota/billing failure.
 - `rate_limit`
   Retry after backoff.
-- `service`
-  Remote failure or server instability.
 - `timeout`
   Remote timeout or transport timeout.
+- `network`
+  Connectivity failure before a response was received.
+- `bad_request`
+  Malformed or schema-invalid request payload.
+- `not_found`
+  Remote resource does not exist.
+- `permission`
+  Operation denied due to insufficient permissions.
+- `tool`
+  Tool execution failure.
 - `config`
   Local SDK misconfiguration.
+- `protocol`
+  Wire-format or protocol-level failure.
+- `service`
+  Remote failure or server instability.
+- `internal`
+  Daemon or SDK internal failure.
+- `unknown`
+  Unclassified error.
 - `contract`
-  Contract drift or invalid method/endpoint usage.
+  Contract drift or invalid method/endpoint usage (SDK-local; not a wire category).

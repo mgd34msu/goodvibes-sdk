@@ -116,6 +116,8 @@ for Home Assistant Assist conversation agents.
 
 ### Home Graph
 
+#### Knowledge space and isolation
+
 Home Graph is the SDK-owned knowledge/wiki layer for Home Assistant. The HA
 integration collects context and calls daemon APIs; the daemon stores,
 searches, links, reviews, exports, and renders the graph. Home Graph records are
@@ -131,6 +133,8 @@ that installation even if older records preserved Home Assistant's uppercase
 config-entry id in `knowledgeSpaceId`. The SDK also reads Home Assistant spaces
 case-tolerantly, so existing manuals, graph nodes, links, and extraction rows
 remain queryable without reuploading or migrating data.
+
+#### Snapshot sync and wire format
 
 Snapshot sync accepts Home Assistant-native object fields at the HTTP boundary.
 The integration can send registry objects with snake_case identifiers such as
@@ -158,6 +162,8 @@ than permission to block the sync route indefinitely. The knowledge store also
 batches the thousands of row updates created by a real Home Assistant snapshot
 and persists them once at the end of the sync instead of exporting the SQLite
 database after every node and edge write.
+
+#### Generated device and room pages
 
 For each selected active Home Assistant device, the SDK materializes a device
 passport markdown artifact and a stable generated-page source. For each selected
@@ -201,6 +207,8 @@ Home Graph routes return JSON errors for validation or sync failures. Clients
 should treat non-2xx responses as daemon API errors and read the JSON `error`
 field; they should not receive Bun's default HTML error page for handled route failures.
 
+#### Artifact ingest
+
 `POST /api/homeassistant/home-graph/ingest/artifact` is not limited to JSON.
 The Home Assistant integration can forward uploads through its own authenticated
 frontend bridge without exposing the daemon token:
@@ -216,6 +224,8 @@ The SDK stores the upload as an artifact first and then indexes it into the
 isolated Home Graph knowledge space. Large uploads share the global
 `storage.artifacts.maxBytes` cap, which defaults to `512 MiB`; clients should
 avoid JSON `dataBase64` for manuals, receipts, photos, and other large files.
+
+#### Ask
 
 `POST /api/homeassistant/home-graph/ask` uses a lightweight Home Graph search
 state instead of loading full issue/export state. It batches extraction lookup
@@ -233,6 +243,9 @@ full enrichment pass before answer synthesis starts. If a source matches before
 typed facts have been extracted, the SDK still returns synthesized prose that
 describes the currently indexed evidence and the remaining gap instead of
 dumping raw snippet bullets.
+
+#### Gap repair and self-improvement
+
 When a concrete Home Assistant object is identified but the current evidence is
 weak, Home Graph Ask also gets one bounded foreground repair pass. The daemon
 checks already-indexed official/vendor sources, searches for up to five
@@ -271,6 +284,9 @@ facts/pages instead of returning both previous and current interpretations.
 Repair tasks that are blocked until a retry window include top-level
 `nextRepairAttemptAt` in addition to trace/metadata details, so Home Assistant
 panels can show retry timing without parsing SDK trace details.
+
+#### Source extraction
+
 Current text, HTML, JSON, CSV/TSV, XML, YAML, DOCX, XLSX, PPTX, and PDF
 extraction paths persist capped searchable text.
 PDF manuals use PDF.js text-layer extraction, with a lightweight raw-stream
@@ -291,6 +307,9 @@ quality improves. When ask finds a relevant linked source with missing or
 placeholder extraction data, the SDK re-extracts the already-stored artifact and
 saves the new extraction record before ranking the answer. Later questions
 reuse that stored extraction instead of parsing the manual on every request.
+
+#### Reindex
+
 Clients that want to repair the whole Home Assistant knowledge space
 immediately can call
 `POST /api/homeassistant/home-graph/reindex`. Reindex reparses stale stored
@@ -313,6 +332,8 @@ counts, and per-source `failures`. If another Home Graph reindex is already
 running, the SDK returns `coalesced: true` quickly and leaves the active run in
 charge instead of stacking another foreground scan.
 
+#### Reset and rebuild
+
 If a development or early-preview Home Graph space was populated by older SDK
 builds with bad source links, stale generated pages, or contaminated refinement
 tasks, rebuild it through SDK routes instead of editing the SQLite database.
@@ -330,6 +351,8 @@ those sources and orphan artifacts tagged to that knowledge space. Pass
 records-only cleanup. After reset, re-sync the real Home Assistant snapshot,
 reingest or relink manuals/documents from the integration, then run
 reindex/refinement/page generation against the clean space.
+
+#### Ask ranking
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
@@ -422,6 +445,8 @@ pass after returning source-enrichment and queued-task metadata. Panels should
 use explicit refinement runs or schedules for deeper repair work instead of
 expecting reindex to search and repair the whole house inline.
 
+#### Refinement tasks
+
 Refinement is observable through a stable job-style API. The Home Assistant
 panel can show what gap was detected, whether it is repairable, what source
 candidates were accepted or rejected, what graph changes were applied, and
@@ -468,6 +493,8 @@ Home Graph status reports `activeRefinementTaskCount` for running/queued work
 only; detected backlog records remain visible in the refinement task list but
 do not make readiness look like an active repair run.
 
+#### Home Graph map
+
 `GET` or `POST /api/homeassistant/home-graph/map` returns the current Home Graph as visual
 map data with deterministic node positions, filtered edges, and an SVG string.
 It uses the shared knowledge map renderer also exposed by `GET /api/knowledge/map`,
@@ -505,6 +532,8 @@ fetch the whole graph and implement graph filtering locally. The route also
 accepts a trailing slash and JSON `POST` input with the same fields so panel
 bridges can use either query-string or JSON dispatch without router catch-all
 errors.
+
+#### Quality issues and review
 
 Home Graph quality issues are generated from the current graph but review
 decisions are durable. When a user or LLM resolves/rejects an issue through
@@ -547,6 +576,8 @@ nodes. These are stored as linked documentation-candidate sources in the
 isolated Home Graph space. They are not fetched during snapshot sync; clients
 can ingest selected candidates explicitly when full source content is needed.
 
+#### Node and relation types
+
 Supported Home Assistant node kinds:
 
 - `ha_home`
@@ -581,11 +612,15 @@ Supported relation names:
 - `mentioned_by`
 - `source_for`
 
+#### Integration responsibilities
+
 The HA integration should keep graph storage transient on its side. It should
 collect registry snapshots, expose services/entities/repairs, and pass stable
 Home Assistant ids to the daemon. The daemon owns source provenance,
 confidence/review state, materialized room/device/packet markdown, exports, and
 namespace-filtered search.
+
+#### Operator methods
 
 Home Graph operator methods match the HTTP routes:
 
@@ -608,6 +643,17 @@ Additional browse/export methods are available for source inventory and
 knowledge UIs: `homeassistant.homeGraph.sources.list`,
 `homeassistant.homeGraph.browse`, `homeassistant.homeGraph.export`, and
 `homeassistant.homeGraph.import`.
+
+Refinement and maintenance methods cover the repair, reindex, reset, and
+status routes:
+
+- `homeassistant.homeGraph.refinement.run`
+- `homeassistant.homeGraph.refinement.tasks.list`
+- `homeassistant.homeGraph.refinement.task.get`
+- `homeassistant.homeGraph.refinement.task.cancel`
+- `homeassistant.homeGraph.reindex`
+- `homeassistant.homeGraph.reset`
+- `homeassistant.homeGraph.status`
 
 Home Assistant prompt ingress uses isolated remote-chat sessions backed by the
 same daemon chat manager used by companion-app remote chat. It does not use a
@@ -875,3 +921,9 @@ Do not reimplement GoodVibes routing, tool catalogs, or provider/model
 resolution in the Home Assistant project. The HA integration should consume the
 SDK/daemon endpoints above and keep Home Assistant-specific UI/entity/service
 logic on the HA side.
+
+## Next Reads
+
+- [Runtime Surfaces](./surfaces.md)
+- [Public Surface Reference](./public-surface.md)
+- [Voice and Streaming TTS](./voice.md) — Home Assistant Assist replies carry `speechText` for voice surfaces.

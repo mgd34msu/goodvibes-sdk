@@ -5,8 +5,8 @@
 The `@pellux/goodvibes-sdk` package has companion-safe client surfaces and
 Bun-only daemon/platform surfaces.
 
-See also: [Public Surface reference](./public-surface.md) for the full exports
-map and [Channel surfaces](./channel-surfaces.md) for the channel runtime.
+See also: [Public Surface reference](./public-surface.md) — the canonical list of every
+stable subpath — and [Channel surfaces](./channel-surfaces.md) for the channel runtime.
 
 ## Daemon And Platform Surfaces (Bun-only)
 
@@ -36,11 +36,14 @@ Imported via:
 - package root (`@pellux/goodvibes-sdk`) — default daemon-connected client facade
 - `./react-native` — React Native (Hermes)
 - `./browser` — browser environments
+- `./browser/knowledge`, `./browser/homeassistant`, `./browser/agent` — scoped browser companion clients (base knowledge/wiki, Home Assistant panels, and the Agent-owned knowledge environment)
 - `./web` — web + service workers (same runtime contract as `./browser`)
 - `./workers` — manual Cloudflare Worker bridge for daemon batch proxying, queue tick signals, queue consumers, and scheduled ticks
 - `./expo` — Expo (same runtime contract as `./react-native`)
 - `./auth` — auth client, token stores
+- `./client-auth` — low-level client auth primitives / platform token stores
 - `./errors` — typed error surface
+- `./events`, `./events/<domain>` — typed runtime event domains
 - `./contracts` — ACP contract types and method IDs
 - `./operator` — operator/control-plane client
 - `./observer` — observer helpers
@@ -64,4 +67,4 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 
 ## Enforcement
 
-CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `web.js`, `workers.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
+CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `browser-homeassistant.js`, `browser-knowledge.js`, `web.js`, `workers.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.

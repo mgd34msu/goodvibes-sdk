@@ -174,7 +174,57 @@ Common route-level codes:
 
 The SDK maps these HTTP error responses to `GoodVibesSdkError` instances using the `kind` mapping above. To inspect the raw route-level code, read `err.code` on the thrown `GoodVibesSdkError`. To cross-reference route-specific codes, check the route documentation for that namespace (e.g., [Companion Message Routing](./companion-message-routing.md) for `INVALID_KIND`).
 
-> **Two `code` namespaces:** `err.code` may surface either a **route-body code** (e.g. `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `RATE_LIMITED` — enumerated above) **or** a **typed-error-subclass code** (e.g. `'CONFIG_ERROR'`, `'PROVIDER_ERROR'`, `'TOOL_ERROR'` — see [Typed error codes](#typed-error-codes) below). The two namespaces share the `err.code` field but are distinguished by their value space; HTTP-route codes are SCREAMING_SNAKE bare strings (no suffix), while typed-error-subclass codes always end in `_ERROR`. When in doubt, switch on `err.kind` (the `SDKErrorKind` discriminant) before reading `err.code`.
+> **Three overlapping `code` value-spaces:** `err.code` is a single `string` field, but the value you read may come from any of three overlapping spaces:
+>
+> 1. **Canonical `SDKErrorCode`** — codes the SDK assigns to `GoodVibesSdkError` (e.g. `RATE_LIMITED`, `AUTH_REQUIRED`, `PROTOCOL_ERROR`, `INTERNAL_ERROR`); see [Canonical SDK error codes](#canonical-sdk-error-codes).
+> 2. **Daemon route-body codes** — raw `code` strings in daemon HTTP error bodies (e.g. `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `RATE_LIMITED`, `INTERNAL_ERROR` — enumerated above) before the SDK normalises them.
+> 3. **`AppError`-subclass codes** — literal codes declared by `AppError` subclasses (e.g. `CONFIG_ERROR`, `PROVIDER_ERROR`, `TOOL_ERROR`, `ACP_ERROR`, `PERMISSION_DENIED`, `RENDER_ERROR`); see [Config errors and the AppError hierarchy](#config-errors-and-the-apperror-hierarchy).
+>
+> There is **no suffix rule** distinguishing these spaces: `INTERNAL_ERROR` appears as both a route-body code and a canonical code, and subclass codes exist both with (`CONFIG_ERROR`) and without (`PERMISSION_DENIED`) the `_ERROR` suffix. Always switch on `err.kind` (the `SDKErrorKind` discriminant) first, then read `err.code` only to disambiguate further.
+
+---
+
+## Canonical SDK error codes
+
+Beyond the `kind` discriminant, every `GoodVibesSdkError` carries a `code`. SDK-produced errors set one of the canonical values in the `SDKErrorCode` union (`index.ts:79-111`); caller-supplied codes may be any string, since `code` is typed `SDKErrorCode | (string & {})`.
+
+Prefer the `SDKErrorCodes` const (`index.ts:124-147`) and the runtime guards over bare string literals:
+
+- `isErrorCode(err, SDKErrorCodes.RATE_LIMITED)` (`index.ts:172-177`) returns `true` and narrows `err.code` to the given literal. It works on any object with an optional `code` field.
+- `isKnownErrorCode(value)` (`index.ts:185-187`) returns `true` when an arbitrary string is one of the canonical codes — useful for values received over the wire.
+
+```ts
+import { isErrorCode, SDKErrorCodes, GoodVibesSdkError } from '@pellux/goodvibes-errors';
+
+try {
+  await sdk.operator.accounts.snapshot();
+} catch (err) {
+  if (err instanceof GoodVibesSdkError && isErrorCode(err, SDKErrorCodes.RATE_LIMITED)) {
+    await delay(err.retryAfterMs ?? 1000);
+  }
+}
+```
+
+Canonical codes (`SDKErrorCodes.*`): `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, `PAYMENT_REQUIRED`, `RATE_LIMITED`, `NETWORK_UNREACHABLE`, `TIMEOUT`, `CANCELLED`, `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED`, `AGENT_TIMEOUT`, `AGENT_FAILED`, `TOOL_EXEC_FAILED`, `SERVICE_UNAVAILABLE`, `CONTRACT_MISMATCH`, `PROTOCOL_ERROR`, `INTERNAL_ERROR`, `SDK_CONFIGURATION_ERROR`, `SDK_CONTRACT_ERROR`, `SDK_HTTP_STATUS_ERROR`, `UNKNOWN`.
+
+### Kind → representative code
+
+The SDK infers a representative canonical code for each `kind` (via `inferKind` / `inferCodeFromCategory`, `index.ts:189` onward). The mapping is representative, not exhaustive — one `kind` may surface several codes (for example, `auth` covers `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, and `PAYMENT_REQUIRED`).
+
+| `kind` | Representative `code` |
+|--------|-----------------------|
+| `auth` | `AUTH_REQUIRED` |
+| `config` | `SDK_CONFIGURATION_ERROR` |
+| `contract` | `CONTRACT_MISMATCH` |
+| `network` | `NETWORK_UNREACHABLE` |
+| `not-found` | `NOT_FOUND` |
+| `protocol` | `PROTOCOL_ERROR` |
+| `rate-limit` | `RATE_LIMITED` |
+| `service` | `SERVICE_UNAVAILABLE` |
+| `internal` | `INTERNAL_ERROR` |
+| `tool` | `TOOL_EXEC_FAILED` |
+| `validation` | `VALIDATION_FAILED` |
+| `unknown` | `UNKNOWN` |
 
 ---
 
@@ -198,7 +248,7 @@ They do not propagate as thrown errors and are not reachable via the error handl
 
 ## Typed error codes
 
-Concrete `AppError` subclasses declare a **literal `code`** via `declare readonly code: '<LITERAL>'`. This lets TypeScript narrow on `err.code` exhaustively; each subclass advertises exactly one code.
+Concrete `AppError` subclasses declare a **literal `code`** via `declare readonly code: '<LITERAL>'`, so narrowing to a specific subclass instance gives you that exact literal:
 
 ```ts
 export class ConfigError extends AppError {
@@ -212,32 +262,69 @@ export class ProviderError extends AppError {
 }
 ```
 
-Because the field is a literal string type, a `switch (err.code)` over the declared codes is exhaustive and the compiler will flag added subclasses that introduce new codes:
+> **`err.code` is not compiler-exhaustive.** A `switch (err.code)` with a `const _exhaustive: never = err.code` default does **not** type-check on a `GoodVibesSdkError` or `AppError` value. `GoodVibesSdkError.code` is typed `SDKErrorCode | (string & {})` (`index.ts:418`) and `AppError.code` is plain `string` (`platform/types/errors.ts:131`) — both are wide string types, so the `never` assignment is a type error. The trick only compiles after you narrow to a finite, hand-built union of concrete subclasses, where each branch contributes its literal `code`:
 
 ```ts
-switch (err.code) {
-  case 'CONFIG_ERROR':    /* ... */ break;
-  case 'PROVIDER_ERROR':  /* ... */ break;
-  // etc.
-  default: {
-    const _exhaustive: never = err.code;
-    throw new Error(`unhandled error code: ${_exhaustive}`);
+// Compiles only because `err` is narrowed to a finite subclass union first.
+function handle(err: ConfigError | ProviderError): void {
+  switch (err.code) {
+    case 'CONFIG_ERROR':    /* ... */ break;
+    case 'PROVIDER_ERROR':  /* ... */ break;
+    default: {
+      const _exhaustive: never = err.code;
+      throw new Error('unhandled error code: ' + String(_exhaustive));
+    }
   }
 }
 ```
 
 Prefer `err.kind` for coarse handling (retry / auth / validation), and `err.code` when you need to disambiguate *which* concrete subclass a given `kind` came from.
 
+## Config errors and the AppError hierarchy
+
+Two distinct error types relate to configuration; do not confuse them:
+
+| Type | Code | Import subpath |
+|------|------|----------------|
+| `ConfigurationError` | `SDK_CONFIGURATION_ERROR` | `@pellux/goodvibes-sdk/errors` |
+| `ConfigError` | `CONFIG_ERROR` | `@pellux/goodvibes-sdk/platform/types` |
+
+`ConfigurationError` (`index.ts:555`) extends `GoodVibesSdkError` directly and is thrown for invalid SDK setup (category and kind `config`). `ConfigError` is an `AppError` subclass used by the platform/runtime layer.
+
+`AppError` (`platform/types/errors.ts:119`) extends `GoodVibesSdkError` and adds `statusCode`, `guidance`, `detail`, and `rawMessage`; its `code` is widened to plain `string` (`platform/types/errors.ts:131`). The concrete subclasses ship under `@pellux/goodvibes-sdk/platform/types`:
+
+| Subclass | `code` | Recoverable |
+|----------|--------|-------------|
+| `ConfigError` | `CONFIG_ERROR` | No |
+| `ProviderError` | `PROVIDER_ERROR` | When `statusCode` is in `RETRYABLE_STATUS_CODES` |
+| `ToolError` | `TOOL_ERROR` | Yes |
+| `AcpError` | `ACP_ERROR` | Yes |
+| `PermissionError` | `PERMISSION_DENIED` | No |
+| `RenderError` | `RENDER_ERROR` | Yes |
+
+Subclass codes do **not** share one naming convention: `PERMISSION_DENIED` has no `_ERROR` suffix, while the others do.
+
 ## Useful fields on every `GoodVibesSdkError`
+
+The class exposes 18 structured fields (`index.ts:406-434`); `toJSON()` (`index.ts:482`) serializes them with `undefined` values omitted.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `kind` | `SDKErrorKind` | Primary discriminant for switch/if handling |
-| `category` | `ErrorCategory` | Fine-grained classification (e.g. `authentication`, `rate_limit`) |
-| `source` | `ErrorSource` | Where the error originated (`transport`, `contract`, `config`, etc.) |
-| `status` | `number \| undefined` | HTTP status code if from a transport response |
-| `recoverable` | `boolean` | Whether a retry is expected to succeed |
-| `hint` | `string \| undefined` | Human-readable remediation hint from the server |
-| `retryAfterMs` | `number \| undefined` | Milliseconds to wait before retrying (rate-limit) |
-| `requestId` | `string \| undefined` | Opaque ID for log correlation with the daemon |
-| `provider` | `string \| undefined` | Provider name if the error originated in a provider call |
+| `kind` | `SDKErrorKind` | Primary discriminant for switch/if handling. |
+| `code` | `SDKErrorCode \| (string & {})` | Typed error code; canonical for SDK errors, any string for caller-supplied codes. |
+| `category` | `ErrorCategory` | Fine-grained classification (e.g. `authentication`, `rate_limit`). |
+| `source` | `ErrorSource` | Where the error originated (`transport`, `contract`, `config`, etc.). |
+| `recoverable` | `boolean` | Whether a retry is expected to succeed. |
+| `status` | `number \| undefined` | HTTP status code if from a transport response. |
+| `url` | `string \| undefined` | Request URL for transport failures. |
+| `method` | `string \| undefined` | HTTP method for transport failures. |
+| `body` | `unknown` | Parsed response body, when available. |
+| `hint` | `string \| undefined` | Human-readable remediation hint from the server. |
+| `provider` | `string \| undefined` | Provider name if the error originated in a provider call. |
+| `operation` | `string \| undefined` | Operation/method name in progress when the error occurred. |
+| `phase` | `string \| undefined` | Lifecycle phase in which the failure happened. |
+| `requestId` | `string \| undefined` | Opaque ID for log correlation with the daemon. |
+| `providerCode` | `string \| undefined` | Provider-specific error code. |
+| `providerType` | `string \| undefined` | Provider type/family identifier. |
+| `retryAfterMs` | `number \| undefined` | Milliseconds to wait before retrying (rate-limit). |
+| `cause` | `unknown` | Original underlying error, preserved without loss. |
