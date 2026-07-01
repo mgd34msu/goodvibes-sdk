@@ -75,21 +75,6 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
 - `@pellux/goodvibes-sdk` / `events/transport.ts`: Added `TRANSPORT_BACKPRESSURE`,
   `TRANSPORT_CONNECTION_STATE`, and `TRANSPORT_RECONNECT_ATTEMPT` members to the `TransportEvent`
   union.
-
-### Changed
-- `@pellux/goodvibes-transport-realtime` `createWebSocketConnector`: Reconnect is now **only**
-  suppressed for genuine clean closes (`wasClean === true && code === 1000`). All other closes —
-  including code 1005 (No Status Received, synthesized by runtimes for abnormal drops with no close
-  frame) — schedule a reconnect as per RFC 6455 §7.4.1. The connector transitions directly to
-  `disconnected` only on deliberate clean server-side closes.
-
-### Deprecated
-- `RuntimeEventConnectorOptions.onReconnect(attempt, delayMs)` — use `onReconnectAttempt(info)`
-  instead, which carries the same `attempt` and `delayMs` values plus `maxAttempts` and `reason`.
-  The legacy `onReconnect` callback continues to fire alongside `onReconnectAttempt` for backward
-  compatibility and will be removed in a future major release.
-
-### Added
 - `@pellux/goodvibes-errors`: Added `SDKErrorCode` string-literal union, `SDKErrorCodes` const object,
   `isErrorCode()` type guard, and `isKnownErrorCode()` helper for exhaustive consumer pattern-matching.
   The `code` field on `GoodVibesSdkError` is now typed as `SDKErrorCode | (string & {})` and is always
@@ -123,6 +108,19 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
   unaffected. The daemon HTTP route `GET /api/memory/review-queue` also accepts the new
   `?scope=session|project|team` query parameter. A `scope` value that is present but not one of
   the three valid enum members returns HTTP 400.
+
+### Changed
+- `@pellux/goodvibes-transport-realtime` `createWebSocketConnector`: Reconnect is now **only**
+  suppressed for genuine clean closes (`wasClean === true && code === 1000`). All other closes —
+  including code 1005 (No Status Received, synthesized by runtimes for abnormal drops with no close
+  frame) — schedule a reconnect as per RFC 6455 §7.4.1. The connector transitions directly to
+  `disconnected` only on deliberate clean server-side closes.
+
+### Deprecated
+- `RuntimeEventConnectorOptions.onReconnect(attempt, delayMs)` — use `onReconnectAttempt(info)`
+  instead, which carries the same `attempt` and `delayMs` values plus `maxAttempts` and `reason`.
+  The legacy `onReconnect` callback continues to fire alongside `onReconnectAttempt` for backward
+  compatibility and will be removed in a future major release.
 
 ---
 

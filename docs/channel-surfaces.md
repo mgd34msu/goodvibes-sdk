@@ -6,6 +6,7 @@ lookup, route binding, and surface-specific tools.
 
 Public API surfaces:
 
+- `@pellux/goodvibes-sdk/platform/channels` (channel surface contract; home of the `ChannelSurface`, `ChannelRenderPolicy`, and `ChannelRouteBinding` types)
 - `@pellux/goodvibes-sdk/platform/daemon` (daemon HTTP routes)
 - `@pellux/goodvibes-sdk/platform/integrations` (notifier integrations)
 - operator control-plane methods for channel setup, delivery, and route binding

@@ -142,7 +142,7 @@ There is no separate auth-specific timeout; callers should pass an `AbortSignal`
 |----------|---------|-------|
 | `DEFAULT_SESSION_TTL_MS` | `3 600 000` (1 hour) | Session tokens expire after 1 hour of creation; expired sessions are rejected and pruned on access |
 
-**Source:** `packages/sdk/src/platform/auth/user-auth-manager.ts`. Not a public configurable — set via daemon config `auth.sessionTtlMs` if your embedding exposes it.
+**Source:** `packages/sdk/src/platform/security/user-auth.ts`. Not a public configurable — set via daemon config `auth.sessionTtlMs` if your embedding exposes it.
 
 ## Rate Limits (daemon built-in)
 
@@ -156,4 +156,7 @@ There is no separate auth-specific timeout; callers should pass an `AbortSignal`
 | Field | Value | Notes |
 |-------|-------|-------|
 | `MAX_OUTBOUND_QUEUE` | 1 024 | Max buffered outbound messages while socket is not open |
+| `MAX_OUTBOUND_MESSAGE_BYTES` | 1 MiB | Per-message cap; an outbound message larger than this is rejected rather than queued |
+| `MAX_OUTBOUND_QUEUE_BYTES` | 16 MiB | Total queued-payload cap; the oldest messages are dropped once buffered bytes exceed this |
+| `MAX_INBOUND_FRAME_BYTES` | 1 MiB | Largest accepted inbound runtime-event frame; oversized frames are rejected |
 | Drop policy | Oldest dropped first | `droppedOutboundCount` incremented on each drop; `onError` is called |

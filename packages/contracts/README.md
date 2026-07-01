@@ -36,8 +36,53 @@ const loginMethod = getOperatorMethod('control.auth.login');
 type LoginOutput = OperatorMethodOutput<'control.auth.login'>;
 ```
 
+Peer example:
+
+```ts
+import {
+  getPeerContract,
+  getPeerEndpoint,
+  listPeerEndpoints,
+} from '@pellux/goodvibes-sdk/contracts';
+
+const peerContract = getPeerContract();
+const pairEndpoint = getPeerEndpoint('pair.request');
+const allEndpoints = listPeerEndpoints();
+```
+
+Lookup and guard helpers:
+
+```ts
+import {
+  listOperatorMethods,
+  isOperatorMethodId,
+  isPeerEndpointId,
+  RUNTIME_EVENT_DOMAINS,
+  isRuntimeEventDomain,
+} from '@pellux/goodvibes-sdk/contracts';
+
+listOperatorMethods(); // readonly OperatorMethodContract[]
+isOperatorMethodId('control.auth.login'); // true
+isPeerEndpointId('pair.request'); // true
+RUNTIME_EVENT_DOMAINS.forEach((domain) => isRuntimeEventDomain(domain));
+```
+
 Node-only artifact path helpers:
 
 ```ts
-import { getOperatorContractPath } from '@pellux/goodvibes-sdk/contracts/node';
+import {
+  getOperatorContractPath,
+  getPeerContractPath,
+} from '@pellux/goodvibes-sdk/contracts/node';
 ```
+
+When installing this package directly instead of the SDK facade, import from
+`@pellux/goodvibes-contracts` and `@pellux/goodvibes-contracts/node`:
+
+```ts
+import { getOperatorContract, getPeerContract } from '@pellux/goodvibes-contracts';
+import { getOperatorContractPath, getPeerContractPath } from '@pellux/goodvibes-contracts/node';
+```
+
+See the [zod-schemas README](./src/zod-schemas/README.md) for the runtime Zod
+schema exports re-exported from this package root.

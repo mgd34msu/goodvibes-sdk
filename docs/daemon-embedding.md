@@ -142,3 +142,9 @@ const sdk = createGoodVibesSdk({
   observer: createConsoleObserver(),
 });
 ```
+
+## Related
+
+- [Daemon Batch Processing](./daemon-batch-processing.md) — opt-in provider Batch API queuing through the daemon.
+- [Provider & Model API Reference](./provider-model-api.md) — model-catalog discovery, live model selection, and `providers`-domain SSE events.
+- [Runtime Surfaces](./surfaces.md), [Error Kinds](./error-kinds.md), and [Observability](./observability.md).

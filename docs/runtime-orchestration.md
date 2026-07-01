@@ -34,8 +34,8 @@ Important pieces:
 - `checkContextWindowPreflight()` protects turns that exceed model limits.
 - `OrchestratorFollowUpRuntime` routes follow-up messages back into active
   sessions.
-- `ExecutionPlanManager` tracks structured plans with pending, in-progress,
-  complete, failed, and skipped statuses.
+- `ExecutionPlanManager` tracks structured plans with `pending`, `in_progress`,
+  `complete`, `failed`, and `skipped` statuses.
 
 ## Sessions
 
@@ -54,7 +54,9 @@ from isolated remote sessions:
 `POST /api/sessions/:id/messages` defaults to normal conversation routing when
 `kind` is omitted. This keeps shared-session messages from becoming agent/WRFC
 work accidentally. Callers must send `kind: "task"` when they intentionally
-want session-broker task continuation and possible agent spawning.
+want session-broker task continuation and possible agent spawning. See
+[Companion message routing](./companion-message-routing.md) for the full `kind`
+taxonomy (`message` / `task` / `followup`) and the per-kind response shapes.
 
 ## Agents
 
@@ -79,8 +81,8 @@ the full tool runtime.
 
 ## Archetypes And Templates
 
-Agent archetypes describe named worker roles. Built-ins cover common roles such
-as engineer, reviewer, tester, summarizer, researcher, debugger, and writer.
+Agent archetypes describe named worker roles. Built-ins cover roles such as
+orchestrator, engineer, reviewer, tester, researcher, integrator, and general.
 Project-level markdown files can add or override archetypes with frontmatter
 for name, description, tools, provider, model, and prompt content.
 
@@ -90,12 +92,12 @@ sub-agent orchestration flows.
 ## WRFC
 
 WRFC chains run engineering, review, and fix phases with quality gates. Chain
-states are pending, engineering, reviewing, fixing, awaiting gates, gating,
-passed, failed, and committing.
+states are pending, engineering, integrating, reviewing, fixing, awaiting_gates,
+gating, passed, failed, and committing.
 
 Each WRFC request has one authoritative owner chain. The owner stays visible
 and non-terminal until the chain passes, fails, or is cancelled. Engineer,
-reviewer, fixer, verifier, and gate agents are lifecycle children of that owner;
+reviewer, fixer, integrator, and verifier agents are lifecycle children of that owner;
 they are not sibling root agents and do not independently decide when the chain
 is done. Reviews always evaluate the complete current result against the
 original WRFC ask.
@@ -108,13 +110,26 @@ parallel reviewer/tester roots before there is work to review.
 The WRFC controller tracks:
 
 - owner, phase, and child-agent ids
-- engineer, reviewer, and fixer agent ids
+- engineer, reviewer, fixer, and integrator agent ids
 - review scores and review cycles
 - fix attempts and gate retry depth
 - quality-gate results
 - completion reports
 - propagated constraints
 - synthetic critical issues for constraint-continuity violations
+- subtasks and per-subtask review state for compound chains
+- claim-verification status (`claimsVerified`)
+
+For large tasks, the owner can run a **compound chain**: it decomposes the work
+into `WrfcSubtask` records — each with its own engineer/reviewer/fixer cycle and
+`WrfcSubtaskState` (`pending`, `engineering`, `reviewing`, `fixing`, `passed`,
+`failed`) — then spawns an **integrator** to merge the passed subtasks before the
+chain's final full-scope review. A separate **verifier** role checks
+engineer/fixer self-reports against the actual on-disk changes; the
+`claimsVerified` flag records whether those work claims were confirmed (`false`
+flags phantom work — claimed changes that are not present). The full `WORKFLOW_*`
+event set for these transitions lives in the
+[Runtime events reference](./reference-runtime-events.md).
 
 Constraint propagation is documented in
 [WRFC constraint propagation](./wrfc-constraint-propagation.md).
@@ -150,8 +165,8 @@ Supported routes:
 
 Set the client base URL to the daemon prefix, for example
 `http://127.0.0.1:3421/v1` (default control-plane port; configurable via `controlPlane.port`), and use the daemon bearer token as the API key.
-The route accepts `goodvibes/current`, `goodvibes/default`, and provider-qualified registry keys such
-as `openai:gpt-5.5`. Streaming responses use
+The route accepts `goodvibes/current` and provider-qualified registry keys such
+as `openai:gpt-5.4`. Streaming responses use
 OpenAI-style `text/event-stream` chunks ending with `data: [DONE]`.
 
 This layer is intentionally narrow. It maps OpenAI-style requests to the active

@@ -52,6 +52,12 @@ Session cookie:
 - `SameSite=Lax`
 - path: `/`
 
+## OAuth (daemon-side)
+
+GoodVibes also ships an OAuth flow used for daemon-side token acquisition (for example, authorizing third-party providers). The flow itself runs on the server side: `OAuthClient` and the core helpers (`platform/runtime/auth/oauth-core.ts`, `oauth-client.ts`) depend on Node runtime facilities and are **not** part of the consumer client surface. Clients do not run the OAuth handshake directly; they receive acquired tokens through a `TokenStore`.
+
+The OAuth *payload types* — `OAuthStartState` and `OAuthTokenPayload` — are exported from `@pellux/goodvibes-sdk/client-auth` (and re-exported from `@pellux/goodvibes-sdk/auth`) for typing the values you persist. `PermissionResolver`, also exported from `@pellux/goodvibes-sdk/client-auth`, resolves the permissions carried by an acquired token.
+
 ## SDK auth helpers
 
 The umbrella SDK exposes an auth client plus token-store helpers:
@@ -96,10 +102,8 @@ Useful auth helpers:
 Use `createBrowserTokenStore()` when you want local-storage-backed bearer token persistence in a browser app:
 
 ```ts
-import {
-  createBrowserGoodVibesSdk,
-  createBrowserTokenStore,
-} from '@pellux/goodvibes-sdk/browser';
+import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
+import { createBrowserTokenStore } from '@pellux/goodvibes-sdk/auth';
 
 const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',

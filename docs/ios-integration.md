@@ -8,25 +8,23 @@ Use this guide when you are building:
 - an iOS client that needs direct operator, peer, telemetry, or runtime-event access
 
 The source of truth for iOS companion integrations in this repo is:
-- the synced contract artifacts
-- the generated API reference docs
+- the [companion wire protocol](./companion-wire-protocol.md), which documents the shared auth, WebSocket, and method-call contract for native clients
+- the contract artifacts `packages/contracts/artifacts/operator-contract.json` and `peer-contract.json` (also published on the `@pellux/goodvibes-sdk/contracts/operator-contract.json` and `@pellux/goodvibes-sdk/contracts/peer-contract.json` subpaths)
+- the surface references: [surfaces.md](./surfaces.md), [exports.md](./exports.md), [public-surface.md](./public-surface.md), [packages.md](./packages.md)
+- the generated API reference docs ([operator](./reference-operator.md), [peer](./reference-peer.md), [runtime events](./reference-runtime-events.md))
 - the Swift example in [ios-swift-quickstart.swift](../examples/ios-swift-quickstart.swift)
 
-## Recommended auth
+## Installation
 
-- bearer token
+Native iOS apps consume the JSON contracts rather than the npm package — see the [entry point guide](./packages.md) for the install matrix. If you bundle the contracts from npm, install `@pellux/goodvibes-sdk` (the canonical install command and version live in [Getting started](./getting-started.md#install)) and read them from the `@pellux/goodvibes-sdk/contracts/*.json` subpaths. Pin to the SDK release whose contracts you target.
 
-## Recommended realtime transport
+## Connecting
 
-- WebSocket
+- **Auth:** bearer token (`Authorization: Bearer <token>`); `POST /login` mints one and `GET /api/control-plane/auth` verifies the current principal.
+- **Realtime transport:** WebSocket at `/api/control-plane/ws?domains=<comma-joined>&clientKind=web`, with a `{ "type": "auth", "token": "<token>", "domains": ["<domain>"] }` frame sent as the first message.
+- **Method calls:** over HTTP — invoke with `POST /api/control-plane/methods/{method}/invoke`; list the catalog with `GET /api/control-plane/methods`.
 
-## Native integration approach
-
-Use:
-- `POST /login` if you need username/password login
-- `GET /api/control-plane/auth` to verify the current principal
-- `/api/control-plane/ws` for runtime events and method calls
-- `/api/control-plane/methods` to inspect the method catalog when debugging or building dynamic tooling
+See the [companion wire protocol](./companion-wire-protocol.md) for the full reference (URL upgrade rules, optional trace headers, method-catalog endpoints, and contract artifacts).
 
 ## iOS app guidance
 

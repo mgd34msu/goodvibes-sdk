@@ -19,15 +19,21 @@ available. Current non-vendored overrides are declared in the root
 - `fast-xml-parser@5.7.1` for the AWS XML builder path
 - `ajv@8.18.0` for Verdaccio and documentation tooling paths
 - `lodash@4.18.1` for Verdaccio storage paths (bumped from `4.17.21` to escape an audit advisory; see root `package.json` overrides)
-- `google-auth-library@10.6.2` for the in-tree Anthropic Vertex authentication path
+- `google-auth-library@10.6.2` for Cloudflare/Wrangler transitive auth tooling
 - `minimatch@^10.2.5` for source-workspace installs
+- `fast-uri@3.1.2` to avoid `GHSA-v39h-62p7-jpjc` in AJV consumers used by release tooling
+- `esbuild@0.28.1` to close `GHSA-gv7w-rqvm-qjhr` (RCE via missing binary integrity verification in the Deno module path)
+- `form-data@4.0.6` to close `GHSA-hmw2-7cc7-3qxx` (CRLF injection via unescaped multipart field/file names)
+- `ws@8.21.0` to close `GHSA-96hv-2xvq-fx4p` (memory-exhaustion DoS from tiny fragments)
+- `undici@7.28.0` to close `GHSA-vmh5-mc38-953g`, `GHSA-vxpw-j846-p89q`, and `GHSA-hm92-r4w5-c3mj` (TLS bypass, WebSocket DoS, SOCKS5 routing)
 
 The published SDK keeps Bash LSP bundled as a first-class feature. The
 `bash-language-server@5.6.0 -> editorconfig@2.0.1 -> minimatch@10.0.1` chain is
 handled as a graph-level vendor patch: `vendor/bash-language-server` copies the
 upstream `bash-language-server@5.6.0` package and changes only
 `dependencies.editorconfig` to `3.0.2`, whose dependency range resolves to the
-fixed `minimatch@10.2.5` line. Release staging rewrites the published SDK
+fixed `minimatch@~10.2.4` line (the root `overrides.minimatch` separately pins
+`^10.2.5` for source-workspace installs). Release staging rewrites the published SDK
 dependency to `file:vendor/bash-language-server`, so consumer lockfiles and
 `npm audit` see the patched graph directly.
 
@@ -52,10 +58,15 @@ not inherit dependency-package overrides:
 {
   "overrides": {
     "ajv": "8.18.0",
+    "esbuild": "0.28.1",
+    "fast-uri": "3.1.2",
     "fast-xml-parser": "5.7.1",
+    "form-data": "4.0.6",
     "google-auth-library": "10.6.2",
     "lodash": "4.18.1",
-    "minimatch": "^10.2.5"
+    "minimatch": "^10.2.5",
+    "undici": "7.28.0",
+    "ws": "8.21.0"
   }
 }
 ```
@@ -97,6 +108,8 @@ Security-sensitive areas in this SDK include:
 - Structured error propagation
 
 ## Consumer Guidance
+
+For the full security model — authentication modes, token management, secret handling, and daemon hardening — see [docs/security.md](./docs/security.md).
 
 When building with this SDK:
 

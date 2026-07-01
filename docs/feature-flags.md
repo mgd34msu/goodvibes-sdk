@@ -56,46 +56,46 @@ SDK-created runtime services inject the feature manager and therefore follow
 the safe defaults below. Direct construction without a feature manager uses the
 constructor's explicit options and does not apply config-backed host policy.
 
-| Flag | Default | Runtime toggle | Status | Guidance |
-|---|---:|---:|---|---|
-| `permissions-policy-engine` | disabled | no | ready | PermissionManager only applies layered runtime policy when this startup flag is enabled; factory use also enforces the flag when supplied. |
-| `permissions-simulation` | disabled | no | ready | Enable only in controlled policy-evaluation environments; it is startup-only. |
-| `hitl-ux-modes` | disabled | yes | ready | ModeManager only allows HITL preset changes, domain overrides, and router application when this flag is enabled. |
-| `unified-runtime-task` | disabled | no | ready | Task manager creation remains available, but task mutation/read APIs fail closed or return empty results when the flag is supplied and disabled. |
-| `plugin-lifecycle` | disabled | no | ready | Startup-only lifecycle factory enforces this flag when a manager is supplied; baseline plugin manager remains separate. |
-| `mcp-lifecycle` | disabled | no | ready | Startup-only lifecycle factory enforces this flag when a manager is supplied; baseline MCP registry remains separate. |
-| `otel-foundation` | disabled | no | ready | Telemetry provider defaults tracing on when this flag is supplied and enabled; explicit telemetry config still wins. |
-| `otel-remote-export` | disabled | yes | ready | Requires `otel-foundation`; when both are enabled, telemetry provider wires the configured OTLP exporter. |
-| `tool-result-reconciliation` | enabled | yes | ready | Keep enabled for normal hosts; disabling reverts unresolved tool calls to warning-only behavior. |
-| `policy-signing` | disabled | no | ready | Policy loader validates signatures and enforces managed-mode rejection only when this startup flag is enabled. |
-| `session-compaction` | disabled | yes | ready | Enable for hosts that want structured runtime compaction; safe to expose as a runtime toggle. |
-| `fetch-sanitization` | disabled | yes | ready | Strong candidate for TUI safe-browsing profiles; enables response sanitization, unknown-host safe-text fallback, SSRF-risk host blocking, redirect-target revalidation, and streaming response-size caps. Disabled means the SDK does not add this extra sanitization layer and should be surfaced through the security settings report. |
-| `runtime-tools-budget-enforcement` | disabled | yes | ready | Phased executor factory derives budget enforcement from the flag; explicit executor config can still override host policy. |
-| `overflow-spill-backends` | disabled | yes | ready | OverflowHandler forces the file backend while disabled; ledger/diagnostics backends require this flag. |
-| `permission-divergence-dashboard` | disabled | yes | ready | Divergence dashboard factory is gated; disabled hosts cannot create the dashboard/enforce gate through the SDK factory. |
-| `shell-ast-normalization` | disabled | yes | ready | Strong candidate for developer and safe-exec profiles; enables AST command verdicts and obfuscation denial. |
-| `local-provider-context-ingestion` | enabled | yes | ready | Keep enabled unless a host needs static context-window configuration only. |
-| `agent-context-window-awareness` | enabled | yes | ready | Keep enabled for normal agent orchestration; disabling removes context-window safeguards. |
-| `output-schema-fingerprint` | disabled | yes | ready | Useful for diagnostics and schema drift detection; low-risk opt-in. |
-| `policy-as-code` | disabled | yes | ready | Policy registry factory is gated; promote/rollback registry creation requires explicit host opt-in. |
-| `adaptive-execution-planner` | disabled | yes | ready | Orchestrator decision emission and `/plan` runtime exposure are both gated by the flag. |
-| `provider-optimizer` | disabled | yes | ready | Runtime service follows flag transitions; agent routing consumes optimizer decisions when the optimizer is active and not in manual mode. |
-| `integration-delivery-slo` | disabled | yes | ready | Delivery queues derive SLO enforcement from the flag unless a host explicitly overrides queue config. |
-| `adaptive-notification-suppression` | disabled | yes | ready | Safe to expose as a host UX toggle; suppresses noisy operational notifications. |
-| `token-scope-rotation-audit` | disabled | yes | ready | Audits always report findings, but managed-mode token blocking only happens when this flag is enabled. |
-| `tool-contract-verification` | enabled | yes | ready | Built-in tool registration now passes through contract verification by default; hosts can explicitly disable it for custom tool registry alignment. |
-| `automation-domain` | disabled | yes | ready | AutomationManager read/mutation/scheduling APIs are gated; disabled SDK services expose empty reads and fail closed on mutations. |
-| `control-plane-gateway` | disabled | yes | ready | ControlPlaneGateway snapshots, live streams, Web UI, and websocket clients are gated. |
-| `route-binding` | disabled | yes | ready | Runtime route binding manager is gated by the flag; durable writes fail closed when disabled. |
-| `delivery-engine` | disabled | yes | ready | AutomationDeliveryManager returns no attempts while disabled and also respects surface-specific gates. |
-| `slack-surface` | disabled | yes | ready | Slack surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
-| `discord-surface` | disabled | yes | ready | Discord surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
-| `ntfy-surface` | disabled | yes | ready | ntfy surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
-| `webhook-surface` | disabled | yes | ready | Webhook surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
-| `homeassistant-surface` | disabled | yes | ready | Home Assistant surface records, signed webhook ingress, event delivery, setup manifest, and HA REST-backed tools require this flag unless the omnichannel alias is enabled. |
-| `web-surface` | disabled | yes | ready | Web control surface records and plugins require this flag unless the embedded web alias is enabled. |
-| `watcher-framework` | disabled | yes | ready | WatcherRegistry list/read APIs return empty while disabled; registration/start/stop/run/remove fail closed. |
-| `service-management` | disabled | yes | ready | PlatformServiceManager status reports disabled state; install/start/stop/restart/uninstall fail closed. |
+| Flag | Tier | Default | Runtime toggle | Status | Guidance |
+|---|---:|---:|---:|---|---|
+| `permissions-policy-engine` | 2 | disabled | no | ready | PermissionManager only applies layered runtime policy when this startup flag is enabled; factory use also enforces the flag when supplied. |
+| `permissions-simulation` | 2 | disabled | no | ready | Enable only in controlled policy-evaluation environments; it is startup-only. |
+| `hitl-ux-modes` | 3 | disabled | yes | ready | ModeManager only allows HITL preset changes, domain overrides, and router application when this flag is enabled. |
+| `unified-runtime-task` | 3 | disabled | no | ready | Task manager creation remains available, but task mutation/read APIs fail closed or return empty results when the flag is supplied and disabled. |
+| `plugin-lifecycle` | 4 | disabled | no | ready | Startup-only lifecycle factory enforces this flag when a manager is supplied; baseline plugin manager remains separate. |
+| `mcp-lifecycle` | 4 | disabled | no | ready | Startup-only lifecycle factory enforces this flag when a manager is supplied; baseline MCP registry remains separate. |
+| `otel-foundation` | 4 | disabled | no | ready | Telemetry provider defaults tracing on when this flag is supplied and enabled; explicit telemetry config still wins. |
+| `otel-remote-export` | 5 | disabled | yes | ready | Requires `otel-foundation`; when both are enabled, telemetry provider wires the configured OTLP exporter. |
+| `tool-result-reconciliation` | 7 | enabled | yes | ready | Keep enabled for normal hosts; disabling reverts unresolved tool calls to warning-only behavior. |
+| `policy-signing` | 7 | disabled | no | ready | Policy loader validates signatures and enforces managed-mode rejection only when this startup flag is enabled. |
+| `session-compaction` | 6 | disabled | yes | ready | Enable for hosts that want structured runtime compaction; safe to expose as a runtime toggle. |
+| `fetch-sanitization` | 8 | disabled | yes | ready | Strong candidate for TUI safe-browsing profiles; enables response sanitization, unknown-host safe-text fallback, SSRF-risk host blocking, redirect-target revalidation, and streaming response-size caps. Disabled means the SDK does not add this extra sanitization layer and should be surfaced through the security settings report. |
+| `runtime-tools-budget-enforcement` | 8 | disabled | yes | ready | Phased executor factory derives budget enforcement from the flag; explicit executor config can still override host policy. |
+| `overflow-spill-backends` | 8 | disabled | yes | ready | OverflowHandler forces the file backend while disabled; ledger/diagnostics backends require this flag. |
+| `permission-divergence-dashboard` | 8 | disabled | yes | ready | Divergence dashboard factory is gated; disabled hosts cannot create the dashboard/enforce gate through the SDK factory. |
+| `shell-ast-normalization` | 8 | disabled | yes | ready | Strong candidate for developer and safe-exec profiles; enables AST command verdicts and obfuscation denial. |
+| `local-provider-context-ingestion` | 9 | enabled | yes | ready | Keep enabled unless a host needs static context-window configuration only. |
+| `agent-context-window-awareness` | 9 | enabled | yes | ready | Keep enabled for normal agent orchestration; disabling removes context-window safeguards. |
+| `output-schema-fingerprint` | 8 | disabled | yes | ready | Useful for diagnostics and schema drift detection; low-risk opt-in. |
+| `policy-as-code` | 5 | disabled | yes | ready | Policy registry factory is gated; promote/rollback registry creation requires explicit host opt-in. |
+| `adaptive-execution-planner` | 5 | disabled | yes | ready | Orchestrator decision emission and `/plan` runtime exposure are both gated by the flag. |
+| `provider-optimizer` | 5 | disabled | yes | ready | Runtime service follows flag transitions; agent routing consumes optimizer decisions when the optimizer is active and not in manual mode. |
+| `integration-delivery-slo` | 6 | disabled | yes | ready | Delivery queues derive SLO enforcement from the flag unless a host explicitly overrides queue config. |
+| `adaptive-notification-suppression` | 3 | disabled | yes | ready | Safe to expose as a host UX toggle; suppresses noisy operational notifications. |
+| `token-scope-rotation-audit` | 7 | disabled | yes | ready | Audits always report findings, but managed-mode token blocking only happens when this flag is enabled. |
+| `tool-contract-verification` | 8 | enabled | yes | ready | Built-in tool registration now passes through contract verification by default; hosts can explicitly disable it for custom tool registry alignment. |
+| `automation-domain` | 10 | disabled | yes | ready | AutomationManager read/mutation/scheduling APIs are gated; disabled SDK services expose empty reads and fail closed on mutations. |
+| `control-plane-gateway` | 10 | disabled | yes | ready | ControlPlaneGateway snapshots, live streams, Web UI, and websocket clients are gated. |
+| `route-binding` | 10 | disabled | yes | ready | Runtime route binding manager is gated by the flag; durable writes fail closed when disabled. |
+| `delivery-engine` | 10 | disabled | yes | ready | AutomationDeliveryManager returns no attempts while disabled and also respects surface-specific gates. |
+| `slack-surface` | 10 | disabled | yes | ready | Slack surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `discord-surface` | 10 | disabled | yes | ready | Discord surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `ntfy-surface` | 10 | disabled | yes | ready | ntfy surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `webhook-surface` | 10 | disabled | yes | ready | Webhook surface records, plugins, and delivery targets require this flag unless the omnichannel alias is enabled. |
+| `homeassistant-surface` | 10 | disabled | yes | ready | Home Assistant surface records, signed webhook ingress, event delivery, setup manifest, and HA REST-backed tools require this flag unless the omnichannel alias is enabled. |
+| `web-surface` | 10 | disabled | yes | ready | Web control surface records and plugins require this flag unless the embedded web alias is enabled. |
+| `watcher-framework` | 10 | disabled | yes | ready | WatcherRegistry list/read APIs return empty while disabled; registration/start/stop/run/remove fail closed. |
+| `service-management` | 10 | disabled | yes | ready | PlatformServiceManager status reports disabled state; install/start/stop/restart/uninstall fail closed. |
 
 The `prompt` value for `permissions.tools.<name>` triggers a user-approval prompt before each call to that tool. See [Tool safety](./tool-safety.md) and [Security](./security.md#permission-system) for how permission decisions are evaluated.
 

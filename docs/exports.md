@@ -51,6 +51,7 @@ Client-safe surfaces:
 - `@pellux/goodvibes-sdk/browser`
 - `@pellux/goodvibes-sdk/browser/knowledge`
 - `@pellux/goodvibes-sdk/browser/homeassistant`
+- `@pellux/goodvibes-sdk/browser/agent`
 - `@pellux/goodvibes-sdk/client-auth`
 - `@pellux/goodvibes-sdk/events`
 - `@pellux/goodvibes-sdk/events/<domain>` for the explicit public event domains documented in [Public Surface](./public-surface.md)
@@ -119,3 +120,16 @@ Runtime-heavy surfaces:
 Pick the narrowest entrypoint that matches the runtime. Do not import from
 workspace package source directories, `dist`, or unlisted deep paths in
 application code.
+
+See [Public Surface](./public-surface.md) for the canonical list of every stable subpath.
+
+## Sibling-Package Deep Subpaths
+
+The source-of-truth sibling packages publish deep subpaths of their own — for example
+`@pellux/goodvibes-contracts/generated/*`, `@pellux/goodvibes-contracts/zod-schemas/*`, and
+`@pellux/goodvibes-contracts/node`; `@pellux/goodvibes-daemon-sdk/*` route helpers;
+`@pellux/goodvibes-transport-core/*`; `@pellux/goodvibes-transport-http/*`;
+`@pellux/goodvibes-operator-sdk/client*` and `@pellux/goodvibes-peer-sdk/client*`; and
+`@pellux/goodvibes-errors/daemon-error-contract`. These exist to compose the
+`@pellux/goodvibes-sdk` facade and are not part of the supported consumer contract. Prefer the
+matching `@pellux/goodvibes-sdk/...` subpath; the bare sibling deep paths may change without notice.

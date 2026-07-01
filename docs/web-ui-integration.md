@@ -2,7 +2,7 @@
 
 This is the **companion surface** for web UI applications (browser runtime). See [Runtime Surfaces](./surfaces.md).
 
-Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
+Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers web-UI-specific patterns: entrypoint selection, companion chat, attachments, and voice playback. The shared browser foundation — auth, transport, realtime, error handling, and observability — lives in [Browser Integration](./browser-integration.md).
 
 Use the narrowest browser entrypoint that matches the app. A normal GoodVibes
 WebUI that presents the base knowledge/wiki system should use
@@ -35,9 +35,12 @@ For a browser-based web UI:
 `@pellux/goodvibes-sdk/browser/knowledge` is the default for the base GoodVibes
 WebUI. `@pellux/goodvibes-sdk/browser/homeassistant` is for Home Assistant
 panels and includes Home Graph routes without pulling the base knowledge/wiki
-route table. `@pellux/goodvibes-sdk/browser` and `@pellux/goodvibes-sdk/web`
-remain full all-method browser clients for applications that need the entire
-operator contract.
+route table. `@pellux/goodvibes-sdk/browser/agent` (via `createBrowserAgentSdk`)
+scopes to the GoodVibes Agent surface — the agent's own knowledge/wiki space
+served under `/api/goodvibes-agent/knowledge`, plus work-plan, artifact, and
+companion-chat routes. `@pellux/goodvibes-sdk/browser` and
+`@pellux/goodvibes-sdk/web` remain full all-method browser clients for
+applications that need the entire operator contract.
 
 See [public-surface.md](./public-surface.md) for the full entry-point reference.
 
@@ -117,49 +120,69 @@ provider prompt, supported image artifacts are passed as multimodal content, and
 other artifact types remain durable references visible to the model as an
 attachment summary.
 
-## Error handling
+## Voice playback (streaming TTS)
 
-All SDK errors extend `GoodVibesSdkError`. See [Error Kinds](./error-kinds.md) for the full taxonomy.
+`POST /api/voice/tts/stream` returns raw audio bytes as a stream (see
+[Voice and Streaming TTS](./voice.md)). A web UI owns local playback: read the
+`fetch` response body as a `ReadableStream` and feed it to the Web Audio API or
+a `MediaSource` so audio starts before the full clip arrives.
 
 ```ts
-import { GoodVibesSdkError } from '@pellux/goodvibes-sdk/errors';
+const controller = new AbortController();
+const res = await fetch(`${baseUrl}/api/voice/tts/stream`, {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ providerId: 'elevenlabs', text: 'Read this aloud' }),
+  signal: controller.signal,
+});
 
-try {
-  await sdk.operator.invoke('control.snapshot', {});
-} catch (err) {
-  if (err instanceof GoodVibesSdkError) {
-    switch (err.kind) {
-      case 'auth':
-        // session expired — redirect to login or refresh token
-        break;
-      case 'network':
-        // transport failure — reconnect SSE/WS or retry
-        break;
-      case 'service':
-        // daemon or upstream service returned 5xx — log and degrade gracefully
-        break;
-      case 'protocol':
-        // SDK/client and daemon disagreed about the wire contract
-        break;
-      default:
-        throw err;
-    }
-  }
+if (!res.ok || !res.body) {
+  throw new Error(`tts/stream failed: ${res.status}`);
 }
+
+const mediaSource = new MediaSource();
+const audio = new Audio();
+audio.src = URL.createObjectURL(mediaSource);
+
+mediaSource.addEventListener('sourceopen', async () => {
+  const contentType = res.headers.get('content-type') ?? 'audio/mpeg';
+  const sourceBuffer = mediaSource.addSourceBuffer(contentType);
+  const reader = res.body!.getReader();
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    await new Promise((resolve) => {
+      sourceBuffer.addEventListener('updateend', resolve, { once: true });
+      sourceBuffer.appendBuffer(value);
+    });
+  }
+  mediaSource.endOfStream();
+});
+
+await audio.play();
 ```
+
+The `Content-Type` and `X-GoodVibes-Audio-Format` response headers describe the
+audio encoding; use them to pick the `MediaSource` MIME type or Web Audio decode
+path. Call `controller.abort()` when the user stops playback so the daemon
+cancels the upstream provider stream.
+
+## Error handling
+
+All SDK errors extend `GoodVibesSdkError` and expose the same `kind` taxonomy
+across every browser surface. See
+[Browser Integration → Error handling](./browser-integration.md#error-handling)
+for the handling pattern and [Error Kinds](./error-kinds.md) for the full
+taxonomy.
 
 ## Observability
 
-`SDKObserver` and `createConsoleObserver` work from web UI contexts exactly like
-from the full surface. Import observer helpers from
-`@pellux/goodvibes-sdk/observer` so scoped browser bundles stay narrow. See
-[Observability](./observability.md) for the full observer API.
-
-```ts
-import { createConsoleObserver } from '@pellux/goodvibes-sdk/observer';
-
-const sdk = createBrowserKnowledgeSdk({
-  baseUrl: 'https://goodvibes.example.com',
-  observer: createConsoleObserver(),
-});
-```
+Observability works from web UI contexts exactly as on the full surface. Import
+observer helpers from `@pellux/goodvibes-sdk/observer` so scoped browser bundles
+stay narrow, and pass `createConsoleObserver()` as the `observer` option when
+creating the SDK. See
+[Browser Integration → Observability](./browser-integration.md#observability) for
+the shared example and [Observability](./observability.md) for the full observer
+API.

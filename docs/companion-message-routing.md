@@ -27,11 +27,13 @@ Content-Type: application/json
 { "body": "Hello from companion", "kind": "message" }
 ```
 
-Response:
+Response (`202 Accepted`):
 
 ```json
-{ "messageId": "<uuid>", "routedTo": "conversation" }
+{ "messageId": "companion-<uuid>", "routedTo": "conversation", "sessionId": "<sessionId>" }
 ```
+
+The `messageId` is always prefixed `companion-` (for example `companion-3f9a2c1e-...`).
 
 - No agent is spawned.
 - The live TUI should treat the event as operator chat and start a normal LLM
@@ -48,9 +50,15 @@ Response:
 
   { "body": "Continue with option B", "kind": "followup" }
   ```
-  Response:
+  Response (`202 Accepted`) — the session-submission record returned by `respondToSessionSubmission()`:
   ```json
-  { "messageId": "<uuid>", "routedTo": "followup" }
+  {
+    "session": { "id": "<sessionId>", "...": "shared session record" },
+    "message": "<the appended user message, or null>",
+    "input": { "...": "the normalized SharedSessionMessageInput" },
+    "mode": "queued-follow-up",
+    "agentId": "<active agent id, or null>"
+  }
   ```
 - Unknown `kind` values return `400 INVALID_KIND`.
 
@@ -66,6 +74,7 @@ payload is a `ConversationMessageEnvelope`:
   body: string;             // message text
   source: 'companion-followup';
   timestamp: number;        // epoch ms
+  attachments?: readonly (ArtifactDescriptor & { artifactId: string; label?: string })[]; // optional artifact attachments
   metadata?: Record<string, unknown>;
 }
 ```
@@ -127,7 +136,7 @@ successfully handled ntfy message id and suppress duplicate ids.
 ## Envelope Consistency
 
 The `ConversationMessageEnvelope` shape is shared between chat-mode events (`turn.started`,
-`turn.completed`) and Problem-2 follow-up events. Chat-mode events use:
+`turn.completed`) and session-message follow-up events. Chat-mode events use:
 - `source: 'companion-chat-user'` for user messages
 - `source: 'companion-chat-assistant'` for assistant replies
 
@@ -143,12 +152,17 @@ Other session routes cover adjacent use cases. Use the one that matches your int
 | Route | Purpose | Triggers agent turn? |
 |---|---|---|
 | `POST /api/sessions/:id/messages` | Inject a companion main-chat message visible to the operator | Yes, when the live TUI delegates `COMPANION_MESSAGE_RECEIVED` to `handleUserInput()` |
-| `POST /api/sessions/:id/inputs` | Dispatch a structured intent (tool call, steer, cancel-input, etc.) into the active turn | Depends on the intent kind |
+| `GET  /api/sessions/:id/inputs` | List pending inputs awaiting a response on the active turn | No |
+| `POST /api/sessions/:id/steer` | Steer the active turn with new guidance | Yes |
+| `POST /api/sessions/:id/inputs/:inputId/cancel` | Cancel a specific pending input on the active turn | Depends on the input |
 | `GET  /api/sessions/:id/messages` | Fetch the full conversation history for the session | n/a |
 | `PATCH /api/companion/chat/sessions/:id` | Update a true remote companion-chat session's own provider/model metadata | No immediate turn; affects subsequent remote-session turns |
 
-Callers should route structured intents through `POST /api/sessions/:id/inputs`
-instead of building ad-hoc bodies for `/messages`.
+Callers should route structured intents through the dedicated routes —
+`POST /api/sessions/:id/steer` to steer the active turn,
+`POST /api/sessions/:id/inputs/:inputId/cancel` to cancel a pending input, and
+`POST /api/sessions/:id/follow-up` to queue a follow-up — instead of building
+ad-hoc bodies for `/messages`.
 
 All companion-chat routes are registered in the live method catalog. Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.
 
@@ -162,3 +176,8 @@ All companion-chat routes are registered in the live method catalog. Fetch the c
 | `GET /api/companion/chat/sessions/:id/events` | Stream events for the session |
 | `GET /api/companion/chat/sessions/:id` | Get session details |
 | `DELETE /api/companion/chat/sessions/:id` | Delete the session |
+
+## Next Reads
+
+- [Runtime Orchestration](./runtime-orchestration.md) — session `kind` routing, the session broker, and how WRFC/agent continuations are spawned.
+- [Companion App Patterns](./companion-app-patterns.md) — HTTP bootstrap, realtime subscribe, and snapshot-refresh-on-resume for companion surfaces.

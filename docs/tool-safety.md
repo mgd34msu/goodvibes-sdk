@@ -1,8 +1,8 @@
 # Tool Safety
 
-> **Surface scope:** This document describes tool-call behavior for the **full surface (Bun runtime)**. See [Runtime Surfaces](./surfaces.md) for companion-surface constraints.
+> **Surface scope:** This document describes tool-call behavior for the **full surface (Bun runtime)**. See [Published Surface Matrix](./surfaces.md) for companion-surface constraints.
 
-This guide covers how tool-call arguments move from raw streaming output through to your handler, what can go wrong at each step, and how to write tools that handle bad input gracefully.
+This guide covers how tool-call arguments move from raw streaming output through to your handler, what can go wrong at each step, and how to write tools that handle bad input gracefully. For the built-in tool catalog, registration requirements, and permission keys, see [Tool System](./tools.md).
 
 ---
 
@@ -12,21 +12,27 @@ When a provider streams a response that includes a tool call, the SDK processes 
 
 ### 1. Delta accumulation
 
-Each streaming chunk may carry a partial tool name or a partial argument string. Provider adapters (e.g. `anthropic.ts`, `anthropic-compat.ts`, `tool-formats.ts`) accumulate these deltas into a single buffer as they arrive. The accumulation happens inside the provider's stream-processing loop; no parsing occurs at this stage.
+Each streaming chunk may carry a partial tool name or a partial argument string. The provider's stream assembler accumulates these deltas into a single buffer as they arrive — for Anthropic-style streams this is `anthropic-sse-assembler.ts`, which appends each `input_json_delta` fragment onto the per-block argument buffer (`block.args += event.delta.partial_json`). `tool-formats.ts` is the wire-format parser, not a delta accumulator: it converts and parses already-assembled buffers. No JSON parsing occurs at this accumulation stage.
 
 ### 2. JSON parse with malformed-call drop
 
-When the stream signals that a tool call is complete, the accumulated argument string is parsed. Provider adapters use the shared parser in `tool-formats.ts` for accumulated OpenAI-style calls, text-delimited calls, and streamed Anthropic/Responses-style argument buffers:
+When the stream signals that a tool call is complete, the accumulated argument string is parsed. Provider adapters use the shared parser in `tool-formats.ts` for accumulated OpenAI-style calls and streamed Anthropic/Responses-style argument buffers; text-delimited calls take a parallel route through `extractTextToolCalls()` (described below) that funnels each extracted span through the same parser:
 
 ```ts
 // shared provider parser
-function parseToolCallArguments(raw: string): Record<string, unknown> | undefined {
+export function parseToolCallArguments(
+  raw: string,
+  context: ToolArgumentParseContext = {},
+): Record<string, unknown> | undefined {
   if (raw.trim().length === 0) return {};
   try {
     return JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     logger.warn('tool-formats: failed to parse JSON tool arguments; dropping malformed tool call', {
       error: summarizeError(err),
+      provider: context.provider,
+      toolName: context.toolName,
+      callId: context.callId,
     });
     return undefined;
   }
@@ -34,6 +40,8 @@ function parseToolCallArguments(raw: string): Record<string, unknown> | undefine
 ```
 
 **Key behavior:** an empty accumulated argument string is treated as `{}` for no-argument tools. If the accumulated string is truncated or syntactically invalid JSON, the SDK emits a `warn`-level log and drops that malformed tool call. The tool handler is not called with manufactured empty arguments.
+
+**Text-token tool calls:** Some models (for example `kimi-k2-thinking` via `ollama-cloud`) emit tool calls as text tokens inside the content stream — using `<|tool_call_begin|>`-style delimiters — rather than as structured streaming deltas. `extractTextToolCalls()` in `tool-formats.ts` parses those delimited spans once the text content is assembled and routes each argument span through the same `parseToolCallArguments` boundary. A span whose JSON fails to parse is dropped exactly like a malformed structured call: the extractor skips it instead of emitting a tool call with manufactured arguments.
 
 ### 3. Handler dispatch
 
@@ -136,7 +144,7 @@ When the SDK drops a malformed tool call due to a parse error, a log entry is em
 
 - Configure your observability stack to alert on `tool-formats: failed to parse JSON tool arguments; dropping malformed tool call`
 - Review malformed-stop-reason reconciliation events when a provider reported tool use but no parseable tool calls remained
-- Use `inspect().sessionCount` to correlate with active sessions if diagnosing a regression
+- Note that `UserAuthManager.inspect()` returns a `LocalAuthSnapshot` whose `sessionCount` counts authenticated auth sessions, not chat/tool-call sessions — it does not correlate with dropped tool calls and should not be used to diagnose parse regressions
 
 ---
 

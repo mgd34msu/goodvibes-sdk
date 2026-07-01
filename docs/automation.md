@@ -5,6 +5,8 @@ deliveries, and watcher services for daemon-hosted work.
 
 Consumer apps interact through operator methods documented below. Daemon embedders wire automation through host runtime composition rather than a catch-all platform namespace.
 
+The method lists below are an index. For the full request/response shape of each method — including the category each method is registered under (for example `watchers.list` under `watchers`, `services.status` under `services`) — see the generated [Operator method reference](./reference-operator.md), or fetch the live catalog at `GET /api/control-plane/methods` for the registration in your daemon build.
+
 ## Automation Domain
 
 Automation records are split into jobs, runs, sources, routes, schedules, and
@@ -44,7 +46,7 @@ The schedule endpoints manage host-owned schedule records:
 - `schedules.disable`
 - `schedules.run`
 
-Knowledge jobs also have their own schedule API under `knowledge.schedule.*`.
+Knowledge jobs also have their own schedule API. The single-record methods are singular — `knowledge.schedule.get`, `knowledge.schedule.save`, `knowledge.schedule.delete`, and `knowledge.schedule.enable` — while the list method is the plural `knowledge.schedules.list`.
 
 ## Route Bindings
 

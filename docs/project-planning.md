@@ -46,7 +46,7 @@ correlation fields for WRFC/planning/agent integration such as `chainId`,
 `phaseId`, `agentId`, `turnId`, `decisionId`, `sourceMessageId`, linked
 artifact/source/node ids, and origin surface.
 
-The SDK validates the status vocabulary:
+The SDK validates the work-plan status vocabulary (`ProjectWorkPlanTaskStatus`):
 
 - `pending`
 - `in_progress`
@@ -54,6 +54,11 @@ The SDK validates the status vocabulary:
 - `done`
 - `failed`
 - `cancelled`
+
+Do not confuse this with `ProjectPlanningTaskStatus`, the separate enum used by
+the planning-state `tasks` field (`ProjectPlanningTask`), whose members are
+`pending`, `in-progress`, `blocked`, `completed`, and `deferred` — hyphenated,
+and with `completed` rather than `done`/`failed`/`cancelled`.
 
 Operator methods are exposed under `projectPlanning.workPlan.*` and daemon
 routes under `/api/projects/planning/work-plan`. Clients should use those
@@ -110,6 +115,7 @@ Artifact kinds:
 | `state` | Live planning state for the current project conversation |
 | `decision` | Durable decision record for meaningful choices |
 | `language` | Canonical project vocabulary and resolved ambiguities |
+| `work-plan` | Shared durable project task list; persisted as a planning artifact (see Work Plans above) |
 
 This keeps planning integrated with the knowledge/wiki store without adding a
 separate persistence system.
@@ -139,6 +145,9 @@ handoff:
   agentAssignments: ProjectPlanningAgentAssignment[];
   readiness: "not-ready" | "needs-user-input" | "executable";
   executionApproved: boolean;
+  createdAt: number;
+  updatedAt: number;
+  metadata?: Record<string, unknown>;
 }
 ```
 
@@ -231,6 +240,15 @@ Example:
 | `/api/projects/planning/decisions` | `POST` | yes | Record a project decision |
 | `/api/projects/planning/language` | `GET` | no | Read project vocabulary and ambiguity records |
 | `/api/projects/planning/language` | `POST` | yes | Update project vocabulary and ambiguity records |
+| `/api/projects/planning/work-plan` | `GET` | no | Read the work-plan snapshot |
+| `/api/projects/planning/work-plan/tasks` | `GET` | no | Read the work-plan snapshot (task view) |
+| `/api/projects/planning/work-plan/tasks` | `POST` | yes | Create a work-plan task |
+| `/api/projects/planning/work-plan/tasks/reorder` | `POST` | yes | Reorder work-plan tasks |
+| `/api/projects/planning/work-plan/clear-completed` | `POST` | yes | Clear completed work-plan tasks |
+| `/api/projects/planning/work-plan/tasks/:taskId` | `GET` | no | Get a single work-plan task |
+| `/api/projects/planning/work-plan/tasks/:taskId` | `PATCH` | yes | Update a work-plan task |
+| `/api/projects/planning/work-plan/tasks/:taskId` | `DELETE` | yes | Delete a work-plan task |
+| `/api/projects/planning/work-plan/tasks/:taskId/status` | `POST` | yes | Set a work-plan task status |
 
 Operator method ids:
 
@@ -242,6 +260,15 @@ Operator method ids:
 - `projectPlanning.decisions.record`
 - `projectPlanning.language.get`
 - `projectPlanning.language.upsert`
+- `projectPlanning.workPlan.snapshot`
+- `projectPlanning.workPlan.tasks.list`
+- `projectPlanning.workPlan.task.create`
+- `projectPlanning.workPlan.task.get`
+- `projectPlanning.workPlan.task.update`
+- `projectPlanning.workPlan.task.delete`
+- `projectPlanning.workPlan.task.status`
+- `projectPlanning.workPlan.tasks.reorder`
+- `projectPlanning.workPlan.clearCompleted`
 
 ## TUI Integration Shape
 
@@ -259,3 +286,8 @@ The TUI should use this feature as a passive backing store:
 
 The planning panel can render the same state returned by the SDK. The daemon
 does not own panel state or conversational transitions.
+
+## Next Reads
+
+- [Runtime Orchestration](./runtime-orchestration.md) — how WRFC chains and agent work correlate to work-plan tasks.
+- [Automation And Watchers](./automation.md) — operator-method families for daemon-hosted jobs and schedules.

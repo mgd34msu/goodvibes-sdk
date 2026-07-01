@@ -16,12 +16,16 @@ The daemon supports two authentication modes. The active mode is determined by h
 
 **When to use:** local development, single-user deployments, service-to-service connections where you control both ends.
 
-A single static token is configured. Every request that presents this token is granted full access. Authentication is performed with a constant-time comparison (`timingSafeEqual`) to prevent timing attacks:
+A single static token is configured. Every request that presents this token is granted full access. Authentication hashes both the presented and configured token to fixed-length SHA-256 digests and compares those digests with a constant-time comparison (`timingSafeEqual`). Hashing first guarantees both buffers are 32 bytes, so neither an early-exit nor a buffer-length check can leak token length through a timing side-channel:
 
 ```ts
 function matchesSharedToken(token: string, sharedToken: string): boolean {
-  if (token.length !== sharedToken.length) return false;
-  return timingSafeEqual(Buffer.from(token), Buffer.from(sharedToken));
+  // Hash both sides to 32-byte SHA-256 digests so the buffers are always equal
+  // length before timingSafeEqual. There is deliberately no early-return on a
+  // length mismatch, which would otherwise leak token length via timing.
+  const aHash = createHash('sha256').update(token).digest();
+  const bHash = createHash('sha256').update(sharedToken).digest();
+  return timingSafeEqual(aHash, bHash);
 }
 ```
 
@@ -38,7 +42,7 @@ function matchesSharedToken(token: string, sharedToken: string): boolean {
 Users authenticate with a username and password via the login endpoint. On success, the daemon issues a session token (random 32-byte hex string). Subsequent requests present this token as a bearer credential or in the `goodvibes_session` cookie.
 
 `UserAuthManager` manages the user store and sessions:
-- Passwords are hashed with **scrypt** (64-byte key, random salt), stored as `salt:hash` in base64
+- Passwords are hashed with **scrypt** (64-byte key, random salt). The stored hash format is `base64(salt):N:r:p:base64(derived)` (salt, the scrypt cost parameters, then the derived key); the legacy 2-part `salt:hash` form is still accepted on verify for backward compatibility
 - Default session TTL is **1 hour** (`DEFAULT_SESSION_TTL_MS = 3_600_000`)
 - Sessions are pruned on access; expired sessions are rejected and cleaned up
 - Local auth status reports expose `tokenFingerprint` only; raw session bearer tokens are not returned by status APIs
@@ -48,7 +52,7 @@ Session tokens are carried as:
 1. `Authorization: Bearer <token>` header
 2. `goodvibes_session` cookie (HTTP-only, SameSite=Lax, Secure when on HTTPS)
 
-The cookie is set with `buildOperatorSessionCookie()` and cleared with `buildExpiredOperatorSessionCookie()`.
+The session cookie is set on login and cleared on logout by the daemon's internal cookie builders (`buildOperatorSessionCookie()` / `buildExpiredOperatorSessionCookie()`). These builders are daemon-host HTTP wiring and are **not** exported from the `@pellux/goodvibes-sdk/platform/security` barrel.
 
 **Role model:**
 - Users may have any combination of string roles
@@ -58,6 +62,8 @@ The cookie is set with `buildOperatorSessionCookie()` and cleared with `buildExp
 ---
 
 ## Token Management
+
+**Public subpath:** `@pellux/goodvibes-sdk/platform/security` — exports `SpawnTokenManager`, `ApiTokenAuditor`, the `TokenScopePolicy` type, `UserAuthManager`, `isOperatorAdmin`, and `authenticateOperatorToken`. (The operator session cookie builders referenced above are internal daemon wiring and are not part of this barrel.)
 
 ### Spawn Tokens
 
@@ -82,7 +88,7 @@ Tokens are signed with a per-session HMAC secret. Before spawning, `canSpawn()` 
 2. Token has not expired (default TTL: 1 hour)
 3. Nesting depth is within the configured `maxDepth`
 4. Total active agent count is within `maxActiveAgents`
-5. Recursion is enabled in the `OrchestrationPolicyConfig` (if depth > 0)
+5. Recursion is enabled in the `OrchestrationPolicyConfig`
 
 Tokens can be revoked by signature via `revoke(tokenSignature)`. Revoked tokens are rejected even if unexpired.
 
@@ -137,7 +143,7 @@ On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to 
 
 **Public subpath:** `@pellux/goodvibes-sdk/platform/pairing` (daemon embedders).
 
-The QR pairing flow connects a companion app to the daemon without requiring the user to manually enter credentials.
+The QR pairing flow connects a companion app to the daemon without requiring the user to manually enter credentials. For the full companion pairing walkthrough — QR flow, token lifecycle, and client integration — see [Companion App Pairing](./pairing.md).
 
 ### Security Properties
 
@@ -145,7 +151,7 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 
 2. **Persistence** — tokens are stored on disk at `<daemonHomeDir>/operator-tokens.json`. The file is created at mode `0600`. The token is stable across daemon restarts.
 
-3. **QR payload** — `encodeConnectionPayload()` serializes the connection info (URL, token, username, version, surface) as JSON. This JSON is what gets encoded into the QR matrix. The QR is displayed in a trusted UI context (TUI screen or authenticated web page); it should not be left visible in shared screen recordings.
+3. **QR payload** — `encodeConnectionPayload()` serializes the connection info (URL, token, username, version, surface, and password when set) as JSON. This JSON is what gets encoded into the QR matrix. The QR is displayed in a trusted UI context (TUI screen or authenticated web page); it should not be left visible in shared screen recordings.
 
 4. **No challenge-response** — the pairing is a direct token transfer. Security relies on:
    - The QR being displayed only in a trusted environment
@@ -213,7 +219,7 @@ The reverse proxy rate limiter supplements the daemon's built-in limits; do not 
 
 ### Private Host SSRF Protection
 
-The remote fetch proxy (`remote-routes.ts`) has explicit SSRF protection. When a client requests a fetch to a private/internal host, the daemon checks:
+The remote fetch proxy has explicit SSRF protection via `resolvePrivateHostFetchOptions()` (in `http-policy.ts`), applied by the media and artifact fetch routes. When a client requests a fetch to a private/internal host, the daemon checks:
 1. `network.remoteFetch.allowPrivateHosts` must be `true` in config (disabled by default)
 2. Elevated access must be granted (`requireElevatedAccess` returns null)
 
@@ -250,39 +256,7 @@ Use `inspect()` to audit the current storage state: it reports the active policy
 
 ### Secret Refs
 
-Instead of storing secret values directly in config files, use secret references. A secret ref is a URI or structured object pointing to an external secret source:
-
-**URI syntax:**
-```
-goodvibes://secrets/env/OPENAI_API_KEY
-goodvibes://secrets/goodvibes/OPENAI_API_KEY
-goodvibes://secrets/file/~/.credentials/key.json?selector=openai.api_key
-goodvibes://secrets/exec/op?arg=read&arg=op%3A%2F%2FDevelopment%2FOpenAI%2Fapi_key
-goodvibes://secrets/1password?vault=Development&item=OpenAI&field=api_key
-goodvibes://secrets/bitwarden?item=openai-prod&field=password
-goodvibes://secrets/bws/<secret-id>?field=value
-```
-
-**JSON object syntax:**
-```json
-{ "source": "1password", "vault": "Development", "item": "OpenAI", "field": "api_key" }
-```
-
-Supported sources:
-
-| Source | Mechanism | Notes |
-|---|---|---|
-| `env` | `process.env[id]` | Highest precedence; always available |
-| `goodvibes` | Internal `SecretsManager` | Looks up by key name |
-| `file` | File read + optional JSON path selector | Path supports `~` expansion |
-| `exec` | Runs command; stdout is the secret | Supports custom args, env, stdin, timeout |
-| `1password` | `op` CLI | Supports vault, item, field, account, custom CLI path |
-| `bitwarden` / `vaultwarden` | `bw` CLI | Supports item, field, custom fields, server validation |
-| `bitwarden-secrets-manager` | `bws` CLI | Machine secrets; supports access token, profile, server URL |
-
-`resolveSecretRef()` dispatches to the correct resolver at runtime. External CLI resolvers (`exec`, `1password`, `bitwarden`) run subprocesses with a configurable timeout.
-The generic `secret://...` scheme is intentionally not accepted; use
-`goodvibes://secrets/...` for URI refs.
+Instead of storing secret values directly in config files, use secret references — a URI (`goodvibes://secrets/...`) or a structured object pointing to an external secret source. The supported sources (`env`, `goodvibes`, `file`, `exec`, `1password`, `bitwarden`/`vaultwarden`, `bitwarden-secrets-manager`/`bws`), the `goodvibes://` URI shape, and resolution semantics (`resolveSecretRef()`) are documented canonically in [Secret References](./secrets.md). The generic `secret://...` scheme is intentionally not accepted.
 
 Slack setup uses this same URI mechanism. Direct setup writes Slack token values to the GoodVibes secret store and places references such as `goodvibes://secrets/goodvibes/SLACK_BOT_TOKEN` and `goodvibes://secrets/goodvibes/SLACK_APP_TOKEN` in config. Service-registry based Slack setup can use `primary`, `signingSecret`, `webhookUrl`, and `appToken` fields.
 
@@ -320,7 +294,7 @@ Every tool call goes through the `PermissionManager` before execution.
 | `high` | Writes outside project, shell execution, external network access |
 | `critical` | Writes to system paths, secrets exposure detection, destructive operations |
 
-The analyzer detects inline secrets in command arguments using pattern matching (`SECRET_NAME_PATTERN`, `INLINE_SECRET_PATTERN`) and flags them as high risk.
+The analyzer detects inline secrets in command arguments using pattern matching (`SECRET_NAME_PATTERN`, `INLINE_SECRET_PATTERN`) and flags them as critical risk.
 
 ### Decision Sources
 
@@ -339,16 +313,16 @@ Permission decisions flow through a layered policy stack:
 
 ### Auto-Approve Policies
 
-When `permissions.autoApprove: true` is set in config, all tool calls are approved without prompting (`mode_allow_all`). This is appropriate for headless automation runs. For interactive use, leave this disabled and configure explicit allow lists for frequently-used tools instead:
+When `behavior.autoApprove: true` is set in config (default `false`), all tool calls are approved without prompting; the decision is reported with `sourceLayer: config_policy` and `reasonCode: config_allow`. The distinct `permissions.mode: 'allow-all'` setting also approves every call, but reports `reasonCode: mode_allow_all`. This is appropriate for headless automation runs. For interactive use, leave this disabled and configure explicit per-tool permissions instead:
 
 ```yaml
 permissions:
-  allow:
-    - read_file
-    - list_directory
-    - bash: "npm run *"
-  deny:
-    - bash: "rm -rf *"
+  mode: custom
+  tools:
+    read: allow
+    find: allow
+    exec: prompt
+    write: prompt
 ```
 
 ---
@@ -376,7 +350,7 @@ The `AuthenticatedPrincipal` type carries a `principalKind` (`user` | `bot` | `s
 
 ### Bootstrap Credential File
 
-**Note:** `writeBootstrapCredentialFile()` and `clearBootstrapCredentialFile()` are available via `UserAuthManager` (accessed as `authManager.clearBootstrapCredentialFile()`). Host code reaches user-auth wiring through daemon/runtime composition, not through a public catch-all platform barrel.
+**Note:** The bootstrap credential file is written internally during first-boot bootstrap and by `rotatePassword('admin', …)`; the only public `UserAuthManager` method that touches it directly is `clearBootstrapCredentialFile()` (accessed as `authManager.clearBootstrapCredentialFile()`). The `UserAuthManager` class is importable from `@pellux/goodvibes-sdk/platform/security`; host code reaches the configured, operational instance through daemon/runtime composition rather than instantiating it ad hoc.
 
 #### What it is and when it is created
 
@@ -396,7 +370,7 @@ purpose=Use these credentials only for local daemon/http listener /login routes 
 note=Normal SDK host usage does not require these credentials.
 ```
 
-This file is an **output only**. It is not read back by the runtime after bootstrap — edits to it do not change the stored password hash.
+This file is an **output**, not an authentication input. The runtime reads it only for drift detection and to recognize bootstrap-credential logins; the hash in `auth-users.json` is authoritative, so edits to this file do not change the stored password hash.
 
 #### Drift detection
 
@@ -424,8 +398,9 @@ Drift detection fires only on file-backed instances; test configs that pass expl
    Alternatively, delete the file manually: `rm .goodvibes/tui/auth-bootstrap.txt`.
    Or, from a remote operator client using the SDK:
    ```ts
-   // Requires admin access. Available via the operator control surface.
-   await sdk.operator.invoke('admin.deleteBootstrapCredential', {});
+   // Requires admin access. Available via the operator control surface
+   // (HTTP DELETE /api/local-auth/bootstrap-file).
+   await sdk.operator.invoke('local_auth.bootstrap.delete', {});
    ```
 4. Verify the file is gone:
    ```ts

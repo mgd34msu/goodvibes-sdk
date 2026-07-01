@@ -2,7 +2,7 @@
 
 This is the **companion surface** for browser runtimes. See [Runtime Surfaces](./surfaces.md).
 
-Browser apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
+Browser apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide is the shared foundation for every browser entrypoint: auth, transport, realtime events, error handling, and observability. For web-UI-application patterns built on this foundation — entrypoint selection, companion chat, attachments, and voice playback — see [Web UI Integration](./web-ui-integration.md).
 
 Use `@pellux/goodvibes-sdk/browser` when a browser app needs the complete
 operator route contract. Use scoped browser entrypoints when an app owns one
@@ -10,6 +10,7 @@ extension surface:
 
 - `@pellux/goodvibes-sdk/browser/knowledge` for the base knowledge/wiki WebUI.
 - `@pellux/goodvibes-sdk/browser/homeassistant` for Home Assistant panels.
+- `@pellux/goodvibes-sdk/browser/agent` (`createBrowserAgentSdk`) for the GoodVibes Agent surface — the agent's own knowledge/wiki space under `/api/goodvibes-agent/knowledge`, plus work-plan, artifact, and companion-chat routes.
 
 ```ts
 import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';
@@ -107,13 +108,13 @@ try {
 
 ## Observability
 
-`SDKObserver` is the right mechanism for dev-time logging in browser consoles. `createConsoleObserver` outputs structured events to `console.debug`, making it easy to trace SDK activity during development. See [Observability](./observability.md) for the full observer API.
+`SDKObserver` is the right mechanism for dev-time logging in browser consoles. `createConsoleObserver()` logs auth transitions (`console.log`) and errors (`console.error`) by default; pass `createConsoleObserver({ level: 'debug' })` to also trace transport activity and every runtime event via `console.debug`. See [Observability](./observability.md) for the full observer API.
 
 ```ts
 import { createConsoleObserver } from '@pellux/goodvibes-sdk/observer';
 
 const sdk = createBrowserGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
-  observer: createConsoleObserver(),
+  observer: createConsoleObserver({ level: 'debug' }),
 });
 ```

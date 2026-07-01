@@ -4,6 +4,12 @@ Generated pages are a base knowledge/wiki capability. Extensions provide
 templates and object profiles, but the base graph owns facts, sources, gaps, and
 page refresh mechanics.
 
+See the [knowledge system](./knowledge.md) doc for the underlying data model and
+the generated-projection source metadata that backs these pages (the
+`metadata.generatedKnowledgePage`, `metadata.projectionKind`, and
+`metadata.pageEditable` flags). Home Graph device passports and room/area pages
+are documented in [Home Graph extension](./home-graph.md).
+
 ## Inputs
 
 Pages are generated from verified graph state:

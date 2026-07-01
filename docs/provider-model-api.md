@@ -17,7 +17,7 @@ List all registered providers and their models. Returns configured status, auth 
 {
   "providers": [
     {
-      "id": "inception",
+      "id": "inceptionlabs",
       "label": "Inception Labs",
       "configured": true,
       "configuredVia": "env",
@@ -35,8 +35,8 @@ List all registered providers and their models. Returns configured status, auth 
       "models": [
         {
           "id": "mercury-2",
-          "registryKey": "inception:mercury-2",
-          "provider": "inception",
+          "registryKey": "inceptionlabs:mercury-2",
+          "provider": "inceptionlabs",
           "label": "Mercury 2",
           "contextWindow": 32768
         }
@@ -46,7 +46,6 @@ List all registered providers and their models. Returns configured status, auth 
       "id": "venice",
       "label": "Venice",
       "configured": false,
-      "configuredVia": null,
       "envVars": ["VENICE_API_KEY"],
       "models": [
         {
@@ -60,8 +59,8 @@ List all registered providers and their models. Returns configured status, auth 
     }
   ],
   "currentModel": {
-    "registryKey": "inception:mercury-2",
-    "provider": "inception",
+    "registryKey": "inceptionlabs:mercury-2",
+    "provider": "inceptionlabs",
     "id": "mercury-2"
   },
   "secretsResolutionSkipped": false
@@ -72,16 +71,32 @@ List all registered providers and their models. Returns configured status, auth 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `providers[].id` | `string` | Provider identifier (e.g. `"inception"`, `"venice"`, `"openai"`) |
+| `providers[].id` | `string` | Provider identifier (e.g. `"inceptionlabs"`, `"venice"`, `"openai"`) |
 | `providers[].label` | `string` | Human-readable label |
 | `providers[].configured` | `boolean` | `true` if the daemon has credentials for this provider |
 | `providers[].configuredVia` | `"env" \| "secrets" \| "subscription" \| "anonymous" \| undefined` | Primary usable auth route for this provider. OpenAI reports `"subscription"` when a usable OpenAI subscription session exists, even if no OpenAI API key is configured; this matches the TUI turn-routing path. |
 | `providers[].envVars` | `string[]` | Environment variable names that configure this provider |
-| `providers[].routes` | `ProviderAuthRouteDescriptor[] \| undefined` | Runtime auth routes declared by the provider, such as `"api-key"`, `"secret-ref"`, `"service-oauth"`, `"subscription-oauth"`, or `"anonymous"`. Each route includes `configured`, optional `usable`, optional `freshness`, and repair metadata when available. |
+| `providers[].routes` | `ProviderAuthRouteDescriptor[] \| undefined` | Runtime auth routes declared by the provider, such as `"api-key"`, `"secret-ref"`, `"service-oauth"`, `"subscription-oauth"`, `"anonymous"`, or `"none"`. See the descriptor field table below for the full per-route shape. |
 | `providers[].models` | `ProviderModelEntry[]` | All models exposed by this provider |
 | `providers[].models[].registryKey` | `string` | Provider-qualified model identity. Use it with `PATCH /api/models/current` for shared/TUI model selection. For companion chat sessions, pair the selected runtime provider row id with that row's model id, or with the registry key when the runtime provider is an alias for the catalog provider. Do not use a bare model id without a provider because different providers can expose the same `id`. |
 | `currentModel` | `ProviderModelRef \| null` | Daemon/TUI currently-selected model; `null` if none configured |
 | `secretsResolutionSkipped` | `boolean` | `true` when no `SecretsManager` was available during this response; `false` when a secrets manager was consulted regardless of whether it resolved any keys. Always present. |
+
+**`ProviderAuthRouteDescriptor` fields** — each entry in `providers[].routes` (and the optional `routes` array on `GET /api/models/current`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `route` | `"api-key" \| "secret-ref" \| "service-oauth" \| "subscription-oauth" \| "anonymous" \| "none"` | Auth mechanism this route represents. `"none"` marks a provider that needs no credentials. |
+| `label` | `string` | Human-readable route label. |
+| `configured` | `boolean` | `true` when this route has credentials available. |
+| `usable` | `boolean` (optional) | `true` when the route can currently serve turns. |
+| `freshness` | `"healthy" \| "expiring" \| "expired" \| "pending" \| "unconfigured"` (optional) | Credential freshness, mainly for OAuth/subscription routes. |
+| `detail` | `string` (optional) | Extra human-readable status detail. |
+| `envVars` | `string[]` (optional) | Environment variables that configure this route. |
+| `secretKeys` | `string[]` (optional) | `SecretsManager` keys this route reads. |
+| `serviceNames` | `string[]` (optional) | Service-registry names backing this route. |
+| `providerId` | `string` (optional) | Owning provider id when the route is shared or aliased. |
+| `repairHints` | `string[]` (optional) | Actionable hints for fixing an unconfigured or expired route. |
 
 **curl example**
 
@@ -96,17 +111,29 @@ curl -H "Authorization: Bearer $GV_TOKEN" \
 
 Return the daemon/TUI currently-selected model and its configured status.
 
+The optional `routes` array, when present, mirrors `providers[].routes` from `GET /api/models` for the selected model's provider.
+
 **Response `200 OK`**
 
 ```json
 {
   "model": {
-    "registryKey": "inception:mercury-2",
-    "provider": "inception",
+    "registryKey": "inceptionlabs:mercury-2",
+    "provider": "inceptionlabs",
     "id": "mercury-2"
   },
   "configured": true,
-  "configuredVia": "env"
+  "configuredVia": "env",
+  "routes": [
+    {
+      "route": "api-key",
+      "label": "Ambient API key",
+      "configured": true,
+      "usable": true,
+      "freshness": "healthy",
+      "envVars": ["INCEPTION_API_KEY"]
+    }
+  ]
 }
 ```
 
@@ -137,7 +164,7 @@ This route is intentionally global. Use it for the live TUI/shared-session model
 **Request body**
 
 ```json
-{ "registryKey": "inception:mercury-2" }
+{ "registryKey": "inceptionlabs:mercury-2" }
 ```
 
 | Field | Type | Description |
@@ -149,12 +176,22 @@ This route is intentionally global. Use it for the live TUI/shared-session model
 ```json
 {
   "model": {
-    "registryKey": "inception:mercury-2",
-    "provider": "inception",
+    "registryKey": "inceptionlabs:mercury-2",
+    "provider": "inceptionlabs",
     "id": "mercury-2"
   },
   "configured": true,
   "configuredVia": "env",
+  "routes": [
+    {
+      "route": "api-key",
+      "label": "Ambient API key",
+      "configured": true,
+      "usable": true,
+      "freshness": "healthy",
+      "envVars": ["INCEPTION_API_KEY"]
+    }
+  ],
   "persisted": true
 }
 ```
@@ -185,11 +222,11 @@ This route is intentionally global. Use it for the live TUI/shared-session model
 **curl examples**
 
 ```bash
-# Switch to Inception mercury-2
+# Switch to Inception Labs mercury-2
 curl -X PATCH \
   -H "Authorization: Bearer $GV_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"registryKey":"inception:mercury-2"}' \
+  -d '{"registryKey":"inceptionlabs:mercury-2"}' \
   http://127.0.0.1:3421/api/models/current
 
 # Switch to OpenAI GPT-4o
@@ -202,19 +239,32 @@ curl -X PATCH \
 
 ---
 
-## SSE: `model.changed` event
+## SSE: `providers`-domain events
+
+The daemon emits four event types on the `providers` RuntimeEventBus domain. Subscribers on a stream that includes the providers domain receive all of them.
+
+| Event `type` | Emitted when | Payload fields |
+|--------------|--------------|----------------|
+| `PROVIDERS_CHANGED` | The set of registered providers changes | `added: string[]`, `removed: string[]`, `updated: string[]` |
+| `PROVIDER_WARNING` | A provider raises a non-fatal warning | `message: string` |
+| `MODEL_FALLBACK` | The runtime falls back from one model to another | `from: string`, `to: string`, `provider: string` |
+| `MODEL_CHANGED` | The current model is switched (see below) | `registryKey: string`, `provider: string`, optional `previous: { registryKey, provider }` |
+
+Only `MODEL_CHANGED` has an exported Zod contract (`ModelChangedEventSchema`); the other three are emitter-only event shapes.
+
+### `MODEL_CHANGED`
 
 When a `PATCH /api/models/current` succeeds, or when the model is changed via any other codepath (e.g. TUI settings), a `MODEL_CHANGED` event is emitted on the `providers` RuntimeEventBus domain.
 
-**Companion SSE subscribers** receive this event automatically on their existing event stream (`GET /api/companion/chat/sessions/:id/events`) when the providers domain is part of the stream.
+**Companion SSE subscribers** receive this event automatically on their existing event stream (`GET /api/companion/chat/sessions/:sessionId/events`) when the providers domain is part of the stream.
 
 **Event envelope** (SSE `data:` payload):
 
 ```json
 {
   "type": "MODEL_CHANGED",
-  "registryKey": "inception:mercury-2",
-  "provider": "inception",
+  "registryKey": "inceptionlabs:mercury-2",
+  "provider": "inceptionlabs",
   "previous": {
     "registryKey": "venice:llama-3.3-70b",
     "provider": "venice"
@@ -230,7 +280,7 @@ The `previous` field is omitted when there is no meaningful prior selection (e.g
 
 Importable from `@pellux/goodvibes-sdk/contracts`:
 
-```typescript
+```ts
 import {
   ListProviderModelsResponseSchema,
   CurrentModelResponseSchema,
@@ -246,9 +296,24 @@ const result = ListProviderModelsResponseSchema.safeParse(responseBody);
 
 ---
 
+## Context-window fallback helpers (`./platform/providers`)
+
+New in 0.35.0, `@pellux/goodvibes-sdk/platform/providers` exports `inferFallbackContextWindow(provider, modelId?)` and `FALLBACK_CONTEXT_WINDOW` (`128000`) so consumers can share the family-aware, pre-catalog context-window fallback instead of hardcoding their own. It is a last-resort default, used only when neither the live catalog nor the provider API reports a context window for a model.
+
+```ts
+import {
+  inferFallbackContextWindow,
+  FALLBACK_CONTEXT_WINDOW,
+} from '@pellux/goodvibes-sdk/platform/providers';
+
+const ctx = inferFallbackContextWindow('openai', 'gpt-5.5'); // 400000
+```
+
+---
+
 ## Error handling pattern (companion app)
 
-```typescript
+```ts
 async function switchModel(registryKey: string, token: string): Promise<void> {
   const res = await fetch('/api/models/current', {
     method: 'PATCH',
@@ -331,3 +396,10 @@ Content-Type: application/json
 ```
 
 `PATCH /api/companion/chat/sessions/{sessionId}` updates only that companion chat session. The daemon still hosts the turn and supplies runtime context such as working directory and tool/runtime services, but it does not mutate the TUI's current provider/model.
+
+---
+
+## Related
+
+- [Providers](./providers.md) — provider surfaces overview and the default provider catalog (stable provider ids, labels, and env vars).
+- Model ids are volatile and version frequently; treat `GET /api/models` as the live source of truth for available `registryKey` values rather than any hardcoded list.

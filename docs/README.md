@@ -2,7 +2,7 @@
 
 These documents describe the SDK architecture. The SDK is a monorepo of
 source-of-truth packages plus a main facade package; public imports are explicit
-package entrypoints, not arbitrary repo folder paths. `CHANGELOG.md` remains the
+package entrypoints, not arbitrary repo folder paths. [`CHANGELOG.md`](../CHANGELOG.md) remains the
 release-history source.
 
 ## Start Here
@@ -26,6 +26,7 @@ release-history source.
 - [iOS integration](./ios-integration.md)
 - [Companion app patterns](./companion-app-patterns.md)
 - [Companion message routing](./companion-message-routing.md)
+- [Companion wire protocol](./companion-wire-protocol.md)
 - [Pairing](./pairing.md)
 - [Realtime and telemetry](./realtime-and-telemetry.md)
 - [Retries and reconnect](./retries-and-reconnect.md)
@@ -83,3 +84,12 @@ release-history source.
 - [Operator API reference](./reference-operator.md)
 - [Peer API reference](./reference-peer.md)
 - [Runtime events reference](./reference-runtime-events.md)
+
+## Project & Repository Docs
+
+Operational docs in the repository root, one level up from `docs/`:
+
+- [Project README](../README.md)
+- [Security policy](../SECURITY.md)
+- [Changelog](../CHANGELOG.md)
+- [Test coverage](../COVERAGE.md)

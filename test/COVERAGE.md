@@ -21,7 +21,6 @@ by their current file names instead of retaining issue-number labels.
 | `test/otlp-logger.test.ts` | OTLP logger |
 | `test/workspace-swap-failed.test.ts` | Workspace swap failure events |
 | `test/config-audit.test.ts` | Config audit events |
-| `test/silent-catches.test.ts` | Silent catch detection |
 | `test/runtime-meter.test.ts` | Runtime meter instrumentation |
 | `test/listener-errors.test.ts` | Event listener error handling |
 | `test/async-event-bus.test.ts` | Async event bus |
@@ -65,4 +64,4 @@ by their current file names instead of retaining issue-number labels.
 
 ---
 
-*Last updated: 2026-05-04. Update after adding or renaming coverage files.*
+*Last updated: 2026-06-30. Update after adding or renaming coverage files.*

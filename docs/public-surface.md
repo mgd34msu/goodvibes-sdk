@@ -2,7 +2,7 @@
 
 > **Runtime surfaces**: See [`docs/surfaces.md`](./surfaces.md) for the full/companion surface split, supported runtimes, and CI enforcement details.
 
-This document lists every stable subpath exported by `@pellux/goodvibes-sdk`. Consumers should only import from paths listed here. Private repository source layout is not a package contract.
+This document is the single canonical source of truth for the public entry points and subpaths exported by `@pellux/goodvibes-sdk`; the entry-point lists in the README, getting-started, packages, exports, and surfaces docs link here rather than re-listing. Consumers should only import from paths listed here. Private repository source layout is not a package contract.
 
 ## Stability levels
 
@@ -168,6 +168,15 @@ Scoped browser SDK entry for Home Assistant panels. It includes
 `homeassistant.homeGraph.*` routes plus shared auth, provider, session, account,
 control, and SSE helpers without loading the base knowledge/wiki route table.
 
+### `./browser/agent` — `@pellux/goodvibes-sdk/browser/agent`
+
+**Status:** stable
+
+Scoped browser SDK entry for the Agent-owned knowledge environment. It routes
+`knowledge.*` / wiki calls to the agent knowledge routes plus shared auth,
+provider, session, account, control, and SSE helpers. Exports
+`createBrowserAgentSdk` and the `BrowserAgentSdk` type.
+
 ### `./web` — `@pellux/goodvibes-sdk/web`
 
 **Status:** stable
@@ -217,6 +226,8 @@ that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 The following subpaths are the complete list of exported platform paths.
 Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPORTED` error.
 
+> **Note:** `etc/goodvibes-sdk.api.md` is an API Extractor report for the root `.` entry point only; it does not enumerate these subpath surfaces. This document is the authoritative subpath list.
+
 | Subpath | Description | Status |
 |---|---|---|
 | `platform/acp` | Agent Control Protocol connection and manager APIs | beta |
@@ -251,7 +262,7 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/permissions` | Permission analysis, prompts, briefs, and manager | beta |
 | `platform/plugins` | Plugin API, loader, and manager | beta |
 | `platform/profiles` | Profile manager and profile shape helpers | beta |
-| `platform/providers` | LLM provider registry, catalog, capabilities | beta |
+| `platform/providers` | LLM provider registry, catalog, capabilities; includes `inferFallbackContextWindow` and `FALLBACK_CONTEXT_WINDOW` (added in 0.35.0) | beta |
 | `platform/runtime` | Curated runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, and UI as namespaces | beta |
 | `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
 | `platform/runtime/sandbox` | Sandbox host status, presets, reviews, and session registry helpers | beta |

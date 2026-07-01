@@ -1,6 +1,6 @@
 # Observability
 
-> **Surface scope:** This document covers the observability stack for the **full surface (Bun runtime)**. Most observer APIs (`SDKObserver`, `createConsoleObserver`) are also available on companion surfaces (React Native, Expo, browser) via their surface-specific entry points. See [Runtime Surfaces](./surfaces.md) for the full breakdown.
+> **Surface scope:** This document covers the observability stack for the **full surface (Bun runtime)**. Most observer APIs (`SDKObserver`, `createConsoleObserver`) are also available on companion surfaces (React Native, Expo, browser) via their surface-specific entry points. See [Published Surface Matrix](./surfaces.md) for the full breakdown.
 
 This guide covers the SDK's observability stack: structured logging, runtime event feeds, session telemetry, health monitoring, failure forensics, and diagnostic panels.
 
@@ -66,19 +66,19 @@ All runtime state changes are communicated through typed events wrapped in an `E
 
 ```ts
 interface EventEnvelope<TType, TPayload> {
-  type: TType;         // event type string
-  ts: number;          // epoch ms
-  traceId: string;     // UUID, auto-generated if not supplied
-  sessionId: string;
+  type: TType;          // event type string
+  ts: number;           // epoch ms
+  traceId?: string;     // correlation trace ID; provide a shared ID to correlate fan-out
+  sessionId?: string;
   turnId?: string;
   agentId?: string;
   taskId?: string;
-  source: string;      // emitting subsystem
+  source?: string;      // emitting subsystem
   payload: TPayload;
 }
 ```
 
-Create an envelope with automatic trace ID generation:
+Create an envelope. `createEventEnvelope` requires `sessionId` and `source` in the context; `traceId` is taken from the context when supplied (it is not generated automatically) — pass a shared `traceId` to correlate fan-out envelopes under one trace:
 
 ```ts
 import { createEventEnvelope } from '@pellux/goodvibes-sdk/transport-core';
@@ -100,6 +100,7 @@ Available runtime domains:
 |---|---|
 | `agents` | Agent lifecycle: spawn, complete, fail |
 | `automation` | Automation job state |
+| `communication` | Channel and message communication events |
 | `compaction` | Context compaction start/complete |
 | `control-plane` | Session and control events |
 | `deliveries` | Outbound delivery tracking |
@@ -123,6 +124,7 @@ Available runtime domains:
 | `ui` | UI interaction events |
 | `watchers` | File/resource watcher state |
 | `workflows` | WRFC workflow lifecycle: chain created/passed/failed, state transitions, review completed, fix attempted, constraints enumerated |
+| `workspace` | Workspace lifecycle events |
 
 For the complete list of event types and their payload shapes, see [Runtime events reference](./reference-runtime-events.md).
 
@@ -411,7 +413,7 @@ The `ForensicsClassifier` maps event context to a `FailureClass` using priority-
 | Class | Triggered By |
 |---|---|
 | `cancelled` | Explicit operator cancellation |
-| `max_tokens` | Stop reason: `max_tokens`, `length`, `context_overflow` |
+| `max_tokens` | Stop reason: `max_tokens` or `context_overflow` (provider `length` is normalized to `max_tokens` upstream) |
 | `compaction_error` | Compaction failure recorded |
 | `permission_denied` | Permission denial or `hook_denied` stop reason |
 | `tool_failure` | Tool execution failure or `tool_loop_circuit_breaker` |
