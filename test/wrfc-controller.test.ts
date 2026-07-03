@@ -12,7 +12,7 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -138,7 +138,11 @@ interface TestHarness {
   mergedAgentIds: string[];
   cleanedAgentIds: string[];
   directCommitMessages: string[];
+  /** Paths passed to each commitWorkingTree() call, in call order (undefined = no paths arg). */
+  directCommitPaths: Array<string[] | undefined>;
   currentHeadCalls: number;
+  /** The project root the controller was constructed with (real tmpdir when gitRepo: true). */
+  projectRoot: string;
   /** Register a record output so getStatus() returns it. */
   setOutput(agentId: string, fullOutput: string): void;
   /** Spawn a new agent record and register it. */
@@ -158,6 +162,7 @@ function createHarness(overrides?: {
   gitRepo?: boolean;
   transportRetryLimit?: number;
   transportRetryDelayMs?: number;
+  commitScope?: 'off' | 'scoped' | 'all';
 }): TestHarness {
   const bus = new RuntimeEventBus();
   const agentStore = new Map<string, AgentRecord>();
@@ -167,6 +172,7 @@ function createHarness(overrides?: {
   const mergedAgentIds: string[] = [];
   const cleanedAgentIds: string[] = [];
   const directCommitMessages: string[] = [];
+  const directCommitPaths: Array<string[] | undefined> = [];
   let currentHeadCalls = 0;
 
   // Capture workflow events
@@ -184,6 +190,7 @@ function createHarness(overrides?: {
   // Real (short) delay by default so retry tests don't need fake timers; override
   // to 0 for near-instant retry assertions.
   const transportRetryDelayMs = overrides?.transportRetryDelayMs ?? 10;
+  const commitScope = overrides?.commitScope ?? 'scoped';
   const projectRoot = overrides?.gitRepo ? mkdtempSync(join(tmpdir(), 'wrfc-controller-')) : '/tmp/test-project';
   if (overrides?.gitRepo) {
     mkdirSync(join(projectRoot, '.git'), { recursive: true });
@@ -196,6 +203,7 @@ function createHarness(overrides?: {
       if (key === 'wrfc.autoCommit') return autoCommit;
       if (key === 'wrfc.transportRetryLimit') return transportRetryLimit;
       if (key === 'wrfc.transportRetryDelayMs') return transportRetryDelayMs;
+      if (key === 'wrfc.commitScope') return commitScope;
       return undefined;
     },
     getCategory: (category: string): unknown => {
@@ -206,6 +214,7 @@ function createHarness(overrides?: {
           autoCommit,
           transportRetryLimit,
           transportRetryDelayMs,
+          commitScope,
           gates: [] as Array<{ name: string; command: string; enabled: boolean }>,
         };
       }
@@ -250,8 +259,9 @@ function createHarness(overrides?: {
       cleanup: async (agentId: string) => {
         cleanedAgentIds.push(agentId);
       },
-      commitWorkingTree: async (message: string) => {
+      commitWorkingTree: async (message: string, paths?: string[]) => {
         directCommitMessages.push(message);
+        directCommitPaths.push(paths);
         return 'direct-commit-hash';
       },
       currentHead: async () => {
@@ -290,6 +300,8 @@ function createHarness(overrides?: {
     mergedAgentIds,
     cleanedAgentIds,
     directCommitMessages,
+    directCommitPaths,
+    projectRoot,
     get currentHeadCalls() {
       return currentHeadCalls;
     },
@@ -369,8 +381,11 @@ describe('WrfcController — happy path', () => {
     h.controller.dispose();
   });
 
-  test('autoCommit commits direct workspace changes and merges only write-capable WRFC agents', async () => {
-    const h = createHarness({ autoCommit: true, gitRepo: true });
+  test('autoCommit (commitScope: all) commits direct workspace changes and merges only write-capable WRFC agents', async () => {
+    // commitScope: 'all' pins today's legacy full-tree `git add -A` behavior explicitly —
+    // 'scoped' is now the default (see the commitScope tests below), so this test opts into
+    // the legacy mode on purpose to keep exercising the merge-candidate-agent logic below.
+    const h = createHarness({ autoCommit: true, gitRepo: true, commitScope: 'all' });
 
     const ownerRecord = h.addAgent('owner-autocommit-1', 'implement auto commit feature');
     const chain = h.controller.createChain(ownerRecord);
@@ -385,7 +400,11 @@ describe('WrfcController — happy path', () => {
     await flushMicrotasks();
 
     expect(chain.state).toBe('passed');
-    expect(h.directCommitMessages).toEqual(['WRFC: implement auto commit feature']);
+    expect(h.directCommitMessages).toHaveLength(1);
+    expect(h.directCommitMessages[0]).toStartWith('WRFC: implement auto commit feature');
+    expect(h.directCommitMessages[0]).toContain('implement auto commit feature'); // untruncated body
+    // 'all' scope calls commitWorkingTree with no paths argument — the legacy full-tree sweep.
+    expect(h.directCommitPaths).toEqual([undefined]);
     expect(h.mergedAgentIds).toEqual([chain.engineerAgentId]);
     expect(h.mergedAgentIds).not.toContain(reviewerRecord.id);
     expect(h.cleanedAgentIds).toEqual(expect.arrayContaining(chain.allAgentIds));
@@ -395,7 +414,7 @@ describe('WrfcController — happy path', () => {
   });
 
   test('autoCommit merges the latest fixer output instead of superseded engineer output', async () => {
-    const h = createHarness({ autoCommit: true, gitRepo: true, maxFixAttempts: 2 });
+    const h = createHarness({ autoCommit: true, gitRepo: true, maxFixAttempts: 2, commitScope: 'all' });
 
     const ownerRecord = h.addAgent('owner-autocommit-fix-1', 'implement fixed auto commit feature');
     const chain = h.controller.createChain(ownerRecord);
@@ -603,6 +622,138 @@ describe('WrfcController — happy path', () => {
     expect(chain.state).toBe('integrating');
     expect(integrator.task).toContain('Engineer summary: fixed limiter implementation');
     expect(integrator.task).toContain('Engineer summary: logger implementation');
+
+    h.controller.dispose();
+  });
+});
+
+describe('WrfcController — wrfc.commitScope', () => {
+  test('commitScope: scoped (default) stages only the paths the chain\'s engineer report claims to have touched', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true }); // commitScope defaults to 'scoped'
+
+    const ownerRecord = h.addAgent('owner-scoped-1', 'implement scoped commit feature');
+    const chain = h.controller.createChain(ownerRecord);
+
+    // Claim verification checks the claimed paths against real disk state (projectRoot is a
+    // real tmpdir here), so write the files the engineer report claims to have touched.
+    mkdirSync(join(h.projectRoot, 'src'), { recursive: true });
+    writeFileSync(join(h.projectRoot, 'src', 'feature.ts'), 'export const feature = true;\n');
+    writeFileSync(join(h.projectRoot, 'src', 'index.ts'), 'export * from "./feature.js";\n');
+
+    // engineerReportOutput() always emits empty file lists, so build the JSON block directly
+    // here with concrete filesCreated/filesModified to exercise the scoped-staging path.
+    h.setOutput(chain.engineerAgentId!, [
+      '```json',
+      JSON.stringify({
+        version: 1,
+        archetype: 'engineer',
+        summary: 'Implemented the feature.',
+        gatheredContext: [],
+        plannedActions: [],
+        appliedChanges: ['Implemented the feature.'],
+        filesCreated: ['src/feature.ts'],
+        filesModified: ['src/index.ts'],
+        filesDeleted: [],
+        decisions: [],
+        issues: [],
+        uncertainties: [],
+        constraints: [],
+      }),
+      '```',
+    ].join('\n'));
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitPaths).toHaveLength(1);
+    expect(h.directCommitPaths[0]).toEqual(expect.arrayContaining(['src/feature.ts', 'src/index.ts']));
+    expect(h.directCommitPaths[0]).toHaveLength(2);
+
+    h.controller.dispose();
+  });
+
+  test('commitScope: off never calls commitWorkingTree or merge, but the chain still passes', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true, commitScope: 'off' });
+
+    const ownerRecord = h.addAgent('owner-scope-off-1', 'implement feature with commits disabled');
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitMessages).toEqual([]);
+    expect(h.mergedAgentIds).toEqual([]);
+
+    h.controller.dispose();
+  });
+
+  test('commitScope: scoped with an empty edit ledger skips the commit (no fallback to a full-tree sweep) but still passes the chain', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true }); // commitScope defaults to 'scoped'
+
+    const ownerRecord = h.addAgent('owner-scoped-empty-1', 'implement feature with no file claims');
+    const chain = h.controller.createChain(ownerRecord);
+
+    // Plain-prose engineer output parses to an EngineerReport shape with empty
+    // filesCreated/filesModified/filesDeleted (see parseEngineerCompletionReport's fallback) —
+    // this is the "empty ledger" case: a real chain, but nothing to scope a commit to.
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    // commitWorkingTree must never be called with paths omitted/empty as a silent fallback
+    // to the legacy full-tree sweep — an empty ledger means skip the commit entirely.
+    expect(h.directCommitMessages).toEqual([]);
+    expect(h.directCommitPaths).toEqual([]);
+
+    h.controller.dispose();
+  });
+
+  test('the WRFC auto-commit message includes the full, untruncated task in the body, not just the 72-char subject', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true, commitScope: 'all' });
+
+    const longTask = 'Refactor the billing reconciliation pipeline so that partial-refund edge cases '
+      + 'are handled without corrupting the ledger, and add regression tests for every currency we support.';
+    expect(longTask.length).toBeGreaterThan(72);
+
+    const ownerRecord = h.addAgent('owner-long-task-1', longTask);
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'Implemented the refactor.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitMessages).toHaveLength(1);
+    const message = h.directCommitMessages[0]!;
+    const subjectLine = message.split('\n')[0]!;
+    expect(subjectLine.length).toBeLessThanOrEqual('WRFC: '.length + 72);
+    // The full untruncated task must appear somewhere in the message body, even though it's
+    // well over 72 characters — this is the fix for the "anything past 72 characters is
+    // silently discarded" bug.
+    expect(message).toContain(longTask);
 
     h.controller.dispose();
   });
