@@ -156,6 +156,8 @@ function createHarness(overrides?: {
   maxFixAttempts?: number;
   autoCommit?: boolean;
   gitRepo?: boolean;
+  transportRetryLimit?: number;
+  transportRetryDelayMs?: number;
 }): TestHarness {
   const bus = new RuntimeEventBus();
   const agentStore = new Map<string, AgentRecord>();
@@ -178,6 +180,10 @@ function createHarness(overrides?: {
   const threshold = overrides?.scoreThreshold ?? 9.9;
   const maxFixAttempts = overrides?.maxFixAttempts ?? 3;
   const autoCommit = overrides?.autoCommit ?? false;
+  const transportRetryLimit = overrides?.transportRetryLimit ?? 1;
+  // Real (short) delay by default so retry tests don't need fake timers; override
+  // to 0 for near-instant retry assertions.
+  const transportRetryDelayMs = overrides?.transportRetryDelayMs ?? 10;
   const projectRoot = overrides?.gitRepo ? mkdtempSync(join(tmpdir(), 'wrfc-controller-')) : '/tmp/test-project';
   if (overrides?.gitRepo) {
     mkdirSync(join(projectRoot, '.git'), { recursive: true });
@@ -188,6 +194,8 @@ function createHarness(overrides?: {
       if (key === 'wrfc.scoreThreshold') return threshold;
       if (key === 'wrfc.maxFixAttempts') return maxFixAttempts;
       if (key === 'wrfc.autoCommit') return autoCommit;
+      if (key === 'wrfc.transportRetryLimit') return transportRetryLimit;
+      if (key === 'wrfc.transportRetryDelayMs') return transportRetryDelayMs;
       return undefined;
     },
     getCategory: (category: string): unknown => {
@@ -196,6 +204,8 @@ function createHarness(overrides?: {
           scoreThreshold: threshold,
           maxFixAttempts,
           autoCommit,
+          transportRetryLimit,
+          transportRetryDelayMs,
           gates: [] as Array<{ name: string; command: string; enabled: boolean }>,
         };
       }
@@ -904,9 +914,81 @@ describe('WrfcController — escalation', () => {
 
     expect(chain.state).toBe('failed');
     expect(chain.error).not.toBeUndefined(); // presence-only: error was set on failed chain
+    // Non-transport failure — classified as 'other', not retried.
+    expect(chain.failureKind).toBe('other');
+    expect(chain.transportRetryCount ?? 0).toBe(0);
 
     const types = h.workflowEvents.map((e) => e.type);
     expect(types).toContain('WORKFLOW_CHAIN_FAILED');
+    const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
+    expect((failedEvent?.payload as { payload?: { failureKind?: string } }).payload?.failureKind).toBe('other');
+
+    h.controller.dispose();
+  });
+
+  test('transport-classified child failure retries once before failing the chain (W0.2)', async () => {
+    const h = createHarness({ transportRetryLimit: 1, transportRetryDelayMs: 5 });
+
+    const ownerRecord = h.addAgent('owner-transport-1', 'task that hits a transport blip');
+    const chain = h.controller.createChain(ownerRecord);
+    expect(chain.state).toBe('engineering');
+
+    const firstEngineer = latestSpawnedByWrfcRole(h.spawnedRecords, 'engineer');
+    expect(chain.transportRetryCount ?? 0).toBe(0);
+
+    // First failure: transport-classified message the OLD substring-only
+    // classifier would have missed ("closed unexpectedly" was not in the old
+    // allowlist).
+    emitAgentFailed(h.bus, firstEngineer.id, 'The socket connection was closed unexpectedly');
+    await flushMicrotasks();
+
+    // Chain must NOT be failed yet — it gets one bounded automatic retry.
+    expect(chain.state).toBe('engineering');
+    expect(chain.transportRetryCount).toBe(1);
+    expect(h.workflowEvents.map((e) => e.type)).not.toContain('WORKFLOW_CHAIN_FAILED');
+    const retryDecision = chain.ownerDecisions.find((d) => d.action === 'transport_retry');
+    expect(retryDecision).not.toBeUndefined();
+    expect(retryDecision?.reason).toMatch(/closed unexpectedly/i);
+
+    // Wait past the configured backoff for the respawn to happen.
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    await flushMicrotasks();
+
+    const engineers = h.spawnedRecords.filter((r) => r.wrfcRole === 'engineer');
+    expect(engineers).toHaveLength(2);
+    const secondEngineer = engineers[1]!;
+    expect(secondEngineer.id).not.toBe(firstEngineer.id);
+    expect(chain.engineerAgentId).toBe(secondEngineer.id);
+
+    // Second transport failure exhausts the retry budget (limit=1) → chain fails,
+    // tagged as a transport failure so a consumer (e.g. the TUI) can render it
+    // distinctly from an ordinary review/gate rejection.
+    emitAgentFailed(h.bus, secondEngineer.id, 'socket destroyed before response completed');
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('failed');
+    expect(chain.transportRetryCount).toBe(1); // did not retry again past the limit
+    expect(chain.failureKind).toBe('transport');
+
+    const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
+    expect(failedEvent).not.toBeUndefined();
+    expect((failedEvent?.payload as { payload?: { failureKind?: string } }).payload?.failureKind).toBe('transport');
+
+    h.controller.dispose();
+  });
+
+  test('transport retry budget of 0 fails the chain immediately (no retry) — config is respected', async () => {
+    const h = createHarness({ transportRetryLimit: 0 });
+
+    const ownerRecord = h.addAgent('owner-transport-2', 'task with retries disabled');
+    const chain = h.controller.createChain(ownerRecord);
+
+    emitAgentFailed(h.bus, chain.engineerAgentId!, 'unexpected socket connection closure');
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('failed');
+    expect(chain.failureKind).toBe('transport');
+    expect(chain.transportRetryCount ?? 0).toBe(0);
 
     h.controller.dispose();
   });
