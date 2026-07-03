@@ -37,6 +37,7 @@ import {
 import type { HookDispatcher } from '../hooks/index.js';
 import type { HookCategory, HookEventPath, HookPhase } from '../hooks/types.js';
 import { summarizeError } from '../utils/error-display.js';
+import type { AgentUsage } from '../../events/agents.js';
 
 /** Shape of an agent_message_chunk session update that carries text content. */
 interface MessageChunkUpdate {
@@ -50,6 +51,30 @@ function isMessageChunk(update: { sessionUpdate?: unknown }): update is MessageC
     update.sessionUpdate === 'agent_message_chunk' &&
     ('content' in update)
   );
+}
+
+/** Shape of the (experimental/unstable) ACP `PromptResponse.usage` field. */
+interface AcpPromptUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cachedReadTokens?: number | null;
+  cachedWriteTokens?: number | null;
+}
+
+/**
+ * Map the ACP prompt response's usage field (`cachedReadTokens`/`cachedWriteTokens`,
+ * ACP protocol naming) onto the SDK's `AgentUsage` shape (`cacheReadTokens`/
+ * `cacheWriteTokens`). Exported for unit testing without spawning a real
+ * ACP subprocess.
+ */
+export function mapAcpUsage(usage: AcpPromptUsage | null | undefined): AgentUsage | undefined {
+  if (!usage) return undefined;
+  return {
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    ...(usage.cachedReadTokens != null ? { cacheReadTokens: usage.cachedReadTokens } : {}),
+    ...(usage.cachedWriteTokens != null ? { cacheWriteTokens: usage.cachedWriteTokens } : {}),
+  };
 }
 
 /**
@@ -198,6 +223,7 @@ export class AcpConnection {
           durationMs: result.duration,
           output: result.output,
           toolCallsMade: result.toolCallsMade,
+          usage: mapAcpUsage(promptResp.usage),
         });
       }
       this.emitTransportDisconnected('ACP session completed', false);

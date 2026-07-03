@@ -2509,6 +2509,7 @@ export class WrfcController {
         durationMs: Math.max(0, owner.completedAt - owner.startedAt),
         output: message,
         toolCallsMade: owner.toolCallCount,
+        usage: owner.usage,
       });
     } else {
       owner.error = message;

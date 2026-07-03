@@ -5,6 +5,8 @@
  * subagents, WRFC chain agents, and orchestrator agents.
  */
 
+import type { AgentUsage } from '../../../../events/agents.js';
+
 /** States for the agent lifecycle machine. */
 export type AgentLifecycleState =
   | 'spawning'
@@ -77,6 +79,12 @@ export interface RuntimeAgent {
   turnCount: number;
   /** Number of tool calls made by this agent. */
   toolCallCount: number;
+  /**
+   * Accumulated token usage for this agent's run. Undefined means no usage
+   * data has landed yet — never fabricated as zeros (honest-UX: an agent
+   * that hasn't reported usage is distinct from one that used zero tokens).
+   */
+  usage?: AgentUsage | undefined;
 
   // ── Streaming ────────────────────────────────────────────────────────────
   /** Latest accumulated output from the agent (for live display). */
