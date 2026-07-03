@@ -40,6 +40,7 @@ import {
   buildSessionMemories,
   buildCurrentTask,
   buildRunningAgents,
+  buildCompletedAgentWork,
   gatherRecentConversation,
   buildConversationFilterPrompt,
   buildToolResultsPrompt,
@@ -335,6 +336,12 @@ function validateCompaction(
     warnings.push('WARNING: session memories exist but session-memories section is missing');
   }
 
+  if (ctx.compactionCount > 0 && !ctx.originalTask) {
+    warnings.push(
+      'WARNING: compactionCount > 0 but originalTask is missing — lineage may be broken upstream',
+    );
+  }
+
   if (totalTokens > config.totalCeiling) {
     warnings.push(
       `WARNING: total tokens (${totalTokens}) exceeds ceiling (${config.totalCeiling})`,
@@ -342,6 +349,26 @@ function validateCompaction(
   }
 
   return warnings;
+}
+
+/**
+ * resolveLineageOriginalTask — decide what text (if any) to show as
+ * "Original task" in the session-lineage section.
+ *
+ * The lastUserMsg fallback is only valid for the very first compaction of a
+ * session (compactionCount === 0): a genuine edge case where originalTask was
+ * never recorded upstream. Past that point, falling back to the current
+ * last-user-message would silently mislabel the CURRENT task as "Original
+ * task" once real lineage exists — so the fallback is gated to
+ * compactionCount === 0 only. See the matching `validateCompaction` warning
+ * for compactionCount > 0 with a missing originalTask.
+ */
+export function resolveLineageOriginalTask(
+  originalTask: string | undefined,
+  lastUserMsg: string | null,
+  compactionCount: number,
+): string | undefined {
+  return originalTask ?? (compactionCount === 0 ? lastUserMsg ?? undefined : undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -426,6 +453,10 @@ async function runCompaction(
   // Running agents
   const runningSection = buildRunningAgents(ctx.agents, ctx.wrfcChains);
   if (runningSection) sections.push(runningSection);
+
+  // Completed agent work (rule-based) — standalone agents not covered by a WRFC chain
+  const completedSection = buildCompletedAgentWork(ctx.agents, ctx.wrfcChains);
+  if (completedSection) sections.push(completedSection);
 
   // Agent activity table (rule-based, needed before LLM calls to determine remaining)
   const { section: activitySection, remainingChains } = buildAgentActivityTable(
@@ -537,7 +568,7 @@ async function runCompaction(
 
   // Session lineage (rule-based, append-only)
   const lineageSection = buildSessionLineage(
-    ctx.originalTask ?? lastUserMsg ?? undefined,
+    resolveLineageOriginalTask(ctx.originalTask, lastUserMsg, ctx.compactionCount),
     ctx.lineageEntries,
     ctx.compactionCount,
   );
