@@ -16400,6 +16400,7 @@ export type WorkflowEvent = {
     type: 'WORKFLOW_CHAIN_FAILED';
     chainId: string;
     reason: string;
+    failureKind?: 'transport' | 'other' | undefined;
 } | {
     type: 'WORKFLOW_AUTO_COMMITTED';
     chainId: string;
