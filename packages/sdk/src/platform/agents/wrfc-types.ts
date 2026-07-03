@@ -45,7 +45,16 @@ export type WrfcOwnerDecisionAction =
   | 'owner_completion_ignored'
   | 'owner_failure_ignored'
   | 'resume_skipped'
-  | 'resume_started';
+  | 'resume_started'
+  | 'transport_retry';
+
+/**
+ * Why a chain reached the terminal 'failed' state. Distinguishes a transport/network
+ * blip (which gets one automatic retry, see WrfcChain.transportRetryCount) from an
+ * ordinary review/gate rejection, so a consumer (e.g. the TUI) can render the two
+ * differently instead of showing every failure identically.
+ */
+export type WrfcChainFailureKind = 'transport' | 'other';
 
 export interface WrfcOwnerDecision {
   id: string;
@@ -131,6 +140,36 @@ export interface WrfcChain {
   /** Durable audit of owner orchestration choices. */
   ownerDecisions: WrfcOwnerDecision[];
   error?: string | undefined;
+  /**
+   * Why the chain failed. Only meaningful when state is 'failed'. Optional field —
+   * absent on chains persisted before this field was introduced (deserializeChain
+   * treats it as undefined rather than requiring a schema-version bump).
+   */
+  failureKind?: WrfcChainFailureKind | undefined;
+  /**
+   * Number of times this chain has auto-retried a transport-classified child-agent
+   * failure by respawning the same role (bounded by wrfc.transportRetryLimit).
+   * Kept separate from fixAttempts/reviewCycles: a transport retry is not a fix
+   * cycle and must not count against maxFixAttempts. Optional/defaults to 0 —
+   * absent on chains persisted before this field was introduced.
+   */
+  transportRetryCount?: number | undefined;
+  /**
+   * Parameters used for the most recent spawnWrfcAgent call, kept so a
+   * transport-classified failure of that same agent can be retried by respawning
+   * with identical inputs. Overwritten on every subsequent spawn, so it only ever
+   * describes the latest child. A chain resumed from persisted JSON that hasn't
+   * spawned anything since resume simply has no retry candidate here and fails
+   * closed via failChain, same as any other missing-optional-field case.
+   */
+  lastChildSpawn?: {
+    agentId: string;
+    role: 'engineer' | 'reviewer' | 'fixer' | 'integrator';
+    template: 'engineer' | 'reviewer' | 'integrator';
+    task: string;
+    dangerouslyDisableWrfc: boolean;
+    subtaskId?: string | undefined;
+  } | undefined;
   /** Buffered agent completion — set when agent finishes while chain is still queued/pending. */
   bufferedCompletion?: { agentId: string; fullOutput?: string | undefined } | undefined;
   /** True once the durable owner agent terminal event has been emitted. */
@@ -150,6 +189,16 @@ export interface WrfcChain {
    * false = verification ran and found missing claims (phantom work detected).
    */
   claimsVerified?: boolean | undefined;
+  /**
+   * Running ledger of paths (filesCreated/filesModified/filesDeleted) self-reported by every
+   * engineer/fixer/integrator completion across the chain's lifetime — including subtask
+   * completions on compound chains. Appended to incrementally (not derived from a single
+   * "latest report" field) so it still reflects fixer/re-fix passes after resume, and so a
+   * pre-interruption pass is never lost. Consumed by collectChainTouchedPaths() to scope
+   * the auto-commit `git add` when wrfc.commitScope is 'scoped'. Self-reported, not ground
+   * truth — see verifyEngineerClaims for the same accuracy caveat.
+   */
+  touchedPaths?: string[] | undefined;
 }
 
 /** Quality gate definition. */

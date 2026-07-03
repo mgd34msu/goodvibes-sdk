@@ -48,6 +48,32 @@ describe('runtime store lifecycle seams', () => {
     expect(agents.agents.get('agent-1')?.status).toBe('completed');
   });
 
+  test('AGENT_COMPLETED usage populates RuntimeAgent.usage; omitting it leaves usage undefined', () => {
+    const store = createRuntimeStore();
+    const dispatch = createDomainDispatch(store);
+
+    dispatch.dispatchAgentEvent({ type: 'AGENT_SPAWNING', agentId: 'agent-usage', task: 'Do work' });
+    dispatch.dispatchAgentEvent({ type: 'AGENT_RUNNING', agentId: 'agent-usage' });
+    dispatch.dispatchAgentEvent({
+      type: 'AGENT_COMPLETED',
+      agentId: 'agent-usage',
+      durationMs: 12,
+      usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 10, cacheWriteTokens: 5 },
+    });
+
+    expect(store.getState().agents.agents.get('agent-usage')?.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 50,
+      cacheReadTokens: 10,
+      cacheWriteTokens: 5,
+    });
+
+    // A second agent whose AGENT_COMPLETED omits usage must not fabricate a zeroed reading.
+    dispatch.dispatchAgentEvent({ type: 'AGENT_SPAWNING', agentId: 'agent-no-usage', task: 'Do other work' });
+    dispatch.dispatchAgentEvent({ type: 'AGENT_COMPLETED', agentId: 'agent-no-usage', durationMs: 5 });
+    expect(store.getState().agents.agents.get('agent-no-usage')?.usage).toBeUndefined();
+  });
+
   test('WRFC owner running/progress events can revive a prematurely terminal owner record', () => {
     const store = createRuntimeStore();
     const dispatch = createDomainDispatch(store);

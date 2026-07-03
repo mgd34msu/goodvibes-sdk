@@ -46,11 +46,16 @@ import {
 } from '../runtime/emitters/index.js';
 import {
   getWrfcAutoCommit,
+  getWrfcCommitScope,
   getWrfcMaxFixAttempts,
   getWrfcScoreThreshold,
   getWrfcAgentHeartbeatTimeoutMs,
+  getWrfcTransportRetryLimit,
+  getWrfcTransportRetryDelayMs,
   type AgentManagerLike,
+  type WrfcCommitScope,
 } from './wrfc-config.js';
+import { isTransportFailureMessage } from '../types/errors.js';
 import {
   buildEngineerConstraintAddendum,
 } from './wrfc-prompt-addenda.js';
@@ -790,8 +795,77 @@ export class WrfcController {
       });
       return;
     }
-    this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', errorMessage ?? `Agent ${agentId} failed`);
-    this.failChain(chain, errorMessage ?? `Agent ${agentId} failed`);
+    const reason = errorMessage ?? `Agent ${agentId} failed`;
+    // A transport-classified failure of the most recently spawned child gets one
+    // bounded automatic retry (respawn same role/task) before the chain is failed
+    // outright — see retryTransportFailure. Guarding on lastChildSpawn.agentId
+    // matching this exact agentId avoids acting on a stale/duplicate failure event
+    // for an agent that isn't the chain's current active child.
+    if (
+      chain.lastChildSpawn?.agentId === agentId &&
+      isTransportFailureMessage(reason) &&
+      (chain.transportRetryCount ?? 0) < getWrfcTransportRetryLimit(this.configManager)
+    ) {
+      this.retryTransportFailure(chain, chain.lastChildSpawn, reason);
+      return;
+    }
+    this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', reason);
+    this.failChain(chain, reason, isTransportFailureMessage(reason) ? 'transport' : 'other');
+  }
+
+  /**
+   * Respawn the most recently spawned child agent after a transport-classified
+   * failure, instead of failing the chain immediately. Bounded by
+   * wrfc.transportRetryLimit (default 1) and tracked via chain.transportRetryCount,
+   * kept separate from fixAttempts/reviewCycles so a transport blip never counts
+   * against the ordinary fix-cycle budget.
+   */
+  private retryTransportFailure(
+    chain: WrfcChain,
+    spawn: NonNullable<WrfcChain['lastChildSpawn']>,
+    reason: string,
+  ): void {
+    const limit = getWrfcTransportRetryLimit(this.configManager);
+    const delayMs = getWrfcTransportRetryDelayMs(this.configManager);
+    chain.transportRetryCount = (chain.transportRetryCount ?? 0) + 1;
+    const attempt = chain.transportRetryCount;
+    this.appendOwnerDecision(
+      chain,
+      'transport_retry',
+      `Transport failure on ${spawn.role} (attempt ${attempt}/${limit}): ${reason}. Retrying in ${Math.round(delayMs / 1000)}s.`,
+      { agentId: spawn.agentId, role: spawn.role },
+    );
+    logger.warn('WrfcController: transport failure, retrying child agent', {
+      chainId: chain.id,
+      agentId: spawn.agentId,
+      role: spawn.role,
+      attempt,
+      limit,
+      reason,
+    });
+    const timer = setTimeout(() => {
+      // The chain may have reached a terminal state while this retry was waiting
+      // (e.g. cancelled) — don't resurrect it.
+      if (isChainTerminal(chain.state)) return;
+      const record = this.spawnWrfcAgent(chain, spawn.role, spawn.template, spawn.task, spawn.dangerouslyDisableWrfc, spawn.subtaskId);
+      this.registerSpawnedChild(chain, record, spawn.role, spawn.subtaskId);
+      this.rewireChainChildAgentId(chain, spawn.role, record.id);
+    }, delayMs);
+    timer.unref?.();
+  }
+
+  /** Point the chain's role-specific agent-id field at a freshly (re)spawned child. */
+  private rewireChainChildAgentId(
+    chain: WrfcChain,
+    role: 'engineer' | 'reviewer' | 'fixer' | 'integrator',
+    agentId: string,
+  ): void {
+    switch (role) {
+      case 'engineer': chain.engineerAgentId = agentId; break;
+      case 'reviewer': chain.reviewerAgentId = agentId; break;
+      case 'fixer': chain.fixerAgentId = agentId; break;
+      case 'integrator': chain.integratorAgentId = agentId; break;
+    }
   }
 
   private onAgentCancelled(agentId: string, reason?: string): void {
@@ -1280,6 +1354,15 @@ export class WrfcController {
   private async autoCommit(chain: WrfcChain): Promise<void> {
     this.transition(chain, 'committing');
 
+    const commitScope = getWrfcCommitScope(this.configManager);
+    if (commitScope === 'off') {
+      logger.debug('WrfcController.autoCommit: wrfc.commitScope is off, skipping commit and merge entirely', {
+        chainId: chain.id,
+      });
+      this.completeChainAsPassed(chain);
+      return;
+    }
+
     const commitCandidateIds = this.autoCommitCandidateAgentIds(chain);
     if (commitCandidateIds.length === 0) {
       this.failChain(chain, 'autoCommit: no write-capable WRFC agent found on chain');
@@ -1295,10 +1378,26 @@ export class WrfcController {
     const worktree = this.createWorktree();
     let completed = false;
     try {
-      const commitMessage = this.autoCommitMessage(chain);
-      const directCommitHash = worktree.commitWorkingTree
-        ? await worktree.commitWorkingTree(commitMessage)
-        : null;
+      const commitMessage = this.buildAutoCommitMessage(chain, commitScope);
+      let directCommitHash: string | null = null;
+      if (worktree.commitWorkingTree) {
+        if (commitScope === 'scoped') {
+          const touchedPaths = this.collectChainTouchedPaths(chain);
+          if (touchedPaths.length === 0) {
+            // Do NOT fall back to a full-tree `--all` sweep here — an empty self-reported
+            // ledger means we genuinely don't know what this chain touched, and committing
+            // everything dirty in the working tree is exactly the trust bug this fixes.
+            logger.warn('WrfcController.autoCommit: commitScope is scoped but the chain edit ledger is empty; skipping commit rather than falling back to a full-tree sweep', {
+              chainId: chain.id,
+            });
+          } else {
+            directCommitHash = await worktree.commitWorkingTree(commitMessage, touchedPaths);
+          }
+        } else {
+          // commitScope === 'all': legacy full-tree sweep, no paths argument.
+          directCommitHash = await worktree.commitWorkingTree(commitMessage);
+        }
+      }
       let mergedCount = 0;
       for (const agentId of commitCandidateIds) {
         if (await worktree.merge(agentId)) {
@@ -1364,12 +1463,67 @@ export class WrfcController {
     return candidates;
   }
 
-  private autoCommitMessage(chain: WrfcChain): string {
-    const firstLine = chain.task.trim().replace(/\s+/g, ' ').slice(0, 72) || chain.id;
-    return `WRFC: ${firstLine}`;
+  /**
+   * Chain-wide "own edit ledger": every path self-reported as created/modified/deleted by
+   * any engineer/fixer/integrator completion on this chain (including subtask completions),
+   * deduplicated. Primary source is chain.touchedPaths, an incremental accumulator appended
+   * to on every completion (see recordTouchedPaths) so fixer/re-fix passes and resumed
+   * chains are represented, not just the first pass. Falls back to deriving from the
+   * last-stored report slots (chain.engineerReport / chain.integratorReport /
+   * subtask.engineerReport) for chains serialized before touchedPaths existed.
+   *
+   * Self-reported, not ground truth — same accuracy ceiling as verifyEngineerClaims. Per-agent
+   * worktree isolation (AgentWorktree.create) is not wired up in this controller today, so
+   * there is no git-branch-diff signal to corroborate against.
+   */
+  private collectChainTouchedPaths(chain: WrfcChain): string[] {
+    const paths = new Set<string>(chain.touchedPaths ?? []);
+    const fallbackReports: Array<CompletionReport | undefined> = [
+      chain.engineerReport,
+      chain.integratorReport,
+      ...(chain.subtasks ?? []).map((subtask) => subtask.engineerReport),
+    ];
+    for (const report of fallbackReports) {
+      if (report && report.archetype === 'engineer') {
+        const engineerReport = report as EngineerReport;
+        for (const path of [...engineerReport.filesCreated, ...engineerReport.filesModified, ...engineerReport.filesDeleted]) {
+          paths.add(path);
+        }
+      }
+    }
+    return Array.from(paths);
   }
 
-  private failChain(chain: WrfcChain, reason: string): void {
+  private buildAutoCommitMessage(chain: WrfcChain, commitScope: WrfcCommitScope): string {
+    const fullTask = chain.task.trim();
+    const firstLine = fullTask.replace(/\s+/g, ' ').slice(0, 72) || chain.id;
+    const subject = `WRFC: ${firstLine}`;
+
+    // Subject is length-capped for git log readability; the body below is never truncated —
+    // this is the fix for the "anything past 72 characters is silently discarded" bug.
+    const bodyLines: string[] = ['', fullTask || chain.id];
+
+    if (chain.constraints.length > 0) {
+      bodyLines.push('', `Constraints: ${chain.constraints.length}`);
+    }
+    const gateNames = (chain.gateResults ?? []).map((result) => result.gate);
+    if (gateNames.length > 0) {
+      bodyLines.push(`Gates: ${gateNames.join(', ')}`);
+    }
+    if (chain.subtasks && chain.subtasks.length > 0) {
+      bodyLines.push(`Subtasks: ${chain.subtasks.map((subtask) => subtask.title).join('; ')}`);
+    }
+    if (commitScope === 'scoped') {
+      const touchedPaths = this.collectChainTouchedPaths(chain);
+      bodyLines.push(touchedPaths.length > 0
+        ? `Staged paths (${touchedPaths.length}): ${touchedPaths.join(', ')}`
+        : 'Staged paths: (none — chain edit ledger empty)');
+    }
+
+    return [subject, ...bodyLines].join('\n');
+  }
+
+  private failChain(chain: WrfcChain, reason: string, failureKind: NonNullable<WrfcChain['failureKind']> = 'other'): void {
     if (chain.state === 'pending') {
       this.chainQueue = this.chainQueue.filter((queued) => queued.record.id !== chain.ownerAgentId);
     }
@@ -1393,6 +1547,7 @@ export class WrfcController {
     }
 
     chain.error = reason;
+    chain.failureKind = failureKind;
     chain.completedAt = Date.now();
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'failed', reason);
     this.cancelRunningChildren(chain);
@@ -1401,7 +1556,7 @@ export class WrfcController {
     });
     this.completeOwnerAgent(chain, 'failed', reason);
     this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_failed', reason });
-    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason });
+    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason, failureKind });
 
     logger.error('WrfcController.failChain', { chainId: chain.id, reason });
     this.scheduleChainCleanup(chain);
@@ -1589,7 +1744,9 @@ export class WrfcController {
       ownerTerminalEmitted: false,
       constraints: [],
       constraintsEnumerated: false,
+      touchedPaths: [],
       createdAt: Date.now(),
+      transportRetryCount: 0,
       ...(subtasks.length > 1 ? { subtasks } : {}),
     };
     this.chains.set(chain.id, chain);
@@ -1694,9 +1851,38 @@ export class WrfcController {
     }
   }
 
+  /**
+   * Appends a completion report's self-reported filesCreated/filesModified/filesDeleted
+   * into the chain's running edit ledger (chain.touchedPaths). Called for every engineer,
+   * fixer, and integrator completion — not just the first pass — so a chain that goes
+   * through gate-fix or review-fix cycles still has the fixer's edits represented. This is
+   * why it is a standalone accumulator rather than reading the last-stored report field:
+   * chain.engineerReport / subtask.engineerReport are last-write slots that do not reliably
+   * retain every fixer pass (see collectChainTouchedPaths for the consuming side).
+   */
+  private recordTouchedPaths(chain: WrfcChain, report: CompletionReport): void {
+    if (report.archetype !== 'engineer') return;
+    const engineerReport = report as EngineerReport;
+    const claimed = [
+      ...engineerReport.filesCreated,
+      ...engineerReport.filesModified,
+      ...engineerReport.filesDeleted,
+    ];
+    if (claimed.length === 0) return;
+    chain.touchedPaths ??= [];
+    const seen = new Set(chain.touchedPaths);
+    for (const path of claimed) {
+      if (!seen.has(path)) {
+        seen.add(path);
+        chain.touchedPaths.push(path);
+      }
+    }
+  }
+
   private handleEngineerCompletion(chain: WrfcChain, agentId: string, report: CompletionReport): void {
     let reportForReview = report;
     this.completeCurrentNode(chain, report.summary);
+    this.recordTouchedPaths(chain, report);
     if (chain.state === 'engineering') {
       chain.engineerReport = report;
       this.workmap.append({
@@ -1908,6 +2094,7 @@ export class WrfcController {
   ): void {
     let reportForReview = report;
     this.completeSubtaskNode(chain, subtask, report.summary);
+    this.recordTouchedPaths(chain, report);
     if (subtask.state === 'engineering') {
       subtask.engineerReport = report;
       this.workmap.append({
@@ -2209,6 +2396,7 @@ export class WrfcController {
 
   private handleIntegratorCompletion(chain: WrfcChain, agentId: string, report: CompletionReport): void {
     chain.integratorReport = report;
+    this.recordTouchedPaths(chain, report);
     this.completeCurrentNode(chain, report.summary);
     this.workmap.append({
       ts: new Date().toISOString(),
@@ -2273,6 +2461,11 @@ export class WrfcController {
     if (selectedRoute?.reason) {
       record.wrfcRouteReason = selectedRoute.reason;
     }
+    // Remember how this child was spawned so a transport-classified failure of
+    // this exact agent can be retried later by respawning with identical inputs
+    // (see retryTransportFailure). Overwritten on every spawn — only ever
+    // describes the most recent child.
+    chain.lastChildSpawn = { agentId: record.id, role, template, task, dangerouslyDisableWrfc, subtaskId };
     return record;
   }
 
@@ -2303,6 +2496,15 @@ export class WrfcController {
     owner.completedAt = Date.now();
     owner.progress = message;
     owner.fullOutput = message;
+    // The owner never runs an LLM turn itself (it only supervises phase
+    // children), so its own usage/toolCallCount stay at the spawn-time zero
+    // default forever unless rolled up here from the real numbers its phase
+    // agents accumulated. This is what makes AgentManager.getStatus()/list()
+    // — the read path TUI per-agent surfaces actually use — return real data
+    // for the owner instead of the never-updated zeros (WO-305 wired the
+    // AGENT_COMPLETED.usage forwarding but nothing populated the source).
+    owner.usage = this.aggregateChainUsage(chain);
+    owner.toolCallCount = this.aggregateChainToolCallCount(chain);
     chain.ownerTerminalEmitted = true;
     const context = {
       sessionId: this.sessionId,
@@ -2316,6 +2518,7 @@ export class WrfcController {
         durationMs: Math.max(0, owner.completedAt - owner.startedAt),
         output: message,
         toolCallsMade: owner.toolCallCount,
+        usage: owner.usage,
       });
     } else {
       owner.error = message;
@@ -2325,6 +2528,69 @@ export class WrfcController {
         error: message,
       });
     }
+  }
+
+  /**
+   * Roll up token usage across every agent that has ever run under this
+   * chain (the owner plus all phase/subtask children, across every review
+   * and fix cycle — `chain.allAgentIds` already tracks the full roster for
+   * worktree cleanup, so it doubles as the usage-aggregation source). Each
+   * contributor's usage is added in, including the owner's own (normally
+   * zero, but summed rather than ignored in case it is ever populated
+   * directly). Optional fields (reasoningTokens/reasoningSummaryCount) are
+   * only included in the result if at least one contributor reported them,
+   * matching AgentUsage's undefined-means-no-data convention for those.
+   */
+  private aggregateChainUsage(chain: WrfcChain): NonNullable<AgentRecord['usage']> {
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let cacheReadTokens = 0;
+    let cacheWriteTokens = 0;
+    let llmCallCount = 0;
+    let turnCount = 0;
+    let reasoningTokens = 0;
+    let hasReasoningTokens = false;
+    let reasoningSummaryCount = 0;
+    let hasReasoningSummaryCount = false;
+
+    for (const agentId of chain.allAgentIds) {
+      const usage = this.agentManager.getStatus(agentId)?.usage;
+      if (!usage) continue;
+      inputTokens += usage.inputTokens;
+      outputTokens += usage.outputTokens;
+      cacheReadTokens += usage.cacheReadTokens;
+      cacheWriteTokens += usage.cacheWriteTokens;
+      llmCallCount += usage.llmCallCount;
+      turnCount += usage.turnCount;
+      if (usage.reasoningTokens !== undefined) {
+        hasReasoningTokens = true;
+        reasoningTokens += usage.reasoningTokens;
+      }
+      if (usage.reasoningSummaryCount !== undefined) {
+        hasReasoningSummaryCount = true;
+        reasoningSummaryCount += usage.reasoningSummaryCount;
+      }
+    }
+
+    return {
+      inputTokens,
+      outputTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+      ...(hasReasoningTokens ? { reasoningTokens } : {}),
+      llmCallCount,
+      turnCount,
+      ...(hasReasoningSummaryCount ? { reasoningSummaryCount } : {}),
+    };
+  }
+
+  /** Roll up tool-call counts across every agent that has ever run under this chain. */
+  private aggregateChainToolCallCount(chain: WrfcChain): number {
+    let total = 0;
+    for (const agentId of chain.allAgentIds) {
+      total += this.agentManager.getStatus(agentId)?.toolCallCount ?? 0;
+    }
+    return total;
   }
 
   private upsertWrfcWorkPlanTask(

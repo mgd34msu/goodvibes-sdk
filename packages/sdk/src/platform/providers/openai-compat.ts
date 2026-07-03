@@ -337,6 +337,7 @@ export class OpenAICompatProvider implements LLMProvider {
       reasoningEffort,
       reasoningSummary,
       onDelta,
+      onRetry,
     } = params;
 
     return (await instrumentedLlmCall(() => withRetry(async () => {
@@ -523,7 +524,7 @@ export class OpenAICompatProvider implements LLMProvider {
       });
 
       return response;
-    }), { provider: this.name, model: model ?? this.defaultModel })).result;
+    }, undefined, onRetry), { provider: this.name, model: model ?? this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

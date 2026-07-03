@@ -157,6 +157,7 @@ export type AgentEvent =
     durationMs: number;
     output?: string;
     toolCallsMade?: number;
+    usage?: AgentUsage | undefined;
 }
 /** Agent failed with an error. */
 | {
@@ -176,6 +177,14 @@ export type AgentEvent =
 
 // @public
 export type AgentEventType = AgentEvent['type'];
+
+// @public
+export type AgentUsage = {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens?: number | undefined;
+    cacheWriteTokens?: number | undefined;
+};
 
 // @public
 export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | GoodVibesUIEvent | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent;
@@ -1214,7 +1223,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "0.35.0";
+    readonly productVersion: "0.36.0";
     readonly operatorMethodCount: 297;
     readonly operatorEventCount: 30;
     readonly peerEndpointCount: 6;
@@ -16190,6 +16199,23 @@ export type TurnEvent =
     scope?: 'provider';
     terminal?: false;
 }
+/**
+* A provider chat call hit a retryable transport error mid-stream and is
+* about to retry the same request against the same provider after a delay.
+*
+* This is distinct from provider failover (a new provider chosen after a
+* terminal TURN_ERROR): STREAM_RETRY fires from inside a single in-flight
+* `provider.chat()` call, before any TURN_ERROR is ever raised.
+*/
+| {
+    type: 'STREAM_RETRY';
+    turnId: string;
+    provider: string;
+    attempt: number;
+    maxAttempts: number;
+    delayMs: number;
+    reason: string;
+}
 /** An LLM request is about to be dispatched to the provider. */
 | {
     type: 'LLM_REQUEST_STARTED';
@@ -16400,6 +16426,7 @@ export type WorkflowEvent = {
     type: 'WORKFLOW_CHAIN_FAILED';
     chainId: string;
     reason: string;
+    failureKind?: 'transport' | 'other' | undefined;
 } | {
     type: 'WORKFLOW_AUTO_COMMITTED';
     chainId: string;

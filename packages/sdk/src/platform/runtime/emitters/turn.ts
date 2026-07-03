@@ -72,6 +72,15 @@ export function emitStreamEnd(
   bus.emit('turn', createEventEnvelope('STREAM_END', { type: 'STREAM_END', scope: 'provider', terminal: false, ...data }, ctx));
 }
 
+/** Emit STREAM_RETRY when an in-flight provider chat call retries after a transport error. */
+export function emitStreamRetry(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { turnId: string; provider: string; attempt: number; maxAttempts: number; delayMs: number; reason: string }
+): void {
+  bus.emit('turn', createEventEnvelope('STREAM_RETRY', { type: 'STREAM_RETRY', ...data }, ctx));
+}
+
 /** Emit LLM_REQUEST_STARTED when a provider chat request is about to be dispatched. */
 export function emitLlmRequestStarted(
   bus: RuntimeEventBus,

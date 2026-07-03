@@ -63,7 +63,7 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort: _reasoningEffort } = params;
+    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry, reasoningEffort: _reasoningEffort } = params;
     // Note: OpenAI GPT-5 does not expose reasoning effort as a configurable API parameter
 
     return withRetry(async () => {
@@ -161,7 +161,7 @@ export class OpenAIProvider implements LLMProvider {
         stopReason: resolveCompletedStopReason(stopReason, responseText),
         ...withProviderStopReason(rawStopReason),
       };
-    });
+    }, undefined, onRetry);
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

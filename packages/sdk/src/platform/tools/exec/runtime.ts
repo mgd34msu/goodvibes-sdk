@@ -771,9 +771,19 @@ export function createExecTool(
         if (fileOpResults.length > 0) responseData.file_ops = fileOpResults;
         if (fileOpWarnings && fileOpWarnings.length > 0) responseData.warnings = fileOpWarnings;
 
+        // Populate a top-level error summary on failure so any consumer keying off
+        // `.error` alone (not just `.output`) still gets a coherent signal — the
+        // per-command diagnostics remain in `output` in full.
+        const failed = results.filter((r) => !r.success);
+        const errorSummary = failed.length > 0
+          ? `${failed.length} of ${results.length} command(s) failed: `
+            + failed.map((r) => `'${r.cmd}'${r.skipped ? ' (skipped)' : ` exit ${r.exit_code}${r.timed_out ? ' (timed out)' : ''}`}`).join('; ')
+          : undefined;
+
         return {
           success: allSuccess,
           output: JSON.stringify(responseData),
+          ...(errorSummary ? { error: errorSummary } : {}),
           ...(fileOpWarnings && fileOpWarnings.length > 0 ? { warnings: fileOpWarnings } : {}),
         };
       } catch (err) {
