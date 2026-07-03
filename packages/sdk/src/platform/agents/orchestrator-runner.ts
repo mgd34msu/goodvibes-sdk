@@ -57,7 +57,13 @@ export interface AgentOrchestratorRunContext {
   readonly emitOrchestrationCancelled: (record: AgentRecord, reason: string) => void;
   readonly emitAgentFailedEvent: (recordId: string, error: string, durationMs: number) => void;
   readonly emitOrchestrationFailed: (record: AgentRecord, error: string) => void;
-  readonly emitAgentCompletedEvent: (recordId: string, durationMs: number, output: string, toolCallsMade: number) => void;
+  readonly emitAgentCompletedEvent: (
+    recordId: string,
+    durationMs: number,
+    output: string,
+    toolCallsMade: number,
+    usage: AgentRecord['usage'] | undefined,
+  ) => void;
   readonly emitOrchestrationCompleted: (record: AgentRecord, output: string) => void;
   readonly emitStreamDelta: (recordId: string, content: string, accumulated: string) => void;
   readonly processManager?: ProcessManager | undefined;
@@ -323,6 +329,7 @@ async function finalizeAgentRun(
       (record.completedAt ?? Date.now()) - record.startedAt,
       record.fullOutput ?? '',
       record.toolCallCount,
+      record.usage,
     );
     context.emitOrchestrationCompleted(record, record.fullOutput ?? '');
   }

@@ -50,7 +50,16 @@ export type AgentEvent =
   /** Agent is performing final output assembly. */
   | { type: 'AGENT_FINALIZING'; agentId: string; taskId?: string }
   /** Agent completed successfully. */
-  | { type: 'AGENT_COMPLETED'; agentId: string; taskId?: string; durationMs: number; output?: string; toolCallsMade?: number }
+  | {
+      type: 'AGENT_COMPLETED';
+      agentId: string;
+      taskId?: string;
+      durationMs: number;
+      output?: string;
+      toolCallsMade?: number;
+      /** Accumulated token usage for the agent's run, when the execution path tracked it. */
+      usage?: AgentUsage | undefined;
+    }
   /** Agent failed with an error. */
   | { type: 'AGENT_FAILED'; agentId: string; taskId?: string; error: string; durationMs: number }
   /** Agent was cancelled before completion. */
@@ -58,3 +67,16 @@ export type AgentEvent =
 
 /** All agent event type literals as a union. */
 export type AgentEventType = AgentEvent['type'];
+
+/**
+ * Token usage for a single agent's run. Mirrors the shape of
+ * `TokenUsage` in `platform/core/conversation.ts` — kept as a structural
+ * duplicate here (rather than an import) so this leaf event module stays
+ * free of dependencies on `platform/`.
+ */
+export type AgentUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number | undefined;
+  cacheWriteTokens?: number | undefined;
+};

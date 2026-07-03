@@ -359,6 +359,44 @@ describe('WrfcController — happy path', () => {
     h.controller.dispose();
   });
 
+  test('completeOwnerAgent forwards owner.usage into the emitted AGENT_COMPLETED event', async () => {
+    const h = createHarness();
+
+    const ownerRecord = h.addAgent('owner-1', 'implement feature X');
+    ownerRecord.usage = {
+      inputTokens: 1000,
+      outputTokens: 250,
+      cacheReadTokens: 40,
+      cacheWriteTokens: 20,
+      llmCallCount: 3,
+      turnCount: 3,
+    };
+    const chain = h.controller.createChain(ownerRecord);
+
+    const ownerCompletedEvents: Array<{ usage?: unknown }> = [];
+    h.bus.onDomain('agents', (envelope) => {
+      const payload = envelope.payload as { type: string; agentId: string; usage?: unknown };
+      if (payload.type === 'AGENT_COMPLETED' && payload.agentId === 'owner-1') {
+        ownerCompletedEvents.push(payload);
+      }
+    });
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(ownerCompletedEvents).toHaveLength(1);
+    expect(ownerCompletedEvents[0]?.usage).toEqual(ownerRecord.usage);
+
+    h.controller.dispose();
+  });
+
   test('autoCommit commits direct workspace changes and merges only write-capable WRFC agents', async () => {
     const h = createHarness({ autoCommit: true, gitRepo: true });
 
