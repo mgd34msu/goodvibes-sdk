@@ -166,7 +166,7 @@ export class AnthropicSdkProvider implements LLMProvider {
           phase: 'stream',
         });
       }
-    });
+    }, undefined, params.onRetry);
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
