@@ -157,6 +157,7 @@ export type AgentEvent =
     durationMs: number;
     output?: string;
     toolCallsMade?: number;
+    usage?: AgentUsage | undefined;
 }
 /** Agent failed with an error. */
 | {
@@ -176,6 +177,14 @@ export type AgentEvent =
 
 // @public
 export type AgentEventType = AgentEvent['type'];
+
+// @public
+export type AgentUsage = {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens?: number | undefined;
+    cacheWriteTokens?: number | undefined;
+};
 
 // @public
 export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | GoodVibesUIEvent | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent;

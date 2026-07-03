@@ -12,7 +12,7 @@ export type { TurnEvent, TurnEventType, TurnInputOrigin, TurnStopReason, Partial
 export type { ProviderEvent, ProviderEventType } from './providers.js';
 export type { ToolEvent, ToolEventType, ToolResultSummary } from './tools.js';
 export type { TaskEvent, TaskEventType } from './tasks.js';
-export type { AgentEvent, AgentEventType } from './agents.js';
+export type { AgentEvent, AgentEventType, AgentUsage } from './agents.js';
 export type { WorkflowEvent, WorkflowEventType, Constraint, WrfcState } from './workflows.js';
 export type { OrchestrationEvent, OrchestrationEventType, OrchestrationTaskContract } from './orchestration.js';
 export type { CommunicationEvent, CommunicationEventType, CommunicationKind, CommunicationScope } from './communication.js';

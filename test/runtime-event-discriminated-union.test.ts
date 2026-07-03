@@ -40,6 +40,17 @@ type _AssertAgentCompletedHasDuration = _AgentCompleted extends { agentId: strin
 const _assertAgentCompleted: _AssertAgentCompletedHasDuration = true;
 void _assertAgentCompleted;
 
+/** Verify AGENT_COMPLETED's usage field is optional (an event omitting it still type-checks). */
+const _agentCompletedNoUsage: AgentEvent = { type: 'AGENT_COMPLETED', agentId: 'a1', durationMs: 1 };
+void _agentCompletedNoUsage;
+
+/** Verify AGENT_COMPLETED's usage field narrows to the AgentUsage token-count shape without cast. */
+type _AssertAgentCompletedUsageShape = _AgentCompleted extends {
+  usage?: { inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number } | undefined;
+} ? true : never;
+const _assertAgentCompletedUsageShape: _AssertAgentCompletedUsageShape = true;
+void _assertAgentCompletedUsageShape;
+
 /** Verify TurnEvent narrows prompt on TURN_SUBMITTED without cast. */
 type _TurnSubmitted = Extract<TurnEvent, { type: 'TURN_SUBMITTED' }>;
 type _AssertTurnHasPrompt = _TurnSubmitted extends { turnId: string; prompt: string } ? true : never;
@@ -216,6 +227,26 @@ describe('discriminated union — AgentEvent', () => {
   test('AGENT_FAILED: error string is accessible without cast', () => {
     const event: AgentEvent = { type: 'AGENT_FAILED', agentId: 'agent-3', error: 'timeout', durationMs: 500 };
     expect(describeAgentEvent(event)).toBe('failed:agent-3:timeout');
+  });
+
+  test('AGENT_COMPLETED: usage is optional and, when present, its token fields are accessible without cast', () => {
+    const withoutUsage: AgentEvent = { type: 'AGENT_COMPLETED', agentId: 'agent-4', durationMs: 10 };
+    if (withoutUsage.type === 'AGENT_COMPLETED') {
+      expect(withoutUsage.usage).toBeUndefined();
+    }
+
+    const withUsage: AgentEvent = {
+      type: 'AGENT_COMPLETED',
+      agentId: 'agent-5',
+      durationMs: 20,
+      usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 10, cacheWriteTokens: 5 },
+    };
+    if (withUsage.type === 'AGENT_COMPLETED') {
+      expect(withUsage.usage?.inputTokens).toBe(100);
+      expect(withUsage.usage?.outputTokens).toBe(50);
+      expect(withUsage.usage?.cacheReadTokens).toBe(10);
+      expect(withUsage.usage?.cacheWriteTokens).toBe(5);
+    }
   });
 
   test('exhaustive switch — all variants covered (never check in default)', () => {
