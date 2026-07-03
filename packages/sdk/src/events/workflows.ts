@@ -45,7 +45,19 @@ export type WorkflowEvent =
     }
   | { type: 'WORKFLOW_GATE_RESULT'; chainId: string; gate: string; passed: boolean }
   | { type: 'WORKFLOW_CHAIN_PASSED'; chainId: string }
-  | { type: 'WORKFLOW_CHAIN_FAILED'; chainId: string; reason: string }
+  | {
+      type: 'WORKFLOW_CHAIN_FAILED';
+      chainId: string;
+      reason: string;
+      /**
+       * Why the chain failed. 'transport' means the failure was classified as a
+       * transient network/transport error (and had already exhausted its automatic
+       * retry budget — see WrfcChain.transportRetryCount); absent/'other' covers
+       * ordinary review/gate rejections and anything else. Optional so existing
+       * consumers that don't inspect it keep working unchanged.
+       */
+      failureKind?: 'transport' | 'other' | undefined;
+    }
   | { type: 'WORKFLOW_AUTO_COMMITTED'; chainId: string; commitHash?: string | undefined }
   | { type: 'WORKFLOW_CASCADE_ABORTED'; chainId: string; reason: string }
   | { type: 'WORKFLOW_CONSTRAINTS_ENUMERATED'; chainId: string; constraints: Constraint[] }

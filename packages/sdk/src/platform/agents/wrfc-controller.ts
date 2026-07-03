@@ -49,8 +49,11 @@ import {
   getWrfcMaxFixAttempts,
   getWrfcScoreThreshold,
   getWrfcAgentHeartbeatTimeoutMs,
+  getWrfcTransportRetryLimit,
+  getWrfcTransportRetryDelayMs,
   type AgentManagerLike,
 } from './wrfc-config.js';
+import { isTransportFailureMessage } from '../types/errors.js';
 import {
   buildEngineerConstraintAddendum,
 } from './wrfc-prompt-addenda.js';
@@ -790,8 +793,77 @@ export class WrfcController {
       });
       return;
     }
-    this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', errorMessage ?? `Agent ${agentId} failed`);
-    this.failChain(chain, errorMessage ?? `Agent ${agentId} failed`);
+    const reason = errorMessage ?? `Agent ${agentId} failed`;
+    // A transport-classified failure of the most recently spawned child gets one
+    // bounded automatic retry (respawn same role/task) before the chain is failed
+    // outright — see retryTransportFailure. Guarding on lastChildSpawn.agentId
+    // matching this exact agentId avoids acting on a stale/duplicate failure event
+    // for an agent that isn't the chain's current active child.
+    if (
+      chain.lastChildSpawn?.agentId === agentId &&
+      isTransportFailureMessage(reason) &&
+      (chain.transportRetryCount ?? 0) < getWrfcTransportRetryLimit(this.configManager)
+    ) {
+      this.retryTransportFailure(chain, chain.lastChildSpawn, reason);
+      return;
+    }
+    this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', reason);
+    this.failChain(chain, reason, isTransportFailureMessage(reason) ? 'transport' : 'other');
+  }
+
+  /**
+   * Respawn the most recently spawned child agent after a transport-classified
+   * failure, instead of failing the chain immediately. Bounded by
+   * wrfc.transportRetryLimit (default 1) and tracked via chain.transportRetryCount,
+   * kept separate from fixAttempts/reviewCycles so a transport blip never counts
+   * against the ordinary fix-cycle budget.
+   */
+  private retryTransportFailure(
+    chain: WrfcChain,
+    spawn: NonNullable<WrfcChain['lastChildSpawn']>,
+    reason: string,
+  ): void {
+    const limit = getWrfcTransportRetryLimit(this.configManager);
+    const delayMs = getWrfcTransportRetryDelayMs(this.configManager);
+    chain.transportRetryCount = (chain.transportRetryCount ?? 0) + 1;
+    const attempt = chain.transportRetryCount;
+    this.appendOwnerDecision(
+      chain,
+      'transport_retry',
+      `Transport failure on ${spawn.role} (attempt ${attempt}/${limit}): ${reason}. Retrying in ${Math.round(delayMs / 1000)}s.`,
+      { agentId: spawn.agentId, role: spawn.role },
+    );
+    logger.warn('WrfcController: transport failure, retrying child agent', {
+      chainId: chain.id,
+      agentId: spawn.agentId,
+      role: spawn.role,
+      attempt,
+      limit,
+      reason,
+    });
+    const timer = setTimeout(() => {
+      // The chain may have reached a terminal state while this retry was waiting
+      // (e.g. cancelled) — don't resurrect it.
+      if (isChainTerminal(chain.state)) return;
+      const record = this.spawnWrfcAgent(chain, spawn.role, spawn.template, spawn.task, spawn.dangerouslyDisableWrfc, spawn.subtaskId);
+      this.registerSpawnedChild(chain, record, spawn.role, spawn.subtaskId);
+      this.rewireChainChildAgentId(chain, spawn.role, record.id);
+    }, delayMs);
+    timer.unref?.();
+  }
+
+  /** Point the chain's role-specific agent-id field at a freshly (re)spawned child. */
+  private rewireChainChildAgentId(
+    chain: WrfcChain,
+    role: 'engineer' | 'reviewer' | 'fixer' | 'integrator',
+    agentId: string,
+  ): void {
+    switch (role) {
+      case 'engineer': chain.engineerAgentId = agentId; break;
+      case 'reviewer': chain.reviewerAgentId = agentId; break;
+      case 'fixer': chain.fixerAgentId = agentId; break;
+      case 'integrator': chain.integratorAgentId = agentId; break;
+    }
   }
 
   private onAgentCancelled(agentId: string, reason?: string): void {
@@ -1369,7 +1441,7 @@ export class WrfcController {
     return `WRFC: ${firstLine}`;
   }
 
-  private failChain(chain: WrfcChain, reason: string): void {
+  private failChain(chain: WrfcChain, reason: string, failureKind: NonNullable<WrfcChain['failureKind']> = 'other'): void {
     if (chain.state === 'pending') {
       this.chainQueue = this.chainQueue.filter((queued) => queued.record.id !== chain.ownerAgentId);
     }
@@ -1393,6 +1465,7 @@ export class WrfcController {
     }
 
     chain.error = reason;
+    chain.failureKind = failureKind;
     chain.completedAt = Date.now();
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'failed', reason);
     this.cancelRunningChildren(chain);
@@ -1401,7 +1474,7 @@ export class WrfcController {
     });
     this.completeOwnerAgent(chain, 'failed', reason);
     this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_failed', reason });
-    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason });
+    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason, failureKind });
 
     logger.error('WrfcController.failChain', { chainId: chain.id, reason });
     this.scheduleChainCleanup(chain);
@@ -1590,6 +1663,7 @@ export class WrfcController {
       constraints: [],
       constraintsEnumerated: false,
       createdAt: Date.now(),
+      transportRetryCount: 0,
       ...(subtasks.length > 1 ? { subtasks } : {}),
     };
     this.chains.set(chain.id, chain);
@@ -2273,6 +2347,11 @@ export class WrfcController {
     if (selectedRoute?.reason) {
       record.wrfcRouteReason = selectedRoute.reason;
     }
+    // Remember how this child was spawned so a transport-classified failure of
+    // this exact agent can be retried later by respawning with identical inputs
+    // (see retryTransportFailure). Overwritten on every spawn — only ever
+    // describes the most recent child.
+    chain.lastChildSpawn = { agentId: record.id, role, template, task, dangerouslyDisableWrfc, subtaskId };
     return record;
   }
 
