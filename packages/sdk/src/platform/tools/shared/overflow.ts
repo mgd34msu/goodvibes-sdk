@@ -371,6 +371,21 @@ export interface OverflowHandlerConfig {
   featureFlags?: FeatureFlagReader | undefined;
 }
 
+/**
+ * headAndTail — keeps the first 20% and last 80% of `budget` characters from
+ * `content`, joined by a marker, instead of a head-only slice. The tail is
+ * weighted heavier because the most useful part of a long tool output (e.g.
+ * a failing test run's summary) is almost always at the end.
+ */
+function headAndTail(content: string, budget: number): string {
+  const headChars = Math.floor(budget * 0.2);
+  const tailChars = budget - headChars;
+  const head = content.slice(0, headChars);
+  const tail = content.slice(-tailChars);
+  const skipped = content.length - headChars - tailChars;
+  return `${head}\n[... ${skipped} chars omitted ...]\n${tail}`;
+}
+
 // ─── OverflowHandler ────────────────────────────────────────────────────────
 
 /**
@@ -440,9 +455,15 @@ export class OverflowHandler {
       entry = null;
     }
 
+    // Keep head + tail rather than head-only: test runners (bun test, vitest,
+    // jest) print their failure summary at the very end of output, so a
+    // head-only truncation silently drops the actually-informative part of a
+    // long failing run.
+    const kept = headAndTail(content, maxChars);
+
     if (!entry) {
       return {
-        content: content.slice(0, maxChars) + `\n[... truncated at ${maxChars} chars]`,
+        content: kept + `\n[... truncated at ${maxChars} chars]`,
       };
     }
 
@@ -452,7 +473,7 @@ export class OverflowHandler {
       : `Spilled to ${this.backend.type} backend (ref: ${ref})`;
 
     return {
-      content: content.slice(0, maxChars) + `\n[... truncated. ${notice}]`,
+      content: kept + `\n[... truncated. ${notice}]`,
       overflowRef: ref,
       spillBackend: this.backend.type,
     };
