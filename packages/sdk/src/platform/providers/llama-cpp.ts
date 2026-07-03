@@ -93,7 +93,7 @@ export class LlamaCppProvider implements LLMProvider {
         return this.compatProvider.chat(params);
       }
       return this.chatViaNonStreamingCompat(params, params.model || this.defaultModel);
-    }), { provider: this.name, model: params.model || this.defaultModel })).result;
+    }, undefined, params.onRetry), { provider: this.name, model: params.model || this.defaultModel })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

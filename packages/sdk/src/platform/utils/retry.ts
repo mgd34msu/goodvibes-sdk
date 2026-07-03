@@ -69,12 +69,14 @@ function computeDelay(attempt: number, initialDelayMs: number, maxDelayMs: numbe
  *
  * @param fn - Async function to execute.
  * @param config - Optional overrides for retry behaviour.
- * @param onRetry - Optional callback invoked before each retry.
+ * @param onRetry - Optional callback invoked before each retry. Argument order
+ *   (attempt, maxAttempts, delayMs, error) matches `ChatRequest.onRetry` so
+ *   providers can pass it straight through without an adapter.
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
   config?: Partial<RetryConfig>,
-  onRetry?: (attempt: number, error: Error, delayMs: number) => void
+  onRetry?: (attempt: number, maxAttempts: number, delayMs: number, error: Error) => void
 ): Promise<T> {
   const cfg: RetryConfig = { ...DEFAULT_CONFIG, ...config };
   let lastError: Error = new Error('Unknown error');
@@ -94,7 +96,7 @@ export async function withRetry<T>(
       }
 
       const delayMs = computeDelay(attempt, cfg.initialDelayMs, cfg.maxDelayMs);
-      onRetry?.(attempt + 1, lastError, delayMs);
+      onRetry?.(attempt + 1, cfg.maxRetries, delayMs, lastError);
       await sleep(delayMs);
     }
   }

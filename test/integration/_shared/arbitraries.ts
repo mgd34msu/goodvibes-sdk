@@ -396,6 +396,7 @@ export const FIXTURE_EVENTS: ReadonlyArray<{ type: string } & Record<string, unk
   { type: 'STREAM_START', turnId: 't1' } satisfies TurnEvent,
   { type: 'STREAM_DELTA', turnId: 't1', content: 'hi', accumulated: 'hi' } satisfies TurnEvent,
   { type: 'STREAM_END', turnId: 't1' } satisfies TurnEvent,
+  { type: 'STREAM_RETRY', turnId: 't1', provider: 'anthropic', attempt: 1, maxAttempts: 3, delayMs: 1000, reason: 'connection reset' } satisfies TurnEvent,
   { type: 'LLM_RESPONSE_RECEIVED', turnId: 't1', provider: 'anthropic', model: 'claude-4', content: 'hi', toolCallCount: 0, inputTokens: 10, outputTokens: 5 } satisfies TurnEvent,
   { type: 'TOOL_BATCH_READY', turnId: 't1', toolCalls: ['bash'] } satisfies TurnEvent,
   { type: 'TOOLS_DONE', turnId: 't1' } satisfies TurnEvent,

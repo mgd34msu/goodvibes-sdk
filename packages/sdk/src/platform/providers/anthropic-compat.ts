@@ -103,7 +103,7 @@ export class AnthropicCompatProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort } = params;
+    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry, reasoningEffort } = params;
 
     return (await instrumentedLlmCall(
       () => withRetry(async () => {
@@ -196,7 +196,7 @@ export class AnthropicCompatProvider implements LLMProvider {
         stopReason: resolveCompletedStopReason(state.stopReason, text),
         ...withProviderStopReason(state.rawStopReason),
       };
-    }), { provider: this.name, model: model ?? this.defaultModel })).result;
+    }, undefined, onRetry), { provider: this.name, model: model ?? this.defaultModel })).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
