@@ -419,6 +419,62 @@ describe('WrfcController — happy path', () => {
     h.controller.dispose();
   });
 
+  test('completeOwnerAgent rolls up real usage and tool-call counts from chain phase agents into owner.usage', async () => {
+    // The WRFC owner never runs an LLM turn itself (it only supervises), so its
+    // own AgentRecord.usage/toolCallCount stay at the spawn-time zero default
+    // forever unless something rolls up the real numbers its phase children
+    // (engineer, reviewer, ...) accumulated. This is the read path
+    // AgentManager.getStatus()/list() actually serve to TUI per-agent surfaces.
+    const h = createHarness();
+
+    const ownerRecord = h.addAgent('owner-1', 'implement feature X');
+    const chain = h.controller.createChain(ownerRecord);
+
+    // Engineer accumulates real usage the way orchestrator-runner.ts's turn
+    // loop does in production, mutating the AgentRecord in place.
+    const engineerRecord = h.agentStore.get(chain.engineerAgentId!)!;
+    engineerRecord.usage = {
+      inputTokens: 1000,
+      outputTokens: 300,
+      cacheReadTokens: 50,
+      cacheWriteTokens: 10,
+      llmCallCount: 2,
+      turnCount: 2,
+    };
+    engineerRecord.toolCallCount = 4;
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    reviewerRecord.usage = {
+      inputTokens: 500,
+      outputTokens: 150,
+      cacheReadTokens: 20,
+      cacheWriteTokens: 0,
+      llmCallCount: 1,
+      turnCount: 1,
+    };
+    reviewerRecord.toolCallCount = 2;
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    const owner = h.agentStore.get('owner-1')!;
+    expect(owner.usage).toEqual({
+      inputTokens: 1500,
+      outputTokens: 450,
+      cacheReadTokens: 70,
+      cacheWriteTokens: 10,
+      llmCallCount: 3,
+      turnCount: 3,
+    });
+    expect(owner.toolCallCount).toBe(6);
+
+    h.controller.dispose();
+  });
+
   test('autoCommit (commitScope: all) commits direct workspace changes and merges only write-capable WRFC agents', async () => {
     // commitScope: 'all' pins today's legacy full-tree `git add -A` behavior explicitly —
     // 'scoped' is now the default (see the commitScope tests below), so this test opts into

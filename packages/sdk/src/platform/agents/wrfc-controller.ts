@@ -2496,6 +2496,15 @@ export class WrfcController {
     owner.completedAt = Date.now();
     owner.progress = message;
     owner.fullOutput = message;
+    // The owner never runs an LLM turn itself (it only supervises phase
+    // children), so its own usage/toolCallCount stay at the spawn-time zero
+    // default forever unless rolled up here from the real numbers its phase
+    // agents accumulated. This is what makes AgentManager.getStatus()/list()
+    // — the read path TUI per-agent surfaces actually use — return real data
+    // for the owner instead of the never-updated zeros (WO-305 wired the
+    // AGENT_COMPLETED.usage forwarding but nothing populated the source).
+    owner.usage = this.aggregateChainUsage(chain);
+    owner.toolCallCount = this.aggregateChainToolCallCount(chain);
     chain.ownerTerminalEmitted = true;
     const context = {
       sessionId: this.sessionId,
@@ -2519,6 +2528,69 @@ export class WrfcController {
         error: message,
       });
     }
+  }
+
+  /**
+   * Roll up token usage across every agent that has ever run under this
+   * chain (the owner plus all phase/subtask children, across every review
+   * and fix cycle — `chain.allAgentIds` already tracks the full roster for
+   * worktree cleanup, so it doubles as the usage-aggregation source). Each
+   * contributor's usage is added in, including the owner's own (normally
+   * zero, but summed rather than ignored in case it is ever populated
+   * directly). Optional fields (reasoningTokens/reasoningSummaryCount) are
+   * only included in the result if at least one contributor reported them,
+   * matching AgentUsage's undefined-means-no-data convention for those.
+   */
+  private aggregateChainUsage(chain: WrfcChain): NonNullable<AgentRecord['usage']> {
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let cacheReadTokens = 0;
+    let cacheWriteTokens = 0;
+    let llmCallCount = 0;
+    let turnCount = 0;
+    let reasoningTokens = 0;
+    let hasReasoningTokens = false;
+    let reasoningSummaryCount = 0;
+    let hasReasoningSummaryCount = false;
+
+    for (const agentId of chain.allAgentIds) {
+      const usage = this.agentManager.getStatus(agentId)?.usage;
+      if (!usage) continue;
+      inputTokens += usage.inputTokens;
+      outputTokens += usage.outputTokens;
+      cacheReadTokens += usage.cacheReadTokens;
+      cacheWriteTokens += usage.cacheWriteTokens;
+      llmCallCount += usage.llmCallCount;
+      turnCount += usage.turnCount;
+      if (usage.reasoningTokens !== undefined) {
+        hasReasoningTokens = true;
+        reasoningTokens += usage.reasoningTokens;
+      }
+      if (usage.reasoningSummaryCount !== undefined) {
+        hasReasoningSummaryCount = true;
+        reasoningSummaryCount += usage.reasoningSummaryCount;
+      }
+    }
+
+    return {
+      inputTokens,
+      outputTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+      ...(hasReasoningTokens ? { reasoningTokens } : {}),
+      llmCallCount,
+      turnCount,
+      ...(hasReasoningSummaryCount ? { reasoningSummaryCount } : {}),
+    };
+  }
+
+  /** Roll up tool-call counts across every agent that has ever run under this chain. */
+  private aggregateChainToolCallCount(chain: WrfcChain): number {
+    let total = 0;
+    for (const agentId of chain.allAgentIds) {
+      total += this.agentManager.getStatus(agentId)?.toolCallCount ?? 0;
+    }
+    return total;
   }
 
   private upsertWrfcWorkPlanTask(
