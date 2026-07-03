@@ -76,6 +76,7 @@ export const KNOWN_EVENT_TYPES = new Set<string>([
   'SESSION_RECONCILING', 'SESSION_READY', 'SESSION_RECOVERY_FAILED',
   // turn
   'TURN_SUBMITTED', 'PREFLIGHT_OK', 'PREFLIGHT_FAIL', 'STREAM_START', 'STREAM_DELTA',
+  'STREAM_RETRY',
   'STREAM_END', 'LLM_RESPONSE_RECEIVED', 'TOOL_BATCH_READY', 'TOOLS_DONE',
   'POST_HOOKS_DONE', 'TURN_COMPLETED', 'TURN_ERROR', 'TURN_CANCEL',
   // providers
@@ -187,6 +188,7 @@ export const REQUIRED_FIELDS_BY_TYPE: Partial<Record<string, readonly string[]>>
   PREFLIGHT_FAIL: ['turnId', 'reason', 'stopReason'],
   STREAM_START: ['turnId'],
   STREAM_DELTA: ['turnId', 'content', 'accumulated'],
+  STREAM_RETRY: ['turnId', 'provider', 'attempt', 'maxAttempts', 'delayMs', 'reason'],
   STREAM_END: ['turnId'],
   LLM_RESPONSE_RECEIVED: ['turnId', 'provider', 'model', 'content', 'toolCallCount', 'inputTokens', 'outputTokens'],
   TOOL_BATCH_READY: ['turnId', 'toolCalls'],
