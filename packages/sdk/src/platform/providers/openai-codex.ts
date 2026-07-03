@@ -407,7 +407,7 @@ export async function chatWithOpenAICodex(
           phase: 'stream',
         });
       }
-    });
+    }, undefined, params.onRetry);
 }
 
 export class OpenAICodexProvider implements LLMProvider {

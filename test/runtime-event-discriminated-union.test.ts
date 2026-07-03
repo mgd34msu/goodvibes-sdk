@@ -146,6 +146,8 @@ function exhaustiveTurnSwitch(event: TurnEvent): string {
       return event.content;
     case 'STREAM_END':
       return event.turnId;
+    case 'STREAM_RETRY':
+      return event.provider;
     case 'LLM_RESPONSE_RECEIVED':
       return event.model;
     case 'TOOL_BATCH_READY':

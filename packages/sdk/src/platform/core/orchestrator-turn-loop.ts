@@ -20,6 +20,7 @@ import {
   emitPreflightOk,
   emitStreamDelta,
   emitStreamEnd,
+  emitStreamRetry,
   emitStreamStart,
   emitTurnError,
 } from '../runtime/emitters/index.js';
@@ -213,6 +214,8 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         promptSummary: '<redacted-length-unknown>',
       });
     }
+    const chatStartedAt = Date.now();
+    let chatRetries = 0;
     try {
       const baseSystemPrompt = appendGoodVibesRuntimeAwarenessPrompt(context.getSystemPrompt());
       const wrfcRoutingPrompt = buildWrfcWorkflowRoutingPrompt(context.text);
@@ -229,6 +232,19 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         })(),
         signal: context.getAbortSignal(),
         onDelta,
+        onRetry: (attempt, maxAttempts, delayMs, error) => {
+          chatRetries = attempt;
+          if (context.runtimeBus) {
+            emitStreamRetry(context.runtimeBus, context.emitterContext(context.turnId), {
+              turnId: context.turnId,
+              provider: model.provider,
+              attempt,
+              maxAttempts,
+              delayMs,
+              reason: error.message,
+            });
+          }
+        },
       });
     } catch (chatErr) {
       if (streamEnabled) {
@@ -342,6 +358,8 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         outputTokens: response.usage.outputTokens,
         cacheReadTokens: response.usage.cacheReadTokens,
         cacheWriteTokens: response.usage.cacheWriteTokens,
+        durationMs: Date.now() - chatStartedAt,
+        retries: chatRetries,
       });
     }
 
