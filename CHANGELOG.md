@@ -6,6 +6,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-07-03
+
+Wave 0 "trust repairs" from the goodvibes-tui live-dogfooding effort: every fix closes a defect reproduced against v1.0.0 of the TUI where the SDK reported something other than the truth to the model or the user.
+
+### Added
+- `@pellux/goodvibes-sdk`: `STREAM_RETRY` TurnEvent — in-flight provider `chat()` retries (the withRetry backoff path) now emit an observable event with attempt/max fields so consumers can render honest "reconnecting" state instead of a frozen spinner.
+- `@pellux/goodvibes-sdk`: optional `usage` payload on `AGENT_COMPLETED` events, and `AgentRecord.usage`/`toolCallCount` are now populated with real values on completion — including WRFC owner agents, which aggregate usage across every child agent in the chain (previously permanent zeros).
+- `@pellux/goodvibes-sdk`: WRFC auto-commit policy config (`off | scoped | all`, default `scoped`) and a `paths` parameter on `AgentWorktree.commitWorkingTree`.
+- `@pellux/goodvibes-sdk`: bounded WRFC transport-failure retry (default 1, configurable) with an observable chain failure state carrying the reason — a chain whose agent transport dies can never again evaporate silently.
+
+### Fixed
+- `@pellux/goodvibes-sdk`: **Tool failures no longer masked as "Unknown error"** — `ConversationManager.addToolResults` discarded `result.output` whenever `success` was false, so a failing test suite's exit code/stdout/stderr (which the exec tool returns faithfully in `output`) never reached the model. Output is now always preserved; the exec tool additionally sets a top-level one-line `error` summary when any command fails.
+- `@pellux/goodvibes-sdk`: **Output truncation now preserves the tail** (head 20% + tail 80%) instead of keeping only the head — test runners print failures at the end, so head-only truncation kept the progress dots and silently dropped the failing assertion. The honest truncation marker is unchanged.
+- `@pellux/goodvibes-sdk`: **WRFC auto-commit no longer sweeps the whole dirty working tree** — commits are scoped to the files the chain actually touched (from its own edit ledger), with full untruncated commit messages. Unrelated dirty/untracked files are left alone.
+- `@pellux/goodvibes-sdk`: the exec phase timeout now honors a caller-supplied `timeout_ms` larger than the phase default, so long full-suite runs are not killed at the generic deadline.
+
+### Notes
+- Known follow-ups (documented, non-blocking): scoped-commit deletion paths must be repo-relative (absolute/'./'-prefixed self-reports are dropped, failing safe); the transport-retry budget is chain-global; `isTransportFailureMessage` deliberately matches broad substrings and can over-retry (bounded). Cooperative cancellation (AbortSignal through `Tool.execute`) remains unwired for all phased tools — an orphaned-child-process risk tracked for the orchestration wave.
+
 ## [0.35.0] - 2026-06-30
 
 Full deep-review audit of the SDK: 55 adversarially-verified findings fixed across all 10 subsystem areas (providers, core orchestrator/compaction, agents/WRFC, runtime, channels/operator, tools/mcp/permissions/hooks, transports/contracts, data subsystems, cross-cutting).
