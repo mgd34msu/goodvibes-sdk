@@ -2,10 +2,26 @@ import type { ConfigManager } from '../config/manager.js';
 import type { AgentManager } from '../tools/agent/index.js';
 
 export type AgentManagerLike = Pick<AgentManager, 'spawn' | 'getStatus' | 'list' | 'cancel' | 'listByCohort' | 'clear'>;
+export type WrfcCommitScope = 'off' | 'scoped' | 'all';
+
+const WRFC_COMMIT_SCOPES: readonly WrfcCommitScope[] = ['off', 'scoped', 'all'];
+
+function isWrfcCommitScope(value: unknown): value is WrfcCommitScope {
+  return typeof value === 'string' && (WRFC_COMMIT_SCOPES as readonly string[]).includes(value);
+}
+
 export type WrfcConfigLike = {
   scoreThreshold: number;
   maxFixAttempts: number;
   autoCommit: boolean;
+  /**
+   * Scope of files staged on WRFC auto-commit:
+   * - 'off': never commit on gate pass.
+   * - 'scoped' (default): stage only the paths the chain's own completion reports claim
+   *   to have touched (see collectChainTouchedPaths in wrfc-controller.ts).
+   * - 'all': legacy full-tree `git add -A` sweep.
+   */
+  commitScope: WrfcCommitScope;
   gates: Array<{ name: string; command: string; enabled: boolean }>;
   /**
    * How long (in ms) to wait for an agent event before treating a running agent
@@ -35,6 +51,9 @@ export function readWrfcConfig(configManager: WrfcConfigReader): WrfcConfigLike 
       typeof configManager.get('wrfc.autoCommit') === 'boolean'
         ? (configManager.get('wrfc.autoCommit') as boolean)
         : wrfcConfig?.autoCommit ?? false,
+    commitScope: isWrfcCommitScope(configManager.get('wrfc.commitScope'))
+      ? (configManager.get('wrfc.commitScope') as WrfcCommitScope)
+      : isWrfcCommitScope(wrfcConfig?.commitScope) ? wrfcConfig!.commitScope : 'scoped',
     gates: Array.isArray(wrfcConfig?.gates) ? wrfcConfig.gates : [],
     agentHeartbeatTimeoutMs: Number.isFinite(rawHeartbeat)
       ? (rawHeartbeat as number)
@@ -56,6 +75,10 @@ export function getWrfcMaxFixAttempts(configManager: WrfcConfigReader): number {
 
 export function getWrfcAutoCommit(configManager: WrfcConfigReader): boolean {
   return readWrfcConfig(configManager).autoCommit ?? false;
+}
+
+export function getWrfcCommitScope(configManager: WrfcConfigReader): WrfcCommitScope {
+  return readWrfcConfig(configManager).commitScope ?? 'scoped';
 }
 
 export function getEnabledWrfcGates(configManager: WrfcConfigReader): WrfcConfigLike['gates'] {

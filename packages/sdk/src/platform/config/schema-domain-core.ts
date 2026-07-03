@@ -105,6 +105,7 @@ export const coreConfigDefaults = {
     scoreThreshold: 9.9,
     maxFixAttempts: 5,
     autoCommit: true,
+    commitScope: 'scoped',
     agentHeartbeatTimeoutMs: 0,
     gates: [
       { name: 'typecheck', command: 'npx tsc --noEmit', enabled: true },
@@ -614,6 +615,13 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: true,
     description: 'Auto-commit when WRFC chain passes review and quality gates',
+  },
+  {
+    key: 'wrfc.commitScope',
+    type: 'enum',
+    default: 'scoped',
+    description: 'Scope of files staged on WRFC auto-commit: off (never commit), scoped (only chain-touched files, default), all (legacy full-tree git add -A)',
+    enumValues: ['off', 'scoped', 'all'],
   },
   {
     key: 'wrfc.agentHeartbeatTimeoutMs',

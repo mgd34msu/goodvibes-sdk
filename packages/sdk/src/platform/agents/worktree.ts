@@ -79,23 +79,57 @@ export class AgentWorktree {
     return true;
   }
 
-  async commitWorkingTree(message: string): Promise<string | null> {
+  /**
+   * @param paths When provided (non-empty), stage only these paths instead of sweeping the
+   * whole working tree. Paths are self-reported LLM claims, not ground truth, so they are
+   * filtered before staging: a path that exists on disk (created/modified) is kept outright;
+   * a path that does not exist is kept only if `git ls-files` shows it as tracked (a real
+   * deletion), otherwise it is a hallucinated path and dropped. This matters because
+   * `git add -A -- <path>` throws "pathspec did not match any files" for a path that is
+   * neither on disk nor known to git — a single bad claim must not fail the whole batch.
+   * Omit (or pass an empty array) to keep the legacy `git add --all` sweep for back-compat.
+   */
+  async commitWorkingTree(message: string, paths?: string[]): Promise<string | null> {
     const git = simpleGit({ baseDir: this.git.getCwd() });
-    const status = await git.raw([
-      'status',
-      '--porcelain',
-      '--untracked-files=all',
-      '--',
-      '.',
-      ':(exclude).goodvibes',
-      ':(exclude).goodvibes/**',
-    ]);
-    if (status.trim().length === 0) {
-      logger.debug('AgentWorktree.commitWorkingTree: no direct working tree changes');
-      return null;
+    const scoped = paths && paths.length > 0 ? paths : null;
+
+    if (scoped) {
+      const cwd = this.git.getCwd();
+      const onDisk = scoped.filter((p) => existsSync(join(cwd, p)));
+      const maybeDeleted = scoped.filter((p) => !onDisk.includes(p));
+      let trackedDeleted: string[] = [];
+      if (maybeDeleted.length > 0) {
+        const tracked: string = await git.raw(['ls-files', '--', ...maybeDeleted]);
+        const trackedSet = new Set(tracked.split('\n').map((line: string) => line.trim()).filter(Boolean));
+        trackedDeleted = maybeDeleted.filter((p) => trackedSet.has(p));
+      }
+      const existingPaths = [...onDisk, ...trackedDeleted];
+      if (existingPaths.length === 0) {
+        logger.debug('AgentWorktree.commitWorkingTree: no scoped paths exist on disk or in the index, nothing to stage', {
+          claimedPaths: scoped,
+        });
+        return null;
+      }
+      // -A (not plain add) scoped to just these pathspecs so confirmed deletions are staged
+      // too (plain `git add <path>` silently no-ops on a path that no longer exists on disk).
+      await git.raw(['add', '-A', '--', ...existingPaths]);
+    } else {
+      const status = await git.raw([
+        'status',
+        '--porcelain',
+        '--untracked-files=all',
+        '--',
+        '.',
+        ':(exclude).goodvibes',
+        ':(exclude).goodvibes/**',
+      ]);
+      if (status.trim().length === 0) {
+        logger.debug('AgentWorktree.commitWorkingTree: no direct working tree changes');
+        return null;
+      }
+      await git.raw(['add', '--all', '--', '.', ':(exclude).goodvibes', ':(exclude).goodvibes/**']);
     }
 
-    await git.raw(['add', '--all', '--', '.', ':(exclude).goodvibes', ':(exclude).goodvibes/**']);
     try {
       const result = await this.git.commit(message, {
         fallbackIdentity: { name: 'GoodVibes', email: 'goodvibes@local' },
