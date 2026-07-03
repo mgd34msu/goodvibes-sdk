@@ -200,9 +200,14 @@ export class ConversationManager {
 
   public addToolResults(results: ToolResult[]): void {
     for (const result of results) {
-      const content = result.success
-        ? (result.output ?? 'Tool completed successfully.')
-        : `Error: ${result.error ?? 'Unknown error'}`;
+      // `output` must never be silently dropped on failure — many tools (e.g. exec)
+      // put the full diagnostic payload (exit code, stdout, stderr) in `output` even
+      // when `success` is false, and leave `error` unset for that failure shape.
+      const content = result.output !== undefined
+        ? (result.success ? result.output : `Error: ${result.error ? result.error + '\n' : ''}${result.output}`)
+        : result.success
+          ? 'Tool completed successfully.'
+          : `Error: ${result.error ?? 'Unknown error'}`;
       const toolName = this.findToolName(result.callId);
       this.messages.push({
         role: 'tool',

@@ -29,8 +29,19 @@ export async function executePhase(
   const effectiveArgs = record._updatedArgs ?? call.arguments;
 
   // Resolve timeout: per-phase override → budget → default
-  const timeoutMs =
+  let timeoutMs =
     config?.phaseTimeouts?.['executing'] ?? context.budget?.maxMs ?? DEFAULT_EXECUTE_TIMEOUT_MS;
+
+  // The exec tool accepts its own `timeout_ms` input for long-running commands
+  // (e.g. a full test suite). Never let the phase deadline undercut a caller-
+  // requested exec timeout — otherwise the phase times out the call while the
+  // underlying command legitimately still has time left to run.
+  if (call.name === 'exec') {
+    const requestedTimeoutMs = (effectiveArgs as Record<string, unknown>)['timeout_ms'];
+    if (typeof requestedTimeoutMs === 'number' && requestedTimeoutMs > timeoutMs) {
+      timeoutMs = requestedTimeoutMs;
+    }
+  }
 
   let timer: ReturnType<typeof setTimeout> | undefined;
 
