@@ -189,6 +189,16 @@ export interface WrfcChain {
    * false = verification ran and found missing claims (phantom work detected).
    */
   claimsVerified?: boolean | undefined;
+  /**
+   * Running ledger of paths (filesCreated/filesModified/filesDeleted) self-reported by every
+   * engineer/fixer/integrator completion across the chain's lifetime — including subtask
+   * completions on compound chains. Appended to incrementally (not derived from a single
+   * "latest report" field) so it still reflects fixer/re-fix passes after resume, and so a
+   * pre-interruption pass is never lost. Consumed by collectChainTouchedPaths() to scope
+   * the auto-commit `git add` when wrfc.commitScope is 'scoped'. Self-reported, not ground
+   * truth — see verifyEngineerClaims for the same accuracy caveat.
+   */
+  touchedPaths?: string[] | undefined;
 }
 
 /** Quality gate definition. */
