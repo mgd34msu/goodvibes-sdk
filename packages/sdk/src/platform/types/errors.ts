@@ -1,4 +1,4 @@
-import { GoodVibesSdkError, RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors';
+import { GoodVibesSdkError, HttpStatusError, RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors';
 
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
@@ -273,6 +273,70 @@ export function isContextSizeExceededError(err: unknown): boolean {
     msg.includes('exceeds the model') ||
     (msg.includes('context') && msg.includes('exceed'))
   );
+}
+
+/**
+ * Message substrings that indicate a transient network/transport failure when the
+ * error object itself carries no structured classification (e.g. a plain Error
+ * surfaced through a code path that doesn't go through transport-http). Kept
+ * narrow-ish but includes the bare "socket" and "closed unexpectedly" wording seen
+ * in practice for abrupt connection-closure failures that the older, stricter
+ * substring list did not recognize.
+ */
+const TRANSPORT_FAILURE_MESSAGE_PATTERNS = [
+  'fetch failed',
+  'econnrefused',
+  'enotfound',
+  'network error',
+  'network timeout',
+  'networkerror',
+  'econnreset',
+  'etimedout',
+  'socket hang up',
+  'dns',
+  'connection lost',
+  'epipe',
+  'ehostunreach',
+  'socket connection closure',
+  'closed unexpectedly',
+  'socket',
+];
+
+/**
+ * Returns true when an error message (already reduced to a plain string, e.g. after
+ * having crossed an event-bus boundary) looks like a transient network/transport
+ * failure. This is a best-effort, message-only heuristic — prefer
+ * {@link isNetworkTransportError} whenever the original error object is still
+ * available, since it trusts the structured classification instead of guessing
+ * from text.
+ */
+export function isTransportFailureMessage(message: string): boolean {
+  const msg = message.toLowerCase();
+  return TRANSPORT_FAILURE_MESSAGE_PATTERNS.some((pattern) => msg.includes(pattern));
+}
+
+/**
+ * Returns true when the error indicates a transient network/transport failure
+ * (as opposed to a programmer error or a permanent provider rejection).
+ *
+ * When the error is an `HttpStatusError` (e.g. produced by
+ * `createNetworkTransportError` in `@pellux/transport-http`), its structured
+ * `category`/`recoverable` fields are trusted directly rather than re-derived
+ * from the message text — that classification already accounts for TypeErrors,
+ * POSIX network errno codes, and undici `UND_ERR_*` codes. The `instanceof`
+ * check is branded (see HttpStatusError's Symbol.hasInstance), so a plain object
+ * that merely happens to carry `recoverable`/`category` properties will not be
+ * mistaken for one and trigger a false-positive retry.
+ *
+ * Falls back to {@link isTransportFailureMessage} for errors that are not an
+ * HttpStatusError instance.
+ */
+export function isNetworkTransportError(err: unknown): boolean {
+  if (err instanceof HttpStatusError) {
+    return err.category === 'network' && err.recoverable === true;
+  }
+  if (!(err instanceof Error)) return false;
+  return isTransportFailureMessage(err.message);
 }
 
 /**

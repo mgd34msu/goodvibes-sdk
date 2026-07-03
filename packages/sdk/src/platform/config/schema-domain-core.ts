@@ -106,6 +106,8 @@ export const coreConfigDefaults = {
     maxFixAttempts: 5,
     autoCommit: true,
     agentHeartbeatTimeoutMs: 0,
+    transportRetryLimit: 1,
+    transportRetryDelayMs: 5000,
     gates: [
       { name: 'typecheck', command: 'npx tsc --noEmit', enabled: true },
       { name: 'lint', command: 'npx eslint . --max-warnings 0', enabled: true },
@@ -621,6 +623,20 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     default: 0,
     description: 'Watchdog timeout in ms for silent WRFC child agents. 0 = disabled.',
     validate: (v) => typeof v === 'number' && v >= 0,
+  },
+  {
+    key: 'wrfc.transportRetryLimit',
+    type: 'number',
+    default: 1,
+    description: 'How many times a WRFC chain auto-retries a transport/network-classified child-agent failure (respawning the same role) before failing the chain. 0 disables the retry.',
+    ...numRange(0, 5),
+  },
+  {
+    key: 'wrfc.transportRetryDelayMs',
+    type: 'number',
+    default: 5000,
+    description: 'Backoff delay in ms before respawning a WRFC child agent after a transport-classified failure.',
+    ...numRange(0, 60000),
   },
   {
     key: 'cache.enabled',
