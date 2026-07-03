@@ -4,6 +4,7 @@
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { EmitterContext } from './index.js';
+import type { AgentUsage } from '../../../events/agents.js';
 
 /** Emit AGENT_SPAWNING when an agent is being initialised. */
 export function emitAgentSpawning(
@@ -97,7 +98,14 @@ export function emitAgentFinalizing(
 export function emitAgentCompleted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { agentId: string; taskId?: string; durationMs: number; output?: string; toolCallsMade?: number }
+  data: {
+    agentId: string;
+    taskId?: string;
+    durationMs: number;
+    output?: string;
+    toolCallsMade?: number;
+    usage?: AgentUsage | undefined;
+  }
 ): void {
   bus.emit('agents', createEventEnvelope('AGENT_COMPLETED', { type: 'AGENT_COMPLETED', ...data }, ctx));
 }

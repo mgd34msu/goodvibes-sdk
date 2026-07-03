@@ -12,7 +12,7 @@ import type { ModelDefinition } from '../providers/registry-types.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { logger } from '../utils/logger.js';
 import { ConsecutiveErrorBreaker } from '../core/circuit-breaker.js';
-import { isRateLimitOrQuotaError, isContextSizeExceededError } from '../types/errors.js';
+import { isRateLimitOrQuotaError, isContextSizeExceededError, isNetworkTransportError } from '../types/errors.js';
 import { AgentSession } from './session.js';
 import type { ProviderOptimizer } from '../providers/optimizer.js';
 import {
@@ -57,7 +57,13 @@ export interface AgentOrchestratorRunContext {
   readonly emitOrchestrationCancelled: (record: AgentRecord, reason: string) => void;
   readonly emitAgentFailedEvent: (recordId: string, error: string, durationMs: number) => void;
   readonly emitOrchestrationFailed: (record: AgentRecord, error: string) => void;
-  readonly emitAgentCompletedEvent: (recordId: string, durationMs: number, output: string, toolCallsMade: number) => void;
+  readonly emitAgentCompletedEvent: (
+    recordId: string,
+    durationMs: number,
+    output: string,
+    toolCallsMade: number,
+    usage: AgentRecord['usage'] | undefined,
+  ) => void;
   readonly emitOrchestrationCompleted: (record: AgentRecord, output: string) => void;
   readonly emitStreamDelta: (recordId: string, content: string, accumulated: string) => void;
   readonly processManager?: ProcessManager | undefined;
@@ -133,26 +139,6 @@ export function resolveContextWindowModelDefinition(
         model.id === activeRoute.requestedModelId
       ),
   ) ?? providerRegistry.getCurrentModel();
-}
-
-function isNetworkError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  const msg = err.message.toLowerCase();
-  return (
-    msg.includes('fetch failed') ||
-    msg.includes('econnrefused') ||
-    msg.includes('enotfound') ||
-    msg.includes('network error') ||
-    msg.includes('network timeout') ||
-    msg.includes('networkerror') ||
-    msg.includes('econnreset') ||
-    msg.includes('etimedout') ||
-    msg.includes('socket hang up') ||
-    msg.includes('dns') ||
-    msg.includes('connection lost') ||
-    msg.includes('epipe') ||
-    msg.includes('ehostunreach')
-  );
 }
 
 function applyContextWindowAwareness(
@@ -323,6 +309,7 @@ async function finalizeAgentRun(
       (record.completedAt ?? Date.now()) - record.startedAt,
       record.fullOutput ?? '',
       record.toolCallCount,
+      record.usage,
     );
     context.emitOrchestrationCompleted(record, record.fullOutput ?? '');
   }
@@ -611,7 +598,7 @@ export async function runAgentTask(
               record.progress = `Model fallback → ${activeRouteId}`;
               context.emitAgentProgress(record.id, record.progress);
               context.emitOrchestrationProgress(record, record.progress);
-            } else if (isNetworkError(chatErr) && networkAttempt < NETWORK_RETRY_DELAYS_MS.length) {
+            } else if (isNetworkTransportError(chatErr) && networkAttempt < NETWORK_RETRY_DELAYS_MS.length) {
               const delayMs = NETWORK_RETRY_DELAYS_MS[networkAttempt]!;
               const delaySec = Math.round(delayMs / 1000);
               logger.warn(

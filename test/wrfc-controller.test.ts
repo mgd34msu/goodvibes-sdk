@@ -12,7 +12,7 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -138,7 +138,11 @@ interface TestHarness {
   mergedAgentIds: string[];
   cleanedAgentIds: string[];
   directCommitMessages: string[];
+  /** Paths passed to each commitWorkingTree() call, in call order (undefined = no paths arg). */
+  directCommitPaths: Array<string[] | undefined>;
   currentHeadCalls: number;
+  /** The project root the controller was constructed with (real tmpdir when gitRepo: true). */
+  projectRoot: string;
   /** Register a record output so getStatus() returns it. */
   setOutput(agentId: string, fullOutput: string): void;
   /** Spawn a new agent record and register it. */
@@ -156,6 +160,9 @@ function createHarness(overrides?: {
   maxFixAttempts?: number;
   autoCommit?: boolean;
   gitRepo?: boolean;
+  transportRetryLimit?: number;
+  transportRetryDelayMs?: number;
+  commitScope?: 'off' | 'scoped' | 'all';
 }): TestHarness {
   const bus = new RuntimeEventBus();
   const agentStore = new Map<string, AgentRecord>();
@@ -165,6 +172,7 @@ function createHarness(overrides?: {
   const mergedAgentIds: string[] = [];
   const cleanedAgentIds: string[] = [];
   const directCommitMessages: string[] = [];
+  const directCommitPaths: Array<string[] | undefined> = [];
   let currentHeadCalls = 0;
 
   // Capture workflow events
@@ -178,6 +186,11 @@ function createHarness(overrides?: {
   const threshold = overrides?.scoreThreshold ?? 9.9;
   const maxFixAttempts = overrides?.maxFixAttempts ?? 3;
   const autoCommit = overrides?.autoCommit ?? false;
+  const transportRetryLimit = overrides?.transportRetryLimit ?? 1;
+  // Real (short) delay by default so retry tests don't need fake timers; override
+  // to 0 for near-instant retry assertions.
+  const transportRetryDelayMs = overrides?.transportRetryDelayMs ?? 10;
+  const commitScope = overrides?.commitScope ?? 'scoped';
   const projectRoot = overrides?.gitRepo ? mkdtempSync(join(tmpdir(), 'wrfc-controller-')) : '/tmp/test-project';
   if (overrides?.gitRepo) {
     mkdirSync(join(projectRoot, '.git'), { recursive: true });
@@ -188,6 +201,9 @@ function createHarness(overrides?: {
       if (key === 'wrfc.scoreThreshold') return threshold;
       if (key === 'wrfc.maxFixAttempts') return maxFixAttempts;
       if (key === 'wrfc.autoCommit') return autoCommit;
+      if (key === 'wrfc.transportRetryLimit') return transportRetryLimit;
+      if (key === 'wrfc.transportRetryDelayMs') return transportRetryDelayMs;
+      if (key === 'wrfc.commitScope') return commitScope;
       return undefined;
     },
     getCategory: (category: string): unknown => {
@@ -196,6 +212,9 @@ function createHarness(overrides?: {
           scoreThreshold: threshold,
           maxFixAttempts,
           autoCommit,
+          transportRetryLimit,
+          transportRetryDelayMs,
+          commitScope,
           gates: [] as Array<{ name: string; command: string; enabled: boolean }>,
         };
       }
@@ -240,8 +259,9 @@ function createHarness(overrides?: {
       cleanup: async (agentId: string) => {
         cleanedAgentIds.push(agentId);
       },
-      commitWorkingTree: async (message: string) => {
+      commitWorkingTree: async (message: string, paths?: string[]) => {
         directCommitMessages.push(message);
+        directCommitPaths.push(paths);
         return 'direct-commit-hash';
       },
       currentHead: async () => {
@@ -280,6 +300,8 @@ function createHarness(overrides?: {
     mergedAgentIds,
     cleanedAgentIds,
     directCommitMessages,
+    directCommitPaths,
+    projectRoot,
     get currentHeadCalls() {
       return currentHeadCalls;
     },
@@ -359,8 +381,105 @@ describe('WrfcController — happy path', () => {
     h.controller.dispose();
   });
 
-  test('autoCommit commits direct workspace changes and merges only write-capable WRFC agents', async () => {
-    const h = createHarness({ autoCommit: true, gitRepo: true });
+  test('completeOwnerAgent forwards owner.usage into the emitted AGENT_COMPLETED event', async () => {
+    const h = createHarness();
+
+    const ownerRecord = h.addAgent('owner-1', 'implement feature X');
+    ownerRecord.usage = {
+      inputTokens: 1000,
+      outputTokens: 250,
+      cacheReadTokens: 40,
+      cacheWriteTokens: 20,
+      llmCallCount: 3,
+      turnCount: 3,
+    };
+    const chain = h.controller.createChain(ownerRecord);
+
+    const ownerCompletedEvents: Array<{ usage?: unknown }> = [];
+    h.bus.onDomain('agents', (envelope) => {
+      const payload = envelope.payload as { type: string; agentId: string; usage?: unknown };
+      if (payload.type === 'AGENT_COMPLETED' && payload.agentId === 'owner-1') {
+        ownerCompletedEvents.push(payload);
+      }
+    });
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(ownerCompletedEvents).toHaveLength(1);
+    expect(ownerCompletedEvents[0]?.usage).toEqual(ownerRecord.usage);
+
+    h.controller.dispose();
+  });
+
+  test('completeOwnerAgent rolls up real usage and tool-call counts from chain phase agents into owner.usage', async () => {
+    // The WRFC owner never runs an LLM turn itself (it only supervises), so its
+    // own AgentRecord.usage/toolCallCount stay at the spawn-time zero default
+    // forever unless something rolls up the real numbers its phase children
+    // (engineer, reviewer, ...) accumulated. This is the read path
+    // AgentManager.getStatus()/list() actually serve to TUI per-agent surfaces.
+    const h = createHarness();
+
+    const ownerRecord = h.addAgent('owner-1', 'implement feature X');
+    const chain = h.controller.createChain(ownerRecord);
+
+    // Engineer accumulates real usage the way orchestrator-runner.ts's turn
+    // loop does in production, mutating the AgentRecord in place.
+    const engineerRecord = h.agentStore.get(chain.engineerAgentId!)!;
+    engineerRecord.usage = {
+      inputTokens: 1000,
+      outputTokens: 300,
+      cacheReadTokens: 50,
+      cacheWriteTokens: 10,
+      llmCallCount: 2,
+      turnCount: 2,
+    };
+    engineerRecord.toolCallCount = 4;
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    reviewerRecord.usage = {
+      inputTokens: 500,
+      outputTokens: 150,
+      cacheReadTokens: 20,
+      cacheWriteTokens: 0,
+      llmCallCount: 1,
+      turnCount: 1,
+    };
+    reviewerRecord.toolCallCount = 2;
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    const owner = h.agentStore.get('owner-1')!;
+    expect(owner.usage).toEqual({
+      inputTokens: 1500,
+      outputTokens: 450,
+      cacheReadTokens: 70,
+      cacheWriteTokens: 10,
+      llmCallCount: 3,
+      turnCount: 3,
+    });
+    expect(owner.toolCallCount).toBe(6);
+
+    h.controller.dispose();
+  });
+
+  test('autoCommit (commitScope: all) commits direct workspace changes and merges only write-capable WRFC agents', async () => {
+    // commitScope: 'all' pins today's legacy full-tree `git add -A` behavior explicitly —
+    // 'scoped' is now the default (see the commitScope tests below), so this test opts into
+    // the legacy mode on purpose to keep exercising the merge-candidate-agent logic below.
+    const h = createHarness({ autoCommit: true, gitRepo: true, commitScope: 'all' });
 
     const ownerRecord = h.addAgent('owner-autocommit-1', 'implement auto commit feature');
     const chain = h.controller.createChain(ownerRecord);
@@ -375,7 +494,11 @@ describe('WrfcController — happy path', () => {
     await flushMicrotasks();
 
     expect(chain.state).toBe('passed');
-    expect(h.directCommitMessages).toEqual(['WRFC: implement auto commit feature']);
+    expect(h.directCommitMessages).toHaveLength(1);
+    expect(h.directCommitMessages[0]).toStartWith('WRFC: implement auto commit feature');
+    expect(h.directCommitMessages[0]).toContain('implement auto commit feature'); // untruncated body
+    // 'all' scope calls commitWorkingTree with no paths argument — the legacy full-tree sweep.
+    expect(h.directCommitPaths).toEqual([undefined]);
     expect(h.mergedAgentIds).toEqual([chain.engineerAgentId]);
     expect(h.mergedAgentIds).not.toContain(reviewerRecord.id);
     expect(h.cleanedAgentIds).toEqual(expect.arrayContaining(chain.allAgentIds));
@@ -385,7 +508,7 @@ describe('WrfcController — happy path', () => {
   });
 
   test('autoCommit merges the latest fixer output instead of superseded engineer output', async () => {
-    const h = createHarness({ autoCommit: true, gitRepo: true, maxFixAttempts: 2 });
+    const h = createHarness({ autoCommit: true, gitRepo: true, maxFixAttempts: 2, commitScope: 'all' });
 
     const ownerRecord = h.addAgent('owner-autocommit-fix-1', 'implement fixed auto commit feature');
     const chain = h.controller.createChain(ownerRecord);
@@ -593,6 +716,138 @@ describe('WrfcController — happy path', () => {
     expect(chain.state).toBe('integrating');
     expect(integrator.task).toContain('Engineer summary: fixed limiter implementation');
     expect(integrator.task).toContain('Engineer summary: logger implementation');
+
+    h.controller.dispose();
+  });
+});
+
+describe('WrfcController — wrfc.commitScope', () => {
+  test('commitScope: scoped (default) stages only the paths the chain\'s engineer report claims to have touched', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true }); // commitScope defaults to 'scoped'
+
+    const ownerRecord = h.addAgent('owner-scoped-1', 'implement scoped commit feature');
+    const chain = h.controller.createChain(ownerRecord);
+
+    // Claim verification checks the claimed paths against real disk state (projectRoot is a
+    // real tmpdir here), so write the files the engineer report claims to have touched.
+    mkdirSync(join(h.projectRoot, 'src'), { recursive: true });
+    writeFileSync(join(h.projectRoot, 'src', 'feature.ts'), 'export const feature = true;\n');
+    writeFileSync(join(h.projectRoot, 'src', 'index.ts'), 'export * from "./feature.js";\n');
+
+    // engineerReportOutput() always emits empty file lists, so build the JSON block directly
+    // here with concrete filesCreated/filesModified to exercise the scoped-staging path.
+    h.setOutput(chain.engineerAgentId!, [
+      '```json',
+      JSON.stringify({
+        version: 1,
+        archetype: 'engineer',
+        summary: 'Implemented the feature.',
+        gatheredContext: [],
+        plannedActions: [],
+        appliedChanges: ['Implemented the feature.'],
+        filesCreated: ['src/feature.ts'],
+        filesModified: ['src/index.ts'],
+        filesDeleted: [],
+        decisions: [],
+        issues: [],
+        uncertainties: [],
+        constraints: [],
+      }),
+      '```',
+    ].join('\n'));
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitPaths).toHaveLength(1);
+    expect(h.directCommitPaths[0]).toEqual(expect.arrayContaining(['src/feature.ts', 'src/index.ts']));
+    expect(h.directCommitPaths[0]).toHaveLength(2);
+
+    h.controller.dispose();
+  });
+
+  test('commitScope: off never calls commitWorkingTree or merge, but the chain still passes', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true, commitScope: 'off' });
+
+    const ownerRecord = h.addAgent('owner-scope-off-1', 'implement feature with commits disabled');
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitMessages).toEqual([]);
+    expect(h.mergedAgentIds).toEqual([]);
+
+    h.controller.dispose();
+  });
+
+  test('commitScope: scoped with an empty edit ledger skips the commit (no fallback to a full-tree sweep) but still passes the chain', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true }); // commitScope defaults to 'scoped'
+
+    const ownerRecord = h.addAgent('owner-scoped-empty-1', 'implement feature with no file claims');
+    const chain = h.controller.createChain(ownerRecord);
+
+    // Plain-prose engineer output parses to an EngineerReport shape with empty
+    // filesCreated/filesModified/filesDeleted (see parseEngineerCompletionReport's fallback) —
+    // this is the "empty ledger" case: a real chain, but nothing to scope a commit to.
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    // commitWorkingTree must never be called with paths omitted/empty as a silent fallback
+    // to the legacy full-tree sweep — an empty ledger means skip the commit entirely.
+    expect(h.directCommitMessages).toEqual([]);
+    expect(h.directCommitPaths).toEqual([]);
+
+    h.controller.dispose();
+  });
+
+  test('the WRFC auto-commit message includes the full, untruncated task in the body, not just the 72-char subject', async () => {
+    const h = createHarness({ autoCommit: true, gitRepo: true, commitScope: 'all' });
+
+    const longTask = 'Refactor the billing reconciliation pipeline so that partial-refund edge cases '
+      + 'are handled without corrupting the ledger, and add regression tests for every currency we support.';
+    expect(longTask.length).toBeGreaterThan(72);
+
+    const ownerRecord = h.addAgent('owner-long-task-1', longTask);
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'Implemented the refactor.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    expect(h.directCommitMessages).toHaveLength(1);
+    const message = h.directCommitMessages[0]!;
+    const subjectLine = message.split('\n')[0]!;
+    expect(subjectLine.length).toBeLessThanOrEqual('WRFC: '.length + 72);
+    // The full untruncated task must appear somewhere in the message body, even though it's
+    // well over 72 characters — this is the fix for the "anything past 72 characters is
+    // silently discarded" bug.
+    expect(message).toContain(longTask);
 
     h.controller.dispose();
   });
@@ -904,9 +1159,81 @@ describe('WrfcController — escalation', () => {
 
     expect(chain.state).toBe('failed');
     expect(chain.error).not.toBeUndefined(); // presence-only: error was set on failed chain
+    // Non-transport failure — classified as 'other', not retried.
+    expect(chain.failureKind).toBe('other');
+    expect(chain.transportRetryCount ?? 0).toBe(0);
 
     const types = h.workflowEvents.map((e) => e.type);
     expect(types).toContain('WORKFLOW_CHAIN_FAILED');
+    const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
+    expect((failedEvent?.payload as { payload?: { failureKind?: string } }).payload?.failureKind).toBe('other');
+
+    h.controller.dispose();
+  });
+
+  test('transport-classified child failure retries once before failing the chain (W0.2)', async () => {
+    const h = createHarness({ transportRetryLimit: 1, transportRetryDelayMs: 5 });
+
+    const ownerRecord = h.addAgent('owner-transport-1', 'task that hits a transport blip');
+    const chain = h.controller.createChain(ownerRecord);
+    expect(chain.state).toBe('engineering');
+
+    const firstEngineer = latestSpawnedByWrfcRole(h.spawnedRecords, 'engineer');
+    expect(chain.transportRetryCount ?? 0).toBe(0);
+
+    // First failure: transport-classified message the OLD substring-only
+    // classifier would have missed ("closed unexpectedly" was not in the old
+    // allowlist).
+    emitAgentFailed(h.bus, firstEngineer.id, 'The socket connection was closed unexpectedly');
+    await flushMicrotasks();
+
+    // Chain must NOT be failed yet — it gets one bounded automatic retry.
+    expect(chain.state).toBe('engineering');
+    expect(chain.transportRetryCount).toBe(1);
+    expect(h.workflowEvents.map((e) => e.type)).not.toContain('WORKFLOW_CHAIN_FAILED');
+    const retryDecision = chain.ownerDecisions.find((d) => d.action === 'transport_retry');
+    expect(retryDecision).not.toBeUndefined();
+    expect(retryDecision?.reason).toMatch(/closed unexpectedly/i);
+
+    // Wait past the configured backoff for the respawn to happen.
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    await flushMicrotasks();
+
+    const engineers = h.spawnedRecords.filter((r) => r.wrfcRole === 'engineer');
+    expect(engineers).toHaveLength(2);
+    const secondEngineer = engineers[1]!;
+    expect(secondEngineer.id).not.toBe(firstEngineer.id);
+    expect(chain.engineerAgentId).toBe(secondEngineer.id);
+
+    // Second transport failure exhausts the retry budget (limit=1) → chain fails,
+    // tagged as a transport failure so a consumer (e.g. the TUI) can render it
+    // distinctly from an ordinary review/gate rejection.
+    emitAgentFailed(h.bus, secondEngineer.id, 'socket destroyed before response completed');
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('failed');
+    expect(chain.transportRetryCount).toBe(1); // did not retry again past the limit
+    expect(chain.failureKind).toBe('transport');
+
+    const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
+    expect(failedEvent).not.toBeUndefined();
+    expect((failedEvent?.payload as { payload?: { failureKind?: string } }).payload?.failureKind).toBe('transport');
+
+    h.controller.dispose();
+  });
+
+  test('transport retry budget of 0 fails the chain immediately (no retry) — config is respected', async () => {
+    const h = createHarness({ transportRetryLimit: 0 });
+
+    const ownerRecord = h.addAgent('owner-transport-2', 'task with retries disabled');
+    const chain = h.controller.createChain(ownerRecord);
+
+    emitAgentFailed(h.bus, chain.engineerAgentId!, 'unexpected socket connection closure');
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('failed');
+    expect(chain.failureKind).toBe('transport');
+    expect(chain.transportRetryCount ?? 0).toBe(0);
 
     h.controller.dispose();
   });

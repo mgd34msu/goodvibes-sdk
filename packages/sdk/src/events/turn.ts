@@ -50,6 +50,15 @@ export type TurnEvent =
    * TURN_COMPLETED, TURN_ERROR, TURN_CANCEL, or PREFLIGHT_FAIL.
    */
   | { type: 'STREAM_END'; turnId: string; scope?: 'provider'; terminal?: false }
+  /**
+   * A provider chat call hit a retryable transport error mid-stream and is
+   * about to retry the same request against the same provider after a delay.
+   *
+   * This is distinct from provider failover (a new provider chosen after a
+   * terminal TURN_ERROR): STREAM_RETRY fires from inside a single in-flight
+   * `provider.chat()` call, before any TURN_ERROR is ever raised.
+   */
+  | { type: 'STREAM_RETRY'; turnId: string; provider: string; attempt: number; maxAttempts: number; delayMs: number; reason: string }
   /** An LLM request is about to be dispatched to the provider. */
   | {
     type: 'LLM_REQUEST_STARTED';

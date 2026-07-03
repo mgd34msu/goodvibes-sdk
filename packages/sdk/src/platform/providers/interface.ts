@@ -125,7 +125,7 @@ export type ProviderBatchStatus =
 
 export interface ProviderBatchChatRequest {
   readonly customId: string;
-  readonly params: Omit<ChatRequest, 'signal' | 'onDelta'>;
+  readonly params: Omit<ChatRequest, 'signal' | 'onDelta' | 'onRetry'>;
 }
 
 export interface ProviderBatchCreateInput {
@@ -224,6 +224,14 @@ export interface ChatRequest {
   reasoningSummary?: boolean | undefined;
   /** Called per-chunk during streaming when streaming is enabled. */
   onDelta?: ((delta: StreamDelta) => void) | undefined;
+  /**
+   * Called before each same-provider retry of a retryable transport error
+   * (e.g. a dropped connection mid-stream). Informational only — the
+   * provider's own retry loop (`withRetry`) resubmits the request itself;
+   * this callback exists so callers can surface retry progress (bus events,
+   * UI) without re-triggering the resubmission themselves.
+   */
+  onRetry?: ((attempt: number, maxAttempts: number, delayMs: number, error: Error) => void) | undefined;
 }
 
 /**

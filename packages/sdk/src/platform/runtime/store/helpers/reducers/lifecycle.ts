@@ -352,6 +352,10 @@ export function updateAgentState(domain: AgentDomainState, event: AgentEvent): A
       event.type === 'AGENT_COMPLETED' && event.toolCallsMade !== undefined
         ? event.toolCallsMade
         : agent.toolCallCount,
+    usage:
+      event.type === 'AGENT_COMPLETED' && event.usage !== undefined
+        ? event.usage
+        : agent.usage,
     result:
       event.type === 'AGENT_COMPLETED'
         ? {

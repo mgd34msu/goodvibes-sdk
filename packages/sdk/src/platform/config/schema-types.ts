@@ -453,6 +453,10 @@ export interface GoodVibesConfig {
     scoreThreshold: number;
     maxFixAttempts: number;
     autoCommit: boolean;
+    agentHeartbeatTimeoutMs: number;
+    transportRetryLimit: number;
+    transportRetryDelayMs: number;
+    commitScope: 'off' | 'scoped' | 'all';   // default: 'scoped'
     // NOTE: gates is an array of objects and does not fit the scalar-value dot-path config API.
     // Access via configManager.getCategory('wrfc').gates — not via ConfigKey/ConfigValue.
     gates: Array<{ name: string; command: string; enabled: boolean }>;
@@ -571,7 +575,10 @@ export type ConfigKey =
   | 'wrfc.scoreThreshold'
   | 'wrfc.maxFixAttempts'
   | 'wrfc.autoCommit'
+  | 'wrfc.commitScope'
   | 'wrfc.agentHeartbeatTimeoutMs'
+  | 'wrfc.transportRetryLimit'
+  | 'wrfc.transportRetryDelayMs'
   | 'cache.enabled'
   | 'cache.stableTtl'
   | 'cache.monitorHitRate'
@@ -843,7 +850,10 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'wrfc.scoreThreshold' ? number :
   K extends 'wrfc.maxFixAttempts' ? number :
   K extends 'wrfc.autoCommit' ? boolean :
+  K extends 'wrfc.commitScope' ? 'off' | 'scoped' | 'all' :
   K extends 'wrfc.agentHeartbeatTimeoutMs' ? number :
+  K extends 'wrfc.transportRetryLimit' ? number :
+  K extends 'wrfc.transportRetryDelayMs' ? number :
   K extends 'cache.enabled' ? boolean :
   K extends 'cache.stableTtl' ? '5m' | '1h' :
   K extends 'cache.monitorHitRate' ? boolean :

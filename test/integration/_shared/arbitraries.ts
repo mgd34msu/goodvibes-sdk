@@ -76,6 +76,7 @@ export const KNOWN_EVENT_TYPES = new Set<string>([
   'SESSION_RECONCILING', 'SESSION_READY', 'SESSION_RECOVERY_FAILED',
   // turn
   'TURN_SUBMITTED', 'PREFLIGHT_OK', 'PREFLIGHT_FAIL', 'STREAM_START', 'STREAM_DELTA',
+  'STREAM_RETRY',
   'STREAM_END', 'LLM_RESPONSE_RECEIVED', 'TOOL_BATCH_READY', 'TOOLS_DONE',
   'POST_HOOKS_DONE', 'TURN_COMPLETED', 'TURN_ERROR', 'TURN_CANCEL',
   // providers
@@ -187,6 +188,7 @@ export const REQUIRED_FIELDS_BY_TYPE: Partial<Record<string, readonly string[]>>
   PREFLIGHT_FAIL: ['turnId', 'reason', 'stopReason'],
   STREAM_START: ['turnId'],
   STREAM_DELTA: ['turnId', 'content', 'accumulated'],
+  STREAM_RETRY: ['turnId', 'provider', 'attempt', 'maxAttempts', 'delayMs', 'reason'],
   STREAM_END: ['turnId'],
   LLM_RESPONSE_RECEIVED: ['turnId', 'provider', 'model', 'content', 'toolCallCount', 'inputTokens', 'outputTokens'],
   TOOL_BATCH_READY: ['turnId', 'toolCalls'],
@@ -396,6 +398,7 @@ export const FIXTURE_EVENTS: ReadonlyArray<{ type: string } & Record<string, unk
   { type: 'STREAM_START', turnId: 't1' } satisfies TurnEvent,
   { type: 'STREAM_DELTA', turnId: 't1', content: 'hi', accumulated: 'hi' } satisfies TurnEvent,
   { type: 'STREAM_END', turnId: 't1' } satisfies TurnEvent,
+  { type: 'STREAM_RETRY', turnId: 't1', provider: 'anthropic', attempt: 1, maxAttempts: 3, delayMs: 1000, reason: 'connection reset' } satisfies TurnEvent,
   { type: 'LLM_RESPONSE_RECEIVED', turnId: 't1', provider: 'anthropic', model: 'claude-4', content: 'hi', toolCallCount: 0, inputTokens: 10, outputTokens: 5 } satisfies TurnEvent,
   { type: 'TOOL_BATCH_READY', turnId: 't1', toolCalls: ['bash'] } satisfies TurnEvent,
   { type: 'TOOLS_DONE', turnId: 't1' } satisfies TurnEvent,

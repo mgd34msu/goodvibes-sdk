@@ -177,6 +177,7 @@ export class AgentOrchestrator {
     durationMs: number,
     output: string,
     toolCallsMade: number,
+    usage: AgentRecord['usage'] | undefined,
   ): void {
     if (!this.runtimeBus) return;
     emitAgentCompleted(this.runtimeBus, this.emitterContext(recordId), {
@@ -184,6 +185,7 @@ export class AgentOrchestrator {
       durationMs,
       output,
       toolCallsMade,
+      usage,
     });
   }
 
@@ -453,8 +455,8 @@ export class AgentOrchestrator {
       emitOrchestrationCancelled: (record, reason) => this.emitOrchestrationCancelled(record, reason),
       emitAgentFailedEvent: (recordId, error, durationMs) => this.emitAgentFailedEvent(recordId, error, durationMs),
       emitOrchestrationFailed: (record, error) => this.emitOrchestrationFailed(record, error),
-      emitAgentCompletedEvent: (recordId, durationMs, output, toolCallsMade) =>
-        this.emitAgentCompletedEvent(recordId, durationMs, output, toolCallsMade),
+      emitAgentCompletedEvent: (recordId, durationMs, output, toolCallsMade, usage) =>
+        this.emitAgentCompletedEvent(recordId, durationMs, output, toolCallsMade, usage),
       emitOrchestrationCompleted: (record, output) => this.emitOrchestrationCompleted(record, output),
       emitStreamDelta: (recordId, content, accumulated) => this.emitStreamDelta(recordId, content, accumulated),
       processManager: this.toolDeps?.processManager,

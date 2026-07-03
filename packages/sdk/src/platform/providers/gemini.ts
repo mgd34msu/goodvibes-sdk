@@ -179,7 +179,7 @@ export class GeminiProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort } = params;
+    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry, reasoningEffort } = params;
 
     return (await instrumentedLlmCall(() => withRetry(async () => {
       const { contents, systemInstruction } = toGeminiContents(messages, systemPrompt);
@@ -383,7 +383,7 @@ export class GeminiProvider implements LLMProvider {
         stopReason,
         ...(lastFinishReason ? { providerStopReason: lastFinishReason } : {}),
       };
-    }), { provider: 'gemini', model: model })).result;
+    }, undefined, onRetry), { provider: 'gemini', model: model })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {

@@ -94,7 +94,7 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, reasoningEffort } = params;
+    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry, reasoningEffort } = params;
 
     return (await instrumentedLlmCall(() => withRetry(async () => {
       const resolvedModel = normalizeAnthropicModel(model);
@@ -306,7 +306,7 @@ export class AnthropicProvider implements LLMProvider {
           hitRate,
         },
       };
-    }), { provider: 'anthropic', model: model })).result;
+    }, undefined, onRetry), { provider: 'anthropic', model: model })).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
