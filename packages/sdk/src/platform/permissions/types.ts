@@ -48,4 +48,10 @@ export interface PermissionCheckResult {
   readonly sourceLayer: PermissionDecisionSource;
   readonly reasonCode: PermissionDecisionReasonCode;
   readonly analysis: PermissionRequestAnalysis;
+  /**
+   * When present, replaces the tool call's original arguments for execution
+   * (e.g. a per-hunk-filtered `edits` array for the `edit` tool). Only ever
+   * populated via the user-prompt approval path (`sourceLayer: 'user_prompt'`).
+   */
+  readonly modifiedArgs?: Record<string, unknown> | undefined;
 }
