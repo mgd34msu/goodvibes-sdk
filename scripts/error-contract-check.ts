@@ -115,12 +115,13 @@ async function assertRetryContract(): Promise<void> {
     /export\s+const\s+RETRYABLE_STATUS_CODES\s*:\s*readonly\s+number\[\]\s*=\s*\[\s*408,\s*429,\s*500,\s*502,\s*503,\s*504\s*\]/.test(errorsSource),
     'packages/errors must own the canonical retryable status list',
   );
+  const canonicalRetryImport = /import\s*\{[^}]*\bRETRYABLE_STATUS_CODES\b[^}]*\}\s*from\s*'@pellux\/goodvibes-errors'/;
   assert(
-    sdkTypesSource.includes("import { GoodVibesSdkError, RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors'"),
+    canonicalRetryImport.test(sdkTypesSource),
     'SDK platform errors must import the canonical retryable status list',
   );
   assert(
-    transportRetrySource.includes("import { RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors'"),
+    canonicalRetryImport.test(transportRetrySource),
     'transport-http retry policy must import the canonical retryable status list',
   );
   for (const root of ['packages', 'scripts', 'test', 'examples']) {
