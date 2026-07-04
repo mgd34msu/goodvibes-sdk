@@ -141,6 +141,37 @@ function buildCancelledResult(cmdStr: string, cwd: string | undefined, durationM
   return { cmd: cmdStr, exit_code: null, stdout: '', stderr: '', success: false, cancelled: true, duration_ms: durationMs, cwd };
 }
 
+/**
+ * Grace window for draining a killed child's stdout/stderr after a
+ * timeout/abort stop before returning regardless. Kept well under the
+ * cancellation-latency budget the cooperative-cancellation tests assert
+ * (< 5s).
+ */
+const POST_STOP_DRAIN_GRACE_MS = 500;
+
+/**
+ * Wave-4 cooperative cancellation (wo701): after a timeout/abort kill the
+ * child has already been SIGKILL'd, but a grandchild that inherited the
+ * stdout/stderr pipe can hold it open, so reading those streams to EOF may
+ * never settle. Awaiting the full IO promise unbounded here could therefore
+ * block until the grandchild's own duration elapses (observed as a hang under
+ * loaded CI). A cancelled/timed-out result never depends on fully-drained
+ * content, so bound the wait to a short grace window and return regardless.
+ * The still-pending IO promise is defused so it can never surface as an
+ * unhandled rejection; the grace timer is unref'd so it cannot keep the event
+ * loop (or a test runner) alive.
+ */
+async function drainAfterStop(io: Promise<unknown>, graceMs: number): Promise<void> {
+  const settled = io.then(() => undefined, () => undefined);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const grace = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, graceMs);
+    timer.unref?.();
+  });
+  await Promise.race([settled, grace]);
+  if (timer) clearTimeout(timer);
+}
+
 function getProgressDirectory(workingDirectory: string): string {
   return join(workingDirectory, ...OVERFLOW_SUBDIR);
 }
@@ -285,15 +316,9 @@ async function runCommand(
     clearTimeout(killTimer);
     if (signal) signal.removeEventListener('abort', onAbort);
     if (timedOut || cancelled) {
-      try {
-        await procPromise;
-      } catch (error) {
-        logger.debug('exec foreground command collection failed after stop', {
-          command: cmdStr,
-          reason: timedOut ? 'timeout' : 'cancelled',
-          error: summarizeError(error),
-        });
-      }
+      // Bounded drain: the child is already killed; never block past a short
+      // grace window on streams an orphaned grandchild may keep open.
+      await drainAfterStop(procPromise, POST_STOP_DRAIN_GRACE_MS);
       return timedOut
         ? buildTimedOutResult(cmdStr, cwd, Date.now() - startTime)
         : buildCancelledResult(cmdStr, cwd, Date.now() - startTime);
@@ -424,15 +449,10 @@ async function runCommandWithProgress(
   if (signal) signal.removeEventListener('abort', onAbort);
 
   if (timedOut || cancelled) {
-    try {
-      await ioPromise;
-    } catch (error) {
-      logger.debug('exec progress command IO collection failed after stop', {
-        command: cmdStr,
-        reason: timedOut ? 'timeout' : 'cancelled',
-        error: summarizeError(error),
-      });
-    }
+    // Bounded drain: the child is already killed; never block past a short
+    // grace window on streams an orphaned grandchild may keep open. stdoutBuf/
+    // stderrBuf already hold whatever the background readers captured so far.
+    await drainAfterStop(ioPromise, POST_STOP_DRAIN_GRACE_MS);
     return timedOut
       ? { ...buildTimedOutResult(cmdStr, cwd, Date.now() - startTime, progressFile.path), stdout: stdoutBuf, stderr: stderrBuf }
       : { ...buildCancelledResult(cmdStr, cwd, Date.now() - startTime), stdout: stdoutBuf, stderr: stderrBuf, progress_file: progressFile.path };
