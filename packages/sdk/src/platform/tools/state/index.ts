@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { KVState } from '../../state/kv-state.js';
 import { ProjectIndex } from '../../state/project-index.js';
 import { ModeManager } from '../../state/mode-manager.js';
+import type { MemoryRegistry } from '../../state/memory-registry.js';
+import type { ProvenanceLink } from '../../state/memory-store.js';
 import { HookDispatcher } from '../../hooks/dispatcher.js';
 import { TelemetryDB } from '../../state/telemetry.js';
 import type { TelemetryFilter } from '../../state/telemetry.js';
@@ -38,6 +40,60 @@ function sanitizeMemoryKey(key: string): string | null {
   return key;
 }
 
+/**
+ * Mirror a `mode=memory action=set` write into a retrievable `memory_records` row so passive
+ * per-turn knowledge injection (which only reads `memory_records`, never the flat
+ * `.goodvibes/memory/*.json` files) can surface it. This closes the trust gap where a distilled
+ * preference lived only as a flat file that retrieval never saw.
+ *
+ * Deduped per key via a stable `state-memory:<key>` tag, so repeated statements of the same
+ * preference UPDATE the single record instead of piling up duplicates. Provenance is a `file` link
+ * back to the flat-file twin (honest about where the record came from). The record enters at
+ * reviewState 'fresh' with default confidence — visible to retrieval (the confidence>=55 gate) but
+ * NOT stamped 'reviewed'/high-trust, so a self-recorded preference cannot inject itself at unearned
+ * trust; the existing confidence-floor/review flow governs it from there.
+ *
+ * Best-effort: returns true when a record was written, false when there is no registry or the write
+ * failed — the caller's flat-file write (the source of truth for `mode=memory list/get`) is
+ * unaffected either way.
+ */
+async function upsertMemoryRecord(
+  memoryRegistry: MemoryRegistry | undefined,
+  safeKey: string,
+  value: string,
+): Promise<boolean> {
+  if (!memoryRegistry) return false;
+  try {
+    const flat = value.replace(/\s+/g, ' ').trim();
+    const summary = flat.length > 160 ? `${flat.slice(0, 157)}...` : (flat || safeKey);
+    const dedupTag = `state-memory:${safeKey}`;
+    const provenance: ProvenanceLink[] = [
+      { kind: 'file', ref: `.goodvibes/memory/${safeKey}.json`, label: `state tool memory (${safeKey})` },
+    ];
+    const existing = memoryRegistry.getAll().find((record) => record.tags.includes(dedupTag));
+    if (existing) {
+      memoryRegistry.update(existing.id, { summary, detail: value, tags: existing.tags });
+    } else {
+      await memoryRegistry.add({
+        scope: 'project',
+        cls: 'fact',
+        summary,
+        detail: value,
+        tags: ['state-memory', dedupTag],
+        provenance,
+        review: { state: 'fresh' },
+      });
+    }
+    return true;
+  } catch (err) {
+    logger.warn('state tool: memory record mirror failed (flat-file write unaffected)', {
+      key: safeKey,
+      error: summarizeError(err),
+    });
+    return false;
+  }
+}
+
 export interface StateToolOptions {
   readonly memoryDir: string;
   readonly hookDispatcher?: HookDispatcher | undefined;
@@ -60,6 +116,14 @@ export interface StateToolOptions {
    * Swap failures are surfaced as `success: false` with the error reason.
    */
   readonly swapManager?: { requestSwap(newDir: string): Promise<{ ok: boolean; reason?: string; code?: string }> };
+  /**
+   * Project memory registry. When provided, `mode=memory action=set` mirrors the written
+   * preference into a retrievable `memory_records` row (deduped per key) so passive per-turn
+   * knowledge injection can surface it — closing the gap where a distilled preference lived only
+   * as a flat `.goodvibes/memory/*.json` file that retrieval never read. Best-effort: a registry
+   * write that fails never fails the file write itself.
+   */
+  readonly memoryRegistry?: MemoryRegistry | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,6 +151,7 @@ export function createStateTool(
   const workingDir = options.workingDir;
   const daemonHomeDir = options.daemonHomeDir;
   const swapManager = options.swapManager;
+  const memoryRegistry = options.memoryRegistry;
   // Session start time and telemetry are scoped per-instance so multiple
   // createStateTool() calls don't share state.
   const SESSION_START_MS = Date.now();
@@ -130,7 +195,7 @@ export function createStateTool(
         case 'clear': return runClear(input, kvState);
         case 'budget': return runBudget(kvState, projectIndex);
         case 'context': return runContext(kvState, projectIndex);
-        case 'memory': return runMemory(input, memoryDir);
+        case 'memory': return runMemory(input, memoryDir, memoryRegistry);
         case 'telemetry': return runTelemetry();
         case 'hooks': return runHooks(input, hookDispatcher);
         case 'mode': return runMode(input, modeManager);
@@ -647,6 +712,7 @@ async function runContext(
 async function runMemory(
   input: StateInput,
   memoryDir: string,
+  memoryRegistry?: MemoryRegistry | undefined,
 ): Promise<{ success: boolean; output?: string; error?: string }> {
   const action = input.memoryAction ?? 'list';
   const view = action === 'get' ? (input.view ?? 'full') : (input.view ?? 'summary');
@@ -749,9 +815,13 @@ async function runMemory(
       const filePath = join(memoryDir, `${safeKey}.json`);
       // Write as-is; allow caller to pass JSON string or plain text
       writeFileSync(filePath, value, 'utf-8');
+      // Mirror the write into the retrievable memory store so passive per-turn knowledge injection
+      // can surface it. Best-effort and deduped per key — a registry failure never fails the file
+      // write, which remains the source of truth for `mode=memory list/get`.
+      const indexed = await upsertMemoryRecord(memoryRegistry, safeKey, value);
       return {
         success: true,
-        output: JSON.stringify({ mode: 'memory', action: 'set', key: safeKey, bytes_written: value.length }),
+        output: JSON.stringify({ mode: 'memory', action: 'set', key: safeKey, bytes_written: value.length, retrievable: indexed }),
       };
     } catch (err) {
       return {
