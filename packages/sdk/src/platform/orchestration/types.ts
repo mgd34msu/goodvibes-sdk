@@ -116,6 +116,39 @@ export function emptyWorkItemUsage(): WorkItemUsage {
 }
 
 /**
+ * Combine two usage rollups into one running total. The SINGLE canonical merge
+ * used everywhere a WorkItemUsage is accumulated — the phase-runner (folding a
+ * completed phase into an item), the engine (same, at the phase boundary), and
+ * the fleet rollup adapters (overlaying live in-flight usage onto committed
+ * totals). Keeping one implementation is what makes the rollup MONOTONE in
+ * presence: every count is summed (counts only grow) and a cost is retained
+ * via `??` whenever either operand carries one, so once a real token or cost
+ * value has appeared the merged result can never regress to absent/`null`
+ * (DEBT-4 item 2 — "updating" is a state, never a data wipe).
+ *
+ * Cost state stays honest rather than optimistic: 'priced' only when BOTH
+ * operands are priced; 'unpriced' only when NEITHER carries a cost; any mix is
+ * 'estimated' — a real partial sum, explicitly flagged as incomplete.
+ */
+export function mergeWorkItemUsage(a: WorkItemUsage, b: WorkItemUsage): WorkItemUsage {
+  const sawReasoning = a.reasoningTokens !== undefined || b.reasoningTokens !== undefined;
+  const bothPriced = a.costState === 'priced' && b.costState === 'priced';
+  const neitherPriced = a.costUsd === null && b.costUsd === null;
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
+    cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
+    reasoningTokens: sawReasoning ? (a.reasoningTokens ?? 0) + (b.reasoningTokens ?? 0) : undefined,
+    llmCallCount: a.llmCallCount + b.llmCallCount,
+    turnCount: a.turnCount + b.turnCount,
+    toolCallCount: a.toolCallCount + b.toolCallCount,
+    costUsd: a.costUsd !== null && b.costUsd !== null ? a.costUsd + b.costUsd : (a.costUsd ?? b.costUsd),
+    costState: bothPriced ? 'priced' : neitherPriced ? 'unpriced' : 'estimated',
+  };
+}
+
+/**
  * One unit of pipeline work. `visits` bounds re-review cycles the same way
  * WrfcController.retryTransportFailure/evaluateConstraints cap fix attempts —
  * keyed by phaseId so a dynamically-inserted 'fix' phase gets its own counter.
@@ -144,6 +177,15 @@ export interface WorkItem {
   failureReason?: string | undefined;
   /** Set only while state === 'blocked-budget'; cleared the instant the item reclaims a slot. See the 'blocked-budget' state doc for recovery semantics. */
   blockedReason?: string | undefined;
+  /**
+   * Non-fatal bookkeeping notes accrued while the item PASSED its phases — e.g.
+   * a scoped commit that could not complete (DEBT-4 item 1). Warnings NEVER
+   * change the item's terminal status (that derives only from phase outcomes
+   * plus the explicit negating set, see bookkeeping.ts); they make a
+   * passed-with-caveats outcome legible instead of hiding it — or, worse,
+   * misreporting a genuinely-passed item as failed.
+   */
+  warnings?: string[] | undefined;
 }
 
 export interface WorkItemSpec {
@@ -195,6 +237,32 @@ export interface CommitExclusion {
 }
 
 /**
+ * Honest record of the scoped-commit bookkeeping step that runs AFTER a
+ * phase's gate has already passed (see phase-runner.ts commitPhaseWork). The
+ * commit is a POST-gate step: its outcome never decides whether the phase
+ * passed — the gate already did that — it only reports what happened to the
+ * working tree afterward, so the fleet and transcript can state "committed
+ * <hash>" or "commit skipped/failed" without ever contradicting the phase
+ * verdict (DEBT-4 item 1). Present on a PhaseResult only when the gate passed
+ * and a commit was therefore attempted or deliberately skipped.
+ */
+export interface PhaseCommitOutcome {
+  readonly status: 'committed' | 'skipped' | 'failed';
+  /** The landed commit hash, present only for status 'committed'. */
+  readonly hash?: string | undefined;
+  /** Human-readable detail for 'skipped'/'failed', plus any gitignored-path note on 'committed'. */
+  readonly reason?: string | undefined;
+  /**
+   * True ONLY for a 'failed' commit whose failure belongs to the NEGATING SET —
+   * a bookkeeping failure (workspace/index corruption) that genuinely
+   * invalidates the phase's passed work. A negating commit failure is the one
+   * post-gate condition that DOES fail the item; every other commit failure is
+   * a non-fatal warning on a passed item. See bookkeeping.ts for the set.
+   */
+  readonly negating?: boolean | undefined;
+}
+
+/**
  * The resume-cache unit, keyed (itemId,phaseId). On resume, every
  * (itemId,phaseId) present in a snapshot's completedResults is hydrated
  * without re-spawning — this is what makes prefix-replay possible.
@@ -210,6 +278,12 @@ export interface PhaseResult {
   readonly usage: WorkItemUsage;
   /** Present only when a scoped commit excluded launch-dirty residue (see CommitExclusion). */
   readonly commitExclusion?: CommitExclusion | undefined;
+  /**
+   * Outcome of the post-gate scoped-commit step (DEBT-4 item 1). Present only
+   * when this phase's gate passed and a commit was attempted or deliberately
+   * skipped; absent for a failed/cancelled phase (no commit is reached).
+   */
+  readonly commit?: PhaseCommitOutcome | undefined;
 }
 
 /** Snapshot shape written to .goodvibes/orchestration/<workstreamId>.json. */
@@ -237,7 +311,7 @@ export type OrchestrationEvent =
   | { readonly type: 'item-advanced'; readonly workstreamId: string; readonly itemId: string; readonly fromPhaseId: string | null; readonly toPhaseId: string | null }
   | { readonly type: 'item-blocked-budget'; readonly workstreamId: string; readonly itemId: string; readonly phaseId: string; readonly reason: string }
   | { readonly type: 'item-cancelled'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
-  | { readonly type: 'item-passed'; readonly workstreamId: string; readonly itemId: string }
+  | { readonly type: 'item-passed'; readonly workstreamId: string; readonly itemId: string; readonly warnings?: readonly string[] | undefined }
   | { readonly type: 'item-failed'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   /** Emitted once per item on `importWorkstream` for every item reconciled from a crash-artifact 'in-phase' snapshot back to 'pending' — see the 'in-phase' state doc. */
   | { readonly type: 'item-requeued'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
