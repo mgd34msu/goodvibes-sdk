@@ -9,6 +9,7 @@ import type { AdaptivePlanner } from './adaptive-planner.js';
 import type { ExecutionPlanManager } from './execution-plan.js';
 import type { SessionMemoryStore } from './session-memory.js';
 import type { FavoritesStore } from '../providers/favorites.js';
+import type { TurnKnowledgeRegistrySource } from '../agents/turn-knowledge-injection.js';
 
 export type OrchestratorCoreServices = {
   configManager?: Pick<ConfigManager, 'get' | 'getCategory' | 'getWorkingDirectory'> | undefined;
@@ -35,6 +36,16 @@ export type OrchestratorCoreServices = {
   >;
   sessionMemoryStore?: Pick<SessionMemoryStore, 'list'> | undefined;
   favoritesStore?: Pick<FavoritesStore, 'recordUsage'> | undefined;
+  /**
+   * Wave-5 (wo805) narrow injection seam for the MAIN interactive session's per-turn
+   * passive knowledge injection (see core/orchestrator-turn-loop.ts). Optional/undefined
+   * is a hard no-op — the feature never runs and the base system prompt is
+   * byte-identical, matching the agent path's (wo801) `memoryRegistry` semantics. Wired
+   * in post-construction via `Orchestrator.setCoreServices({ memoryRegistry })` since,
+   * like `sessionMemoryStore`/`planManager` above, it is not required at construction
+   * time.
+   */
+  memoryRegistry?: TurnKnowledgeRegistrySource | undefined;
 };
 
 export function normalizeUsage(
