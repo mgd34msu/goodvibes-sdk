@@ -385,10 +385,11 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
 
   // ── Control dispatch (existing manager paths only) ─────────────────────────
 
+  /** Cascade kill over member agents — always a hard kill, never an interrupt. */
   function cancelAgents(agentIds: readonly (string | undefined)[]): string[] {
     const affected: string[] = [];
     for (const agentId of agentIds) {
-      if (agentId && deps.agentManager.cancel(agentId)) affected.push(agentId);
+      if (agentId && deps.agentManager.cancel(agentId, 'kill')) affected.push(agentId);
     }
     return affected;
   }
@@ -397,7 +398,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
   function killNode(node: ProcessNode): string[] {
     switch (node.kind) {
       case 'agent':
-        return deps.agentManager.cancel(node.id) ? [node.id] : [];
+        return deps.agentManager.cancel(node.id, 'kill') ? [node.id] : [];
       case 'background-process':
         return deps.processManager.stop(node.id) ? [node.id] : [];
       case 'watcher':
@@ -479,7 +480,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     if (!target) return false;
     switch (target.kind) {
       case 'agent':
-        return deps.agentManager.cancel(target.id);
+        return deps.agentManager.cancel(target.id, 'interrupt');
       case 'trigger':
         return deps.workflow.triggerManager.disable(target.id);
       case 'schedule': {

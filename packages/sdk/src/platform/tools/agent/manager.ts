@@ -3,6 +3,7 @@ import { AgentOrchestrator } from '../../agents/orchestrator.js';
 import { AgentMessageBus } from '../../agents/message-bus.js';
 import { WrfcController } from '../../agents/wrfc-controller.js';
 import type { ConfigManager } from '../../config/manager.js';
+import type { ConversationMessageSnapshot } from '../../core/conversation.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import {
   emitAgentCancelled,
@@ -40,7 +41,26 @@ export interface AgentManagerDependencies {
   readonly wrfcController?: Pick<WrfcController, 'createChain'> | null | undefined;
   readonly executor?: AgentExecutor | null | undefined;
   readonly configManager?: Pick<ConfigManager, 'get'> | undefined;
+  /**
+   * Bound on how many finished agents' final conversation snapshot are kept
+   * in the retention ring (see getConversationSnapshot). Defaults to
+   * DEFAULT_CONVERSATION_SNAPSHOT_RETENTION. Test-only knob in practice.
+   */
+  readonly conversationSnapshotRetention?: number | undefined;
 }
+
+/**
+ * Wave-3 tab attach point (Part C6): default bound on how many recently
+ * finished agents' final conversation snapshot AgentManager keeps around
+ * after their live source is released. Without a bound, a long-lived process
+ * that spawns many short-lived agents would retain every finished agent's
+ * full message history forever — this is the "leaking unbounded memory" the
+ * brief calls out. RUNNING agents are unaffected by this bound: their
+ * snapshot is read live from the still-open ConversationManager, whose size
+ * is already governed by the existing context-window compaction machinery
+ * (core/context-compaction.ts), not by this retention ring.
+ */
+export const DEFAULT_CONVERSATION_SNAPSHOT_RETENTION = 20;
 
 export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools: string[] }> = {
   orchestrator: {
@@ -104,6 +124,16 @@ export interface AgentRecord {
   context?: string | undefined;
   tools: string[];
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  /**
+   * Set by cancel(id, kind) when status transitions to 'cancelled'. Distinguishes
+   * a graceful interrupt request from a hard kill for display purposes
+   * (Wave-3 verb formalization) without overloading `status`, which is
+   * consumed widely (ledger parse, orchestrator finalize, exportState/
+   * importState). Absent on records cancelled before this field existed, and
+   * on any record cancelled via the single-arg cancel(id) call — both default
+   * to 'kill' at the read site (fleet/adapters/agent.ts deriveAgentState).
+   */
+  terminationKind?: 'interrupt' | 'kill' | undefined;
   startedAt: number;
   completedAt?: number | undefined;
   progress?: string | undefined;
@@ -162,6 +192,21 @@ export class AgentManager {
   private wrfcController: Pick<WrfcController, 'createChain'> | null;
   private executor: AgentExecutor | null;
   private readonly configManager: Pick<ConfigManager, 'get'> | null;
+  /**
+   * Live snapshot accessors for RUNNING agents (Wave-3 Part C6 bridge).
+   * Registered by the executor (orchestrator-runner.ts) right after it
+   * creates the agent's ConversationManager; the manager never stores
+   * messages itself while an agent is running — it just holds a callback.
+   */
+  private readonly conversationSources = new Map<string, () => ConversationMessageSnapshot[]>();
+  /**
+   * Frozen final snapshots for agents whose live source was released (their
+   * run ended). Map insertion order doubles as the bounded ring's age order:
+   * oldest entry (first key) is evicted once conversationSnapshotRetention is
+   * exceeded. See getConversationSnapshot for the read-side contract.
+   */
+  private readonly frozenConversationSnapshots = new Map<string, ConversationMessageSnapshot[]>();
+  private readonly conversationSnapshotRetention: number;
 
   constructor(deps: AgentManagerDependencies = {}) {
     this.archetypeLoader = deps.archetypeLoader ?? new ArchetypeLoader();
@@ -169,6 +214,7 @@ export class AgentManager {
     this.wrfcController = deps.wrfcController ?? null;
     this.executor = deps.executor ?? null;
     this.configManager = deps.configManager ?? null;
+    this.conversationSnapshotRetention = deps.conversationSnapshotRetention ?? DEFAULT_CONVERSATION_SNAPSHOT_RETENTION;
   }
 
   setRuntimeBus(runtimeBus: RuntimeEventBus | null): void {
@@ -569,11 +615,12 @@ export class AgentManager {
     return this.agents.get(id) ?? null;
   }
 
-  cancel(id: string): boolean {
+  cancel(id: string, kind: 'interrupt' | 'kill' = 'kill'): boolean {
     const record = this.agents.get(id);
     if (!record) return false;
     if (record.status === 'pending' || record.status === 'running') {
       record.status = 'cancelled';
+      record.terminationKind = kind;
       record.completedAt = Date.now();
       if (this.runtimeBus) {
         emitAgentCancelled(this.runtimeBus, {
@@ -601,6 +648,80 @@ export class AgentManager {
     }
     this.agents.set(id, record);
     return true;
+  }
+
+  /**
+   * Register the live conversation-snapshot source for a running agent
+   * (Wave-3 Part C6 bridge). Called by the executor (orchestrator-runner.ts)
+   * once its ConversationManager exists — `source` is invoked on demand by
+   * getConversationSnapshot(); the manager never copies or stores the
+   * messages itself while the agent is running.
+   */
+  registerConversationSource(agentId: string, source: () => ConversationMessageSnapshot[]): void {
+    this.conversationSources.set(agentId, source);
+  }
+
+  /**
+   * Release the live source for an agent whose run has ended, freezing one
+   * final snapshot into the bounded retention ring (see
+   * DEFAULT_CONVERSATION_SNAPSHOT_RETENTION) so a transcript tab that was
+   * open at the moment of completion keeps showing content instead of going
+   * blank. Once evicted (oldest-first, beyond the retention bound),
+   * getConversationSnapshot falls back to an empty array — callers past that
+   * point are expected to degrade to the on-disk event ledger (Wave-3 TUI
+   * Part C6's documented fallback for completed/detached agents).
+   *
+   * Safe to call even when no source was ever registered for this agentId
+   * (e.g. a WRFC owner agent, which never runs its own turn loop).
+   */
+  releaseConversationSource(agentId: string): void {
+    const source = this.conversationSources.get(agentId);
+    if (!source) return;
+    this.conversationSources.delete(agentId);
+    let finalSnapshot: ConversationMessageSnapshot[];
+    try {
+      finalSnapshot = source();
+    } catch (error) {
+      logger.warn('AgentManager: conversation source threw on release', { agentId, error: summarizeError(error) });
+      return;
+    }
+    // Re-insert at the end (freshest) even if already present, so the ring's
+    // insertion order tracks recency of completion, not first appearance.
+    this.frozenConversationSnapshots.delete(agentId);
+    this.frozenConversationSnapshots.set(agentId, finalSnapshot);
+    while (this.frozenConversationSnapshots.size > this.conversationSnapshotRetention) {
+      const oldestKey = this.frozenConversationSnapshots.keys().next().value;
+      if (oldestKey === undefined) break;
+      this.frozenConversationSnapshots.delete(oldestKey);
+    }
+  }
+
+  /**
+   * The Wave-3 tab attach point: a full-fidelity conversation history for a
+   * fleet agent (ConversationMessageSnapshot[] — the same shape the main
+   * session surface renders via MessageLineCache/conversation.ts).
+   *
+   * - RUNNING agent with a registered source → the current live snapshot.
+   * - Agent whose run just ended → the frozen final snapshot, until evicted
+   *   from the bounded retention ring (oldest-first beyond
+   *   conversationSnapshotRetention completed agents).
+   * - Unknown agent, or one long since evicted → empty array. The disk
+   *   ledger (<agentId>.jsonl, written by AgentSession) is NOT a substitute
+   *   for this array — it is a truncated event log (tool args/results
+   *   sliced to 500 chars, no assistant message text), so callers past
+   *   eviction get a degraded activity view, never a fabricated replay.
+   */
+  getConversationSnapshot(agentId: string): ConversationMessageSnapshot[] {
+    const liveSource = this.conversationSources.get(agentId);
+    if (liveSource) {
+      try {
+        return liveSource();
+      } catch (error) {
+        logger.warn('AgentManager: conversation source threw', { agentId, error: summarizeError(error) });
+        return [];
+      }
+    }
+    return this.frozenConversationSnapshots.get(agentId) ?? [];
   }
 
   listByGraph(graphId: string): AgentRecord[] {
@@ -644,6 +765,8 @@ export class AgentManager {
   clear(): void {
     this.agents.clear();
     this.orchestrationGraphs.clear();
+    this.conversationSources.clear();
+    this.frozenConversationSnapshots.clear();
   }
 
   exportState(): AgentRecord[] {
