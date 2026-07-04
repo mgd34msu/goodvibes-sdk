@@ -87,7 +87,15 @@ export interface ProcessRegistryDeps {
 }
 
 const defaultTimers: RegistryTimers = {
-  setInterval: (callback, intervalMs) => setInterval(callback, intervalMs),
+  setInterval: (callback, intervalMs) => {
+    const handle = setInterval(callback, intervalMs);
+    // Unref at the creation site so a dangling tick never keeps the process
+    // alive if a consumer forgets to dispose. The registry also unrefs the
+    // returned handle via unrefHandle() for injected timer impls; this inline
+    // unref keeps the raw setInterval site self-contained (invariant guard).
+    handle.unref?.();
+    return handle;
+  },
   clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>),
 };
 
