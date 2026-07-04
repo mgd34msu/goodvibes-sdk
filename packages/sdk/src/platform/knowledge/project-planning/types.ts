@@ -354,6 +354,45 @@ export interface ProjectPlanningStateResult {
   readonly source?: KnowledgeSourceRecord | undefined;
 }
 
+/**
+ * Record a user answer to an open planning question. Identify the question
+ * either by its `questionId` or by a zero-based `questionIndex` into the
+ * current `openQuestions` list (id wins when both are supplied). The answered
+ * question moves from `openQuestions` to `answeredQuestions` with the answer
+ * text, `status: 'answered'`, and an `answeredAt` timestamp, and the open-question
+ * readiness gap for it clears on the next evaluation.
+ */
+export interface ProjectPlanningAnswerInput extends ProjectPlanningSpaceInput {
+  readonly planningId?: string | undefined;
+  readonly questionId?: string | undefined;
+  readonly questionIndex?: number | undefined;
+  readonly answer: string;
+}
+
+export type ProjectPlanningAnswerFailureReason =
+  | 'no-state'
+  | 'empty-answer'
+  | 'missing-selector'
+  | 'question-not-found';
+
+export interface ProjectPlanningAnswerResult {
+  readonly ok: true;
+  readonly projectId: string;
+  readonly knowledgeSpaceId: string;
+  /** True when a question was located and its answer recorded. */
+  readonly answered: boolean;
+  /** The recorded question (with answer/status/answeredAt) when `answered`. */
+  readonly question?: ProjectPlanningQuestion | undefined;
+  /** Why the answer could not be recorded (only when `!answered`). */
+  readonly reason?: ProjectPlanningAnswerFailureReason | undefined;
+  /** Open questions still awaiting an answer after this call. */
+  readonly openQuestions: readonly ProjectPlanningQuestion[];
+  /** The persisted state after recording (or the current state when unchanged). */
+  readonly state: ProjectPlanningState | null;
+  /** Readiness re-evaluated against the post-answer state. */
+  readonly evaluation: ProjectPlanningEvaluation;
+}
+
 export interface ProjectPlanningDecisionRecordInput extends ProjectPlanningSpaceInput {
   readonly decision: Partial<ProjectPlanningDecision> & {
     readonly title: string;
