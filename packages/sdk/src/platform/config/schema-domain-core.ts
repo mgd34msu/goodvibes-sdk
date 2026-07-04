@@ -58,6 +58,12 @@ export const coreConfigDefaults = {
     maxActiveAgents: 8,
     maxDepth: 0,
   },
+  planner: {
+    decomposition: 'agent',
+    maxTurns: 6,
+    tokenCeiling: 120_000,
+    wallTimeoutMs: 60_000,
+  },
   sandbox: {
     replIsolation: 'shared-vm',
     mcpIsolation: 'disabled',
@@ -396,6 +402,34 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     default: 0,
     description: 'Maximum recursive orchestration depth: 0=disabled, higher values allow deeper bounded recursion',
     ...numRange(0, 5),
+  },
+  {
+    key: 'planner.decomposition',
+    type: 'enum',
+    default: 'agent',
+    description: "How /workstream decomposes a goal into work items: 'agent' spawns a read-only planning agent (with automatic fallback to the heuristic path on any failure); 'heuristic' forces the deterministic single-item path and never spawns an agent",
+    enumValues: ['agent', 'heuristic'],
+  },
+  {
+    key: 'planner.maxTurns',
+    type: 'number',
+    default: 6,
+    description: 'Maximum turns the planning-decomposition agent may take before it is stopped and the heuristic path is used',
+    ...numRange(1, 20),
+  },
+  {
+    key: 'planner.tokenCeiling',
+    type: 'number',
+    default: 120_000,
+    description: 'Total token budget for the planning-decomposition agent; exceeding it stops the agent and falls back to the heuristic path',
+    ...numRange(1_000, 2_000_000),
+  },
+  {
+    key: 'planner.wallTimeoutMs',
+    type: 'number',
+    default: 60_000,
+    description: 'Wall-clock timeout (ms) for the planning-decomposition agent; exceeding it cancels the agent and falls back to the heuristic path',
+    ...numRange(1_000, 600_000),
   },
   {
     key: 'sandbox.replIsolation',

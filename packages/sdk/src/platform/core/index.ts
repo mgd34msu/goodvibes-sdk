@@ -20,6 +20,7 @@ export * from './orchestrator-turn-helpers.js';
 export * from './orchestrator-turn-loop.js';
 export * from './orchestrator.js';
 export * from './plan-command-handler.js';
+export * from './plan-decomposition.js';
 export * from './plan-proposal.js';
 export * from './replay-command-handler.js';
 export * from './session-lineage.js';

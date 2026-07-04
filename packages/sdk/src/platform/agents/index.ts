@@ -4,6 +4,7 @@ export * from './completion-report.js';
 export * from './message-bus-core.js';
 export * from './message-bus.js';
 export * from './orchestrator-runner.js';
+export * from './planner-decomposition-runner.js';
 export * from './orchestrator-utils.js';
 export * from './orchestrator.js';
 export * from './session.js';

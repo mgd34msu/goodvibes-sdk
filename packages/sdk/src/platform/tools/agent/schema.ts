@@ -47,7 +47,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       },
       template: {
         type: 'string',
-        enum: ['orchestrator', 'engineer', 'reviewer', 'tester', 'researcher', 'integrator', 'general'],
+        enum: ['orchestrator', 'planner', 'engineer', 'reviewer', 'tester', 'researcher', 'integrator', 'general'],
         description:
           'Agent template to use (mode: spawn). Default: general. ' +
           'Each template includes a pre-selected tool set.',
@@ -174,7 +174,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
           required: ['task'],
           properties: {
             task: { type: 'string', description: 'Task description for the agent.' },
-            template: { type: 'string', enum: ['orchestrator', 'engineer', 'reviewer', 'tester', 'researcher', 'integrator', 'general'], description: 'Agent template.' },
+            template: { type: 'string', enum: ['orchestrator', 'planner', 'engineer', 'reviewer', 'tester', 'researcher', 'integrator', 'general'], description: 'Agent template.' },
             model: { type: 'string', description: 'Provider-qualified model registry key.' },
             provider: { type: 'string', description: 'Provider override.' },
             fallbackModels: { type: 'array', items: { type: 'string' }, description: 'Ordered provider-qualified registry keys.' },

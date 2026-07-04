@@ -58,6 +58,13 @@ const BUILT_IN_ARCHETYPES: AgentArchetype[] = [
     origin: 'builtin',
   },
   {
+    name: 'planner',
+    description: 'Read-only goal-decomposition agent (no write/edit/exec/delegate)',
+    tools: ['read', 'find', 'analyze', 'inspect'],
+    isCustom: false,
+    origin: 'builtin',
+  },
+  {
     name: 'engineer',
     description: 'Full-stack implementation agent',
     tools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],

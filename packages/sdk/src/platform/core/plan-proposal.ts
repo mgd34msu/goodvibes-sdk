@@ -65,6 +65,28 @@ export interface Phase {
 /** Where a proposal's decomposition came from. */
 export type PlanProposalSource = 'planner-agent' | 'single-item-fallback' | 'caller-supplied';
 
+/**
+ * Honest provenance for how a proposal's work items were produced.
+ *
+ * - `'agent'`     — a read-only planning agent decomposed the goal, and its
+ *   output validated cleanly (possibly after one repair attempt).
+ * - `'heuristic'` — the deterministic single-item path produced the proposal,
+ *   either because `planner.decomposition` is configured to `'heuristic'`, the
+ *   planner's gate declined to decompose, or the agent path failed and fell
+ *   back. `fallbackReason` is set only in the failure case, never when the
+ *   heuristic path was chosen deliberately by config or gate.
+ */
+export type DecomposedBy = 'agent' | 'heuristic';
+
+/** Token usage reported by a planning-decomposition agent run. */
+export interface DecompositionAgentUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens?: number | undefined;
+  readonly cacheWriteTokens?: number | undefined;
+  readonly totalTokens: number;
+}
+
 export interface PlanProposal {
   id: string;
   task: string;
@@ -74,6 +96,25 @@ export interface PlanProposal {
   workItems: WorkItem[];
   createdAt: number;
   source: PlanProposalSource;
+  /**
+   * Provenance overlay set by the decomposition service (plan-decomposition.ts).
+   * Absent on proposals produced directly by `assemblePlanProposal` /
+   * `singleItemProposal`, which stay byte-compatible with pre-provenance tests.
+   */
+  decomposedBy?: DecomposedBy | undefined;
+  /** Token usage of the planning agent (present when the agent path ran, even on fallback). */
+  agentUsage?: DecompositionAgentUsage | undefined;
+  /** Estimated dollar cost of the planning agent run, when a pricing lookup was available. */
+  agentCostUsd?: number | undefined;
+  /** Wall-clock time the planning agent ran, in ms (present when the agent path ran). */
+  elapsedMs?: number | undefined;
+  /**
+   * Why the agent path fell back to the heuristic path. Set ONLY on honest
+   * failure fallbacks (spawn error, timeout, cancellation, or output that was
+   * still malformed after one repair attempt) — never when `'heuristic'` was
+   * chosen by config or by the planner's decompose gate.
+   */
+  fallbackReason?: string | undefined;
 }
 
 /** The loose JSON shape a planning agent (or a caller) emits, pre-validation. */
