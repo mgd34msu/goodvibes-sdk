@@ -43,7 +43,9 @@ function makeRecord(overrides: Partial<TurnInjectionRecord> & { turn: number }):
   return {
     query: 'test query',
     candidatesConsidered: 1,
+    codeCandidatesConsidered: 0,
     injectedIds: [],
+    injectedSources: [],
     droppedForBudget: [],
     tokenCost: 0,
     budgetTokens: 800,

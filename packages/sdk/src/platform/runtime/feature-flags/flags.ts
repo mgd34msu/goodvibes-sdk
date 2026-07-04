@@ -253,6 +253,28 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
   },
 
   {
+    id: 'agent-passive-code-injection',
+    name: 'Agent Passive Code Injection',
+    description:
+      'Enables per-turn passive retrieval from the repo SOURCE-TREE CODE INDEX (CodeIndexStore) '
+      + 'alongside project-memory knowledge, sharing the SAME token budget and relevance floor. '
+      + 'When the query would benefit and the index is built, similarity-ranked code chunks are '
+      + 'injected as untrusted reference pointers, each recorded on the turn injection record with '
+      + 'source=code-index and its honest match label (semantic/lexical). Never injects from an '
+      + 'empty or provider-mismatched index, or from a hashed-only (no real semantic) provider — '
+      + 'the store exposes each of those and the turn record states which. '
+      + 'DEFAULT OFF (unlike agent-passive-knowledge-injection, which defaults on): code injection '
+      + 'is a newer, higher-variance signal than reviewed project memory — code chunks carry no '
+      + 'review/trust provenance and a weak similarity match can pull in a plausibly-worded but '
+      + 'wrong chunk — so this first landing is opt-in, earned on by the same hard-budget + '
+      + 'honest-record discipline before it becomes a default. Also respects the embedder’s '
+      + 'storage.codeIndexEnabled setting; disable either to revert to memory-only injection.',
+    defaultState: 'disabled',
+    tier: 9,
+    runtimeToggleable: true,
+  },
+
+  {
     id: 'output-schema-fingerprint',
     name: 'Output Schema Fingerprints',
     description:
