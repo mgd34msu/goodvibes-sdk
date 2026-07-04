@@ -25,6 +25,7 @@ import type {
 } from '../../tools/workflow/index.js';
 import type { ApprovalBroker } from '../../control-plane/approval-broker.js';
 import type { SharedSessionBroker } from '../../control-plane/session-broker.js';
+import type { AgentMessageBus } from '../../agents/message-bus.js';
 import type { RuntimeEventBus, RuntimeEventEnvelope } from '../events/index.js';
 import type { TurnEvent } from '../../../events/turn.js';
 import type {
@@ -34,10 +35,11 @@ import type {
   ProcessNode,
   ProcessRegistry,
   ProcessUsage,
+  SteerResult,
 } from './types.js';
 import type { AgentActivityEntry, AgentAdapterContext } from './adapters/agent.js';
 import { adaptAgent } from './adapters/agent.js';
-import { adaptChain, adaptSubtask } from './adapters/wrfc.js';
+import { activeSubtaskMemberAgentId, adaptChain, adaptSubtask } from './adapters/wrfc.js';
 import { adaptWorkflow } from './adapters/workflow.js';
 import { adaptTrigger } from './adapters/trigger.js';
 import { adaptSchedule } from './adapters/schedule.js';
@@ -50,6 +52,14 @@ import { summarizeError } from '../../utils/error-display.js';
 export const DEFAULT_STALLED_THRESHOLD_MS = 20_000;
 /** Default coalesced tick interval for subscriber notification. */
 export const DEFAULT_TICK_INTERVAL_MS = 750;
+/**
+ * TTL for a steer message, deliberately much larger than
+ * AgentMessageBus's own DEFAULT_TTL_MS (5 min, message-bus-core.ts). A
+ * steer queued against an agent mid long-running tool call (build, test
+ * suite) must survive the wait for that tool to return rather than
+ * silently expiring before the agent reaches its next turn boundary.
+ */
+export const STEER_TTL_MS = 30 * 60 * 1000;
 
 /** Injectable timer seam so tests can drive/observe the coalesced tick. */
 export interface RegistryTimers {
@@ -76,6 +86,15 @@ export interface ProcessRegistryDeps {
   readonly approvalBroker?: Pick<ApprovalBroker, 'listApprovals'> | undefined;
   /** Optional: populates ProcessNode.sessionRef.sessionId (Wave-3 tab attach point). */
   readonly sessionBroker?: Pick<SharedSessionBroker, 'listSessions'> | undefined;
+  /**
+   * Optional: backs `steer()` and the `steerable` capability (Wave-3). The
+   * bus already exists in the composed runtime and already feeds every
+   * in-process agent's per-turn inbox drain (orchestrator-runner.ts) — this
+   * just hands the registry a narrow `send`-only pick of it. Without this
+   * dep, steer() always refuses and steerable is false everywhere
+   * (graceful degrade, matches the approvalBroker/sessionBroker pattern).
+   */
+  readonly messageBus?: Pick<AgentMessageBus, 'send'> | undefined;
   /** Optional: feeds the fine-grained agent activity side-table. Without it the registry degrades to coarse states. */
   readonly runtimeBus?: RuntimeEventBus | undefined;
   /** Optional: honest cost pricing. Return null when the model is unknown — NEVER fabricate. */
@@ -270,6 +289,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       agentIdByOrchestrationNodeId,
       agentIds,
       priceUsage: deps.priceUsage,
+      messageBusPresent: deps.messageBus !== undefined,
     };
 
     const nodes: ProcessNode[] = [];
@@ -291,7 +311,16 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       }
       nodes.push(adaptChain(chain, memberNodes, capturedAt));
       for (const subtask of chain.subtasks ?? []) {
-        nodes.push(adaptSubtask(subtask, chain));
+        // Steerable only when the subtask's currently-active member agent is
+        // both present in this snapshot and not terminal, AND a messageBus
+        // dep exists to actually deliver the steer.
+        const activeMemberId = activeSubtaskMemberAgentId(subtask);
+        const activeMemberNode = activeMemberId ? agentNodeById.get(activeMemberId) : undefined;
+        const memberLive = activeMemberNode !== undefined
+          && activeMemberNode.state !== 'done'
+          && activeMemberNode.state !== 'failed'
+          && activeMemberNode.state !== 'killed';
+        nodes.push(adaptSubtask(subtask, chain, { steerable: deps.messageBus !== undefined && memberLive }));
       }
     }
 
@@ -491,6 +520,57 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     }
   }
 
+  /**
+   * Queue a human message onto a live in-process agent's inbox (or the
+   * current live member agent of a wrfc-subtask). Mirrors interrupt()/kill()
+   * dispatch shape: re-assemble, find the target, switch on kind.
+   *
+   * Honest refusal for anything that cannot take mid-run input: no
+   * messageBus dep, a terminal/non-conversational kind, or a wrfc-chain
+   * (coordinate FSM, no conversation loop of its own — steer its member
+   * subtask instead).
+   */
+  function steer(id: string, text: string): SteerResult {
+    const { nodes } = assemble();
+    const target = nodes.find((node) => node.id === id);
+    if (!target) return { queued: false, reason: 'no such process' };
+    if (!deps.messageBus) {
+      return { queued: false, reason: 'steering is unavailable: no message bus configured' };
+    }
+    switch (target.kind) {
+      case 'agent': {
+        if (!target.capabilities.steerable) {
+          return { queued: false, reason: 'agent is not active and cannot be steered' };
+        }
+        const messageId = crypto.randomUUID();
+        const sent = deps.messageBus.send('operator', target.id, text, {
+          kind: 'steer',
+          ttlMs: STEER_TTL_MS,
+          id: messageId,
+        });
+        return sent ? { queued: true, messageId } : { queued: false, reason: 'steering message was blocked' };
+      }
+      case 'wrfc-subtask': {
+        const subtask = target.raw as WrfcSubtask;
+        const agentId = activeSubtaskMemberAgentId(subtask);
+        if (!agentId || !target.capabilities.steerable) {
+          return { queued: false, reason: 'no live member agent to steer for this subtask' };
+        }
+        const messageId = crypto.randomUUID();
+        const sent = deps.messageBus.send('operator', agentId, text, {
+          kind: 'steer',
+          ttlMs: STEER_TTL_MS,
+          id: messageId,
+        });
+        return sent ? { queued: true, messageId } : { queued: false, reason: 'steering message was blocked' };
+      }
+      case 'wrfc-chain':
+        return { queued: false, reason: 'steer a member agent, not the chain' };
+      default:
+        return { queued: false, reason: `${target.kind} cannot take steering input` };
+    }
+  }
+
   function dispose(): void {
     if (disposed) return;
     disposed = true;
@@ -507,5 +587,5 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     activity.clear();
   }
 
-  return { query, getNode, subscribe, interrupt, kill, dispose };
+  return { query, getNode, subscribe, interrupt, kill, steer, dispose };
 }

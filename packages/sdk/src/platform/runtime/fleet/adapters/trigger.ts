@@ -18,7 +18,7 @@ export function adaptTrigger(def: TriggerDefinition): ProcessNode {
     elapsedMs: 0,
     costUsd: null,
     costState: 'unpriced',
-    capabilities: { interruptible: false, killable: true, pausable: def.enabled },
+    capabilities: { interruptible: false, killable: true, pausable: def.enabled, steerable: false },
     raw: def,
   };
 }

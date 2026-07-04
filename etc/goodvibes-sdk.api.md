@@ -433,13 +433,25 @@ export type CommunicationEvent = {
     cohort?: string | undefined;
     wrfcId?: string | undefined;
     parentAgentId?: string | undefined;
+} | {
+    type: 'COMMUNICATION_CONSUMED';
+    messageId: string;
+    agentId: string;
+    turn: number;
 };
 
 // @public (undocumented)
 export type CommunicationEventType = CommunicationEvent['type'];
 
 // @public
-export type CommunicationKind = 'directive' | 'status' | 'question' | 'finding' | 'review' | 'handoff' | 'escalation' | 'completion';
+export type CommunicationKind = 'directive' | 'status' | 'question' | 'finding' | 'review' | 'handoff' | 'escalation' | 'completion'
+/**
+* Wave-3 steering: an operator (human)-originated message queued for a
+* live in-process agent via `ProcessRegistry.steer()`. Framed verbatim as
+* a user turn at the drain site (orchestrator-runner.ts), not wrapped in
+* the `[Kind from sender]` inter-agent directive framing.
+*/
+| 'steer';
 
 // @public (undocumented)
 export type CommunicationScope = 'direct' | 'broadcast';

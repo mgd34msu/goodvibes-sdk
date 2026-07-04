@@ -102,8 +102,27 @@ function aggregateCost(members: readonly ProcessNode[]): { costUsd: number | nul
   return { costUsd: total, costState: priced.length === withUsage.length ? 'priced' : 'estimated' };
 }
 
+/**
+ * The subtask's currently-active member agent, i.e. whichever role is
+ * driving its current phase. Undefined when the subtask has no phase
+ * currently in flight (pending/passed/failed) — matches subtaskState()'s
+ * own phase mapping above.
+ */
+export function activeSubtaskMemberAgentId(subtask: WrfcSubtask): string | undefined {
+  switch (subtask.state) {
+    case 'engineering':
+      return subtask.engineerAgentId;
+    case 'reviewing':
+      return subtask.reviewerAgentId;
+    case 'fixing':
+      return subtask.fixerAgentId;
+    default:
+      return undefined;
+  }
+}
+
 /** WrfcSubtask → ProcessNode (child of its chain node). */
-export function adaptSubtask(subtask: WrfcSubtask, chain: WrfcChain): ProcessNode {
+export function adaptSubtask(subtask: WrfcSubtask, chain: WrfcChain, opts: { steerable: boolean }): ProcessNode {
   const { state, phase } = subtaskState(subtask);
   const killable = state !== 'done' && state !== 'failed' && state !== 'killed';
   return {
@@ -122,7 +141,9 @@ export function adaptSubtask(subtask: WrfcSubtask, chain: WrfcChain): ProcessNod
     // Silent source: no phase-transition timestamp exists, so anchor to the
     // chain's creation time to keep the activity stable across queries.
     currentActivity: phase ? { kind: 'phase', text: phase, at: chain.createdAt } : undefined,
-    capabilities: { interruptible: false, killable, pausable: false },
+    // Steer targets the live member agent driving this subtask's current
+    // phase, NOT the subtask node itself (which has no conversation loop).
+    capabilities: { interruptible: false, killable, pausable: false, steerable: opts.steerable },
     raw: subtask,
   };
 }
@@ -152,7 +173,10 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
     costState,
     // Silent source: anchored to createdAt (no phase-transition timestamp).
     currentActivity: phase ? { kind: 'phase', text: phase, at: chain.createdAt } : undefined,
-    capabilities: { interruptible: false, killable, pausable: false },
+    // A wrfc-chain is an FSM coordinating member agents; it has no
+    // conversation loop of its own, so it is NEVER steerable — steer the
+    // member subtask instead (adaptSubtask, above).
+    capabilities: { interruptible: false, killable, pausable: false, steerable: false },
     raw: chain,
   };
 }
