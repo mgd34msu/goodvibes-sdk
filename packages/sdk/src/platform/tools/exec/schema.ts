@@ -136,7 +136,9 @@ export const EXEC_TOOL_SCHEMA = {
     },
     working_dir: {
       type: 'string',
-      description: 'Global working directory applied to all commands unless overridden per-command.',
+      description:
+        'Global working directory applied to all commands unless overridden per-command.'
+        + ' Optional — defaults to the session\'s working directory when omitted.',
     },
     timeout_ms: {
       type: 'integer',
