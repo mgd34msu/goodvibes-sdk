@@ -12,7 +12,14 @@ export type CommunicationKind =
   | 'review'
   | 'handoff'
   | 'escalation'
-  | 'completion';
+  | 'completion'
+  /**
+   * Wave-3 steering: an operator (human)-originated message queued for a
+   * live in-process agent via `ProcessRegistry.steer()`. Framed verbatim as
+   * a user turn at the drain site (orchestrator-runner.ts), not wrapped in
+   * the `[Kind from sender]` inter-agent directive framing.
+   */
+  | 'steer';
 
 export type CommunicationScope = 'direct' | 'broadcast';
 
@@ -52,6 +59,20 @@ export type CommunicationEvent =
       cohort?: string | undefined;
       wrfcId?: string | undefined;
       parentAgentId?: string | undefined;
+    }
+  | {
+      /**
+       * Honest "the agent actually consumed this at its turn boundary" signal —
+       * distinct from COMMUNICATION_DELIVERED, which fires eagerly at send()
+       * time and therefore cannot mean "seen by the agent" (see
+       * AgentMessageBus.send / orchestrator-runner's per-turn inbox drain).
+       * Emitted once, at the drain site, the turn a queued message is
+       * actually injected into the target agent's conversation.
+       */
+      type: 'COMMUNICATION_CONSUMED';
+      messageId: string;
+      agentId: string;
+      turn: number;
     };
 
 export type CommunicationEventType = CommunicationEvent['type'];

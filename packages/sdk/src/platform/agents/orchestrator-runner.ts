@@ -26,6 +26,7 @@ import type { ToolResult } from '../types/tools.js';
 import type { ProcessManager } from '../tools/shared/process-manager.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
+import { emitCommunicationConsumed } from '../runtime/emitters/index.js';
 import { summarizeToolArgs } from './orchestrator-utils.js';
 import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt } from './orchestrator-prompts.js';
 import type { AgentMessageBus } from './message-bus.js';
@@ -507,8 +508,27 @@ export async function runAgentTask(
         if (msg.from === record.id) continue;
         if (injectedMessageIds.has(msg.id)) continue;
         injectedMessageIds.add(msg.id);
-        const kindLabel = (msg.kind[0] ?? '').toUpperCase() + msg.kind.slice(1);
-        conversation.addUserMessage(`[${kindLabel} from ${msg.from}]: ${msg.content}`);
+        if (msg.kind === 'steer') {
+          // A human steer (ProcessRegistry.steer) is a genuine user turn, not
+          // an inter-agent directive — inject it verbatim, with none of the
+          // "[Kind from sender]" framing used for agent-to-agent messages.
+          conversation.addUserMessage(msg.content);
+          // Honest "consumed at boundary" signal: this is the ONLY place a
+          // queued steer is actually drained into the conversation, at the
+          // top of this turn, before the LLM call below. Never emit this
+          // from AgentMessageBus.send() itself — that fires eagerly, before
+          // the agent has any chance to see the message.
+          if (context.runtimeBus) {
+            emitCommunicationConsumed(context.runtimeBus, context.emitterContext(record.id), {
+              messageId: msg.id,
+              agentId: record.id,
+              turn,
+            });
+          }
+        } else {
+          const kindLabel = (msg.kind[0] ?? '').toUpperCase() + msg.kind.slice(1);
+          conversation.addUserMessage(`[${kindLabel} from ${msg.from}]: ${msg.content}`);
+        }
       }
 
       if (context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true) {

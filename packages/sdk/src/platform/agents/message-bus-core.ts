@@ -28,6 +28,13 @@ export interface AgentMessage {
 export type MessageCallback = (message: AgentMessage) => void;
 
 type MessageOptions = {
+  /**
+   * Caller-supplied message id. Lets a caller (e.g. ProcessRegistry.steer())
+   * learn the id synchronously from its own return value instead of from
+   * send()'s boolean result. Defaults to a fresh crypto.randomUUID() when
+   * omitted — existing callers are unaffected.
+   */
+  id?: string | undefined;
   ttlMs?: number | undefined;
   kind?: CommunicationKind | undefined;
   scope?: CommunicationScope | undefined;
@@ -78,6 +85,7 @@ export class AgentMessageBus {
       ...(ttlOrOptions?.cohort !== undefined ? { cohort: ttlOrOptions.cohort } : {}),
       ...(ttlOrOptions?.wrfcId !== undefined ? { wrfcId: ttlOrOptions.wrfcId } : {}),
       ...(ttlOrOptions?.parentAgentId !== undefined ? { parentAgentId: ttlOrOptions.parentAgentId } : {}),
+      ...(ttlOrOptions?.id !== undefined ? { id: ttlOrOptions.id } : {}),
     };
   }
 
@@ -102,7 +110,7 @@ export class AgentMessageBus {
     }
 
     const message: AgentMessage = {
-      id: crypto.randomUUID(),
+      id: options.id ?? crypto.randomUUID(),
       from: fromId,
       to: toId,
       content,

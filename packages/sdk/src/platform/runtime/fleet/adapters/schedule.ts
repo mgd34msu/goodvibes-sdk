@@ -26,7 +26,7 @@ export function adaptSchedule(entry: ScheduleEntry): ProcessNode {
     elapsedMs: 0,
     costUsd: null,
     costState: 'unpriced',
-    capabilities: { interruptible: false, killable: true, pausable: entry.enabled },
+    capabilities: { interruptible: false, killable: true, pausable: entry.enabled, steerable: false },
     raw: entry,
   };
 }

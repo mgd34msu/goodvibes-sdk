@@ -16,12 +16,14 @@ export type {
   FleetQueryFilter,
   ProcessKillOptions,
   ProcessRegistry,
+  SteerResult,
 } from './types.js';
 export type { ProcessRegistryDeps, RegistryTimers } from './registry.js';
 export {
   createProcessRegistry,
   DEFAULT_STALLED_THRESHOLD_MS,
   DEFAULT_TICK_INTERVAL_MS,
+  STEER_TTL_MS,
 } from './registry.js';
 export { chainNodeId, subtaskNodeId } from './adapters/agent.js';
 export { scheduleNodeId } from './adapters/schedule.js';

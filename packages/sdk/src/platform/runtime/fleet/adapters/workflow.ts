@@ -29,7 +29,7 @@ export function adaptWorkflow(instance: WorkflowInstance, now: number): ProcessN
     costState: 'unpriced',
     // Silent source: anchored to startedAt (no state-transition timestamp).
     currentActivity: active ? { kind: 'phase', text: instance.currentState, at: instance.startedAt } : undefined,
-    capabilities: { interruptible: false, killable: active, pausable: false },
+    capabilities: { interruptible: false, killable: active, pausable: false, steerable: false },
     raw: instance,
   };
 }
