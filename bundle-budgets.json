@@ -316,6 +316,10 @@
     "gzip_bytes": 760,
     "rationale": "public facade; measured 633 B gzip @ commit c0e5910; headroom max(ceil(633*1.2)=760, 633+50=683) → 760 (1.2x dominates by 77 B)"
   },
+  "./platform/orchestration": {
+    "gzip_bytes": 521,
+    "rationale": "new public entrypoint (orchestration engine, 0.38.0 Wave 4); measured 434 B gzip @ v0.38.0; headroom max(ceil(434*1.2)=521, 434+50=484) → 521 (1.2x dominates by 37 B)"
+  },
   "./platform/pairing": {
     "gzip_bytes": 238,
     "rationale": "public facade; measured 188 B gzip @ commit 4e5a5e2; headroom max(ceil(188*1.2)=226, 188+50=238) → 238 (+50 B floor dominates by 12 B)"
@@ -339,6 +343,10 @@
   "./platform/runtime": {
     "gzip_bytes": 192,
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) → 192 (+50 B floor dominates by 21 B)"
+  },
+  "./platform/runtime/fleet": {
+    "gzip_bytes": 336,
+    "rationale": "new public entrypoint (fleet process registry, 0.38.0 Wave 2); measured 280 B gzip @ v0.38.0; headroom max(ceil(280*1.2)=336, 280+50=330) → 336 (1.2x dominates by 6 B)"
   },
   "./platform/runtime/observability": {
     "gzip_bytes": 1265,
