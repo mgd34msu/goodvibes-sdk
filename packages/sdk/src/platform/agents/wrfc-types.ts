@@ -52,10 +52,13 @@ export type WrfcOwnerDecisionAction =
 /**
  * Why a chain reached the terminal 'failed' state. Distinguishes a transport/network
  * blip (which gets one automatic retry, see WrfcChain.transportRetryCount) from an
- * ordinary review/gate rejection, so a consumer (e.g. the TUI) can render the two
- * differently instead of showing every failure identically.
+ * ordinary review/gate rejection and from an operator-initiated cancellation, so a
+ * consumer (e.g. the TUI) can render the three differently instead of showing every
+ * terminal-'failed' identically. 'cancelled' is an operator kill/interrupt of the
+ * chain — an intended stop, not a failure — and must read as cancelled at every
+ * surface (chain row, owner row, cohort tally, completion narration).
  */
-export type WrfcChainFailureKind = 'transport' | 'other';
+export type WrfcChainFailureKind = 'transport' | 'other' | 'cancelled';
 
 export interface WrfcOwnerDecision {
   id: string;

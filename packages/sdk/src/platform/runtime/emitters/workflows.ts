@@ -65,7 +65,7 @@ export function emitWorkflowChainPassed(
 export function emitWorkflowChainFailed(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
-  data: { chainId: string; reason: string; failureKind?: 'transport' | 'other' | undefined }
+  data: { chainId: string; reason: string; failureKind?: 'transport' | 'other' | 'cancelled' | undefined }
 ): void {
   bus.emit('workflows', createEventEnvelope('WORKFLOW_CHAIN_FAILED', { type: 'WORKFLOW_CHAIN_FAILED', ...data }, ctx));
 }
