@@ -186,6 +186,31 @@ export interface WorkItem {
    * misreporting a genuinely-passed item as failed.
    */
   warnings?: string[] | undefined;
+  /**
+   * Absolute path to this item's isolated git worktree (worktree mode only).
+   * Set at first claim, cleared once the worktree is removed. Retained on a
+   * KEPT worktree (merge conflict, or a dirty tree after fail/kill) so the
+   * terminal summary and events can name exactly where the unmerged work lives.
+   */
+  worktreePath?: string | undefined;
+  /** The item's branch name inside its worktree (worktree mode only), e.g. `ws/<wsShort>/<itemShort>`. */
+  worktreeBranch?: string | undefined;
+  /**
+   * Integration state of the item branch relative to the base branch (worktree
+   * mode). `'pending'` from the moment the passed item enters the integration
+   * lane until its merge resolves; `'merged'` (with {@link mergeHash} set) on a
+   * clean merge; `'conflict'` when the lane could not merge it — the worktree is
+   * then KEPT and `blockedReason` carries `merge-conflict: <files>`.
+   */
+  mergeState?: ItemMergeState | undefined;
+  /** The merge commit hash recorded on a clean integration (mergeState === 'merged'). */
+  mergeHash?: string | undefined;
+  /**
+   * True when this item's worktree was deliberately KEPT rather than removed —
+   * a merge conflict, or a dirty tree left after fail/kill (data safety, rule
+   * 4). A kept worktree still lives at {@link worktreePath} for inspection.
+   */
+  worktreeKept?: boolean | undefined;
 }
 
 export interface WorkItemSpec {
@@ -193,6 +218,32 @@ export interface WorkItemSpec {
   readonly title: string;
   readonly task: string;
 }
+
+/**
+ * Where a workstream's item phases run their file changes.
+ *
+ * - `shared` (DEFAULT): every item's phases run their agents in the ONE shared
+ *   `projectRoot` working tree and scoped-commit straight onto its branch, as
+ *   the engine has always behaved. Two items editing the same file serialize
+ *   only by luck of scheduling — full behavioral back-compat, every pre-existing
+ *   test passes untouched.
+ * - `worktree`: at first claim each item gets its own git worktree branched
+ *   from the base branch (see IsolatedWorktree, worktree.ts). Its phases commit
+ *   onto the item branch INSIDE that worktree, so concurrent items never touch
+ *   each other's working tree. When an item terminates passed its branch is
+ *   merged back into the base branch through a single sequential integration
+ *   lane (completion order). See the engine's WorktreeIsolationManager.
+ */
+export type WorkstreamIsolation = 'shared' | 'worktree';
+
+/**
+ * The integration state of an item's isolated worktree branch relative to the
+ * base branch (worktree mode only; absent/`'n-a'` in shared mode). Distinct
+ * from WorkItemState (the pipeline state): an item can be terminally `passed`
+ * while its merge is still `pending` in the integration lane, or `conflict`
+ * after the lane hit an unmergeable branch.
+ */
+export type ItemMergeState = 'n-a' | 'pending' | 'merged' | 'conflict';
 
 export interface BudgetCeiling {
   readonly maxTokens?: number | undefined;
@@ -213,6 +264,13 @@ export interface Workstream {
    * an unrelated sibling to complete first.
    */
   budget?: BudgetCeiling | undefined;
+  /**
+   * Where item phases run their file changes (see {@link WorkstreamIsolation}).
+   * Absent is treated as `'shared'` everywhere — the default that preserves
+   * full behavioral back-compat. Persisted with the workstream and surfaced in
+   * events, so a resumed or observed workstream reports its isolation honestly.
+   */
+  readonly isolation?: WorkstreamIsolation | undefined;
   readonly createdAt: number;
 }
 
@@ -316,6 +374,44 @@ export type OrchestrationEvent =
   /** Emitted once per item on `importWorkstream` for every item reconciled from a crash-artifact 'in-phase' snapshot back to 'pending' — see the 'in-phase' state doc. */
   | { readonly type: 'item-requeued'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   | { readonly type: 'workstream-persisted'; readonly workstreamId: string }
+  /**
+   * Worktree-isolation lifecycle events (worktree mode only). Each names the
+   * item and, where relevant, the on-disk worktree path and branch so an
+   * observer (TUI, transcript) can report isolation + merge state honestly and
+   * point at KEPT worktrees for inspection. None of these ever fire in shared
+   * mode.
+   */
+  | { readonly type: 'item-worktree-created'; readonly workstreamId: string; readonly itemId: string; readonly path: string; readonly branch: string }
+  /** A passed item's branch merged cleanly into the base branch through the integration lane. */
+  | { readonly type: 'item-merged'; readonly workstreamId: string; readonly itemId: string; readonly branch: string; readonly hash: string }
+  /**
+   * The integration lane could not merge a passed item's branch — the base
+   * merge conflicted. The worktree + branch are KEPT (never auto-resolved,
+   * never silently dropped); the lane continues with the next item.
+   */
+  | { readonly type: 'item-merge-conflict'; readonly workstreamId: string; readonly itemId: string; readonly branch: string; readonly path: string; readonly files: readonly string[] }
+  /** An item's worktree + branch were removed (merged item, or a clean tree after fail/kill). */
+  | { readonly type: 'item-worktree-removed'; readonly workstreamId: string; readonly itemId: string; readonly path: string }
+  /**
+   * An item's worktree was deliberately KEPT rather than removed — a merge
+   * conflict, or a dirty tree left behind by a failed/killed item (data
+   * safety). `reason` states which; `path` is where the work still lives.
+   */
+  | { readonly type: 'item-worktree-kept'; readonly workstreamId: string; readonly itemId: string; readonly path: string; readonly reason: string }
+  /**
+   * A KEPT worktree was evicted (removed) to stay under the kept-worktree cap —
+   * oldest-first, and always announced (never a silent sweep). `path` is what
+   * was removed.
+   */
+  | { readonly type: 'item-worktree-evicted'; readonly workstreamId: string; readonly itemId: string; readonly path: string }
+  /**
+   * Reconciliation of an orphaned `ws/*` worktree found at import (a crash
+   * artifact from a prior process). `disposition` is `'adopted'` when the
+   * engine re-attached it to a re-queued item, or `'reported'` when it belongs
+   * to no known item and was left in place for the operator (NEVER deleted on
+   * sight).
+   */
+  | { readonly type: 'orphan-worktree-reconciled'; readonly workstreamId: string; readonly path: string; readonly branch: string; readonly disposition: 'adopted' | 'reported' }
   /**
    * Emitted once per engine instance (Wave 6, wo-F item 4), right after the
    * launch-time dirty-tree snapshot resolves, ONLY when it is non-empty.
