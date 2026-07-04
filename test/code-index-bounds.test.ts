@@ -4,7 +4,7 @@
  * the skip report with honest counts, and .gitignore'd paths are never indexed.
  */
 import { describe, expect, test, afterEach } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CodeIndexStore } from '../packages/sdk/src/platform/state/code-index-store.js';
@@ -65,7 +65,7 @@ describe('CodeIndexStore — bounds honesty', () => {
     expect(results.some((r) => r.chunk.path === 'big.ts')).toBe(false);
   });
 
-  test('files beyond maxFiles are skipped and counted as overCap, honest total preserved', async () => {
+  test('files beyond maxFiles are skipped and counted as overFileCap, honest total preserved', async () => {
     const root = makeRoot();
     writeFileSync(join(root, 'a.ts'), 'export const a = 1;\n');
     writeFileSync(join(root, 'b.ts'), 'export const b = 1;\n');
@@ -77,7 +77,47 @@ describe('CodeIndexStore — bounds honesty', () => {
     const stats = await store.buildFull();
     expect(stats.filesScanned).toBe(3);
     expect(stats.filesIndexed).toBe(1);
-    expect(stats.skip.overCap).toBe(2);
+    expect(stats.skip.overFileCap).toBe(2);
+    // The two bounds report separately — the byte budget was never hit here.
+    expect(stats.skip.overTotalBytes).toBe(0);
+  });
+
+  test('files beyond maxTotalBytes are skipped and counted as overTotalBytes (distinct from the file-count cap)', async () => {
+    const root = makeRoot();
+    // ~40 bytes each; a 50-byte budget accepts exactly the first (sorted) file.
+    writeFileSync(join(root, 'a.ts'), 'export const aaaaaaaaaa = 1;\n');
+    writeFileSync(join(root, 'b.ts'), 'export const bbbbbbbbbb = 1;\n');
+    writeFileSync(join(root, 'c.ts'), 'export const cccccccccc = 1;\n');
+    const registry = makeRegistry(root);
+    const store = new CodeIndexStore(root, ':memory:', registry, { maxTotalBytes: 50 });
+    store.init();
+
+    const stats = await store.buildFull();
+    expect(stats.filesScanned).toBe(3);
+    expect(stats.filesIndexed).toBe(1);
+    expect(stats.skip.overTotalBytes).toBe(2);
+    expect(stats.skip.overFileCap).toBe(0);
+  });
+
+  test('nested .gitignore files are honored relative to their own directory', async () => {
+    const root = makeRoot();
+    mkdirSync(join(root, 'sub'), { recursive: true });
+    // No root .gitignore at all — only the nested one excludes.
+    writeFileSync(join(root, 'sub', '.gitignore'), 'ignored.ts\n');
+    writeFileSync(join(root, 'sub', 'ignored.ts'), 'export const nestedSecret = 1;\n');
+    writeFileSync(join(root, 'sub', 'kept.ts'), 'export const nestedKept = 1;\n');
+    writeFileSync(join(root, 'top.ts'), 'export const top = 1;\n');
+    const registry = makeRegistry(root);
+    const store = new CodeIndexStore(root, ':memory:', registry);
+    store.init();
+
+    const stats = await store.buildFull();
+    expect(stats.skip.ignoredByGitignore).toBe(1);
+
+    const results = store.search('nestedSecret nestedKept top', { limit: 10 });
+    expect(results.some((r) => r.chunk.path === 'sub/ignored.ts')).toBe(false);
+    expect(results.some((r) => r.chunk.path === 'sub/kept.ts')).toBe(true);
+    expect(results.some((r) => r.chunk.path === 'top.ts')).toBe(true);
   });
 
   test('binary files are skipped and counted as binary, never indexed', async () => {
