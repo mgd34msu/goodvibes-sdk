@@ -61,5 +61,5 @@ export type {
   MemoryEmbeddingResult,
   MemoryEmbeddingUsage,
 } from './memory-embeddings.js';
-export type { KnowledgeInjection } from './knowledge-injection.js';
-export { selectKnowledgeForTask, buildKnowledgeInjectionPrompt } from './knowledge-injection.js';
+export type { KnowledgeInjection, ScoredKnowledgeInjection } from './knowledge-injection.js';
+export { selectKnowledgeForTask, selectKnowledgeForTaskScored, buildKnowledgeInjectionPrompt } from './knowledge-injection.js';

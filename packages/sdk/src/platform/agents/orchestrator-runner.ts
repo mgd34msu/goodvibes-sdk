@@ -29,6 +29,12 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitCommunicationConsumed } from '../runtime/emitters/index.js';
 import { summarizeToolArgs } from './orchestrator-utils.js';
 import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt } from './orchestrator-prompts.js';
+import {
+  buildPerTurnKnowledgeInjection,
+  defaultTurnKnowledgeBudgetTokens,
+  recordTurnInjection,
+  DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR,
+} from './turn-knowledge-injection.js';
 import type { AgentMessageBus } from './message-bus.js';
 import type { KnowledgeService } from '../knowledge/index.js';
 import type { ArchetypeLoader } from './archetypes.js';
@@ -95,7 +101,17 @@ export interface AgentOrchestratorRunContext {
   readonly processManager?: ProcessManager | undefined;
   readonly messageBus: Pick<AgentMessageBus, 'getMessages'>;
   readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'> | undefined;
-  readonly memoryRegistry?: Pick<import('../state/index.js').MemoryRegistry, 'getAll' | 'searchSemantic'> | undefined;
+  readonly memoryRegistry?: Pick<import('../state/index.js').MemoryRegistry, 'getAll' | 'searchSemantic' | 'vectorStats'> | undefined;
+  /**
+   * Wave-5 (wo801, W5.1) per-turn passive-injection knobs. Both optional —
+   * undefined means "use the derived default" (see turn-knowledge-injection.ts:
+   * defaultTurnKnowledgeBudgetTokens / DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR).
+   * Setting passiveKnowledgeInjectionBudgetTokens to 0 is the config-level
+   * hard no-op: the feature never runs and the base system prompt is
+   * byte-identical, independent of the feature flag's own state.
+   */
+  readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
+  readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
   readonly archetypeLoader?: { loadArchetype(template: string): { systemPrompt?: string | undefined } | null | undefined } | undefined;
   readonly getFullRegistry: () => ToolRegistry;
   readonly buildScopedRegistry: (allowedNames: string[], fullRegistry: ToolRegistry) => ToolRegistry;
@@ -486,6 +502,16 @@ export async function runAgentTask(
 
     let systemPrompt = buildOrchestratorSystemPrompt(record, undefined, context);
 
+    // Wave-5 (wo801, W5.1) per-turn passive-injection state. `knowledgeIdsAlreadySurfaced`
+    // seeds from the spawn-time baseline (record.knowledgeInjections, just populated by the
+    // call above) and grows with every id a later turn injects, so no record is ever listed
+    // twice across the whole run. `priorTurnKnowledgeBlock` is the last successfully-built
+    // block, reused verbatim on turns where nothing new arrived (see newUserInputThisTurn
+    // below) — it is composed onto the CURRENT `systemPrompt` fresh every turn (see
+    // composeTurnSystemPrompt), never written back into the cached `systemPrompt` let itself.
+    const knowledgeIdsAlreadySurfaced = new Set<string>((record.knowledgeInjections ?? []).map((entry) => entry.id));
+    let priorTurnKnowledgeBlock: string | null = null;
+
     let continueLoop = true;
     let turn = 0;
     record.progress = 'Turn 1 · Thinking…';
@@ -539,12 +565,19 @@ export async function runAgentTask(
       // signal below — deferred until the turn's chat call actually succeeds.
       // See the comment at the emission site for why this can't fire here.
       const drainedSteerMessageIds: string[] = [];
+      // Wave-5 (wo801, W5.1): true when this turn actually added new content to the
+      // conversation the model will see — turn 1 (the initial task) or any steer/directive
+      // drained just above. Gates per-turn knowledge re-retrieval: no new input means the
+      // evolving-conversation query would be identical to last turn's, so the prior turn's
+      // block is reused verbatim instead of re-running retrieval for no behavioral gain.
+      let newUserInputThisTurn = turn === 1;
       for (const msg of pending) {
         // Skip the agent's own broadcasts and any message already injected on a
         // prior turn so each directive is surfaced to the model exactly once.
         if (msg.from === record.id) continue;
         if (injectedMessageIds.has(msg.id)) continue;
         injectedMessageIds.add(msg.id);
+        newUserInputThisTurn = true;
         if (msg.kind === 'steer') {
           // A human steer (ProcessRegistry.steer) is a genuine user turn, not
           // an inter-agent directive — inject it verbatim, with none of the
@@ -557,20 +590,105 @@ export async function runAgentTask(
         }
       }
 
-      if (context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true) {
+      const contextWindowAwarenessEnabled = context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true;
+      const passiveKnowledgeInjectionEnabled = context.featureFlagManager?.isEnabled('agent-passive-knowledge-injection') ?? true;
+      // Resolved once per turn (used by both the awareness check below and the per-turn
+      // knowledge budget), rather than only inside the awareness branch, so the passive-
+      // injection budget can derive "3% of context window" even when context-window
+      // awareness itself is disabled.
+      let contextWindowForTurn = 0;
+      if (contextWindowAwarenessEnabled || passiveKnowledgeInjectionEnabled) {
         const modelDef = resolveContextWindowModelDefinition(providerRegistry, activeRoute);
-        const contextWindow = context.providerRegistry.getContextWindowForModel(modelDef);
+        contextWindowForTurn = context.providerRegistry.getContextWindowForModel(modelDef);
+      }
+
+      if (contextWindowAwarenessEnabled) {
         systemPrompt = applyContextWindowAwareness(
           context,
           record,
           activeRoute.modelId,
-          contextWindow,
+          contextWindowForTurn,
           conversation,
           systemPrompt,
           toolTokens,
           turn,
         );
       }
+
+      // Wave-5 (wo801, W5.1): per-turn passive knowledge injection. Gated on the feature
+      // flag AND on there being new conversation input this turn; otherwise
+      // priorTurnKnowledgeBlock (unchanged) is reused. `priorTurnKnowledgeBlock` and
+      // `systemPrompt` are combined into a request-time-only string just below
+      // (composeTurnSystemPrompt) — the block is NEVER written back into the `systemPrompt`
+      // let, so it cannot compound turn over turn even across the emergency-compaction
+      // retry path (which DOES reassign `systemPrompt`) inside the chat-retry loop.
+      if (passiveKnowledgeInjectionEnabled && newUserInputThisTurn && context.memoryRegistry) {
+        const configuredBudget = context.passiveKnowledgeInjectionBudgetTokens
+          ?? defaultTurnKnowledgeBudgetTokens(contextWindowForTurn);
+        let turnBudgetTokens = configuredBudget;
+        if (contextWindowAwarenessEnabled && contextWindowForTurn > 0) {
+          // Clamp the block's budget to whatever headroom is left under the SAME 85%
+          // compaction threshold applyContextWindowAwareness just enforced on the base
+          // prompt, so base+block can never silently exceed it even though the block is
+          // composed after that check ran (risk: B-tier token dishonesty otherwise).
+          const msgTokensForBudget = estimateConversationTokens(conversation.getMessagesForLLM());
+          const sysTokensForBudget = estimateTokens(systemPrompt);
+          const threshold = Math.floor(contextWindowForTurn * CONTEXT_COMPACT_THRESHOLD);
+          const headroomTokens = threshold - msgTokensForBudget - sysTokensForBudget - toolTokens;
+          turnBudgetTokens = Math.max(0, Math.min(configuredBudget, headroomTokens));
+        }
+        if (turnBudgetTokens > 0) {
+          const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
+          const { block, record: turnInjectionRecord } = buildPerTurnKnowledgeInjection({
+            memoryRegistry: context.memoryRegistry,
+            task: record.task,
+            writeScope: record.writeScope ?? [],
+            conversationTail: conversation.getMessagesForLLM(),
+            budgetTokens: turnBudgetTokens,
+            relevanceFloor,
+            alreadyInjectedIds: [...knowledgeIdsAlreadySurfaced],
+            turn,
+          });
+          priorTurnKnowledgeBlock = block;
+          for (const id of turnInjectionRecord.injectedIds) knowledgeIdsAlreadySurfaced.add(id);
+          record.turnInjections = recordTurnInjection(record.turnInjections, turnInjectionRecord);
+          session.appendMessage({ type: 'knowledge_injection', ...turnInjectionRecord });
+        } else {
+          // Hard no-op: no budget headroom this turn. Never call into retrieval for a
+          // budget that's already known to be zero, and never claim a block that can't
+          // exist — no record, no session message, prior block cleared so the composed
+          // prompt below falls back to the base systemPrompt exactly.
+          priorTurnKnowledgeBlock = null;
+        }
+      }
+
+      // Wave-5 (wo801, W5.1): compose the per-turn knowledge block onto the base
+      // systemPrompt fresh at EVERY call site (including each chat-retry iteration below),
+      // instead of hoisting a single `const turnSystemPrompt` computed once before the
+      // retry loop. This matters because the emergency-compaction retry path inside that
+      // loop reassigns the outer `systemPrompt` let (buildLayeredOrchestratorSystemPrompt)
+      // — a hoisted const would go stale and keep resubmitting the pre-compaction prompt,
+      // silently defeating that retry. Composing here also re-validates fit on every call:
+      // if base+block would exceed the SAME 85% compaction threshold applyContextWindowAwareness
+      // enforces (using live, current-call token counts, not turn-start estimates), the block
+      // is dropped for that call only — this is the safety net for a REUSED block (one that
+      // was sized against a headroom estimate one or more turns ago and may no longer fit,
+      // e.g. after several no-new-input turns of tool-result growth). It never mutates
+      // `priorTurnKnowledgeBlock` or the stored TurnInjectionRecord, both of which honestly
+      // reflect what retrieval computed at the time it ran.
+      const composeTurnSystemPrompt = (base: string): string => {
+        if (!priorTurnKnowledgeBlock) return base;
+        if (contextWindowAwarenessEnabled && contextWindowForTurn > 0) {
+          const liveMsgTokens = estimateConversationTokens(activeConversation.getMessagesForLLM());
+          const liveSysTokens = estimateTokens(base);
+          const liveBlockTokens = estimateTokens(priorTurnKnowledgeBlock);
+          const threshold = Math.floor(contextWindowForTurn * CONTEXT_COMPACT_THRESHOLD);
+          if (liveMsgTokens + liveSysTokens + liveBlockTokens + toolTokens > threshold) {
+            return base;
+          }
+        }
+        return `${base}\n\n${priorTurnKnowledgeBlock}`;
+      };
 
       let response: Awaited<ReturnType<LLMProvider['chat']>> | undefined;
       {
@@ -600,7 +718,7 @@ export async function runAgentTask(
               model: activeRoute.modelId,
               messages: conversation.getMessagesForLLM(),
               tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
-              systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(systemPrompt),
+              systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(composeTurnSystemPrompt(systemPrompt)),
               ...(record.reasoningEffort ? { reasoningEffort: record.reasoningEffort } : {}),
               onDelta,
             });

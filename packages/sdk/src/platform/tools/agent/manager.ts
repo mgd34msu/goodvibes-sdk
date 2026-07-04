@@ -24,6 +24,7 @@ import type { AgentInput } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { splitModelRegistryKey } from '../../providers/registry-helpers.js';
 import type { WrfcAgentRole } from '../../agents/wrfc-types.js';
+import type { TurnInjectionRecord } from '../../agents/turn-knowledge-injection.js';
 import {
   isRootReviewRoleTask,
   resolveAuthoritativeWrfcScope,
@@ -190,6 +191,17 @@ export interface AgentRecord {
     confidence: number;
     reviewState: 'fresh' | 'reviewed' | 'stale' | 'contradicted';
   }>;
+  /**
+   * Wave-5 (wo801, W5.1) bounded ring of per-turn passive-injection honesty
+   * records — one entry per turn that actually ran retrieval (turns that
+   * reused the prior turn's cached block, or that ran with the feature
+   * flag/budget off, append nothing). See turn-knowledge-injection.ts for
+   * the record shape and recordTurnInjection for the ring-eviction policy.
+   * Deliberately a plain field (no new KnowledgeEvent contract member) —
+   * the same entries are also appended to the agent's session transcript
+   * via `session.appendMessage({type:'knowledge_injection', ...})`.
+   */
+  turnInjections?: TurnInjectionRecord[] | undefined;
 }
 
 export class AgentManager {
