@@ -39,8 +39,25 @@ import {
 } from './orchestrator-turn-helpers.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 import { buildWrfcWorkflowRoutingPrompt } from './wrfc-routing.js';
+import {
+  buildPerTurnKnowledgeInjection,
+  defaultTurnKnowledgeBudgetTokens,
+  DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR,
+  type TurnInjectionRecord,
+  type TurnKnowledgeRegistrySource,
+} from '../agents/turn-knowledge-injection.js';
 
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
+/**
+ * Wave-5 (wo805) per-turn passive-injection headroom clamp for the MAIN interactive
+ * session. Mirrors agents/orchestrator-runner.ts's CONTEXT_COMPACT_THRESHOLD (0.85) —
+ * deliberately NOT derived from this loop's own configurable `behavior.autoCompactThreshold`
+ * (default 80, see config/schema-domain-core.ts), which governs CONVERSATION compaction and
+ * can be user-tuned or disabled (0) independently of this feature. Keeping this fixed keeps
+ * the injection block's safety margin identical to wo801's regardless of what the operator
+ * has configured for compaction.
+ */
+const PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD = 0.85;
 
 interface HookDispatcherLike {
   fire(event: HookEvent): Promise<HookResult>;
@@ -58,7 +75,7 @@ export interface OrchestratorTurnLoopContext {
   readonly runtimeBus: RuntimeEventBus | null;
   readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
   readonly configManager: Pick<ConfigManager, 'get'>;
-  readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel' | 'getTokenLimitsForModel'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel' | 'getTokenLimitsForModel' | 'getContextWindowForModel'>;
   readonly favoritesStore?: Pick<FavoritesStore, 'recordUsage'> | undefined;
   readonly cacheHitTracker: Pick<CacheHitTracker, 'getMetrics'>;
   readonly helperModel: HelperModel;
@@ -96,6 +113,32 @@ export interface OrchestratorTurnLoopContext {
     cacheRead: number;
     cacheWrite: number;
   };
+  /**
+   * Wave-5 (wo805) per-turn passive-injection wiring for the MAIN interactive session —
+   * the sibling of wo801's agents/orchestrator-runner.ts runAgentTask wiring, gated on the
+   * SAME `agent-passive-knowledge-injection` feature flag (its description already
+   * promised "the EVOLVING main-session conversation" coverage; see
+   * runtime/feature-flags/flags.ts). `memoryRegistry` undefined is a hard no-op, matching
+   * the agent path. Budget/floor default to the same derived defaults
+   * (defaultTurnKnowledgeBudgetTokens / DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR) when
+   * omitted.
+   */
+  readonly memoryRegistry?: TurnKnowledgeRegistrySource | undefined;
+  readonly isPassiveKnowledgeInjectionEnabled: () => boolean;
+  readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
+  readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
+  /**
+   * The main session has no spawn-time `AgentRecord.knowledgeInjections` baseline, so this
+   * starts empty and grows monotonically for the life of the Orchestrator — no record is
+   * ever surfaced twice across the whole interactive session (mirrors wo801's
+   * knowledgeIdsAlreadySurfaced, but session-lifetime instead of one-agent-run-lifetime).
+   */
+  readonly getAlreadyInjectedKnowledgeIds: () => readonly string[];
+  readonly addInjectedKnowledgeIds: (ids: readonly string[]) => void;
+  /** Bounded ring (see recordTurnInjection) backing Orchestrator.getTurnInjections(). */
+  readonly recordTurnKnowledgeInjection: (record: TurnInjectionRecord) => void;
+  /** Monotonic per-Orchestrator-lifetime sequence number for TurnInjectionRecord.turn. */
+  readonly nextTurnKnowledgeSequence: () => number;
 }
 
 export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopContext): Promise<void> {
@@ -107,6 +150,20 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
 
   let continueLoop = true;
   const circuitBreaker = new ConsecutiveErrorBreaker();
+  // Wave-5 (wo805): true only for the FIRST LLM call this executeOrchestratorTurnLoop()
+  // invocation makes (see the per-iteration gate below for why this is the main loop's
+  // analog of wo801's "new user input this turn").
+  let isFirstIterationOfThisCall = true;
+  // Wave-5 (wo805): the last successfully-built per-turn knowledge block, reused verbatim
+  // on tool-continuation iterations of THIS call where nothing new arrived (mirrors
+  // wo801's priorTurnKnowledgeBlock) — declared OUTSIDE the while loop so a block built on
+  // iteration 1 (the human message that started this runTurn()) stays available to every
+  // later tool round of the SAME call, not just the first LLM call. It is composed onto
+  // the CURRENT `composedBaseSystemPrompt` fresh every iteration (see
+  // composeTurnSystemPrompt below), never written back into any cached base string, so it
+  // cannot compound. Reset implicitly to null on every NEW executeOrchestratorTurnLoop()
+  // call (a fresh runTurn() always recomputes from scratch on its own iteration 1).
+  let turnKnowledgeBlock: string | null = null;
 
   while (continueLoop) {
     let streamAccumulated = '';
@@ -205,6 +262,93 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       }
     }
 
+    // Wave-5 (wo805): per-turn passive knowledge injection for the MAIN interactive
+    // session — the missing counterpart to wo801's agents/orchestrator-runner.ts wiring.
+    // `newUserInputThisTurn` mirrors wo801's turn-1/steer-drain gate: it is true exactly
+    // on the FIRST LLM call this executeOrchestratorTurnLoop() invocation makes (the fresh
+    // human message this runTurn() call was invoked with) and false on every subsequent
+    // tool-continuation iteration of the SAME call, since the main session never drains
+    // new human input mid-call (handleUserInput queues a second message until the current
+    // runTurn() completes — see orchestrator.ts). Retrieval reruns only when
+    // newUserInputThisTurn is true; tool-continuation iterations reuse `turnKnowledgeBlock`
+    // as-is (declared before the while loop) — exactly wo801's reuse behavior for
+    // no-new-input turns, just with a different trigger for what counts as "new".
+    const newUserInputThisTurn = isFirstIterationOfThisCall;
+    isFirstIterationOfThisCall = false;
+    const passiveKnowledgeInjectionEnabled = context.isPassiveKnowledgeInjectionEnabled();
+    let knowledgeContextWindow = 0;
+    if (passiveKnowledgeInjectionEnabled && context.memoryRegistry) {
+      knowledgeContextWindow = context.providerRegistry.getContextWindowForModel(model);
+    }
+    const baseSystemPromptForCall = appendGoodVibesRuntimeAwarenessPrompt(context.getSystemPrompt());
+    const wrfcRoutingPromptForCall = buildWrfcWorkflowRoutingPrompt(context.text);
+    const composedBaseSystemPrompt = wrfcRoutingPromptForCall
+      ? `${baseSystemPromptForCall}\n\n${wrfcRoutingPromptForCall}`
+      : baseSystemPromptForCall;
+    if (passiveKnowledgeInjectionEnabled && newUserInputThisTurn && context.memoryRegistry) {
+      const configuredBudget = context.passiveKnowledgeInjectionBudgetTokens
+        ?? defaultTurnKnowledgeBudgetTokens(knowledgeContextWindow);
+      let turnBudgetTokens = configuredBudget;
+      if (knowledgeContextWindow > 0) {
+        // Clamp to whatever headroom remains under the same fixed safety threshold this
+        // block always uses (PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD) so base+block
+        // can never silently exceed it, using LIVE token counts from the
+        // post-preflight-compaction conversation state (checkContextWindowPreflight above
+        // already ran this iteration) rather than turn-start estimates.
+        const msgTokensForBudget = estimateConversationTokens(context.conversation.getMessagesForLLM());
+        const sysTokensForBudget = estimateTokens(composedBaseSystemPrompt);
+        const threshold = Math.floor(knowledgeContextWindow * PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD);
+        const headroomTokens = threshold - msgTokensForBudget - sysTokensForBudget;
+        turnBudgetTokens = Math.max(0, Math.min(configuredBudget, headroomTokens));
+      }
+      if (turnBudgetTokens > 0) {
+        const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
+        const { block, record: turnInjectionRecord } = buildPerTurnKnowledgeInjection({
+          memoryRegistry: context.memoryRegistry,
+          // The main session has no frozen "task" distinct from the live conversation —
+          // context.text (this call's originating human message) IS this turn's task, and
+          // is also the latest user-role message already appended to the conversation
+          // before the loop started (see prepareConversationForTurn), so
+          // deriveTurnKnowledgeQuery collapses to it with no duplication — the same
+          // turn-1 behavior wo801 documents for the agent path.
+          task: context.text,
+          conversationTail: context.conversation.getMessagesForLLM(),
+          budgetTokens: turnBudgetTokens,
+          relevanceFloor,
+          alreadyInjectedIds: context.getAlreadyInjectedKnowledgeIds(),
+          turn: context.nextTurnKnowledgeSequence(),
+        });
+        turnKnowledgeBlock = block;
+        if (turnInjectionRecord.injectedIds.length > 0) {
+          context.addInjectedKnowledgeIds(turnInjectionRecord.injectedIds);
+        }
+        context.recordTurnKnowledgeInjection(turnInjectionRecord);
+      } else {
+        // Hard no-op: no budget headroom this call. Never call into retrieval for a
+        // budget already known to be zero, and never keep claiming a stale block from an
+        // earlier iteration that no longer fits — clear it so composeTurnSystemPrompt
+        // falls back to the base prompt exactly (mirrors wo801's identical branch).
+        turnKnowledgeBlock = null;
+      }
+    }
+    // Composed fresh at the call site (never a hoisted `const` reused across calls) so the
+    // block is re-validated against LIVE tokens at the instant it is actually sent — the
+    // same "never mutate the cached base, recompute at the call site" discipline wo801's
+    // composeTurnSystemPrompt established, even though this loop has no in-call
+    // context-exceeded retry path to go stale across (compaction here is the PROACTIVE
+    // checkContextWindowPreflight above, not a reactive mid-call retry-and-shrink).
+    const composeTurnSystemPrompt = (base: string): string => {
+      if (!turnKnowledgeBlock) return base;
+      if (knowledgeContextWindow > 0) {
+        const liveMsgTokens = estimateConversationTokens(context.conversation.getMessagesForLLM());
+        const liveSysTokens = estimateTokens(base);
+        const liveBlockTokens = estimateTokens(turnKnowledgeBlock);
+        const threshold = Math.floor(knowledgeContextWindow * PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD);
+        if (liveMsgTokens + liveSysTokens + liveBlockTokens > threshold) return base;
+      }
+      return `${base}\n\n${turnKnowledgeBlock}`;
+    };
+
     let response: Awaited<ReturnType<typeof provider.chat>>;
     if (context.runtimeBus) {
       emitLlmRequestStarted(context.runtimeBus, context.emitterContext(context.turnId), {
@@ -217,13 +361,11 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     const chatStartedAt = Date.now();
     let chatRetries = 0;
     try {
-      const baseSystemPrompt = appendGoodVibesRuntimeAwarenessPrompt(context.getSystemPrompt());
-      const wrfcRoutingPrompt = buildWrfcWorkflowRoutingPrompt(context.text);
       response = await provider.chat({
         model: model.id,
         messages: context.conversation.getMessagesForLLM(),
         tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
-        systemPrompt: wrfcRoutingPrompt ? `${baseSystemPrompt}\n\n${wrfcRoutingPrompt}` : baseSystemPrompt,
+        systemPrompt: composeTurnSystemPrompt(composedBaseSystemPrompt),
         maxTokens: tokenLimits.maxOutputTokens,
         reasoningEffort: (() => {
           const configured = context.configManager.get('provider.reasoningEffort') as string | undefined;

@@ -62,6 +62,10 @@ import {
   prepareConversationForTurn,
 } from './orchestrator-turn-helpers.js';
 import { executeOrchestratorTurnLoop } from './orchestrator-turn-loop.js';
+import {
+  recordTurnInjection,
+  type TurnInjectionRecord,
+} from '../agents/turn-knowledge-injection.js';
 
 /** Minimal interface for hook dispatch — allows any hook dispatcher implementation */
 interface HookDispatcherLike {
@@ -126,6 +130,19 @@ export interface OrchestratorOptions {
    * plans, and reply correlation. Defaults to a generated private id.
    */
   sessionId?: string | undefined;
+  /**
+   * Wave-5 (wo805) per-turn passive-injection budget override for the main session,
+   * mirroring agents/orchestrator-runner.ts's `passiveKnowledgeInjectionBudgetTokens`.
+   * Omitted uses the derived default (defaultTurnKnowledgeBudgetTokens). `0` is a hard
+   * no-op, independent of the feature flag's own state.
+   */
+  passiveKnowledgeInjectionBudgetTokens?: number | undefined;
+  /**
+   * Wave-5 (wo805) per-turn passive-injection relevance-floor override for the main
+   * session, mirroring agents/orchestrator-runner.ts's
+   * `passiveKnowledgeInjectionRelevanceFloor`. Omitted uses DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR.
+   */
+  passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
   /** Required runtime service dependencies. */
   services: {
     readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
@@ -232,6 +249,20 @@ export class Orchestrator {
   private hookDispatcher: HookDispatcherLike | null;
 
   /**
+   * Wave-5 (wo805) per-turn passive-injection state for the MAIN interactive session —
+   * see core/orchestrator-turn-loop.ts for the retrieval/budget wiring that reads and
+   * mutates these. `turnKnowledgeIdsAlreadySurfaced` has no spawn-time baseline (unlike
+   * an AgentRecord's `knowledgeInjections`) so it starts empty and grows monotonically
+   * for the life of this Orchestrator. `turnInjectionRing` backs the public
+   * `getTurnInjections()` accessor.
+   */
+  private readonly turnKnowledgeIdsAlreadySurfaced = new Set<string>();
+  private turnInjectionRing: TurnInjectionRecord[] = [];
+  private turnKnowledgeSequence = 0;
+  private readonly passiveKnowledgeInjectionBudgetTokens: number | undefined;
+  private readonly passiveKnowledgeInjectionRelevanceFloor: number | undefined;
+
+  /**
    * Construct an Orchestrator using a named-options object.
    *
    * @example
@@ -264,8 +295,12 @@ export class Orchestrator {
       requestRender = null,
       runtimeBus = null,
       sessionId,
+      passiveKnowledgeInjectionBudgetTokens,
+      passiveKnowledgeInjectionRelevanceFloor,
       services,
     } = options;
+    this.passiveKnowledgeInjectionBudgetTokens = passiveKnowledgeInjectionBudgetTokens;
+    this.passiveKnowledgeInjectionRelevanceFloor = passiveKnowledgeInjectionRelevanceFloor;
     this.sessionId = sessionId?.trim() || randomUUID();
     this.conversation = conversation;
     this.getViewportHeight = getViewportHeight;
@@ -387,6 +422,18 @@ export class Orchestrator {
 
   public getSpinner(): string {
     return THINKING_SPINNER_FRAMES[this.thinkingFrame % THINKING_SPINNER_FRAMES.length]!;
+  }
+
+  /**
+   * Wave-5 (wo805): bounded ring of per-turn passive-injection honesty records for the
+   * MAIN interactive session — the main-session counterpart to `AgentRecord.turnInjections`
+   * (wo801). There is no AgentRecord for the primary conversation, so this is the exact
+   * accessor a `/recall`-style renderer should read as the main-session default when no
+   * agent id is given. See agents/turn-knowledge-injection.ts for the record shape and
+   * recordTurnInjection for the ring-eviction policy (same bounded size as the agent path).
+   */
+  public getTurnInjections(): readonly TurnInjectionRecord[] {
+    return this.turnInjectionRing;
   }
 
   public setSystemMessageRouter(router: LowPrioritySystemMessageSink | null): void {
@@ -697,6 +744,14 @@ export class Orchestrator {
       setLastInputTokens: (value) => { this.lastInputTokens = value; },
       markTurnFailed: () => { this._turnFailed = true; },
       usage: this.usage,
+      memoryRegistry: this.coreServices.memoryRegistry,
+      isPassiveKnowledgeInjectionEnabled: () => this.isPassiveKnowledgeInjectionEnabled(),
+      passiveKnowledgeInjectionBudgetTokens: this.passiveKnowledgeInjectionBudgetTokens,
+      passiveKnowledgeInjectionRelevanceFloor: this.passiveKnowledgeInjectionRelevanceFloor,
+      getAlreadyInjectedKnowledgeIds: () => this.getAlreadyInjectedKnowledgeIds(),
+      addInjectedKnowledgeIds: (ids) => { this.addInjectedKnowledgeIds(ids); },
+      recordTurnKnowledgeInjection: (record) => { this.recordTurnKnowledgeInjection(record); },
+      nextTurnKnowledgeSequence: () => this.nextTurnKnowledgeSequence(),
     });
   }
 
@@ -907,6 +962,47 @@ export class Orchestrator {
   private isReconciliationEnabled(): boolean {
     if (this.flagManager === null) return true;
     return this.flagManager.isEnabled('tool-result-reconciliation');
+  }
+
+  /**
+   * Returns `true` when Wave-5 (wo801/wo805) per-turn passive knowledge injection is
+   * active for this session. Shares the SAME `agent-passive-knowledge-injection` flag as
+   * the agent path (agents/orchestrator-runner.ts) rather than a sibling main-session
+   * flag — the flag's own description already promises "the EVOLVING main-session
+   * conversation" coverage (see runtime/feature-flags/flags.ts), so wiring the main loop
+   * under the same id completes that promise instead of duplicating a second toggle for
+   * what is, from an operator's perspective, one feature.
+   *
+   * Defaults to `true` (flag `defaultState: 'enabled'`) when no flag manager has been
+   * wired in, matching {@link isReconciliationEnabled}'s convention.
+   */
+  private isPassiveKnowledgeInjectionEnabled(): boolean {
+    if (this.flagManager === null) return true;
+    return this.flagManager.isEnabled('agent-passive-knowledge-injection');
+  }
+
+  /**
+   * Wave-5 (wo805): ids never to re-surface in a later per-turn knowledge block. The main
+   * session has no spawn-time `AgentRecord.knowledgeInjections` baseline, so this starts
+   * empty and grows monotonically for the life of the Orchestrator.
+   */
+  private getAlreadyInjectedKnowledgeIds(): readonly string[] {
+    return [...this.turnKnowledgeIdsAlreadySurfaced];
+  }
+
+  /** Wave-5 (wo805): mark ids as surfaced so they are never listed twice this session. */
+  private addInjectedKnowledgeIds(ids: readonly string[]): void {
+    for (const id of ids) this.turnKnowledgeIdsAlreadySurfaced.add(id);
+  }
+
+  /** Wave-5 (wo805): append one honesty record to the bounded ring behind {@link getTurnInjections}. */
+  private recordTurnKnowledgeInjection(record: TurnInjectionRecord): void {
+    this.turnInjectionRing = recordTurnInjection(this.turnInjectionRing, record);
+  }
+
+  /** Wave-5 (wo805): monotonic per-Orchestrator-lifetime sequence number for TurnInjectionRecord.turn. */
+  private nextTurnKnowledgeSequence(): number {
+    return ++this.turnKnowledgeSequence;
   }
 
   /**
