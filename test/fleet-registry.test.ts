@@ -267,6 +267,25 @@ describe('fleet registry — adapter mapping', () => {
     registry.dispose();
   });
 
+  // W3.1 Part A2: terminationKind splits the single 'cancelled' status into
+  // two display states without touching `status` itself.
+  test('cancelled agent: terminationKind splits killed vs interrupted; missing/unknown kind defaults to killed', () => {
+    const agents = [
+      makeAgent({ id: 'a-kill', status: 'cancelled', terminationKind: 'kill' }),
+      makeAgent({ id: 'a-interrupt', status: 'cancelled', terminationKind: 'interrupt' }),
+      // Records cancelled before terminationKind existed (or via the
+      // single-arg cancel(id) call, which defaults to 'kill') have no field.
+      makeAgent({ id: 'a-legacy', status: 'cancelled' }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [...agents], cancel: () => false },
+    }));
+    expect(nodeById(registry, 'a-kill').state).toBe('killed');
+    expect(nodeById(registry, 'a-interrupt').state).toBe('interrupted');
+    expect(nodeById(registry, 'a-legacy').state).toBe('killed');
+    registry.dispose();
+  });
+
   test('parentId precedence: wrfcSubtaskId > wrfcId > parentNodeId(resolved) > parentAgentId', () => {
     const chain = makeChain({
       id: 'ch-1',
@@ -349,6 +368,73 @@ describe('fleet registry — adapter mapping', () => {
     expect(nodeById(registry, 'chain:ch-failed').state).toBe('failed');
     expect(nodeById(registry, 'chain:ch-pending').state).toBe('queued');
     expect(nodeById(registry, 'chain:ch-retry').state).toBe('retrying');
+    registry.dispose();
+  });
+
+  // W3.1 Part A4: chain terminal truth. WrfcController has no cancel/abort of
+  // its own, so a cascade kill (registry.ts kill('chain:<id>')) only cancels
+  // the member agents — chain.state never leaves whatever active phase it was
+  // in when killed. Before the fix this rendered 'executing-tool' forever
+  // with elapsedMs climbing on every query() (the replay-found leak).
+  // Regression: two registries at very different `now` values over the SAME
+  // killed-chain snapshot must report the identical, frozen elapsedMs.
+  test('chain killed via cascade: chain.state stuck in an active phase, every member terminal → derived killed + elapsedMs frozen at max(member.completedAt), owner excluded', () => {
+    const chain = makeChain({
+      id: 'ch-cascade-killed',
+      state: 'engineering', // WrfcController never moved this off the active phase
+      ownerAgentId: 'own-z',
+      allAgentIds: ['own-z', 'm1-z', 'm2-z'],
+      createdAt: T0,
+    });
+    const agents = [
+      // Owner's completedAt is deliberately the LATEST of the three so that,
+      // if aggregateCost's owner-exclusion rule were ever violated here too,
+      // this assertion would catch it (expected elapsedMs comes from m2-z).
+      makeAgent({ id: 'own-z', wrfcId: 'ch-cascade-killed', status: 'cancelled', terminationKind: 'kill', startedAt: T0, completedAt: T0 + 9_000 }),
+      makeAgent({ id: 'm1-z', wrfcId: 'ch-cascade-killed', status: 'cancelled', terminationKind: 'kill', startedAt: T0, completedAt: T0 + 3_000 }),
+      makeAgent({ id: 'm2-z', wrfcId: 'ch-cascade-killed', status: 'cancelled', terminationKind: 'interrupt', startedAt: T0, completedAt: T0 + 5_000 }),
+    ];
+    const registryEarly = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [...agents], cancel: () => false },
+      wrfcController: { listChains: () => [chain] },
+      now: () => T0 + 6_000,
+    }));
+    const registryLater = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [...agents], cancel: () => false },
+      wrfcController: { listChains: () => [chain] },
+      now: () => T0 + 60_000, // a full minute later — elapsed must NOT have climbed
+    }));
+    const nodeEarly = nodeById(registryEarly, 'chain:ch-cascade-killed');
+    const nodeLater = nodeById(registryLater, 'chain:ch-cascade-killed');
+    expect(nodeEarly.state).toBe('killed');
+    expect(nodeLater.state).toBe('killed');
+    expect(nodeEarly.completedAt).toBe(T0 + 5_000);
+    expect(nodeEarly.elapsedMs).toBe(5_000);
+    expect(nodeLater.elapsedMs).toBe(5_000); // frozen, not climbing with `now`
+    expect(nodeEarly.capabilities.killable).toBe(false); // already terminal
+    registryEarly.dispose();
+    registryLater.dispose();
+  });
+
+  test('chain retrying takes precedence over the killed-derivation during an in-flight transport respawn', () => {
+    const chain = makeChain({
+      id: 'ch-retry-real',
+      state: 'engineering',
+      ownerAgentId: 'own-r',
+      allAgentIds: ['own-r', 'm1-r'],
+      transportRetryCount: 1,
+    });
+    const agents = [
+      makeAgent({ id: 'own-r', wrfcId: 'ch-retry-real', status: 'running' }),
+      // The failed transport attempt is terminal, but this is the respawn
+      // window (retryCount > 0), not an operator kill.
+      makeAgent({ id: 'm1-r', wrfcId: 'ch-retry-real', status: 'failed', completedAt: T0 + 1_000 }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [...agents], cancel: () => false },
+      wrfcController: { listChains: () => [chain] },
+    }));
+    expect(nodeById(registry, 'chain:ch-retry-real').state).toBe('retrying');
     registry.dispose();
   });
 
@@ -875,6 +961,58 @@ describe('fleet registry — subscribe/tick/dispose', () => {
 // ── 8. Control dispatch ───────────────────────────────────────────────────────
 
 describe('fleet registry — control dispatch', () => {
+  // W3.1 Part A3: registry routing must pass the termination intent through
+  // to AgentManager.cancel(id, kind) — kill() always 'kill' (direct agent
+  // kill, and chain/subtask cascade via cancelAgents), interrupt() always
+  // 'interrupt'. Spy on the exact args cancel() receives.
+  test('agent kill passes cancel(id, "kill"); agent interrupt passes cancel(id, "interrupt")', () => {
+    const calls: Array<{ id: string; kind: 'interrupt' | 'kill' | undefined }> = [];
+    const agent = makeAgent({ id: 'ag-verb' });
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: {
+        list: () => [agent],
+        cancel: (id: string, kind?: 'interrupt' | 'kill') => {
+          calls.push({ id, kind });
+          return true;
+        },
+      },
+    }));
+    expect(registry.kill('ag-verb')).toEqual(['ag-verb']);
+    expect(registry.interrupt('ag-verb')).toBe(true);
+    expect(calls).toEqual([
+      { id: 'ag-verb', kind: 'kill' },
+      { id: 'ag-verb', kind: 'interrupt' },
+    ]);
+    registry.dispose();
+  });
+
+  test('chain cascade kill always passes cancel(id, "kill") over member agents, never "interrupt"', () => {
+    const calls: Array<{ id: string; kind: 'interrupt' | 'kill' | undefined }> = [];
+    const chain = makeChain({
+      id: 'ch-verb',
+      ownerAgentId: 'own-verb',
+      allAgentIds: ['own-verb', 'm1-verb'],
+    });
+    const agents = [
+      makeAgent({ id: 'own-verb', wrfcId: 'ch-verb' }),
+      makeAgent({ id: 'm1-verb', wrfcId: 'ch-verb' }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: {
+        list: () => [...agents],
+        cancel: (id: string, kind?: 'interrupt' | 'kill') => {
+          calls.push({ id, kind });
+          return true;
+        },
+      },
+      wrfcController: { listChains: () => [chain] },
+    }));
+    registry.kill('chain:ch-verb');
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) expect(call.kind).toBe('kill');
+    registry.dispose();
+  });
+
   test('kill routes to the owning manager per kind', () => {
     const calls: string[] = [];
     const agent = makeAgent({ id: 'ag-k' });
