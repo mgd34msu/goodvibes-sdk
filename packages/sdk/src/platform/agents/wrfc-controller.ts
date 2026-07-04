@@ -408,6 +408,9 @@ export class WrfcController {
       });
       return false;
     }
+    if (!isChainTerminal(chain.state) && this.isZombieChain(chain)) {
+      this.reapZombieChain(chain);
+    }
     this.chains.set(chain.id, chain);
     logger.info('WrfcController.importChain: chain imported', {
       chainId: chain.id,
@@ -415,6 +418,52 @@ export class WrfcController {
       overwroteExisting: existing !== undefined,
     });
     return true;
+  }
+
+  /**
+   * Item d5 (Wave 6, wo-F): resurrection-safe zombie check for a chain about
+   * to be imported at rehydrate. A non-terminal chain whose ENTIRE roster
+   * (allAgentIds) is absent from THIS process's live AgentManager never
+   * survived the restart — no in-process execution is coming back to finish
+   * it, so it would otherwise show as "running" forever. If even ONE roster
+   * agent id IS live (e.g. re-imported mid-session, not at a real process
+   * restart), this returns false and the chain is left exactly as imported —
+   * reaping only ever fires when NOTHING could possibly still be driving it.
+   */
+  private isZombieChain(chain: WrfcChain): boolean {
+    if (chain.allAgentIds.length === 0) return false;
+    return chain.allAgentIds.every((agentId) => this.agentManager.getStatus(agentId) === null);
+  }
+
+  /**
+   * Item d5: mark a reimported zombie chain terminal at import time so it
+   * presents as failed + prunable instead of stuck non-terminal forever.
+   * Deliberately does NOT call failChain()/cancelChain(): those assume a
+   * live in-memory execution (cancel running children, complete the owner
+   * agent record, re-check gates for siblings) that makes no sense for a
+   * chain whose entire roster is already confirmed dead — this is a direct,
+   * minimal field mutation plus the same state-changed/chain-failed events
+   * every other terminal transition emits, so consumers see one consistent
+   * "chain failed" signal regardless of which path produced it.
+   */
+  private reapZombieChain(chain: WrfcChain): void {
+    const from = chain.state;
+    const reason = 'zombie chain reaped at rehydrate: no member agent survived the restart';
+    chain.state = 'failed';
+    chain.error = reason;
+    chain.failureKind = 'other';
+    chain.completedAt = Date.now();
+    emitWrfcStateChanged(this.runtimeBus, this.sessionId, chain.id, from, 'failed');
+    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
+      chainId: chain.id,
+      reason,
+      failureKind: 'other',
+    });
+    logger.warn('WrfcController.importChain: reaped zombie chain — no member agent survived restart', {
+      chainId: chain.id,
+      priorState: from,
+      agentIds: chain.allAgentIds,
+    });
   }
 
   dispose(): void {

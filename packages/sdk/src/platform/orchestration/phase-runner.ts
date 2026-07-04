@@ -63,7 +63,8 @@ import { isTransportFailureMessage } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { CancellationRegistry } from './cancellation.js';
-import type { GateOutcome, Phase, PhaseResult, WorkItem, WorkItemUsage, Workstream } from './types.js';
+import { excludeUntouchedLaunchResidue, type DirtyLaunchSnapshot } from './dirty-guard.js';
+import type { CommitExclusion, GateOutcome, Phase, PhaseResult, WorkItem, WorkItemUsage, Workstream } from './types.js';
 
 /** Narrow structural pick — testable with stubs, mirrors AgentManagerLike (wrfc-config.ts). */
 export type PhaseRunnerAgentManagerLike = Pick<
@@ -89,6 +90,12 @@ export interface PhaseRunnerDeps {
   readonly cancellation: CancellationRegistry;
   readonly priceUsage?: ((model: string | undefined, usage: WorkItemUsage) => number | null) | undefined;
   readonly skipClaimVerification?: boolean | undefined;
+  /**
+   * The dirty-tree snapshot taken synchronously at engine launch (Wave 6,
+   * wo-F item 4 — see dirty-guard.ts). Absent (undefined) degrades to
+   * today's behavior: no exclusion, every candidate path is committed.
+   */
+  readonly launchDirtySnapshot?: DirtyLaunchSnapshot | undefined;
 }
 
 export interface PhaseRunOutcome {
@@ -246,17 +253,52 @@ async function evaluateGate(
   };
 }
 
-async function commitPhaseWork(item: WorkItem, phase: Phase, agentId: string, worktree: WrfcWorktreeOps): Promise<void> {
-  if (phase.gate.scope === 'off') return;
+async function commitPhaseWork(
+  item: WorkItem,
+  phase: Phase,
+  agentId: string,
+  worktree: WrfcWorktreeOps,
+  deps: Pick<PhaseRunnerDeps, 'projectRoot' | 'launchDirtySnapshot'>,
+): Promise<CommitExclusion | undefined> {
+  if (phase.gate.scope === 'off') return undefined;
+
+  let paths = phase.gate.scope === 'scoped' ? item.touchedPaths : undefined;
+  let exclusion: CommitExclusion | undefined;
+
+  if (paths && paths.length > 0 && deps.launchDirtySnapshot) {
+    const launchSnapshot = deps.launchDirtySnapshot;
+    if (launchSnapshot.size > 0) {
+      const { included, excluded } = excludeUntouchedLaunchResidue(deps.projectRoot, paths, launchSnapshot);
+      if (excluded.length > 0) {
+        exclusion = { excludedPaths: excluded, skipped: included.length === 0 };
+        if (included.length === 0) {
+          // Every candidate path is untouched launch-dirty residue — an
+          // honest "nothing this phase did needs committing", not a silent
+          // no-op AND not a fallback to sweeping the whole working tree.
+          logger.info('orchestration phase-runner: scoped commit skipped — every candidate path is untouched launch-dirty residue', {
+            itemId: item.id,
+            phaseId: phase.id,
+            excludedPaths: excluded,
+          });
+          return exclusion;
+        }
+        logger.info('orchestration phase-runner: excluded untouched launch-dirty residue from scoped commit', {
+          itemId: item.id,
+          phaseId: phase.id,
+          excludedPaths: excluded,
+        });
+        paths = [...included];
+      }
+    }
+  }
+
   try {
-    await worktree.commitWorkingTree(
-      `orchestration: ${item.title} — ${phase.kind} phase`,
-      phase.gate.scope === 'scoped' ? item.touchedPaths : undefined,
-    );
+    await worktree.commitWorkingTree(`orchestration: ${item.title} — ${phase.kind} phase`, paths);
     await worktree.merge(agentId);
   } catch (error) {
     logger.warn('orchestration phase-runner: commit/merge failed', { itemId: item.id, phaseId: phase.id, error: summarizeError(error) });
   }
+  return exclusion;
 }
 
 /** Runs one WorkItem through one Phase to completion (or cancellation/failure). Recurses (bounded by transportRetryLimit) on a transport-classified spawn failure. */
@@ -349,8 +391,9 @@ export async function runPhase(
 
   const gate = await evaluateGate(workstream, phase, report, deps);
 
+  let commitExclusion: CommitExclusion | undefined;
   if (gate.passed) {
-    await commitPhaseWork(item, phase, record.id, worktree);
+    commitExclusion = await commitPhaseWork(item, phase, record.id, worktree, deps);
   }
   await worktree.cleanup(record.id).catch(() => undefined);
 
@@ -365,6 +408,7 @@ export async function runPhase(
       startedAt,
       completedAt: Date.now(),
       usage,
+      ...(commitExclusion ? { commitExclusion } : {}),
     },
   };
 }

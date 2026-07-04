@@ -54,7 +54,7 @@ export function adaptCodeIndex(service: CodeIndexProcessSource, now: number): Pr
     currentActivity: building
       ? { kind: 'phase', text: progress ? `Indexing ${progress.scanned}/${progress.total}` : 'Indexing', at: now }
       : undefined,
-    capabilities: { interruptible: false, killable: false, pausable: false, steerable: false },
+    capabilities: { interruptible: false, killable: false, pausable: false, resumable: false, steerable: false },
     raw: stats,
   };
 }
