@@ -60,9 +60,31 @@ export interface PhaseSpec {
 export type WorkItemState =
   | 'pending'
   | 'awaiting-capacity'
+  /**
+   * Live only while a phase's agent is actually running. `importWorkstream`
+   * (engine.ts) reconciles any item persisted in this state back to
+   * 'pending' and clears `agentId` before the workstream is registered — a
+   * snapshot can only ever capture 'in-phase' as a crash artifact (the
+   * process died mid-run), never a resumable one, since no agent from a
+   * prior process is still alive to finish it. Without that reconciliation
+   * an imported 'in-phase' item counts as an OCCUPIED capacity slot forever
+   * (computeClaims, scheduler.ts) while never being in the re-claimable
+   * waiting set, permanently starving its workstream.
+   */
   | 'in-phase'
   | 'passed'
   | 'failed'
+  /**
+   * Recoverable, not terminal. computeClaims (scheduler.ts) includes
+   * 'blocked-budget' items in its waiting set, so the item is automatically
+   * reconsidered on the next tick(). Because usage only grows, in practice
+   * that next tick only unblocks the item once the ceiling itself rises (or
+   * is removed) via `engine.updateBudget()` — which calls tick() after
+   * updating `workstream.budget` so the reconsideration happens immediately
+   * rather than waiting on some unrelated sibling to complete. `blockedReason`
+   * carries the human-readable reason for as long as the item stays blocked
+   * (cleared the moment it reclaims a slot).
+   */
   | 'blocked-budget';
 
 /** Token/cost usage rolled up across every agent this work-item has ever spawned. */
@@ -120,6 +142,8 @@ export interface WorkItem {
   readonly createdAt: number;
   completedAt?: number | undefined;
   failureReason?: string | undefined;
+  /** Set only while state === 'blocked-budget'; cleared the instant the item reclaims a slot. See the 'blocked-budget' state doc for recovery semantics. */
+  blockedReason?: string | undefined;
 }
 
 export interface WorkItemSpec {
@@ -139,6 +163,13 @@ export interface Workstream {
   readonly schemaVersion: number;
   phases: Phase[];
   items: WorkItem[];
+  /**
+   * Mutable (not readonly) specifically so `engine.updateBudget()` can raise,
+   * lower, or clear (`undefined`) the ceiling on a live workstream. Every
+   * update calls tick() immediately afterward, so any item already sitting
+   * in 'blocked-budget' gets reconsidered right away rather than waiting on
+   * an unrelated sibling to complete first.
+   */
   budget?: BudgetCeiling | undefined;
   readonly createdAt: number;
 }
@@ -190,10 +221,12 @@ export const CURRENT_WORKSTREAM_SCHEMA_VERSION = 1;
 export type OrchestrationEvent =
   | { readonly type: 'phase-inserted'; readonly workstreamId: string; readonly phase: Phase }
   | { readonly type: 'item-advanced'; readonly workstreamId: string; readonly itemId: string; readonly fromPhaseId: string | null; readonly toPhaseId: string | null }
-  | { readonly type: 'item-blocked-budget'; readonly workstreamId: string; readonly itemId: string; readonly phaseId: string }
+  | { readonly type: 'item-blocked-budget'; readonly workstreamId: string; readonly itemId: string; readonly phaseId: string; readonly reason: string }
   | { readonly type: 'item-cancelled'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   | { readonly type: 'item-passed'; readonly workstreamId: string; readonly itemId: string }
   | { readonly type: 'item-failed'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
+  /** Emitted once per item on `importWorkstream` for every item reconciled from a crash-artifact 'in-phase' snapshot back to 'pending' — see the 'in-phase' state doc. */
+  | { readonly type: 'item-requeued'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   | { readonly type: 'workstream-persisted'; readonly workstreamId: string };
 
 export type OrchestrationEventListener = (event: OrchestrationEvent) => void;

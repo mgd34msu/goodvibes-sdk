@@ -418,6 +418,68 @@ describe('budget refusal', () => {
     expect(itemB.state).toBe('blocked-budget');
     expect(h.spawnedTasks.length).toBe(1);
   });
+
+  test('engine.updateBudget raises the ceiling and immediately re-ticks the blocked item back into the waiting set — no need to wait on an unrelated sibling', async () => {
+    const engine = h.makeEngine();
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase()],
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }, { id: 'item-b', title: 'B', task: 'do B' }],
+      budget: { maxTokens: 15 },
+    });
+    engine.start(ws.id);
+    await flushMicrotasks();
+    const itemA = ws.items.find((i) => i.id === 'item-a')!;
+    const itemB = ws.items.find((i) => i.id === 'item-b')!;
+
+    h.completeAgent(itemA.agentId!, engineerReportOutput('did A'));
+    await flushMicrotasks();
+    expect(itemA.state).toBe('passed');
+    expect(itemB.state).toBe('blocked-budget');
+    expect(itemB.blockedReason).toBeDefined();
+    expect(h.spawnedTasks.length).toBe(1);
+
+    // Raise the ceiling well above the workstream's current usage.
+    const updated = engine.updateBudget(ws.id, { maxTokens: 1000 });
+    expect(updated).toBe(true);
+
+    // updateBudget's internal tick() runs synchronously up to (but not past)
+    // runPhase's first genuine await, so the reclaim is already visible
+    // without waiting on any sibling or an extra flush.
+    expect(itemB.state).toBe('in-phase');
+    expect(itemB.blockedReason).toBeUndefined();
+    expect(h.spawnedTasks.length).toBe(2);
+
+    h.completeAgent(itemB.agentId!, engineerReportOutput('did B'));
+    await flushMicrotasks();
+    expect(itemB.state).toBe('passed');
+  });
+
+  test('clearing the budget entirely (undefined) also unblocks', async () => {
+    const engine = h.makeEngine();
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase()],
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }, { id: 'item-b', title: 'B', task: 'do B' }],
+      budget: { maxTokens: 15 },
+    });
+    engine.start(ws.id);
+    await flushMicrotasks();
+    const itemA = ws.items.find((i) => i.id === 'item-a')!;
+    const itemB = ws.items.find((i) => i.id === 'item-b')!;
+    h.completeAgent(itemA.agentId!, engineerReportOutput('did A'));
+    await flushMicrotasks();
+    expect(itemB.state).toBe('blocked-budget');
+
+    engine.updateBudget(ws.id, undefined);
+    expect(itemB.state).toBe('in-phase');
+    expect(ws.budget).toBeUndefined();
+  });
+
+  test('updateBudget on an unknown workstream id is a no-op refusal', () => {
+    const engine = h.makeEngine();
+    expect(engine.updateBudget('no-such-workstream', undefined)).toBe(false);
+  });
 });
 
 describe('cancellation', () => {
@@ -583,6 +645,113 @@ describe('resume prefix replay', () => {
     writeFileSync(path, JSON.stringify({ schemaVersion: 999, writtenAt: Date.now(), workstream: {}, completedResults: [] }));
     const snapshot = loadWorkstreamSnapshot(projectRoot, 'ws-future');
     expect(snapshot).toBeNull();
+  });
+});
+
+describe('resume reconciliation — the exact restart-mid-phase blocker', () => {
+  test('an item persisted in-phase (agent running when the process died) is re-queued as pending on import, unstarves its capacity-1 sibling, and the workstream reaches terminal', async () => {
+    const engine = h.makeEngine();
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase()], // capacity 1, single phase — a clean gate passes an item immediately.
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }, { id: 'item-b', title: 'B', task: 'do B' }],
+    });
+    engine.start(ws.id);
+    await flushMicrotasks();
+
+    const itemA = ws.items.find((i) => i.id === 'item-a')!;
+    const itemB = ws.items.find((i) => i.id === 'item-b')!;
+    // Capacity 1: only A claims the single phase slot; B is left pending,
+    // still waiting for that same slot.
+    expect(itemA.state).toBe('in-phase');
+    expect(itemA.agentId).toBeDefined();
+    expect(itemB.state).toBe('pending');
+
+    // Simulate a crash: A's agent never completes. Snapshot the workstream
+    // exactly as the debounced persistence writer (persistence.ts,
+    // attachDebouncedWriter) would have captured it mid-claim — A still
+    // 'in-phase'.
+    const snapshotJson = engine.serializeWorkstream(ws.id);
+    expect(snapshotJson).not.toBeNull();
+    const rawSnapshot = JSON.parse(snapshotJson!) as { workstream: { items: Array<{ id: string; state: string }> } };
+    expect(rawSnapshot.workstream.items.find((i) => i.id === 'item-a')!.state).toBe('in-phase');
+
+    // Fresh engine/AgentManager instance — the "restart" — imports purely
+    // from the crash snapshot. Attach a listener BEFORE import to observe
+    // the requeue being stamped as an event (not just a silent state flip).
+    const freshHarness = makeHarness(projectRoot);
+    const freshEngine = freshHarness.makeEngine();
+    const requeuedEvents: Array<{ itemId: string; reason: string }> = [];
+    freshEngine.on((event) => {
+      if (event.type === 'item-requeued') requeuedEvents.push({ itemId: event.itemId, reason: event.reason });
+    });
+
+    const imported = freshEngine.importWorkstream(snapshotJson!);
+    expect(imported).toBe(true);
+    expect(requeuedEvents.length).toBe(1);
+    expect(requeuedEvents[0]!.itemId).toBe('item-a');
+    expect(requeuedEvents[0]!.reason).toContain('re-queued');
+
+    freshEngine.start(ws.id);
+    await flushMicrotasks();
+
+    const resumed = freshEngine.getWorkstream(ws.id)!;
+    const resumedA = resumed.items.find((i) => i.id === 'item-a')!;
+    const resumedB = resumed.items.find((i) => i.id === 'item-b')!;
+
+    // THE BLOCKER: without reconciliation, A stays 'in-phase' forever — a
+    // phantom OCCUPIED capacity-1 slot with no live agent behind it (the old
+    // agent belonged to a harness/AgentManager instance that no longer
+    // exists) — so nothing ever spawns on the fresh engine and neither item
+    // can ever complete. This assertion is the one that fails against
+    // unfixed code (0 spawns instead of 1).
+    expect(freshHarness.spawnedTasks.length).toBe(1);
+    expect(resumedA.state).toBe('in-phase');
+    expect(resumedA.agentId).toBeDefined();
+    // A genuinely NEW agent record, not a phantom carried over from the dead
+    // process — it lives in the FRESH harness's own agent store (a stale
+    // agentId string surviving deserialization verbatim, as the unfixed code
+    // does, would not resolve here at all).
+    expect(freshHarness.agentStore.get(resumedA.agentId!)?.status).toBe('running');
+    expect(resumedB.state).toBe('pending'); // unstarved: still eligible, just waiting its turn
+
+    // Complete the re-spawned A -> passes (single phase, no review) -> frees
+    // the slot for B, which claims it immediately (same reactive scheduler
+    // as every other test in this file).
+    freshHarness.completeAgent(resumedA.agentId!, engineerReportOutput('did A (resumed)'));
+    await flushMicrotasks();
+    expect(resumedA.state).toBe('passed');
+    expect(resumedB.state).toBe('in-phase');
+    expect(resumedB.agentId).toBeDefined();
+
+    freshHarness.completeAgent(resumedB.agentId!, engineerReportOutput('did B'));
+    await flushMicrotasks();
+    expect(resumedB.state).toBe('passed');
+
+    // The workstream reaches terminal — the entire point of the fix.
+    expect(resumed.items.every((i) => i.state === 'passed' || i.state === 'failed')).toBe(true);
+  });
+
+  test('importWorkstream is idempotent about reconciliation: an item already pending/awaiting-capacity/terminal in the snapshot is left untouched', () => {
+    const engine = h.makeEngine();
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase(), reviewPhase(1)],
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }],
+    });
+    const [engPhase, revPhase] = ws.phases;
+    const item = ws.items[0]!;
+    item.currentPhaseId = revPhase!.id;
+    item.state = 'awaiting-capacity';
+    item.visits.set(engPhase!.id, 1);
+
+    const snapshotJson = engine.serializeWorkstream(ws.id);
+    const freshEngine = makeHarness(projectRoot).makeEngine();
+    const events: string[] = [];
+    freshEngine.on((event) => events.push(event.type));
+    expect(freshEngine.importWorkstream(snapshotJson!)).toBe(true);
+    expect(events).not.toContain('item-requeued');
+    expect(freshEngine.getWorkstream(ws.id)!.items[0]!.state).toBe('awaiting-capacity');
   });
 });
 

@@ -79,6 +79,14 @@ export interface OrchestrationEngine {
   start(workstreamId: string): void;
   /** Abort a work item's in-flight agent (if any) and mark it terminally failed. Never affects sibling items. */
   kill(itemId: string): boolean;
+  /**
+   * Replace (or clear, via `undefined`) a workstream's budget ceiling and
+   * immediately re-tick it, so any item already sitting in 'blocked-budget'
+   * gets reconsidered right away — the only recovery path for that state
+   * (see WorkItemState's 'blocked-budget' doc, types.ts). Returns false if
+   * the workstream doesn't exist.
+   */
+  updateBudget(workstreamId: string, ceiling: BudgetCeiling | undefined): boolean;
   getPhaseResults(workstreamId: string): readonly PhaseResult[];
   serializeWorkstream(workstreamId: string): string | null;
   /** Import a serialized snapshot (a full WorkstreamSnapshot JSON string, see persistence.ts). Refuses to overwrite a non-terminal in-memory workstream unless force=true. */
@@ -245,6 +253,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     recordVisit(item, phase.id);
     item.state = 'in-phase';
     item.currentPhaseId = phase.id;
+    item.blockedReason = undefined;
 
     const priorReports = getPhaseResults(workstream.id).filter((r) => r.itemId === item.id);
     const outcome = await runPhase(workstream, item, phase, priorReports, {
@@ -341,9 +350,17 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     for (const { item, phase } of claims) {
       const budgetCheck = checkBudget(workstream);
       if (!budgetCheck.allowed) {
-        if (item.state !== 'blocked-budget') {
-          item.state = 'blocked-budget';
-          emit({ type: 'item-blocked-budget', workstreamId, itemId: item.id, phaseId: phase.id });
+        // Re-checked on every tick (computeClaims keeps 'blocked-budget'
+        // items in the waiting set — see scheduler.ts) rather than a
+        // one-time transition: the reason can change between checks (e.g.
+        // token ceiling was the blocker, then a cost ceiling is reached
+        // too), so keep it current even though the event only fires once
+        // per NEW block to avoid spamming listeners on every idle tick.
+        const wasAlreadyBlocked = item.state === 'blocked-budget';
+        item.state = 'blocked-budget';
+        item.blockedReason = budgetCheck.reason;
+        if (!wasAlreadyBlocked) {
+          emit({ type: 'item-blocked-budget', workstreamId, itemId: item.id, phaseId: phase.id, reason: budgetCheck.reason ?? 'budget ceiling reached' });
         }
         continue;
       }
@@ -384,6 +401,14 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return true;
   }
 
+  function updateBudget(workstreamId: string, ceiling: BudgetCeiling | undefined): boolean {
+    const workstream = workstreams.get(workstreamId);
+    if (!workstream) return false;
+    workstream.budget = ceiling;
+    tick(workstreamId);
+    return true;
+  }
+
   function serializeWorkstream(workstreamId: string): string | null {
     const workstream = workstreams.get(workstreamId);
     if (!workstream) return null;
@@ -392,6 +417,33 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
 
   function isTerminalWorkstream(workstream: Workstream): boolean {
     return workstream.items.every((item) => item.state === 'passed' || item.state === 'failed');
+  }
+
+  /**
+   * An item persisted as 'in-phase' was mid-run when the snapshot was
+   * written (the debounced writer, persistence.ts, captures state
+   * synchronously — see runItemPhase — so this is always a crash artifact,
+   * never a live agent this process could still be waiting on). Left
+   * verbatim, it would count as an OCCUPIED capacity slot forever
+   * (computeClaims, scheduler.ts) while never being in the re-claimable
+   * waiting set, permanently starving every sibling in the same phase.
+   * Requeue it as 'pending' and drop the stale agentId so the next tick()
+   * reclaims it like any other waiting item — its prior PhaseResult (if any)
+   * was only ever pushed AFTER phase completion (see runItemPhase), so
+   * re-running the phase from here cannot produce a duplicate result.
+   */
+  function reconcileImportedItems(workstream: Workstream): void {
+    for (const item of workstream.items) {
+      if (item.state !== 'in-phase') continue;
+      item.state = 'pending';
+      item.agentId = undefined;
+      emit({
+        type: 'item-requeued',
+        workstreamId: workstream.id,
+        itemId: item.id,
+        reason: 're-queued after restart — was in-phase when the snapshot was written',
+      });
+    }
   }
 
   function importWorkstream(snapshotJson: string, force = false): boolean {
@@ -405,6 +457,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       });
       return false;
     }
+    reconcileImportedItems(workstream);
     workstreams.set(workstream.id, workstream);
     completedResults.set(workstream.id, [...snapshot.completedResults]);
     return true;
@@ -442,6 +495,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     insertPhase,
     start,
     kill,
+    updateBudget,
     getPhaseResults,
     serializeWorkstream,
     importWorkstream,
