@@ -41,6 +41,7 @@ import { FileUndoManager } from '../state/file-undo.js';
 import { WorkspaceCheckpointManager } from '../workspace/checkpoint/index.js';
 import { MemoryRegistry } from '../state/memory-registry.js';
 import { MemoryStore } from '../state/memory-store.js';
+import { CodeIndexStore } from '../state/code-index-store.js';
 import type { RuntimeEventBus } from './events/index.js';
 import { createDomainDispatch } from './store/index.js';
 import type { DomainDispatch, RuntimeStore } from './store/index.js';
@@ -111,6 +112,16 @@ export interface RuntimeServicesOptions {
   readonly homeDirectory: string;
   readonly panelManager?: PanelManagerLike | undefined;
   readonly keybindingsManager?: KeybindingsManagerLike | undefined;
+  /**
+   * Opt-in: kick off the repo source-tree code index's initial build
+   * (Wave-5 wo802, W5.3 Stage A) right after construction. Fire-and-forget —
+   * never awaited here, never blocks this call. Defaults to false/undefined
+   * so constructing RuntimeServices never surprises a caller (including the
+   * many test fixtures that build RuntimeServices against a real directory)
+   * with an unrequested full source-tree walk. A real product entry point
+   * (an interactive session bootstrap) should pass `true`.
+   */
+  readonly autoStartCodeIndex?: boolean | undefined;
 }
 
 export interface RuntimeServices {
@@ -141,6 +152,18 @@ export interface RuntimeServices {
   readonly projectPlanningService: ProjectPlanningService;
   readonly memoryStore: MemoryStore;
   readonly memoryRegistry: MemoryRegistry;
+  /**
+   * Repo source-tree code index (Wave-5 wo802, W5.3 Stage A). Constructed and
+   * schema-initialized eagerly like memoryStore, but the actual walk/chunk/
+   * embed build is NOT auto-triggered here — call `.scheduleBuild()` from an
+   * explicit call site (a `/codebase reindex` command, a session-start hook,
+   * etc.) once one exists. Auto-triggering from every RuntimeServices
+   * construction would run a full source-tree walk against whatever
+   * workingDirectory a caller passes in — including the hundreds of existing
+   * tests that build RuntimeServices fixtures — which is both slow and
+   * surprising for embedders that never asked for it.
+   */
+  readonly codeIndexStore: CodeIndexStore;
   readonly serviceRegistry: ServiceRegistry;
   readonly secretsManager: SecretsManager;
   readonly subscriptionManager: SubscriptionManager;
@@ -401,6 +424,16 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     embeddingRegistry: memoryEmbeddingRegistry,
   });
   const memoryRegistry = new MemoryRegistry(memoryStore);
+  // Repo source-tree code index (Wave-5 wo802, W5.3 Stage A) — shares
+  // memoryEmbeddingRegistry so code + memory embeddings use one provider and
+  // one dimensionality. Schema init only; build is not auto-triggered here
+  // (see the RuntimeServices.codeIndexStore doc comment).
+  const codeIndexDbPath = join(workingDirectory, '.goodvibes', surfaceRoot, 'code-index.sqlite');
+  const codeIndexStore = new CodeIndexStore(workingDirectory, codeIndexDbPath, memoryEmbeddingRegistry);
+  codeIndexStore.init();
+  if (options.autoStartCodeIndex) {
+    codeIndexStore.scheduleBuild();
+  }
   const deliveryManager = new AutomationDeliveryManager({
     configManager,
     secretsManager,
@@ -676,6 +709,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     sessionBroker,
     runtimeBus: options.runtimeBus,
     priceUsage,
+    codeIndexService: codeIndexStore,
   });
 
   return {
@@ -706,6 +740,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     projectPlanningService,
     memoryStore,
     memoryRegistry,
+    codeIndexStore,
     serviceRegistry,
     secretsManager,
     subscriptionManager,
@@ -769,6 +804,11 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       // Step 1: Re-root MemoryStore — close existing SQLite/vector handles, reopen at new path.
       const newMemoryDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'memory.sqlite');
       await memoryStore.reroot(newMemoryDbPath);
+
+      // Step 1b: Re-root the code index alongside memory — otherwise it keeps
+      // pointing at the old tree after a workspace swap (Wave-5 wo802 risk #7).
+      const newCodeIndexDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'code-index.sqlite');
+      await codeIndexStore.reroot(newWorkingDir, newCodeIndexDbPath);
 
       // Step 2: Re-root ProjectIndex — flush current path, reset, load from new directory.
       await projectIndex.reroot(newWorkingDir);

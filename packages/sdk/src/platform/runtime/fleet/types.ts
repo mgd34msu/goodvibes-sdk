@@ -26,7 +26,12 @@ export type ProcessKind =
   // (parent) -> phase (grouping) -> work-item, mirroring wrfc-chain/subtask.
   | 'workstream'
   | 'phase'
-  | 'work-item';
+  | 'work-item'
+  // Wave 5 (wo802, W5.3 Stage A) — the repo source-tree code index's initial
+  // build. Not 'background-process': an index build has no pid (ProcessManager
+  // is shell/OS-process-only), so it gets its own kind, mirroring the Wave-4
+  // orchestrationEngine-dep precedent (optional dep, degrades to today when absent).
+  | 'code-index';
 
 /**
  * Derived fine-grained process state.

@@ -63,3 +63,14 @@ export type {
 } from './memory-embeddings.js';
 export type { KnowledgeInjection, ScoredKnowledgeInjection } from './knowledge-injection.js';
 export { selectKnowledgeForTask, selectKnowledgeForTaskScored, buildKnowledgeInjectionPrompt } from './knowledge-injection.js';
+export { CodeIndexStore } from './code-index-store.js';
+export type {
+  CodeChunk,
+  CodeChunkMode,
+  CodeContextResult,
+  CodeIndexBuildProgress,
+  CodeIndexBuildStats,
+  CodeIndexOptions,
+  CodeIndexSkipReport,
+  CodeIndexStats,
+} from './code-index-store.js';

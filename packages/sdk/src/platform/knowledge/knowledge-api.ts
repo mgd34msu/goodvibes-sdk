@@ -19,6 +19,7 @@ import type {
 } from '../state/memory-store.js';
 import type { MemoryVectorStats } from '../state/memory-vector-store.js';
 import type { MemoryRegistry } from '../state/memory-registry.js';
+import type { CodeChunkMode, CodeContextResult, CodeIndexBuildStats, CodeIndexStats, CodeIndexStore } from '../state/code-index-store.js';
 export type { ArtifactFetchMode } from '../artifacts/types.js';
 export type {
   KnowledgeInjection,
@@ -116,8 +117,31 @@ export type MemoryApiRegistry = Pick<
   | 'vectorStats'
 >;
 
+/**
+ * memory-api-parallel query surface for the repo source-tree code index
+ * (Wave-5 wo802, W5.3 Stage A). Deliberately NOT folded into MemoryApi:
+ * CodeContextResult/CodeIndexStats are a different record shape than
+ * MemoryRecord, and code-index retrieval carries no cls/reviewState/trustTier
+ * provenance semantics — see createCodeIndexApi / createMemoryApi below.
+ */
+export interface CodeIndexApi {
+  search(query: string, opts?: { limit?: number }): readonly CodeContextResult[];
+  stats(): CodeIndexStats;
+  reindex(): Promise<CodeIndexBuildStats>;
+  scheduleReindex(): void;
+  reindexFile(absPath: string): Promise<{ indexed: boolean; mode: CodeChunkMode }>;
+  /** Stated once, honest: why auto-retrieval would be absent right now (no semantic embedding provider). Null when available. */
+  describeDegradation(): string | null;
+}
+
+export type CodeIndexApiRegistry = Pick<
+  CodeIndexStore,
+  'search' | 'stats' | 'buildFull' | 'scheduleBuild' | 'reindexFile' | 'describeDegradation'
+>;
+
 export interface CreateKnowledgeApiOptions {
   readonly memoryRegistry?: MemoryApiRegistry | undefined;
+  readonly codeIndexStore?: CodeIndexApiRegistry | undefined;
 }
 
 export interface KnowledgeApi {
@@ -237,6 +261,7 @@ export interface KnowledgeApi {
     ): ReturnType<KnowledgeService['decideConsolidationCandidate']>;
   };
   readonly memory?: MemoryApi | undefined;
+  readonly codeIndex?: CodeIndexApi | undefined;
 }
 
 function normalizeKnowledgeFetchMode(fetchMode: RemoteKnowledgeFetchMode | undefined): {
@@ -297,6 +322,17 @@ export function createMemoryApi(memoryRegistry: MemoryApiRegistry): MemoryApi {
         prompt: buildKnowledgeInjectionPrompt(injections),
       };
     },
+  });
+}
+
+export function createCodeIndexApi(codeIndexStore: CodeIndexApiRegistry): CodeIndexApi {
+  return Object.freeze({
+    search: (query: string, opts: { limit?: number } = {}) => codeIndexStore.search(query, opts),
+    stats: () => codeIndexStore.stats(),
+    reindex: () => codeIndexStore.buildFull(),
+    scheduleReindex: () => codeIndexStore.scheduleBuild(),
+    reindexFile: (absPath: string) => codeIndexStore.reindexFile(absPath),
+    describeDegradation: () => codeIndexStore.describeDegradation(),
   });
 }
 
@@ -437,5 +473,6 @@ export function createKnowledgeApi(
       ) => knowledgeService.decideConsolidationCandidate(candidateId, decision, input),
     }),
     ...(options.memoryRegistry ? { memory: createMemoryApi(options.memoryRegistry) } : {}),
+    ...(options.codeIndexStore ? { codeIndex: createCodeIndexApi(options.codeIndexStore) } : {}),
   });
 }
