@@ -396,6 +396,21 @@ export class ConfigManager {
   }
 
   /**
+   * Remove a key from an object-shaped category and auto-save.
+   *
+   * mergeCategory can only set keys (undefined patch values are skipped, and
+   * getCategory returns a clone, so delete-then-merge is a silent no-op) —
+   * clearing an override, e.g. a feature-flag entry back to its default,
+   * requires this explicit removal.
+   */
+  removeCategoryKey<C extends keyof GoodVibesConfig>(category: C, key: string): void {
+    const current = this.config[category]! as Record<string, unknown>;
+    if (!(key in current)) return;
+    delete current[key];
+    this.save();
+  }
+
+  /**
    * Reset a specific key to its default, or reset all config.
    * Saves to disk after reset.
    */
