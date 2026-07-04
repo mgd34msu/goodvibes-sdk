@@ -404,6 +404,12 @@ export interface GoodVibesConfig {
     maxActiveAgents: number;    // default: 8 — total active agents across the orchestration tree
     maxDepth: number;           // default: 0 — 0=off, higher values allow deeper bounded recursion
   };
+  planner: {
+    decomposition: 'agent' | 'heuristic';  // default: 'agent' — 'heuristic' forces the old single-item path
+    maxTurns: number;                       // default: 6 — turn ceiling for the planning-decomposition agent
+    tokenCeiling: number;                   // default: 120000 — token budget for the planning-decomposition agent
+    wallTimeoutMs: number;                  // default: 60000 — wall-clock timeout for the planning-decomposition agent
+  };
   sandbox: {
     replIsolation: 'shared-vm' | 'per-runtime-vm';
     mcpIsolation: 'disabled' | 'shared-vm' | 'hybrid' | 'per-server-vm';
@@ -541,6 +547,10 @@ export type ConfigKey =
   | 'orchestration.recursionEnabled'
   | 'orchestration.maxActiveAgents'
   | 'orchestration.maxDepth'
+  | 'planner.decomposition'
+  | 'planner.maxTurns'
+  | 'planner.tokenCeiling'
+  | 'planner.wallTimeoutMs'
   | 'sandbox.replIsolation'
   | 'sandbox.mcpIsolation'
   | 'sandbox.windowsMode'
@@ -816,6 +826,10 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'orchestration.recursionEnabled' ? boolean :
   K extends 'orchestration.maxActiveAgents' ? number :
   K extends 'orchestration.maxDepth' ? number :
+  K extends 'planner.decomposition' ? 'agent' | 'heuristic' :
+  K extends 'planner.maxTurns' ? number :
+  K extends 'planner.tokenCeiling' ? number :
+  K extends 'planner.wallTimeoutMs' ? number :
   K extends 'sandbox.replIsolation' ? 'shared-vm' | 'per-runtime-vm' :
   K extends 'sandbox.mcpIsolation' ? 'disabled' | 'shared-vm' | 'hybrid' | 'per-server-vm' :
   K extends 'sandbox.windowsMode' ? 'native-basic' | 'require-wsl' :

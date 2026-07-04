@@ -68,6 +68,10 @@ export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools
     description: 'WRFC coordination and decomposition agent',
     defaultTools: ['read', 'find', 'analyze', 'inspect', 'registry'],
   },
+  planner: {
+    description: 'Read-only goal-decomposition agent (no write/edit/exec/delegate)',
+    defaultTools: ['read', 'find', 'analyze', 'inspect'],
+  },
   engineer: {
     description: 'Full-stack implementation agent',
     defaultTools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],
