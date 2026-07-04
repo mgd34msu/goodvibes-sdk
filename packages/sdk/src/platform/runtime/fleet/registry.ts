@@ -40,7 +40,7 @@ import type {
 } from './types.js';
 import type { AgentActivityEntry, AgentAdapterContext } from './adapters/agent.js';
 import { adaptAgent } from './adapters/agent.js';
-import { activeSubtaskMemberAgentId, adaptChain, adaptSubtask } from './adapters/wrfc.js';
+import { activeSubtaskMemberAgentId, adaptChain, adaptSubtask, repriceWrfcOwnerNode } from './adapters/wrfc.js';
 import { adaptWorkflow } from './adapters/workflow.js';
 import { adaptTrigger } from './adapters/trigger.js';
 import { adaptSchedule } from './adapters/schedule.js';
@@ -352,6 +352,9 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       nodes.push(node);
     }
 
+    // Owner agent nodes to replace with a repriced copy after the chain loop
+    // (ProcessNode is readonly — collect overrides, apply in one pass at the end).
+    const ownerNodeOverrides = new Map<string, ProcessNode>();
     for (const chain of chains) {
       // Members exclude the owner: its usage is populated FROM phase children
       // at completion time, so including it would double-count (see wrfc.ts).
@@ -361,7 +364,17 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         const node = agentNodeById.get(agentId);
         if (node) memberNodes.push(node);
       }
-      nodes.push(adaptChain(chain, memberNodes, capturedAt));
+      const chainNode = adaptChain(chain, memberNodes, capturedAt);
+      nodes.push(chainNode);
+      // Owner cost honesty: a WRFC owner runs no LLM turn itself, so its own model
+      // is often unresolved and it prices as "unpriced" even though its children
+      // priced fine. Adopt the chain's per-child-summed cost + model descriptor for
+      // the owner ROW. Excluded from every leaf-sum, so this never double-counts.
+      const ownerNode = agentNodeById.get(chain.ownerAgentId);
+      if (ownerNode) {
+        const repriced = repriceWrfcOwnerNode(ownerNode, chainNode);
+        if (repriced !== ownerNode) ownerNodeOverrides.set(ownerNode.id, repriced);
+      }
       for (const subtask of chain.subtasks ?? []) {
         // Steerable only when the subtask's currently-active member agent is
         // both present in this snapshot and not terminal, AND a messageBus
@@ -420,6 +433,9 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       nodes.push(adaptCodeIndex(deps.codeIndexService, capturedAt));
     }
 
+    if (ownerNodeOverrides.size > 0) {
+      return { capturedAt, nodes: nodes.map((node) => ownerNodeOverrides.get(node.id) ?? node) };
+    }
     return { capturedAt, nodes };
   }
 

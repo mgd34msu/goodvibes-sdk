@@ -153,6 +153,45 @@ function aggregateCost(members: readonly ProcessNode[]): { costUsd: number | nul
 }
 
 /**
+ * An honest model descriptor for a chain node, derived from its member agents
+ * (which carry the real model that ran each phase — the owner itself often has no
+ * resolved model). One distinct model → that model; several → "N models"; none →
+ * undefined. Fixes the "model unknown" chain-detail readout.
+ */
+function chainModelDescriptor(members: readonly ProcessNode[]): string | undefined {
+  const models = new Set<string>();
+  for (const node of members) {
+    if (typeof node.model === 'string' && node.model.length > 0) models.add(node.model);
+  }
+  if (models.size === 0) return undefined;
+  if (models.size === 1) return [...models][0];
+  return `${models.size} models`;
+}
+
+/**
+ * Reprice a WRFC owner agent node for honest DISPLAY. The owner runs no LLM turn
+ * itself; at completion its usage is backfilled from aggregateChainUsage — a
+ * mixed-model rollup of its children — so pricing it with a single owner model is
+ * wrong and leaving it "unpriced" while its children priced fine is misleading.
+ * Instead adopt the chain node's per-child-summed cost (and its model descriptor).
+ *
+ * Returns the SAME node reference when no reprice applies (owner already priced, or
+ * the chain has no priced cost), so callers can skip untouched nodes. The owner is
+ * excluded from every leaf-sum (registry aggregateCost / isWrfcOwnerAgentNode), so
+ * adopting the chain total here can never double-count.
+ */
+export function repriceWrfcOwnerNode(ownerNode: ProcessNode, chainNode: ProcessNode): ProcessNode {
+  if (ownerNode.costState !== 'unpriced') return ownerNode;
+  if (chainNode.costUsd === null || chainNode.costUsd === undefined) return ownerNode;
+  return {
+    ...ownerNode,
+    costUsd: chainNode.costUsd,
+    costState: chainNode.costState,
+    model: ownerNode.model ?? chainNode.model,
+  };
+}
+
+/**
  * The subtask's currently-active member agent, i.e. whichever role is
  * driving its current phase. Undefined when the subtask has no phase
  * currently in flight (pending/passed/failed) — matches subtaskState()'s
@@ -226,6 +265,7 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
     completedAt,
     elapsedMs: Math.max(0, (completedAt ?? now) - chain.createdAt),
     usage: sumUsage(memberNodes),
+    model: chainModelDescriptor(memberNodes),
     costUsd,
     costState,
     // Silent source: anchored to createdAt (no phase-transition timestamp).
