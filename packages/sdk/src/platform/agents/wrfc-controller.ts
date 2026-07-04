@@ -408,10 +408,17 @@ export class WrfcController {
       });
       return false;
     }
+    // Insert into the chain map BEFORE reapZombieChain runs. reapZombieChain
+    // emits state-changed + chain-failed for a terminal transition, and every
+    // other terminal transition in this controller operates on a chain already
+    // present in this.chains — so a consumer that resolves the chain via
+    // getChain(id) in response to those events finds it, consistent with the
+    // rest of the lifecycle. (chain is a reference already held here, so
+    // setting first and then mutating it in reapZombieChain is equivalent.)
+    this.chains.set(chain.id, chain);
     if (!isChainTerminal(chain.state) && this.isZombieChain(chain)) {
       this.reapZombieChain(chain);
     }
-    this.chains.set(chain.id, chain);
     logger.info('WrfcController.importChain: chain imported', {
       chainId: chain.id,
       state: chain.state,

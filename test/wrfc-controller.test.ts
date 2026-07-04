@@ -1545,6 +1545,39 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
     h.controller.dispose();
   });
 
+  test('a subscriber resolves the reaped chain via getChain while handling the reap event (chain is in the map before the reap emits)', async () => {
+    const h = createHarness();
+    const chain = makeImportableChain({
+      id: 'wrfc-zombie-lookup',
+      state: 'reviewing',
+      allAgentIds: ['dead-owner', 'dead-engineer'],
+    });
+
+    // A consumer reacting to the terminal chain-failed event looks the chain up
+    // on the controller. importChain now inserts the chain into the map BEFORE
+    // reapZombieChain emits its state-changed/chain-failed events, so this
+    // resolves to the reaped (failed) chain rather than undefined — consistent
+    // with every other terminal transition, all of which fire while the chain
+    // is already present in this.chains.
+    let resolvedDuringEvent: WrfcChain | null | undefined;
+    const unsub = h.bus.onDomain('workflows', (envelope) => {
+      if (envelope.type === 'WORKFLOW_CHAIN_FAILED') {
+        resolvedDuringEvent = h.controller.getChain('wrfc-zombie-lookup');
+      }
+    });
+
+    h.controller.importChain(chain);
+    await flushMicrotasks();
+
+    expect(resolvedDuringEvent).toBeDefined();
+    expect(resolvedDuringEvent).not.toBeNull();
+    expect(resolvedDuringEvent?.id).toBe('wrfc-zombie-lookup');
+    expect(resolvedDuringEvent?.state).toBe('failed');
+
+    unsub();
+    h.controller.dispose();
+  });
+
   test('resurrection-safe: does NOT reap when even one roster agent id is still live', () => {
     const h = createHarness();
     h.addAgent('live-engineer', 'still going');
