@@ -21,7 +21,12 @@ export type ProcessKind =
   | 'trigger'
   | 'schedule'
   | 'watcher'
-  | 'background-process';
+  | 'background-process'
+  // Wave 4 (wo701) — orchestration-engine pipeline nesting: workstream
+  // (parent) -> phase (grouping) -> work-item, mirroring wrfc-chain/subtask.
+  | 'workstream'
+  | 'phase'
+  | 'work-item';
 
 /**
  * Derived fine-grained process state.

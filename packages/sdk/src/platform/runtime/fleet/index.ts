@@ -25,5 +25,6 @@ export {
   DEFAULT_TICK_INTERVAL_MS,
   STEER_TTL_MS,
 } from './registry.js';
-export { chainNodeId, subtaskNodeId } from './adapters/agent.js';
+export { chainNodeId, subtaskNodeId, workItemNodeId } from './adapters/agent.js';
 export { scheduleNodeId } from './adapters/schedule.js';
+export { workstreamNodeId, phaseNodeId } from './adapters/orchestration.js';

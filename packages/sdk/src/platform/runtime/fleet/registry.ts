@@ -45,6 +45,17 @@ import { adaptTrigger } from './adapters/trigger.js';
 import { adaptSchedule } from './adapters/schedule.js';
 import { adaptWatcher } from './adapters/watcher.js';
 import { adaptBackgroundProcess } from './adapters/background-process.js';
+import {
+  activeWorkItemAgentId,
+  adaptPhase,
+  adaptWorkItem,
+  adaptWorkstream,
+  phaseNodeId,
+  workItemNodeId,
+  workstreamNodeId,
+} from './adapters/orchestration.js';
+import type { WorkItem, Workstream } from '../../orchestration/types.js';
+import type { OrchestrationEngine } from '../../orchestration/engine.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 
@@ -75,6 +86,21 @@ export interface RegistryTimers {
 export interface ProcessRegistryDeps {
   readonly agentManager: Pick<AgentManager, 'list' | 'cancel'>;
   readonly wrfcController: Pick<WrfcController, 'listChains'>;
+  /**
+   * Optional (Wave 4, wo701): folds workstream/phase/work-item nodes into
+   * the fleet, nested workstream -> phase -> work-item, mirroring the
+   * wrfc-chain/subtask nesting. Without this dep the registry degrades to
+   * exactly today's behavior — no orchestration nodes, no new capability.
+   *
+   * `kill` is used (not a raw AgentManager.cancel cascade like the wrfc-chain
+   * path) so a fleet-initiated kill goes through the SAME
+   * engine.kill(itemId) path as an engine-internal caller: it aborts the
+   * item's registered AbortController (reaching an in-flight exec/fetch
+   * tool's child process, not just the agent's next turn-boundary poll) AND
+   * updates the engine's own WorkItem.state bookkeeping. Bypassing it would
+   * silently reopen the orphaned-child-process gap for this one kill path.
+   */
+  readonly orchestrationEngine?: Pick<OrchestrationEngine, 'listWorkstreams' | 'kill'> | undefined;
   readonly processManager: Pick<ProcessManager, 'list' | 'stop' | 'getStatus'>;
   readonly watcherRegistry: Pick<WatcherRegistry, 'list' | 'stopWatcher'>;
   readonly workflow: {
@@ -268,6 +294,11 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     for (const chain of chains) {
       for (const subtask of chain.subtasks ?? []) subtaskIds.add(subtask.id);
     }
+    const workstreams: Workstream[] = deps.orchestrationEngine?.listWorkstreams() ?? [];
+    const workItemIds = new Set<string>();
+    for (const workstream of workstreams) {
+      for (const item of workstream.items) workItemIds.add(item.id);
+    }
     const agentIds = new Set<string>(agents.map((record) => record.id));
     const agentIdByOrchestrationNodeId = new Map<string, string>();
     for (const record of agents) {
@@ -286,6 +317,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       sessionIdByAgentId,
       chainIds,
       subtaskIds,
+      workItemIds,
       agentIdByOrchestrationNodeId,
       agentIds,
       priceUsage: deps.priceUsage,
@@ -321,6 +353,25 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
           && activeMemberNode.state !== 'failed'
           && activeMemberNode.state !== 'killed';
         nodes.push(adaptSubtask(subtask, chain, { steerable: deps.messageBus !== undefined && memberLive }));
+      }
+    }
+
+    for (const workstream of workstreams) {
+      nodes.push(adaptWorkstream(workstream, capturedAt));
+      for (const phase of workstream.phases) {
+        nodes.push(adaptPhase(phase, workstream));
+      }
+      for (const item of workstream.items) {
+        const activeAgentId = activeWorkItemAgentId(item);
+        const activeAgentNode = activeAgentId ? agentNodeById.get(activeAgentId) : undefined;
+        const memberLive = activeAgentNode !== undefined
+          && activeAgentNode.state !== 'done'
+          && activeAgentNode.state !== 'failed'
+          && activeAgentNode.state !== 'killed';
+        const parentId = item.currentPhaseId
+          ? phaseNodeId(workstream.id, item.currentPhaseId)
+          : workstreamNodeId(workstream.id);
+        nodes.push(adaptWorkItem(item, workstream.id, parentId, { steerable: deps.messageBus !== undefined && memberLive }));
       }
     }
 
@@ -452,6 +503,28 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         const affected = cancelAgents([subtask.engineerAgentId, subtask.reviewerAgentId, subtask.fixerAgentId]);
         return affected.length > 0 ? [node.id, ...affected] : [];
       }
+      case 'workstream': {
+        // DERIVED: no native single-call cancel, so kill cascades
+        // engine.kill(itemId) over every non-terminal item — routed through
+        // the engine (not a raw AgentManager.cancel cascade) so cooperative
+        // cancellation (AbortController -> exec/fetch signal) fires the same
+        // way it would for an engine-internal kill.
+        const workstream = node.raw as Workstream;
+        if (!deps.orchestrationEngine) return [];
+        const affected: string[] = [];
+        for (const item of workstream.items) {
+          if (deps.orchestrationEngine.kill(item.id)) affected.push(workItemNodeId(item.id));
+        }
+        return affected.length > 0 ? [node.id, ...affected] : [];
+      }
+      case 'work-item': {
+        const { item } = node.raw as { item: WorkItem };
+        if (!deps.orchestrationEngine?.kill(item.id)) return [];
+        return [node.id];
+      }
+      case 'phase':
+        // Pure grouping node — not killable (see adaptPhase capabilities).
+        return [];
       default:
         return [];
     }
@@ -516,6 +589,11 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         const entry = target.raw as ScheduleEntry;
         return deps.workflow.scheduleManager.disable(entry.name);
       }
+      case 'work-item': {
+        const { item } = target.raw as { item: WorkItem };
+        const agentId = activeWorkItemAgentId(item);
+        return agentId ? deps.agentManager.cancel(agentId, 'interrupt') : false;
+      }
       default:
         return false;
     }
@@ -567,6 +645,22 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       }
       case 'wrfc-chain':
         return { queued: false, reason: 'steer a member agent, not the chain' };
+      case 'work-item': {
+        const { item } = target.raw as { item: WorkItem };
+        const agentId = activeWorkItemAgentId(item);
+        if (!agentId || !target.capabilities.steerable) {
+          return { queued: false, reason: 'no live agent to steer for this work item' };
+        }
+        const messageId = crypto.randomUUID();
+        const sent = deps.messageBus.send('operator', agentId, text, {
+          kind: 'steer',
+          ttlMs: STEER_TTL_MS,
+          id: messageId,
+        });
+        return sent ? { queued: true, messageId } : { queued: false, reason: 'steering message was blocked' };
+      }
+      case 'workstream':
+        return { queued: false, reason: 'steer a work item, not the workstream' };
       default:
         return { queued: false, reason: `${target.kind} cannot take steering input` };
     }

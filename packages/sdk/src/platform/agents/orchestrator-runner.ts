@@ -81,6 +81,17 @@ export interface AgentOrchestratorRunContext {
    * call even when register was never called for this agentId.
    */
   readonly releaseConversationSource?: ((agentId: string) => void) | undefined;
+  /**
+   * Wave-4 cooperative cancellation bridge (wo701): look up the AbortSignal
+   * an orchestration-engine work item registered for this agent, if any.
+   * Threaded into `toolRegistry.execute` opts so opted-in tools (exec,
+   * fetch) can abort an in-flight child process/request the instant
+   * `engine.kill(itemId)` fires, instead of waiting for the next turn
+   * boundary's `record.status === 'cancelled'` poll below. Optional —
+   * contexts that don't wire an orchestration engine simply omit it and
+   * every tool call runs with `opts` undefined, unchanged from before.
+   */
+  readonly getCancellationSignal?: ((agentId: string) => AbortSignal | undefined) | undefined;
   readonly processManager?: ProcessManager | undefined;
   readonly messageBus: Pick<AgentMessageBus, 'getMessages'>;
   readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'> | undefined;
@@ -267,7 +278,8 @@ async function executeToolCalls(
 
     const callSig = `${call.name}::${JSON.stringify(call.arguments)}`;
     try {
-      const result = await toolRegistry.execute(call.id, call.name, call.arguments);
+      const signal = context.getCancellationSignal?.(record.id);
+      const result = await toolRegistry.execute(call.id, call.name, call.arguments, signal ? { signal } : undefined);
       results.push({ ...result, callId: call.id });
       session.appendMessage({
         type: 'tool_execution',

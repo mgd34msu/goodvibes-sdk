@@ -158,6 +158,15 @@ export interface AgentRecord {
   wrfcRouteReason?: string | undefined;
   wrfcSubtasks?: AgentInput['wrfcSubtasks'] | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
+  /**
+   * Wave-4 orchestration engine tag (wo701): set by phase-runner.ts when it
+   * spawns an agent to run one WorkItem through one Phase. Mirrors
+   * wrfcId/wrfcSubtaskId — the fleet's agent adapter uses it to parent this
+   * agent node under its work-item ProcessNode (adapters/agent.ts
+   * resolveParentId), separate from the WRFC parenting track so the two
+   * systems' agents are never conflated.
+   */
+  workItemId?: string | undefined;
   cohort?: string | undefined;
   orchestrationGraphId?: string | undefined;
   orchestrationNodeId?: string | undefined;
@@ -199,6 +208,18 @@ export class AgentManager {
    * messages itself while an agent is running — it just holds a callback.
    */
   private readonly conversationSources = new Map<string, () => ConversationMessageSnapshot[]>();
+  /**
+   * Wave-4 cooperative cancellation bridge (wo701): per-agent AbortSignal
+   * registered by an orchestration-engine work item for the duration of one
+   * phase run. AgentOrchestrator reads this via
+   * setCancellationSource/getCancellationSignal and threads it into
+   * toolRegistry.execute opts so opted-in tools (exec, fetch) can abort an
+   * in-flight child process/request immediately, instead of only at the next
+   * turn boundary's status poll. Purely additive — no caller is required to
+   * register anything, and an agent with no registered signal behaves
+   * exactly as before this change.
+   */
+  private readonly cancellationSignals = new Map<string, AbortSignal>();
   /**
    * Frozen final snapshots for agents whose live source was released (their
    * run ended). Map insertion order doubles as the bounded ring's age order:
@@ -659,6 +680,27 @@ export class AgentManager {
    */
   registerConversationSource(agentId: string, source: () => ConversationMessageSnapshot[]): void {
     this.conversationSources.set(agentId, source);
+  }
+
+  /**
+   * Wave-4 cooperative cancellation bridge (wo701): register the AbortSignal
+   * an orchestration engine's cancellation registry created for a work
+   * item's current agent. Called by the engine right after
+   * AgentManager.spawn() so the signal is in place before the agent's first
+   * turn/tool call.
+   */
+  registerCancellationSignal(agentId: string, signal: AbortSignal): void {
+    this.cancellationSignals.set(agentId, signal);
+  }
+
+  /** Drop the registered signal once the run ends (success, failure, or cancel). Safe to call unconditionally. */
+  releaseCancellationSignal(agentId: string): void {
+    this.cancellationSignals.delete(agentId);
+  }
+
+  /** Read back the registered signal for AgentOrchestrator's per-tool-call opts. */
+  getCancellationSignal(agentId: string): AbortSignal | undefined {
+    return this.cancellationSignals.get(agentId);
   }
 
   /**

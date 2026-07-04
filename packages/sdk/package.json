@@ -308,6 +308,10 @@
       "types": "./dist/platform/node/runtime-boundary.d.ts",
       "import": "./dist/platform/node/runtime-boundary.js"
     },
+    "./platform/orchestration": {
+      "types": "./dist/platform/orchestration/index.d.ts",
+      "import": "./dist/platform/orchestration/index.js"
+    },
     "./platform/pairing": {
       "types": "./dist/platform/pairing/index.d.ts",
       "import": "./dist/platform/pairing/index.js"
