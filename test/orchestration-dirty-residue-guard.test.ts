@@ -66,6 +66,52 @@ describe('dirty-guard — snapshotDirtyTree', () => {
     const snapshot = snapshotDirtyTree(root);
     expect(snapshot.size).toBe(0);
   });
+
+  test('keys non-ASCII paths by their RAW name (via `-z`), not git\'s C-quoted form, so the hash reads real bytes', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dirty-guard-unicode-'));
+    runGit(root, ['init']);
+    // Both names are C-quoted by git's default porcelain (core.quotePath=true):
+    // café.txt -> "caf\303\251.txt". Under the old newline parser the snapshot
+    // keyed on the quoted string, so residue with such a name silently bypassed
+    // exclusion and its content-hash read (of the quoted name) returned null.
+    writeFileSync(join(root, 'café.txt'), 'accented\n');
+    writeFileSync(join(root, '普通话.txt'), 'cjk\n');
+
+    const snapshot = snapshotDirtyTree(root);
+
+    // Raw paths are the keys — never the quoted "caf\303\251.txt" form.
+    expect(snapshot.has('café.txt')).toBe(true);
+    expect(snapshot.has('普通话.txt')).toBe(true);
+    expect([...snapshot.keys()].some((key) => key.includes('\\') || key.startsWith('"'))).toBe(false);
+    // Real digests: the raw names resolve on disk, so hashWorkingTreeFile read
+    // actual bytes rather than failing on a nonexistent quoted filename.
+    expect(snapshot.get('café.txt')).toMatch(/^[0-9a-f]{64}$/);
+    expect(snapshot.get('普通话.txt')).toMatch(/^[0-9a-f]{64}$/);
+
+    // End to end: untouched non-ASCII residue is excluded from a scoped commit
+    // (the whole point of the guard) instead of leaking through on a key mismatch.
+    const { included, excluded } = excludeUntouchedLaunchResidue(root, ['café.txt', '普通话.txt'], snapshot);
+    expect(excluded.sort()).toEqual(['café.txt', '普通话.txt'].sort());
+    expect(included).toEqual([]);
+  });
+
+  test('`-z` rename record: keeps the destination and consumes the non-ASCII origin field', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dirty-guard-rename-'));
+    runGit(root, ['init']);
+    writeFileSync(join(root, 'café.txt'), 'x\n');
+    runGit(root, ['add', 'café.txt']);
+    runGit(root, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-m', 'seed']);
+    // Staged rename → `git status --porcelain -z` emits `R  renamed.txt\0café.txt\0`.
+    runGit(root, ['mv', 'café.txt', 'renamed.txt']);
+
+    const snapshot = snapshotDirtyTree(root);
+
+    // The destination is captured; the following NUL-separated origin field is
+    // consumed, never mis-parsed as its own standalone dirty path.
+    expect(snapshot.has('renamed.txt')).toBe(true);
+    expect(snapshot.has('café.txt')).toBe(false);
+    expect(snapshot.get('renamed.txt')).toMatch(/^[0-9a-f]{64}$/);
+  });
 });
 
 describe('dirty-guard — excludeUntouchedLaunchResidue', () => {
