@@ -126,12 +126,35 @@ function scoreKnowledge(record: MemoryRecord, taskTokens: readonly string[], sco
   return score;
 }
 
-export function selectKnowledgeForTask(
+/**
+ * One scored candidate from the ranking pipeline: the fully-built
+ * `KnowledgeInjection` plus the numeric score that placed it, before any
+ * `limit` slice is applied. Exists so callers other than the spawn-time
+ * baseline (e.g. per-turn retrieval in turn-knowledge-injection.ts) can
+ * apply their own relevance floor / budget trim over the SAME ranked list
+ * without re-implementing scoreKnowledge/determineReason/determineIngestMode.
+ */
+export interface ScoredKnowledgeInjection {
+  readonly injection: KnowledgeInjection;
+  readonly score: number;
+}
+
+/**
+ * Full ranking pipeline, unsliced: scores every registry record that clears
+ * the confidence>=55 gate against `task`/`writeScope`, folds in semantic
+ * similarity when the registry supports it, and returns every candidate with
+ * score>0 sorted best-first. `limit` only widens the semantic-search
+ * candidate pool (`Math.max(limit*4,12)`, mirroring the historical
+ * behavior) — it does NOT slice the returned array. Callers that want the
+ * spawn-time top-N behavior should slice the result themselves; see
+ * `selectKnowledgeForTask` below.
+ */
+export function selectKnowledgeForTaskScored(
   registry: KnowledgeRegistrySource,
   task: string,
   writeScope: readonly string[] = [],
   limit = 3,
-): KnowledgeInjection[] {
+): ScoredKnowledgeInjection[] {
   const taskTokens = tokenize(task);
   const scopeTokens = writeScope.flatMap((entry) => tokenize(entry));
   const semanticResults: readonly MemorySemanticSearchResult[] = registry.searchSemantic?.({
@@ -148,7 +171,7 @@ export function selectKnowledgeForTask(
     recordsById.set(entry.record.id, entry.record);
   }
 
-  const records = [...recordsById.values()]
+  return [...recordsById.values()]
     .filter((record) => record.confidence >= 55)
     .map((record) => {
       const semantic = semanticById.get(record.id);
@@ -159,26 +182,36 @@ export function selectKnowledgeForTask(
     })
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score || b.record.updatedAt - a.record.updatedAt)
-    .map((entry) => entry.record);
-
-  return records
-    .slice(0, limit)
-    .map((record) => ({
-      id: record.id,
-      cls: record.cls,
-      summary: record.summary,
-      reason: determineReason(record, taskTokens, scopeTokens, semanticById.get(record.id)?.similarity),
-      confidence: record.confidence,
-      reviewState: record.reviewState,
-      trustTier: inferKnowledgeInjectionTrustTier(record.reviewState),
-      useAs: 'reference-material',
-      retention: 'task-only',
-      provenance: {
-        source: 'project-memory',
-        links: record.provenance,
+    .map(({ record, score }) => ({
+      score,
+      injection: {
+        id: record.id,
+        cls: record.cls,
+        summary: record.summary,
+        reason: determineReason(record, taskTokens, scopeTokens, semanticById.get(record.id)?.similarity),
+        confidence: record.confidence,
+        reviewState: record.reviewState,
+        trustTier: inferKnowledgeInjectionTrustTier(record.reviewState),
+        useAs: 'reference-material' as const,
+        retention: 'task-only' as const,
+        provenance: {
+          source: 'project-memory' as const,
+          links: record.provenance,
+        },
+        ingestMode: determineIngestMode(record, taskTokens, scopeTokens, semanticById.get(record.id)?.similarity),
       },
-      ingestMode: determineIngestMode(record, taskTokens, scopeTokens, semanticById.get(record.id)?.similarity),
     }));
+}
+
+export function selectKnowledgeForTask(
+  registry: KnowledgeRegistrySource,
+  task: string,
+  writeScope: readonly string[] = [],
+  limit = 3,
+): KnowledgeInjection[] {
+  return selectKnowledgeForTaskScored(registry, task, writeScope, limit)
+    .map((entry) => entry.injection)
+    .slice(0, limit);
 }
 
 function normalizeKnowledgeInjectionPromptInput(injection: KnowledgeInjectionPromptInput): KnowledgeInjection {

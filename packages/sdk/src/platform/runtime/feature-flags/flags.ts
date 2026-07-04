@@ -234,6 +234,25 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
   },
 
   {
+    id: 'agent-passive-knowledge-injection',
+    name: 'Agent Passive Knowledge Injection',
+    description:
+      'Enables per-turn re-retrieval of project-memory knowledge against the EVOLVING main-'
+      + 'session conversation (steers, new sub-topics), not just the frozen spawn-time task. '
+      + 'Re-runs retrieval only when a new user/steer message arrived this turn, applies a '
+      + 'relevance floor to filter filler, and holds the injected block to a hard token '
+      + 'budget (min ~800 tokens or 3% of the model context window) with a visible per-turn '
+      + 'record (candidates considered, ids injected, ids dropped for budget, token cost, '
+      + 'embeddings backend) stored on AgentRecord.turnInjections and the session transcript. '
+      + 'Default-on is safe specifically because the block is hard-budgeted and every turn '
+      + 'is honestly recorded, never silently eating context. Disable or set the budget to 0 '
+      + 'to revert to spawn-time-only injection (base system prompt byte-identical).',
+    defaultState: 'enabled',
+    tier: 9,
+    runtimeToggleable: true,
+  },
+
+  {
     id: 'output-schema-fingerprint',
     name: 'Output Schema Fingerprints',
     description:
