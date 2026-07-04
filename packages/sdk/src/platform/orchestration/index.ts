@@ -8,6 +8,7 @@ export type {
   BudgetCeiling,
   CommitExclusion,
   GateOutcome,
+  ItemMergeState,
   OrchestrationEvent,
   OrchestrationEventListener,
   Phase,
@@ -23,6 +24,7 @@ export type {
   WorkItemState,
   WorkItemUsage,
   Workstream,
+  WorkstreamIsolation,
   WorkstreamSnapshot,
 } from './types.js';
 export { CURRENT_WORKSTREAM_SCHEMA_VERSION, emptyWorkItemUsage } from './types.js';
