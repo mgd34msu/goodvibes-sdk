@@ -32,6 +32,41 @@ type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;
 };
 
+/**
+ * Prefers `checkDetailed()` (carries `modifiedArgs` for per-hunk edit
+ * approval) but falls back to the boolean-only `check()` for any caller
+ * that injects a duck-typed permission manager stub without it (e.g. test
+ * doubles built before `checkDetailed` existed). Mirrors the same
+ * defensive duck-typing already used by the phased tool executor's
+ * permission phase.
+ */
+async function resolvePermissionCheck(
+  permissionManager: Pick<PermissionManager, 'checkDetailed' | 'check'> | { check: PermissionManager['check'] },
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<import('../permissions/types.js').PermissionCheckResult> {
+  const manager = permissionManager as {
+    checkDetailed?: PermissionManager['checkDetailed'];
+    check: PermissionManager['check'];
+  };
+  if (typeof manager.checkDetailed === 'function') {
+    return manager.checkDetailed(toolName, args);
+  }
+  const approved = await manager.check(toolName, args);
+  return {
+    approved,
+    persisted: false,
+    sourceLayer: approved ? 'config_policy' : 'user_prompt',
+    reasonCode: approved ? 'config_allow' : 'user_denied',
+    analysis: {
+      classification: 'generic',
+      riskLevel: 'medium',
+      summary: `Permission ${approved ? 'approved' : 'denied'} for ${toolName}`,
+      reasons: [],
+    },
+  };
+}
+
 type EmitterContextFactory = (turnId: string) => import('../runtime/emitters/index.js').EmitterContext;
 
 export type ToolExecutionDeps = {
@@ -60,7 +95,8 @@ export async function executeToolCalls(
       });
     }
 
-    const approved = await deps.permissionManager.check(call.name, call.arguments);
+    const checkResult = await resolvePermissionCheck(deps.permissionManager, call.name, call.arguments);
+    const approved = checkResult.approved;
     if (deps.runtimeBus) {
       emitToolPermissioned(deps.runtimeBus, deps.emitterContext(turnId), {
         callId: call.id,
@@ -141,7 +177,7 @@ export async function executeToolCalls(
 
     let result: ToolResult;
     try {
-      result = await deps.toolRegistry.execute(call.id, call.name, call.arguments);
+      result = await deps.toolRegistry.execute(call.id, call.name, checkResult.modifiedArgs ?? call.arguments);
     } catch (err) {
       const message =
         err instanceof ToolError
