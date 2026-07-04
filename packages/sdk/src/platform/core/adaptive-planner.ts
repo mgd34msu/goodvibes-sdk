@@ -11,6 +11,13 @@
  */
 
 import { logger } from '../utils/logger.js';
+import {
+  assemblePlanProposal,
+  singleItemProposal,
+  type PlanProposal,
+  type PlanProposalIssue,
+  type RawDecomposition,
+} from './plan-proposal.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,6 +86,19 @@ export interface PlannerInputs {
 export interface StrategyCandidate {
   strategy: ExecutionStrategy;
   score: number;       // higher = preferred
+  reasonCode: StrategyReasonCode;
+}
+
+/**
+ * The outcome of the deterministic "does this task warrant decomposition?"
+ * gate. This is a semantic projection of the existing strategy selection —
+ * `decompose` is simply `selected !== 'single'` — so every existing reason
+ * code and the `/plan explain` output stay authoritative. No new scoring
+ * logic lives here.
+ */
+export interface DecompositionGate {
+  decompose: boolean;
+  strategy: ExecutionStrategy;
   reasonCode: StrategyReasonCode;
 }
 
@@ -291,6 +311,59 @@ export class AdaptivePlanner {
       score: best.score,
     });
     return decision;
+  }
+
+  /**
+   * Deterministic gate: does this task warrant decomposition into a
+   * multi-phase workstream, or is a single-item workstream the honest
+   * answer?
+   *
+   * This calls the existing `select()` pipeline — no new scoring logic — and
+   * projects the result: `decompose` is `selected !== 'single'`. Because it
+   * goes through `select()`, the decision is appended to the same audit
+   * history as every other planner call, and `/plan explain` / `/plan
+   * status` remain authoritative for it.
+   */
+  shouldDecompose(inputs: PlannerInputs): DecompositionGate {
+    const decision = this.select(inputs);
+    return {
+      decompose: decision.selected !== 'single',
+      strategy: decision.selected,
+      reasonCode: decision.reasonCode,
+    };
+  }
+
+  /**
+   * Produce a typed `PlanProposal` for the given inputs.
+   *
+   * `AdaptivePlanner` never spawns a planning agent and never performs LLM
+   * decomposition itself — it only gates (via `shouldDecompose`) and
+   * validates/assembles (via `assemblePlanProposal`, in `plan-proposal.ts`).
+   * The raw decomposition, if any, is expected to come from a planning
+   * agent that the ORCHESTRATION ENGINE spawns and hands back here.
+   *
+   * - If the gate says decomposition is not warranted, or no raw
+   *   decomposition is available yet, this returns the honest single-item
+   *   fallback (`singleItemProposal`) — never a partially-assembled guess.
+   * - Otherwise it validates `raw` via `assemblePlanProposal`, which never
+   *   throws: malformed decompositions degrade to an honest partial result
+   *   plus a list of `issues`.
+   *
+   * Returns the `gate` alongside the proposal so callers (the engine, or the
+   * TUI) can show WHY a proposal was or wasn't decomposed, reusing
+   * `AdaptivePlanner.explainReasonCode`.
+   */
+  proposeWorkstream(
+    inputs: PlannerInputs,
+    raw?: RawDecomposition,
+  ): { proposal: PlanProposal; gate: DecompositionGate; issues: PlanProposalIssue[] } {
+    const gate = this.shouldDecompose(inputs);
+    const task = inputs.taskDescription ?? '';
+    if (gate.decompose && raw) {
+      const { proposal, issues } = assemblePlanProposal(task, gate.strategy, raw);
+      return { proposal, gate, issues };
+    }
+    return { proposal: singleItemProposal(task), gate, issues: [] };
   }
 
   /**
