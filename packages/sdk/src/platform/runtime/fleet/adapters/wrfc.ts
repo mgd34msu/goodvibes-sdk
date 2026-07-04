@@ -4,7 +4,12 @@ import type { WrfcChain, WrfcSubtask } from '../../../agents/wrfc-types.js';
 import type { ProcessNode, ProcessState, ProcessUsage } from '../types.js';
 import { chainNodeId, subtaskNodeId } from './agent.js';
 
-const TERMINAL_STATES: ReadonlySet<ProcessState> = new Set(['done', 'failed', 'killed']);
+// 'interrupted' is included: it is only ever produced on an AGENT node
+// (deriveAgentState), never on a chain/subtask's own `state`, but a chain
+// member agent that was individually interrupted (not via chain cascade,
+// which always hard-kills — see registry.ts cancelAgents) must still count
+// as terminal here, or it would be misread as "live" below.
+const TERMINAL_STATES: ReadonlySet<ProcessState> = new Set(['done', 'failed', 'killed', 'interrupted']);
 
 function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { state: ProcessState; phase?: string | undefined } {
   switch (chain.state) {
@@ -28,7 +33,37 @@ function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { st
   if (retryCount > 0 && !anyMemberLive) {
     return { state: 'retrying', phase: chain.state };
   }
+  // CHAIN TERMINAL TRUTH: WrfcController has no cancel/abort of its own, so a
+  // cascade kill (registry.ts kill('chain:<id>')) only cancels the member
+  // agents — chain.state never leaves whatever active phase it was in when
+  // killed. Once every known member has reached a terminal state and it's
+  // NOT the transport-retry respawn window handled above, the chain was
+  // terminated out from under its owner: report it terminal instead of a
+  // perpetually-running phase (the replay-found "climbing elapsed" leak).
+  // `phase` is preserved for display ("killed while engineering").
+  if (memberNodes.length > 0 && !anyMemberLive) {
+    return { state: 'killed', phase: chain.state };
+  }
   return { state: 'executing-tool', phase: chain.state };
+}
+
+/**
+ * Synthetic completedAt for a chain whose terminal state was DERIVED (see
+ * chainState above) rather than reported by WrfcController — cascade kill
+ * never sets `chain.completedAt`. Freezing to the latest member completedAt
+ * (rather than `now`) is what stops elapsedMs from climbing after a kill;
+ * every member here is terminal (chainState's caller only reaches this when
+ * `state === 'killed'`), and every terminal agent node has a completedAt
+ * (set atomically with its terminal status — see agent.ts / manager.ts
+ * cancel()), so the max is always defined when memberNodes is non-empty.
+ */
+function syntheticChainCompletedAt(memberNodes: readonly ProcessNode[]): number | undefined {
+  let latest: number | undefined;
+  for (const node of memberNodes) {
+    if (node.completedAt === undefined) continue;
+    if (latest === undefined || node.completedAt > latest) latest = node.completedAt;
+  }
+  return latest;
 }
 
 function subtaskState(subtask: WrfcSubtask): { state: ProcessState; phase?: string | undefined } {
@@ -137,6 +172,13 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
   const { state, phase } = chainState(chain, memberNodes);
   const { costUsd, costState } = aggregateCost(memberNodes);
   const killable = state !== 'done' && state !== 'failed' && state !== 'killed';
+  // chain.completedAt is authoritative when WrfcController set it (the
+  // 'passed'/'failed' clean-terminal cases). `state === 'killed'` is only
+  // ever reached via chainState's DERIVED branch (WrfcController never
+  // literally sets chain.state to 'killed'), so falling back to the
+  // synthetic max(member.completedAt) there — instead of `now` — is what
+  // freezes elapsedMs once the chain is recognized as killed.
+  const completedAt = chain.completedAt ?? (state === 'killed' ? syntheticChainCompletedAt(memberNodes) : undefined);
   return {
     id: chainNodeId(chain.id),
     kind: 'wrfc-chain',
@@ -145,8 +187,8 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
     task: chain.task,
     state,
     startedAt: chain.createdAt,
-    completedAt: chain.completedAt,
-    elapsedMs: Math.max(0, (chain.completedAt ?? now) - chain.createdAt),
+    completedAt,
+    elapsedMs: Math.max(0, (completedAt ?? now) - chain.createdAt),
     usage: sumUsage(memberNodes),
     costUsd,
     costState,

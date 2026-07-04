@@ -1,5 +1,6 @@
 import { ToolRegistry } from '../tools/registry.js';
 import type { ConfigManager } from '../config/manager.js';
+import type { ConversationMessageSnapshot } from '../core/conversation.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import { registerAllTools } from '../tools/index.js';
 import { registerChannelAgentTools } from '../tools/channel/agent-tools.js';
@@ -32,6 +33,19 @@ import { findModelDefinition } from '../providers/registry-models.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { runAgentTask, type AgentOrchestratorRunContext } from './orchestrator-runner.js';
 export { summarizeToolArgs } from './orchestrator-utils.js';
+
+/**
+ * Wave-3 Part C6 bridge: where AgentOrchestrator forwards a running agent's
+ * live conversation-snapshot accessor. In production this is AgentManager's
+ * registerConversationSource/releaseConversationSource, wired post-
+ * construction in runtime/services.ts (AgentOrchestrator is constructed
+ * before AgentManager there, so this is a setter rather than a constructor
+ * dependency — same pattern as setRuntimeBus).
+ */
+export interface AgentConversationSink {
+  readonly register: (agentId: string, source: () => ConversationMessageSnapshot[]) => void;
+  readonly release: (agentId: string) => void;
+}
 
 type AgentProviderRoutingPolicy = NonNullable<AgentRecord['routing']>;
 type ActiveModelRef = { id: string; provider: string; registryKey: string };
@@ -85,6 +99,7 @@ export class AgentOrchestrator {
   private toolDeps: AgentOrchestratorToolDeps | null = null;
   private featureFlagManager: FeatureFlagManager | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
+  private conversationSink: AgentConversationSink | null = null;
   private readonly channelRegistry: ChannelPluginRegistry | null;
   private readonly messageBus: import('./message-bus.js').AgentMessageBus;
 
@@ -105,6 +120,16 @@ export class AgentOrchestrator {
   /** Set the FeatureFlagManager for context-window awareness gating. */
   setFeatureFlagManager(manager: FeatureFlagManager): void {
     this.featureFlagManager = manager;
+  }
+
+  /**
+   * Wire the Wave-3 Part C6 conversation-snapshot bridge (see
+   * AgentConversationSink). Pass null to detach — createRunContext() then
+   * omits the register/release callbacks entirely and orchestrator-runner's
+   * `?.()` calls become no-ops.
+   */
+  setConversationSink(sink: AgentConversationSink | null): void {
+    this.conversationSink = sink;
   }
 
   private emitterContext(agentId: string): import('../runtime/emitters/index.js').EmitterContext {
@@ -459,6 +484,12 @@ export class AgentOrchestrator {
         this.emitAgentCompletedEvent(recordId, durationMs, output, toolCallsMade, usage),
       emitOrchestrationCompleted: (record, output) => this.emitOrchestrationCompleted(record, output),
       emitStreamDelta: (recordId, content, accumulated) => this.emitStreamDelta(recordId, content, accumulated),
+      registerConversationSource: this.conversationSink
+        ? (agentId, source) => this.conversationSink!.register(agentId, source)
+        : undefined,
+      releaseConversationSource: this.conversationSink
+        ? (agentId) => this.conversationSink!.release(agentId)
+        : undefined,
       processManager: this.toolDeps?.processManager,
       messageBus: this.messageBus,
       knowledgeService: this.toolDeps?.knowledgeService,

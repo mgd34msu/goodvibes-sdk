@@ -4,7 +4,7 @@
 // (LLM call → tool execution → loop) but delegates domain logic to imported
 // collaborators (ConversationManager, ToolRegistry, AgentSession, etc.).
 // It does not own any state beyond the duration of a single runAgentLoop() call.
-import { ConversationManager } from '../core/conversation.js';
+import { ConversationManager, type ConversationMessageSnapshot } from '../core/conversation.js';
 import { ToolRegistry } from '../tools/registry.js';
 import { join } from 'node:path';
 import type { ProviderRegistry } from '../providers/registry.js';
@@ -66,6 +66,20 @@ export interface AgentOrchestratorRunContext {
   ) => void;
   readonly emitOrchestrationCompleted: (record: AgentRecord, output: string) => void;
   readonly emitStreamDelta: (recordId: string, content: string, accumulated: string) => void;
+  /**
+   * Wave-3 conversation-snapshot bridge (Part C6): register the running
+   * agent's live snapshot accessor with AgentManager so
+   * AgentManager.getConversationSnapshot(agentId) can serve a full-fidelity
+   * live transcript to a fleet tab. Optional — contexts that don't wire a
+   * manager (e.g. isolated tests) simply skip the bridge.
+   */
+  readonly registerConversationSource?: ((agentId: string, source: () => ConversationMessageSnapshot[]) => void) | undefined;
+  /**
+   * Release the live source at run end, freezing one final snapshot into
+   * AgentManager's bounded retention ring (see manager.ts). Always safe to
+   * call even when register was never called for this agentId.
+   */
+  readonly releaseConversationSource?: ((agentId: string) => void) | undefined;
   readonly processManager?: ProcessManager | undefined;
   readonly messageBus: Pick<AgentMessageBus, 'getMessages'>;
   readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'> | undefined;
@@ -449,6 +463,13 @@ export async function runAgentTask(
 
     conversation = new ConversationManager();
     conversation.addUserMessage(record.task);
+    // Wave-3 Part C6 bridge: hand AgentManager a live accessor onto THIS
+    // ConversationManager instance so a fleet tab can render a full-fidelity
+    // transcript while the agent runs. `activeConversation` is a separate
+    // const (rather than closing over the outer `let conversation`) so the
+    // closure's type is non-nullable without a runtime assertion.
+    const activeConversation = conversation;
+    context.registerConversationSource?.(record.id, () => activeConversation.getMessageSnapshot());
 
     let systemPrompt = buildOrchestratorSystemPrompt(record, undefined, context);
 
@@ -737,5 +758,13 @@ export async function runAgentTask(
     await finalizeAgentRun(context, record, session, preAgentProcessIds);
   } catch (err) {
     await handleAgentRunFailure(context, record, conversation, session, preAgentProcessIds, err);
+  } finally {
+    // Wave-3 Part C6 bridge: release on EVERY exit path (normal completion,
+    // the mid-loop cancellation/MAX_TURNS early returns above, and the catch
+    // above) so the live source is never retained past the run and a final
+    // snapshot always lands in AgentManager's retention ring. A no-op when
+    // register was never called (e.g. failure before the ConversationManager
+    // was created).
+    context.releaseConversationSource?.(record.id);
   }
 }
