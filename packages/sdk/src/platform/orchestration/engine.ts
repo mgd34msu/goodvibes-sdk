@@ -1,0 +1,453 @@
+/** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
+
+/**
+ * OrchestrationEngine (Wave 4, wo701) — owns Workstream state and drives the
+ * pipeline. WRAPS a canned/authored workstream; does not rewrite or touch
+ * WrfcController (stage 1 of the 3-stage migration — see controller-compat.ts
+ * and the work-order report).
+ *
+ * The tick loop is reactive, not timer-driven: `start()` runs one tick;
+ * every phase-run completion re-runs tick() for its workstream. Because JS
+ * is single-threaded, computeClaims()'s synchronous read of in-flight counts
+ * is never racing a concurrent claim — items are marked 'in-phase'
+ * synchronously before any `await` inside the claim loop, so a re-entrant
+ * tick() (triggered by an earlier completion resolving on a later turn of
+ * the microtask queue) always sees up-to-date state.
+ */
+import { checkBudget } from './budget.js';
+import { createCancellationRegistry, type CancellationRegistry } from './cancellation.js';
+import type { PhaseRunnerAgentManagerLike, WrfcWorktreeOps } from './phase-runner.js';
+import { runPhase } from './phase-runner.js';
+import {
+  deserializeWorkstream as deserializeWorkstreamModel,
+  deserializeWorkstreamSnapshot,
+  attachDebouncedWriter,
+  listSnapshotWorkstreamIds,
+  loadWorkstreamSnapshot,
+  serializeWorkstreamSnapshot,
+} from './persistence.js';
+import { computeClaims, firstPhase, nextPhaseAfter, reviewPhaseBefore, sortedPhases } from './scheduler.js';
+import {
+  CURRENT_WORKSTREAM_SCHEMA_VERSION,
+  emptyWorkItemUsage,
+  type BudgetCeiling,
+  type OrchestrationEvent,
+  type OrchestrationEventListener,
+  type Phase,
+  type PhaseResult,
+  type PhaseSpec,
+  type WorkItem,
+  type WorkItemSpec,
+  type WorkItemUsage,
+  type Workstream,
+} from './types.js';
+import type { ConfigManager } from '../config/manager.js';
+import type { RuntimeEventBus } from '../runtime/events/index.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
+
+export interface OrchestrationEngineDeps {
+  readonly agentManager: PhaseRunnerAgentManagerLike;
+  readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
+  readonly runtimeBus: RuntimeEventBus;
+  readonly projectRoot: string;
+  readonly sessionId?: string | undefined;
+  readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
+  readonly priceUsage?: ((model: string | undefined, usage: WorkItemUsage) => number | null) | undefined;
+  readonly skipClaimVerification?: boolean | undefined;
+  /** Bounds re-review cycles through a dynamically-inserted fix phase. Default 5 (mirrors WrfcController's default maxFixAttempts). */
+  readonly maxPhaseVisits?: number | undefined;
+  readonly now?: (() => number) | undefined;
+  /** Set false to skip wiring the debounced disk writer (tests that don't want filesystem side effects). Default true. */
+  readonly persist?: boolean | undefined;
+}
+
+export interface CreateWorkstreamInput {
+  readonly id?: string | undefined;
+  readonly title: string;
+  readonly phases: readonly PhaseSpec[];
+  readonly items: readonly WorkItemSpec[];
+  readonly budget?: BudgetCeiling | undefined;
+}
+
+export interface OrchestrationEngine {
+  createWorkstream(input: CreateWorkstreamInput): Workstream;
+  getWorkstream(id: string): Workstream | null;
+  listWorkstreams(): Workstream[];
+  insertPhase(workstreamId: string, afterOrdinal: number, spec: PhaseSpec): Phase | null;
+  /** Begin (or resume ticking) a workstream's pipeline. Idempotent — safe to call on an already-running workstream. */
+  start(workstreamId: string): void;
+  /** Abort a work item's in-flight agent (if any) and mark it terminally failed. Never affects sibling items. */
+  kill(itemId: string): boolean;
+  getPhaseResults(workstreamId: string): readonly PhaseResult[];
+  serializeWorkstream(workstreamId: string): string | null;
+  /** Import a serialized snapshot (a full WorkstreamSnapshot JSON string, see persistence.ts). Refuses to overwrite a non-terminal in-memory workstream unless force=true. */
+  importWorkstream(snapshotJson: string, force?: boolean): boolean;
+  /** Import + start from the on-disk snapshot for one workstream id. */
+  resumeWorkstream(workstreamId: string): boolean;
+  /** Import + start every snapshot under .goodvibes/orchestration/. Returns the count resumed. */
+  resumeAllFromDisk(): number;
+  on(listener: OrchestrationEventListener): () => void;
+  dispose(): void;
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+export function createOrchestrationEngine(deps: OrchestrationEngineDeps): OrchestrationEngine {
+  const now = deps.now ?? ((): number => Date.now());
+  const sessionId = deps.sessionId ?? crypto.randomUUID().slice(0, 8);
+  const maxPhaseVisits = deps.maxPhaseVisits ?? 5;
+  const workstreams = new Map<string, Workstream>();
+  const completedResults = new Map<string, PhaseResult[]>();
+  const cancellation: CancellationRegistry = createCancellationRegistry();
+  const listeners = new Set<OrchestrationEventListener>();
+  let disposed = false;
+
+  function emit(event: OrchestrationEvent): void {
+    for (const listener of listeners) {
+      try {
+        listener(event);
+      } catch (error) {
+        logger.warn('orchestration engine: listener threw', { error: summarizeError(error) });
+      }
+    }
+  }
+
+  function on(listener: OrchestrationEventListener): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+
+  function getWorkstream(id: string): Workstream | null {
+    return workstreams.get(id) ?? null;
+  }
+
+  function listWorkstreams(): Workstream[] {
+    return Array.from(workstreams.values());
+  }
+
+  function getPhaseResults(workstreamId: string): readonly PhaseResult[] {
+    return completedResults.get(workstreamId) ?? [];
+  }
+
+  const unsubscribeWriter = deps.persist === false
+    ? (): void => undefined
+    : attachDebouncedWriter(deps.projectRoot, getWorkstream, getPhaseResults, on);
+
+  function buildPhase(spec: PhaseSpec, ordinal: number, insertedAt?: number): Phase {
+    return {
+      id: spec.id ?? generateId('phase'),
+      ordinal,
+      role: spec.role,
+      capacity: spec.capacity,
+      gate: spec.gate,
+      kind: spec.kind,
+      ...(insertedAt !== undefined ? { insertedAt } : {}),
+    };
+  }
+
+  function buildItem(spec: WorkItemSpec, startPhaseId: string | null): WorkItem {
+    return {
+      id: spec.id ?? generateId('item'),
+      title: spec.title,
+      task: spec.task,
+      currentPhaseId: startPhaseId,
+      state: startPhaseId ? 'pending' : 'passed',
+      allAgentIds: [],
+      visits: new Map(),
+      touchedPaths: [],
+      usage: emptyWorkItemUsage(),
+      transportRetryCount: 0,
+      createdAt: now(),
+      ...(startPhaseId ? {} : { completedAt: now() }),
+    };
+  }
+
+  function createWorkstream(input: CreateWorkstreamInput): Workstream {
+    const phases = input.phases.map((spec, index) => buildPhase(spec, index + 1));
+    const workstream: Workstream = {
+      id: input.id ?? generateId('ws'),
+      title: input.title,
+      schemaVersion: CURRENT_WORKSTREAM_SCHEMA_VERSION,
+      phases,
+      items: [],
+      budget: input.budget,
+      createdAt: now(),
+    };
+    const first = firstPhase(workstream)?.id ?? null;
+    workstream.items = input.items.map((spec) => buildItem(spec, first));
+    workstreams.set(workstream.id, workstream);
+    completedResults.set(workstream.id, []);
+    return workstream;
+  }
+
+  function insertPhase(workstreamId: string, afterOrdinal: number, spec: PhaseSpec): Phase | null {
+    const workstream = workstreams.get(workstreamId);
+    if (!workstream) return null;
+    const following = sortedPhases(workstream).filter((p) => p.ordinal > afterOrdinal);
+    const nextOrdinal = following[0]?.ordinal ?? afterOrdinal + 1;
+    const ordinal = (afterOrdinal + nextOrdinal) / 2;
+    const phase = buildPhase(spec, ordinal, now());
+    workstream.phases.push(phase);
+    emit({ type: 'phase-inserted', workstreamId, phase });
+    return phase;
+  }
+
+  function findOrInsertFixPhase(workstream: Workstream, reviewPhase: Phase): Phase {
+    const existing = workstream.phases.find(
+      (p) => p.kind === 'fix' && reviewPhaseBefore(workstream, p)?.id === reviewPhase.id,
+    );
+    if (existing) return existing;
+    return insertPhase(workstream.id, reviewPhase.ordinal, {
+      role: 'fixer',
+      capacity: reviewPhase.capacity,
+      gate: reviewPhase.gate,
+      kind: 'fix',
+    })!;
+  }
+
+  function visitsFor(item: WorkItem, phaseId: string): number {
+    return item.visits.get(phaseId) ?? 0;
+  }
+
+  function recordVisit(item: WorkItem, phaseId: string): void {
+    item.visits.set(phaseId, visitsFor(item, phaseId) + 1);
+  }
+
+  function routeItem(workstream: Workstream, item: WorkItem, toPhase: Phase | null, fromPhaseId: string): void {
+    if (toPhase) {
+      item.currentPhaseId = toPhase.id;
+      item.state = 'awaiting-capacity';
+      emit({ type: 'item-advanced', workstreamId: workstream.id, itemId: item.id, fromPhaseId, toPhaseId: toPhase.id });
+    } else {
+      item.currentPhaseId = null;
+      item.state = 'passed';
+      item.completedAt = now();
+      emit({ type: 'item-passed', workstreamId: workstream.id, itemId: item.id });
+    }
+  }
+
+  function failItem(workstream: Workstream, item: WorkItem, reason: string): void {
+    item.state = 'failed';
+    item.completedAt = now();
+    item.failureReason = reason;
+    emit({ type: 'item-failed', workstreamId: workstream.id, itemId: item.id, reason });
+  }
+
+  /** Indirection to defeat TS's cross-await narrowing of item.state — see the call site below. */
+  function currentState(item: WorkItem): WorkItem['state'] {
+    return item.state;
+  }
+
+  async function runItemPhase(workstream: Workstream, item: WorkItem, phase: Phase): Promise<void> {
+    recordVisit(item, phase.id);
+    item.state = 'in-phase';
+    item.currentPhaseId = phase.id;
+
+    const priorReports = getPhaseResults(workstream.id).filter((r) => r.itemId === item.id);
+    const outcome = await runPhase(workstream, item, phase, priorReports, {
+      agentManager: deps.agentManager,
+      configManager: deps.configManager,
+      runtimeBus: deps.runtimeBus,
+      projectRoot: deps.projectRoot,
+      sessionId,
+      createWorktree: deps.createWorktree,
+      cancellation,
+      priceUsage: deps.priceUsage,
+      skipClaimVerification: deps.skipClaimVerification,
+    });
+
+    item.usage = mergeUsageFromResult(item.usage, outcome.result.usage);
+    const results = completedResults.get(workstream.id) ?? [];
+    results.push(outcome.result);
+    completedResults.set(workstream.id, results);
+    emit({ type: 'workstream-persisted', workstreamId: workstream.id });
+
+    // kill() already transitioned the item to 'failed' synchronously before
+    // this promise settled — don't clobber that terminal state. Read through
+    // currentState() (not a direct `item.state` narrowing site) since TS's
+    // control-flow analysis otherwise "remembers" the 'in-phase' assignment
+    // above as if it still held after the `await`, even though kill() can
+    // mutate the same object concurrently while this call was in flight.
+    if (currentState(item) === 'failed') return;
+
+    if (outcome.agentStatus === 'cancelled') {
+      failItem(workstream, item, 'cancelled by operator');
+      return;
+    }
+
+    if (outcome.agentStatus === 'failed') {
+      failItem(workstream, item, outcome.result.report.summary);
+      return;
+    }
+
+    if (outcome.result.gate.passed) {
+      // A fix phase's PASSING gate routes BACK to the review phase it was
+      // inserted after (dynamic insertion places 'fix' at an ordinal AFTER
+      // its review, per design (b) — "inserts a fix phase after review and
+      // re-routes that item back"), not forward past it. Every other kind
+      // advances to the next phase by ordinal as usual.
+      const forwardTarget = phase.kind === 'fix'
+        ? (reviewPhaseBefore(workstream, phase) ?? nextPhaseAfter(workstream, phase.ordinal) ?? null)
+        : (nextPhaseAfter(workstream, phase.ordinal) ?? null);
+      routeItem(workstream, item, forwardTarget, phase.id);
+      return;
+    }
+
+    // A review's FAILING gate with unsatisfied constraints gets one more
+    // cycle through a (found-or-inserted) fix phase, bounded by visits. A
+    // fix phase's own FAILING gate (the fixer didn't actually fix anything —
+    // phantom guard or quality gates caught it) is a genuine terminal
+    // failure, not something to retry-loop.
+    const unsatisfied = outcome.result.gate.unsatisfiedConstraintIds ?? [];
+    if (phase.kind === 'review' && unsatisfied.length > 0 && visitsFor(item, phase.id) < maxPhaseVisits) {
+      const fixPhase = findOrInsertFixPhase(workstream, phase);
+      routeItem(workstream, item, fixPhase, phase.id);
+      return;
+    }
+
+    failItem(
+      workstream,
+      item,
+      outcome.result.gate.results.filter((r) => !r.passed).map((r) => `${r.gate}: ${r.output}`).join('; ') || 'gate failed',
+    );
+  }
+
+  function mergeUsageFromResult(current: WorkItemUsage, added: WorkItemUsage): WorkItemUsage {
+    const sawReasoning = current.reasoningTokens !== undefined || added.reasoningTokens !== undefined;
+    const bothPriced = current.costState === 'priced' && added.costState === 'priced';
+    const neitherPriced = current.costUsd === null && added.costUsd === null;
+    return {
+      inputTokens: current.inputTokens + added.inputTokens,
+      outputTokens: current.outputTokens + added.outputTokens,
+      cacheReadTokens: current.cacheReadTokens + added.cacheReadTokens,
+      cacheWriteTokens: current.cacheWriteTokens + added.cacheWriteTokens,
+      reasoningTokens: sawReasoning ? (current.reasoningTokens ?? 0) + (added.reasoningTokens ?? 0) : undefined,
+      llmCallCount: current.llmCallCount + added.llmCallCount,
+      turnCount: current.turnCount + added.turnCount,
+      toolCallCount: current.toolCallCount + added.toolCallCount,
+      costUsd: current.costUsd !== null && added.costUsd !== null ? current.costUsd + added.costUsd : (current.costUsd ?? added.costUsd),
+      costState: bothPriced ? 'priced' : neitherPriced ? 'unpriced' : 'estimated',
+    };
+  }
+
+  function tick(workstreamId: string): void {
+    if (disposed) return;
+    const workstream = workstreams.get(workstreamId);
+    if (!workstream) return;
+    const claims = computeClaims(workstream);
+    for (const { item, phase } of claims) {
+      const budgetCheck = checkBudget(workstream);
+      if (!budgetCheck.allowed) {
+        if (item.state !== 'blocked-budget') {
+          item.state = 'blocked-budget';
+          emit({ type: 'item-blocked-budget', workstreamId, itemId: item.id, phaseId: phase.id });
+        }
+        continue;
+      }
+      void runItemPhase(workstream, item, phase)
+        .catch((error) => {
+          logger.error('orchestration engine: phase run threw', {
+            workstreamId, itemId: item.id, phaseId: phase.id, error: summarizeError(error),
+          });
+          failItem(workstream, item, summarizeError(error));
+        })
+        .finally(() => {
+          if (!disposed) tick(workstreamId);
+        });
+    }
+  }
+
+  function start(workstreamId: string): void {
+    tick(workstreamId);
+  }
+
+  function findItemAndWorkstream(itemId: string): { workstream: Workstream; item: WorkItem } | null {
+    for (const workstream of workstreams.values()) {
+      const item = workstream.items.find((i) => i.id === itemId);
+      if (item) return { workstream, item };
+    }
+    return null;
+  }
+
+  function kill(itemId: string): boolean {
+    const found = findItemAndWorkstream(itemId);
+    if (!found) return false;
+    const { workstream, item } = found;
+    if (item.state === 'passed' || item.state === 'failed') return false;
+    cancellation.abort(itemId);
+    if (item.agentId) deps.agentManager.cancel(item.agentId, 'kill');
+    failItem(workstream, item, 'cancelled by operator');
+    emit({ type: 'item-cancelled', workstreamId: workstream.id, itemId, reason: 'cancelled by operator' });
+    return true;
+  }
+
+  function serializeWorkstream(workstreamId: string): string | null {
+    const workstream = workstreams.get(workstreamId);
+    if (!workstream) return null;
+    return serializeWorkstreamSnapshot(workstream, getPhaseResults(workstreamId));
+  }
+
+  function isTerminalWorkstream(workstream: Workstream): boolean {
+    return workstream.items.every((item) => item.state === 'passed' || item.state === 'failed');
+  }
+
+  function importWorkstream(snapshotJson: string, force = false): boolean {
+    const snapshot = deserializeWorkstreamSnapshot(snapshotJson);
+    if (!snapshot) return false;
+    const workstream = deserializeWorkstreamModel(snapshot.workstream);
+    const existing = workstreams.get(workstream.id);
+    if (existing && !isTerminalWorkstream(existing) && !force) {
+      logger.warn('orchestration engine: importWorkstream refused — existing workstream is non-terminal; use force=true to overwrite', {
+        workstreamId: workstream.id,
+      });
+      return false;
+    }
+    workstreams.set(workstream.id, workstream);
+    completedResults.set(workstream.id, [...snapshot.completedResults]);
+    return true;
+  }
+
+  function resumeWorkstream(workstreamId: string): boolean {
+    if (!workstreams.has(workstreamId)) {
+      const snapshot = loadWorkstreamSnapshot(deps.projectRoot, workstreamId);
+      if (!snapshot) return false;
+      if (!importWorkstream(JSON.stringify(snapshot))) return false;
+    }
+    tick(workstreamId);
+    return true;
+  }
+
+  function resumeAllFromDisk(): number {
+    let count = 0;
+    for (const workstreamId of listSnapshotWorkstreamIds(deps.projectRoot)) {
+      if (resumeWorkstream(workstreamId)) count += 1;
+    }
+    return count;
+  }
+
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    unsubscribeWriter();
+    listeners.clear();
+  }
+
+  return {
+    createWorkstream,
+    getWorkstream,
+    listWorkstreams,
+    insertPhase,
+    start,
+    kill,
+    getPhaseResults,
+    serializeWorkstream,
+    importWorkstream,
+    resumeWorkstream,
+    resumeAllFromDisk,
+    on,
+    dispose,
+  };
+}

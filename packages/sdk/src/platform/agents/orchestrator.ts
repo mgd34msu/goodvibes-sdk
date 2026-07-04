@@ -47,6 +47,18 @@ export interface AgentConversationSink {
   readonly release: (agentId: string) => void;
 }
 
+/**
+ * Wave-4 cooperative cancellation bridge (wo701): where AgentOrchestrator
+ * looks up a per-agent AbortSignal registered by an orchestration engine's
+ * work-item run. Same shape/wiring precedent as AgentConversationSink — a
+ * setter rather than a constructor dependency, wired post-construction in
+ * runtime/services.ts (production backing is
+ * AgentManager.registerCancellationSignal/getCancellationSignal).
+ */
+export interface AgentCancellationSource {
+  readonly get: (agentId: string) => AbortSignal | undefined;
+}
+
 type AgentProviderRoutingPolicy = NonNullable<AgentRecord['routing']>;
 type ActiveModelRef = { id: string; provider: string; registryKey: string };
 type ResolvedAgentProviderRouting = {
@@ -100,6 +112,7 @@ export class AgentOrchestrator {
   private featureFlagManager: FeatureFlagManager | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
   private conversationSink: AgentConversationSink | null = null;
+  private cancellationSource: AgentCancellationSource | null = null;
   private readonly channelRegistry: ChannelPluginRegistry | null;
   private readonly messageBus: import('./message-bus.js').AgentMessageBus;
 
@@ -130,6 +143,16 @@ export class AgentOrchestrator {
    */
   setConversationSink(sink: AgentConversationSink | null): void {
     this.conversationSink = sink;
+  }
+
+  /**
+   * Wire the Wave-4 cancellation bridge (see AgentCancellationSource). Pass
+   * null to detach — createRunContext() then omits getCancellationSignal
+   * entirely and orchestrator-runner's `?.()` call becomes a no-op, so every
+   * tool call runs with `opts` undefined exactly as before this change.
+   */
+  setCancellationSource(source: AgentCancellationSource | null): void {
+    this.cancellationSource = source;
   }
 
   private emitterContext(agentId: string): import('../runtime/emitters/index.js').EmitterContext {
@@ -489,6 +512,9 @@ export class AgentOrchestrator {
         : undefined,
       releaseConversationSource: this.conversationSink
         ? (agentId) => this.conversationSink!.release(agentId)
+        : undefined,
+      getCancellationSignal: this.cancellationSource
+        ? (agentId) => this.cancellationSource!.get(agentId)
         : undefined,
       processManager: this.toolDeps?.processManager,
       messageBus: this.messageBus,
