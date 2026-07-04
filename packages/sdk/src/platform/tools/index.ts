@@ -101,6 +101,7 @@ export { ReadTool } from './read/index.js';
 export { createWriteTool } from './write/index.js';
 export { createEditTool } from './edit/index.js';
 export type { EditToolOptions } from './edit/index.js';
+export type { EditItem, EditInput } from './edit/types.js';
 export { createFindTool } from './find/index.js';
 export { createExecTool } from './exec/index.js';
 export { formatDenialResponse, guardExecCommand } from './exec/ast-guard.js';

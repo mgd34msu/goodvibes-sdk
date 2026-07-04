@@ -6,6 +6,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-07-03
+
+Wave 1 of the goodvibes-tui evolution effort: reversibility. The headline is the workspace checkpoint engine — cheap whole-workspace snapshots and rewind, with zero pollution of the user's git state.
+
+### Added
+- `@pellux/goodvibes-sdk`: **WorkspaceCheckpointManager** (`./platform/workspace`) — a hidden side git repository (isolated `GIT_DIR`, the workspace as work-tree) provides content-addressed whole-workspace checkpoints: automatic snapshots at turn and agent-run boundaries (subscribing to existing TURN_*/AGENT_COMPLETED events), named manual checkpoints, checkpoint-to-checkpoint and checkpoint-to-working-tree diffs, and whole-workspace restore with a default safety checkpoint. Never touches the user repo's HEAD/index/stash (proven byte-identical in tests); works in non-git directories; honors .gitignore; bounded retention via the existing RetentionPolicy with ref-deletion GC. Constructed in `createRuntimeServices` and exposed on `RuntimeServices`.
+- `@pellux/goodvibes-sdk`: permission prompts can modify tool arguments — `PermissionPromptDecision`/`PermissionCheckResult` gain optional `modifiedArgs`, and the edit tool executes the approved subset, enabling per-edit accept/reject at the approval gate (whole-file `write` stays all-or-nothing for now).
+
+### Fixed
+- `@pellux/goodvibes-sdk`: **compaction now accounts for completed subagent work** — two build sites filtered agent records with a premature active-only predicate, so a compaction summary after agents built a whole project claimed "no completed tool work". Completed agent runs (task, files touched, outcome) now reach the compaction sections.
+
+### Notes
+- The `wcp_` workspace-checkpoint namespace is deliberately distinct from compaction's `cpt_` conversation snapshots and the generic retention `CheckpointRecord`.
+
 ## [0.36.0] - 2026-07-03
 
 Wave 0 "trust repairs" from the goodvibes-tui live-dogfooding effort: every fix closes a defect reproduced against v1.0.0 of the TUI where the SDK reported something other than the truth to the model or the user.
