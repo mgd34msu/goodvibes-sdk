@@ -52,8 +52,11 @@ function workItemState(item: WorkItem): ProcessState {
       // Honest "stuck, not progressing" signal reusing an existing state
       // rather than adding a new one (charter: prefer existing-contract
       // reuse). Distinct from 'queued': a queued item WILL be claimed by
-      // free capacity; a blocked-budget item will not, until usage headroom
-      // returns (it never auto-recovers within a fixed ceiling today).
+      // free capacity; a blocked-budget item will not until its workstream's
+      // ceiling rises (or is cleared) via OrchestrationEngine.updateBudget —
+      // computeClaims (scheduler.ts) keeps it in the waiting set so that
+      // reconsideration is automatic the instant the ceiling changes, but a
+      // fixed ceiling on its own never lifts the block (usage only grows).
       return 'stalled';
     case 'in-phase':
       return 'executing-tool';
@@ -156,7 +159,13 @@ export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: st
       : undefined,
     costUsd: item.usage.costUsd,
     costState: item.usage.costState,
-    currentActivity: item.currentPhaseId ? { kind: 'phase', text: item.currentPhaseId, at: item.createdAt } : undefined,
+    // Blocked-budget items surface their reason (set/cleared by the engine
+    // alongside the state transition, types.ts WorkItem.blockedReason) in
+    // place of the bare phase id — the phase id alone doesn't tell an
+    // operator WHY the item stopped moving.
+    currentActivity: item.currentPhaseId
+      ? { kind: 'phase', text: item.state === 'blocked-budget' && item.blockedReason ? item.blockedReason : item.currentPhaseId, at: item.createdAt }
+      : undefined,
     capabilities: {
       interruptible: activeAgentId !== undefined,
       killable,

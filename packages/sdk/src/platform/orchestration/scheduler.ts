@@ -50,6 +50,14 @@ export interface PhaseClaim {
  * no side effects, no budget check (the caller applies budget.checkBudget
  * before actually claiming, since budget is a *decision*, not a capacity
  * fact this function should own).
+ *
+ * 'blocked-budget' items are deliberately included in the waiting set, not
+ * just 'pending'/'awaiting-capacity': a budget block is a recoverable
+ * decision (see BudgetCeiling/WorkItemState docs, types.ts), never a
+ * capacity fact, so a previously-blocked item must be reconsidered on every
+ * tick the instant a slot is free — the caller's budget.checkBudget call
+ * re-decides it fresh each time, honestly re-blocking it if the ceiling
+ * still refuses.
  */
 export function computeClaims(workstream: Workstream): PhaseClaim[] {
   const claims: PhaseClaim[] = [];
@@ -58,7 +66,8 @@ export function computeClaims(workstream: Workstream): PhaseClaim[] {
     let free = phase.capacity - inFlight;
     if (free <= 0) continue;
     const waiting = workstream.items.filter(
-      (item) => item.currentPhaseId === phase.id && (item.state === 'pending' || item.state === 'awaiting-capacity'),
+      (item) => item.currentPhaseId === phase.id
+        && (item.state === 'pending' || item.state === 'awaiting-capacity' || item.state === 'blocked-budget'),
     );
     for (const item of waiting) {
       if (free <= 0) break;
