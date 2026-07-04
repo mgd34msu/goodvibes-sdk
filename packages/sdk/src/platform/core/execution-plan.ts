@@ -22,16 +22,46 @@ export interface PlanItem {
   dependencies?: string[]; // IDs of items that must complete first
 }
 
+export type ExecutionPlanStatus = 'draft' | 'active' | 'complete' | 'failed' | 'dismissed';
+
 export interface ExecutionPlan {
   id: string;
   title: string;
   createdAt: string;
   updatedAt: string;
   sessionId?: string | undefined;
-  status: 'draft' | 'active' | 'complete' | 'failed';
+  status: ExecutionPlanStatus;
   items: PlanItem[];
   specPath?: string; // path to the spec document
   awaitingPlan?: boolean; // true when /plan created the shell, waiting for model to fill it
+  /** ISO timestamp set when the plan was dismissed/archived (status 'dismissed'). */
+  dismissedAt?: string;
+  /** The status the plan held immediately before it was dismissed — preserved so
+   *  a completed/failed record is not silently rewritten to look like a draft. */
+  dismissedFrom?: Exclude<ExecutionPlanStatus, 'dismissed'>;
+}
+
+/**
+ * Outcome of {@link ExecutionPlanManager.dismiss}. Dismiss is intentionally
+ * refused mid-execution: an in-flight plan must be stopped via the workstream
+ * cancel path first, so `dismiss` never silently abandons running agent work.
+ *
+ *  - `no-active-plan`      — nothing to dismiss; no mutation.
+ *  - `requires-cancel`     — the active plan is mid-execution ('active');
+ *                            refused. Cancel the workstream first, then dismiss.
+ *  - `dismissed`           — a proposal/awaiting-approval or terminal plan was
+ *                            archived: retained on disk with status 'dismissed'
+ *                            + `dismissedAt`, and the active pointer cleared so a
+ *                            later `/plan <goal>` starts fresh.
+ */
+export type DismissPlanOutcome = 'no-active-plan' | 'requires-cancel' | 'dismissed';
+
+export interface DismissPlanResult {
+  readonly outcome: DismissPlanOutcome;
+  /** The archived plan (only when `outcome === 'dismissed'`). */
+  readonly plan?: ExecutionPlan;
+  /** The plan that blocked dismissal (only when `outcome === 'requires-cancel'`). */
+  readonly blockedBy?: ExecutionPlan;
 }
 
 export interface ExecutionPlanParseIssue {
@@ -220,16 +250,54 @@ export class ExecutionPlanManager {
     item.status = status;
     if (agentId !== undefined) item.agentId = agentId;
 
-    // Derive top-level plan status
-    const allDone = plan.items.every((i) => i.status === 'complete' || i.status === 'skipped');
-    const anyFailed = plan.items.some((i) => i.status === 'failed');
-    const anyActive = plan.items.some((i) => i.status === 'in_progress');
-    if (allDone) plan.status = 'complete';
-    else if (anyFailed) plan.status = 'failed';
-    else if (anyActive) plan.status = 'active';
+    // A dismissed plan is archived — never resurrect its top-level status from
+    // an item edit. Persist the item change but leave status 'dismissed'.
+    if (plan.status !== 'dismissed') {
+      // Derive top-level plan status
+      const allDone = plan.items.every((i) => i.status === 'complete' || i.status === 'skipped');
+      const anyFailed = plan.items.some((i) => i.status === 'failed');
+      const anyActive = plan.items.some((i) => i.status === 'in_progress');
+      if (allDone) plan.status = 'complete';
+      else if (anyFailed) plan.status = 'failed';
+      else if (anyActive) plan.status = 'active';
+    }
 
     plan.updatedAt = new Date().toISOString();
     this.save(plan);
+  }
+
+  /**
+   * Dismiss (archive) the active plan for the current session.
+   *
+   * Honest semantics for every plan state:
+   *   - No active plan → no-op (`{ outcome: 'no-active-plan' }`), nothing written.
+   *   - Active/mid-execution ('active') → refused (`{ outcome: 'requires-cancel' }`).
+   *     A running plan must be stopped via the workstream cancel path first;
+   *     dismiss never abandons in-flight agent work by fiat.
+   *   - Proposal/awaiting-approval ('draft') or a terminal record ('complete' /
+   *     'failed') → archived: the plan is RETAINED on disk with status
+   *     'dismissed', a `dismissedAt` timestamp, and `dismissedFrom` recording
+   *     the prior status; the active pointer is cleared so a later
+   *     `/plan <goal>` starts a fresh plan. Nothing is deleted.
+   */
+  dismiss(sessionId?: string): DismissPlanResult {
+    const active = this.getActive(sessionId);
+    if (!active) return { outcome: 'no-active-plan' };
+
+    if (active.status === 'active') {
+      return { outcome: 'requires-cancel', blockedBy: active };
+    }
+
+    const dismissedFrom = active.status as Exclude<ExecutionPlanStatus, 'dismissed'>;
+    active.dismissedFrom = dismissedFrom;
+    active.status = 'dismissed';
+    active.dismissedAt = new Date().toISOString();
+    active.updatedAt = active.dismissedAt;
+    this.save(active);
+    // Clear the active pointer (archive, not delete) so the plan survives in
+    // list() but no longer counts as the session's active plan.
+    this.setActive(null, active.sessionId ?? sessionId ?? null);
+    return { outcome: 'dismissed', plan: active };
   }
 
   /** List all plans (reads directory, excludes active.json). */

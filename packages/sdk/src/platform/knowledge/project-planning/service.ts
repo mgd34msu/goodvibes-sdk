@@ -26,12 +26,15 @@ import {
 } from './helpers.js';
 import { evaluateProjectPlanningReadiness } from './readiness.js';
 import type {
+  ProjectPlanningAnswerInput,
+  ProjectPlanningAnswerResult,
   ProjectPlanningDecision,
   ProjectPlanningDecisionRecordInput,
   ProjectPlanningDecisionResult,
   ProjectPlanningDecisionsResult,
   ProjectPlanningEvaluateInput,
   ProjectPlanningEvaluation,
+  ProjectPlanningQuestion,
   ProjectPlanningLanguageArtifact,
   ProjectPlanningLanguageResult,
   ProjectPlanningLanguageUpsertInput,
@@ -162,6 +165,87 @@ export class ProjectPlanningService {
     const stateResult = await this.getState({ ...space, planningId: input.planningId });
     const state = stateResult.state ?? normalizeState({}, space.projectId, space.knowledgeSpaceId);
     return evaluateProjectPlanningReadiness(state);
+  }
+
+  /**
+   * Record a user answer to an open planning question. The target question is
+   * identified by `questionId` (preferred) or a zero-based `questionIndex` into
+   * the current `openQuestions`. On success the question is moved to
+   * `answeredQuestions` with the answer text and `answeredAt`, the state is
+   * persisted, and readiness is re-evaluated (the open-question gap clears).
+   *
+   * Never throws: a missing state, empty answer, missing selector, or unknown
+   * question all return `answered: false` with an honest `reason` and the
+   * current (unmodified) readiness, so a caller can report exactly what
+   * happened rather than guessing.
+   */
+  async answerQuestion(input: ProjectPlanningAnswerInput): Promise<ProjectPlanningAnswerResult> {
+    await this.store.init();
+    const space = this.resolveSpace(input);
+    const stateResult = await this.getState({ ...space, planningId: input.planningId });
+    const current = stateResult.state;
+
+    const fail = async (
+      reason: ProjectPlanningAnswerResult['reason'],
+      state: ProjectPlanningState | null,
+    ): Promise<ProjectPlanningAnswerResult> => ({
+      ok: true,
+      projectId: space.projectId,
+      knowledgeSpaceId: space.knowledgeSpaceId,
+      answered: false,
+      reason,
+      openQuestions: state?.openQuestions ?? [],
+      state,
+      evaluation: await this.evaluate({ ...space, ...(input.planningId ? { planningId: input.planningId } : {}) }),
+    });
+
+    if (!current) return fail('no-state', null);
+    const answer = input.answer.trim();
+    if (!answer) return fail('empty-answer', current);
+
+    const hasSelector = input.questionId !== undefined || input.questionIndex !== undefined;
+    if (!hasSelector) return fail('missing-selector', current);
+
+    const openQuestions = current.openQuestions;
+    let targetIndex = -1;
+    if (input.questionId !== undefined) {
+      targetIndex = openQuestions.findIndex((question) => question.id === input.questionId);
+    } else if (input.questionIndex !== undefined) {
+      const idx = input.questionIndex;
+      if (Number.isInteger(idx) && idx >= 0 && idx < openQuestions.length) targetIndex = idx;
+    }
+    if (targetIndex < 0) return fail('question-not-found', current);
+
+    const target = openQuestions[targetIndex]!;
+    const answeredQuestion: ProjectPlanningQuestion = {
+      ...target,
+      status: 'answered',
+      answer,
+      answeredAt: Date.now(),
+    };
+    const nextOpen = openQuestions.filter((_, index) => index !== targetIndex);
+    // De-dup: an already-answered entry with the same id is replaced, not doubled.
+    const nextAnswered = [
+      ...current.answeredQuestions.filter((question) => question.id !== answeredQuestion.id),
+      answeredQuestion,
+    ];
+
+    const saved = await this.upsertState({
+      ...space,
+      state: { ...current, openQuestions: nextOpen, answeredQuestions: nextAnswered },
+    });
+    const nextState = saved.state ?? current;
+    const evaluation = await this.evaluate({ ...space, state: nextState });
+    return {
+      ok: true,
+      projectId: space.projectId,
+      knowledgeSpaceId: space.knowledgeSpaceId,
+      answered: true,
+      question: answeredQuestion,
+      openQuestions: nextState.openQuestions,
+      state: nextState,
+      evaluation,
+    };
   }
 
   async listDecisions(input: ProjectPlanningSpaceInput = {}): Promise<ProjectPlanningDecisionsResult> {
