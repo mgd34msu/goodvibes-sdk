@@ -222,6 +222,65 @@ describe('orchestrator-runner — steer drain (Wave-3, W3.2)', () => {
     registry.dispose();
   });
 
+  test('wo/chain-state-honesty: a steer drained into a turn whose chat call then fails never emits consumed', async () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'wo-chain-state-honesty-steer-fail-'));
+    const messageBus = new AgentMessageBus();
+    const runtimeBus = new RuntimeEventBus();
+    const consumedEvents: unknown[] = [];
+    runtimeBus.onDomain('communication', (envelope) => {
+      if (envelope.payload.type === 'COMMUNICATION_CONSUMED') consumedEvents.push(envelope.payload);
+    });
+
+    const record = makeRecord({ id: 'ag-steer-drain-then-fail' });
+    const registry = createProcessRegistry(makeRegistryDeps(record, messageBus));
+
+    let steerMessageId = '';
+    let chatCallCount = 0;
+    const provider: LLMProvider = {
+      name: 'fake',
+      models: ['fake-model'],
+      async chat(): Promise<ChatResponse> {
+        chatCallCount += 1;
+        if (chatCallCount === 1) {
+          // Same mid-turn-1 steer as the happy-path test above — it will be
+          // drained at the TOP of turn 2, before turn 2's chat call below.
+          const result = registry.steer(record.id, 'focus on the auth module first');
+          expect(result.queued).toBe(true);
+          if (result.queued) steerMessageId = result.messageId;
+          return {
+            content: '',
+            toolCalls: [{ id: 'call-1', name: 'nonexistent_tool', arguments: {} }],
+            usage: { inputTokens: 10, outputTokens: 5 },
+            stopReason: 'tool_call',
+          };
+        }
+        // Turn 2: the steer is drained into the conversation (see the runner's
+        // pending-message loop) BEFORE this call runs, then this call fails.
+        // A generic error is not network/rate-limit/fallback-eligible, so the
+        // runner's retry loop rethrows immediately — this is the "chat
+        // exhausts retries" case the fix targets: the drain happened, but the
+        // turn it was drained into never produced a successful response.
+        throw new Error('simulated total chat failure on turn 2');
+      },
+    };
+
+    const context = makeContext({ workingDirectory: tmpDir, runtimeBus, messageBus, provider });
+    await runAgentTask(context, record);
+    await flushMicrotasks();
+
+    expect(chatCallCount).toBe(2);
+    expect(record.status).toBe('failed');
+    expect(steerMessageId.length).toBeGreaterThan(0);
+
+    // The honest signal: the steer was drained into turn 2's conversation,
+    // but turn 2's chat call never succeeded, so consumed must NEVER fire —
+    // emitting it here would tell a consumer the steer was incorporated when
+    // the run actually died without ever producing a response for it.
+    expect(consumedEvents).toHaveLength(0);
+
+    registry.dispose();
+  });
+
   test('a steer queued after the agent has already begun its final (no-tool-call) turn is never drained and never emits consumed', async () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'wo602-steer-stranded-'));
     const messageBus = new AgentMessageBus();

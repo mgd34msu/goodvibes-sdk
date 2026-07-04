@@ -33,15 +33,26 @@ function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { st
   if (retryCount > 0 && !anyMemberLive) {
     return { state: 'retrying', phase: chain.state };
   }
+  // CONTROLLER-DRIVEN PHASES: 'gating' (running gate checks) and 'committing'
+  // (git commit/merge) are performed by WrfcController itself, never by a
+  // member agent — every phase-worker member has already finished its own
+  // work by the time the chain advances to either state. "Zero live members"
+  // is therefore the NORMAL condition here, not a symptom of a cascade kill,
+  // so these two states are excluded from the CHAIN TERMINAL TRUTH check
+  // below (enumerated from the WrfcState union in wrfc-types.ts — do not
+  // widen this to other active states, where a live member IS expected and
+  // its absence legitimately signals a kill).
+  const controllerDrivenWithNoLiveMembersByDesign = chain.state === 'gating' || chain.state === 'committing';
   // CHAIN TERMINAL TRUTH: WrfcController has no cancel/abort of its own, so a
   // cascade kill (registry.ts kill('chain:<id>')) only cancels the member
   // agents — chain.state never leaves whatever active phase it was in when
   // killed. Once every known member has reached a terminal state and it's
-  // NOT the transport-retry respawn window handled above, the chain was
-  // terminated out from under its owner: report it terminal instead of a
-  // perpetually-running phase (the replay-found "climbing elapsed" leak).
-  // `phase` is preserved for display ("killed while engineering").
-  if (memberNodes.length > 0 && !anyMemberLive) {
+  // NOT the transport-retry respawn window handled above, NOR one of the
+  // controller-driven phases handled above, the chain was terminated out
+  // from under its owner: report it terminal instead of a perpetually-running
+  // phase (the replay-found "climbing elapsed" leak). `phase` is preserved
+  // for display ("killed while engineering").
+  if (memberNodes.length > 0 && !anyMemberLive && !controllerDrivenWithNoLiveMembersByDesign) {
     return { state: 'killed', phase: chain.state };
   }
   return { state: 'executing-tool', phase: chain.state };

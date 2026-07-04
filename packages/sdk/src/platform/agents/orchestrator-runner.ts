@@ -523,6 +523,10 @@ export async function runAgentTask(
       }
       session.appendMessage({ type: 'llm_request', turn, messageCount: conversation.getMessagesForLLM().length, timestamp: new Date().toISOString() });
       const pending = context.messageBus.getMessages(record.id);
+      // Steers drained into the conversation THIS turn, awaiting the "consumed"
+      // signal below — deferred until the turn's chat call actually succeeds.
+      // See the comment at the emission site for why this can't fire here.
+      const drainedSteerMessageIds: string[] = [];
       for (const msg of pending) {
         // Skip the agent's own broadcasts and any message already injected on a
         // prior turn so each directive is surfaced to the model exactly once.
@@ -534,18 +538,7 @@ export async function runAgentTask(
           // an inter-agent directive — inject it verbatim, with none of the
           // "[Kind from sender]" framing used for agent-to-agent messages.
           conversation.addUserMessage(msg.content);
-          // Honest "consumed at boundary" signal: this is the ONLY place a
-          // queued steer is actually drained into the conversation, at the
-          // top of this turn, before the LLM call below. Never emit this
-          // from AgentMessageBus.send() itself — that fires eagerly, before
-          // the agent has any chance to see the message.
-          if (context.runtimeBus) {
-            emitCommunicationConsumed(context.runtimeBus, context.emitterContext(record.id), {
-              messageId: msg.id,
-              agentId: record.id,
-              turn,
-            });
-          }
+          drainedSteerMessageIds.push(msg.id);
         } else {
           const kindLabel = (msg.kind[0] ?? '').toUpperCase() + msg.kind.slice(1);
           conversation.addUserMessage(`[${kindLabel} from ${msg.from}]: ${msg.content}`);
@@ -684,6 +677,25 @@ export async function runAgentTask(
         }
         record.streamingContent = undefined;
         record.progress = `Turn ${turn} · Thinking…`;
+      }
+
+      // Honest "consumed at boundary" signal, emitted here (not at drain time
+      // above) because this is the first point in the turn where the chat
+      // call is KNOWN to have succeeded. If the call above exhausted its
+      // retries/fallbacks, it throws and unwinds out of this function (caught
+      // by the outer try/catch → handleAgentRunFailure) without ever reaching
+      // this line — so a steer drained into a turn whose chat then fails
+      // never gets a consumed signal it didn't earn. Never emit this from
+      // AgentMessageBus.send() itself — that fires eagerly, before the agent
+      // has any chance to see the message.
+      if (context.runtimeBus) {
+        for (const messageId of drainedSteerMessageIds) {
+          emitCommunicationConsumed(context.runtimeBus, context.emitterContext(record.id), {
+            messageId,
+            agentId: record.id,
+            turn,
+          });
+        }
       }
 
       session.appendMessage({ type: 'llm_response', turn, contentLength: response.content.length, toolCallCount: response.toolCalls.length, usage: response.usage, timestamp: new Date().toISOString() });

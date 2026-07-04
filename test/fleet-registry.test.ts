@@ -416,6 +416,50 @@ describe('fleet registry — adapter mapping', () => {
     registryLater.dispose();
   });
 
+  // wo/chain-state-honesty fix: 'gating' and 'committing' are run by
+  // WrfcController itself (gate checks, git commit/merge) with zero live
+  // member agents BY DESIGN — every phase-worker member already finished
+  // before the chain advanced here. Before the fix, the killed-derivation
+  // fired on this exact shape (all known members terminal) and reported a
+  // healthy chain mid-commit as 'killed' with a frozen synthetic
+  // completedAt. It must instead still read as an active phase.
+  test('chain in committing/gating with all members terminal reads as an active phase, NOT killed', () => {
+    const committing = makeChain({
+      id: 'ch-committing',
+      state: 'committing',
+      ownerAgentId: 'own-c',
+      allAgentIds: ['own-c', 'eng-c'],
+      createdAt: T0,
+    });
+    const gating = makeChain({
+      id: 'ch-gating',
+      state: 'gating',
+      ownerAgentId: 'own-g',
+      allAgentIds: ['own-g', 'eng-g'],
+      createdAt: T0,
+    });
+    const agents = [
+      makeAgent({ id: 'own-c', wrfcId: 'ch-committing', status: 'completed', completedAt: T0 + 1_000 }),
+      makeAgent({ id: 'eng-c', wrfcId: 'ch-committing', status: 'completed', completedAt: T0 + 1_000 }),
+      makeAgent({ id: 'own-g', wrfcId: 'ch-gating', status: 'completed', completedAt: T0 + 1_000 }),
+      makeAgent({ id: 'eng-g', wrfcId: 'ch-gating', status: 'completed', completedAt: T0 + 1_000 }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [...agents], cancel: () => false },
+      wrfcController: { listChains: () => [committing, gating] },
+      now: () => T0 + 60_000,
+    }));
+    const committingNode = nodeById(registry, 'chain:ch-committing');
+    const gatingNode = nodeById(registry, 'chain:ch-gating');
+    expect(committingNode.state).toBe('executing-tool');
+    expect(committingNode.currentActivity?.text).toBe('committing');
+    expect(committingNode.completedAt).toBeUndefined();
+    expect(gatingNode.state).toBe('executing-tool');
+    expect(gatingNode.currentActivity?.text).toBe('gating');
+    expect(gatingNode.completedAt).toBeUndefined();
+    registry.dispose();
+  });
+
   test('chain retrying takes precedence over the killed-derivation during an in-flight transport respawn', () => {
     const chain = makeChain({
       id: 'ch-retry-real',
