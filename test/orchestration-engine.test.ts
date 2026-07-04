@@ -168,7 +168,7 @@ function makeHarness(projectRoot: string): Harness {
     },
     commitWorkingTree: async (message, paths) => {
       commitCalls.push({ message, paths });
-      return 'commit-hash';
+      return { hash: 'commit-hash', skippedIgnored: [] };
     },
     currentHead: async () => 'head-hash',
   });

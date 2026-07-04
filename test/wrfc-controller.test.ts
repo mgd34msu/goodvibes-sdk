@@ -13,6 +13,7 @@ import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
 import type { WrfcChain } from '../packages/sdk/src/platform/agents/wrfc-types.js';
+import type { CommitWorkingTreeResult } from '../packages/sdk/src/platform/agents/worktree.js';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -164,6 +165,10 @@ function createHarness(overrides?: {
   transportRetryLimit?: number;
   transportRetryDelayMs?: number;
   commitScope?: 'off' | 'scoped' | 'all';
+  /** Override the fake worktree's commit result (e.g. to report skipped gitignored paths). */
+  commitWorkingTreeResult?: CommitWorkingTreeResult;
+  /** Make the fake worktree's commit throw, to exercise the non-fatal commit-failure path. */
+  commitWorkingTreeError?: Error;
 }): TestHarness {
   const bus = new RuntimeEventBus();
   const agentStore = new Map<string, AgentRecord>();
@@ -263,7 +268,8 @@ function createHarness(overrides?: {
       commitWorkingTree: async (message: string, paths?: string[]) => {
         directCommitMessages.push(message);
         directCommitPaths.push(paths);
-        return 'direct-commit-hash';
+        if (overrides?.commitWorkingTreeError) throw overrides.commitWorkingTreeError;
+        return overrides?.commitWorkingTreeResult ?? { hash: 'direct-commit-hash', skippedIgnored: [] };
       },
       currentHead: async () => {
         currentHeadCalls += 1;
@@ -768,6 +774,82 @@ describe('WrfcController — wrfc.commitScope', () => {
     expect(h.directCommitPaths).toHaveLength(1);
     expect(h.directCommitPaths[0]).toEqual(expect.arrayContaining(['src/feature.ts', 'src/index.ts']));
     expect(h.directCommitPaths[0]).toHaveLength(2);
+
+    h.controller.dispose();
+  });
+
+  test('autoCommit that skips a gitignored ledger path completes the chain successfully with an honest warning', async () => {
+    // Reproduces the WRFC trust defect at the controller level: the commit succeeds for the
+    // deliverable but reports a gitignored bookkeeping path it dropped. The chain must still PASS
+    // (terminal status derives from review + gates, not the commit result), and the completion
+    // message must state the review outcome and the commit outcome SEPARATELY.
+    const h = createHarness({
+      autoCommit: true,
+      gitRepo: true,
+      commitScope: 'all',
+      commitWorkingTreeResult: { hash: 'a1b2c3d4e5f6', skippedIgnored: ['.goodvibes/memory/repo_preferences.json'] },
+    });
+
+    const ownerRecord = h.addAgent('owner-ignored-1', 'build a slugify CLI');
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    const types = h.workflowEvents.map((e) => e.type);
+    expect(types).toContain('WORKFLOW_CHAIN_PASSED');
+    expect(types).not.toContain('WORKFLOW_CHAIN_FAILED');
+
+    const owner = h.agentStore.get('owner-ignored-1')!;
+    expect(owner.status).toBe('completed');
+    // Review outcome and commit outcome are stated separately in the completion message; the
+    // gitignored bookkeeping path is reported as skipped, not as a failure.
+    expect(owner.fullOutput).toContain('review 10/10');
+    expect(owner.fullOutput).toContain('committed ');
+    expect(owner.fullOutput).toContain('1 ignored path skipped');
+
+    h.controller.dispose();
+  });
+
+  test('autoCommit failure completes the chain as passed with a non-fatal warning, never FAILED', async () => {
+    // A commit that genuinely cannot complete (permissions, a locked index, a rejecting hook) must
+    // not flip a green chain to FAILED — the review and gates already passed. AgentWorktree restores
+    // the index for the paths it staged, so this path only needs to prove the non-fatal status.
+    const h = createHarness({
+      autoCommit: true,
+      gitRepo: true,
+      commitScope: 'all',
+      commitWorkingTreeError: new Error('EACCES: permission denied, .git/index.lock'),
+    });
+
+    const ownerRecord = h.addAgent('owner-commitfail-1', 'build a slugify CLI');
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewerRecord.id, PASSING_REVIEW_OUTPUT);
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('passed');
+    const types = h.workflowEvents.map((e) => e.type);
+    expect(types).toContain('WORKFLOW_CHAIN_PASSED');
+    expect(types).not.toContain('WORKFLOW_CHAIN_FAILED');
+
+    const owner = h.agentStore.get('owner-commitfail-1')!;
+    expect(owner.status).toBe('completed');
+    expect(owner.fullOutput).toContain('review 10/10');
+    expect(owner.fullOutput).toContain('commit failed (non-fatal)');
 
     h.controller.dispose();
   });

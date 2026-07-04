@@ -22,7 +22,7 @@ import type {
   WrfcSubtask,
 } from './wrfc-types.js';
 import { WrfcWorkmap } from './wrfc-workmap.js';
-import { AgentWorktree } from './worktree.js';
+import { AgentWorktree, type CommitWorkingTreeResult } from './worktree.js';
 import { completePlanItemsForAgent } from './wrfc-plan-sync.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { AgentRecord } from '../tools/agent/index.js';
@@ -1421,21 +1421,27 @@ export class WrfcController {
 
     const commitCandidateIds = this.autoCommitCandidateAgentIds(chain);
     if (commitCandidateIds.length === 0) {
-      this.failChain(chain, 'autoCommit: no write-capable WRFC agent found on chain');
+      // A structurally odd chain (no engineer/fixer/integrator) cannot be auto-committed, but the
+      // full-scope review and gates already passed — that is what determines success. Surface the
+      // miss as a warning on a passing chain rather than flipping a green chain to FAILED.
+      logger.warn('WrfcController.autoCommit: no write-capable WRFC agent found on chain; skipping commit', {
+        chainId: chain.id,
+      });
+      this.completeChainAsPassed(chain, 'commit skipped: no write-capable WRFC agent on chain');
       return;
     }
 
     if (!existsSync(join(this.projectRoot, '.git'))) {
       logger.debug('WrfcController.autoCommit: not a git repo, skipping commit', { chainId: chain.id });
-      this.completeChainAsPassed(chain);
+      this.completeChainAsPassed(chain, 'commit skipped: not a git repository');
       return;
     }
 
     const worktree = this.createWorktree();
-    let completed = false;
     try {
       const commitMessage = this.buildAutoCommitMessage(chain, commitScope);
-      let directCommitHash: string | null = null;
+      let commitResult: CommitWorkingTreeResult = { hash: null, skippedIgnored: [] };
+      let ledgerEmpty = false;
       if (worktree.commitWorkingTree) {
         if (commitScope === 'scoped') {
           const touchedPaths = this.collectChainTouchedPaths(chain);
@@ -1443,15 +1449,16 @@ export class WrfcController {
             // Do NOT fall back to a full-tree `--all` sweep here — an empty self-reported
             // ledger means we genuinely don't know what this chain touched, and committing
             // everything dirty in the working tree is exactly the trust bug this fixes.
+            ledgerEmpty = true;
             logger.warn('WrfcController.autoCommit: commitScope is scoped but the chain edit ledger is empty; skipping commit rather than falling back to a full-tree sweep', {
               chainId: chain.id,
             });
           } else {
-            directCommitHash = await worktree.commitWorkingTree(commitMessage, touchedPaths);
+            commitResult = await worktree.commitWorkingTree(commitMessage, touchedPaths);
           }
         } else {
           // commitScope === 'all': legacy full-tree sweep, no paths argument.
-          directCommitHash = await worktree.commitWorkingTree(commitMessage);
+          commitResult = await worktree.commitWorkingTree(commitMessage);
         }
       }
       let mergedCount = 0;
@@ -1460,26 +1467,33 @@ export class WrfcController {
           mergedCount += 1;
         }
       }
-      const headHash = mergedCount > 0 && worktree.currentHead ? await worktree.currentHead() : directCommitHash;
+      const headHash = mergedCount > 0 && worktree.currentHead ? await worktree.currentHead() : commitResult.hash;
       emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id, headHash ?? undefined);
-      this.completeChainAsPassed(chain);
-      completed = true;
+      const commitNote = this.describeCommitOutcome(headHash, commitResult.skippedIgnored, ledgerEmpty);
+      this.completeChainAsPassed(chain, commitNote);
       logger.debug('WrfcController.autoCommit: success', {
         chainId: chain.id,
         commitCandidateIds,
-        directCommitHash,
+        commitHash: commitResult.hash,
+        skippedIgnored: commitResult.skippedIgnored,
         mergedCount,
         headHash,
       });
     } catch (error) {
       const reason = summarizeError(error);
-      logger.error('WrfcController.autoCommit: failed', { chainId: chain.id, error: reason });
-      this.failChain(chain, `autoCommit failed: ${reason}`);
+      // Non-fatal: the full-scope review and quality gates already passed, so the chain SUCCEEDED.
+      // A commit that could not complete (permissions, a rejecting hook, a dirty/locked index) is a
+      // warning on a passing chain, never a flip to FAILED. AgentWorktree.commitWorkingTree already
+      // reset the paths it staged before rethrowing, so the user's staging area is left clean.
+      logger.warn('WrfcController.autoCommit: commit did not complete; completing chain as passed with a warning', {
+        chainId: chain.id,
+        error: reason,
+      });
+      this.completeChainAsPassed(chain, `commit failed (non-fatal): ${reason}`);
     } finally {
-      const cleanupIds = completed
-        ? chain.allAgentIds
-        : chain.allAgentIds.filter((id) => !commitCandidateIds.includes(id));
-      for (const id of cleanupIds) {
+      // The chain has completed (passed) on every path above, so every agent's worktree can be
+      // released regardless of whether the commit succeeded.
+      for (const id of chain.allAgentIds) {
         worktree.cleanup(id).catch((error) => {
           logger.warn('WrfcController.autoCommit: cleanup failed', {
             agentId: id,
@@ -1488,6 +1502,25 @@ export class WrfcController {
         });
       }
     }
+  }
+
+  /**
+   * Render the commit outcome as an honest, single-line note for the chain-completion message.
+   * Distinguishes a real commit (with any gitignored paths that were skipped) from the several
+   * "nothing was committed" cases, so the completion message states the commit result plainly
+   * instead of implying a commit happened when it did not.
+   */
+  private describeCommitOutcome(headHash: string | null, skippedIgnored: readonly string[], ledgerEmpty: boolean): string {
+    const ignoredNote = skippedIgnored.length > 0
+      ? `${skippedIgnored.length} ignored path${skippedIgnored.length === 1 ? '' : 's'} skipped`
+      : null;
+    if (headHash) {
+      const shortHash = headHash.slice(0, 8);
+      return ignoredNote ? `committed ${shortHash} (${ignoredNote})` : `committed ${shortHash}`;
+    }
+    if (ignoredNote) return `commit skipped: ${ignoredNote}`;
+    if (ledgerEmpty) return 'commit skipped: chain edit ledger empty';
+    return 'commit skipped: nothing to stage';
   }
 
   private autoCommitCandidateAgentIds(chain: WrfcChain): string[] {
@@ -2529,18 +2562,35 @@ export class WrfcController {
     return record.wrfcRouteReason ? `${baseReason}; route: ${record.wrfcRouteReason}` : baseReason;
   }
 
-  private completeChainAsPassed(chain: WrfcChain): void {
+  /**
+   * Terminal success path — the ONE derivation point for a passing chain (its counterpart is
+   * failChain). The chain's terminal status derives here from the full-scope review and quality
+   * gates, never from the auto-commit result: the optional `commitNote` states the commit outcome
+   * SEPARATELY in the completion message so a skipped/failed commit reads as a warning on a passing
+   * chain, and can never contradict the "succeeded" verdict the transcript already showed.
+   */
+  private completeChainAsPassed(chain: WrfcChain, commitNote?: string): void {
     this.activeChainCount = Math.max(0, this.activeChainCount - 1);
     this.transition(chain, 'passed');
     chain.completedAt = Date.now();
+    const reviewOutcome = this.describeReviewOutcome(chain);
+    const summary = commitNote
+      ? `WRFC chain ${chain.id} passed (${reviewOutcome}); ${commitNote}`
+      : `WRFC chain ${chain.id} passed (${reviewOutcome})`;
     this.appendOwnerDecision(chain, 'chain_passed', 'WRFC full-scope review and quality gates passed', {
       agentId: chain.ownerAgentId,
     });
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'done', 'WRFC full-scope review and quality gates passed');
-    this.completeOwnerAgent(chain, 'completed', `WRFC chain ${chain.id} passed`);
+    this.completeOwnerAgent(chain, 'completed', summary);
     emitWrfcChainPassed(this.runtimeBus, this.sessionId, chain.id);
     this.scheduleChainCleanup(chain);
     this.safeDequeueNext();
+  }
+
+  /** The review outcome for the completion message — the last recorded review score out of 10, or a plain "review passed" for a chain with no numeric score on record. */
+  private describeReviewOutcome(chain: WrfcChain): string {
+    const lastScore = chain.reviewScores.at(-1);
+    return typeof lastScore === 'number' ? `review ${lastScore}/10` : 'review passed';
   }
 
   private completeOwnerAgent(chain: WrfcChain, status: 'completed' | 'failed', message: string): void {

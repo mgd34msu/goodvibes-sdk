@@ -7,6 +7,19 @@ import { summarizeError } from '../utils/error-display.js';
 
 
 /**
+ * Result of committing the working tree. `hash` is the commit sha, or null when
+ * there was nothing to commit (empty ledger, all paths ignored/missing, or no
+ * dirty changes). `skippedIgnored` lists scoped paths that were dropped because
+ * git ignores them — deliberately excluded from staging so an ignored bookkeeping
+ * path in a self-reported ledger cannot fail the whole commit. Callers surface
+ * this as an honest note rather than a failure.
+ */
+export interface CommitWorkingTreeResult {
+  readonly hash: string | null;
+  readonly skippedIgnored: readonly string[];
+}
+
+/**
  * AgentWorktree — Manages git worktree lifecycle for spawned agents.
  *
  * Each agent works in an isolated git worktree so its file changes are
@@ -82,16 +95,26 @@ export class AgentWorktree {
   /**
    * @param paths When provided (non-empty), stage only these paths instead of sweeping the
    * whole working tree. Paths are self-reported LLM claims, not ground truth, so they are
-   * filtered before staging: a path that exists on disk (created/modified) is kept outright;
-   * a path that does not exist is kept only if `git ls-files` shows it as tracked (a real
-   * deletion), otherwise it is a hallucinated path and dropped. This matters because
-   * `git add -A -- <path>` throws "pathspec did not match any files" for a path that is
-   * neither on disk nor known to git — a single bad claim must not fail the whole batch.
-   * Omit (or pass an empty array) to keep the legacy `git add --all` sweep for back-compat.
+   * filtered before staging:
+   *  - a path that exists on disk (created/modified) is kept outright;
+   *  - a path that does not exist is kept only if `git ls-files` shows it as tracked (a real
+   *    deletion), otherwise it is a hallucinated path and dropped — `git add -A -- <path>`
+   *    throws "pathspec did not match any files" for a path neither on disk nor known to git;
+   *  - a path that git IGNORES (e.g. the product's own `.goodvibes/` bookkeeping written by a
+   *    memory/preference tool) is dropped and reported in `skippedIgnored`. This is load-bearing:
+   *    `git add -A -- <ignored>` exits non-zero ("paths are ignored") AFTER staging its valid
+   *    siblings, so a single ignored path in the ledger would both fail the whole batch and
+   *    leave the real deliverables staged in the user's index.
+   * On any commit failure the staged paths are reset so the caller's index is never left mutated
+   * by a commit that could not complete. Omit (or pass an empty array) to keep the legacy
+   * `git add --all` sweep for back-compat.
    */
-  async commitWorkingTree(message: string, paths?: string[]): Promise<string | null> {
+  async commitWorkingTree(message: string, paths?: string[]): Promise<CommitWorkingTreeResult> {
     const git = simpleGit({ baseDir: this.git.getCwd() });
     const scoped = paths && paths.length > 0 ? paths : null;
+    let stagedPathspecs: string[];
+    let addFlag: '-A' | '--all';
+    const skippedIgnored: string[] = [];
 
     if (scoped) {
       const cwd = this.git.getCwd();
@@ -104,15 +127,28 @@ export class AgentWorktree {
         trackedDeleted = maybeDeleted.filter((p) => trackedSet.has(p));
       }
       const existingPaths = [...onDisk, ...trackedDeleted];
-      if (existingPaths.length === 0) {
-        logger.debug('AgentWorktree.commitWorkingTree: no scoped paths exist on disk or in the index, nothing to stage', {
-          claimedPaths: scoped,
+      // checkIgnore returns the subset git ignores; it returns [] (does NOT throw) when nothing
+      // is ignored, so it is safe to call unconditionally on the whole candidate set.
+      const ignored = existingPaths.length > 0 ? await git.checkIgnore(existingPaths) : [];
+      const ignoredSet = new Set(ignored);
+      const stageable = existingPaths.filter((p) => !ignoredSet.has(p));
+      skippedIgnored.push(...existingPaths.filter((p) => ignoredSet.has(p)));
+      if (skippedIgnored.length > 0) {
+        logger.debug('AgentWorktree.commitWorkingTree: dropping gitignored scoped paths before staging', {
+          skippedIgnored,
         });
-        return null;
+      }
+      if (stageable.length === 0) {
+        logger.debug('AgentWorktree.commitWorkingTree: no committable scoped paths after filtering (missing/ignored)', {
+          claimedPaths: scoped,
+          skippedIgnored,
+        });
+        return { hash: null, skippedIgnored };
       }
       // -A (not plain add) scoped to just these pathspecs so confirmed deletions are staged
       // too (plain `git add <path>` silently no-ops on a path that no longer exists on disk).
-      await git.raw(['add', '-A', '--', ...existingPaths]);
+      stagedPathspecs = stageable;
+      addFlag = '-A';
     } else {
       const status = await git.raw([
         'status',
@@ -125,26 +161,61 @@ export class AgentWorktree {
       ]);
       if (status.trim().length === 0) {
         logger.debug('AgentWorktree.commitWorkingTree: no direct working tree changes');
-        return null;
+        return { hash: null, skippedIgnored };
       }
-      await git.raw(['add', '--all', '--', '.', ':(exclude).goodvibes', ':(exclude).goodvibes/**']);
+      stagedPathspecs = ['.', ':(exclude).goodvibes', ':(exclude).goodvibes/**'];
+      addFlag = '--all';
     }
 
     try {
+      await git.raw(['add', addFlag, '--', ...stagedPathspecs]);
       const result = await this.git.commit(message, {
         fallbackIdentity: { name: 'GoodVibes', email: 'goodvibes@local' },
       });
-      logger.debug('AgentWorktree.commitWorkingTree: committed direct working tree changes', {
-        hash: result.hash,
-      });
-      return result.hash;
-    } catch (error) {
-      const message = summarizeError(error).toLowerCase();
-      if (message.includes('nothing to commit') || message.includes('no changes added to commit')) {
-        logger.debug('AgentWorktree.commitWorkingTree: no committable changes after staging');
-        return null;
+      if (result.hash) {
+        logger.debug('AgentWorktree.commitWorkingTree: committed direct working tree changes', {
+          hash: result.hash,
+          skippedIgnored,
+        });
+        return { hash: result.hash, skippedIgnored };
       }
+      // simple-git RESOLVES a rejected commit (e.g. a failing pre-commit hook) with an empty hash
+      // rather than throwing. Distinguish that from a genuine no-op: if changes are still staged,
+      // a hook/verification step rejected the commit — throw so the catch below restores the index
+      // and the caller can report an honest warning. If nothing is staged, it was a true no-op.
+      const stagedAfter = (await git.raw(['diff', '--cached', '--name-only'])).trim();
+      if (stagedAfter.length > 0) {
+        throw new Error('git created no commit despite staged changes (a pre-commit hook or verification step likely rejected the commit)');
+      }
+      logger.debug('AgentWorktree.commitWorkingTree: no committable changes after staging');
+      return { hash: null, skippedIgnored };
+    } catch (error) {
+      const reason = summarizeError(error).toLowerCase();
+      if (reason.includes('nothing to commit') || reason.includes('no changes added to commit')) {
+        logger.debug('AgentWorktree.commitWorkingTree: no committable changes after staging');
+        return { hash: null, skippedIgnored };
+      }
+      // Any other failure (rejected add, rejected commit, hook/identity/disk error) must not leave
+      // the caller's staging area mutated by a commit we could not complete — restore what we staged.
+      await this._restoreIndex(git, stagedPathspecs);
       throw error;
+    }
+  }
+
+  /**
+   * Unstage the given pathspecs after a failed commit so the caller's index is returned to its
+   * pre-commit state. `git reset -- <pathspecs>` is safe on a repo with no HEAD yet (a brand-new
+   * repo whose first commit was the one that just failed). Best-effort: a reset failure is logged,
+   * not thrown, so it never masks the original commit error the caller needs to see.
+   */
+  private async _restoreIndex(git: ReturnType<typeof simpleGit>, pathspecs: string[]): Promise<void> {
+    try {
+      await git.raw(['reset', '--', ...pathspecs]);
+      logger.debug('AgentWorktree.commitWorkingTree: restored index after failed commit', { pathspecs });
+    } catch (err) {
+      logger.warn('AgentWorktree.commitWorkingTree: index restore after failed commit did not complete', {
+        error: summarizeError(err),
+      });
     }
   }
 
