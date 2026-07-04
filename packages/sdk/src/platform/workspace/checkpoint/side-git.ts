@@ -205,14 +205,25 @@ export class SideGitRunner {
   }
 
   /**
-   * Create a commit object from a tree (optionally with a parent), WITHOUT
-   * moving any branch/HEAD. The returned hash is only reachable once a ref is
-   * pointed at it via `updateRef`.
+   * Create a commit object from a tree, deliberately WITHOUT a git parent
+   * (no `-p`) and WITHOUT moving any branch/HEAD.
+   *
+   * Checkpoint lineage is tracked exclusively via the manifest's `parentId`
+   * field (manager.ts) — never via git ancestry. This isn't just a style
+   * choice: if checkpoint commits chained via `-p` the way a normal git
+   * history does, deleting an OLD checkpoint's ref in `gc()` would free
+   * nothing, because that commit stays reachable through every NEWER
+   * checkpoint's parent pointer — the ref is gone but the commit (and any
+   * tree/blob objects unique to it) is still walkable from every surviving
+   * descendant. Parentless commits mean a checkpoint's own ref is the ONLY
+   * thing keeping its commit reachable, so once that ref is deleted,
+   * `git gc --prune=now` can genuinely reclaim it.
+   *
+   * The returned hash is only reachable once a ref is pointed at it via
+   * `updateRef`.
    */
-  async commitTree(treeHash: string, message: string, parentCommit: string | null): Promise<string> {
-    const args = ['commit-tree', treeHash, '-m', message];
-    if (parentCommit) args.push('-p', parentCommit);
-    return (await this.git.raw(args)).trim();
+  async commitTree(treeHash: string, message: string): Promise<string> {
+    return (await this.git.raw(['commit-tree', treeHash, '-m', message])).trim();
   }
 
   async updateRef(refName: string, commit: string): Promise<void> {
