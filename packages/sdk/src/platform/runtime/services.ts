@@ -97,6 +97,7 @@ import {
   createWorkflowServices,
   type WorkflowServices,
 } from '../tools/workflow/index.js';
+import { createProcessRegistry, type ProcessRegistry } from './fleet/index.js';
 
 export interface RuntimeServicesOptions {
   readonly runtimeBus: RuntimeEventBus;
@@ -192,6 +193,17 @@ export interface RuntimeServices {
   readonly agentOrchestrator: AgentOrchestrator;
   readonly wrfcController: WrfcController;
   readonly processManager: ProcessManager;
+  /**
+   * Live process registry (W2.1): queryable + subscribable fleet aggregation
+   * over agentManager/wrfcController/processManager/watcherRegistry/workflow.
+   * LIFECYCLE NOTE: RuntimeServices has no shutdown/dispose seam today, so
+   * nothing calls processRegistry.dispose() here — the registry's coalesced
+   * tick is timer.unref()'d and only runs while subscribers exist, so an
+   * undisposed registry cannot pin the event loop. Hosts that tear down a
+   * runtime (tests, embedders) should call processRegistry.dispose()
+   * themselves; when a RuntimeServices-wide dispose seam lands, wire this in.
+   */
+  readonly processRegistry: ProcessRegistry;
   readonly modeManager: ModeManager;
   readonly fileUndoManager: FileUndoManager;
   readonly workspaceCheckpointManager: WorkspaceCheckpointManager;
@@ -595,6 +607,36 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workflowServices: workflow,
   });
 
+  // Live process registry (W2.1) — narrow structural deps only, constructed
+  // after every source manager exists. See the RuntimeServices interface
+  // comment for the dispose story (no RuntimeServices-wide shutdown seam yet).
+  const processRegistry = createProcessRegistry({
+    agentManager,
+    wrfcController,
+    processManager,
+    watcherRegistry,
+    workflow: {
+      workflowManager: workflow.workflowManager,
+      triggerManager: workflow.triggerManager,
+      scheduleManager: workflow.scheduleManager,
+    },
+    approvalBroker,
+    sessionBroker,
+    runtimeBus: options.runtimeBus,
+    // Honest-unpriced: only price models the catalog actually knows; an
+    // unknown model yields null (costState 'unpriced'), never a fabricated $0.
+    priceUsage: (model, usage) => {
+      if (!model) return null;
+      const catalogModels = providerRegistry.getRawCatalogModels();
+      const known = catalogModels.some(
+        (entry) => model === entry.id || model.startsWith(entry.id) || model.includes(entry.id),
+      );
+      if (!known && !model.endsWith(':free')) return null;
+      const pricing = providerRegistry.getCostFromCatalog(model);
+      return (usage.inputTokens * pricing.input + usage.outputTokens * pricing.output) / 1_000_000;
+    },
+  });
+
   return {
     workingDirectory,
     homeDirectory,
@@ -676,6 +718,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentOrchestrator,
     wrfcController,
     processManager,
+    processRegistry,
     modeManager,
     fileUndoManager,
     workspaceCheckpointManager,
