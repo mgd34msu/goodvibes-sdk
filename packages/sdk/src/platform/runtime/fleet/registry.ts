@@ -55,6 +55,7 @@ import {
   phaseNodeId,
   workItemNodeId,
   workstreamNodeId,
+  type LiveItemUsage,
 } from './adapters/orchestration.js';
 import type { CodeIndexProcessSource } from './adapters/code-index.js';
 import { adaptCodeIndex } from './adapters/code-index.js';
@@ -377,7 +378,24 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     }
 
     for (const workstream of workstreams) {
-      nodes.push(adaptWorkstream(workstream, capturedAt));
+      // Resolve each item's active-agent in-flight usage ONCE up front, keyed
+      // by item id, so both the workstream rollup and the per-item nodes show
+      // live mid-phase usage instead of n/a until the phase boundary lands
+      // (DEBT-4 item 2). displayWorkItemUsage applies the overlay only while an
+      // item is 'in-phase', so this never double-counts committed usage.
+      const liveByItemId = new Map<string, LiveItemUsage>();
+      for (const item of workstream.items) {
+        const activeAgentId = activeWorkItemAgentId(item);
+        const activeAgentNode = activeAgentId ? agentNodeById.get(activeAgentId) : undefined;
+        if (activeAgentNode) {
+          liveByItemId.set(item.id, {
+            usage: activeAgentNode.usage,
+            costUsd: activeAgentNode.costUsd ?? null,
+            costState: activeAgentNode.costState,
+          });
+        }
+      }
+      nodes.push(adaptWorkstream(workstream, capturedAt, liveByItemId));
       for (const phase of workstream.phases) {
         nodes.push(adaptPhase(phase, workstream));
       }
@@ -391,7 +409,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         const parentId = item.currentPhaseId
           ? phaseNodeId(workstream.id, item.currentPhaseId)
           : workstreamNodeId(workstream.id);
-        nodes.push(adaptWorkItem(item, workstream.id, parentId, { steerable: deps.messageBus !== undefined && memberLive }));
+        nodes.push(adaptWorkItem(item, workstream.id, parentId, { steerable: deps.messageBus !== undefined && memberLive, live: liveByItemId.get(item.id) }));
       }
     }
 

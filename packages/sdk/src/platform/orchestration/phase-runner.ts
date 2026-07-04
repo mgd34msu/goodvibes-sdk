@@ -64,7 +64,9 @@ import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { CancellationRegistry } from './cancellation.js';
 import { excludeUntouchedLaunchResidue, type DirtyLaunchSnapshot } from './dirty-guard.js';
-import type { CommitExclusion, GateOutcome, Phase, PhaseResult, WorkItem, WorkItemUsage, Workstream } from './types.js';
+import { classifyBookkeepingFailure } from './bookkeeping.js';
+import { mergeWorkItemUsage } from './types.js';
+import type { CommitExclusion, GateOutcome, Phase, PhaseCommitOutcome, PhaseResult, WorkItem, WorkItemUsage, Workstream } from './types.js';
 
 /** Narrow structural pick — testable with stubs, mirrors AgentManagerLike (wrfc-config.ts). */
 export type PhaseRunnerAgentManagerLike = Pick<
@@ -179,23 +181,14 @@ function usageFromRecord(
   return { ...base, costUsd, costState };
 }
 
-/** Combines a new phase's usage into a work item's running total. Single-source cost (never independently re-priced here). */
+/**
+ * Combines a new phase's usage into a work item's running total. Single-source
+ * cost (never independently re-priced here). Thin alias over the canonical
+ * {@link mergeWorkItemUsage} (types.ts) so the phase-runner, the engine, and
+ * the fleet rollup adapters all fold usage through exactly one implementation.
+ */
 export function mergeUsage(a: WorkItemUsage, b: WorkItemUsage): WorkItemUsage {
-  const sawReasoning = a.reasoningTokens !== undefined || b.reasoningTokens !== undefined;
-  const bothPriced = a.costState === 'priced' && b.costState === 'priced';
-  const neitherPriced = a.costUsd === null && b.costUsd === null;
-  return {
-    inputTokens: a.inputTokens + b.inputTokens,
-    outputTokens: a.outputTokens + b.outputTokens,
-    cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
-    cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
-    reasoningTokens: sawReasoning ? (a.reasoningTokens ?? 0) + (b.reasoningTokens ?? 0) : undefined,
-    llmCallCount: a.llmCallCount + b.llmCallCount,
-    turnCount: a.turnCount + b.turnCount,
-    toolCallCount: a.toolCallCount + b.toolCallCount,
-    costUsd: a.costUsd !== null && b.costUsd !== null ? a.costUsd + b.costUsd : (a.costUsd ?? b.costUsd),
-    costState: bothPriced ? 'priced' : neitherPriced ? 'unpriced' : 'estimated',
-  };
+  return mergeWorkItemUsage(a, b);
 }
 
 /** Quality gates (global-config-driven, reused VERBATIM) + phase-required-gate assertion + phantom guard + reviewer constraint findings. */
@@ -253,14 +246,31 @@ async function evaluateGate(
   };
 }
 
+/** Post-gate scoped-commit result: the residue exclusion (if any) plus an honest commit outcome. */
+interface CommitPhaseWorkResult {
+  readonly exclusion?: CommitExclusion | undefined;
+  readonly commit: PhaseCommitOutcome;
+}
+
+/**
+ * Runs the POST-gate scoped-commit + merge for a passed phase and reports its
+ * outcome HONESTLY rather than swallowing failures. The gate has already
+ * decided the phase passed; this step only records the changes, so its result
+ * is bookkeeping: a failure surfaces to the engine as a warning on a passed
+ * item (or, for the narrow negating set — workspace corruption, see
+ * bookkeeping.ts — as an item failure), never as a silent no-op that lets the
+ * fleet imply a commit happened when it did not (DEBT-4 item 1).
+ */
 async function commitPhaseWork(
   item: WorkItem,
   phase: Phase,
   agentId: string,
   worktree: WrfcWorktreeOps,
   deps: Pick<PhaseRunnerDeps, 'projectRoot' | 'launchDirtySnapshot'>,
-): Promise<CommitExclusion | undefined> {
-  if (phase.gate.scope === 'off') return undefined;
+): Promise<CommitPhaseWorkResult> {
+  if (phase.gate.scope === 'off') {
+    return { commit: { status: 'skipped', reason: 'commit disabled for this phase (gate scope: off)' } };
+  }
 
   let paths = phase.gate.scope === 'scoped' ? item.touchedPaths : undefined;
   let exclusion: CommitExclusion | undefined;
@@ -280,7 +290,7 @@ async function commitPhaseWork(
             phaseId: phase.id,
             excludedPaths: excluded,
           });
-          return exclusion;
+          return { exclusion, commit: { status: 'skipped', reason: 'every candidate path was untouched launch-dirty residue' } };
         }
         logger.info('orchestration phase-runner: excluded untouched launch-dirty residue from scoped commit', {
           itemId: item.id,
@@ -293,12 +303,30 @@ async function commitPhaseWork(
   }
 
   try {
-    await worktree.commitWorkingTree(`orchestration: ${item.title} — ${phase.kind} phase`, paths);
+    const result = await worktree.commitWorkingTree(`orchestration: ${item.title} — ${phase.kind} phase`, paths);
     await worktree.merge(agentId);
+    const ignoredNote = result.skippedIgnored.length > 0
+      ? `${result.skippedIgnored.length} ignored path${result.skippedIgnored.length === 1 ? '' : 's'} skipped`
+      : undefined;
+    if (result.hash === null) {
+      // A null hash is "nothing was staged" — an honest skip, not a landed commit.
+      return { exclusion, commit: { status: 'skipped', reason: ignoredNote ? `nothing to stage (${ignoredNote})` : 'nothing to stage' } };
+    }
+    return {
+      exclusion,
+      commit: { status: 'committed', hash: result.hash, ...(ignoredNote ? { reason: ignoredNote } : {}) },
+    };
   } catch (error) {
-    logger.warn('orchestration phase-runner: commit/merge failed', { itemId: item.id, phaseId: phase.id, error: summarizeError(error) });
+    const reason = summarizeError(error);
+    const negating = classifyBookkeepingFailure(error) === 'negating';
+    // Non-fatal by default: the gate already passed, so the engine treats this
+    // as a warning on a passed item. Only a NEGATING failure (workspace
+    // corruption — bookkeeping.ts) flips the item to failed.
+    logger.warn('orchestration phase-runner: scoped commit/merge did not complete', {
+      itemId: item.id, phaseId: phase.id, error: reason, negating,
+    });
+    return { exclusion, commit: { status: 'failed', reason, negating } };
   }
-  return exclusion;
 }
 
 /** Runs one WorkItem through one Phase to completion (or cancellation/failure). Recurses (bounded by transportRetryLimit) on a transport-classified spawn failure. */
@@ -392,8 +420,11 @@ export async function runPhase(
   const gate = await evaluateGate(workstream, phase, report, deps);
 
   let commitExclusion: CommitExclusion | undefined;
+  let commit: PhaseCommitOutcome | undefined;
   if (gate.passed) {
-    commitExclusion = await commitPhaseWork(item, phase, record.id, worktree, deps);
+    const committed = await commitPhaseWork(item, phase, record.id, worktree, deps);
+    commitExclusion = committed.exclusion;
+    commit = committed.commit;
   }
   await worktree.cleanup(record.id).catch(() => undefined);
 
@@ -409,6 +440,7 @@ export async function runPhase(
       completedAt: Date.now(),
       usage,
       ...(commitExclusion ? { commitExclusion } : {}),
+      ...(commit ? { commit } : {}),
     },
   };
 }
