@@ -6,6 +6,80 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-07-04
+
+Waves 2–6 of the goodvibes-tui evolution effort, batched: the SDK becomes an
+observability and orchestration substrate — a queryable process registry over
+every runtime concern, workstream orchestration beyond fixed chains, passive
+knowledge injection for both turn loops, and a repo code index.
+
+### Added
+- `@pellux/goodvibes-sdk`: **fleet process registry** (`./platform/runtime/fleet`) —
+  `createProcessRegistry` composes the EXISTING managers (agents, WRFC chains,
+  orchestration, schedules, triggers, watchers, workflows, background processes,
+  automation jobs, code index) into one queryable tree of `ProcessNode`s with
+  derived states, per-node usage/cost, coalesced subscription ticks, and verbs:
+  `interrupt`, `kill` (cascade), `steer`, `resume`, `dispose`. Zero new store
+  state — the registry is a view, not a second source of truth.
+- `@pellux/goodvibes-sdk`: **conversation snapshot bridge + steer** —
+  `AgentManager.getConversationSnapshot`, `AgentOrchestrator.setConversationSink`,
+  message-bus `steer` verb (verbatim injection at drain; consumption event emitted
+  only AFTER a successful chat), `ProcessState 'interrupted'`,
+  `AgentRecord.terminationKind`.
+- `@pellux/goodvibes-sdk`: **orchestration engine** (`./platform/orchestration`) —
+  Workstream/Phase/WorkItem model with float-ordinal phase insertion, capacity-slot
+  scheduler, resume-prefix replay keyed (itemId, phaseId) with crash-artifact
+  reconciliation (in-phase items re-queue on import), budget refuse-not-kill +
+  `updateBudget` recovery, `fromChainSpec` compat, and the planner's
+  `PlanProposal` (`assemblePlanProposal` / `singleItemProposal`).
+- `@pellux/goodvibes-sdk`: additive `Tool.execute(args, opts?: { signal? })` —
+  cooperative cancellation reaches exec/fetch child processes (closes the W0.1
+  deferral).
+- `@pellux/goodvibes-sdk`: **passive knowledge injection for BOTH turn loops** —
+  per-turn budgeted retrieval (default 800 tokens, relevance floor 95) composed
+  fresh on every LLM roundtrip (including chat retries), gated by the
+  `agent-passive-knowledge-injection` flag; honest per-turn records
+  (`TurnInjectionRecord`: query, candidates, injected ids, dropped-for-budget,
+  token cost) in bounded rings — `AgentRecord.turnInjections` and
+  `Orchestrator.getTurnInjections()`; `OrchestratorCoreServices.memoryRegistry`
+  seam via `setCoreServices`.
+- `@pellux/goodvibes-sdk`: **repo code index** (`CodeIndexStore`, Stage A) —
+  tree-sitter chunking, bounded gitignore-aware walk (nested .gitignore honored),
+  hash-gated incremental rebuilds, honest lexical/semantic labeling with
+  embedding-provider identity pinned per build (mismatch degrades to lexical with
+  a rebuild hint), sqlite-vec backend, fleet `code-index` node; auto-start off by
+  default.
+- `@pellux/goodvibes-sdk`: **pause↔resume through the registry** — schedules,
+  triggers, and automation jobs report `'paused'` (previously mislabeled
+  `'killed'`), expose `resumable`, and `ProcessRegistry.resume()` re-enables them;
+  `/schedule`-managed AutomationManager jobs now surface in the fleet tree.
+- `@pellux/goodvibes-sdk`: `ConfigManager.removeCategoryKey` — clearing a
+  category override (e.g. a feature-flag entry back to its default) was a silent
+  no-op via merge; explicit removal now persists across reload.
+
+### Fixed
+- Stalled/killed false positives in fleet derivation (executing-tool exemption;
+  controller-driven gating/committing phases no longer derive killed).
+- WRFC rollup double-counting in aggregates (leaf-only accounting).
+- Engine resume lost mid-phase items permanently (blocker class: 'in-phase'
+  deserialized verbatim occupied capacity forever) — reconciled to pending with
+  agent id cleared on import.
+- Zombie chains reimported after restart with an all-dead agent roster are
+  reaped terminal at import (resurrection-safe: any live member skips the reap).
+- Killed-run dirty residue can no longer be swept into the next workstream's
+  file-scoped commit — launch-dirty paths are content-hashed and excluded from
+  scoped commits unless the run actually modified them; all-excluded commits are
+  skipped with an honest recorded note.
+- Code index reroot-during-build race (epoch-guarded abort; no cross-root
+  writes), honest chunk counters, split file-cap vs total-byte-cap skip
+  accounting (256MB bound now disclosed).
+
+### Notes
+- `ProcessState` gains `'paused'` and `'interrupted'` (additive; stale consumers
+  render unknown-state fallbacks).
+- Stage B of the code index (auto-injection into turns + tool-site reindex
+  hooks) is deliberately deferred.
+
 ## [0.37.2] - 2026-07-04
 
 ### Fixed
