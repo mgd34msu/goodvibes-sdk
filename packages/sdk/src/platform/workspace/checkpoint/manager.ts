@@ -186,6 +186,44 @@ export class WorkspaceCheckpointManager {
   private initialized = false;
   private initPromise: Promise<void> | null = null;
 
+  /**
+   * Promise-chain mutex serializing every public operation that touches the
+   * side repo's shared index or shared object store: `create`, `restore`,
+   * `gc`, and `diff` (see each method's `*Internal` body below). Without
+   * this, an auto-snapshot `create()` firing on a bus event (TURN_COMPLETED,
+   * TURN_ERROR, TURN_CANCEL, or AGENT_COMPLETED) could run its `git add -A`
+   * in between `restore()`'s
+   * `read-tree --reset` and `checkout-index -a -f`, silently corrupting the
+   * restore; two concurrent `create()` calls share the same hazard on the
+   * index, and a same-tick `gc()` could treat a not-yet-ref'd loose commit
+   * from an in-flight `create()` as unreachable and prune it out from under
+   * it. `diff()` is included too: the single-argument `git diff <tree-ish>`
+   * form (diffing a checkpoint against the live working tree) refreshes the
+   * index's stat cache as a side effect, which is itself a write.
+   *
+   * Each public method below only does `await this.init()` (idempotent, safe
+   * to race) before calling `withLock`; the actual git-touching work lives in
+   * a same-named `*Internal` method. Internal callers that need another
+   * locked operation's behavior (e.g. `restore()`'s safety checkpoint) call
+   * the `*Internal` method directly — never the public wrapper — so a single
+   * logical operation never tries to re-enter its own lock.
+   */
+  private lockChain: Promise<void> = Promise.resolve();
+
+  private withLock<T>(fn: () => Promise<T>): Promise<T> {
+    // `lockChain` is constructed below so it never itself rejects (its
+    // continuation always swallows both outcomes) — chaining with a single
+    // `.then(fn)` is enough to guarantee `fn` only starts after every
+    // previously-queued operation has settled, regardless of whether that
+    // prior operation resolved or rejected.
+    const result = this.lockChain.then(fn);
+    this.lockChain = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
   constructor(opts: WorkspaceCheckpointManagerOptions) {
     this.workspaceRoot = opts.workspaceRoot;
     this.checkpointRootDir = opts.checkpointDir ?? join(opts.workspaceRoot, '.goodvibes', 'checkpoints');
@@ -297,10 +335,16 @@ export class WorkspaceCheckpointManager {
    * Create a new checkpoint. Returns `null` (a cheap no-op) when the current
    * workspace tree is identical to the parent checkpoint's tree — no commit,
    * no ref, no manifest entry is created in that case.
+   *
+   * Serialized against every other index-touching operation on this manager
+   * — see `withLock`.
    */
   async create(opts: CreateCheckpointOptions): Promise<WorkspaceCheckpoint | null> {
     await this.init();
+    return this.withLock(() => this.createInternal(opts));
+  }
 
+  private async createInternal(opts: CreateCheckpointOptions): Promise<WorkspaceCheckpoint | null> {
     await this.sideGit.stageAll(opts.paths);
     const treeHash = await this.sideGit.writeTree();
 
@@ -319,7 +363,7 @@ export class WorkspaceCheckpointManager {
     const retentionClass = opts.retentionClass ?? defaultRetentionClassFor(kind);
     const label = opts.label ?? this.defaultLabel(kind, id);
     const message = `wcp: ${kind} ${label}`.trim();
-    const commit = await this.sideGit.commitTree(treeHash, message, parent?.commit ?? null);
+    const commit = await this.sideGit.commitTree(treeHash, message);
     await this.sideGit.updateRef(`${CHECKPOINT_REF_PREFIX}${id}`, commit);
 
     const changedPaths = parent
@@ -367,9 +411,18 @@ export class WorkspaceCheckpointManager {
   /**
    * Diff two checkpoints, or a checkpoint against the live working tree when
    * `b` is omitted.
+   *
+   * Serialized against every other index-touching operation on this manager
+   * — see `withLock`. The single-argument form (`b` omitted, diffing against
+   * the live working tree) refreshes the side index's stat cache as a side
+   * effect, so it is not purely read-only.
    */
   async diff(a: string, b?: string): Promise<CheckpointDiff> {
     await this.init();
+    return this.withLock(() => this.diffInternal(a, b));
+  }
+
+  private async diffInternal(a: string, b?: string): Promise<CheckpointDiff> {
     const fromCheckpoint = this.requireCheckpoint(a);
     const toCheckpoint = b ? this.requireCheckpoint(b) : undefined;
 
@@ -409,16 +462,27 @@ export class WorkspaceCheckpointManager {
    *
    * Scoped restore (`opts.paths` provided) only checks out those paths from
    * the target tree; it never removes files outside the given paths.
+   *
+   * Serialized against every other index-touching operation on this manager
+   * — see `withLock`. Without this, an auto-snapshot `create()` firing on a
+   * bus event could run its `git add -A` in between the `read-tree --reset`
+   * and `checkout-index -a -f` calls below, silently corrupting the restore.
    */
   async restore(id: string, opts?: RestoreOptions): Promise<RestoreResult> {
     await this.init();
+    return this.withLock(() => this.restoreInternal(id, opts));
+  }
+
+  private async restoreInternal(id: string, opts?: RestoreOptions): Promise<RestoreResult> {
     const target = this.requireCheckpoint(id);
     const wantSafety = opts?.safetyCheckpoint ?? true;
 
     let beforeFiles: string[];
     let safetyCheckpointId: string | null = null;
     if (wantSafety) {
-      const safety = await this.create({ kind: 'manual', label: `pre-restore safety (before ${id})`, retentionClass: 'forensic' });
+      // Calls createInternal directly (not the public, lock-acquiring
+      // `create()`) — this whole method already holds the lock.
+      const safety = await this.createInternal({ kind: 'manual', label: `pre-restore safety (before ${id})`, retentionClass: 'forensic' });
       safetyCheckpointId = safety?.id ?? null;
       const current = safety ?? this.mostRecentCheckpoint();
       beforeFiles = current ? await this.sideGit.listTrackedFiles(current.commit) : [];
@@ -481,9 +545,23 @@ export class WorkspaceCheckpointManager {
    * unreachable objects. This never touches compaction's boundary commits —
    * they are tracked in an entirely separate `RetentionPolicy` instance
    * (../../runtime/compaction) with no shared state.
+   *
+   * Reclamation only works because checkpoint commits are parentless (see
+   * `SideGitRunner.commitTree`): a pruned ref's commit has no descendant
+   * keeping it reachable via a git parent pointer, so once its ref is
+   * deleted it is genuinely unreachable and `--prune=now` frees it.
+   *
+   * Serialized against every other index/object-store-touching operation on
+   * this manager — see `withLock`. Without this, a `create()` racing this
+   * method could write a loose commit object that isn't ref'd yet at the
+   * moment `--prune=now` runs, and lose it.
    */
   async gc(): Promise<PruneResult> {
     await this.init();
+    return this.withLock(() => this.gcInternal());
+  }
+
+  private async gcInternal(): Promise<PruneResult> {
     const result = await this.retentionPolicy.prune();
     if (result.deletedCount > 0) {
       await this.persistManifest();
