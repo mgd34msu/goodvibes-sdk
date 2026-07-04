@@ -11,7 +11,8 @@ import { createOrchestrationEngine, type OrchestrationEngineDeps } from '../pack
 import { fromChainSpec } from '../packages/sdk/src/platform/orchestration/controller-compat.js';
 import { loadWorkstreamSnapshot } from '../packages/sdk/src/platform/orchestration/persistence.js';
 import type { PhaseRunnerAgentManagerLike, WrfcWorktreeOps } from '../packages/sdk/src/platform/orchestration/phase-runner.js';
-import type { PhaseSpec, WorkItemSpec } from '../packages/sdk/src/platform/orchestration/types.js';
+import type { OrchestrationEvent, PhaseSpec, WorkItemSpec } from '../packages/sdk/src/platform/orchestration/types.js';
+import { emptyWorkItemUsage, mergeWorkItemUsage } from '../packages/sdk/src/platform/orchestration/types.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -584,6 +585,136 @@ describe('primitive reuse', () => {
 
     expect(item.state).toBe('passed');
     expect(h.commitCalls.length).toBe(0);
+  });
+});
+
+describe('DEBT-4 item 1 — dual-outcome: post-gate bookkeeping never contradicts a passed phase', () => {
+  /** A worktree whose commit always throws with the given error — exercises the post-gate commit-failure paths. */
+  function throwingWorktree(error: Error): () => WrfcWorktreeOps {
+    return () => ({
+      merge: async () => true,
+      cleanup: async () => { /* no-op */ },
+      commitWorkingTree: async () => { throw error; },
+      currentHead: async () => null,
+    });
+  }
+
+  test('passing gate + non-negating commit failure → item PASSED with a warning (commit landed-or-not is stated, never a flip to failed)', async () => {
+    const engine = h.makeEngine({ createWorktree: throwingWorktree(new Error('pre-commit hook rejected the change')) });
+    const events: OrchestrationEvent[] = [];
+    engine.on((e) => events.push(e));
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase()],
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }],
+    });
+    engine.start(ws.id);
+    await flushMicrotasks();
+    const item = ws.items[0]!;
+    h.completeAgent(item.agentId!, engineerReportOutput('did work', { filesCreated: ['f.ts'] }));
+    await flushMicrotasks();
+
+    // The phase passed; the item is passed — NOT failed — with the commit miss surfaced as a warning.
+    expect(item.state).toBe('passed');
+    expect(item.failureReason).toBeUndefined();
+    expect(item.warnings?.some((w) => w.includes('commit did not complete'))).toBe(true);
+
+    // The item-passed event carries the split honestly.
+    const passed = events.find((e): e is Extract<OrchestrationEvent, { type: 'item-passed' }> => e.type === 'item-passed')!;
+    expect(passed.warnings?.length).toBeGreaterThan(0);
+    expect(events.some((e) => e.type === 'item-failed')).toBe(false);
+
+    // The recorded PhaseResult shows a PASSED gate AND an explicit failed (non-negating) commit —
+    // the contradictory "failed item, all phases passed" state is unrepresentable.
+    const result = engine.getPhaseResults(ws.id)[0]!;
+    expect(result.gate.passed).toBe(true);
+    expect(result.commit?.status).toBe('failed');
+    expect(result.commit?.negating).toBeFalsy();
+  });
+
+  test('passing gate + NEGATING commit failure (workspace corruption) → item FAILED honestly, reason names the negation', async () => {
+    const engine = h.makeEngine({ createWorktree: throwingWorktree(new Error("fatal: Unable to create '/repo/.git/index.lock': File exists")) });
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase()],
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }],
+    });
+    engine.start(ws.id);
+    await flushMicrotasks();
+    const item = ws.items[0]!;
+    h.completeAgent(item.agentId!, engineerReportOutput('did work', { filesCreated: ['f.ts'] }));
+    await flushMicrotasks();
+
+    expect(item.state).toBe('failed');
+    expect(item.failureReason).toMatch(/workspace was left unrecorded\/corrupted/i);
+    const result = engine.getPhaseResults(ws.id)[0]!;
+    expect(result.gate.passed).toBe(true);       // the gate DID pass ...
+    expect(result.commit?.status).toBe('failed'); // ... but the workspace was corrupted, so the pass can't be trusted
+    expect(result.commit?.negating).toBe(true);
+  });
+
+  test('a successful scoped commit records status "committed" with the landed hash', async () => {
+    const engine = h.makeEngine(); // harness worktree returns { hash: 'commit-hash', skippedIgnored: [] }
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase()],
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }],
+    });
+    engine.start(ws.id);
+    await flushMicrotasks();
+    const item = ws.items[0]!;
+    h.completeAgent(item.agentId!, engineerReportOutput('did work', { filesCreated: ['f.ts'] }));
+    await flushMicrotasks();
+
+    expect(item.state).toBe('passed');
+    expect(item.warnings ?? []).toEqual([]);
+    const result = engine.getPhaseResults(ws.id)[0]!;
+    expect(result.commit?.status).toBe('committed');
+    expect(result.commit?.hash).toBe('commit-hash');
+  });
+
+  test('a genuine gate failure still fails the item (the split is real in both directions)', async () => {
+    const engine = h.makeEngine();
+    const ws = engine.createWorkstream({
+      title: 'ws',
+      phases: [enginePhase(), reviewPhase(1)],
+      items: [{ id: 'item-a', title: 'A', task: 'do A' }],
+    });
+    engine.start(ws.id);
+    await flushMicrotasks();
+    const item = ws.items[0]!;
+    h.completeAgent(item.agentId!, engineerReportOutput('did work', { filesCreated: ['f.ts'] }));
+    await flushMicrotasks();
+    // Reviewer does NOT pass and reports no unsatisfied constraint findings -> terminal gate failure.
+    h.completeAgent(item.agentId!, reviewerReportOutput(2, false));
+    await flushMicrotasks();
+
+    expect(item.state).toBe('failed');
+    const results = engine.getPhaseResults(ws.id);
+    // The failing phase records gate.passed === false — so "all phases passed" never holds for a failed item.
+    expect(results.some((r) => r.gate.passed === false)).toBe(true);
+  });
+
+  test('usage rollup is MONOTONE in presence across a usage event stream WITH GAPS (DEBT-4 item 2 engine fold)', () => {
+    // Model the engine folding each completed phase's usage into item.usage
+    // (mergeWorkItemUsage). Some phases report empty usage (a gap — no usage
+    // event landed); assert presence, once real, never regresses to n/a.
+    const gap = emptyWorkItemUsage();
+    const real = (cost: number): ReturnType<typeof emptyWorkItemUsage> => ({
+      ...emptyWorkItemUsage(), inputTokens: 10, outputTokens: 5, llmCallCount: 1, turnCount: 1, costUsd: cost, costState: 'priced',
+    });
+    const stream = [gap, real(0.1), gap, gap, real(0.2)];
+    let acc = emptyWorkItemUsage();
+    let everPresent = false;
+    for (const ev of stream) {
+      acc = mergeWorkItemUsage(acc, ev);
+      const present = acc.inputTokens > 0 || acc.costUsd !== null;
+      if (everPresent) expect(present).toBe(true); // never regress once present
+      everPresent = everPresent || present;
+    }
+    expect(acc.inputTokens).toBe(20);
+    expect(acc.costUsd).toBeCloseTo(0.3, 6);
+    expect(acc.costState).not.toBe('unpriced');
   });
 });
 

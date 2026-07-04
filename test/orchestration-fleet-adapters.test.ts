@@ -13,10 +13,11 @@ import {
   phaseNodeId,
   workItemNodeId,
   workstreamNodeId,
+  type LiveItemUsage,
 } from '../packages/sdk/src/platform/runtime/fleet/adapters/orchestration.js';
 import { createProcessRegistry } from '../packages/sdk/src/platform/runtime/fleet/index.js';
-import type { Phase, WorkItem, Workstream } from '../packages/sdk/src/platform/orchestration/types.js';
-import { emptyWorkItemUsage } from '../packages/sdk/src/platform/orchestration/types.js';
+import type { Phase, WorkItem, WorkItemUsage, Workstream } from '../packages/sdk/src/platform/orchestration/types.js';
+import { emptyWorkItemUsage, mergeWorkItemUsage } from '../packages/sdk/src/platform/orchestration/types.js';
 
 const T0 = 1_750_000_000_000;
 
@@ -242,5 +243,81 @@ describe('activeWorkItemAgentId', () => {
     expect(activeWorkItemAgentId(makeItem({ id: 'i1', state: 'in-phase', agentId: 'a1' }))).toBe('a1');
     expect(activeWorkItemAgentId(makeItem({ id: 'i1', state: 'awaiting-capacity', agentId: 'a1' }))).toBeUndefined();
     expect(activeWorkItemAgentId(makeItem({ id: 'i1', state: 'passed', agentId: 'a1' }))).toBeUndefined();
+  });
+});
+
+describe('DEBT-4 item 2 — mid-phase rollup shows live usage, never n/a; presence is monotone', () => {
+  const liveOverlay = (inputTokens: number, costUsd: number): LiveItemUsage => ({
+    usage: { inputTokens, outputTokens: inputTokens / 2, cacheReadTokens: 0, cacheWriteTokens: 0, llmCallCount: 1, turnCount: 1, toolCallCount: 0 },
+    costUsd,
+    costState: 'priced',
+  });
+  const committed = (inputTokens: number, costUsd: number): WorkItemUsage => ({
+    ...emptyWorkItemUsage(), inputTokens, outputTokens: inputTokens / 2, llmCallCount: 1, turnCount: 1, costUsd, costState: 'priced',
+  });
+
+  test('an in-phase item with only live in-flight usage renders real numbers, not n/a', () => {
+    const item = makeItem({ id: 'i1', state: 'in-phase', agentId: 'a1', currentPhaseId: 'p1' });
+    // committed usage empty (first phase not folded in yet)
+    const live = liveOverlay(40, 0.25);
+
+    // committed-only view (no overlay) would be n/a for this item ...
+    const bare = adaptWorkItem(item, 'ws1', 'p1', { steerable: false });
+    expect(bare.usage).toBeUndefined();
+
+    // ... but with the live overlay the running phase shows real numbers.
+    const node = adaptWorkItem(item, 'ws1', 'p1', { steerable: false, live });
+    expect(node.usage?.inputTokens).toBe(40);
+    expect(node.costUsd).toBe(0.25);
+    expect(node.costState).toBe('priced');
+
+    const ws = makeWorkstream({ id: 'ws1', items: [item] });
+    const wsBare = adaptWorkstream(ws, T0);
+    expect(wsBare.costUsd).toBeNull(); // n/a without live
+    const wsLive = adaptWorkstream(ws, T0, new Map([['i1', live]]));
+    expect(wsLive.usage?.inputTokens).toBe(40);
+    expect(wsLive.costUsd).toBe(0.25);
+    expect(wsLive.costState).not.toBe('unpriced');
+  });
+
+  test('presence survives the live->committed phase-boundary handoff (no blink to n/a)', () => {
+    // Mid-phase: committed empty, live present.
+    const midItem = makeItem({ id: 'i1', state: 'in-phase', agentId: 'a1', currentPhaseId: 'p1' });
+    const midWs = makeWorkstream({ id: 'ws1', items: [midItem] });
+    const midNode = adaptWorkstream(midWs, T0, new Map([['i1', liveOverlay(40, 0.25)]]));
+    expect(midNode.usage?.inputTokens).toBe(40);
+    expect(midNode.costUsd).toBe(0.25);
+
+    // Boundary lands: committed now holds the folded usage, item no longer in-phase, no live overlay.
+    const doneItem = makeItem({ id: 'i1', state: 'passed', currentPhaseId: null, completedAt: T0 + 1, usage: committed(40, 0.25) });
+    const doneWs = makeWorkstream({ id: 'ws1', items: [doneItem] });
+    const doneNode = adaptWorkstream(doneWs, T0 + 1);
+    expect(doneNode.usage?.inputTokens).toBe(40); // value retained, not n/a
+    expect(doneNode.costUsd).toBe(0.25);
+  });
+
+  test('the live overlay is ignored once the item is no longer in-phase (no double count)', () => {
+    const item = makeItem({ id: 'i1', state: 'passed', currentPhaseId: null, completedAt: T0, usage: committed(40, 0.25) });
+    // A stale overlay whose numbers already got folded into `committed`.
+    const node = adaptWorkItem(item, 'ws1', 'wsnode', { steerable: false, live: liveOverlay(40, 0.25) });
+    expect(node.usage?.inputTokens).toBe(40); // committed only — NOT 80
+    expect(node.costUsd).toBe(0.25);
+  });
+
+  test('folding a usage event stream with gaps is monotone in presence', () => {
+    const gap = emptyWorkItemUsage();
+    const real = (cost: number): WorkItemUsage => committed(10, cost);
+    const stream = [gap, real(0.1), gap, gap, real(0.2)];
+    let acc = emptyWorkItemUsage();
+    let everPresent = false;
+    for (const ev of stream) {
+      acc = mergeWorkItemUsage(acc, ev);
+      const present = acc.inputTokens > 0 || acc.costUsd !== null;
+      if (everPresent) expect(present).toBe(true); // once present, never regress to n/a
+      everPresent = everPresent || present;
+    }
+    expect(acc.inputTokens).toBe(20);
+    expect(acc.costUsd).toBeCloseTo(0.3, 6);
+    expect(acc.costState).not.toBe('unpriced');
   });
 });
