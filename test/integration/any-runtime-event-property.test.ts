@@ -109,7 +109,10 @@ describe('AnyRuntimeEvent — JSON round-trip property', () => {
     fc.assert(
       fc.property(
         fc.constantFrom(...FIXTURE_EVENTS),
-        fc.dictionary(fc.string({ minLength: 1, maxLength: 16 }), jsonValueArb),
+        // Extra fields must never collide with the discriminant itself — the
+        // spread would overwrite it and the property would test the generator,
+        // not the round-trip (CI seed found exactly that: extraFields {type:""}).
+        fc.dictionary(fc.string({ minLength: 1, maxLength: 16 }).filter((k) => k !== 'type'), jsonValueArb),
         (baseEvent, extraFields) => {
           // Merge extra fields onto a copy of the event
           const extended: Record<string, unknown> = { ...baseEvent, ...extraFields };
