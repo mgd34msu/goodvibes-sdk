@@ -296,6 +296,7 @@ export class ApprovalBroker {
         .then((decision) => this.resolveApproval(approval.id, {
           approved: decision.approved,
           remember: decision.remember,
+          modifiedArgs: decision.modifiedArgs,
           actor: 'tui-local',
           actorSurface: 'tui',
         }))
@@ -332,6 +333,7 @@ export class ApprovalBroker {
     input: {
       readonly approved: boolean;
       readonly remember?: boolean | undefined;
+      readonly modifiedArgs?: Record<string, unknown> | undefined;
       readonly actor: string;
       readonly actorSurface?: string | undefined;
       readonly note?: string | undefined;
@@ -352,6 +354,7 @@ export class ApprovalBroker {
       decision: {
         approved: input.approved,
         ...(input.remember !== undefined ? { remember: input.remember } : {}),
+        ...(input.modifiedArgs !== undefined ? { modifiedArgs: input.modifiedArgs } : {}),
       },
       audit: [
         ...approval.audit,
