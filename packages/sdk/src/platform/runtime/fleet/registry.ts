@@ -459,6 +459,17 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     for (const node of targets) {
       for (const affectedId of killNode(node)) affected.add(affectedId);
     }
+    // Chain-kill consistency: under cascade, member agents are terminated by
+    // the descendant pass BEFORE the chain's own killNode runs, so its
+    // internal cancelAgents() call finds every member already cancelled
+    // (affected.length === 0 there) and omits 'chain:<id>' — even though the
+    // chain itself was the kill target and a termination did occur. Make the
+    // return value consistent across both cascade and non-cascade: include
+    // the chain id whenever the chain was targeted and either a termination
+    // occurred (any node above) or the chain was still live.
+    if (target.kind === 'wrfc-chain' && (affected.size > 0 || target.capabilities.killable)) {
+      affected.add(target.id);
+    }
     return [...affected];
   }
 

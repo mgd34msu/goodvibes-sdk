@@ -573,6 +573,35 @@ describe('fleet registry — stalled derivation', () => {
     registry.dispose();
   });
 
+  test('executing-tool is exempt from the stalled check: a long tool call never falsely stalls', async () => {
+    const agent = makeAgent({ id: 'ag-tool-stall', startedAt: T0 });
+    const bus = new RuntimeEventBus();
+    let clock = T0 + 1_000;
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [agent], cancel: () => false },
+      runtimeBus: bus,
+      now: () => clock,
+      stalledThresholdMs: 20_000,
+    }));
+    // AGENT_AWAITING_TOOL stamps activity.at once at tool start; no further
+    // 'agents' event fires until the tool returns (builds, test suites, bash
+    // routinely exceed the 20s threshold).
+    emitAgentAwaitingTool(bus, emitterCtx, { agentId: 'ag-tool-stall', callId: 'c1', tool: 'bash' });
+    await flushBus();
+    expect(nodeById(registry, 'ag-tool-stall').state).toBe('executing-tool');
+
+    clock = T0 + 90_000; // 89s since tool start, far past the 20s threshold
+    expect(nodeById(registry, 'ag-tool-stall').state).toBe('executing-tool');
+
+    // Once the tool returns and a new thinking/streaming event lands with no
+    // further activity, honest stalling still applies.
+    emitAgentAwaitingMessage(bus, emitterCtx, { agentId: 'ag-tool-stall' }); // at = T0+90_000
+    await flushBus();
+    clock = T0 + 120_000; // 30s of silence since the thinking event > 20s threshold
+    expect(nodeById(registry, 'ag-tool-stall').state).toBe('stalled');
+    registry.dispose();
+  });
+
   test('bus present but no events yet: stalled baseline is startedAt', () => {
     const agent = makeAgent({ id: 'ag-old', startedAt: T0 });
     const registry = createProcessRegistry(makeDeps({
@@ -966,6 +995,65 @@ describe('fleet registry — control dispatch', () => {
     const affected = registry.kill('chain:ch-kill');
     expect(cancelled.sort()).toEqual(['m1-k', 'own-k']); // completed member not resurrected
     expect([...affected].sort()).toEqual(['chain:ch-kill', 'm1-k', 'own-k']);
+    registry.dispose();
+  });
+
+  test('chain kill with cascade: chain id is included even though cascade already cancelled every member', () => {
+    // A real AgentManager.cancel() is NOT idempotent-true: once an agent is
+    // cancelled, a second cancel() call on it returns false. Model that here
+    // (unlike the mock above, which never actually transitions status) so the
+    // cascade path's ordering bug — descendants cancelled first, then the
+    // chain's own cancelAgents() finds them all already-cancelled — surfaces.
+    const cancelledOnce = new Set<string>();
+    const chain = makeChain({
+      id: 'ch-casc',
+      ownerAgentId: 'own-c',
+      allAgentIds: ['own-c', 'm1-c'],
+    });
+    const agents = [
+      makeAgent({ id: 'own-c', wrfcId: 'ch-casc' }),
+      makeAgent({ id: 'm1-c', wrfcId: 'ch-casc' }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: {
+        list: () => [...agents],
+        cancel: (id: string) => {
+          if (cancelledOnce.has(id)) return false;
+          cancelledOnce.add(id);
+          return true;
+        },
+      },
+      wrfcController: { listChains: () => [chain] },
+    }));
+    const affected = registry.kill('chain:ch-casc', { cascade: true });
+    expect([...affected].sort()).toEqual(['chain:ch-casc', 'm1-c', 'own-c']);
+    registry.dispose();
+  });
+
+  test('chain kill (non-cascade) matches cascade: chain id included both ways for the same chain', () => {
+    const cancelledOnce = new Set<string>();
+    const chain = makeChain({
+      id: 'ch-eq',
+      ownerAgentId: 'own-e',
+      allAgentIds: ['own-e', 'm1-e'],
+    });
+    const agents = [
+      makeAgent({ id: 'own-e', wrfcId: 'ch-eq' }),
+      makeAgent({ id: 'm1-e', wrfcId: 'ch-eq' }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: {
+        list: () => [...agents],
+        cancel: (id: string) => {
+          if (cancelledOnce.has(id)) return false;
+          cancelledOnce.add(id);
+          return true;
+        },
+      },
+      wrfcController: { listChains: () => [chain] },
+    }));
+    const affected = registry.kill('chain:ch-eq');
+    expect([...affected].sort()).toEqual(['chain:ch-eq', 'm1-e', 'own-e']);
     registry.dispose();
   });
 });
