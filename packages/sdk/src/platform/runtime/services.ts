@@ -42,6 +42,7 @@ import { WorkspaceCheckpointManager } from '../workspace/checkpoint/index.js';
 import { MemoryRegistry } from '../state/memory-registry.js';
 import { MemoryStore } from '../state/memory-store.js';
 import { CodeIndexStore } from '../state/code-index-store.js';
+import { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
 import type { RuntimeEventBus } from './events/index.js';
 import { createDomainDispatch } from './store/index.js';
 import type { DomainDispatch, RuntimeStore } from './store/index.js';
@@ -164,6 +165,8 @@ export interface RuntimeServices {
    * surprising for embedders that never asked for it.
    */
   readonly codeIndexStore: CodeIndexStore;
+  /** Wave-5 Stage B tool-site incremental reindex scheduler (bound to codeIndexStore). */
+  readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
   readonly serviceRegistry: ServiceRegistry;
   readonly secretsManager: SecretsManager;
   readonly subscriptionManager: SubscriptionManager;
@@ -434,6 +437,15 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   if (options.autoStartCodeIndex) {
     codeIndexStore.scheduleBuild();
   }
+  // Wave-5 Stage B: tool-site incremental reindex. Gated on the SDK's autoStartCodeIndex opt-in
+  // (this library's storage.codeIndexEnabled analog) AND the built-state check inside the
+  // scheduler — an unbuilt index is a no-op either way.
+  const codeInjectionSettingEnabled = (): boolean => options.autoStartCodeIndex === true;
+  const codeIndexReindexScheduler = new CodeIndexReindexScheduler({
+    target: codeIndexStore,
+    workingDirectory,
+    isEnabled: codeInjectionSettingEnabled,
+  });
   const deliveryManager = new AutomationDeliveryManager({
     configManager,
     secretsManager,
@@ -651,6 +663,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     remoteRunnerRegistry,
     knowledgeService,
     memoryRegistry,
+    codeIndex: codeIndexStore,
+    isCodeInjectionSettingEnabled: codeInjectionSettingEnabled,
+    codeIndexReindexScheduler,
     archetypeLoader,
     configManager,
     providerRegistry,
@@ -741,6 +756,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     memoryStore,
     memoryRegistry,
     codeIndexStore,
+    codeIndexReindexScheduler,
     serviceRegistry,
     secretsManager,
     subscriptionManager,

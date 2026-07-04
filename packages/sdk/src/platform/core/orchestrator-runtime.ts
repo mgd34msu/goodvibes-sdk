@@ -9,7 +9,8 @@ import type { AdaptivePlanner } from './adaptive-planner.js';
 import type { ExecutionPlanManager } from './execution-plan.js';
 import type { SessionMemoryStore } from './session-memory.js';
 import type { FavoritesStore } from '../providers/favorites.js';
-import type { TurnKnowledgeRegistrySource } from '../agents/turn-knowledge-injection.js';
+import type { TurnKnowledgeRegistrySource, TurnCodeIndexSource } from '../agents/turn-knowledge-injection.js';
+import type { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
 
 export type OrchestratorCoreServices = {
   configManager?: Pick<ConfigManager, 'get' | 'getCategory' | 'getWorkingDirectory'> | undefined;
@@ -46,6 +47,25 @@ export type OrchestratorCoreServices = {
    * time.
    */
   memoryRegistry?: TurnKnowledgeRegistrySource | undefined;
+  /**
+   * Wave-5 Stage B code-index injection seam for the MAIN interactive session. Optional/
+   * undefined is a hard no-op (memory-only injection, base prompt byte-identical). Whether code
+   * hits are actually injected is additionally gated by the `agent-passive-code-injection`
+   * feature flag (DEFAULT OFF) and `isCodeInjectionSettingEnabled` below — both must hold.
+   */
+  codeIndex?: TurnCodeIndexSource | undefined;
+  /**
+   * Live gate for the embedder's storage.codeIndexEnabled setting. Undefined defaults to
+   * "allowed" — the feature flag alone then governs. ANDed with the flag each turn so a runtime
+   * toggle of either takes effect without reconstructing the orchestrator.
+   */
+  isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
+  /**
+   * Wave-5 Stage B tool-site reindex scheduler. Optional/undefined is a hard no-op. When wired,
+   * a successful write/edit tool call schedules a debounced incremental reindex of the touched
+   * path(s) (never blocking the tool result).
+   */
+  codeIndexReindexScheduler?: Pick<CodeIndexReindexScheduler, 'onToolExecuted'> | undefined;
 };
 
 export function normalizeUsage(

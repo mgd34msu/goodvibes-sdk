@@ -84,6 +84,9 @@ type AgentOrchestratorToolDeps = {
   readonly remoteRunnerRegistry?: import('../runtime/remote/index.js').RemoteRunnerRegistry | undefined;
   readonly knowledgeService?: import('../knowledge/index.js').KnowledgeService | undefined;
   readonly memoryRegistry?: import('../state/index.js').MemoryRegistry | undefined;
+  readonly codeIndex?: import('./turn-knowledge-injection.js').TurnCodeIndexSource | undefined;
+  readonly isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
+  readonly codeIndexReindexScheduler?: Pick<import('../state/code-index-reindex.js').CodeIndexReindexScheduler, 'onToolExecuted'> | undefined;
   readonly sessionOrchestration: import('../sessions/orchestration/index.js').CrossSessionTaskRegistry;
   readonly archetypeLoader?: import('./archetypes.js').ArchetypeLoader | undefined;
   readonly configManager?: ConfigManager | undefined;
@@ -520,6 +523,11 @@ export class AgentOrchestrator {
       messageBus: this.messageBus,
       knowledgeService: this.toolDeps?.knowledgeService,
       memoryRegistry: this.toolDeps?.memoryRegistry,
+      codeIndex: this.toolDeps?.codeIndex,
+      isCodeInjectionSettingEnabled: this.toolDeps?.isCodeInjectionSettingEnabled,
+      onToolExecuted: this.toolDeps?.codeIndexReindexScheduler
+        ? (toolName, args, success) => this.toolDeps!.codeIndexReindexScheduler!.onToolExecuted(toolName, args, success)
+        : undefined,
       archetypeLoader: this.toolDeps?.archetypeLoader,
       providerOptimizer: this.toolDeps?.providerOptimizer,
       providerRegistry: this.toolDeps!.providerRegistry!,

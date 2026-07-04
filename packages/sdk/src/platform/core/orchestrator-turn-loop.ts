@@ -45,6 +45,7 @@ import {
   DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR,
   type TurnInjectionRecord,
   type TurnKnowledgeRegistrySource,
+  type TurnCodeIndexSource,
 } from '../agents/turn-knowledge-injection.js';
 
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
@@ -127,6 +128,13 @@ export interface OrchestratorTurnLoopContext {
   readonly isPassiveKnowledgeInjectionEnabled: () => boolean;
   readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
+  /**
+   * Wave-5 Stage B — repo code index for the main session's per-turn injection. Undefined is a
+   * hard no-op. `isPassiveCodeInjectionEnabled` resolves the combined gate (flag AND setting);
+   * both it and the source must be present for code hits to be considered this turn.
+   */
+  readonly codeIndex?: TurnCodeIndexSource | undefined;
+  readonly isPassiveCodeInjectionEnabled: () => boolean;
   /**
    * The main session has no spawn-time `AgentRecord.knowledgeInjections` baseline, so this
    * starts empty and grows monotonically for the life of the Orchestrator — no record is
@@ -303,6 +311,10 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       }
       if (turnBudgetTokens > 0) {
         const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
+        // Stage B: code hits share this turn's SAME budget/floor. Gated on the separate
+        // (default-off) code-injection flag AND the embedder's storage.codeIndexEnabled
+        // setting, both folded into isPassiveCodeInjectionEnabled by the orchestrator.
+        const codeInjectionEnabled = !!context.codeIndex && context.isPassiveCodeInjectionEnabled();
         const { block, record: turnInjectionRecord } = buildPerTurnKnowledgeInjection({
           memoryRegistry: context.memoryRegistry,
           // The main session has no frozen "task" distinct from the live conversation —
@@ -317,6 +329,8 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
           relevanceFloor,
           alreadyInjectedIds: context.getAlreadyInjectedKnowledgeIds(),
           turn: context.nextTurnKnowledgeSequence(),
+          codeIndex: context.codeIndex,
+          codeInjectionEnabled,
         });
         turnKnowledgeBlock = block;
         if (turnInjectionRecord.injectedIds.length > 0) {
