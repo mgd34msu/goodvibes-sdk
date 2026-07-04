@@ -242,7 +242,7 @@ describe('fleet registry — adapter mapping', () => {
     expect(node.model).toBe('claude-fable-5');
     expect(node.provider).toBe('anthropic');
     expect(node.elapsedMs).toBe(2_000);
-    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false, steerable: false });
+    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false, resumable: false, steerable: false });
     expect(node.sessionRef?.agentId).toBe('ag-1');
     registry.dispose();
   });
@@ -508,9 +508,13 @@ describe('fleet registry — adapter mapping', () => {
     expect(trgNode.kind).toBe('trigger');
     expect(trgNode.state).toBe('idle');
     expect(trgNode.capabilities.pausable).toBe(true);
+    expect(trgNode.capabilities.resumable).toBe(false); // already armed — nothing to resume
     const schNode = nodeById(registry, 'schedule:nightly');
     expect(schNode.kind).toBe('schedule');
-    expect(schNode.state).toBe('killed'); // disabled
+    // Wave 6 (wo-F item d2): disabled is 'paused', NOT 'killed' — the entry
+    // still exists and ScheduleManager.enable() can re-arm it.
+    expect(schNode.state).toBe('paused');
+    expect(schNode.capabilities.resumable).toBe(true);
     expect(schNode.startedAt).toBe(T0);
     registry.dispose();
   });

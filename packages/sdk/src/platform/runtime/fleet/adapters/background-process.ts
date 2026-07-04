@@ -41,7 +41,7 @@ export function adaptBackgroundProcess(record: BackgroundProcess, now: number): 
     // Silent source: anchored to a stable timestamp (chunk arrival times are
     // not tracked), so an unchanged line never looks like fresh activity.
     currentActivity: line ? { kind: 'output-line', text: line, at: record.completedAt ?? record.startTime } : undefined,
-    capabilities: { interruptible: false, killable: !record.done, pausable: false, steerable: false },
+    capabilities: { interruptible: false, killable: !record.done, pausable: false, resumable: false, steerable: false },
     raw: record,
   };
 }

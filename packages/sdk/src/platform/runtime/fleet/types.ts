@@ -46,6 +46,12 @@ export type ProcessKind =
  * AgentRecord.terminationKind. There is no resume path — `cancel()` is
  * terminal in the current SDK, so 'interrupted' does NOT mean "process still
  * alive"; it means "the operator asked nicely" vs. "the operator killed it".
+ *
+ * `paused` (Wave 6, wo-F item d2) is NOT terminal and NOT the same as
+ * `killed`: a disabled trigger/schedule/automation-job still exists and can
+ * be re-armed via `ProcessRegistry.resume()` — collapsing it into `killed`
+ * (the pre-Wave-6 behavior) was dishonest, since `killed` implies the
+ * process is gone for good. See ProcessCapabilities.resumable.
  */
 export type ProcessState =
   | 'thinking'
@@ -59,7 +65,8 @@ export type ProcessState =
   | 'killed'
   | 'interrupted'
   | 'idle'
-  | 'queued';
+  | 'queued'
+  | 'paused';
 
 /** Token/call usage aggregated onto a node. Mirrors AgentRecord.usage + toolCallCount. */
 export interface ProcessUsage {
@@ -87,6 +94,14 @@ export interface ProcessCapabilities {
   readonly interruptible: boolean;
   readonly killable: boolean;
   readonly pausable: boolean;
+  /**
+   * Wave 6 (wo-F item d2): whether `ProcessRegistry.resume()` can re-arm
+   * this node. True only for a node currently in the `paused` state whose
+   * source manager exposes an `enable` control (trigger, schedule,
+   * automation job) — false for every other kind/state, including a
+   * `killed` node (kill is one-way; there is no un-kill).
+   */
+  readonly resumable: boolean;
   /**
    * Wave-3: whether `ProcessRegistry.steer()` can queue a message for this
    * node. True only for a live in-process agent (or a wrfc-subtask with a
@@ -190,6 +205,15 @@ export interface ProcessRegistry {
    * Returns true when an owning control accepted the request.
    */
   interrupt(id: string): boolean;
+  /**
+   * Wave 6 (wo-F item d2): re-arm a `paused` node — triggers/schedules via
+   * their manager's `enable()`, the inverse of `interrupt()`'s disable.
+   * Honest refusal (returns false, no throw) for a node that is not
+   * resumable: not found, not currently `paused`, or a kind whose source
+   * manager exposes no `enable` control (e.g. an agent — there is no
+   * resume path once cancelled, see ProcessState's `paused` doc).
+   */
+  resume(id: string): boolean;
   /**
    * Hard stop. Dispatches to the owning manager's control fn
    * (agent → cancel, background process → stop, watcher → stopWatcher,

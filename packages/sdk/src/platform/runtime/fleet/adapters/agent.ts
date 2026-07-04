@@ -200,7 +200,7 @@ export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): Proce
     costUsd,
     costState,
     currentActivity: entry?.activity,
-    capabilities: { interruptible: active, killable: active, pausable: false, steerable: active && ctx.messageBusPresent },
+    capabilities: { interruptible: active, killable: active, pausable: false, resumable: false, steerable: active && ctx.messageBusPresent },
     sessionRef: { sessionId, agentId: record.id },
     raw: record,
   };
