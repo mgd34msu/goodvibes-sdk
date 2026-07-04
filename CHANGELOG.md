@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.37.2] - 2026-07-04
+
+### Fixed
+- `@pellux/goodvibes-sdk`: **checkpoint creation no longer aborts in repos whose top-level `.gitignore` lists `.goodvibes/`** (which the goodvibes TUI itself writes at startup) — the side-git staging pathspec explicitly named `.goodvibes` in an exclude, triggering git's ignored-path abort and disabling ALL checkpointing in git repos. The redundant pathspec is removed; the checkpoint store's own `.goodvibes/.gitignore` self-ignore (written before any staging can run) is sufficient.
+- `@pellux/goodvibes-sdk`: **per-hunk approval selections are honored end-to-end** — `ApprovalBroker.requestApproval()` dropped `modifiedArgs` from prompt decisions in both its local-prompt bridge and `resolveApproval()`, so "Apply selected" executed the full unfiltered edit. The field now threads through; regression test drives the real broker→PermissionManager→executeToolCalls pipeline (the pre-existing test bypassed the broker).
+
 ## [0.37.1] - 2026-07-03
 
 ### Fixed
