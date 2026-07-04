@@ -364,6 +364,10 @@
       "types": "./dist/platform/runtime/observability.d.ts",
       "import": "./dist/platform/runtime/observability.js"
     },
+    "./platform/runtime/fleet": {
+      "types": "./dist/platform/runtime/fleet/index.d.ts",
+      "import": "./dist/platform/runtime/fleet/index.js"
+    },
     "./platform/runtime/state": {
       "types": "./dist/platform/runtime/state.d.ts",
       "import": "./dist/platform/runtime/state.js"
