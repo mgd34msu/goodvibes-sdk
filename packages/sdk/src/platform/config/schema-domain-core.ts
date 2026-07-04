@@ -62,7 +62,7 @@ export const coreConfigDefaults = {
     decomposition: 'agent',
     maxTurns: 6,
     tokenCeiling: 120_000,
-    wallTimeoutMs: 60_000,
+    wallTimeoutMs: 120_000, // 60s starved reasoning models that think silently before emitting (live replay: planner hit the wall at Turn 3 and fell back)
   },
   sandbox: {
     replIsolation: 'shared-vm',
@@ -427,7 +427,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'planner.wallTimeoutMs',
     type: 'number',
-    default: 60_000,
+    default: 120_000,
     description: 'Wall-clock timeout (ms) for the planning-decomposition agent; exceeding it cancels the agent and falls back to the heuristic path',
     ...numRange(1_000, 600_000),
   },
