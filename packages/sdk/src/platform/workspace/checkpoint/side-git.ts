@@ -178,19 +178,29 @@ export class SideGitRunner {
    * Stage changes into the side index.
    *
    * @param paths When provided (non-empty), stage only these pathspecs
-   * (scoped snapshot). Otherwise sweep the whole work tree, always excluding
-   * `.goodvibes` (our own storage) via pathspec magic — the same
-   * `:(exclude)` pattern AgentWorktree already uses for the same reason.
-   * Beyond that exclusion, git's normal `.gitignore` handling already applies
-   * here: `.gitignore` matching is a work-tree-relative feature of git and
-   * works identically regardless of where GIT_DIR points, so the workspace's
-   * own `.gitignore` (node_modules, build output, etc.) is honored with no
-   * extra configuration.
+   * (scoped snapshot). Otherwise sweep the whole work tree with a plain `.`
+   * pathspec. `.goodvibes` (our own storage) is kept out of that sweep by
+   * `.goodvibes/.gitignore`'s own `*` self-ignore line, written by `init()`
+   * (via `ensureGoodvibesIgnored()`) before this method can ever run — NOT by
+   * naming `.goodvibes` explicitly here. An earlier version of this method
+   * did pass an explicit `:(exclude).goodvibes` / `:(exclude).goodvibes/**`
+   * pathspec (mirroring the pattern AgentWorktree uses for the same reason),
+   * but that breaks the moment the WORKSPACE's own top-level `.gitignore`
+   * also happens to contain a `.goodvibes/` rule (exactly what this project's
+   * own TUI writes at startup): git aborts the entire `add -A` with "The
+   * following paths are ignored by one of your .gitignore files: .goodvibes
+   * ... Use -f if you really want to add them," because naming an
+   * already-ignored path in ANY pathspec — exclude magic or not — triggers
+   * that check. A path git discovers and skips implicitly while walking a
+   * wildcard `.` sweep never hits that check. Beyond `.goodvibes`, git's
+   * normal `.gitignore` handling already applies here: `.gitignore` matching
+   * is a work-tree-relative feature of git and works identically regardless
+   * of where GIT_DIR points, so the workspace's own `.gitignore`
+   * (node_modules, build output, etc.) is honored with no extra
+   * configuration.
    */
   async stageAll(paths?: string[]): Promise<void> {
-    const pathspecs = paths && paths.length > 0
-      ? paths
-      : ['.', ':(exclude).goodvibes', ':(exclude).goodvibes/**'];
+    const pathspecs = paths && paths.length > 0 ? paths : ['.'];
     await this.git.raw(['add', '-A', '--', ...pathspecs]);
   }
 
