@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import { ConfigManager } from '../config/manager.js';
 import { SecretsManager } from '../config/secrets.js';
 import { ServiceRegistry } from '../config/service-registry.js';
@@ -37,6 +38,7 @@ import { ArchetypeLoader } from '../agents/archetypes.js';
 import { ProcessManager } from '../tools/shared/process-manager.js';
 import { ModeManager } from '../state/mode-manager.js';
 import { FileUndoManager } from '../state/file-undo.js';
+import { WorkspaceCheckpointManager } from '../workspace/checkpoint/index.js';
 import { MemoryRegistry } from '../state/memory-registry.js';
 import { MemoryStore } from '../state/memory-store.js';
 import type { RuntimeEventBus } from './events/index.js';
@@ -192,6 +194,7 @@ export interface RuntimeServices {
   readonly processManager: ProcessManager;
   readonly modeManager: ModeManager;
   readonly fileUndoManager: FileUndoManager;
+  readonly workspaceCheckpointManager: WorkspaceCheckpointManager;
   readonly integrationHelpers: IntegrationHelperService;
   /**
    * Re-root all path-bound services to a new working directory.
@@ -532,6 +535,17 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const processManager = new ProcessManager();
   const modeManager = new ModeManager({ featureFlags });
   const fileUndoManager = new FileUndoManager();
+  const workspaceCheckpointManager = new WorkspaceCheckpointManager({
+    workspaceRoot: workingDirectory,
+    runtimeBus: options.runtimeBus,
+  });
+  // Eagerly initialize so automatic turn/agent-run snapshot subscriptions are
+  // wired up immediately rather than only on first explicit use — otherwise
+  // the very first TURN_COMPLETED/AGENT_COMPLETED could arrive before any
+  // caller has touched the manager.
+  void workspaceCheckpointManager.init().catch((err: unknown) => {
+    logger.warn('WorkspaceCheckpointManager.init failed', { error: summarizeError(err) });
+  });
   const integrationHelpers = new IntegrationHelperService({
     workingDirectory,
     homeDirectory,
@@ -664,6 +678,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     processManager,
     modeManager,
     fileUndoManager,
+    workspaceCheckpointManager,
     integrationHelpers,
     async rerootStores(newWorkingDir: string): Promise<void> {
       // Step 1: Re-root MemoryStore — close existing SQLite/vector handles, reopen at new path.
@@ -692,6 +707,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
         'overflowHandler (baseDir fixed at init)',
         'replayEngine (workingDirectory fixed at init)',
         'planManager (workingDirectory fixed at init)',
+        'workspaceCheckpointManager (side git GIT_DIR fixed at init)',
       ];
       for (const name of cannotReroot) {
         logger.warn('[rerootStores] subsystem requires restart to reroot', { subsystem: name, newWorkingDir });

@@ -226,6 +226,7 @@ export class PermissionManager {
       'user_prompt',
       decision.approved ? 'user_approved' : 'user_denied',
       analysis,
+      decision.modifiedArgs,
     ));
   }
 
@@ -258,6 +259,7 @@ export class PermissionManager {
     sourceLayer: PermissionDecisionSource,
     reasonCode: PermissionDecisionReasonCode,
     analysis: ReturnType<typeof analyzePermissionRequest>,
+    modifiedArgs?: Record<string, unknown>,
   ): PermissionCheckResult {
     return {
       approved,
@@ -265,6 +267,7 @@ export class PermissionManager {
       sourceLayer,
       reasonCode,
       analysis,
+      modifiedArgs,
     };
   }
 
