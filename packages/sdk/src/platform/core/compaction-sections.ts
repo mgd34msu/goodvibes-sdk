@@ -17,6 +17,7 @@ import type { WrfcChain } from '../agents/wrfc-types.js';
 import type { ExecutionPlan, PlanItem } from './execution-plan.js';
 import type { CompactionSection, CompactionConfig, SessionMemory } from './compaction-types.js';
 import { estimateTokens, IMAGE_TOKEN_ESTIMATE } from './compaction-types.js';
+import { parseCompletionReport, type EngineerReport } from '../agents/completion-report.js';
 
 /** Extract plain text from a ProviderMessage content field. */
 export function extractText(content: string | ContentPart[]): string {
@@ -139,6 +140,66 @@ export function buildRunningAgents(
   });
 
   return makeSection('running-agents', '## Currently Running', lines.join('\n'));
+}
+
+// ---------------------------------------------------------------------------
+// Completed agent work
+// ---------------------------------------------------------------------------
+
+/**
+ * buildCompletedAgentWork — list standalone (non-WRFC) agents that finished
+ * (completed or failed) this session, with a best-effort files-touched summary.
+ * Agents that belong to a WRFC chain are excluded — they are already
+ * summarized per-chain by buildAgentActivityTable, and listing them again
+ * here would double-report the same work.
+ */
+export function buildCompletedAgentWork(
+  agents: AgentRecord[],
+  chains: WrfcChain[],
+): CompactionSection | null {
+  const chainAgentIds = new Set<string>();
+  for (const chain of chains) {
+    for (const id of chain.allAgentIds) chainAgentIds.add(id);
+  }
+  const finished = agents.filter(
+    (a) =>
+      (a.status === 'completed' || a.status === 'failed') &&
+      !a.wrfcId &&
+      !chainAgentIds.has(a.id),
+  );
+  if (finished.length === 0) return null;
+
+  const lines = finished.map((a) => {
+    const task = a.task.slice(0, 80).replace(/\n/g, ' ');
+    const outcome = a.status === 'completed' ? 'DONE' : 'FAILED';
+    const toolNote = `${a.toolCallCount} tool call${a.toolCallCount === 1 ? '' : 's'}`;
+    const files = describeAgentFiles(a);
+    return `- [${outcome}] ${a.id} | ${task} | ${toolNote}${files ? ` | ${files}` : ''}`;
+  });
+
+  return makeSection('completed-agent-work', '## Completed Agent Work', lines.join('\n'));
+}
+
+/**
+ * Best-effort files-touched summary for a plain (non-WRFC) agent, parsed
+ * opportunistically from its raw output. Returns null if no structured
+ * completion report was found or it reported no file paths — this is a
+ * best-effort signal, not a guarantee (plain agents are not required to
+ * emit a completion report the way WRFC engineers are).
+ */
+function describeAgentFiles(agent: AgentRecord): string | null {
+  if (!agent.fullOutput) return null;
+  const report = parseCompletionReport(agent.fullOutput);
+  if (!report || report.archetype !== 'engineer') return null;
+  const engineerReport = report as EngineerReport;
+  const paths = [
+    ...engineerReport.filesCreated,
+    ...engineerReport.filesModified,
+    ...engineerReport.filesDeleted,
+  ];
+  if (paths.length === 0) return null;
+  const shown = paths.slice(0, 5).join(', ');
+  return `files: ${shown}${paths.length > 5 ? ` (+${paths.length - 5} more)` : ''}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -296,7 +357,8 @@ export function buildAgentActivityTable(
   const sorted = [...chains].sort((a, b) => b.createdAt - a.createdAt);
 
   const header = '## Agent Activity';
-  const tableHeader = '| Chain | Task | Scores | Result |\n|-------|------|--------|--------|';
+  const tableHeader =
+    '| Chain | Task | Scores | Result | Files |\n|-------|------|--------|--------|-------|';
   const rows: string[] = [];
   const included: WrfcChain[] = [];
   const remaining: WrfcChain[] = [];
@@ -310,7 +372,8 @@ export function buildAgentActivityTable(
         ? chain.reviewScores.map((s) => s.toFixed(1)).join(' → ')
         : '—';
     const result = terminalResult(chain.state);
-    const row = `| ${chain.id.slice(0, 12)} | ${task} | ${scores} | ${result} |`;
+    const files = describeChainFiles(chain);
+    const row = `| ${chain.id.slice(0, 12)} | ${task} | ${scores} | ${result} | ${files} |`;
     const rowTokens = estimateTokens(row + '\n');
 
     if (tokensSoFar + rowTokens > tokenBudget) {
@@ -333,6 +396,19 @@ export function buildAgentActivityTable(
   const content = tableHeader + '\n' + rows.join('\n');
   const section = makeSection('agent-activity', header, content);
   return { section, remainingChains: remaining };
+}
+
+/**
+ * Compact "N files" summary for a chain's touched-paths ledger, or '—' when
+ * absent/empty. Degrades gracefully for legacy chains persisted before
+ * `touchedPaths` existed (undefined) — this is a cosmetic display gap, not
+ * a correctness concern; see `WrfcController.collectChainTouchedPaths()` for
+ * the fuller fallback-from-reports reconstruction used by auto-commit.
+ */
+function describeChainFiles(chain: WrfcChain): string {
+  const paths = chain.touchedPaths ?? [];
+  if (paths.length === 0) return '—';
+  return `${paths.length} file${paths.length === 1 ? '' : 's'}`;
 }
 
 /** Map WRFC chain state to display result. */
