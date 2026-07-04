@@ -6,6 +6,7 @@
 // '@pellux/goodvibes-sdk/platform/orchestration'.
 export type {
   BudgetCeiling,
+  CommitExclusion,
   GateOutcome,
   OrchestrationEvent,
   OrchestrationEventListener,
@@ -49,6 +50,9 @@ export { fromChainSpec } from './controller-compat.js';
 
 export type { PhaseRunnerAgentManagerLike, PhaseRunnerDeps, PhaseRunOutcome, WrfcWorktreeOps } from './phase-runner.js';
 export { runPhase } from './phase-runner.js';
+
+export type { DirtyLaunchSnapshot, ScopedCommitExclusion } from './dirty-guard.js';
+export { excludeUntouchedLaunchResidue, hashWorkingTreeFile, snapshotDirtyTree } from './dirty-guard.js';
 
 export {
   computeClaims,

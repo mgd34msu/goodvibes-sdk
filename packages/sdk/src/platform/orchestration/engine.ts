@@ -18,6 +18,7 @@ import { checkBudget } from './budget.js';
 import { createCancellationRegistry, type CancellationRegistry } from './cancellation.js';
 import type { PhaseRunnerAgentManagerLike, WrfcWorktreeOps } from './phase-runner.js';
 import { runPhase } from './phase-runner.js';
+import { snapshotDirtyTree, type DirtyLaunchSnapshot } from './dirty-guard.js';
 import {
   deserializeWorkstream as deserializeWorkstreamModel,
   deserializeWorkstreamSnapshot,
@@ -126,6 +127,20 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
   function on(listener: OrchestrationEventListener): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);
+  }
+
+  // Dirty-residue guard (Wave 6, wo-F item 4): snapshot the working tree's
+  // dirty paths + content hashes ONCE, right at engine launch (synchronous —
+  // see dirty-guard.ts's doc comment for why this must not be a promise
+  // backed by real subprocess I/O), before any phase of this run has had a
+  // chance to touch anything. A previously killed run sharing this same
+  // projectRoot can leave uncommitted residue behind; this snapshot is what
+  // lets a later scoped commit tell "residue from before this run" apart
+  // from "this run's own changes" (see dirty-guard.ts and phase-runner.ts's
+  // commitPhaseWork).
+  const launchDirtySnapshot: DirtyLaunchSnapshot = snapshotDirtyTree(deps.projectRoot);
+  if (launchDirtySnapshot.size > 0) {
+    emit({ type: 'dirty-tree-at-launch', paths: [...launchDirtySnapshot.keys()] });
   }
 
   function getWorkstream(id: string): Workstream | null {
@@ -266,6 +281,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       cancellation,
       priceUsage: deps.priceUsage,
       skipClaimVerification: deps.skipClaimVerification,
+      launchDirtySnapshot,
     });
 
     item.usage = mergeUsageFromResult(item.usage, outcome.result.usage);
