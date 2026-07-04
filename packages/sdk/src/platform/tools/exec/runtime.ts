@@ -36,11 +36,27 @@ function decodeCmd(cmdInput: ExecCommandInput): string {
   throw new Error('Each command must have either cmd or cmd_base64');
 }
 
-function requireWorkingDirectory(input: ExecInput): string {
-  if (!input.working_dir || input.working_dir.trim().length === 0) {
-    throw new Error('exec requires an explicit working_dir');
+/**
+ * Resolve the effective working directory for an exec call.
+ *
+ * An explicit `working_dir` on the input always wins. Otherwise falls back to
+ * `defaultWorkingDirectory` — the session/tool-context working directory,
+ * threaded in by the caller (see createExecTool) — so a model that omits
+ * working_dir still runs in a sensible place instead of failing outright
+ * after the user has already approved the call (the approval card's
+ * "Directory" line is sourced from the same session working directory
+ * independently of this arg, so it was already showing the truth the whole
+ * time — see permissions/prompt.ts on the TUI side). Throws only when
+ * neither is available, which should not happen in practice since every
+ * tool-registration path supplies a defaultWorkingDirectory.
+ */
+function requireWorkingDirectory(input: ExecInput, defaultWorkingDirectory?: string): string {
+  const explicit = input.working_dir?.trim();
+  if (explicit) return explicit;
+  if (defaultWorkingDirectory && defaultWorkingDirectory.trim().length > 0) {
+    return defaultWorkingDirectory;
   }
-  return input.working_dir;
+  throw new Error('exec requires an explicit working_dir');
 }
 
 function normalizeExecInput(input: ExecInput): ExecInput {
@@ -792,6 +808,16 @@ export function createExecTool(
   options: {
     readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
     readonly overflowHandler?: OverflowHandler | undefined;
+    /**
+     * Default working directory used when a call omits the top-level
+     * working_dir (and no single command supplies one to promote). Callers
+     * register this tool with the session/project working directory they
+     * already have in hand (see tools/index.ts registerAllTools) so the
+     * parameter stays genuinely optional for the model instead of a
+     * mandatory-in-practice field that fails a call after the user has
+     * already approved it.
+     */
+    readonly defaultWorkingDirectory?: string | undefined;
   } = {},
 ): Tool {
   if (!options.overflowHandler) {
@@ -822,7 +848,7 @@ export function createExecTool(
           return { success: false, error: `Too many commands: maximum ${MAX_EXEC_COMMANDS} per exec call` };
         }
         const input = normalizeExecInput(args as unknown as ExecInput);
-        const workingDirectory = requireWorkingDirectory(input);
+        const workingDirectory = requireWorkingDirectory(input, options.defaultWorkingDirectory);
         const verbosity: ExecVerbosity = (input.verbosity as ExecVerbosity) ?? 'standard';
         const globalTimeout = input.timeout_ms ?? DEFAULT_TIMEOUT_MS;
         const failFast = input.fail_fast === true || input.stop_on_error === true;

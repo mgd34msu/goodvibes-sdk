@@ -268,6 +268,7 @@ export function registerAllTools(
   registerTool(createExecTool(processManager, {
     featureFlags: deps.featureFlags,
     overflowHandler: deps.overflowHandler,
+    defaultWorkingDirectory: workingDirectory,
   }));
   registerTool(createAnalyzeTool(deps.toolLLM, deps.featureFlags, workingDirectory));
   registerTool(new InspectTool(deps.featureFlags, workingDirectory));
