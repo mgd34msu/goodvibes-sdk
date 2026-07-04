@@ -50,13 +50,14 @@ export type WorkflowEvent =
       chainId: string;
       reason: string;
       /**
-       * Why the chain failed. 'transport' means the failure was classified as a
-       * transient network/transport error (and had already exhausted its automatic
-       * retry budget — see WrfcChain.transportRetryCount); absent/'other' covers
-       * ordinary review/gate rejections and anything else. Optional so existing
-       * consumers that don't inspect it keep working unchanged.
+       * Why the chain reached its terminal state. 'transport' means a transient
+       * network/transport error that had already exhausted its automatic retry
+       * budget (see WrfcChain.transportRetryCount); 'cancelled' means an operator
+       * killed/interrupted the chain (an intended stop, NOT a failure — narrate it
+       * as cancelled); absent/'other' covers ordinary review/gate rejections and
+       * anything else. Optional so existing consumers keep working unchanged.
        */
-      failureKind?: 'transport' | 'other' | undefined;
+      failureKind?: 'transport' | 'other' | 'cancelled' | undefined;
     }
   | { type: 'WORKFLOW_AUTO_COMMITTED'; chainId: string; commitHash?: string | undefined }
   | { type: 'WORKFLOW_CASCADE_ABORTED'; chainId: string; reason: string }

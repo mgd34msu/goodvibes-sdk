@@ -933,8 +933,15 @@ export class WrfcController {
       this.cancelChain(chain, reason ?? 'WRFC owner agent cancelled');
       return;
     }
+    // A CANCELLED member agent means the whole chain was cancelled — an operator
+    // kill of any member (the fleet cascade cancels the running leaf first), or an
+    // explicit interrupt. That is an intended STOP, not a failure: cancel the chain
+    // so the chain row, owner row, cohort tally, and completion narration all read
+    // 'cancelled', not '✗ failed'. (Genuine agent CRASHES arrive as 'failed' via a
+    // separate path and still failChain — see onAgentFailed.) The controller's own
+    // cascade re-cancels are guarded by the isChainTerminal check above.
     this.setWrfcWorkPlanTaskStatus(chain, agentId, 'cancelled', reason ?? `Agent ${agentId} cancelled`);
-    this.failChain(chain, reason ?? `Agent ${agentId} cancelled`);
+    this.cancelChain(chain, reason ?? `Agent ${agentId} cancelled`);
   }
 
   private startReview(chain: WrfcChain, report: CompletionReport): void {
@@ -1723,23 +1730,42 @@ export class WrfcController {
       this.activeChainCount = Math.max(0, this.activeChainCount - 1);
     }
 
-    chain.error = reason;
+    // Honest completion narration: an operator cancellation summarises the work
+    // that already landed on disk from the chain's edit ledger, mirroring the
+    // dual-outcome message pattern used for a passed chain's commit note. So the
+    // user sees "cancelled — N file(s) already modified on disk" rather than a bare
+    // stop that hides in-flight edits.
+    const landed = this.collectChainTouchedPaths(chain);
+    const narration = landed.length > 0
+      ? `${reason} — ${landed.length} file${landed.length === 1 ? '' : 's'} already modified on disk`
+      : reason;
+
+    chain.error = narration;
+    // 'cancelled' failureKind flags this terminal-'failed' state as an intended
+    // operator stop so every surface (fleet chain row, cohort tally, narration)
+    // renders it as cancelled rather than a failure.
+    chain.failureKind = 'cancelled';
     chain.completedAt = Date.now();
     chain.ownerTerminalEmitted = true;
-    this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'cancelled', reason);
-    this.appendOwnerDecision(chain, 'chain_cancelled', reason, {
+    this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'cancelled', narration);
+    this.appendOwnerDecision(chain, 'chain_cancelled', narration, {
       agentId: chain.ownerAgentId,
     });
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
-    if (isAgentInFlight(owner)) {
+    if (owner) {
       owner.status = 'cancelled';
       owner.completedAt = Date.now();
-      owner.progress = reason;
+      owner.progress = narration;
+      // Roll up member usage onto the owner (same as completeOwnerAgent) so the
+      // owner row shows the chain's real, priceable token totals at cancel time
+      // instead of the never-updated spawn-time zeros.
+      owner.usage = this.aggregateChainUsage(chain);
+      owner.toolCallCount = this.aggregateChainToolCallCount(chain);
     }
     this.cancelRunningChildren(chain);
-    this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_failed', reason });
-    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason });
-    logger.warn('WrfcController.cancelChain', { chainId: chain.id, reason });
+    this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_failed', reason: narration });
+    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason: narration, failureKind: 'cancelled' });
+    logger.warn('WrfcController.cancelChain', { chainId: chain.id, reason: narration });
     this.scheduleChainCleanup(chain);
     this.safeDequeueNext();
   }

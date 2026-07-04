@@ -16,7 +16,11 @@ function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { st
     case 'passed':
       return { state: 'done' };
     case 'failed':
-      return { state: 'failed' };
+      // An operator-cancelled chain is terminal-'failed' internally but must read
+      // as cancelled, not a failure — map it to 'killed' (⊘) so the chain row and
+      // the cohort tally match the cancelled owner/leaf agents instead of showing
+      // '✗ failed' for an intended stop.
+      return chain.failureKind === 'cancelled' ? { state: 'killed' } : { state: 'failed' };
     case 'pending':
       return { state: 'queued' };
     case 'awaiting_gates':
