@@ -77,6 +77,16 @@ export interface ProcessCapabilities {
   readonly interruptible: boolean;
   readonly killable: boolean;
   readonly pausable: boolean;
+  /**
+   * Wave-3: whether `ProcessRegistry.steer()` can queue a message for this
+   * node. True only for a live in-process agent (or a wrfc-subtask with a
+   * live member agent) AND only when the registry was constructed with a
+   * `messageBus` dep — false everywhere when that dep is absent (graceful
+   * degrade, no crash). Terminal nodes and non-conversational kinds
+   * (wrfc-chain, workflow, trigger, schedule, watcher, background-process)
+   * are never steerable.
+   */
+  readonly steerable: boolean;
 }
 
 /** Wave-3 tab attach point: session/agent identity for transcript drill-downs. */
@@ -136,6 +146,17 @@ export interface ProcessKillOptions {
 }
 
 /**
+ * Result of `ProcessRegistry.steer()`.
+ *
+ * `queued: true` means the message was accepted onto the target's inbox —
+ * NOT that the agent has seen it yet. Consumption (drained at the target's
+ * next turn boundary) is a separate, later, honest signal: a
+ * `COMMUNICATION_CONSUMED` runtime-bus event on the `communication` domain
+ * carrying the same `messageId`.
+ */
+export type SteerResult = { readonly queued: true; readonly messageId: string } | { readonly queued: false; readonly reason: string };
+
+/**
  * The live process registry surface.
  *
  * `query()` is a cheap idempotent aggregate-on-read over the already-composed
@@ -167,6 +188,16 @@ export interface ProcessRegistry {
    * member agents. Returns the node ids that were actually acted on.
    */
   kill(id: string, opts?: ProcessKillOptions): readonly string[];
+  /**
+   * Queue a human message for a live in-process agent (or the current live
+   * member agent of a wrfc-subtask), delivered at the target's next turn
+   * boundary (next tool round / turn top) — never mid-token. Honest refusal
+   * (`queued: false`) for anything that cannot take mid-run input: terminal
+   * nodes, non-agent kinds, the wrfc-chain coordinator itself (steer its
+   * member subtask instead), and any target when the registry has no
+   * `messageBus` dep configured.
+   */
+  steer(id: string, text: string): SteerResult;
   /** Stop the tick, detach runtime-bus taps, drop all listeners. Idempotent. */
   dispose(): void;
 }
