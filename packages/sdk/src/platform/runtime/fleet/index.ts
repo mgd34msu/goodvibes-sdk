@@ -28,3 +28,5 @@ export {
 export { chainNodeId, subtaskNodeId, workItemNodeId } from './adapters/agent.js';
 export { scheduleNodeId } from './adapters/schedule.js';
 export { workstreamNodeId, phaseNodeId } from './adapters/orchestration.js';
+export { codeIndexNodeId } from './adapters/code-index.js';
+export type { CodeIndexProcessSource } from './adapters/code-index.js';

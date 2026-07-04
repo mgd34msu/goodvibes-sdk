@@ -54,6 +54,8 @@ import {
   workItemNodeId,
   workstreamNodeId,
 } from './adapters/orchestration.js';
+import type { CodeIndexProcessSource } from './adapters/code-index.js';
+import { adaptCodeIndex } from './adapters/code-index.js';
 import type { WorkItem, Workstream } from '../../orchestration/types.js';
 import type { OrchestrationEngine } from '../../orchestration/engine.js';
 import { logger } from '../../utils/logger.js';
@@ -112,6 +114,13 @@ export interface ProcessRegistryDeps {
   readonly approvalBroker?: Pick<ApprovalBroker, 'listApprovals'> | undefined;
   /** Optional: populates ProcessNode.sessionRef.sessionId (Wave-3 tab attach point). */
   readonly sessionBroker?: Pick<SharedSessionBroker, 'listSessions'> | undefined;
+  /**
+   * Optional: the repo source-tree code index (Wave-5 wo802, W5.3 Stage A).
+   * When present, its build/idle state surfaces as a single 'code-index'
+   * ProcessNode. Without this dep the fleet degrades to exactly today's
+   * behavior — zero code-index nodes, no new capability.
+   */
+  readonly codeIndexService?: CodeIndexProcessSource | undefined;
   /**
    * Optional: backs `steer()` and the `steerable` capability (Wave-3). The
    * bus already exists in the composed runtime and already feeds every
@@ -390,6 +399,9 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     for (const summary of deps.processManager.list()) {
       const record = deps.processManager.getStatus(summary.id);
       if (record) nodes.push(adaptBackgroundProcess(record, capturedAt));
+    }
+    if (deps.codeIndexService) {
+      nodes.push(adaptCodeIndex(deps.codeIndexService, capturedAt));
     }
 
     return { capturedAt, nodes };
