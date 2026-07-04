@@ -82,6 +82,20 @@ export interface WrfcWorktreeOps {
   currentHead(): Promise<string | null>;
 }
 
+/**
+ * The minimal surface of an item's IsolatedWorktree (worktree.ts) that the
+ * phase-runner needs in `worktree` isolation mode: the on-disk `path` (used as
+ * the spawned agent's working directory) and a scoped `commit` onto the item
+ * branch. Notably NOT merge/cleanup — in worktree mode the item worktree
+ * persists across the item's phases and the engine's sequential integration
+ * lane owns the merge-back and cleanup, so a phase NEVER merges to base or
+ * removes the worktree.
+ */
+export interface PhaseItemWorktree {
+  readonly path: string;
+  commit(message: string, paths?: string[]): Promise<CommitWorkingTreeResult>;
+}
+
 export interface PhaseRunnerDeps {
   readonly agentManager: PhaseRunnerAgentManagerLike;
   readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
@@ -98,6 +112,14 @@ export interface PhaseRunnerDeps {
    * today's behavior: no exclusion, every candidate path is committed.
    */
   readonly launchDirtySnapshot?: DirtyLaunchSnapshot | undefined;
+  /**
+   * Present ONLY in `worktree` isolation mode: this item's dedicated worktree
+   * (created by the engine at first claim). When set, the phase's scoped commit
+   * lands on the item branch INSIDE this worktree (not the shared projectRoot),
+   * and the spawned agent runs with its working directory set to the worktree
+   * path. Absent ⇒ shared mode, every existing behavior unchanged.
+   */
+  readonly itemWorktree?: PhaseItemWorktree | undefined;
 }
 
 export interface PhaseRunOutcome {
@@ -213,7 +235,11 @@ async function evaluateGate(
   }
 
   if (report.archetype === 'engineer' && !deps.skipClaimVerification) {
-    const verification = verifyEngineerClaims(report, deps.projectRoot);
+    // Worktree mode: the agent's files landed in the item's OWN worktree, not
+    // the shared projectRoot — verify claims (existence + `git diff`) against
+    // that worktree path, or every real change would be falsely flagged as
+    // phantom work (nothing to find at projectRoot).
+    const verification = verifyEngineerClaims(report, deps.itemWorktree?.path ?? deps.projectRoot);
     if (verification.kind === 'unverified' || verification.kind === 'unverifiable_no_claims') {
       results.push({ gate: 'phantom-work-guard', passed: false, output: verification.summary, durationMs: 0 });
     }
@@ -266,7 +292,7 @@ async function commitPhaseWork(
   phase: Phase,
   agentId: string,
   worktree: WrfcWorktreeOps,
-  deps: Pick<PhaseRunnerDeps, 'projectRoot' | 'launchDirtySnapshot'>,
+  deps: Pick<PhaseRunnerDeps, 'projectRoot' | 'launchDirtySnapshot' | 'itemWorktree'>,
 ): Promise<CommitPhaseWorkResult> {
   if (phase.gate.scope === 'off') {
     return { commit: { status: 'skipped', reason: 'commit disabled for this phase (gate scope: off)' } };
@@ -274,6 +300,33 @@ async function commitPhaseWork(
 
   let paths = phase.gate.scope === 'scoped' ? item.touchedPaths : undefined;
   let exclusion: CommitExclusion | undefined;
+
+  // Worktree mode: the item commits onto its own branch INSIDE its dedicated
+  // worktree, which the engine created fresh (and therefore clean) at claim.
+  // The launch-dirty snapshot is taken against the SHARED projectRoot, so it
+  // has nothing to say about a just-created worktree — a fresh worktree starts
+  // clean, so its launch-dirty residue is trivially empty. Skip the residue
+  // exclusion entirely and commit straight onto the item branch; NO merge to
+  // base (the sequential integration lane owns that at item termination).
+  if (deps.itemWorktree) {
+    try {
+      const result = await deps.itemWorktree.commit(`orchestration: ${item.title} — ${phase.kind} phase`, paths);
+      const ignoredNote = result.skippedIgnored.length > 0
+        ? `${result.skippedIgnored.length} ignored path${result.skippedIgnored.length === 1 ? '' : 's'} skipped`
+        : undefined;
+      if (result.hash === null) {
+        return { commit: { status: 'skipped', reason: ignoredNote ? `nothing to stage (${ignoredNote})` : 'nothing to stage' } };
+      }
+      return { commit: { status: 'committed', hash: result.hash, ...(ignoredNote ? { reason: ignoredNote } : {}) } };
+    } catch (error) {
+      const reason = summarizeError(error);
+      const negating = classifyBookkeepingFailure(error) === 'negating';
+      logger.warn('orchestration phase-runner: worktree scoped commit did not complete', {
+        itemId: item.id, phaseId: phase.id, worktreePath: deps.itemWorktree.path, error: reason, negating,
+      });
+      return { commit: { status: 'failed', reason, negating } };
+    }
+  }
 
   if (paths && paths.length > 0 && deps.launchDirtySnapshot) {
     const launchSnapshot = deps.launchDirtySnapshot;
@@ -346,6 +399,11 @@ export async function runPhase(
     task: buildPhaseTask(item, phase, priorReports),
     template: templateForPhase(phase),
     dangerously_disable_wrfc: true,
+    // Worktree mode: run the agent's tools with their working directory set to
+    // the item's isolated worktree, so its file edits land there instead of the
+    // shared projectRoot. Omitted (undefined) in shared mode ⇒ agent uses the
+    // orchestrator's default working directory exactly as before.
+    ...(deps.itemWorktree ? { workingDirectory: deps.itemWorktree.path } : {}),
   } as Parameters<PhaseRunnerAgentManagerLike['spawn']>[0]);
 
   record.workItemId = item.id;
@@ -426,7 +484,12 @@ export async function runPhase(
     commitExclusion = committed.exclusion;
     commit = committed.commit;
   }
-  await worktree.cleanup(record.id).catch(() => undefined);
+  // In worktree mode the item worktree persists across phases (the engine's
+  // integration lane owns its teardown), so only the shared-mode transient
+  // worktree gets cleaned up here.
+  if (!deps.itemWorktree) {
+    await worktree.cleanup(record.id).catch(() => undefined);
+  }
 
   return {
     agentStatus: 'completed',

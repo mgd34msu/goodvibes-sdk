@@ -109,7 +109,16 @@ type AgentOrchestratorToolDeps = {
  * `orchestrator-runner.ts`; this class owns shared registry/state wiring.
  */
 export class AgentOrchestrator {
-  private fullRegistry: ToolRegistry | null = null;
+  /**
+   * Keyed by working directory. A ToolRegistry is permanently bound to one
+   * cwd at construction (every tool factory closes over it — see
+   * tools/index.ts registerAllTools), so a distinct cwd genuinely needs its
+   * own registry, not a mutable field. The default cwd
+   * (`this.toolDeps.workingDirectory`) is cached under its own key exactly
+   * like the single `fullRegistry` field this replaces — same lazy-build,
+   * same channel-version invalidation, same object identity once built.
+   */
+  private fullRegistries = new Map<string, ToolRegistry>();
   private fullRegistryChannelVersion = -2;
   private toolDeps: AgentOrchestratorToolDeps | null = null;
   private featureFlagManager: FeatureFlagManager | null = null;
@@ -264,32 +273,55 @@ export class AgentOrchestrator {
    */
   setDependencies(toolDeps: AgentOrchestratorToolDeps): void {
     this.toolDeps = toolDeps;
-    this.fullRegistry = null;
+    this.fullRegistries = new Map();
     this.fullRegistryChannelVersion = -2;
   }
 
   /**
-   * Returns the fully-populated ToolRegistry for this orchestrator.
-   * Used by companion chat to execute tool calls emitted by the LLM.
-   * Delegates to the lazy-initialized internal registry.
+   * Returns the fully-populated ToolRegistry for this orchestrator's DEFAULT
+   * working directory. Used by companion chat to execute tool calls emitted
+   * by the LLM — companion chat has no per-call cwd override, so this always
+   * resolves to `this.toolDeps.workingDirectory`. Delegates to the
+   * lazy-initialized internal registry cache.
    */
   getToolRegistry(): ToolRegistry {
     return this.getFullRegistry();
   }
 
-  /** Lazily build and cache the full ToolRegistry. */
-  private getFullRegistry(): ToolRegistry {
+  /**
+   * Lazily build and cache the full ToolRegistry for `workingDirectory`
+   * (default: `this.toolDeps.workingDirectory`, unchanged from before this
+   * cache became keyed). A non-default cwd — a spawned agent's dedicated
+   * worktree (AgentRecord.workingDirectory, see AgentInput.workingDirectory)
+   * — gets its OWN fresh fileCache/projectIndex rather than reusing the
+   * shared session's: those are scoped to the default cwd and would
+   * otherwise silently index/search the wrong directory.
+   */
+  private getFullRegistry(workingDirectory?: string): ToolRegistry {
     const channelVersion = this.channelRegistry?.getVersion() ?? -1;
-    if (!this.fullRegistry || this.fullRegistryChannelVersion !== channelVersion) {
+    if (this.fullRegistryChannelVersion !== channelVersion) {
+      this.fullRegistries.clear();
+      this.fullRegistryChannelVersion = channelVersion;
+    }
+    const defaultCwd = this.toolDeps?.workingDirectory ?? '';
+    const cwd = workingDirectory ?? defaultCwd;
+    let registry = this.fullRegistries.get(cwd);
+    if (!registry) {
       if (!this.toolDeps?.configManager || !this.toolDeps?.providerRegistry || !this.toolDeps?.toolLLM) {
         throw new Error('AgentOrchestrator requires configManager, providerRegistry, and toolLLM dependencies before tool registration');
       }
-      this.fullRegistry = new ToolRegistry();
-      registerAllTools(this.fullRegistry, this.toolDeps);
-      registerChannelAgentTools(this.fullRegistry, this.toolDeps?.channelRegistry ?? this.channelRegistry);
-      this.fullRegistryChannelVersion = channelVersion;
+      registry = new ToolRegistry();
+      const isDefaultCwd = cwd === defaultCwd;
+      registerAllTools(registry, {
+        ...this.toolDeps,
+        workingDirectory: cwd,
+        fileCache: isDefaultCwd ? this.toolDeps.fileCache : undefined,
+        projectIndex: isDefaultCwd ? this.toolDeps.projectIndex : undefined,
+      });
+      registerChannelAgentTools(registry, this.toolDeps?.channelRegistry ?? this.channelRegistry);
+      this.fullRegistries.set(cwd, registry);
     }
-    return this.fullRegistry;
+    return registry;
   }
 
   /**
@@ -492,9 +524,15 @@ export class AgentOrchestrator {
     return routes;
   }
 
-  private createRunContext(): AgentOrchestratorRunContext {
+  /**
+   * @param workingDirectory Per-call cwd override (AgentRecord.workingDirectory).
+   * Absent ⇒ `this.toolDeps.workingDirectory`, byte-identical to every run
+   * context built before this parameter existed.
+   */
+  private createRunContext(workingDirectory?: string): AgentOrchestratorRunContext {
+    const cwd = workingDirectory ?? this.toolDeps?.workingDirectory ?? '';
     return {
-      workingDirectory: this.toolDeps?.workingDirectory ?? '',
+      workingDirectory: cwd,
       surfaceRoot: this.toolDeps?.surfaceRoot ?? '',
       runtimeBus: this.runtimeBus,
       featureFlagManager: this.featureFlagManager,
@@ -531,7 +569,7 @@ export class AgentOrchestrator {
       archetypeLoader: this.toolDeps?.archetypeLoader,
       providerOptimizer: this.toolDeps?.providerOptimizer,
       providerRegistry: this.toolDeps!.providerRegistry!,
-      getFullRegistry: () => this.getFullRegistry(),
+      getFullRegistry: () => this.getFullRegistry(cwd),
       buildScopedRegistry: (allowedNames, fullRegistry) => this.buildScopedRegistry(allowedNames, fullRegistry),
       resolveProviderForRecord: (providerRegistry, record, currentModel) =>
         this.resolveProviderForRecord(providerRegistry, record, currentModel),
@@ -540,8 +578,13 @@ export class AgentOrchestrator {
     };
   }
 
-  /** Run an agent task described by the given record. */
+  /**
+   * Run an agent task described by the given record. Honors
+   * `record.workingDirectory` when set (see AgentInput.workingDirectory) —
+   * every tool this run's registry exposes is bound to that cwd instead of
+   * the orchestrator's default.
+   */
   async runAgent(record: AgentRecord): Promise<void> {
-    await runAgentTask(this.createRunContext(), record);
+    await runAgentTask(this.createRunContext(record.workingDirectory), record);
   }
 }

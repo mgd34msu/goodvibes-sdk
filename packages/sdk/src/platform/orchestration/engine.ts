@@ -19,6 +19,7 @@ import { createCancellationRegistry, type CancellationRegistry } from './cancell
 import type { PhaseRunnerAgentManagerLike, WrfcWorktreeOps } from './phase-runner.js';
 import { runPhase } from './phase-runner.js';
 import { snapshotDirtyTree, type DirtyLaunchSnapshot } from './dirty-guard.js';
+import { createWorktreeIsolationManager, type WorktreeIsolationManager } from './worktree-isolation.js';
 import {
   deserializeWorkstream as deserializeWorkstreamModel,
   deserializeWorkstreamSnapshot,
@@ -42,6 +43,7 @@ import {
   type WorkItemSpec,
   type WorkItemUsage,
   type Workstream,
+  type WorkstreamIsolation,
 } from './types.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -62,6 +64,8 @@ export interface OrchestrationEngineDeps {
   readonly now?: (() => number) | undefined;
   /** Set false to skip wiring the debounced disk writer (tests that don't want filesystem side effects). Default true. */
   readonly persist?: boolean | undefined;
+  /** Bounds how many KEPT (merge-conflict or dirty-after-fail/kill) worktrees a `worktree`-isolation workstream retains before oldest-first eviction. Default 20. Irrelevant to `shared`-isolation workstreams. */
+  readonly keptWorktreeCap?: number | undefined;
 }
 
 export interface CreateWorkstreamInput {
@@ -70,6 +74,13 @@ export interface CreateWorkstreamInput {
   readonly phases: readonly PhaseSpec[];
   readonly items: readonly WorkItemSpec[];
   readonly budget?: BudgetCeiling | undefined;
+  /**
+   * Where this workstream's item phases run their file changes. Omitted
+   * (the default) ⇒ `'shared'` — every existing caller's behavior is
+   * unchanged. See {@link WorkstreamIsolation} (types.ts) for the full
+   * contrast with `'worktree'` mode.
+   */
+  readonly isolation?: WorkstreamIsolation | undefined;
 }
 
 export interface OrchestrationEngine {
@@ -144,6 +155,17 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     emit({ type: 'dirty-tree-at-launch', paths: [...launchDirtySnapshot.keys()] });
   }
 
+  // Worktree-isolation lane (only ever exercised by a workstream created with
+  // isolation: 'worktree' — see createWorkstream/runItemPhase/failItem below).
+  // Constructing this unconditionally is cheap: it does no I/O until a
+  // worktree-mode workstream actually calls into it.
+  const worktreeIsolation: WorktreeIsolationManager = createWorktreeIsolationManager({
+    projectRoot: deps.projectRoot,
+    emit,
+    now,
+    keptWorktreeCap: deps.keptWorktreeCap,
+  });
+
   function getWorkstream(id: string): Workstream | null {
     return workstreams.get(id) ?? null;
   }
@@ -198,6 +220,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       phases,
       items: [],
       budget: input.budget,
+      isolation: input.isolation,
       createdAt: now(),
     };
     const first = firstPhase(workstream)?.id ?? null;
@@ -263,6 +286,18 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     item.completedAt = now();
     item.failureReason = reason;
     emit({ type: 'item-failed', workstreamId: workstream.id, itemId: item.id, reason });
+    // Worktree-mode fail/kill cleanup rule (remove only if clean, else KEEP —
+    // data safety): covers every failItem call site uniformly, including
+    // kill() and the tick()-catch path for a throw before any phase outcome.
+    // No-op (instantly resolves) for a shared-isolation workstream, or an
+    // item that never reached a claim and therefore never got a worktree.
+    if (workstream.isolation === 'worktree') {
+      void worktreeIsolation.cleanupTerminated(workstream, item).catch((error) => {
+        logger.error('orchestration engine: worktree cleanup after item failure did not complete', {
+          itemId: item.id, error: summarizeError(error),
+        });
+      });
+    }
   }
 
   /**
@@ -292,6 +327,24 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     item.currentPhaseId = phase.id;
     item.blockedReason = undefined;
 
+    // Worktree mode: ensure this item has its dedicated worktree BEFORE
+    // spawning its phase agent (idempotent — a no-op from the item's second
+    // phase onward, since the worktree persists across the item's whole run;
+    // see WorktreeIsolationManager.ensureWorktree). A setup failure here is a
+    // genuine phase-run failure (there is nowhere isolated for the agent to
+    // work) — fail the item honestly rather than silently falling back to the
+    // shared tree, which would defeat isolation's whole purpose.
+    let itemWorktree: Awaited<ReturnType<WorktreeIsolationManager['ensureWorktree']>> | undefined;
+    if (workstream.isolation === 'worktree') {
+      try {
+        itemWorktree = await worktreeIsolation.ensureWorktree(workstream, item);
+      } catch (error) {
+        logger.error('orchestration engine: failed to prepare item worktree', { itemId: item.id, error: summarizeError(error) });
+        failItem(workstream, item, `worktree isolation setup failed: ${summarizeError(error)}`);
+        return;
+      }
+    }
+
     const priorReports = getPhaseResults(workstream.id).filter((r) => r.itemId === item.id);
     const outcome = await runPhase(workstream, item, phase, priorReports, {
       agentManager: deps.agentManager,
@@ -304,6 +357,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       priceUsage: deps.priceUsage,
       skipClaimVerification: deps.skipClaimVerification,
       launchDirtySnapshot,
+      itemWorktree,
     });
 
     // ── Bookkeeping region (AFTER the phase produced its outcome) ───────────
@@ -377,6 +431,16 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
         ? (reviewPhaseBefore(workstream, phase) ?? nextPhaseAfter(workstream, phase.ordinal) ?? null)
         : (nextPhaseAfter(workstream, phase.ordinal) ?? null);
       routeItem(workstream, item, forwardTarget, phase.id);
+      // The item just terminated PASSED (no further phase) — in worktree mode
+      // its branch now enters the single sequential integration lane
+      // (completion order, not claim order). Fire-and-forget: the lane
+      // manages its own ordering and never rejects (see
+      // WorktreeIsolationManager.enqueueIntegration), so tick() is never
+      // blocked waiting on a merge that may itself await a sibling ahead of
+      // it in the lane.
+      if (forwardTarget === null && workstream.isolation === 'worktree') {
+        void worktreeIsolation.enqueueIntegration(workstream, item);
+      }
       return;
     }
 
@@ -524,6 +588,18 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     reconcileImportedItems(workstream);
     workstreams.set(workstream.id, workstream);
     completedResults.set(workstream.id, [...snapshot.completedResults]);
+    // Orphan worktree reconciliation (worktree mode only) — SYNCHRONOUS and
+    // done BEFORE this function returns, i.e. before any caller can call
+    // start()/tick() on this workstream. An on-disk `ws/<wsShort>/*` worktree
+    // not already recorded on one of the just-imported items is a crash
+    // artifact from a prior process; adopt it onto a matching unresolved item
+    // or report it for the operator (NEVER deleted on sight) — see
+    // WorktreeIsolationManager.reconcileOrphans for why this must not race
+    // the first tick()'s claim (it would otherwise risk creating a second
+    // worktree at the same deterministic path).
+    if (workstream.isolation === 'worktree') {
+      worktreeIsolation.reconcileOrphans(workstream);
+    }
     return true;
   }
 
