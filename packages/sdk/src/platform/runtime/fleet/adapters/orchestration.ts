@@ -170,6 +170,7 @@ export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: st
       interruptible: activeAgentId !== undefined,
       killable,
       pausable: false,
+      resumable: false,
       steerable: activeAgentId !== undefined && opts.steerable,
     },
     sessionRef: activeAgentId ? { agentId: activeAgentId } : undefined,
@@ -205,7 +206,7 @@ export function adaptPhase(phase: Phase, workstream: Workstream): ProcessNode {
     currentActivity: undefined,
     // Pure grouping node: no conversation loop, no native single-phase
     // cancel (killing work belongs to the work-items running IN the phase).
-    capabilities: { interruptible: false, killable: false, pausable: false, steerable: false },
+    capabilities: { interruptible: false, killable: false, pausable: false, resumable: false, steerable: false },
     raw: phase,
   };
 }
@@ -243,7 +244,7 @@ export function adaptWorkstream(workstream: Workstream, now: number): ProcessNod
     // Kill is DERIVED (no native single-call cancel): cascades
     // AgentManager.cancel over every agent any item ever spawned — see
     // registry.ts killNode's 'workstream' case.
-    capabilities: { interruptible: false, killable, pausable: false, steerable: false },
+    capabilities: { interruptible: false, killable, pausable: false, resumable: false, steerable: false },
     raw: workstream,
   };
 }

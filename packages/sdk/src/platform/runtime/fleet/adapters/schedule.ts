@@ -10,9 +10,10 @@ export function scheduleNodeId(name: string): string {
 
 /**
  * ScheduleEntry → ProcessNode. A schedule between runs is honestly 'idle'
- * (not force-fit into an active state); disabled maps to 'killed' (their only
- * controls ARE remove/disable). lastRun doubles as startedAt; nextRun/lastRun
- * stay available on `raw`. Silent source: liveness rides the tick.
+ * (not force-fit into an active state); disabled maps to 'paused' (Wave 6,
+ * wo-F item d2 — NOT 'killed': the entry still exists and ScheduleManager.
+ * enable() can re-arm it, so collapsing it into a terminal state was
+ * dishonest). resumable mirrors the inverse of pausable.
  */
 export function adaptSchedule(entry: ScheduleEntry): ProcessNode {
   return {
@@ -21,12 +22,12 @@ export function adaptSchedule(entry: ScheduleEntry): ProcessNode {
     parentId: undefined,
     label: `${entry.name} (${entry.interval})`,
     task: entry.command,
-    state: entry.enabled ? 'idle' : 'killed',
+    state: entry.enabled ? 'idle' : 'paused',
     startedAt: entry.lastRun,
     elapsedMs: 0,
     costUsd: null,
     costState: 'unpriced',
-    capabilities: { interruptible: false, killable: true, pausable: entry.enabled, steerable: false },
+    capabilities: { interruptible: false, killable: true, pausable: entry.enabled, resumable: !entry.enabled, steerable: false },
     raw: entry,
   };
 }

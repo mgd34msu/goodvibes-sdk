@@ -23,6 +23,7 @@ import type {
   TriggerManager,
   WorkflowManager,
 } from '../../tools/workflow/index.js';
+import type { AutomationManager } from '../../automation/index.js';
 import type { ApprovalBroker } from '../../control-plane/approval-broker.js';
 import type { SharedSessionBroker } from '../../control-plane/session-broker.js';
 import type { AgentMessageBus } from '../../agents/message-bus.js';
@@ -45,6 +46,7 @@ import { adaptTrigger } from './adapters/trigger.js';
 import { adaptSchedule } from './adapters/schedule.js';
 import { adaptWatcher } from './adapters/watcher.js';
 import { adaptBackgroundProcess } from './adapters/background-process.js';
+import { adaptAutomationJob, isAutomationJobRaw } from './adapters/automation.js';
 import {
   activeWorkItemAgentId,
   adaptPhase,
@@ -107,8 +109,9 @@ export interface ProcessRegistryDeps {
   readonly watcherRegistry: Pick<WatcherRegistry, 'list' | 'stopWatcher'>;
   readonly workflow: {
     readonly workflowManager: Pick<WorkflowManager, 'list' | 'cancel'>;
-    readonly triggerManager: Pick<TriggerManager, 'list' | 'remove' | 'disable'>;
-    readonly scheduleManager: Pick<ScheduleManager, 'list' | 'remove' | 'disable'>;
+    /** `enable` (Wave 6, wo-F item d2) backs ProcessRegistry.resume() — the inverse of `disable`'s interrupt/pause. */
+    readonly triggerManager: Pick<TriggerManager, 'list' | 'remove' | 'disable' | 'enable'>;
+    readonly scheduleManager: Pick<ScheduleManager, 'list' | 'remove' | 'disable' | 'enable'>;
   };
   /** Optional: awaiting-approval derivation. Non-control-plane runtimes still build a fleet. */
   readonly approvalBroker?: Pick<ApprovalBroker, 'listApprovals'> | undefined;
@@ -121,6 +124,14 @@ export interface ProcessRegistryDeps {
    * behavior — zero code-index nodes, no new capability.
    */
   readonly codeIndexService?: CodeIndexProcessSource | undefined;
+  /**
+   * Optional (Wave 6, wo-F item d4): folds `/schedule` automation jobs
+   * (platform/automation, a SEPARATE subsystem from the workflow-tool's
+   * ScheduleManager above) into the fleet as 'schedule'-kind nodes — see
+   * adapters/automation.ts. Without this dep the fleet degrades to exactly
+   * today's behavior — zero automation-job nodes, no new capability.
+   */
+  readonly automationManager?: Pick<AutomationManager, 'listJobs' | 'setEnabled' | 'removeJob'> | undefined;
   /**
    * Optional: backs `steer()` and the `steerable` capability (Wave-3). The
    * bus already exists in the composed runtime and already feeds every
@@ -393,6 +404,11 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     for (const schedule of deps.workflow.scheduleManager.list()) {
       nodes.push(adaptSchedule(schedule));
     }
+    if (deps.automationManager) {
+      for (const job of deps.automationManager.listJobs()) {
+        nodes.push(adaptAutomationJob(job));
+      }
+    }
     for (const watcher of deps.watcherRegistry.list()) {
       nodes.push(adaptWatcher(watcher, capturedAt));
     }
@@ -486,6 +502,21 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     return affected;
   }
 
+  /**
+   * Fire-and-forget an AutomationManager async control call (Wave 6, wo-F
+   * item d4): the registry's own kill/interrupt/resume verbs are
+   * synchronous, but AutomationManager.removeJob/setEnabled are Promises —
+   * dispatch without awaiting rather than making every registry verb async,
+   * but never let a rejection vanish silently. The next tick's assemble()
+   * reflects the real outcome once the promise settles (mirrors the
+   * existing TUI automation-control-panel's swallow-and-tick behavior).
+   */
+  function dispatchAutomationOp(op: 'kill' | 'pause' | 'resume', jobId: string, promise: Promise<unknown>): void {
+    promise.catch((error) => {
+      logger.warn(`[fleet] automation job ${op} failed`, { jobId, error: summarizeError(error) });
+    });
+  }
+
   /** Primitive per-kind kill. Returns the node ids actually acted on. */
   function killNode(node: ProcessNode): string[] {
     switch (node.kind) {
@@ -500,6 +531,12 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       case 'trigger':
         return deps.workflow.triggerManager.remove(node.id) ? [node.id] : [];
       case 'schedule': {
+        if (isAutomationJobRaw(node.raw)) {
+          if (!deps.automationManager) return [];
+          const jobId = node.raw.job.id;
+          dispatchAutomationOp('kill', jobId, deps.automationManager.removeJob(jobId));
+          return [node.id];
+        }
         const entry = node.raw as ScheduleEntry;
         return deps.workflow.scheduleManager.remove(entry.name) ? [node.id] : [];
       }
@@ -598,6 +635,12 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       case 'trigger':
         return deps.workflow.triggerManager.disable(target.id);
       case 'schedule': {
+        if (isAutomationJobRaw(target.raw)) {
+          if (!deps.automationManager) return false;
+          const jobId = target.raw.job.id;
+          dispatchAutomationOp('pause', jobId, deps.automationManager.setEnabled(jobId, false));
+          return true;
+        }
         const entry = target.raw as ScheduleEntry;
         return deps.workflow.scheduleManager.disable(entry.name);
       }
@@ -605,6 +648,37 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         const { item } = target.raw as { item: WorkItem };
         const agentId = activeWorkItemAgentId(item);
         return agentId ? deps.agentManager.cancel(agentId, 'interrupt') : false;
+      }
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Wave 6 (wo-F item d2): re-arm a `paused` trigger/schedule via the owning
+   * manager's `enable()` — the inverse of interrupt()'s disable. Re-assemble
+   * + dispatch-by-kind mirrors interrupt()/kill()'s own shape exactly (same
+   * synchronous, no-owned-state pattern as every other control verb here).
+   * Honest refusal (false, never throws) for anything not currently
+   * resumable: not found, already armed, terminal, or a kind with no
+   * enable-based pause/resume cycle at all (e.g. an agent).
+   */
+  function resume(id: string): boolean {
+    const { nodes } = assemble();
+    const target = nodes.find((node) => node.id === id);
+    if (!target || !target.capabilities.resumable) return false;
+    switch (target.kind) {
+      case 'trigger':
+        return deps.workflow.triggerManager.enable(target.id);
+      case 'schedule': {
+        if (isAutomationJobRaw(target.raw)) {
+          if (!deps.automationManager) return false;
+          const jobId = target.raw.job.id;
+          dispatchAutomationOp('resume', jobId, deps.automationManager.setEnabled(jobId, true));
+          return true;
+        }
+        const entry = target.raw as ScheduleEntry;
+        return deps.workflow.scheduleManager.enable(entry.name);
       }
       default:
         return false;
@@ -694,5 +768,5 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     activity.clear();
   }
 
-  return { query, getNode, subscribe, interrupt, kill, steer, dispose };
+  return { query, getNode, subscribe, interrupt, kill, resume, steer, dispose };
 }
