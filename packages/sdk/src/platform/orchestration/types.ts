@@ -183,6 +183,18 @@ export interface GateOutcome {
 }
 
 /**
+ * Recorded on a PhaseResult when a scoped commit (Wave 6, wo-F item 4)
+ * excluded one or more candidate paths because they were already dirty
+ * before this engine run launched and this phase never actually touched
+ * them (see dirty-guard.ts's excludeUntouchedLaunchResidue). `skipped: true`
+ * means every candidate was excluded and no commit was attempted at all.
+ */
+export interface CommitExclusion {
+  readonly excludedPaths: readonly string[];
+  readonly skipped: boolean;
+}
+
+/**
  * The resume-cache unit, keyed (itemId,phaseId). On resume, every
  * (itemId,phaseId) present in a snapshot's completedResults is hydrated
  * without re-spawning — this is what makes prefix-replay possible.
@@ -196,6 +208,8 @@ export interface PhaseResult {
   readonly startedAt: number;
   readonly completedAt: number;
   readonly usage: WorkItemUsage;
+  /** Present only when a scoped commit excluded launch-dirty residue (see CommitExclusion). */
+  readonly commitExclusion?: CommitExclusion | undefined;
 }
 
 /** Snapshot shape written to .goodvibes/orchestration/<workstreamId>.json. */
@@ -227,6 +241,14 @@ export type OrchestrationEvent =
   | { readonly type: 'item-failed'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   /** Emitted once per item on `importWorkstream` for every item reconciled from a crash-artifact 'in-phase' snapshot back to 'pending' — see the 'in-phase' state doc. */
   | { readonly type: 'item-requeued'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
-  | { readonly type: 'workstream-persisted'; readonly workstreamId: string };
+  | { readonly type: 'workstream-persisted'; readonly workstreamId: string }
+  /**
+   * Emitted once per engine instance (Wave 6, wo-F item 4), right after the
+   * launch-time dirty-tree snapshot resolves, ONLY when it is non-empty.
+   * Engine-wide, not workstream-scoped — `workstreamId` is absent (unlike
+   * every other variant above) because it fires before any workstream is
+   * necessarily even created. See dirty-guard.ts.
+   */
+  | { readonly type: 'dirty-tree-at-launch'; readonly paths: readonly string[] };
 
 export type OrchestrationEventListener = (event: OrchestrationEvent) => void;

@@ -77,7 +77,7 @@ describe('adapters/code-index — node id + shape', () => {
     expect(node.id).toBe('code-index:main');
     expect(node.kind).toBe('code-index');
     expect(node.state).toBe('idle');
-    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false, steerable: false });
+    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false, resumable: false, steerable: false });
   });
 
   test('building: progress surfaces in the label and currentActivity', () => {

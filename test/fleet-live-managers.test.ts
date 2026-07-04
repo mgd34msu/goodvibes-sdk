@@ -106,7 +106,16 @@ describe('fleet registry — live managers integration', () => {
       expect(registry.kill(instance.id)).toEqual([instance.id]);
       expect(workflow.workflowManager.getStatus(instance.id)?.cancelled).toBe(true);
       expect(registry.interrupt('schedule:fleet-nightly')).toBe(true);
-      expect(registry.getNode('schedule:fleet-nightly')?.state).toBe('killed'); // disabled
+      // Wave 6 (wo-F item d2): disabled is 'paused', NOT 'killed' — the entry
+      // still exists and ScheduleManager.enable() can re-arm it.
+      expect(registry.getNode('schedule:fleet-nightly')?.state).toBe('paused');
+      expect(registry.getNode('schedule:fleet-nightly')?.capabilities.resumable).toBe(true);
+      // resume() round-trips against the REAL ScheduleManager.
+      expect(registry.resume('schedule:fleet-nightly')).toBe(true);
+      expect(registry.getNode('schedule:fleet-nightly')?.state).toBe('idle');
+      expect(registry.getNode('schedule:fleet-nightly')?.capabilities.resumable).toBe(false);
+      // Already armed — resume() honestly refuses (nothing to resume).
+      expect(registry.resume('schedule:fleet-nightly')).toBe(false);
       expect(registry.kill(trigger.id)).toEqual([trigger.id]);
       expect(registry.getNode(trigger.id)).toBeNull(); // removed
 

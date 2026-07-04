@@ -544,7 +544,12 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
   });
 
   test('importChain registers the chain and getChain returns it', () => {
-    const { controller } = createHarness();
+    const { controller, agentStore } = createHarness();
+    // Wave 6 (wo-F item d5): importChain reaps a non-terminal chain whose
+    // ENTIRE roster is absent from the live AgentManager (zombie chain from
+    // a prior process). Register one roster agent as live so this test
+    // exercises plain import/retrieval, not the zombie-reap path.
+    agentStore.set('owner-99', makeRecord({ id: 'owner-99', task: 'Serialized task' }));
     const fakeChain: WrfcChain = {
       id: 'imported-chain',
       state: 'reviewing',
@@ -569,7 +574,11 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
   });
 
   test('MIN-5: importChain refuses to overwrite non-terminal chain without force flag', () => {
-    const { controller } = createHarness();
+    const { controller, agentStore } = createHarness();
+    // Wave 6 (wo-F item d5): keep this chain out of the zombie-reap path
+    // (see the comment above) so the assertions below test ONLY the
+    // refuse-without-force behavior, not an incidental reap.
+    agentStore.set('owner-a', makeRecord({ id: 'owner-a', task: 'Original task' }));
     const base: WrfcChain = {
       id: 'conflict-chain',
       state: 'engineering', // non-terminal
@@ -595,7 +604,10 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
   });
 
   test('MIN-5: importChain with force=true overwrites non-terminal chain', () => {
-    const { controller } = createHarness();
+    const { controller, agentStore } = createHarness();
+    // Wave 6 (wo-F item d5): keep this chain out of the zombie-reap path so
+    // this test exercises ONLY the force-overwrite behavior.
+    agentStore.set('owner-f', makeRecord({ id: 'owner-f', task: 'Original task' }));
     const base: WrfcChain = {
       id: 'force-chain',
       state: 'reviewing', // non-terminal

@@ -180,6 +180,9 @@ export function attachDebouncedWriter(
   }
 
   const unsubscribe = subscribe((event) => {
+    // 'dirty-tree-at-launch' (Wave 6, wo-F item 4) is engine-wide, not
+    // workstream-scoped — it has no workstreamId to schedule a write for.
+    if (event.type === 'dirty-tree-at-launch') return;
     scheduleWrite(event.workstreamId);
   });
 

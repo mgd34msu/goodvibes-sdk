@@ -63,11 +63,11 @@ describe('adaptWorkItem', () => {
   test('delegates interruptible/killable/steerable to its currently-active agent', () => {
     const pending = makeItem({ id: 'i1', state: 'pending' });
     const pendingNode = adaptWorkItem(pending, 'ws1', 'phase:ws1:p1', { steerable: true });
-    expect(pendingNode.capabilities).toEqual({ interruptible: false, killable: true, pausable: false, steerable: false });
+    expect(pendingNode.capabilities).toEqual({ interruptible: false, killable: true, pausable: false, resumable: false, steerable: false });
 
     const running = makeItem({ id: 'i2', state: 'in-phase', agentId: 'agent-1' });
     const runningNode = adaptWorkItem(running, 'ws1', 'phase:ws1:p1', { steerable: true });
-    expect(runningNode.capabilities).toEqual({ interruptible: true, killable: true, pausable: false, steerable: true });
+    expect(runningNode.capabilities).toEqual({ interruptible: true, killable: true, pausable: false, resumable: false, steerable: true });
     expect(runningNode.sessionRef).toEqual({ agentId: 'agent-1' });
 
     const passed = makeItem({ id: 'i3', state: 'passed', completedAt: T0 + 10 });
@@ -96,7 +96,7 @@ describe('adaptPhase — pure grouping node', () => {
     expect(node.usage).toBeUndefined();
     expect(node.costUsd).toBeNull();
     expect(node.costState).toBe('unpriced');
-    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false, steerable: false });
+    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false, resumable: false, steerable: false });
   });
 });
 

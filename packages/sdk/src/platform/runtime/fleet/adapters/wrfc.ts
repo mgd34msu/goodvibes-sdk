@@ -189,7 +189,7 @@ export function adaptSubtask(subtask: WrfcSubtask, chain: WrfcChain, opts: { ste
     currentActivity: phase ? { kind: 'phase', text: phase, at: chain.createdAt } : undefined,
     // Steer targets the live member agent driving this subtask's current
     // phase, NOT the subtask node itself (which has no conversation loop).
-    capabilities: { interruptible: false, killable, pausable: false, steerable: opts.steerable },
+    capabilities: { interruptible: false, killable, pausable: false, resumable: false, steerable: opts.steerable },
     raw: subtask,
   };
 }
@@ -229,7 +229,7 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
     // A wrfc-chain is an FSM coordinating member agents; it has no
     // conversation loop of its own, so it is NEVER steerable — steer the
     // member subtask instead (adaptSubtask, above).
-    capabilities: { interruptible: false, killable, pausable: false, steerable: false },
+    capabilities: { interruptible: false, killable, pausable: false, resumable: false, steerable: false },
     raw: chain,
   };
 }
