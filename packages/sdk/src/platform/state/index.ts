@@ -74,3 +74,13 @@ export type {
   CodeIndexSkipReport,
   CodeIndexStats,
 } from './code-index-store.js';
+export {
+  CodeIndexReindexScheduler,
+  extractReindexPaths,
+  DEFAULT_REINDEX_DEBOUNCE_MS,
+} from './code-index-reindex.js';
+export type {
+  CodeIndexReindexActivity,
+  CodeIndexReindexTarget,
+  CodeIndexReindexSchedulerDeps,
+} from './code-index-reindex.js';

@@ -103,6 +103,19 @@ export interface AgentOrchestratorRunContext {
   readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'> | undefined;
   readonly memoryRegistry?: Pick<import('../state/index.js').MemoryRegistry, 'getAll' | 'searchSemantic' | 'vectorStats'> | undefined;
   /**
+   * Wave-5 Stage B — repo code index for per-turn code injection in a spawned agent run.
+   * Undefined is a hard no-op. Actual injection additionally requires the
+   * `agent-passive-code-injection` flag (DEFAULT OFF) and `isCodeInjectionSettingEnabled`.
+   */
+  readonly codeIndex?: import('./turn-knowledge-injection.js').TurnCodeIndexSource | undefined;
+  /** Live gate for the embedder's storage.codeIndexEnabled setting. Undefined defaults to allowed. */
+  readonly isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
+  /**
+   * Wave-5 Stage B — called once per executed tool (toolName, args, success) so a code-index
+   * reindex scheduler can debounce an incremental reindex of touched files. Never awaited.
+   */
+  readonly onToolExecuted?: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | undefined;
+  /**
    * Wave-5 (wo801, W5.1) per-turn passive-injection knobs. Both optional —
    * undefined means "use the derived default" (see turn-knowledge-injection.ts:
    * defaultTurnKnowledgeBudgetTokens / DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR).
@@ -297,6 +310,12 @@ async function executeToolCalls(
       const signal = context.getCancellationSignal?.(record.id);
       const result = await toolRegistry.execute(call.id, call.name, call.arguments, signal ? { signal } : undefined);
       results.push({ ...result, callId: call.id });
+      // Stage B: schedule a debounced reindex of any touched file(s). Never awaited.
+      try {
+        context.onToolExecuted?.(call.name, call.arguments as Record<string, unknown>, result.success !== false);
+      } catch (hookErr) {
+        logger.warn('onToolExecuted hook error', { tool: call.name, error: summarizeError(hookErr) });
+      }
       session.appendMessage({
         type: 'tool_execution',
         turn,
@@ -639,6 +658,11 @@ export async function runAgentTask(
         }
         if (turnBudgetTokens > 0) {
           const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
+          // Stage B: code hits share this turn's SAME budget/floor. Gated on the separate
+          // (default-off) code-injection flag AND the embedder's storage.codeIndexEnabled setting.
+          const codeInjectionEnabled = !!context.codeIndex
+            && (context.featureFlagManager?.isEnabled('agent-passive-code-injection') ?? false)
+            && (context.isCodeInjectionSettingEnabled?.() ?? true);
           const { block, record: turnInjectionRecord } = buildPerTurnKnowledgeInjection({
             memoryRegistry: context.memoryRegistry,
             task: record.task,
@@ -648,6 +672,8 @@ export async function runAgentTask(
             relevanceFloor,
             alreadyInjectedIds: [...knowledgeIdsAlreadySurfaced],
             turn,
+            codeIndex: context.codeIndex,
+            codeInjectionEnabled,
           });
           priorTurnKnowledgeBlock = block;
           for (const id of turnInjectionRecord.injectedIds) knowledgeIdsAlreadySurfaced.add(id);

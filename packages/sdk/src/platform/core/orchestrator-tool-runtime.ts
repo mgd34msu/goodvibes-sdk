@@ -76,6 +76,13 @@ export type ToolExecutionDeps = {
   runtimeBus: RuntimeEventBus | null;
   sessionId: string;
   emitterContext: EmitterContextFactory;
+  /**
+   * Wave-5 Stage B: called once per executed tool with (toolName, resolved args, success) so a
+   * code-index reindex scheduler can debounce an incremental reindex of touched files. Invoked
+   * for BOTH success and failure (the scheduler no-ops on failure); never awaited — it must not
+   * block the tool-result path.
+   */
+  onToolExecuted?: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | undefined;
 };
 
 export async function executeToolCalls(
@@ -298,6 +305,16 @@ export async function executeToolCalls(
         }
       } catch {
         // leave result as-is
+      }
+    }
+
+    if (deps.onToolExecuted) {
+      // Fire-and-forget: the scheduler only records a debounce timer; it must never block the
+      // tool-result path. Args are the ones actually executed (post-permission modification).
+      try {
+        deps.onToolExecuted(call.name, checkResult.modifiedArgs ?? call.arguments, result.success === true);
+      } catch (err) {
+        logger.warn('onToolExecuted hook error', { tool: call.name, error: summarizeError(err) });
       }
     }
 

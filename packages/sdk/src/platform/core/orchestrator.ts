@@ -748,6 +748,8 @@ export class Orchestrator {
       isPassiveKnowledgeInjectionEnabled: () => this.isPassiveKnowledgeInjectionEnabled(),
       passiveKnowledgeInjectionBudgetTokens: this.passiveKnowledgeInjectionBudgetTokens,
       passiveKnowledgeInjectionRelevanceFloor: this.passiveKnowledgeInjectionRelevanceFloor,
+      codeIndex: this.coreServices.codeIndex,
+      isPassiveCodeInjectionEnabled: () => this.isPassiveCodeInjectionEnabled(),
       getAlreadyInjectedKnowledgeIds: () => this.getAlreadyInjectedKnowledgeIds(),
       addInjectedKnowledgeIds: (ids) => { this.addInjectedKnowledgeIds(ids); },
       recordTurnKnowledgeInjection: (record) => { this.recordTurnKnowledgeInjection(record); },
@@ -982,6 +984,17 @@ export class Orchestrator {
   }
 
   /**
+   * Stage B code injection is opt-in: the `agent-passive-code-injection` flag defaults OFF
+   * (so a null flagManager means OFF, unlike the memory flag above), AND the embedder's
+   * storage.codeIndexEnabled setting must be on. Both are re-read per turn.
+   */
+  private isPassiveCodeInjectionEnabled(): boolean {
+    const flagOn = this.flagManager?.isEnabled('agent-passive-code-injection') ?? false;
+    const settingOn = this.coreServices.isCodeInjectionSettingEnabled?.() ?? true;
+    return flagOn && settingOn;
+  }
+
+  /**
    * Wave-5 (wo805): ids never to re-surface in a later per-turn knowledge block. The main
    * session has no spawn-time `AgentRecord.knowledgeInjections` baseline, so this starts
    * empty and grows monotonically for the life of the Orchestrator.
@@ -1042,6 +1055,9 @@ export class Orchestrator {
       runtimeBus: this.runtimeBus,
       sessionId: this.sessionId,
       emitterContext: (id) => createEmitterContext(this.sessionId, id),
+      onToolExecuted: this.coreServices.codeIndexReindexScheduler
+        ? (toolName, args, success) => this.coreServices.codeIndexReindexScheduler!.onToolExecuted(toolName, args, success)
+        : undefined,
     }, turnId, calls);
   }
 }
