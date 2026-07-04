@@ -18,6 +18,11 @@ export function subtaskNodeId(subtaskId: string): string {
   return `subtask:${subtaskId}`;
 }
 
+/** Work-item node ids are namespaced to avoid colliding with agent/process ids (Wave 4, wo701). */
+export function workItemNodeId(workItemId: string): string {
+  return `work-item:${workItemId}`;
+}
+
 /**
  * One activity side-table entry. Registry-owned; populated from the EXISTING
  * runtime-bus 'agents' channel emitters (no new event contract).
@@ -47,6 +52,8 @@ export interface AgentAdapterContext {
   readonly chainIds: ReadonlySet<string>;
   /** Raw WrfcSubtask ids present in this snapshot. */
   readonly subtaskIds: ReadonlySet<string>;
+  /** Raw orchestration-engine WorkItem ids present in this snapshot (Wave 4, wo701). */
+  readonly workItemIds: ReadonlySet<string>;
   /** orchestrationNodeId → owning agentId, for parentNodeId edge resolution. */
   readonly agentIdByOrchestrationNodeId: ReadonlyMap<string, string>;
   /** All agent ids present in this snapshot. */
@@ -78,9 +85,12 @@ export function usageFromAgentRecord(record: AgentRecord): ProcessUsage | undefi
 /**
  * parentId precedence (brief-mandated, Wave-4 stable):
  * wrfcSubtaskId → `subtask:<id>` else wrfcId → `chain:<id>` else
- * orchestrationNodeId/parentNodeId (resolved to the owning agent) else
- * parentAgentId. Every step falls through when the referenced node is not
- * present in this snapshot, so edges always resolve or the node is a root.
+ * workItemId → `work-item:<id>` (Wave 4, wo701 — orchestration-engine phase
+ * agents, a separate track from WRFC so the two systems' agents are never
+ * conflated) else orchestrationNodeId/parentNodeId (resolved to the owning
+ * agent) else parentAgentId. Every step falls through when the referenced
+ * node is not present in this snapshot, so edges always resolve or the node
+ * is a root.
  */
 function resolveParentId(record: AgentRecord, ctx: AgentAdapterContext): string | undefined {
   if (record.wrfcSubtaskId && ctx.subtaskIds.has(record.wrfcSubtaskId)) {
@@ -88,6 +98,9 @@ function resolveParentId(record: AgentRecord, ctx: AgentAdapterContext): string 
   }
   if (record.wrfcId && ctx.chainIds.has(record.wrfcId)) {
     return chainNodeId(record.wrfcId);
+  }
+  if (record.workItemId && ctx.workItemIds.has(record.workItemId)) {
+    return workItemNodeId(record.workItemId);
   }
   if (record.parentNodeId) {
     const owner = ctx.agentIdByOrchestrationNodeId.get(record.parentNodeId);

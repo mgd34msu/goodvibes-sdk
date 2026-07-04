@@ -22,6 +22,13 @@ import { mapWithConcurrency, sleep } from '../../utils/concurrency.js';
 export interface FetchRuntimeDeps {
   readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null | undefined;
   readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+  /**
+   * Wave-4 cooperative cancellation (wo701): an externally-supplied signal,
+   * combined with each request's own per-URL timeout signal via
+   * `AbortSignal.any`. Optional and additive — omitted, behavior is
+   * unchanged from before this field existed.
+   */
+  readonly signal?: AbortSignal | undefined;
 }
 
 interface CacheEntry {
@@ -236,8 +243,10 @@ async function fetchOneRaw(
   effectiveUrl: string,
   trustTierConfig: TrustTierConfig,
   sanitizationEnabled: boolean,
+  externalSignal?: AbortSignal | undefined,
 ): Promise<Response> {
-  const { signal, dispose } = createTimeoutController(urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
+  const { signal: timeoutSignal, dispose } = createTimeoutController(urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
+  const signal = externalSignal ? AbortSignal.any([timeoutSignal, externalSignal]) : timeoutSignal;
   try {
     return sanitizationEnabled
       ? await fetchWithValidatedRedirects({
@@ -472,6 +481,7 @@ async function fetchOne(
       effectiveUrl,
       trustTierConfig,
       sanitizationEnabled,
+      deps.signal,
     );
 
     const retryOnAuth = urlInput.retry_on_auth ?? (urlInput.service !== undefined);
@@ -488,6 +498,7 @@ async function fetchOne(
           effectiveUrl,
           trustTierConfig,
           sanitizationEnabled,
+          deps.signal,
         );
       }
     }
@@ -657,14 +668,18 @@ export function createFetchTool(
       supportsStreamingOutput: true,
     },
 
-    async execute(args: Record<string, unknown>): Promise<{ success: boolean; output?: string; error?: string }> {
+    async execute(
+      args: Record<string, unknown>,
+      opts?: { readonly signal?: AbortSignal | undefined },
+    ): Promise<{ success: boolean; output?: string; error?: string }> {
       if (!Array.isArray(args.urls) || args.urls.length === 0) {
         return { success: false, error: 'Missing or empty "urls" array' };
       }
 
       try {
         const input = { ...args, urls: args.urls } as unknown as FetchInput;
-        const output = await runtime.execute(input, deps);
+        const effectiveDeps = opts?.signal ? { ...deps, signal: opts.signal } : deps;
+        const output = await runtime.execute(input, effectiveDeps);
         return { success: true, output: JSON.stringify(output) };
       } catch (err) {
         const message = summarizeError(err);

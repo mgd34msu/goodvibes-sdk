@@ -98,6 +98,7 @@ import {
   type WorkflowServices,
 } from '../tools/workflow/index.js';
 import { createProcessRegistry, type ProcessRegistry } from './fleet/index.js';
+import { createOrchestrationEngine, type OrchestrationEngine } from '../orchestration/index.js';
 
 export interface RuntimeServicesOptions {
   readonly runtimeBus: RuntimeEventBus;
@@ -192,6 +193,16 @@ export interface RuntimeServices {
   readonly agentMessageBus: AgentMessageBus;
   readonly agentOrchestrator: AgentOrchestrator;
   readonly wrfcController: WrfcController;
+  /**
+   * Orchestration engine (Wave 4, wo701) — ships ALONGSIDE wrfcController,
+   * stage 1 of the 3-stage migration (see platform/orchestration/
+   * controller-compat.ts). WrfcController is unchanged; this is a new,
+   * opt-in surface for callers that want the pipeline/capacity-matching
+   * scheduler instead of WrfcController's pairwise engineer<->reviewer
+   * chain. Not auto-started — callers call orchestrationEngine.start(id)
+   * (or resumeAllFromDisk()) once they have a workstream to run.
+   */
+  readonly orchestrationEngine: OrchestrationEngine;
   readonly processManager: ProcessManager;
   /**
    * Live process registry (W2.1): queryable + subscribable fleet aggregation
@@ -344,6 +355,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   agentOrchestrator.setConversationSink({
     register: (agentId, source) => agentManager.registerConversationSource(agentId, source),
     release: (agentId) => agentManager.releaseConversationSource(agentId),
+  });
+  // Wave-4 cooperative cancellation bridge (wo701): same ordering constraint
+  // and setter pattern as setConversationSink above — AgentOrchestrator is
+  // constructed before AgentManager exists.
+  agentOrchestrator.setCancellationSource({
+    get: (agentId) => agentManager.getCancellationSignal(agentId),
   });
   agentManager.setRuntimeBus(options.runtimeBus);
   const wrfcController = new WrfcController(options.runtimeBus, agentMessageBus, {
@@ -615,12 +632,39 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workflowServices: workflow,
   });
 
+  // Honest-unpriced: only price models the catalog actually knows; an
+  // unknown model yields null (costState 'unpriced'), never a fabricated $0.
+  // SHARED between the fleet registry and the orchestration engine — the
+  // single cost source of truth so budget checks and fleet cost totals can
+  // never double-count against each other.
+  const priceUsage = (model: string | undefined, usage: { inputTokens: number; outputTokens: number }): number | null => {
+    if (!model) return null;
+    const catalogModels = providerRegistry.getRawCatalogModels();
+    const known = catalogModels.some(
+      (entry) => model === entry.id || model.startsWith(entry.id) || model.includes(entry.id),
+    );
+    if (!known && !model.endsWith(':free')) return null;
+    const pricing = providerRegistry.getCostFromCatalog(model);
+    return (usage.inputTokens * pricing.input + usage.outputTokens * pricing.output) / 1_000_000;
+  };
+
+  // Orchestration engine (Wave 4, wo701) — ships alongside wrfcController,
+  // untouched by this change. See the RuntimeServices interface comment.
+  const orchestrationEngine = createOrchestrationEngine({
+    agentManager,
+    configManager,
+    runtimeBus: options.runtimeBus,
+    projectRoot: workingDirectory,
+    priceUsage,
+  });
+
   // Live process registry (W2.1) — narrow structural deps only, constructed
   // after every source manager exists. See the RuntimeServices interface
   // comment for the dispose story (no RuntimeServices-wide shutdown seam yet).
   const processRegistry = createProcessRegistry({
     agentManager,
     wrfcController,
+    orchestrationEngine,
     processManager,
     watcherRegistry,
     workflow: {
@@ -631,18 +675,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     approvalBroker,
     sessionBroker,
     runtimeBus: options.runtimeBus,
-    // Honest-unpriced: only price models the catalog actually knows; an
-    // unknown model yields null (costState 'unpriced'), never a fabricated $0.
-    priceUsage: (model, usage) => {
-      if (!model) return null;
-      const catalogModels = providerRegistry.getRawCatalogModels();
-      const known = catalogModels.some(
-        (entry) => model === entry.id || model.startsWith(entry.id) || model.includes(entry.id),
-      );
-      if (!known && !model.endsWith(':free')) return null;
-      const pricing = providerRegistry.getCostFromCatalog(model);
-      return (usage.inputTokens * pricing.input + usage.outputTokens * pricing.output) / 1_000_000;
-    },
+    priceUsage,
   });
 
   return {
@@ -725,6 +758,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentMessageBus,
     agentOrchestrator,
     wrfcController,
+    orchestrationEngine,
     processManager,
     processRegistry,
     modeManager,
