@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [0.37.1] - 2026-07-03
+
+### Fixed
+- `@pellux/goodvibes-sdk`: **WorkspaceCheckpointManager operations are now serialized** through an internal mutex — a background agent completing during a restore's read-tree/checkout-index window could previously interleave an auto-snapshot's `git add -A` and silently corrupt the restore (timing-dependent; found by adversarial review, proven with an injected race).
+- `@pellux/goodvibes-sdk`: **checkpoint retention GC genuinely reclaims disk** — checkpoint commits are now parentless (lineage lives in the manifest), so pruned refs' objects become unreachable and `git gc --prune=now` frees them (measured 64.6% object-store shrink in the test); previously the linear parent chain kept every pruned commit alive and the store grew unbounded.
+
 ## [0.37.0] - 2026-07-03
 
 Wave 1 of the goodvibes-tui evolution effort: reversibility. The headline is the workspace checkpoint engine — cheap whole-workspace snapshots and rewind, with zero pollution of the user's git state.
