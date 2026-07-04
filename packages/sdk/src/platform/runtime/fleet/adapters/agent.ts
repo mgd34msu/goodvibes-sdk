@@ -52,6 +52,12 @@ export interface AgentAdapterContext {
   /** All agent ids present in this snapshot. */
   readonly agentIds: ReadonlySet<string>;
   readonly priceUsage?: ((model: string | undefined, usage: ProcessUsage) => number | null) | undefined;
+  /**
+   * True when the registry was constructed with a `messageBus` dep — gates
+   * `steerable`. Without it, steering has no delivery mechanism, so every
+   * agent (even a live one) honestly reports steerable=false.
+   */
+  readonly messageBusPresent: boolean;
 }
 
 /** AgentRecord.usage + toolCallCount → ProcessUsage. */
@@ -181,7 +187,7 @@ export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): Proce
     costUsd,
     costState,
     currentActivity: entry?.activity,
-    capabilities: { interruptible: active, killable: active, pausable: false },
+    capabilities: { interruptible: active, killable: active, pausable: false, steerable: active && ctx.messageBusPresent },
     sessionRef: { sessionId, agentId: record.id },
     raw: record,
   };

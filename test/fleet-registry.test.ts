@@ -242,7 +242,7 @@ describe('fleet registry — adapter mapping', () => {
     expect(node.model).toBe('claude-fable-5');
     expect(node.provider).toBe('anthropic');
     expect(node.elapsedMs).toBe(2_000);
-    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false });
+    expect(node.capabilities).toEqual({ interruptible: false, killable: false, pausable: false, steerable: false });
     expect(node.sessionRef?.agentId).toBe('ag-1');
     registry.dispose();
   });
@@ -1192,6 +1192,185 @@ describe('fleet registry — control dispatch', () => {
     }));
     const affected = registry.kill('chain:ch-eq');
     expect([...affected].sort()).toEqual(['chain:ch-eq', 'm1-e', 'own-e']);
+    registry.dispose();
+  });
+});
+
+// ── 9. Steer (Wave-3, W3.2) ────────────────────────────────────────────────
+
+interface FakeSend {
+  send: (fromId: string, toId: string, content: string, opts?: unknown) => boolean;
+  calls: Array<{ fromId: string; toId: string; content: string; opts: unknown }>;
+}
+
+function fakeMessageBus(sendResult = true): FakeSend {
+  const calls: FakeSend['calls'] = [];
+  return {
+    calls,
+    send: (fromId: string, toId: string, content: string, opts?: unknown) => {
+      calls.push({ fromId, toId, content, opts });
+      return sendResult;
+    },
+  };
+}
+
+describe('fleet registry — steer', () => {
+  test('capabilities.steerable: true for a running agent with a messageBus dep, false without one, false once terminal', () => {
+    const running = makeAgent({ id: 'ag-run', status: 'running' });
+    const done = makeAgent({ id: 'ag-done', status: 'completed', completedAt: T0 });
+    const withBus = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [running, done], cancel: () => false },
+      messageBus: fakeMessageBus(),
+    }));
+    expect(nodeById(withBus, 'ag-run').capabilities.steerable).toBe(true);
+    expect(nodeById(withBus, 'ag-done').capabilities.steerable).toBe(false);
+    withBus.dispose();
+
+    const withoutBus = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [running], cancel: () => false },
+    }));
+    expect(nodeById(withoutBus, 'ag-run').capabilities.steerable).toBe(false);
+    withoutBus.dispose();
+  });
+
+  test('steer(): running agent gets an operator message via the bus (kind steer, TTL well beyond DEFAULT_TTL_MS); returns {queued:true,messageId}', () => {
+    const bus = fakeMessageBus(true);
+    const agent = makeAgent({ id: 'ag-steer', status: 'running' });
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [agent], cancel: () => false },
+      messageBus: bus,
+    }));
+    const result = registry.steer('ag-steer', 'please stop and rerun the tests first');
+    expect(result.queued).toBe(true);
+    if (result.queued) {
+      expect(typeof result.messageId).toBe('string');
+      expect(result.messageId.length).toBeGreaterThan(0);
+    }
+    expect(bus.calls).toHaveLength(1);
+    expect(bus.calls[0]?.fromId).toBe('operator');
+    expect(bus.calls[0]?.toId).toBe('ag-steer');
+    expect(bus.calls[0]?.content).toBe('please stop and rerun the tests first');
+    const opts = bus.calls[0]?.opts as { kind: string; ttlMs: number; id: string };
+    expect(opts.kind).toBe('steer');
+    expect(opts.ttlMs).toBeGreaterThan(5 * 60 * 1000); // must materially outlive AgentMessageBus's own 5-min default
+    expect(opts.id).toBe(result.queued ? result.messageId : undefined);
+    registry.dispose();
+  });
+
+  test('steer(): refuses everything when no messageBus dep is configured', () => {
+    const agent = makeAgent({ id: 'ag-nobus-steer', status: 'running' });
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [agent], cancel: () => false },
+    }));
+    const result = registry.steer('ag-nobus-steer', 'x');
+    expect(result.queued).toBe(false);
+    registry.dispose();
+  });
+
+  test('steer(): honest refusal for a missing node, a terminal agent, a wrfc-chain (steer the member, not the chain), and a non-agent kind', () => {
+    const chain = makeChain({ id: 'ch-steer', ownerAgentId: 'owner-s', allAgentIds: ['owner-s'] });
+    const trigger: TriggerDefinition = { id: 'trg-steer', event: 'push', action: 'run tests', enabled: true };
+    const doneAgent = makeAgent({ id: 'ag-done-steer', status: 'completed', completedAt: T0 });
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [doneAgent], cancel: () => false },
+      wrfcController: { listChains: () => [chain] },
+      workflow: {
+        workflowManager: { list: () => [], cancel: () => false },
+        triggerManager: { list: () => [trigger], remove: () => false, disable: () => false },
+        scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+      },
+      messageBus: fakeMessageBus(),
+    }));
+
+    const missing = registry.steer('nope', 'x');
+    expect(missing.queued).toBe(false);
+
+    const doneResult = registry.steer('ag-done-steer', 'x');
+    expect(doneResult.queued).toBe(false);
+
+    const chainResult = registry.steer('chain:ch-steer', 'x');
+    expect(chainResult.queued).toBe(false);
+    if (!chainResult.queued) expect(chainResult.reason).toContain('member');
+
+    const triggerResult = registry.steer('trg-steer', 'x');
+    expect(triggerResult.queued).toBe(false);
+    if (!triggerResult.queued) expect(triggerResult.reason).toContain('trigger');
+
+    registry.dispose();
+  });
+
+  test('steer(): a wrfc-subtask routes to its currently-active live member agent, not the subtask node id', () => {
+    const bus = fakeMessageBus(true);
+    const chain = makeChain({
+      id: 'ch-sub-steer',
+      ownerAgentId: 'owner-sub',
+      allAgentIds: ['owner-sub', 'eng-sub'],
+      subtasks: [makeSubtask({ id: 'st-sub', state: 'engineering', engineerAgentId: 'eng-sub' })],
+    });
+    const agents = [
+      makeAgent({ id: 'owner-sub', wrfcId: 'ch-sub-steer', wrfcRole: 'owner' }),
+      makeAgent({ id: 'eng-sub', wrfcId: 'ch-sub-steer', wrfcSubtaskId: 'st-sub', status: 'running' }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [...agents], cancel: () => false },
+      wrfcController: { listChains: () => [chain] },
+      messageBus: bus,
+    }));
+    expect(nodeById(registry, 'subtask:st-sub').capabilities.steerable).toBe(true);
+    const result = registry.steer('subtask:st-sub', 'go faster');
+    expect(result.queued).toBe(true);
+    expect(bus.calls).toHaveLength(1);
+    expect(bus.calls[0]?.toId).toBe('eng-sub'); // NOT 'subtask:st-sub'
+    registry.dispose();
+  });
+
+  test('steer(): a wrfc-subtask whose resolved member agent is terminal is not steerable and refuses', () => {
+    const chain = makeChain({
+      id: 'ch-sub-term',
+      ownerAgentId: 'owner-t2',
+      allAgentIds: ['owner-t2', 'eng-t2'],
+      subtasks: [makeSubtask({ id: 'st-term', state: 'engineering', engineerAgentId: 'eng-t2' })],
+    });
+    const agents = [
+      makeAgent({ id: 'owner-t2', wrfcId: 'ch-sub-term' }),
+      makeAgent({ id: 'eng-t2', wrfcId: 'ch-sub-term', wrfcSubtaskId: 'st-term', status: 'completed', completedAt: T0 }),
+    ];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [...agents], cancel: () => false },
+      wrfcController: { listChains: () => [chain] },
+      messageBus: fakeMessageBus(),
+    }));
+    expect(nodeById(registry, 'subtask:st-term').capabilities.steerable).toBe(false);
+    const result = registry.steer('subtask:st-term', 'go faster');
+    expect(result.queued).toBe(false);
+    registry.dispose();
+  });
+
+  test('steer(): a wrfc-subtask with no phase currently in flight (pending/passed/failed) is not steerable', () => {
+    const chain = makeChain({
+      id: 'ch-sub-idle',
+      ownerAgentId: 'owner-i',
+      allAgentIds: ['owner-i'],
+      subtasks: [makeSubtask({ id: 'st-idle', state: 'pending' })],
+    });
+    const registry = createProcessRegistry(makeDeps({
+      wrfcController: { listChains: () => [chain] },
+      messageBus: fakeMessageBus(),
+    }));
+    expect(nodeById(registry, 'subtask:st-idle').capabilities.steerable).toBe(false);
+    const result = registry.steer('subtask:st-idle', 'go');
+    expect(result.queued).toBe(false);
+    registry.dispose();
+  });
+
+  test('steer(): send() returning false (route blocked) surfaces as an honest refusal, not a false queued:true', () => {
+    const agent = makeAgent({ id: 'ag-blocked', status: 'running' });
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [agent], cancel: () => false },
+      messageBus: fakeMessageBus(false),
+    }));
+    const result = registry.steer('ag-blocked', 'x');
+    expect(result.queued).toBe(false);
     registry.dispose();
   });
 });

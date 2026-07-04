@@ -45,7 +45,7 @@ export function adaptWatcher(record: WatcherRecord, now: number): ProcessNode {
     currentActivity: statusText
       ? { kind: 'phase', text: statusText, at: record.lastHeartbeatAt ?? record.source.createdAt }
       : undefined,
-    capabilities: { interruptible: false, killable: alive, pausable: false },
+    capabilities: { interruptible: false, killable: alive, pausable: false, steerable: false },
     raw: record,
   };
 }
