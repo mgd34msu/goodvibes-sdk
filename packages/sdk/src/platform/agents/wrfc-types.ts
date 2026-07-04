@@ -1,5 +1,6 @@
 import type { CompletionReport, Constraint, ReviewerReport } from './completion-report.js';
 import type { AgentRecord } from '../tools/agent/index.js';
+import type { FanoutCollapseInfo } from '../tools/agent/schema.js';
 
 /** Queued chain waiting to start. */
 export interface QueuedChain {
@@ -178,6 +179,22 @@ export interface WrfcChain {
   constraints: Constraint[];
   /** True once constraints have been captured and WORKFLOW_CONSTRAINTS_ENUMERATED has been emitted. */
   constraintsEnumerated: boolean;
+  /**
+   * Set when this chain was created by collapsing a requested multi-agent fan-out
+   * into one owner chain (schema.ts FanoutCollapseInfo). Its presence is what makes
+   * a parallelism/spawn-count constraint SYSTEM-UNSATISFIABLE — the collapse removed
+   * the precondition, so no fix agent can ever satisfy it.
+   */
+  fanoutCollapse?: FanoutCollapseInfo | undefined;
+  /**
+   * Constraint ids that no fix agent can satisfy because the system itself removed
+   * their precondition (e.g. the fan-out collapse invalidated a "separate agent per
+   * file / in parallel" constraint). Derived mechanically from fanoutCollapse at
+   * enumeration time. These are excluded from the review rubric, never counted as
+   * unsatisfied, and never entered into the fix-loop target set — an un-loopable
+   * constraint can never fail the review.
+   */
+  systemUnsatisfiableConstraintIds?: string[] | undefined;
   /**
    * Synthetic critical issues injected by the controller (e.g. fixer constraint-continuity
    * violations). Prepended to the next review task body, then cleared so they fire once per cycle.

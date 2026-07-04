@@ -253,6 +253,22 @@ export interface AgentProviderRoutingPolicy {
   fallbackModels?: readonly string[] | undefined;
 }
 
+/**
+ * Internal marker recording that a requested multi-agent fan-out was collapsed
+ * into a single WRFC owner chain by the topology guard. Set by the collapse
+ * guards (wrfc-batch-policy.ts / the TUI wrfc-agent-guard), threaded onto the
+ * owner AgentRecord and then the WrfcChain. It lets the controller mechanically
+ * recognise — and never fail the review on — the parallelism/spawn-count
+ * constraints the collapse itself made unsatisfiable, and lets the host state
+ * the collapse plainly to the user. Never set by the model-facing tool call.
+ */
+export interface FanoutCollapseInfo {
+  /** How many separate agents the requester asked to fan out into. */
+  readonly requestedAgentCount: number;
+  /** Short human phrase describing the requested shape, for the user-facing announcement. */
+  readonly requestedShape: string;
+}
+
 /** Input shape for the agent tool. */
 export interface AgentInput {
   mode: 'spawn' | 'batch-spawn' | 'status' | 'cancel' | 'list' | 'templates' | 'get' | 'budget' | 'plan' | 'wait' | 'message' | 'wrfc-chains' | 'wrfc-history' | 'cohort-status' | 'cohort-report';
@@ -273,6 +289,8 @@ export interface AgentInput {
   systemPromptAddendum?: string | undefined;
   /** Internal compound WRFC deliverables owned by one top-level WRFC chain. */
   wrfcSubtasks?: AgentInput['tasks'] | undefined;
+  /** Internal: set by the topology guard when a requested fan-out was collapsed into this owner chain. */
+  fanoutCollapse?: FanoutCollapseInfo | undefined;
   successCriteria?: string[] | undefined;
   requiredEvidence?: string[] | undefined;
   writeScope?: string[] | undefined;
