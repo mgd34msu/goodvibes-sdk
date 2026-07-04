@@ -319,3 +319,177 @@ export class AgentWorktree {
     }
   }
 }
+
+/** Outcome of integrating an item branch back into the base branch (see IsolatedWorktree.integrate). */
+export type IntegrationOutcome =
+  /** Clean merge — `hash` is the merge commit on the base branch. */
+  | { readonly status: 'merged'; readonly hash: string }
+  /** The base merge conflicted; `files` names the conflicting paths. The base tree is restored (merge --abort) so the lane can continue. */
+  | { readonly status: 'conflict'; readonly files: readonly string[] }
+  /** The item branch carried no commits beyond base — nothing to merge (an honest no-op, not a failure). */
+  | { readonly status: 'empty' };
+
+/**
+ * IsolatedWorktree — one work item's dedicated git worktree for the
+ * orchestration engine's `worktree` isolation mode (see WorkstreamIsolation).
+ *
+ * Unlike {@link AgentWorktree} (whose merge() folds an agent branch into the
+ * SAME working tree's current branch and is used today only for its
+ * commitWorkingTree surface), an IsolatedWorktree models the full per-item
+ * lifecycle the engine drives:
+ *
+ *   create()    — add a git worktree at `path` on a fresh branch `branch`,
+ *                 branched from the base branch (the root tree's current HEAD).
+ *   commit()    — scoped-commit the item's touched paths onto `branch`, INSIDE
+ *                 the worktree (delegates to AgentWorktree.commitWorkingTree
+ *                 bound to `path`, so the ignored/hallucinated/deletion
+ *                 filtering is reused verbatim).
+ *   isClean()   — whether the worktree's working tree has uncommitted changes
+ *                 (drives the fail/kill cleanup rule: remove only if clean).
+ *   integrate() — merge `branch` into the base branch IN THE ROOT TREE. The
+ *                 root tree stays checked out on base; a different branch being
+ *                 merged never needs the worktree removed first. On conflict it
+ *                 runs `merge --abort` to restore the root index so the single
+ *                 sequential integration lane can proceed to the next item.
+ *   remove()    — remove the worktree dir and delete `branch` (post-merge, or
+ *                 a clean tree after fail/kill).
+ *   keepInPlace()/branchHasCommits() — inspection helpers for KEPT worktrees.
+ *
+ * Location: worktrees live under `<root>/.goodvibes/.worktrees/`, the same
+ * gitignored bookkeeping area AgentWorktree and WorktreeRegistry already use —
+ * chosen over the system temp dir deliberately: (1) crash cleanup — a worktree
+ * under the repo is discoverable by `git worktree list` and the existing
+ * WorktreeRegistry path scan, so an orphan left by a crashed process can be
+ * reconciled; a temp-dir worktree is invisible to repo-relative reconciliation
+ * and can be swept out from under a KEPT (dirty) tree by an OS temp cleaner,
+ * losing data. (2) gitignore interplay — `.goodvibes/` is already ignored and
+ * the commit path already excludes it, so a nested worktree checkout there
+ * never pollutes the parent's tracked status nor gets accidentally committed.
+ */
+export class IsolatedWorktree {
+  readonly path: string;
+  readonly branch: string;
+  private readonly rootGit: GitService;
+  private readonly baseBranch: string;
+
+  /**
+   * @param rootDir     the repository root (base tree) — merges land here.
+   * @param path        absolute path for this item's worktree directory.
+   * @param branch      the item branch name to create/check out in the worktree.
+   * @param baseBranch  the branch merges integrate into (the root tree's branch).
+   */
+  constructor(rootDir: string, path: string, branch: string, baseBranch: string) {
+    this.path = path;
+    this.branch = branch;
+    this.baseBranch = baseBranch;
+    this.rootGit = new GitService(rootDir);
+  }
+
+  /** Add the worktree on a fresh `branch` branched from base (the root tree's current HEAD). */
+  async create(): Promise<void> {
+    logger.debug('IsolatedWorktree.create', { path: this.path, branch: this.branch });
+    await this.rootGit.worktreeAdd(this.path, this.branch);
+  }
+
+  /**
+   * Scoped-commit the item's touched paths onto the item branch, inside the
+   * worktree. Reuses AgentWorktree.commitWorkingTree (bound to the worktree
+   * path) so the ignored/hallucinated/confirmed-deletion filtering is identical
+   * to shared mode. A fresh worktree starts clean, so in worktree mode the
+   * launch-dirty snapshot is per-worktree and trivially empty (see the engine).
+   */
+  async commit(message: string, paths?: string[]): Promise<CommitWorkingTreeResult> {
+    return new AgentWorktree(this.path).commitWorkingTree(message, paths);
+  }
+
+  /** HEAD of the item branch (inside the worktree), or null if it can't be read. */
+  async currentHead(): Promise<string | null> {
+    try {
+      const wgit = simpleGit({ baseDir: this.path });
+      return (await wgit.raw(['rev-parse', 'HEAD'])).trim();
+    } catch (error) {
+      logger.warn('IsolatedWorktree.currentHead failed', { path: this.path, error: summarizeError(error) });
+      return null;
+    }
+  }
+
+  /** True when the worktree has NO uncommitted changes (clean tree). Missing dir ⇒ treated as clean. */
+  async isClean(): Promise<boolean> {
+    if (!existsSync(this.path)) return true;
+    try {
+      const wgit = simpleGit({ baseDir: this.path });
+      const status = (await wgit.raw(['status', '--porcelain'])).trim();
+      return status.length === 0;
+    } catch (error) {
+      // If we can't read status, treat as DIRTY (keep the tree) — data safety.
+      logger.warn('IsolatedWorktree.isClean: status failed, treating as dirty', { path: this.path, error: summarizeError(error) });
+      return false;
+    }
+  }
+
+  /** True when the item branch carries at least one commit beyond the base branch. */
+  async branchHasCommits(): Promise<boolean> {
+    try {
+      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      const count = parseInt((await wgit.raw(['rev-list', '--count', `${this.baseBranch}..${this.branch}`])).trim(), 10);
+      return Number.isFinite(count) && count > 0;
+    } catch (error) {
+      logger.warn('IsolatedWorktree.branchHasCommits: rev-list failed, treating as no commits', { branch: this.branch, error: summarizeError(error) });
+      return false;
+    }
+  }
+
+  /**
+   * Merge the item branch into the base branch in the ROOT tree. Returns an
+   * honest {@link IntegrationOutcome}: `merged` (with the merge commit hash),
+   * `conflict` (with the conflicting files — the merge is aborted so the root
+   * is restored and the lane can continue), or `empty` (no commits to merge).
+   * Never auto-resolves a conflict.
+   */
+  async integrate(): Promise<IntegrationOutcome> {
+    if (!(await this.branchHasCommits())) {
+      logger.debug('IsolatedWorktree.integrate: branch has no commits beyond base, nothing to merge', { branch: this.branch });
+      return { status: 'empty' };
+    }
+    const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+    const before = (await wgit.raw(['rev-parse', 'HEAD'])).trim();
+    const result = await this.rootGit.merge(this.branch);
+    if (result.success) {
+      const hash = (await wgit.raw(['rev-parse', 'HEAD'])).trim();
+      // A fast-forward or an already-merged branch can leave HEAD unmoved; a
+      // fresh merge commit moves it. Either way the branch content is now in
+      // base — report the current base HEAD as the integration point.
+      logger.debug('IsolatedWorktree.integrate: merged', { branch: this.branch, before, hash });
+      return { status: 'merged', hash };
+    }
+    // Conflict — restore the root tree so the sequential lane can continue.
+    const files = [...(result.conflicts ?? [])];
+    try {
+      await wgit.raw(['merge', '--abort']);
+    } catch (err) {
+      logger.warn('IsolatedWorktree.integrate: merge --abort did not complete after conflict', { branch: this.branch, error: summarizeError(err) });
+    }
+    logger.debug('IsolatedWorktree.integrate: conflict, base restored', { branch: this.branch, files });
+    return { status: 'conflict', files };
+  }
+
+  /** Remove the worktree directory and delete the item branch (post-merge, or a clean tree after fail/kill). */
+  async remove(): Promise<void> {
+    logger.debug('IsolatedWorktree.remove', { path: this.path, branch: this.branch });
+    if (existsSync(this.path)) {
+      try {
+        await this.rootGit.worktreeRemove(this.path);
+      } catch (err) {
+        logger.debug('IsolatedWorktree.remove: first attempt failed, retrying with --force', { path: this.path, error: summarizeError(err) });
+        const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+        await wgit.raw(['worktree', 'remove', '--force', this.path]);
+      }
+    }
+    try {
+      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      await wgit.raw(['branch', '-D', this.branch]);
+    } catch (err) {
+      logger.warn('IsolatedWorktree.remove: branch delete did not complete', { branch: this.branch, error: summarizeError(err) });
+    }
+  }
+}

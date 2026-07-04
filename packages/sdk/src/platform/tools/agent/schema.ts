@@ -302,6 +302,15 @@ export interface AgentInput {
   orchestrationNodeId?: string | undefined;
   parentNodeId?: string | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
+  /**
+   * Overrides this spawn's tool working directory (absolute path), e.g. an
+   * orchestration-engine item's dedicated git worktree in `worktree`
+   * isolation mode (see platform/orchestration/worktree-isolation.ts).
+   * Omitted ⇒ the orchestrator's default working directory, exactly as
+   * before this field existed. Internal — not part of any user-facing agent
+   * template surface.
+   */
+  workingDirectory?: string | undefined;
   // cohort grouping
   cohort?: string | undefined;
   // batch-spawn

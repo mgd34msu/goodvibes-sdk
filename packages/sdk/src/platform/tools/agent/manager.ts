@@ -174,6 +174,16 @@ export interface AgentRecord {
    * systems' agents are never conflated.
    */
   workItemId?: string | undefined;
+  /**
+   * Overrides this agent's tool working directory (absolute path) — see
+   * AgentInput.workingDirectory. Copied from the spawn input at construction
+   * (NOT settable post-hoc like workItemId: AgentOrchestrator.runAgent reads
+   * it synchronously to select/build the per-cwd ToolRegistry before the
+   * caller of spawn() gets its return value back). Absent ⇒ the
+   * orchestrator's default working directory, unchanged from before this
+   * field existed.
+   */
+  workingDirectory?: string | undefined;
   cohort?: string | undefined;
   orchestrationGraphId?: string | undefined;
   orchestrationNodeId?: string | undefined;
@@ -502,6 +512,7 @@ export class AgentManager {
         reasoningSummaryCount: 0,
       },
       dangerously_disable_wrfc: input.dangerously_disable_wrfc,
+      workingDirectory: input.workingDirectory,
       cohort: input.cohort,
 
       ...(orchestrationGraphId ? {
