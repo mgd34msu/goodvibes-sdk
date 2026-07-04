@@ -15,6 +15,7 @@ import {
 } from '../../packages/sdk/src/platform/runtime/emitters/agents.js';
 import type { AgentInput, AgentRecord } from '../../packages/sdk/src/platform/tools/agent/manager.js';
 import type { PhaseRunnerAgentManagerLike, WrfcWorktreeOps } from '../../packages/sdk/src/platform/orchestration/index.js';
+import type { CommitWorkingTreeResult } from '../../packages/sdk/src/platform/agents/worktree.js';
 
 /** Drain the microtask queue fully (RuntimeEventBus + Promise chains use queueMicrotask). */
 export async function flushMicrotasks(rounds = 12): Promise<void> {
@@ -104,9 +105,9 @@ export function makeFakeWorktree(): FakeWorktree {
     commits,
     merges,
     cleanups,
-    async commitWorkingTree(message: string, paths?: string[]): Promise<string | null> {
+    async commitWorkingTree(message: string, paths?: string[]): Promise<CommitWorkingTreeResult> {
       commits.push({ message, paths });
-      return 'fake-commit-sha';
+      return { hash: 'fake-commit-sha', skippedIgnored: [] };
     },
     async merge(agentId: string): Promise<boolean> {
       merges.push(agentId);

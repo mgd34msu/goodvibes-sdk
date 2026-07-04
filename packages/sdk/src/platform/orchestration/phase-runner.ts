@@ -48,7 +48,7 @@
 import type { AgentManager, AgentRecord } from '../tools/agent/manager.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import { AgentWorktree } from '../agents/worktree.js';
+import { AgentWorktree, type CommitWorkingTreeResult } from '../agents/worktree.js';
 import {
   parseCompletionReport,
   type CompletionReport,
@@ -76,7 +76,7 @@ export type PhaseRunnerAgentManagerLike = Pick<
 export interface WrfcWorktreeOps {
   merge(agentId: string): Promise<boolean>;
   cleanup(agentId: string): Promise<void>;
-  commitWorkingTree(message: string, paths?: string[]): Promise<string | null>;
+  commitWorkingTree(message: string, paths?: string[]): Promise<CommitWorkingTreeResult>;
   currentHead(): Promise<string | null>;
 }
 
