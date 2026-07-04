@@ -1,4 +1,4 @@
-import type { Tool, ToolDefinition, ToolResult } from '../types/tools.js';
+import type { Tool, ToolDefinition, ToolExecuteOptions, ToolResult } from '../types/tools.js';
 import { ToolError } from '../types/errors.js';
 import { repairToolCall } from './auto-repair.js';
 import { ToolContractVerifier } from '../runtime/tools/contract-verifier.js';
@@ -90,11 +90,18 @@ export class ToolRegistry {
     return Array.from(this.tools.values()).map((t) => t.definition);
   }
 
-  /** Execute a named tool with the given arguments. Wraps errors in ToolResult. */
+  /**
+   * Execute a named tool with the given arguments. Wraps errors in ToolResult.
+   *
+   * `opts.signal` (Wave 4, wo701) is an additive pass-through to
+   * `tool.execute` — only tools that opt in (exec, fetch) read it. Callers
+   * that don't have a cancellation signal (the common case) omit `opts`.
+   */
   async execute(
     callId: string,
     name: string,
     args: Record<string, unknown>,
+    opts?: ToolExecuteOptions,
   ): Promise<ToolResult> {
     const tool = this.tools.get(name);
     if (!tool) {
@@ -111,7 +118,7 @@ export class ToolRegistry {
       const repairResult = repairToolCall(name, args, tool.definition);
       const effectiveArgs = repairResult.repaired ? repairResult.fixed : args;
 
-      const result = await tool.execute(effectiveArgs);
+      const result = await tool.execute(effectiveArgs, opts);
       // Tool.execute returns ToolResult without callId — inject it here
       const toolResult = { ...result, callId };
 

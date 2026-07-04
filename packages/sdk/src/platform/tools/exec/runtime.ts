@@ -136,6 +136,11 @@ function buildTimedOutResult(cmdStr: string, cwd: string | undefined, durationMs
   return { cmd: cmdStr, exit_code: null, stdout: '', stderr: '', success: false, timed_out: true, duration_ms: durationMs, cwd, ...(progressFile ? { progress_file: progressFile } : {}) };
 }
 
+/** Wave-4 cooperative cancellation (wo701): mirrors buildTimedOutResult's shape for the AbortSignal path. */
+function buildCancelledResult(cmdStr: string, cwd: string | undefined, durationMs: number): ExecCommandResult {
+  return { cmd: cmdStr, exit_code: null, stdout: '', stderr: '', success: false, cancelled: true, duration_ms: durationMs, cwd };
+}
+
 function getProgressDirectory(workingDirectory: string): string {
   return join(workingDirectory, ...OVERFLOW_SUBDIR);
 }
@@ -186,6 +191,7 @@ async function runCommand(
   cmdInput: ExecCommandInput,
   workingDirectory: string,
   globalTimeout: number,
+  signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   const guardResult = await guardExecCommand(cmdStr, DEFAULT_ALLOWED_CLASSES, featureFlags);
   if (!guardResult.allowed) {
@@ -207,20 +213,27 @@ async function runCommand(
   const mergedEnv = { ...buildCleanEnv(), ...cmdInput.env };
   const startTime = Date.now();
 
+  // Wave-4 cooperative cancellation (wo701) is wired for the foreground and
+  // progress-streamed paths (the common cases — progress auto-engages once
+  // timeout_ms exceeds PROGRESS_AUTO_THRESHOLD_MS, which the 120s default
+  // timeout always does). `until`-pattern commands are explicitly deferred
+  // (see the WO report) — the timeout kill-timer they already have still
+  // applies, just not an external AbortSignal.
   if (cmdInput.until) {
     return runUntil(processManager, overflowHandler, cmdStr, cmdInput, cwd, mergedEnv, timeoutMs, startTime);
   }
 
   const useProgress = cmdInput.progress === true || timeoutMs > PROGRESS_AUTO_THRESHOLD_MS;
   if (useProgress) {
-    return runCommandWithProgress(processManager, overflowHandler, cmdStr, cmdInput, workingDirectory, cwd, mergedEnv, timeoutMs, startTime);
+    return runCommandWithProgress(processManager, overflowHandler, cmdStr, cmdInput, workingDirectory, cwd, mergedEnv, timeoutMs, startTime, signal);
   }
 
   const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
   let timedOut = false;
+  let cancelled = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
-  let timeoutResolve!: () => void;
-  const timeoutSentinel = new Promise<void>((res) => { timeoutResolve = res; });
+  let stopResolve!: () => void;
+  const stopSentinel = new Promise<void>((res) => { stopResolve = res; });
 
   killTimer = setTimeout(async () => {
     timedOut = true;
@@ -232,9 +245,28 @@ async function runCommand(
       // The process may have already exited before kill.
       logger.debug('[ExecRuntime] kill on timeout failed (process may have exited)', { error: String(err) });
     }
-    timeoutResolve();
+    stopResolve();
   }, timeoutMs);
   killTimer.unref?.();
+
+  const onAbort = (): void => {
+    if (timedOut || cancelled) return;
+    cancelled = true;
+    void (async () => {
+      try {
+        proc.kill('SIGTERM');
+        await sleep(200);
+        proc.kill('SIGKILL');
+      } catch (err: unknown) {
+        logger.debug('[ExecRuntime] kill on cancellation failed (process may have exited)', { error: String(err) });
+      }
+      stopResolve();
+    })();
+  };
+  if (signal) {
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  }
 
   try {
     type ProcResult = [string, string, number];
@@ -247,20 +279,24 @@ async function runCommand(
     let procResult: ProcResult | undefined;
     await Promise.race([
       procPromise.then((r) => { procResult = r; }),
-      timeoutSentinel,
+      stopSentinel,
     ]);
 
     clearTimeout(killTimer);
-    if (timedOut) {
+    if (signal) signal.removeEventListener('abort', onAbort);
+    if (timedOut || cancelled) {
       try {
         await procPromise;
       } catch (error) {
-        logger.debug('exec foreground command collection failed after timeout', {
+        logger.debug('exec foreground command collection failed after stop', {
           command: cmdStr,
+          reason: timedOut ? 'timeout' : 'cancelled',
           error: summarizeError(error),
         });
       }
-      return buildTimedOutResult(cmdStr, cwd, Date.now() - startTime);
+      return timedOut
+        ? buildTimedOutResult(cmdStr, cwd, Date.now() - startTime)
+        : buildCancelledResult(cmdStr, cwd, Date.now() - startTime);
     }
 
     const [stdoutRaw, stderrRaw, exitCode] = procResult!;
@@ -282,6 +318,7 @@ async function runCommand(
     return applyExpectations(result, cmdInput.expect, exitCode);
   } catch (err) {
     clearTimeout(killTimer);
+    if (signal) signal.removeEventListener('abort', onAbort);
     throw err;
   }
 }
@@ -296,13 +333,15 @@ async function runCommandWithProgress(
   mergedEnv: Record<string, string>,
   timeoutMs: number,
   startTime: number,
+  signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   const progressFile = initProgressFile(cmdStr, workingDirectory);
   const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
   let timedOut = false;
+  let cancelled = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
-  let timeoutResolve!: () => void;
-  const timeoutSentinel = new Promise<void>((res) => { timeoutResolve = res; });
+  let stopResolve!: () => void;
+  const stopSentinel = new Promise<void>((res) => { stopResolve = res; });
 
   killTimer = setTimeout(async () => {
     timedOut = true;
@@ -314,9 +353,29 @@ async function runCommandWithProgress(
       logger.debug('[ExecRuntime] kill on streamed timeout failed (process may have exited)', { error: String(err) });
     }
     progressFile.append('# Timed out\n');
-    timeoutResolve();
+    stopResolve();
   }, timeoutMs);
   killTimer.unref?.();
+
+  const onAbort = (): void => {
+    if (timedOut || cancelled) return;
+    cancelled = true;
+    void (async () => {
+      try {
+        proc.kill('SIGTERM');
+        await sleep(200);
+        proc.kill('SIGKILL');
+      } catch (err: unknown) {
+        logger.debug('[ExecRuntime] kill on cancellation failed (process may have exited)', { error: String(err) });
+      }
+      progressFile.append('# Cancelled\n');
+      stopResolve();
+    })();
+  };
+  if (signal) {
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  }
 
   let stdoutBuf = '';
   let stderrBuf = '';
@@ -360,19 +419,23 @@ async function runCommandWithProgress(
   };
 
   const ioPromise = Promise.all([readStdout(), readStderr(), proc.exited]);
-  await Promise.race([ioPromise, timeoutSentinel]);
+  await Promise.race([ioPromise, stopSentinel]);
   clearTimeout(killTimer);
+  if (signal) signal.removeEventListener('abort', onAbort);
 
-  if (timedOut) {
+  if (timedOut || cancelled) {
     try {
       await ioPromise;
     } catch (error) {
-      logger.debug('exec progress command IO collection failed after timeout', {
+      logger.debug('exec progress command IO collection failed after stop', {
         command: cmdStr,
+        reason: timedOut ? 'timeout' : 'cancelled',
         error: summarizeError(error),
       });
     }
-    return { ...buildTimedOutResult(cmdStr, cwd, Date.now() - startTime, progressFile.path), stdout: stdoutBuf, stderr: stderrBuf };
+    return timedOut
+      ? { ...buildTimedOutResult(cmdStr, cwd, Date.now() - startTime, progressFile.path), stdout: stdoutBuf, stderr: stderrBuf }
+      : { ...buildCancelledResult(cmdStr, cwd, Date.now() - startTime), stdout: stdoutBuf, stderr: stderrBuf, progress_file: progressFile.path };
   }
 
   const ioResult = await ioPromise.catch((error) => {
@@ -511,6 +574,9 @@ export function isRetryableExecResult(
 ): boolean {
   // Timed-out commands are never auto-retried — callers must decide
   if (result.timed_out) return false;
+  // Cancelled commands (Wave 4, wo701) must never be retried — retrying
+  // after an operator/engine kill would defeat the cancellation entirely.
+  if (result.cancelled) return false;
 
   const combined = `${result.stdout}\n${result.stderr}`;
 
@@ -561,9 +627,10 @@ async function runWithRetry(
   cmdInput: ExecCommandInput,
   workingDirectory: string,
   globalTimeout: number,
+  signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   if (!cmdInput.retry) {
-    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout);
+    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
   }
 
   const maxRetries = Math.min(cmdInput.retry.max ?? 3, 10);
@@ -574,7 +641,7 @@ async function runWithRetry(
   let lastResult: ExecCommandResult | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout);
+    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
     if (lastResult.success) {
       return { ...lastResult, retries: attempt };
     }
@@ -601,13 +668,17 @@ async function executeResolvedCommand(
   cmdInput: ExecCommandInput,
   workingDirectory: string,
   globalTimeout: number,
+  signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   const bgSpecial = handleBgSpecialCommand(processManager, cmdStr);
   if (bgSpecial) return bgSpecial;
   if (cmdInput.background) {
+    // Background processes intentionally outlive this tool call — cancelling
+    // the caller's item/agent must not kill a process the user asked to
+    // detach, so `signal` is deliberately not threaded here.
     return spawnBackground(processManager, cmdStr, resolveCwd(cmdInput.cwd, workingDirectory), cmdInput.env);
   }
-  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout);
+  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
 }
 
 async function executeResolvedCommands(
@@ -619,13 +690,14 @@ async function executeResolvedCommands(
   workingDirectory: string,
   globalTimeout: number,
   failFast: boolean,
+  signal?: AbortSignal,
 ): Promise<ExecCommandResult[]> {
   if (parallel) {
     return mapWithConcurrency(
       resolvedCmds,
       MAX_PARALLEL_EXEC_COMMANDS,
       ({ cmdStr, cmdInput }) =>
-        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout),
+        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal),
     );
   }
 
@@ -637,7 +709,7 @@ async function executeResolvedCommands(
       continue;
     }
 
-    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout);
+    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
     results.push(result);
     if (failFast && !result.success) {
       stopped = true;
@@ -666,6 +738,7 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         stderr: firstStderr,
         ...(result.expectation_error && { expectation_error: result.expectation_error }),
         ...(result.timed_out && { timed_out: true }),
+        ...(result.cancelled && { cancelled: true }),
         ...(result.process_id && { process_id: result.process_id, pid: result.pid }),
         ...(result.progress_file && { progress_file: result.progress_file }),
         ...(result.warnings && { warnings: result.warnings }),
@@ -683,6 +756,7 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         stderr: result.stderr,
         ...(result.expectation_error && { expectation_error: result.expectation_error }),
         ...(result.timed_out && { timed_out: true }),
+        ...(result.cancelled && { cancelled: true }),
         ...(result.process_id && { process_id: result.process_id, pid: result.pid }),
         ...(result.stdout_truncated && { stdout_truncated: true }),
         ...(result.stderr_truncated && { stderr_truncated: true }),
@@ -719,7 +793,7 @@ export function createExecTool(
       supportsStreamingOutput: true,
     },
 
-    async execute(args: Record<string, unknown>) {
+    async execute(args: Record<string, unknown>, opts?: { readonly signal?: AbortSignal | undefined }) {
       try {
         if (!Array.isArray(args['commands']) || (args['commands'] as unknown[]).length === 0) {
           return { success: false, error: 'commands must be a non-empty array' };
@@ -764,6 +838,7 @@ export function createExecTool(
           workingDirectory,
           globalTimeout,
           failFast,
+          opts?.signal,
         );
         const formatted = results.map((r) => formatResult(r, verbosity));
         const allSuccess = results.every((r) => r.success);
@@ -777,7 +852,7 @@ export function createExecTool(
         const failed = results.filter((r) => !r.success);
         const errorSummary = failed.length > 0
           ? `${failed.length} of ${results.length} command(s) failed: `
-            + failed.map((r) => `'${r.cmd}'${r.skipped ? ' (skipped)' : ` exit ${r.exit_code}${r.timed_out ? ' (timed out)' : ''}`}`).join('; ')
+            + failed.map((r) => `'${r.cmd}'${r.skipped ? ' (skipped)' : ` exit ${r.exit_code}${r.timed_out ? ' (timed out)' : r.cancelled ? ' (cancelled)' : ''}`}`).join('; ')
           : undefined;
 
         return {
