@@ -235,7 +235,11 @@ async function evaluateGate(
   }
 
   if (report.archetype === 'engineer' && !deps.skipClaimVerification) {
-    const verification = verifyEngineerClaims(report, deps.projectRoot);
+    // Worktree mode: the agent's files landed in the item's OWN worktree, not
+    // the shared projectRoot — verify claims (existence + `git diff`) against
+    // that worktree path, or every real change would be falsely flagged as
+    // phantom work (nothing to find at projectRoot).
+    const verification = verifyEngineerClaims(report, deps.itemWorktree?.path ?? deps.projectRoot);
     if (verification.kind === 'unverified' || verification.kind === 'unverifiable_no_claims') {
       results.push({ gate: 'phantom-work-guard', passed: false, output: verification.summary, durationMs: 0 });
     }
