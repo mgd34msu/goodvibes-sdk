@@ -12,6 +12,7 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
+import type { WrfcChain } from '../packages/sdk/src/platform/agents/wrfc-types.js';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -1487,6 +1488,159 @@ describe('WrfcController — state machine', () => {
     expect(toStates).toContain('reviewing');
     expect(toStates).toContain('awaiting_gates');
     expect(toStates).toContain('passed');
+
+    h.controller.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wave 6, wo-F item d5 — zombie chain reap at rehydrate (importChain)
+// ---------------------------------------------------------------------------
+
+function makeImportableChain(overrides: Partial<WrfcChain> & { id: string }): WrfcChain {
+  return {
+    state: 'engineering',
+    task: 'zombie test chain',
+    ownerAgentId: 'owner-zombie',
+    allAgentIds: [],
+    fixAttempts: 0,
+    reviewCycles: 0,
+    createdAt: Date.now(),
+    reviewScores: [],
+    ownerDecisions: [],
+    ...overrides,
+  };
+}
+
+describe('WrfcController — importChain zombie reap (d5)', () => {
+  test('reaps a reimported non-terminal chain whose entire roster is absent from the live AgentManager', async () => {
+    const h = createHarness();
+    const chain = makeImportableChain({
+      id: 'wrfc-zombie-1',
+      state: 'reviewing',
+      allAgentIds: ['dead-owner', 'dead-engineer'],
+    });
+    // Neither 'dead-owner' nor 'dead-engineer' exists in h.agentStore — this
+    // process's AgentManager has no record of them (a fresh restart).
+
+    const imported = h.controller.importChain(chain);
+    // RuntimeEventBus dispatches listeners via queueMicrotask.
+    await flushMicrotasks();
+
+    expect(imported).toBe(true);
+    const stored = h.controller.getChain('wrfc-zombie-1')!;
+    expect(stored.state).toBe('failed');
+    expect(stored.error).toContain('zombie');
+    expect(stored.failureKind).toBe('other');
+    expect(stored.completedAt).toBeDefined();
+
+    const stateChanged = h.workflowEvents.find((e) => e.type === 'WORKFLOW_STATE_CHANGED');
+    expect(stateChanged).toBeDefined();
+    expect(p5EventData(stateChanged!)['to']).toBe('failed');
+    expect(p5EventData(stateChanged!)['from']).toBe('reviewing');
+    const chainFailed = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
+    expect(chainFailed).toBeDefined();
+    expect(p5EventData(chainFailed!)['chainId']).toBe('wrfc-zombie-1');
+
+    h.controller.dispose();
+  });
+
+  test('resurrection-safe: does NOT reap when even one roster agent id is still live', () => {
+    const h = createHarness();
+    h.addAgent('live-engineer', 'still going');
+    const chain = makeImportableChain({
+      id: 'wrfc-not-zombie',
+      state: 'reviewing',
+      allAgentIds: ['dead-owner', 'live-engineer'],
+    });
+
+    const imported = h.controller.importChain(chain);
+
+    expect(imported).toBe(true);
+    const stored = h.controller.getChain('wrfc-not-zombie')!;
+    expect(stored.state).toBe('reviewing'); // untouched — left exactly as imported
+    expect(stored.error).toBeUndefined();
+
+    h.controller.dispose();
+  });
+
+  test('never reaps an already-terminal reimported chain (failed stays failed, passed stays passed)', () => {
+    const h = createHarness();
+    const failedChain = makeImportableChain({
+      id: 'wrfc-already-failed',
+      state: 'failed',
+      error: 'original failure reason',
+      allAgentIds: ['dead-1'],
+    });
+    const passedChain = makeImportableChain({
+      id: 'wrfc-already-passed',
+      state: 'passed',
+      allAgentIds: ['dead-2'],
+    });
+
+    expect(h.controller.importChain(failedChain)).toBe(true);
+    expect(h.controller.importChain(passedChain)).toBe(true);
+
+    expect(h.controller.getChain('wrfc-already-failed')!.error).toBe('original failure reason');
+    expect(h.controller.getChain('wrfc-already-passed')!.state).toBe('passed');
+
+    h.controller.dispose();
+  });
+
+  test('defensive: a non-terminal chain with an empty agent roster is never reaped (vacuous-truth guard)', () => {
+    const h = createHarness();
+    const chain = makeImportableChain({
+      id: 'wrfc-empty-roster',
+      state: 'engineering',
+      allAgentIds: [],
+    });
+
+    expect(h.controller.importChain(chain)).toBe(true);
+    expect(h.controller.getChain('wrfc-empty-roster')!.state).toBe('engineering');
+
+    h.controller.dispose();
+  });
+
+  test('force=true reimport over an existing non-terminal chain still reaps a zombie incoming chain', () => {
+    const h = createHarness();
+    const existingOwner = h.addAgent('existing-owner', 'existing work');
+    const existing = h.controller.createChain(existingOwner);
+    expect(existing.id).toBeDefined();
+
+    const incoming = makeImportableChain({
+      id: existing.id,
+      state: 'reviewing',
+      allAgentIds: ['dead-owner-2'],
+    });
+
+    const imported = h.controller.importChain(incoming, true);
+
+    expect(imported).toBe(true);
+    expect(h.controller.getChain(existing.id)!.state).toBe('failed');
+
+    h.controller.dispose();
+  });
+
+  test('reap logic runs only at import — listChains() never mutates a stale non-terminal chain on its own', async () => {
+    const h = createHarness();
+    const record = h.addAgent('will-die', 'work that never completes');
+    const chain = h.controller.createChain(record);
+    expect(chain.state).toBe('engineering');
+
+    // The chain's own agent "dies" without ever notifying the controller
+    // (simulates a process restart wiping the in-memory AgentManager, but
+    // WITHOUT going through importChain — createChain's chain is already
+    // live in this controller instance).
+    h.agentStore.delete(chain.engineerAgentId!);
+    h.agentStore.delete(record.id);
+
+    // Calling listChains() repeatedly must never itself reap anything — the
+    // reap check lives ONLY in importChain.
+    h.controller.listChains();
+    h.controller.listChains();
+    await flushMicrotasks();
+
+    expect(h.controller.getChain(chain.id)!.state).toBe('engineering');
 
     h.controller.dispose();
   });
