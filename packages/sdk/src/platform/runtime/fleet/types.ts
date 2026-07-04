@@ -29,6 +29,13 @@ export type ProcessKind =
  * Superset of the coarse manager statuses: `idle` and `queued` exist because
  * ScheduleEntry-between-runs and pending agents need honest states rather
  * than being force-fit into an active state.
+ *
+ * `interrupted` (Wave-3 verb formalization) is a distinct TERMINAL outcome
+ * from `killed`: both come from AgentManager.cancel(), but a graceful
+ * interrupt request and a hard kill are display-distinguishable via
+ * AgentRecord.terminationKind. There is no resume path — `cancel()` is
+ * terminal in the current SDK, so 'interrupted' does NOT mean "process still
+ * alive"; it means "the operator asked nicely" vs. "the operator killed it".
  */
 export type ProcessState =
   | 'thinking'
@@ -40,6 +47,7 @@ export type ProcessState =
   | 'done'
   | 'failed'
   | 'killed'
+  | 'interrupted'
   | 'idle'
   | 'queued';
 

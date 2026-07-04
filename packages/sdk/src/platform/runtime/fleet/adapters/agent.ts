@@ -105,7 +105,11 @@ function deriveAgentState(
     case 'failed':
       return 'failed';
     case 'cancelled':
-      return 'killed';
+      // terminationKind distinguishes a graceful interrupt request from a hard
+      // kill for display purposes (Wave-3 verb formalization). Records
+      // persisted before this field existed have no terminationKind and
+      // default to 'killed' — the historical behavior.
+      return record.terminationKind === 'interrupt' ? 'interrupted' : 'killed';
     case 'pending':
       return 'queued';
     case 'running':

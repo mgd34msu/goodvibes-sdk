@@ -337,6 +337,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     executor: agentOrchestrator,
     configManager,
   });
+  // Wave-3 Part C6 bridge: AgentOrchestrator is constructed before
+  // AgentManager exists, so the conversation-snapshot sink is wired here via
+  // setConversationSink rather than as a constructor dependency (same
+  // ordering constraint as setRuntimeBus above).
+  agentOrchestrator.setConversationSink({
+    register: (agentId, source) => agentManager.registerConversationSource(agentId, source),
+    release: (agentId) => agentManager.releaseConversationSource(agentId),
+  });
   agentManager.setRuntimeBus(options.runtimeBus);
   const wrfcController = new WrfcController(options.runtimeBus, agentMessageBus, {
     agentManager,
