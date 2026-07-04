@@ -186,6 +186,8 @@ export function registerAllTools(
     secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
     overflowHandler?: OverflowHandler | undefined;
     changeTracker?: SessionChangeTracker | undefined;
+    /** Project memory registry — when present, `state mode=memory set` mirrors writes into retrievable records. */
+    memoryRegistry?: import('../state/index.js').MemoryRegistry | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -282,6 +284,7 @@ export function registerAllTools(
     memoryDir: join(workingDirectory, '.goodvibes', 'memory'),
     hookDispatcher,
     modeManager,
+    ...(deps.memoryRegistry ? { memoryRegistry: deps.memoryRegistry } : {}),
   }));
   registerTool(createWorkflowTool(workflowServices));
   registerTool(createFetchTool({
