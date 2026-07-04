@@ -103,6 +103,19 @@ function extractErrorMessage(err: unknown): string {
  * sessionId, timestamps, and source context.
  *
  * This is the authoritative event transport for runtime domain signaling.
+ *
+ * DISPATCH ORDERING GUARANTEE (contract — pinned by
+ * test/runtime-event-bus-dispatch-contract.test.ts): {@link emit} NEVER invokes
+ * a subscriber synchronously. Each matching handler is deferred to its own
+ * `queueMicrotask`, so emit() always returns to its caller — and the caller's
+ * remaining synchronous statements run — BEFORE any listener fires. A component
+ * may therefore emit an event from the MIDDLE of a state mutation without risk
+ * that a subscriber observes the half-applied state: by the time a listener
+ * runs, the mutating call has already completed and the state has settled. This
+ * asynchronous-dispatch ordering is load-bearing for event-ordering safety
+ * across the runtime (e.g. the orchestration zombie-reap path relies on
+ * listeners never seeing a mutation mid-flight) — do NOT replace queueMicrotask
+ * with synchronous invocation.
  */
 export class RuntimeEventBus {
   /** Per-event-type listener sets. Keyed by the exact event type string. */

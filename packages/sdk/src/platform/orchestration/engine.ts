@@ -31,6 +31,7 @@ import { computeClaims, firstPhase, nextPhaseAfter, reviewPhaseBefore, sortedPha
 import {
   CURRENT_WORKSTREAM_SCHEMA_VERSION,
   emptyWorkItemUsage,
+  mergeWorkItemUsage,
   type BudgetCeiling,
   type OrchestrationEvent,
   type OrchestrationEventListener,
@@ -248,7 +249,12 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       item.currentPhaseId = null;
       item.state = 'passed';
       item.completedAt = now();
-      emit({ type: 'item-passed', workstreamId: workstream.id, itemId: item.id });
+      emit({
+        type: 'item-passed',
+        workstreamId: workstream.id,
+        itemId: item.id,
+        ...(item.warnings && item.warnings.length > 0 ? { warnings: [...item.warnings] } : {}),
+      });
     }
   }
 
@@ -257,6 +263,22 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     item.completedAt = now();
     item.failureReason = reason;
     emit({ type: 'item-failed', workstreamId: workstream.id, itemId: item.id, reason });
+  }
+
+  /**
+   * Record a NON-FATAL bookkeeping note on an item without touching its
+   * terminal status (DEBT-4 item 1). Used for post-gate faults that do not
+   * negate the phase's passed work — e.g. a scoped commit that could not
+   * complete. The item still passes/advances; the warning rides along on
+   * `item.warnings` and, for a terminal pass, in the `item-passed` event, so a
+   * passed-with-caveats outcome is visible instead of hidden or mislabelled.
+   */
+  function warnItem(item: WorkItem, note: string): void {
+    (item.warnings ??= []).push(note);
+    logger.warn('orchestration engine: non-fatal bookkeeping warning on a passed work item', {
+      itemId: item.id,
+      note,
+    });
   }
 
   /** Indirection to defeat TS's cross-await narrowing of item.state — see the call site below. */
@@ -284,7 +306,23 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       launchDirtySnapshot,
     });
 
-    item.usage = mergeUsageFromResult(item.usage, outcome.result.usage);
+    // ── Bookkeeping region (AFTER the phase produced its outcome) ───────────
+    // From here on everything is bookkeeping layered on top of a verdict the
+    // phase has ALREADY reached (outcome.result.gate + agentStatus). It must
+    // never be able to turn a passed phase into a failed item: the item's
+    // terminal status derives ONLY from that phase outcome, plus the narrow
+    // negating set (bookkeeping.ts). A bookkeeping fault becomes a warning on a
+    // passed item (warnItem), never a failure — that is what makes "item failed
+    // while every phase passed and the commit landed" unrepresentable
+    // (DEBT-4 item 1). A throw BEFORE this point — inside runPhase, e.g. a gate
+    // subprocess that never yielded a verdict — legitimately reaches tick()'s
+    // catch and fails the item, because there is then no phase outcome to
+    // stand on.
+    try {
+      item.usage = mergeWorkItemUsage(item.usage, outcome.result.usage);
+    } catch (error) {
+      warnItem(item, `usage rollup skipped: ${summarizeError(error)}`);
+    }
     const results = completedResults.get(workstream.id) ?? [];
     results.push(outcome.result);
     completedResults.set(workstream.id, results);
@@ -309,6 +347,27 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     }
 
     if (outcome.result.gate.passed) {
+      // The PHASE PASSED. Post-gate commit bookkeeping can only WARN this item
+      // (or, for the narrow negating set, fail it) — it can never contradict
+      // the passed verdict the gate already reached.
+      const commit = outcome.result.commit;
+      if (commit?.status === 'failed' && commit.negating) {
+        // Negating set: the commit/merge left the workspace corrupted, so the
+        // recorded pass can no longer be trusted — this is the one post-gate
+        // condition that genuinely fails the item.
+        failItem(
+          workstream,
+          item,
+          `phase gate passed but the workspace was left unrecorded/corrupted: ${commit.reason ?? 'commit failed'}`,
+        );
+        return;
+      }
+      if (commit?.status === 'failed') {
+        // Non-negating: the gate passed and the workspace is coherent, so the
+        // work stands. Surface the miss as a warning, never a failure.
+        warnItem(item, `scoped commit did not complete (non-fatal): ${commit.reason ?? 'commit failed'}`);
+      }
+
       // A fix phase's PASSING gate routes BACK to the review phase it was
       // inserted after (dynamic insertion places 'fix' at an ordinal AFTER
       // its review, per design (b) — "inserts a fix phase after review and
@@ -340,24 +399,6 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     );
   }
 
-  function mergeUsageFromResult(current: WorkItemUsage, added: WorkItemUsage): WorkItemUsage {
-    const sawReasoning = current.reasoningTokens !== undefined || added.reasoningTokens !== undefined;
-    const bothPriced = current.costState === 'priced' && added.costState === 'priced';
-    const neitherPriced = current.costUsd === null && added.costUsd === null;
-    return {
-      inputTokens: current.inputTokens + added.inputTokens,
-      outputTokens: current.outputTokens + added.outputTokens,
-      cacheReadTokens: current.cacheReadTokens + added.cacheReadTokens,
-      cacheWriteTokens: current.cacheWriteTokens + added.cacheWriteTokens,
-      reasoningTokens: sawReasoning ? (current.reasoningTokens ?? 0) + (added.reasoningTokens ?? 0) : undefined,
-      llmCallCount: current.llmCallCount + added.llmCallCount,
-      turnCount: current.turnCount + added.turnCount,
-      toolCallCount: current.toolCallCount + added.toolCallCount,
-      costUsd: current.costUsd !== null && added.costUsd !== null ? current.costUsd + added.costUsd : (current.costUsd ?? added.costUsd),
-      costState: bothPriced ? 'priced' : neitherPriced ? 'unpriced' : 'estimated',
-    };
-  }
-
   function tick(workstreamId: string): void {
     if (disposed) return;
     const workstream = workstreams.get(workstreamId);
@@ -382,7 +423,14 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       }
       void runItemPhase(workstream, item, phase)
         .catch((error) => {
-          logger.error('orchestration engine: phase run threw', {
+          // Reaching here means runItemPhase rejected BEFORE the phase produced
+          // an outcome — the run threw inside runPhase (spawn, gate execution,
+          // etc.) with no gate verdict to stand on. That is a genuine phase
+          // failure, so failing the item is honest. Post-outcome bookkeeping
+          // faults never reach here: runItemPhase converts them to warnings on
+          // a passed item (or, for the negating set, an explicit failItem) —
+          // see its bookkeeping region (DEBT-4 item 1).
+          logger.error('orchestration engine: phase run threw before producing an outcome', {
             workstreamId, itemId: item.id, phaseId: phase.id, error: summarizeError(error),
           });
           failItem(workstream, item, summarizeError(error));

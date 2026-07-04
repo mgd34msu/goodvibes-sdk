@@ -12,9 +12,83 @@
  * the WRFC-subtask analogue: it delegates interrupt/kill/steer to its
  * current live agent when it has one.
  */
-import type { Phase, WorkItem, Workstream } from '../../../orchestration/types.js';
-import type { ProcessNode, ProcessState, ProcessUsage } from '../types.js';
+import { mergeWorkItemUsage } from '../../../orchestration/types.js';
+import type { Phase, WorkItem, WorkItemUsage, Workstream } from '../../../orchestration/types.js';
+import type { ProcessCostState, ProcessNode, ProcessState, ProcessUsage } from '../types.js';
 import { workItemNodeId } from './agent.js';
+
+/**
+ * Live in-flight usage of a work-item's currently-active agent, read from that
+ * agent's fleet node at snapshot time (DEBT-4 item 2). Overlaid onto the
+ * item's phase-boundary-committed `item.usage` so a RUNNING phase shows real,
+ * growing numbers instead of n/a until it completes.
+ */
+export interface LiveItemUsage {
+  readonly usage?: ProcessUsage | undefined;
+  readonly costUsd?: number | null | undefined;
+  readonly costState?: ProcessCostState | undefined;
+}
+
+/** True once a ProcessUsage carries any non-zero count worth surfacing. */
+function hasAnyUsage(u: ProcessUsage | undefined): boolean {
+  return u !== undefined && (
+    u.inputTokens > 0 || u.outputTokens > 0 || u.cacheReadTokens > 0 || u.cacheWriteTokens > 0
+    || u.llmCallCount > 0 || u.turnCount > 0 || u.toolCallCount > 0
+  );
+}
+
+/**
+ * True when a committed WorkItemUsage carries no real data yet (the untouched
+ * emptyWorkItemUsage placeholder — zero counts, unpriced, no cost). Such a
+ * placeholder must NOT be folded into a live overlay: merging an 'unpriced'
+ * zero into a priced overlay would honestly-but-uselessly degrade the result to
+ * 'estimated' and drop it from the priced cost rollup (aggregateWorkItemCost),
+ * re-introducing the very n/a this overlay removes. When committed is empty the
+ * overlay stands alone.
+ */
+function isEmptyCommittedUsage(u: WorkItemUsage): boolean {
+  return u.costUsd === null && !hasAnyUsage(u);
+}
+
+/** Convert a live overlay into WorkItemUsage shape, or undefined when it carries nothing real yet. */
+function liveOverlayUsage(live: LiveItemUsage | undefined): WorkItemUsage | undefined {
+  if (!live) return undefined;
+  const u = live.usage;
+  const hasCost = live.costUsd !== undefined && live.costUsd !== null;
+  if (!hasAnyUsage(u) && !hasCost) return undefined;
+  return {
+    inputTokens: u?.inputTokens ?? 0,
+    outputTokens: u?.outputTokens ?? 0,
+    cacheReadTokens: u?.cacheReadTokens ?? 0,
+    cacheWriteTokens: u?.cacheWriteTokens ?? 0,
+    reasoningTokens: u?.reasoningTokens,
+    llmCallCount: u?.llmCallCount ?? 0,
+    turnCount: u?.turnCount ?? 0,
+    toolCallCount: u?.toolCallCount ?? 0,
+    costUsd: live.costUsd ?? null,
+    costState: live.costState ?? (hasCost ? 'priced' : 'unpriced'),
+  };
+}
+
+/**
+ * The usage the fleet DISPLAYS for a work-item: its committed phase-boundary
+ * total, plus — only while it is actively 'in-phase' — the live in-flight
+ * usage of its current agent. The overlay is applied ONLY for an 'in-phase'
+ * item, which is exactly the window in which `item.usage` does NOT yet include
+ * the running phase (the engine folds that in at completion — see
+ * runItemPhase), so committed + live never double-counts and the two hand off
+ * atomically at the phase boundary. Because both operands only ever grow and
+ * merge through {@link mergeWorkItemUsage}, presence is MONOTONE: once usage
+ * has appeared for an item it never blinks back to n/a (DEBT-4 item 2).
+ */
+export function displayWorkItemUsage(item: WorkItem, live: LiveItemUsage | undefined): WorkItemUsage {
+  const overlay = item.state === 'in-phase' ? liveOverlayUsage(live) : undefined;
+  if (!overlay) return item.usage;
+  // First-phase window: no committed usage yet, so the live overlay is the
+  // whole truth — don't let the empty 'unpriced' placeholder degrade it.
+  if (isEmptyCommittedUsage(item.usage)) return overlay;
+  return mergeWorkItemUsage(item.usage, overlay);
+}
 
 /** Workstream node ids are namespaced to avoid colliding with agent/process ids. */
 export function workstreamNodeId(workstreamId: string): string {
@@ -80,9 +154,15 @@ function phaseState(workstream: Workstream, phase: Phase): ProcessState {
   return allTerminal ? 'done' : 'idle';
 }
 
-/** token-count-only rollup over a workstream's items (cost handled separately — see aggregateWorkItemCost). */
-function sumWorkItemUsage(items: readonly WorkItem[]): ProcessUsage | undefined {
-  if (items.length === 0) return undefined;
+/**
+ * token-count-only rollup over a workstream's per-item DISPLAY usages (cost
+ * handled separately — see aggregateWorkItemCost). Takes resolved display
+ * usages (committed + any live overlay) rather than raw items so the workstream
+ * total reflects live in-flight work, not just phase-boundary snapshots
+ * (DEBT-4 item 2).
+ */
+function sumWorkItemUsage(usages: readonly WorkItemUsage[]): ProcessUsage | undefined {
+  if (usages.length === 0) return undefined;
   const total = {
     inputTokens: 0,
     outputTokens: 0,
@@ -94,8 +174,7 @@ function sumWorkItemUsage(items: readonly WorkItem[]): ProcessUsage | undefined 
     toolCallCount: 0,
   };
   let sawReasoning = false;
-  for (const item of items) {
-    const usage = item.usage;
+  for (const usage of usages) {
     total.inputTokens += usage.inputTokens;
     total.outputTokens += usage.outputTokens;
     total.cacheReadTokens += usage.cacheReadTokens;
@@ -120,21 +199,28 @@ function sumWorkItemUsage(items: readonly WorkItem[]): ProcessUsage | undefined 
   };
 }
 
-/** Honest cost rollup: all-priced -> 'priced'; none -> null/'unpriced'; mixed -> summed subset, 'estimated'. Mirrors adapters/wrfc.ts aggregateCost. */
-function aggregateWorkItemCost(items: readonly WorkItem[]): { costUsd: number | null; costState: ProcessNode['costState'] } {
-  const withUsage = items.filter((item) => item.usage.costState !== 'unpriced' || item.usage.inputTokens > 0 || item.usage.outputTokens > 0);
+/** Honest cost rollup: all-priced -> 'priced'; none -> null/'unpriced'; mixed -> summed subset, 'estimated'. Mirrors adapters/wrfc.ts aggregateCost. Operates on resolved display usages (committed + live overlay). */
+function aggregateWorkItemCost(usages: readonly WorkItemUsage[]): { costUsd: number | null; costState: ProcessNode['costState'] } {
+  const withUsage = usages.filter((usage) => usage.costState !== 'unpriced' || usage.inputTokens > 0 || usage.outputTokens > 0);
   if (withUsage.length === 0) return { costUsd: null, costState: 'unpriced' };
-  const priced = withUsage.filter((item) => item.usage.costState === 'priced' && item.usage.costUsd !== null);
+  const priced = withUsage.filter((usage) => usage.costState === 'priced' && usage.costUsd !== null);
   if (priced.length === 0) return { costUsd: null, costState: 'unpriced' };
-  const total = priced.reduce((sum, item) => sum + (item.usage.costUsd as number), 0);
+  const total = priced.reduce((sum, usage) => sum + (usage.costUsd as number), 0);
   return { costUsd: total, costState: priced.length === withUsage.length ? 'priced' : 'estimated' };
 }
 
-/** WorkItem -> ProcessNode. Delegates interruptible/killable/steerable to its currently-active agent, mirroring adaptSubtask. */
-export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: string, opts: { steerable: boolean }): ProcessNode {
+/**
+ * WorkItem -> ProcessNode. Delegates interruptible/killable/steerable to its
+ * currently-active agent, mirroring adaptSubtask. `opts.live` supplies the
+ * currently-active agent's in-flight usage so a running phase shows real,
+ * growing numbers instead of n/a until it completes (DEBT-4 item 2); omit it
+ * (or pass undefined) for the committed-only view.
+ */
+export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: string, opts: { steerable: boolean; live?: LiveItemUsage | undefined }): ProcessNode {
   const state = workItemState(item);
   const killable = !TERMINAL_ITEM_STATES.has(item.state);
   const activeAgentId = activeWorkItemAgentId(item);
+  const usage = displayWorkItemUsage(item, opts.live);
   return {
     id: workItemNodeId(item.id),
     kind: 'work-item',
@@ -145,20 +231,20 @@ export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: st
     startedAt: item.createdAt,
     completedAt: item.completedAt,
     elapsedMs: Math.max(0, (item.completedAt ?? Date.now()) - item.createdAt),
-    usage: item.usage.inputTokens > 0 || item.usage.outputTokens > 0
+    usage: usage.inputTokens > 0 || usage.outputTokens > 0
       ? {
-          inputTokens: item.usage.inputTokens,
-          outputTokens: item.usage.outputTokens,
-          cacheReadTokens: item.usage.cacheReadTokens,
-          cacheWriteTokens: item.usage.cacheWriteTokens,
-          reasoningTokens: item.usage.reasoningTokens,
-          llmCallCount: item.usage.llmCallCount,
-          turnCount: item.usage.turnCount,
-          toolCallCount: item.usage.toolCallCount,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheWriteTokens: usage.cacheWriteTokens,
+          reasoningTokens: usage.reasoningTokens,
+          llmCallCount: usage.llmCallCount,
+          turnCount: usage.turnCount,
+          toolCallCount: usage.toolCallCount,
         }
       : undefined,
-    costUsd: item.usage.costUsd,
-    costState: item.usage.costState,
+    costUsd: usage.costUsd,
+    costState: usage.costState,
     // Blocked-budget items surface their reason (set/cleared by the engine
     // alongside the state transition, types.ts WorkItem.blockedReason) in
     // place of the bare phase id — the phase id alone doesn't tell an
@@ -212,11 +298,15 @@ export function adaptPhase(phase: Phase, workstream: Workstream): ProcessNode {
 }
 
 /**
- * Workstream -> ProcessNode. Root node (no parentId). Sums every item's
- * usage/cost exactly once (never through an intermediate phase bucket — see
- * adaptPhase) so this total can never double-count.
+ * Workstream -> ProcessNode. Root node (no parentId). Sums every item's DISPLAY
+ * usage/cost (committed total + any live in-flight overlay, resolved once per
+ * item) exactly once — never through an intermediate phase bucket (see
+ * adaptPhase) — so this total can never double-count and never shows n/a while
+ * an item is actively producing usage (DEBT-4 item 2). `liveByItemId` supplies
+ * the active agents' in-flight usage keyed by item id; omit it for the
+ * committed-only view.
  */
-export function adaptWorkstream(workstream: Workstream, now: number): ProcessNode {
+export function adaptWorkstream(workstream: Workstream, now: number, liveByItemId?: ReadonlyMap<string, LiveItemUsage>): ProcessNode {
   const state = workstreamState(workstream);
   const killable = state !== 'done' && state !== 'failed';
   const completedAt = (state === 'done' || state === 'failed')
@@ -225,7 +315,8 @@ export function adaptWorkstream(workstream: Workstream, now: number): ProcessNod
         undefined,
       )
     : undefined;
-  const { costUsd, costState } = aggregateWorkItemCost(workstream.items);
+  const displayUsages = workstream.items.map((item) => displayWorkItemUsage(item, liveByItemId?.get(item.id)));
+  const { costUsd, costState } = aggregateWorkItemCost(displayUsages);
   return {
     id: workstreamNodeId(workstream.id),
     kind: 'workstream',
@@ -235,7 +326,7 @@ export function adaptWorkstream(workstream: Workstream, now: number): ProcessNod
     startedAt: workstream.createdAt,
     completedAt,
     elapsedMs: Math.max(0, (completedAt ?? now) - workstream.createdAt),
-    usage: sumWorkItemUsage(workstream.items),
+    usage: sumWorkItemUsage(displayUsages),
     costUsd,
     costState,
     currentActivity: undefined,
