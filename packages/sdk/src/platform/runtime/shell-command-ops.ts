@@ -29,7 +29,7 @@ import type {
   SessionTaskGraphSnapshot,
   TaskHandoffRecord,
 } from '../sessions/orchestration/index.js';
-import type { ExecutionPlan, PlanItem } from '../core/execution-plan.js';
+import type { DismissPlanResult, ExecutionPlan, PlanItem } from '../core/execution-plan.js';
 import type { DomainVerbosity } from './notifications/types.js';
 import type { HITLMode, HITLModeDefinition } from '../state/mode-manager.js';
 
@@ -75,6 +75,8 @@ export interface ShellPlanManagerService {
   toMarkdown(plan: ExecutionPlan): string;
   create(title: string, items: Omit<PlanItem, 'id' | 'status'>[], sessionId?: string): ExecutionPlan;
   save(plan: ExecutionPlan): void;
+  /** Archive the active plan (DEBT-3). See ExecutionPlanManager.dismiss. */
+  dismiss(sessionId?: string): DismissPlanResult;
 }
 
 export interface ShellSessionOrchestrationService {
