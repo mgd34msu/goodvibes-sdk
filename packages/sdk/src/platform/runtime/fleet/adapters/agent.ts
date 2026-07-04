@@ -121,7 +121,13 @@ function deriveAgentState(
   // Stalled: only derivable when a bus feeds the side-table (headless runtimes
   // degrade to the coarse state, never crash). Baseline is the last observed
   // event, or startedAt when the agent predates the registry.
-  if (ctx.liveness) {
+  //
+  // executing-tool is exempt: AGENT_AWAITING_TOOL stamps activity.at once at
+  // tool start and no further 'agents' event fires until the tool returns, so
+  // a long-running tool call (build, test suite, bash) would otherwise be
+  // misread as silence and falsely flip a working agent to 'stalled'. Only
+  // thinking/streaming (and other non-tool) silence may stall.
+  if (ctx.liveness && entry?.state !== 'executing-tool') {
     const lastActivityAt = entry?.at ?? record.startedAt;
     if (ctx.now - lastActivityAt > ctx.stalledThresholdMs) return 'stalled';
   }
