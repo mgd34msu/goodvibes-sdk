@@ -28,6 +28,46 @@ const DESIGN_ONLY_ACTION_RE =
 const NO_WRITE_RE =
   /\b(?:do\s+not|don't|without)\s+(?:write|modify|edit|create|change)\s+(?:files?|code|source|implementation)\b|\bno[-\s]?write\b|\bread[-\s]?only\b/i;
 
+/**
+ * High-precision detector for an EXPLICIT user request to run separate agents in
+ * parallel / one per unit of work. This is user intent, exactly like
+ * userProhibitsDelegation is (see wrfc-routing.ts): when the user asks for a
+ * parallel fan-out, the topology guard must not silently collapse it into one
+ * chain. Conservative by design — a plain "build X" never matches; only phrasings
+ * that name a parallel/per-item/separate-agent shape do.
+ */
+const PARALLEL_FANOUT_REQUEST_RE =
+  /\b(?:in\s+parallel|concurrent(?:ly)?)\b|\b(?:separate|independent|dedicated|its?\s+own|one)\s+(?:sub[-\s]?)?agents?\b|\b(?:sub[-\s]?)?agents?\s+(?:in\s+parallel|per\b|for\s+each\b)|\b(?:one|a\s+separate|a\s+dedicated)\s+(?:sub[-\s]?)?agent\s+per\b|\bfan[-\s]?out\b|\bper[-\s]?file\s+(?:sub[-\s]?)?agents?\b/i;
+
+/**
+ * Detects a constraint whose satisfaction depends on the agent TOPOLOGY the guard
+ * just removed — parallelism, spawn count, or per-unit separate-agent shape. Used
+ * ONLY in combination with a recorded fanoutCollapse (never as a blanket drop): a
+ * constraint matching this shape after a fan-out was collapsed cannot be satisfied
+ * by any fix agent, because the system removed its precondition.
+ */
+const FANOUT_SHAPE_CONSTRAINT_RE =
+  /\b(?:in\s+parallel|parallel(?:ism|ly)?|concurrent(?:ly|cy)?)\b|\b(?:separate|independent|dedicated|distinct|individual|its?\s+own|one|multiple|several)\s+(?:sub[-\s]?)?agents?\b|\b(?:sub[-\s]?)?agents?\s+(?:in\s+parallel|per\b|for\s+each\b|running\s+concurrently)|\b(?:one|a\s+separate|a\s+dedicated|a\s+distinct)\s+(?:sub[-\s]?)?agent\s+per\b|\bfan[-\s]?out\b|\bper[-\s]?file\s+(?:sub[-\s]?)?agents?\b|\bspawn(?:ing)?\s+(?:a\s+)?(?:separate|multiple|several|\d+)\b/i;
+
+/**
+ * True when the text explicitly asks for a parallel / per-unit / separate-agent
+ * fan-out. Exported for the TUI collapse guard so both guards honour the same
+ * explicit-intent precedent.
+ */
+export function userRequestsParallelFanout(text: string | undefined): boolean {
+  return typeof text === 'string' && PARALLEL_FANOUT_REQUEST_RE.test(text);
+}
+
+/**
+ * True when a constraint's text describes the agent topology (parallelism /
+ * spawn-count / separate-agent-per-unit) a fan-out collapse removes. Consulted by
+ * the WRFC controller — only for chains created via a collapse — to mark such a
+ * constraint system-unsatisfiable so it can never fail the review.
+ */
+export function isFanoutShapeConstraintText(text: string | undefined): boolean {
+  return typeof text === 'string' && FANOUT_SHAPE_CONSTRAINT_RE.test(text);
+}
+
 export interface WrfcBatchPolicyDecision {
   readonly kind: 'independent' | 'collapse-to-wrfc';
   readonly reason?: string | undefined;
@@ -335,6 +375,24 @@ export function evaluateWrfcBatchPolicy(input: AgentInput): WrfcBatchPolicyDecis
       return { kind: 'independent' };
     }
 
+    // Ruling (WO UX-A item 1): an explicit parallel / per-unit fan-out request is
+    // user intent, exactly like userProhibitsDelegation. When the user explicitly
+    // asked for separate agents in parallel and the batch is a set of independent
+    // implementation deliverables (NOT role-fragmentation — that branch is handled
+    // below), do NOT collapse: honour the request and let the deliverables fan out
+    // (each keeps its own reviewMode). This prevents the unsatisfiable-constraint
+    // billing loop at the source; the collapse paths below still carry a
+    // fanoutCollapse marker as defense-in-depth for the collapses that do happen.
+    const explicitParallel = userRequestsParallelFanout(
+      normalizeTaskText(input.authoritativeTask) ?? normalizeTaskText(input.task),
+    );
+    if (explicitParallel) {
+      return {
+        kind: 'independent',
+        reason: `explicit parallel fan-out requested for ${implementationTaskIndexes.length} independent deliverables; honoring the request instead of collapsing into one chain`,
+      };
+    }
+
     const authoritativeTask = normalizeTaskText(input.authoritativeTask)
       ?? normalizeTaskText(input.task)
       ?? `Complete and integrate ${implementationTaskIndexes.length} reviewed deliverables.`;
@@ -377,6 +435,10 @@ export function evaluateWrfcBatchPolicy(input: AgentInput): WrfcBatchPolicyDecis
       dangerously_disable_wrfc: false,
       cohort: input.cohort,
       wrfcSubtasks: implementationTaskIndexes.map((index) => normalizeCompoundSubtask(tasks[index]!, authoritativeTask)),
+      fanoutCollapse: {
+        requestedAgentCount: implementationTaskIndexes.length,
+        requestedShape: `${implementationTaskIndexes.length} separate implementation agents`,
+      },
     };
 
     return {
@@ -445,6 +507,13 @@ export function evaluateWrfcBatchPolicy(input: AgentInput): WrfcBatchPolicyDecis
     parentNodeId: ownerTask.parentNodeId ?? input.parentNodeId,
     dangerously_disable_wrfc: false,
     cohort: input.cohort,
+    // A role-fragmentation collapse never honours "separate reviewer/tester roots"
+    // (those are lifecycle phases, not what the user asked for). But if the user
+    // ALSO asked for a parallel fan-out, record it so any parallelism/spawn-count
+    // constraint the collapse invalidated cannot fail the review.
+    ...(userRequestsParallelFanout(normalizeTaskText(input.authoritativeTask) ?? normalizeTaskText(input.task))
+      ? { fanoutCollapse: { requestedAgentCount: tasks.length, requestedShape: `${tasks.length} separate agents` } }
+      : {}),
   };
 
   return {

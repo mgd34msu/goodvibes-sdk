@@ -74,6 +74,7 @@ import {
   startWrfcOrchestrationNode,
 } from './wrfc-runtime-events.js';
 import { runWrfcGateChecks } from './wrfc-gate-runtime.js';
+import { isFanoutShapeConstraintText } from '../tools/agent/wrfc-batch-policy.js';
 
 export { extractScoreFromText, extractPassedFromText, extractIssuesFromText } from './wrfc-reporting.js';
 
@@ -941,7 +942,7 @@ export class WrfcController {
 
     // Prepend any synthetic issues from the controller (e.g. fixer constraint-continuity
     // violations) to the review task body, then clear them so they fire only once.
-    let reviewTask = buildReviewTask(chain.id, chain.task, report, getWrfcScoreThreshold(this.configManager), chain.constraints);
+    let reviewTask = buildReviewTask(chain.id, chain.task, report, getWrfcScoreThreshold(this.configManager), this.reviewableConstraints(chain));
     if (chain.syntheticIssues?.length) {
       reviewTask = this.prependSyntheticIssues(chain.syntheticIssues, reviewTask);
       chain.syntheticIssues = [];
@@ -1183,7 +1184,20 @@ export class WrfcController {
     });
   }
 
-  private evaluateConstraintSet(constraints: readonly Constraint[], review: ReviewerReport): ConstraintEvaluation {
+  private evaluateConstraintSet(
+    allConstraints: readonly Constraint[],
+    review: ReviewerReport,
+    systemUnsatisfiableIds: readonly string[] = [],
+  ): ConstraintEvaluation {
+    // System-unsatisfiable constraints (e.g. a "separate agent per file" constraint
+    // that a fan-out collapse invalidated) are removed from the rubric BEFORE
+    // accounting: they can never be counted as unsatisfied and can never force a
+    // failure, because no fix agent can satisfy a constraint whose precondition the
+    // system itself removed. This is the un-loopable guarantee (WO UX-A item 1c).
+    const excluded = systemUnsatisfiableIds.length > 0 ? new Set(systemUnsatisfiableIds) : null;
+    const constraints = excluded
+      ? allConstraints.filter((constraint) => !excluded.has(constraint.id))
+      : allConstraints;
     if (constraints.length === 0) {
       return {
         constraintsSatisfied: 0,
@@ -1199,6 +1213,10 @@ export class WrfcController {
     const ignoredConstraintFindingIds: string[] = [];
     for (const finding of review.constraintFindings ?? []) {
       if (!expectedIds.has(finding.constraintId)) {
+        // A finding for a system-unsatisfiable constraint is known-but-excluded, not
+        // unknown: drop it silently instead of injecting a "reviewed an unknown
+        // constraint" penalty.
+        if (excluded?.has(finding.constraintId)) continue;
         ignoredConstraintFindingIds.push(finding.constraintId);
         continue;
       }
@@ -1228,7 +1246,20 @@ export class WrfcController {
   }
 
   private evaluateConstraints(chain: WrfcChain, review: ReviewerReport): ConstraintEvaluation {
-    return this.evaluateConstraintSet(chain.constraints, review);
+    return this.evaluateConstraintSet(chain.constraints, review, chain.systemUnsatisfiableConstraintIds ?? []);
+  }
+
+  /**
+   * The constraints a reviewer/fixer is asked to verify: the full enumerated set
+   * MINUS the ones a system action (a fan-out collapse) made unsatisfiable. Keeping
+   * chain.constraints itself intact preserves fixer constraint-continuity checks;
+   * only the rubric handed to review/gate-fix is narrowed.
+   */
+  private reviewableConstraints(chain: WrfcChain): Constraint[] {
+    const excluded = chain.systemUnsatisfiableConstraintIds;
+    if (!excluded || excluded.length === 0) return chain.constraints;
+    const excludedSet = new Set(excluded);
+    return chain.constraints.filter((constraint) => !excludedSet.has(constraint.id));
   }
 
   private evaluateSubtaskConstraints(subtask: WrfcSubtask, review: ReviewerReport): ConstraintEvaluation {
@@ -1304,10 +1335,13 @@ export class WrfcController {
       chainId: chain.id,
       attempt: chain.fixAttempts,
       maxAttempts: maxGateRetries,
-      ...(chain.constraints.length > 0 ? { targetConstraintIds: chain.constraints.map((constraint) => constraint.id) } : {}),
+      ...((() => {
+        const reviewable = this.reviewableConstraints(chain);
+        return reviewable.length > 0 ? { targetConstraintIds: reviewable.map((constraint) => constraint.id) } : {};
+      })()),
     });
 
-    const gateFixTask = buildGateFailureTask(chain.id, chain.task, failedGates, chain.constraints);
+    const gateFixTask = buildGateFailureTask(chain.id, chain.task, failedGates, this.reviewableConstraints(chain));
     const fixerRecord = this.spawnWrfcAgent(chain, 'fixer', 'engineer', gateFixTask, true);
     chain.fixerAgentId = fixerRecord.id;
     this.registerSpawnedChild(chain, fixerRecord, 'fixer');
@@ -1837,6 +1871,7 @@ export class WrfcController {
       createdAt: Date.now(),
       transportRetryCount: 0,
       ...(subtasks.length > 1 ? { subtasks } : {}),
+      ...(ownerRecord.fanoutCollapse ? { fanoutCollapse: ownerRecord.fanoutCollapse } : {}),
     };
     this.chains.set(chain.id, chain);
     emitWrfcGraphCreated(this.runtimeBus, this.sessionId, chain.id, `WRFC: ${ownerRecord.task}`);
@@ -1996,6 +2031,25 @@ export class WrfcController {
     if (!chain.constraintsEnumerated) {
       chain.constraints = isEngineerReportShape(report) ? (report.constraints ?? []) : [];
       chain.constraintsEnumerated = true;
+      // Mechanically derive the system-unsatisfiable constraints from the collapse
+      // action: only when this chain was created by collapsing a requested fan-out,
+      // and only for constraints whose text describes the parallelism/spawn-count
+      // topology the collapse removed. Such a constraint cannot be satisfied by ANY
+      // fix agent (the precondition is gone), so it is excluded from the rubric and
+      // can never fail the review — no fix-loop re-billing while chasing it.
+      if (chain.fanoutCollapse) {
+        const unsatisfiable = chain.constraints
+          .filter((constraint) => isFanoutShapeConstraintText(constraint.text))
+          .map((constraint) => constraint.id);
+        if (unsatisfiable.length > 0) {
+          chain.systemUnsatisfiableConstraintIds = unsatisfiable;
+          logger.warn('WrfcController: excluded fan-out-collapse-invalidated constraints from review', {
+            chainId: chain.id,
+            systemUnsatisfiableConstraintIds: unsatisfiable,
+            requestedAgentCount: chain.fanoutCollapse.requestedAgentCount,
+          });
+        }
+      }
       emitWrfcConstraintsEnumerated(this.runtimeBus, this.sessionId, chain.id, chain.constraints);
     } else {
       // Fixer continuity validation: verify the fixer returned the same constraint id-set.

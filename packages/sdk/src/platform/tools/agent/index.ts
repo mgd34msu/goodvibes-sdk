@@ -554,6 +554,13 @@ export function createAgentTool(config: {
               error: `Failed to collapse role-decomposition batch into a WRFC owner chain: ${summarizeError(error)}`,
             };
           }
+          // Part (a): when a requested fan-out was collapsed, state it plainly for
+          // the host to surface to the user — what was requested, what the guard
+          // did, and why — so the collapse is never a silent, confusing rewrite.
+          const fanout = batchPolicy.ownerInput?.fanoutCollapse;
+          const announcement = fanout
+            ? `Requested ${fanout.requestedShape}; the WRFC topology guard ran them as one reviewed chain instead (${batchPolicy.reason ?? 'topology enforcement'}).`
+            : undefined;
           return {
             success: true,
             output: JSON.stringify({
@@ -564,6 +571,7 @@ export function createAgentTool(config: {
               collapsedToWrfc: true,
               collapsedTaskCount: input.tasks.length,
               reason: batchPolicy.reason,
+              ...(announcement ? { announcement } : {}),
               roleTaskIndexes: batchPolicy.roleTaskIndexes ?? [],
               compoundTaskIndexes: batchPolicy.compoundTaskIndexes ?? [],
               scopeMutation: batchPolicy.scopeMutation ?? null,

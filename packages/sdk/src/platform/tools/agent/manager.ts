@@ -158,6 +158,8 @@ export interface AgentRecord {
   wrfcSubtaskId?: string | undefined;
   wrfcRouteReason?: string | undefined;
   wrfcSubtasks?: AgentInput['wrfcSubtasks'] | undefined;
+  /** Set when this owner agent's chain was created by collapsing a requested fan-out (schema.ts FanoutCollapseInfo). */
+  fanoutCollapse?: AgentInput['fanoutCollapse'] | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
   /**
    * Wave-4 orchestration engine tag (wo701): set by phase-runner.ts when it
@@ -482,6 +484,7 @@ export class AgentManager {
       communicationLane,
       systemPromptAddendum: input.systemPromptAddendum,
       wrfcSubtasks: input.wrfcSubtasks,
+      ...(input.fanoutCollapse ? { fanoutCollapse: input.fanoutCollapse } : {}),
       status: 'pending',
       startedAt: Date.now(),
       toolCallCount: 0,
