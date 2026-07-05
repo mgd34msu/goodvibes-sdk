@@ -75,7 +75,7 @@ export interface HttpTransportSessionsClient {
   list(limit?: number): Promise<readonly SharedSessionRecord[]>;
   get(sessionId: string): Promise<SharedSessionRecord | null>;
   messages(sessionId: string, limit?: number): Promise<readonly SharedSessionMessage[]>;
-  inputs(sessionId: string, limit?: number): Promise<readonly SharedSessionInputRecord[]>;
+  inputs(sessionId: string, limit?: number, options?: { readonly state?: string | undefined; readonly since?: number | undefined }): Promise<readonly SharedSessionInputRecord[]>;
   ensureSession(input?: HttpSessionEnsureInput): Promise<SharedSessionRecord>;
   register(input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult>;
   close(sessionId: string): Promise<SharedSessionRecord | null>;
@@ -84,6 +84,7 @@ export interface HttpTransportSessionsClient {
   steerMessage(sessionId: string, input: HttpSteerSessionMessageInput): Promise<SharedSessionSubmission>;
   followUpMessage(sessionId: string, input: HttpSessionMessageInput): Promise<SharedSessionSubmission>;
   cancelInput(sessionId: string, inputId: string): Promise<SharedSessionInputRecord | null>;
+  deliverInput(sessionId: string, inputId: string, options?: { readonly consumed?: boolean | undefined }): Promise<SharedSessionInputRecord | null>;
 }
 
 export interface HttpTransportTasksClient {

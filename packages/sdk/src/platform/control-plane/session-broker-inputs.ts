@@ -109,6 +109,46 @@ export function claimNextQueuedSessionInput(
   return result;
 }
 
+/**
+ * Collection read for a live surface: filter a session's inputs by state and/or a
+ * `since` cursor (createdAt, exclusive), oldest-first, capped to `limit`. With
+ * `state: 'queued'` + the last-seen cursor this yields exactly the PENDING inputs
+ * a surface has not collected yet (see SharedSessionBroker.getInputsSince).
+ */
+export function filterSessionInputsSince(
+  bucket: readonly SharedSessionInputRecord[],
+  options: { readonly state?: SharedSessionInputRecord['state'] | undefined; readonly since?: number | undefined; readonly limit?: number | undefined },
+): SharedSessionInputRecord[] {
+  const filtered = bucket.filter((entry) => {
+    if (options.state !== undefined && entry.state !== options.state) return false;
+    if (options.since !== undefined && entry.createdAt <= options.since) return false;
+    return true;
+  });
+  return filtered.slice(-Math.max(1, options.limit ?? 100));
+}
+
+/**
+ * Surface delivery marking: advance a queued/delivered input as a live surface
+ * collects it (`consumed:false` → 'delivered') or finishes acting on it
+ * (`consumed:true` → 'completed'). Only queued/delivered inputs advance; anything
+ * else is returned unchanged. Returns null when the input is unknown.
+ */
+export function markSurfaceInputDelivered(
+  store: SharedSessionInputStore,
+  sessionId: string,
+  inputId: string,
+  consumed: boolean,
+): SharedSessionInputRecord | null {
+  return updateSharedSessionInput(store, sessionId, inputId, (entry) => {
+    if (consumed) {
+      if (entry.state !== 'queued' && entry.state !== 'delivered') return entry;
+      return { ...entry, state: 'completed', updatedAt: Date.now() };
+    }
+    if (entry.state !== 'queued') return entry;
+    return { ...entry, state: 'delivered', updatedAt: Date.now() };
+  });
+}
+
 export function finalizeAgentSessionInputs(
   store: SharedSessionInputStore,
   sessionId: string,

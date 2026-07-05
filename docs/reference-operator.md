@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `298`
+- Methods: `299`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -64854,15 +64854,7 @@ Mark a shared session as closed.
           "type": "string"
         },
         "kind": {
-          "type": "string",
-          "enum": [
-            "tui",
-            "agent",
-            "webui",
-            "companion-task",
-            "companion-chat",
-            "automation"
-          ]
+          "type": "string"
         },
         "project": {
           "type": "string"
@@ -64893,6 +64885,9 @@ Mark a shared session as closed.
           "type": "number"
         },
         "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
           "type": "number"
         },
         "pendingInputCount": {
@@ -64985,7 +64980,6 @@ Mark a shared session as closed.
       "required": [
         "id",
         "kind",
-        "project",
         "title",
         "status",
         "createdAt",
@@ -65055,15 +65049,7 @@ Create a shared session for a surface, route, or web client.
           "type": "string"
         },
         "kind": {
-          "type": "string",
-          "enum": [
-            "tui",
-            "agent",
-            "webui",
-            "companion-task",
-            "companion-chat",
-            "automation"
-          ]
+          "type": "string"
         },
         "project": {
           "type": "string"
@@ -65094,6 +65080,9 @@ Create a shared session for a surface, route, or web client.
           "type": "number"
         },
         "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
           "type": "number"
         },
         "pendingInputCount": {
@@ -65186,7 +65175,6 @@ Create a shared session for a surface, route, or web client.
       "required": [
         "id",
         "kind",
-        "project",
         "title",
         "status",
         "createdAt",
@@ -65360,15 +65348,7 @@ Queue a deferred follow-up for a shared session so it runs after the current age
               "type": "string"
             },
             "kind": {
-              "type": "string",
-              "enum": [
-                "tui",
-                "agent",
-                "webui",
-                "companion-task",
-                "companion-chat",
-                "automation"
-              ]
+              "type": "string"
             },
             "project": {
               "type": "string"
@@ -65399,6 +65379,9 @@ Queue a deferred follow-up for a shared session so it runs after the current age
               "type": "number"
             },
             "messageCount": {
+              "type": "number"
+            },
+            "retainedMessageCount": {
               "type": "number"
             },
             "pendingInputCount": {
@@ -65491,7 +65474,6 @@ Queue a deferred follow-up for a shared session so it runs after the current age
           "required": [
             "id",
             "kind",
-            "project",
             "title",
             "status",
             "createdAt",
@@ -65807,6 +65789,7 @@ Queue a deferred follow-up for a shared session so it runs after the current age
         "spawn",
         "continued-live",
         "queued-follow-up",
+        "queued-for-surface",
         "rejected"
       ]
     },
@@ -65876,15 +65859,7 @@ Return metadata for a shared session.
           "type": "string"
         },
         "kind": {
-          "type": "string",
-          "enum": [
-            "tui",
-            "agent",
-            "webui",
-            "companion-task",
-            "companion-chat",
-            "automation"
-          ]
+          "type": "string"
         },
         "project": {
           "type": "string"
@@ -65915,6 +65890,9 @@ Return metadata for a shared session.
           "type": "number"
         },
         "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
           "type": "number"
         },
         "pendingInputCount": {
@@ -66007,7 +65985,6 @@ Return metadata for a shared session.
       "required": [
         "id",
         "kind",
-        "project",
         "title",
         "status",
         "createdAt",
@@ -66373,9 +66350,272 @@ Cancel a queued shared-session input before it is delivered or spawned.
 }
 ```
 
+#### `sessions.inputs.deliver`
+
+A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged.
+
+- Title: `Mark Shared Session Input Delivered`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/sessions/{sessionId}/inputs/{inputId}/deliver`
+- Scopes: `write:sessions`
+- Emits events: `control.session_update`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "inputId": {
+      "type": "string"
+    },
+    "consumed": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "inputId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string",
+          "enum": [
+            "submit",
+            "steer",
+            "follow-up"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "delivered",
+            "spawned",
+            "completed",
+            "cancelled",
+            "failed",
+            "rejected"
+          ]
+        },
+        "correlationId": {
+          "type": "string"
+        },
+        "causationId": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "routeId": {
+          "type": "string"
+        },
+        "surfaceKind": {
+          "type": "string"
+        },
+        "surfaceId": {
+          "type": "string"
+        },
+        "externalId": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "activeAgentId": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "providerId": {
+              "type": "string"
+            },
+            "modelId": {
+              "type": "string"
+            },
+            "providerSelection": {
+              "type": "string",
+              "enum": [
+                "inherit-current",
+                "concrete",
+                "synthetic"
+              ]
+            },
+            "providerFailurePolicy": {
+              "type": "string",
+              "enum": [
+                "ordered-fallbacks",
+                "fail"
+              ]
+            },
+            "fallbackModels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "helperModel": {
+              "type": "object",
+              "properties": {
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "providerId",
+                "modelId"
+              ],
+              "additionalProperties": false
+            },
+            "executionIntent": {
+              "type": "object",
+              "properties": {
+                "riskClass": {
+                  "type": "string",
+                  "enum": [
+                    "safe",
+                    "elevated",
+                    "dangerous"
+                  ]
+                },
+                "requiresApproval": {
+                  "type": "boolean"
+                },
+                "networkPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "inherit",
+                    "allow",
+                    "deny",
+                    "scoped"
+                  ]
+                },
+                "filesystemPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "inherit",
+                    "workspace-write",
+                    "read-only",
+                    "isolated"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "reasoningEffort": {
+              "type": "string",
+              "enum": [
+                "instant",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "intent",
+        "state",
+        "correlationId",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "metadata"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "input"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `sessions.inputs.list`
 
-Return explicit session inputs, including queued follow-ups and delivered steering requests.
+Return explicit session inputs, including queued follow-ups and delivered steering requests. A live surface collects work by filtering `state` (e.g. queued) and paging past a `since` createdAt cursor (exclusive), draining only inputs it has not yet collected.
 
 - Title: `List Shared Session Inputs`
 - Source: `builtin`
@@ -66397,6 +66637,12 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
       "type": "string"
     },
     "limit": {
+      "type": "number"
+    },
+    "state": {
+      "type": "string"
+    },
+    "since": {
       "type": "number"
     }
   },
@@ -66420,15 +66666,7 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
           "type": "string"
         },
         "kind": {
-          "type": "string",
-          "enum": [
-            "tui",
-            "agent",
-            "webui",
-            "companion-task",
-            "companion-chat",
-            "automation"
-          ]
+          "type": "string"
         },
         "project": {
           "type": "string"
@@ -66459,6 +66697,9 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
           "type": "number"
         },
         "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
           "type": "number"
         },
         "pendingInputCount": {
@@ -66551,7 +66792,6 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
       "required": [
         "id",
         "kind",
-        "project",
         "title",
         "status",
         "createdAt",
@@ -66926,15 +67166,7 @@ Return shared-session integration state.
             "type": "string"
           },
           "kind": {
-            "type": "string",
-            "enum": [
-              "tui",
-              "agent",
-              "webui",
-              "companion-task",
-              "companion-chat",
-              "automation"
-            ]
+            "type": "string"
           },
           "project": {
             "type": "string"
@@ -66965,6 +67197,9 @@ Return shared-session integration state.
             "type": "number"
           },
           "messageCount": {
+            "type": "number"
+          },
+          "retainedMessageCount": {
             "type": "number"
           },
           "pendingInputCount": {
@@ -67057,7 +67292,6 @@ Return shared-session integration state.
         "required": [
           "id",
           "kind",
-          "project",
           "title",
           "status",
           "createdAt",
@@ -67258,15 +67492,7 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -67297,6 +67523,9 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -67389,7 +67618,6 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -67705,6 +67933,7 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
             "spawn",
             "continued-live",
             "queued-follow-up",
+            "queued-for-surface",
             "rejected"
           ]
         },
@@ -67782,15 +68011,7 @@ Return message history for a shared session.
           "type": "string"
         },
         "kind": {
-          "type": "string",
-          "enum": [
-            "tui",
-            "agent",
-            "webui",
-            "companion-task",
-            "companion-chat",
-            "automation"
-          ]
+          "type": "string"
         },
         "project": {
           "type": "string"
@@ -67821,6 +68042,9 @@ Return message history for a shared session.
           "type": "number"
         },
         "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
           "type": "number"
         },
         "pendingInputCount": {
@@ -67913,7 +68137,6 @@ Return message history for a shared session.
       "required": [
         "id",
         "kind",
-        "project",
         "title",
         "status",
         "createdAt",
@@ -68021,7 +68244,7 @@ Return message history for a shared session.
 
 #### `sessions.register`
 
-Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Prefer this over sessions.create for external runtimes that own their session id.
+Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.
 
 - Title: `Register Shared Session`
 - Source: `builtin`
@@ -68090,6 +68313,9 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
         "lastSeenAt"
       ],
       "additionalProperties": false
+    },
+    "reopen": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -68113,15 +68339,7 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
           "type": "string"
         },
         "kind": {
-          "type": "string",
-          "enum": [
-            "tui",
-            "agent",
-            "webui",
-            "companion-task",
-            "companion-chat",
-            "automation"
-          ]
+          "type": "string"
         },
         "project": {
           "type": "string"
@@ -68152,6 +68370,9 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
           "type": "number"
         },
         "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
           "type": "number"
         },
         "pendingInputCount": {
@@ -68244,7 +68465,6 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
       "required": [
         "id",
         "kind",
-        "project",
         "title",
         "status",
         "createdAt",
@@ -68258,10 +68478,29 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
         "metadata"
       ],
       "additionalProperties": false
+    },
+    "reopened": {
+      "type": "boolean"
+    },
+    "conflict": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "closed"
+          ]
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
-    "session"
+    "session",
+    "reopened"
   ],
   "additionalProperties": false
 }
@@ -68311,15 +68550,7 @@ Reopen a previously closed shared session.
           "type": "string"
         },
         "kind": {
-          "type": "string",
-          "enum": [
-            "tui",
-            "agent",
-            "webui",
-            "companion-task",
-            "companion-chat",
-            "automation"
-          ]
+          "type": "string"
         },
         "project": {
           "type": "string"
@@ -68350,6 +68581,9 @@ Reopen a previously closed shared session.
           "type": "number"
         },
         "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
           "type": "number"
         },
         "pendingInputCount": {
@@ -68442,7 +68676,6 @@ Reopen a previously closed shared session.
       "required": [
         "id",
         "kind",
-        "project",
         "title",
         "status",
         "createdAt",
@@ -68619,15 +68852,7 @@ Deliver a live steering message to the active agent for a shared session, option
               "type": "string"
             },
             "kind": {
-              "type": "string",
-              "enum": [
-                "tui",
-                "agent",
-                "webui",
-                "companion-task",
-                "companion-chat",
-                "automation"
-              ]
+              "type": "string"
             },
             "project": {
               "type": "string"
@@ -68658,6 +68883,9 @@ Deliver a live steering message to the active agent for a shared session, option
               "type": "number"
             },
             "messageCount": {
+              "type": "number"
+            },
+            "retainedMessageCount": {
               "type": "number"
             },
             "pendingInputCount": {
@@ -68750,7 +68978,6 @@ Deliver a live steering message to the active agent for a shared session, option
           "required": [
             "id",
             "kind",
-            "project",
             "title",
             "status",
             "createdAt",
@@ -69066,6 +69293,7 @@ Deliver a live steering message to the active agent for a shared session, option
         "spawn",
         "continued-live",
         "queued-follow-up",
+        "queued-for-surface",
         "rejected"
       ]
     },
@@ -77421,8 +77649,11 @@ Shared-session lifecycle broadcast. Every session created / closed / reopened / 
         "session-message-forwarded",
         "session-route-attached",
         "session-input-queued",
+        "session-input-queued-for-surface",
         "session-input-delivered",
         "session-input-spawned",
+        "session-input-completed",
+        "session-input-failed",
         "session-input-rejected",
         "session-input-cancelled",
         "session-follow-up-queued",

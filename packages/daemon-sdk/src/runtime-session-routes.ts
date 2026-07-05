@@ -200,6 +200,7 @@ export function createDaemonRuntimeSessionRouteHandlers(
     postSharedSessionSteer: (sessionId, request) => withAdmin(context, request, () => handlePostSharedSessionSteer(context, sessionId, request)),
     postSharedSessionFollowUp: (sessionId, request) => withAdmin(context, request, () => handlePostSharedSessionFollowUp(context, sessionId, request)),
     cancelSharedSessionInput: (sessionId, inputId, request) => withAdmin(context, request, () => handleCancelSharedSessionInput(context, sessionId, inputId)),
+    deliverSharedSessionInput: (sessionId, inputId, request) => withAdmin(context, request, () => handleDeliverSharedSessionInput(context, sessionId, inputId, request)),
     getRuntimeTask: (taskId) => handleGetRuntimeTask(context, taskId),
     runtimeTaskAction: (taskId, action, request) => withAdmin(context, request, () => handleRuntimeTaskAction(context, taskId, action, request)),
     getTaskStatus: (agentId) => handleGetTaskStatus(context, agentId),
@@ -412,11 +413,58 @@ async function handleGetSharedSessionInputs(
     return jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
   }
   const limit = readBoundedLimit(url);
-  const inputs = context.sessionBroker.getInputs(sessionId, limit);
+  // Collection cursor for live surfaces: filter by state (e.g. 'queued') and/or a
+  // `since` createdAt cursor (exclusive) so a surface drains only inputs it has
+  // not collected yet. Absent params preserve the legacy "last N inputs" behavior.
+  const stateParam = readSessionInputState(url.searchParams.get('state'));
+  const sinceParam = readPositiveInt(url.searchParams.get('since'));
+  const inputs = (stateParam !== undefined || sinceParam !== undefined)
+    ? context.sessionBroker.getInputsSince(sessionId, {
+        ...(stateParam !== undefined ? { state: stateParam } : {}),
+        ...(sinceParam !== undefined ? { since: sinceParam } : {}),
+        limit,
+      })
+    : context.sessionBroker.getInputs(sessionId, limit);
   return Response.json({
     session: toSharedSessionRecordResponse(sessionId, session, { pendingInputCount: inputs.length }),
     inputs,
   });
+}
+
+const SHARED_SESSION_INPUT_STATES = new Set([
+  'queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected',
+]);
+
+function readSessionInputState(value: string | null): string | undefined {
+  return value !== null && SHARED_SESSION_INPUT_STATES.has(value) ? value : undefined;
+}
+
+function readPositiveInt(value: string | null): number | undefined {
+  if (value === null) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+/**
+ * Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver — a live surface
+ * reporting collection/consumption of a queued input. Body `{consumed:true}`
+ * marks it completed (the surface finished acting on it); otherwise it marks the
+ * input delivered (collected). Reuses the existing input lifecycle states.
+ */
+async function handleDeliverSharedSessionInput(
+  context: DaemonRuntimeRouteContext,
+  sessionId: string,
+  inputId: string,
+  req: Request,
+): Promise<Response> {
+  const body = await context.parseJsonBody(req);
+  if (body instanceof Response) return body;
+  const consumed = body.consumed === true;
+  const input = await context.sessionBroker.markInputDelivered(sessionId, inputId, { consumed });
+  if (!input) {
+    return jsonErrorResponse({ error: 'Unknown shared session input' }, { status: 404 });
+  }
+  return context.recordApiResponse(req, `/api/sessions/${sessionId}/inputs/${inputId}/deliver`, Response.json({ input }, { status: 200 }));
 }
 
 /**
@@ -699,7 +747,14 @@ async function respondToSessionSubmission(
     readonly executionIntent?: ExecutionIntent | undefined;
   } = {},
 ): Promise<Response> {
-  if (submission.mode === 'continued-live' || submission.mode === 'queued-follow-up') {
+  if (
+    submission.mode === 'continued-live' ||
+    submission.mode === 'queued-follow-up' ||
+    submission.mode === 'queued-for-surface'
+  ) {
+    // queued-for-surface: the input is queued for a live registered surface to
+    // collect (sessions.inputs.list) and deliver (sessions.inputs.deliver). No
+    // daemon executor is spawned — the surface owns turn execution.
     return context.recordApiResponse(req, path, Response.json({
       session: toSharedSessionRecordResponse(submission.session.id, submission.session),
       message: submission.userMessage ?? null,

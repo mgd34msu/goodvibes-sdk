@@ -512,6 +512,11 @@ export class DaemonHttpRouter {
           getSession: (sessionId) => this.context.sessionBroker.getSession(sessionId) as never,
           getMessages: (sessionId, limit) => this.context.sessionBroker.getMessages(sessionId, limit),
           getInputs: (sessionId, limit) => this.context.sessionBroker.getInputs(sessionId, limit),
+          getInputsSince: (sessionId, options) => this.context.sessionBroker.getInputsSince(
+            sessionId,
+            options as Parameters<SharedSessionBroker['getInputsSince']>[1],
+          ),
+          markInputDelivered: (sessionId, inputId, options) => this.context.sessionBroker.markInputDelivered(sessionId, inputId, options),
           closeSession: (sessionId) => this.context.sessionBroker.closeSession(sessionId),
           reopenSession: (sessionId) => this.context.sessionBroker.reopenSession(sessionId),
           cancelInput: (sessionId, inputId) => this.context.sessionBroker.cancelInput(sessionId, inputId),

@@ -35,10 +35,10 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 1067,
     justification: 'companion chat lifecycle manager, pre-split, shrink-only',
   },
-  // schema-types.ts ~1.06k — config schema type surface, pre-split, shrink-only
+  // schema-types.ts ~1.07k — config schema type surface, pre-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1064,
-    justification: 'config schema type surface, pre-split, shrink-only',
+    ceiling: 1066,
+    justification: 'config schema type surface, pre-split, shrink-only; +2 for Wave-2 D7a daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry)',
   },
   // orchestrator.ts ~1.06k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
@@ -120,10 +120,10 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 846,
     justification: 'scheduler core, pre-split, shrink-only',
   },
-  // router.ts (daemon/http) ~0.84k — daemon HTTP router, pre-split, shrink-only
+  // router.ts (daemon/http) ~0.85k — daemon HTTP router, pre-split, shrink-only
   'packages/sdk/src/platform/daemon/http/router.ts': {
-    ceiling: 840,
-    justification: 'daemon HTTP router, pre-split, shrink-only',
+    ceiling: 845,
+    justification: 'daemon HTTP router, pre-split, shrink-only; +5 for Wave-2 D3 in-process sessionBroker adapter (getInputsSince/markInputDelivered surface-collection delegations)',
   },
   // index.ts (tools/state) ~0.84k — tools state store, pre-split, shrink-only
   'packages/sdk/src/platform/tools/state/index.ts': {
@@ -145,19 +145,19 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 826,
     justification: 'control-plane gateway, pre-split, shrink-only',
   },
-  // runtime-session-routes.ts ~0.82k — daemon runtime-session route surface, pre-split, shrink-only
+  // runtime-session-routes.ts ~0.87k — daemon runtime-session route surface, pre-split, shrink-only
   'packages/daemon-sdk/src/runtime-session-routes.ts': {
-    ceiling: 818,
-    justification: 'daemon runtime-session route surface, pre-split, shrink-only',
+    ceiling: 873,
+    justification: 'daemon runtime-session route surface, pre-split, shrink-only; +55 for Wave-2 D3 surface-collection wire (queued-for-surface response handling, sessions.inputs.deliver route + handler, sessions.inputs.list state/since cursor)',
   },
   // registry.ts (runtime/fleet) ~0.81k — runtime fleet registry, pre-split, shrink-only
   'packages/sdk/src/platform/runtime/fleet/registry.ts': {
     ceiling: 806,
     justification: 'runtime fleet registry, pre-split, shrink-only',
   },
-  // session-broker.ts (control-plane) ~0.81k — control-plane session broker, pre-split, shrink-only
+  // session-broker.ts (control-plane) ~0.88k — control-plane session broker, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/session-broker.ts': {
-    ceiling: 805,
-    justification: 'control-plane session broker, pre-split, shrink-only',
+    ceiling: 880,
+    justification: 'control-plane session broker, pre-split, shrink-only; +75 for Wave-2 D2/D3 (surface-managed marking on register, steer/follow-up surface-routing branch in handleIntent, getInputsSince/markInputDelivered surface-collection delegations) — collection helpers already extracted to session-broker-inputs.ts; handleIntent remains a split candidate',
   },
 };

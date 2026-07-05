@@ -39,7 +39,9 @@ import {
 } from './session-broker-state.js';
 import {
   claimNextQueuedSessionInput,
+  filterSessionInputsSince,
   finalizeAgentSessionInputs,
+  markSurfaceInputDelivered,
   recordSharedSessionInput,
   refreshPendingInputCount,
   touchSharedSession,
@@ -52,6 +54,8 @@ import {
   type AppendSharedSessionMessageInput,
 } from './session-broker-messages.js';
 import {
+  SESSION_SURFACE_MANAGED_METADATA_KEY,
+  SURFACE_ROUTE_FRESHNESS_MS,
   attachSharedSessionParticipantAndRoute,
   bindSharedSessionAgent,
   closeSharedSessionRecord,
@@ -59,6 +63,7 @@ import {
   participantToAttachInput,
   registerSharedSession,
   reopenSharedSessionRecord,
+  shouldRouteInputToSurface,
 } from './session-broker-sessions.js';
 import { sweepSharedSessions } from './session-broker-gc.js';
 import { SharedSessionRuntimeBusBridge } from './session-broker-runtime-bus.js';
@@ -262,12 +267,31 @@ export class SharedSessionBroker {
    * live in {@link registerSharedSession}, this injects the broker ops. */
   async register(input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult> {
     await this.start();
-    return registerSharedSession({
+    const result = await registerSharedSession({
       getSession: (id) => this.sessions.get(id) ?? null,
       createSession: (i) => this.createSession(i),
       reopenSession: (id) => this.reopenSession(id),
       attachParticipant: (s, a) => this.attachParticipantAndRoute(s, a),
     }, input);
+    // A spine-registered surface owns turn execution + input collection for this
+    // session: mark it surface-managed so steer/follow-up route to the surface
+    // (queue-for-surface) instead of spawning a daemon executor.
+    const marked = await this.markSurfaceManaged(result.record.id);
+    return marked ? { ...result, record: marked } : result;
+  }
+
+  private async markSurfaceManaged(sessionId: string): Promise<SharedSessionRecord | null> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+    if (session.metadata?.[SESSION_SURFACE_MANAGED_METADATA_KEY] === true) return session;
+    const updated: SharedSessionRecord = {
+      ...session,
+      metadata: { ...session.metadata, [SESSION_SURFACE_MANAGED_METADATA_KEY]: true },
+      updatedAt: Date.now(),
+    };
+    this.sessions.set(updated.id, updated);
+    await this.persist();
+    return updated;
   }
 
   getMessages(sessionId: string, limit = 100): SharedSessionMessage[] {
@@ -682,6 +706,32 @@ export class SharedSessionBroker {
       };
     }
 
+    // Surface routing: a steer/follow-up to a surface-managed session with a LIVE
+    // registered surface participant (other than the sender) is delivered to that
+    // surface — the input stays QUEUED for the surface to collect via
+    // sessions.inputs.list and mark delivered via sessions.inputs.deliver. It does
+    // NOT spawn a daemon executor (which would fail on the daemon's own model
+    // registry). Sessions without a live surface keep the executor path below.
+    if (
+      (intent === 'steer' || intent === 'follow-up') &&
+      shouldRouteInputToSurface(updatedSession, Date.now(), SURFACE_ROUTE_FRESHNESS_MS, { surfaceId: input.surfaceId })
+    ) {
+      await this.persist();
+      this.publishInputLifecycleEvent('session-input-queued-for-surface', queuedInput, {
+        messageId: userMessage.id,
+      });
+      return {
+        session: this.sessions.get(updatedSession.id)!,
+        userMessage,
+        routeBinding: binding ?? undefined,
+        input: queuedInput,
+        intent,
+        mode: 'queued-for-surface',
+        state: queuedInput.state,
+        created,
+      };
+    }
+
     await this.persist();
     return {
       session: this.sessions.get(updatedSession.id)!,
@@ -694,6 +744,32 @@ export class SharedSessionBroker {
       task: this.buildContinuationTask(updatedSession.id),
       created,
     };
+  }
+
+  /** Collection read for a live surface (see {@link filterSessionInputsSince}). */
+  getInputsSince(
+    sessionId: string,
+    options: { readonly state?: SharedSessionInputRecord['state'] | undefined; readonly since?: number | undefined; readonly limit?: number | undefined } = {},
+  ): SharedSessionInputRecord[] {
+    return filterSessionInputsSince(this.inputs.get(sessionId) ?? [], options);
+  }
+
+  /** A live surface reports a collected input delivered (`consumed:false`) or
+   * consumed/completed (`consumed:true`); emits a session_update. Lifecycle rules
+   * live in {@link markSurfaceInputDelivered}. */
+  async markInputDelivered(
+    sessionId: string,
+    inputId: string,
+    options: { readonly consumed?: boolean | undefined } = {},
+  ): Promise<SharedSessionInputRecord | null> {
+    await this.start();
+    const consumed = options.consumed === true;
+    const updated = markSurfaceInputDelivered(this.sessionInputStore(), sessionId, inputId, consumed);
+    if (!updated) return null;
+    this.refreshPendingInputCount(sessionId);
+    await this.persist();
+    this.publishInputLifecycleEvent(consumed ? 'session-input-completed' : 'session-input-delivered', updated);
+    return updated;
   }
 
   private recordInput(

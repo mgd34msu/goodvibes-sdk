@@ -57,6 +57,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.messages.create': 'submitMessage',
   'sessions.inputs.list': 'inputs',
   'sessions.inputs.cancel': 'cancelInput',
+  'sessions.inputs.deliver': 'deliverInput',
   'sessions.integration.snapshot': 'current',
 };
 
@@ -223,6 +224,7 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
     'sessions.messages.create': { args: [{}], effect: 'sessionBroker.submitMessage' },
     'sessions.inputs.list': { args: ['s'], effect: 'sessionBroker.getInputs' },
     'sessions.inputs.cancel': { args: ['s', 'i'], effect: 'sessionBroker.cancelInput' },
+    'sessions.inputs.deliver': { args: ['s', 'i'], effect: 'sessionBroker.markInputDelivered' },
     'sessions.integration.snapshot': { args: [], effect: 'readModels.session.getSnapshot' },
   };
 
@@ -244,6 +246,8 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
         steerMessage: brokerSpy('steerMessage', Promise.resolve({})),
         followUpMessage: brokerSpy('followUpMessage', Promise.resolve({})),
         cancelInput: brokerSpy('cancelInput', Promise.resolve(null)),
+        getInputsSince: brokerSpy('getInputsSince', []),
+        markInputDelivered: brokerSpy('markInputDelivered', Promise.resolve(null)),
       },
       readModels: {
         session: { getSnapshot: () => { calls.push('readModels.session.getSnapshot'); return {}; } },
