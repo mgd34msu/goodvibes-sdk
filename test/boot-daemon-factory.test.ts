@@ -112,6 +112,29 @@ describe('R2 — isolated home', () => {
   });
 });
 
+describe('D6 — operator provider/account snapshots serve JSON, never 500 HTML', () => {
+  // Regression: under bootDaemon's fresh isolated home the pricing catalog has
+  // not hydrated, so the configured default model ('openrouter:openrouter/free')
+  // has no materialized registry definition and getCurrentModel() throws. The
+  // read-only snapshot builders must tolerate that and still answer with JSON
+  // instead of letting the exception fall through to Bun's 500 SPA-fallback HTML.
+  for (const path of ['/api/accounts', '/api/providers']) {
+    test(`GET ${path} returns 200 application/json (not 500, not HTML)`, async () => {
+      const res = await fetch(`${daemon.url}${path}`, { headers: auth() });
+      const contentType = res.headers.get('content-type') ?? '';
+      expect(res.status).toBe(200);
+      expect(contentType).toContain('application/json');
+      expect(contentType).not.toContain('text/html');
+      const body = await res.json() as { providers: unknown[] };
+      expect(Array.isArray(body.providers)).toBe(true);
+      // With no active/resolvable current model, no provider claims active:true.
+      for (const provider of body.providers as Array<{ active?: unknown }>) {
+        expect(provider.active).toBe(false);
+      }
+    });
+  }
+});
+
 describe('m7 — companion SSE requires auth', () => {
   test('companion chat events stream returns 401 without a token (auth gate before lookup)', async () => {
     const res = await fetch(`${daemon.url}/api/companion/chat/sessions/any-id/events`);

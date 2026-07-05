@@ -103,7 +103,16 @@ export async function buildProviderAccountSnapshot(
 ): Promise<ProviderAccountSnapshot> {
   const providerRegistry = deps.providerRegistry;
   const allModels = providerRegistry.listModels();
-  const currentModel = providerRegistry.getCurrentModel?.();
+  // Read-only display path: an unresolved current model (e.g. a fresh isolated
+  // home whose pricing catalog has not hydrated, leaving the configured default
+  // with no materialized definition) must not turn this snapshot into a 500. Fall
+  // back to "no active provider" instead of letting getCurrentModel() throw.
+  let currentModel: ReturnType<NonNullable<typeof providerRegistry.getCurrentModel>> | undefined;
+  try {
+    currentModel = providerRegistry.getCurrentModel?.();
+  } catch {
+    currentModel = undefined;
+  }
   const apiKeys = await resolveApiKeys(deps.secretsManager);
   const subscriptions = deps.subscriptionManager;
   const builtinSubscriptionProviders = new Set(listBuiltinSubscriptionProviders().map((entry) => entry.provider));
