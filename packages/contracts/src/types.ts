@@ -78,6 +78,19 @@ export interface OperatorEventCoverageContract {
   readonly withWireEvents: number;
 }
 
+/**
+ * How many cataloged verbs the invoke-layer input gate structurally validates
+ * (typed object inputSchema) versus skips (generic object schema with no
+ * declared properties, or no inputSchema at all). Surfaces the validation gap so
+ * it is visible and shrinkable as verbs adopt typed input schemas.
+ */
+export interface OperatorValidationCoverageContract {
+  readonly methods: number;
+  readonly validated: number;
+  readonly skippedGeneric: number;
+  readonly skippedUntyped: number;
+}
+
 export interface OperatorContractManifest {
   readonly version: number;
   readonly product: {
@@ -139,6 +152,7 @@ export interface OperatorContractManifest {
     readonly events: readonly OperatorEventContract[];
     readonly schemaCoverage: OperatorSchemaCoverageContract;
     readonly eventCoverage: OperatorEventCoverageContract;
+    readonly validationCoverage?: OperatorValidationCoverageContract | undefined;
   };
   readonly peer: {
     readonly contractPath: string;

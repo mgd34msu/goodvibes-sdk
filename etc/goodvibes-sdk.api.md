@@ -2159,6 +2159,7 @@ export interface OperatorContractManifest {
         readonly events: readonly OperatorEventContract[];
         readonly schemaCoverage: OperatorSchemaCoverageContract;
         readonly eventCoverage: OperatorEventCoverageContract;
+        readonly validationCoverage?: OperatorValidationCoverageContract | undefined;
     };
     // (undocumented)
     readonly peer: {
@@ -13573,6 +13574,18 @@ export type OperatorTypedEventId = keyof OperatorEventPayloadMap & string;
 
 // @public (undocumented)
 export type OperatorTypedMethodId = OperatorMethodId;
+
+// @public
+export interface OperatorValidationCoverageContract {
+    // (undocumented)
+    readonly methods: number;
+    // (undocumented)
+    readonly skippedGeneric: number;
+    // (undocumented)
+    readonly skippedUntyped: number;
+    // (undocumented)
+    readonly validated: number;
+}
 
 // @public (undocumented)
 export type OpsEvent =

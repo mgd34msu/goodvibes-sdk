@@ -14,6 +14,7 @@ import type { DistributedRuntimeManager } from '../runtime/remote/index.js';
 import { extractForwardedClientIp } from '../runtime/network/index.js';
 import { resolveGatewayPathTemplate } from './helpers.js';
 import { summarizeError } from '../utils/error-display.js';
+import { validateInvocationInput } from '../control-plane/invoke-input-validation.js';
 import {
   buildMissingScopeBody,
   resolveAuthenticatedPrincipal,
@@ -433,6 +434,14 @@ export class DaemonControlPlaneHelper {
     if (matchedDescriptor) {
       const denied = this.validateGatewayInvocation(matchedDescriptor, input.context);
       if (denied) return denied;
+      // Same input gate for the method+path WS call path (no bypass of the HTTP
+      // methodId gate). Only POST/PATCH carry a validatable body here.
+      if (input.method === 'POST' || input.method === 'PATCH') {
+        const invalid = validateInvocationInput(matchedDescriptor, input.body);
+        if (invalid) {
+          return { status: 400, ok: false, body: { error: invalid.detail, code: invalid.code } };
+        }
+      }
     }
     const url = new URL(`http://${this.context.host}:${this.context.port}${input.path.startsWith('/') ? input.path : `/${input.path}`}`);
     for (const [key, value] of Object.entries(input.query ?? {})) {
@@ -485,6 +494,18 @@ export class DaemonControlPlaneHelper {
     }
     const denied = this.validateGatewayInvocation(descriptor, input.context);
     if (denied) return denied;
+    // Input validation gate: reject a wrong-typed / missing-required body against
+    // the verb's typed inputSchema before the handler runs (honest 400, not silent
+    // coercion). Only body-carrying invocations are checked — a handler method
+    // (no http binding) or a POST/PATCH verb receives its params in the body;
+    // GET/DELETE params arrive as query strings that cannot be soundly type-checked.
+    const carriesBody = !descriptor.http || descriptor.http.method === 'POST' || descriptor.http.method === 'PATCH';
+    if (carriesBody) {
+      const invalid = validateInvocationInput(descriptor, input.body);
+      if (invalid) {
+        return { status: 400, ok: false, body: { error: invalid.detail, code: invalid.code } };
+      }
+    }
     if (this.context.gatewayMethods.hasHandler(input.methodId)) {
       try {
         const body = await this.context.gatewayMethods.invoke(input.methodId, {
