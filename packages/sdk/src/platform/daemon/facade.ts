@@ -66,9 +66,7 @@ interface UpgradeCapableServer {
 
 type JsonBody = Record<string, unknown>;
 
-// ---------------------------------------------------------------------------
-// DaemonServer
-// ---------------------------------------------------------------------------
+// --- DaemonServer ---
 
 /**
  * DaemonServer — HTTP task server, disabled by default.
@@ -260,6 +258,15 @@ export class DaemonServer {
     return true;
   }
 
+  /** Bound TCP port after {@link start} (resolves a `port: 0` request to the real port). */
+  get boundPort(): number {
+    const served = (this.server as { port?: number } | null)?.port;
+    return typeof served === 'number' ? served : this.port;
+  }
+
+  /** The host the daemon is bound to. */
+  get boundHost(): string { return this.host; }
+
   /**
    * Start the daemon. Refuses to start if not explicitly enabled.
    */
@@ -347,7 +354,10 @@ export class DaemonServer {
       // Boot precondition: fold legacy stores into the home store before the broker serves (idempotent).
       await importLegacySessionStores({
         homeStorePath: this.runtimeServices.shellPaths.resolveUserPath('control-plane', 'sessions.json'),
-        sources: discoverLegacySessionSources({ projectRoot: this.runtimeServices.shellPaths.workingDirectory }),
+        sources: discoverLegacySessionSources({
+          projectRoot: this.runtimeServices.shellPaths.workingDirectory,
+          companionSessionsDir: this.runtimeServices.shellPaths.resolveUserPath('companion-chat', 'sessions'), // injected home
+        }),
       }).catch((error: unknown) => logger.warn('DaemonServer: legacy session import failed', { error: summarizeError(error) }));
       await Promise.all([
         this.sessionBroker.start(),
@@ -447,10 +457,8 @@ export class DaemonServer {
   async stop(): Promise<void> {
     if (this.server === null) return;
 
-    // Tear down config watcher only on intentional stop, not mid-restart.
-    // During a restart cycle (_restarting=true) the watcher must stay active so
-    // config changes that arrive between stop() and the subsequent start() can be
-    // captured by the dirty flag.
+    // Tear down config watcher only on intentional stop; during a restart cycle
+    // (_restarting) it must stay active so mid-restart changes hit the dirty flag.
     if (!this._restarting) {
       this._configWatchUnsub?.();
       this._configWatchUnsub = null;
@@ -468,9 +476,8 @@ export class DaemonServer {
     this.httpRouter.dispose();
     this.companionChatManager.dispose();
 
-    // Stop services that expose async teardown. Note: sessionBroker, approvalBroker,
-    // channelPolicy, and distributedRuntime expose start() only — their lifecycle ends
-    // when the server socket closes. We stop what we can in reverse start order.
+    // Stop services with async teardown in reverse start order (sessionBroker,
+    // approvalBroker, channelPolicy, distributedRuntime end when the socket closes).
     this.providerRuntime.stopAll();
     this.automationManager.stop();
     // Tear down the adapter bus subscription and session broker GC interval.
@@ -495,9 +502,8 @@ export class DaemonServer {
 
     const restart = (): void => {
       if (this._restarting) {
-        // A change arrived mid-restart — queue a second cycle via dirty flag.
-        // Check _restarting BEFORE isRunning: stop() runs synchronously inside the
-        // restart IIFE, so isRunning may be false even while a restart is in progress.
+        // Change arrived mid-restart — queue a second cycle (check _restarting
+        // before isRunning: stop() runs synchronously inside the restart IIFE).
         this._restartDirty = true;
         return;
       }
@@ -533,10 +539,8 @@ export class DaemonServer {
       })();
     };
 
-    // getIsRunning must also return true while a restart cycle is in progress
-    // (_restarting=true) so that config changes arriving mid-restart reach the
-    // dirty-flag path inside `restart`. When the server is intentionally stopped
-    // (not mid-restart) isRunning and _restarting are both false.
+    // getIsRunning also returns true mid-restart (_restarting) so changes arriving
+    // then reach the dirty-flag path; both are false on an intentional stop.
     const watcher = createHostModeRestartWatcher({
       configManager: this.configManager,
       keys: ['controlPlane.hostMode', 'controlPlane.host', 'controlPlane.port'],
@@ -553,9 +557,7 @@ export class DaemonServer {
     return this.server !== null;
   }
 
-  // -------------------------------------------------------------------------
-  // Auth
-  // -------------------------------------------------------------------------
+  // --- Auth ---
 
   private extractAuthToken(req: Request): string {
     return this.controlPlaneHelper.extractAuthToken(req);
@@ -662,9 +664,7 @@ export class DaemonServer {
     return await this.controlPlaneHelper.invokeGatewayMethodCall(input);
   }
 
-  // -------------------------------------------------------------------------
-  // Request handling
-  // -------------------------------------------------------------------------
+  // --- Request handling ---
 
   private async handleRequest(req: Request): Promise<Response> {
     return await this.httpRouter.handleRequest(req);

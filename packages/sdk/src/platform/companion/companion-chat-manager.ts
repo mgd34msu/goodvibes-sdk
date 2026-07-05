@@ -20,13 +20,10 @@
  * - A GC sweep closes sessions that have been idle beyond the TTL.
  */
 
-import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { ConversationManager } from '../core/conversation.js';
-import type { ContentPart, ProviderMessage } from '../providers/interface.js';
-import type { ArtifactDescriptor } from '../artifacts/index.js';
+import type { ProviderMessage } from '../providers/interface.js';
 import type {
-  CompanionChatMessageAttachment,
   CompanionChatMessageAttachmentInput,
   CompanionChatMessage,
   CompanionChatSession,
@@ -39,6 +36,14 @@ import {
   CompanionChatPersistence,
   defaultSessionsDir,
 } from './companion-chat-persistence.js';
+import {
+  buildProviderUserContent,
+  buildReplayUserContent,
+  resolveAttachments,
+  type CompanionChatArtifactStore,
+} from './companion-chat-attachments.js';
+import { planCompanionSweep } from './companion-chat-gc.js';
+import type { CompanionSessionBrokerBridge } from './companion-chat-broker-bridge.js';
 import { CompanionChatRateLimiter } from './companion-chat-rate-limiter.js';
 import type { CompanionChatRateLimiterOptions } from './companion-chat-rate-limiter.js';
 import type { ToolRegistry } from '../tools/registry.js';
@@ -86,13 +91,7 @@ type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;
 };
 
-export interface CompanionChatArtifactStore {
-  get(artifactId: string): ArtifactDescriptor | null;
-  readContent(artifactId: string): Promise<{
-    readonly record: { readonly mimeType: string; readonly filename?: string | undefined };
-    readonly buffer: ArrayBuffer | Uint8Array | Buffer;
-  }>;
-}
+export type { CompanionChatArtifactStore } from './companion-chat-attachments.js';
 
 // ---------------------------------------------------------------------------
 // Event publisher interface (subset of ControlPlaneGateway)
@@ -112,6 +111,7 @@ export interface CompanionChatEventPublisher {
 
 const DEFAULT_IDLE_ACTIVE_MS = 30 * 60 * 1_000; // 30 minutes with messages
 const DEFAULT_IDLE_EMPTY_MS = 5 * 60 * 1_000;   // 5 minutes empty session
+const DEFAULT_CLOSED_MEMORY_GRACE_MS = 5 * 60 * 1_000; // evict closed bodies from RAM after 5 min
 const GC_INTERVAL_MS = 60 * 1_000;               // sweep every minute
 const MAX_TOOL_ROUNDS_PER_TURN = 8;
 const TOOL_EXHAUSTION_FINALIZER_PROMPT = [
@@ -121,16 +121,6 @@ const TOOL_EXHAUSTION_FINALIZER_PROMPT = [
   'If the available tool results are insufficient, say what is missing and ask one short follow-up '
     + 'question.',
 ].join(' ');
-const MAX_ATTACHMENTS_PER_MESSAGE = 8;
-const MAX_INLINE_IMAGE_ATTACHMENT_BYTES = 20 * 1024 * 1024;
-const MAX_INLINE_TEXT_ATTACHMENT_BYTES = 200 * 1024;
-
-function toNodeBuffer(buffer: ArrayBuffer | Uint8Array | Buffer): Buffer {
-  if (Buffer.isBuffer(buffer)) return buffer;
-  if (buffer instanceof ArrayBuffer) return Buffer.from(new Uint8Array(buffer));
-  return Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-}
-
 function assertCompleteProviderModelRoute(
   input: { readonly model?: string | undefined; readonly provider?: string | undefined },
 ): void {
@@ -143,12 +133,18 @@ function assertCompleteProviderModelRoute(
 
 interface InternalSession {
   readonly meta: CompanionChatSession;
-  readonly conversation: ConversationManager;
-  readonly messages: CompanionChatMessage[];
+  conversation: ConversationManager;
+  messages: CompanionChatMessage[];
   readonly abortController: AbortController;
   lastActivityAt: number;
   // The SSE client ID for this session (set when a subscriber connects)
   subscriberClientId: string | null;
+  /**
+   * True once the GC has evicted this closed session's heavy in-memory handles
+   * (ConversationManager + message bodies). Meta stays listable; the on-disk
+   * copy is untouched. Prevents repeated eviction work across sweeps.
+   */
+  messagesEvicted?: boolean;
 }
 
 type MutableSessionMeta = {
@@ -193,9 +189,28 @@ export interface CompanionChatManagerConfig {
   readonly artifactStore?: CompanionChatArtifactStore | null | undefined;
   /**
    * Directory under which session JSON files are persisted.
-   * Default: ~/.goodvibes/companion-chat/sessions/
+   * Default: `<homeDirectory>/.goodvibes/companion-chat/sessions/` when
+   * `homeDirectory` is provided, else the OS home. Prefer passing this (or
+   * `homeDirectory`) explicitly so an isolated-home daemon never touches the
+   * real `~/.goodvibes`.
    */
   readonly sessionsDir?: string | undefined;
+  /** Injected home dir; when `sessionsDir` is omitted, the persistence root is
+   * derived from THIS home (not the OS home) so an isolated-home daemon stays in. */
+  readonly homeDirectory?: string | undefined;
+  /**
+   * Optional bridge to the shared session broker. When supplied, companion
+   * sessions register INTO the broker at write time (create/close), so
+   * `/api/sessions` reflects companion activity immediately (same-process, no
+   * restart). The boot-time importer fold remains the reconciliation path.
+   */
+  readonly sessionBroker?: CompanionSessionBrokerBridge | null | undefined;
+  /** Age (ms past closedAt) at which a CLOSED session's heavy in-memory handles
+   * are evicted while its meta stays listable (bounds resident memory). Default 5 min. */
+  readonly closedSessionMemoryGraceMs?: number | undefined;
+  /** Age (ms past closedAt) at which a CLOSED session's persisted file is PERMANENTLY
+   * deleted. Closed sessions are HISTORY: default `undefined` = retain indefinitely. */
+  readonly closedSessionRetentionMs?: number | undefined;
   /**
    * Pass `false` to disable disk persistence entirely (useful in tests).
    * Default: true
@@ -224,6 +239,11 @@ export class CompanionChatManager {
   private readonly rateLimiter: CompanionChatRateLimiter | null;
   private readonly idleActiveMs: number;
   private readonly idleEmptyMs: number;
+  private readonly closedMemoryGraceMs: number;
+  private readonly closedRetentionMs: number | undefined;
+  private readonly sessionBroker: CompanionSessionBrokerBridge | null;
+  /** Per-session broker-sync chains (serialized so register→close stays ordered). */
+  private readonly _pendingBrokerOps = new Map<string, Promise<void>>();
   private gcTimer: ReturnType<typeof setInterval> | null = null;
   /** Tracks whether the async init() has completed. */
   private initCompleted = false;
@@ -245,14 +265,18 @@ export class CompanionChatManager {
     this.artifactStore = config.artifactStore ?? null;
     this.idleActiveMs = config.idleActiveMs ?? DEFAULT_IDLE_ACTIVE_MS;
     this.idleEmptyMs = config.idleEmptyMs ?? DEFAULT_IDLE_EMPTY_MS;
+    this.closedMemoryGraceMs = config.closedSessionMemoryGraceMs ?? DEFAULT_CLOSED_MEMORY_GRACE_MS;
+    this.closedRetentionMs = config.closedSessionRetentionMs;
+    this.sessionBroker = config.sessionBroker ?? null;
 
     // Persistence
     // Default is false — most callers (tests, downstream consumers) get the
     // safe no-write default. The daemon opts into persistence explicitly via
-    // persist: true in facade-composition.
+    // persist: true in facade-composition. When sessionsDir is omitted, derive
+    // the root from the INJECTED home so an isolated-home daemon stays inside it.
     const persist = config.persist === true;
     this.persistence = persist
-      ? new CompanionChatPersistence(config.sessionsDir ?? defaultSessionsDir())
+      ? new CompanionChatPersistence(config.sessionsDir ?? defaultSessionsDir(config.homeDirectory))
       : null;
 
     // Rate limiter
@@ -295,7 +319,7 @@ export class CompanionChatManager {
       if (meta.status !== 'closed') {
         for (const msg of normalizedMessages) {
           if (msg.role === 'user') {
-            conversation.addUserMessage(this.buildReplayUserContent(msg));
+            conversation.addUserMessage(buildReplayUserContent(msg));
           } else {
             conversation.addAssistantMessage(msg.content);
           }
@@ -349,6 +373,9 @@ export class CompanionChatManager {
     });
 
     this._persist(id);
+    // Live spine: mirror the new session into the shared broker at write time so
+    // /api/sessions reflects it same-process (no restart). Best-effort.
+    this._trackBrokerOp(meta.id, () => this._registerCompanionSession(meta));
 
     return meta;
   }
@@ -413,6 +440,9 @@ export class CompanionChatManager {
 
     const updated = this._updateMeta(session, patch);
     this._persist(sessionId);
+    // Heartbeat the broker record (advances participant.lastSeenAt). Title is
+    // never overwritten by this path (broker treats register as a heartbeat).
+    this._trackBrokerOp(updated.id, () => this._registerCompanionSession(updated));
     return updated;
   }
 
@@ -443,6 +473,8 @@ export class CompanionChatManager {
     const updated = this._updateMeta(session, { status: 'closed', closedAt: now, updatedAt: now });
 
     this._persist(sessionId);
+    // Live spine: flip the shared broker record to closed at write time.
+    this._trackBrokerOp(sessionId, () => this._closeCompanionSession(sessionId));
 
     return updated;
   }
@@ -528,7 +560,7 @@ export class CompanionChatManager {
     // Rate-limit check (throws GoodVibesSdkError on violation)
     this.rateLimiter?.check(sessionId, clientId);
 
-    const attachments = this.resolveAttachments(options.attachments ?? []);
+    const attachments = resolveAttachments(options.attachments ?? [], this.artifactStore);
     if (!content.trim() && attachments.length === 0) {
       throw Object.assign(new Error('content or attachments are required'), { code: 'INVALID_INPUT', status: 400 });
     }
@@ -547,7 +579,7 @@ export class CompanionChatManager {
     };
 
     session.messages.push(userMsg);
-    session.conversation.addUserMessage(await this.buildProviderUserContent(content, attachments));
+    session.conversation.addUserMessage(await buildProviderUserContent(content, attachments, this.artifactStore));
     session.lastActivityAt = now;
     this._updateMeta(session, {
       messageCount: session.messages.length,
@@ -569,122 +601,6 @@ export class CompanionChatManager {
     });
 
     return messageId;
-  }
-
-  private resolveAttachments(
-    inputs: readonly CompanionChatMessageAttachmentInput[],
-  ): CompanionChatMessageAttachment[] {
-    if (inputs.length === 0) return [];
-    if (inputs.length > MAX_ATTACHMENTS_PER_MESSAGE) {
-      throw Object.assign(
-        new Error(`A companion chat message can include at most ${MAX_ATTACHMENTS_PER_MESSAGE} attachments.`),
-        { code: 'TOO_MANY_ATTACHMENTS', status: 400 },
-      );
-    }
-    if (!this.artifactStore) {
-      throw Object.assign(
-        new Error('Companion chat attachments require an artifact store.'),
-        { code: 'ATTACHMENTS_UNAVAILABLE', status: 501 },
-      );
-    }
-
-    return inputs.map((input) => {
-      const artifactId = input.artifactId.trim();
-      if (!artifactId) {
-        throw Object.assign(new Error('Attachment artifactId is required.'), {
-          code: 'INVALID_ATTACHMENT',
-          status: 400,
-        });
-      }
-      const artifact = this.artifactStore!.get(artifactId);
-      if (!artifact) {
-        throw Object.assign(new Error(`Unknown attachment artifact: ${artifactId}`), {
-          code: 'UNKNOWN_ARTIFACT',
-          status: 404,
-        });
-      }
-      return {
-        ...artifact,
-        artifactId: artifact.id,
-        ...(input.label?.trim() ? { label: input.label.trim() } : {}),
-        metadata: {
-          ...artifact.metadata,
-          ...(input.metadata ?? {}),
-        },
-      };
-    });
-  }
-
-  private formatAttachmentSummary(attachments: readonly CompanionChatMessageAttachment[]): string {
-    if (attachments.length === 0) return '';
-    const lines = attachments.map((attachment, index) => {
-      const name = attachment.label ?? attachment.filename ?? attachment.artifactId;
-      return `${index + 1}. ${name} (${attachment.mimeType}, ${attachment.sizeBytes} bytes, artifact ${attachment.artifactId})`;
-    });
-    return `\n\nAttached file${attachments.length === 1 ? '' : 's'}:\n${lines.join('\n')}`;
-  }
-
-  private buildReplayUserContent(message: CompanionChatMessage): string {
-    return `${message.content}${this.formatAttachmentSummary(message.attachments ?? [])}`;
-  }
-
-  private isInlineTextAttachment(attachment: CompanionChatMessageAttachment): boolean {
-    const lower = attachment.mimeType.toLowerCase();
-    return attachment.sizeBytes <= MAX_INLINE_TEXT_ATTACHMENT_BYTES
-      && (lower.startsWith('text/')
-        || lower === 'application/json'
-        || lower === 'application/xml'
-        || lower === 'application/yaml'
-        || lower === 'text/csv');
-  }
-
-  private isInlineImageAttachment(attachment: CompanionChatMessageAttachment): boolean {
-    const lower = attachment.mimeType.toLowerCase();
-    return attachment.sizeBytes <= MAX_INLINE_IMAGE_ATTACHMENT_BYTES
-      && (lower === 'image/png'
-        || lower === 'image/jpeg'
-        || lower === 'image/gif'
-        || lower === 'image/webp');
-  }
-
-  private async buildProviderUserContent(
-    content: string,
-    attachments: readonly CompanionChatMessageAttachment[],
-  ): Promise<string | ContentPart[]> {
-    if (attachments.length === 0) return content;
-    const textSections: string[] = [content.trim() ? content : 'Please review the attached file(s).'];
-    const imageParts: ContentPart[] = [];
-
-    for (const attachment of attachments) {
-      if (!this.artifactStore) continue;
-      try {
-        if (this.isInlineTextAttachment(attachment)) {
-          const { buffer } = await this.artifactStore.readContent(attachment.artifactId);
-          const text = toNodeBuffer(buffer).toString('utf-8');
-          textSections.push(
-            `\n\n--- Attachment: ${attachment.label ?? attachment.filename ?? attachment.artifactId} ---\n${text}`,
-          );
-          continue;
-        }
-        if (this.isInlineImageAttachment(attachment)) {
-          const { buffer } = await this.artifactStore.readContent(attachment.artifactId);
-          imageParts.push({
-            type: 'image',
-            mediaType: attachment.mimeType,
-            data: toNodeBuffer(buffer).toString('base64'),
-          });
-        }
-      } catch (error) {
-        logger.warn('[companion-chat] failed to inline attachment for provider prompt', {
-          artifactId: attachment.artifactId,
-          error: summarizeError(error),
-        });
-      }
-    }
-
-    textSections.push(this.formatAttachmentSummary(attachments));
-    if (imageParts.length === 0) return textSections.join('');
-    return [{ type: 'text', text: textSections.join('') }, ...imageParts];
   }
 
   dispose(): void {
@@ -977,12 +893,47 @@ export class CompanionChatManager {
   // GC sweep
   // ---------------------------------------------------------------------------
 
+  /**
+   * Periodic GC sweep. Deletion authority is SPLIT (charter: closed sessions are
+   * HISTORY): close-idle closes an idle active session; evict-memory drops a
+   * long-closed session's in-memory handles (meta + on-disk copy kept);
+   * delete-persistent removes the file ONLY under an explicit finite retention
+   * window (default retains indefinitely — see {@link planCompanionSweep}).
+   */
   _gcSweep(): void {
     const now = Date.now();
     for (const [id, session] of this.sessions) {
-      if (session.meta.status === 'closed') {
-        // Remove already-closed sessions after a short grace period (5 min)
-        if (now - (session.meta.closedAt ?? now) > 5 * 60_000) {
+      const action = planCompanionSweep(
+        {
+          status: session.meta.status,
+          closedAt: session.meta.closedAt,
+          lastActivityAt: session.lastActivityAt,
+          hasMessagesInMemory: !session.messagesEvicted && session.messages.length > 0,
+          isEmpty: session.messages.length === 0,
+        },
+        {
+          now,
+          idleActiveMs: this.idleActiveMs,
+          idleEmptyMs: this.idleEmptyMs,
+          closedMemoryGraceMs: this.closedMemoryGraceMs,
+          closedRetentionMs: this.closedRetentionMs,
+        },
+      );
+
+      switch (action.kind) {
+        case 'close-idle':
+          session.abortController.abort();
+          this._updateMeta(session, { status: 'closed', closedAt: now, updatedAt: now });
+          this._persist(id);
+          this._trackBrokerOp(id, () => this._closeCompanionSession(id));
+          break;
+        case 'evict-memory':
+          // Free heavy handles; keep meta (listable) and the persisted file.
+          session.messages = [];
+          session.conversation = new ConversationManager();
+          session.messagesEvicted = true;
+          break;
+        case 'delete-persistent':
           void this.persistence?.delete(id).catch((error: unknown) => {
             logger.warn('[companion-chat] session delete failed', {
               sessionId: id,
@@ -990,19 +941,9 @@ export class CompanionChatManager {
             });
           });
           this.sessions.delete(id);
-        }
-        continue;
-      }
-
-      const idleMs = now - session.lastActivityAt;
-      const isEmpty = session.messages.length === 0;
-      const ttl = isEmpty ? this.idleEmptyMs : this.idleActiveMs;
-
-      if (idleMs >= ttl) {
-        // Close via GC
-        session.abortController.abort();
-        this._updateMeta(session, { status: 'closed', closedAt: now, updatedAt: now });
-        this._persist(id);
+          break;
+        case 'retain':
+          break;
       }
     }
   }
@@ -1014,6 +955,63 @@ export class CompanionChatManager {
     const updated: CompanionChatSession = { ...session.meta, ...patch };
     (session as { meta: CompanionChatSession }).meta = updated;
     return updated;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Live shared-broker registration (S1 item D)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Await all in-flight best-effort broker-sync operations. The daemon's
+   * companion HTTP routes call this before responding so `/api/sessions`
+   * reflects the change synchronously; tests use it to make the mirror
+   * deterministic. A no-op when no broker bridge is configured.
+   */
+  async flushBrokerSync(): Promise<void> {
+    await Promise.all([...this._pendingBrokerOps.values()]);
+  }
+
+  /** Chain a broker op AFTER any prior op for the same session so register and
+   * close never race (order = call order). Best-effort; errors are swallowed. */
+  private _trackBrokerOp(sessionId: string, run: () => Promise<void>): void {
+    if (!this.sessionBroker) return;
+    const prior = this._pendingBrokerOps.get(sessionId) ?? Promise.resolve();
+    const next = prior.catch(() => {}).then(run).catch(() => {});
+    this._pendingBrokerOps.set(sessionId, next.finally(() => {
+      if (this._pendingBrokerOps.get(sessionId) === next) this._pendingBrokerOps.delete(sessionId);
+    }));
+  }
+
+  private async _registerCompanionSession(meta: CompanionChatSession): Promise<void> {
+    const broker = this.sessionBroker;
+    if (!broker) return;
+    try {
+      await broker.register({
+        sessionId: meta.id,
+        kind: 'companion-chat',
+        project: 'unknown',
+        title: meta.title,
+        participant: { surfaceKind: 'companion', surfaceId: meta.id, lastSeenAt: Date.now() },
+      });
+    } catch (error) {
+      logger.warn('[companion-chat] broker registration failed', {
+        sessionId: meta.id,
+        error: summarizeError(error),
+      });
+    }
+  }
+
+  private async _closeCompanionSession(sessionId: string): Promise<void> {
+    const broker = this.sessionBroker;
+    if (!broker) return;
+    try {
+      await broker.closeSession(sessionId);
+    } catch (error) {
+      logger.warn('[companion-chat] broker close failed', {
+        sessionId,
+        error: summarizeError(error),
+      });
+    }
   }
 
   /**

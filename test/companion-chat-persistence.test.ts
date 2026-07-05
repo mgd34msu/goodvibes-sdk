@@ -36,7 +36,13 @@ function makeMockProvider(reply = 'hi there'): CompanionLLMProvider {
   };
 }
 
-function makeManager(sessionsDir: string): CompanionChatManager {
+function makeManager(
+  sessionsDir: string,
+  overrides: {
+    readonly closedSessionMemoryGraceMs?: number;
+    readonly closedSessionRetentionMs?: number;
+  } = {},
+): CompanionChatManager {
   return new CompanionChatManager({
     provider: makeMockProvider(),
     eventPublisher: { publishEvent() {} },
@@ -44,6 +50,8 @@ function makeManager(sessionsDir: string): CompanionChatManager {
     persist: true, // explicitly opt into disk persistence — this file tests persistence behaviour
     sessionsDir,
     rateLimiter: false, // disable rate limiting in tests
+    ...(overrides.closedSessionMemoryGraceMs !== undefined ? { closedSessionMemoryGraceMs: overrides.closedSessionMemoryGraceMs } : {}),
+    ...(overrides.closedSessionRetentionMs !== undefined ? { closedSessionRetentionMs: overrides.closedSessionRetentionMs } : {}),
   });
 }
 
@@ -149,10 +157,12 @@ describe('P2: messages restored in order after restart', () => {
 });
 
 // ---------------------------------------------------------------------------
-// P3: Closed sessions SURVIVE restart (closed-skip data-loss fix, S1 spine).
-// The old behavior dropped closed sessions on reload — the exact "299 on-disk,
-// serves 0" bug. They must now load (listable + importable); GC's grace policy
-// (_gcSweep, 5-min after closedAt) remains the ONLY deletion authority.
+// P3: Closed sessions SURVIVE restart (closed-skip data-loss fix, S1 spine) and
+// are HISTORY. The old behavior dropped closed sessions on reload — the exact
+// "299 on-disk, serves 0" bug. They must now load (listable + importable). GC's
+// deletion authority is SPLIT: it may evict message BODIES from memory after a
+// grace (meta stays listable, on-disk copy untouched), but it must NOT delete
+// the persisted file unless an explicit finite retention window is configured.
 // ---------------------------------------------------------------------------
 
 describe('P3: closed sessions survive restart and stay listable', () => {
@@ -187,10 +197,10 @@ describe('P3: closed sessions survive restart and stay listable', () => {
     }
   });
 
-  test('GC remains the sole deletion authority for restored closed sessions', async () => {
+  test('default retention: an ancient-closed session survives the sweep — listable and on disk', async () => {
     const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-gc-'));
     try {
-      // Seed a closed session whose closedAt is well past the 5-min grace.
+      // Seed a closed session whose closedAt is well past the OLD 5-min grace.
       const stale: PersistedChatSession = {
         meta: {
           id: 'stale-closed', kind: 'companion-chat', title: 'Stale', model: null, provider: null,
@@ -201,14 +211,89 @@ describe('P3: closed sessions survive restart and stay listable', () => {
       };
       await new CompanionChatPersistence(sessionsDir).save(stale);
 
-      const manager = makeManager(sessionsDir);
+      const manager = makeManager(sessionsDir); // default retention = indefinite
       await manager.init();
-      // Loaded (listable) despite being ancient-closed.
       expect(manager.getSession('stale-closed')).not.toBeNull();
-      // GC sweeps it because it is past closedAt + grace.
+      // Sweep runs but must NOT delete under the default (retain indefinitely).
       manager._gcSweep();
-      expect(manager.getSession('stale-closed')).toBeNull();
+      expect(manager.getSession('stale-closed')).not.toBeNull();
+      expect(manager.listSessions({ includeClosed: true }).sessions.map((s) => s.id)).toContain('stale-closed');
       manager.dispose();
+
+      // Still on disk — a fresh manager reloads it.
+      const reloaded = makeManager(sessionsDir);
+      await reloaded.init();
+      expect(reloaded.getSession('stale-closed')).not.toBeNull();
+      reloaded.dispose();
+    } finally {
+      rmSync(sessionsDir, { recursive: true, force: true });
+    }
+  });
+
+  test('memory eviction: an ancient-closed session drops its message bodies from RAM but keeps meta + disk', async () => {
+    const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-evict-'));
+    try {
+      const stale: PersistedChatSession = {
+        meta: {
+          id: 'evict-me', kind: 'companion-chat', title: 'Evict', model: null, provider: null,
+          systemPrompt: null, status: 'closed', createdAt: 1, updatedAt: 1,
+          closedAt: Date.now() - 10 * 60_000, messageCount: 2,
+        },
+        messages: [
+          { id: 'm1', sessionId: 'evict-me', role: 'user', content: 'hi', attachments: [], createdAt: 2 },
+          { id: 'm2', sessionId: 'evict-me', role: 'assistant', content: 'yo', attachments: [], createdAt: 3 },
+        ],
+      };
+      await new CompanionChatPersistence(sessionsDir).save(stale);
+
+      const manager = makeManager(sessionsDir, { closedSessionMemoryGraceMs: 5 * 60_000 });
+      await manager.init();
+      expect(manager.getMessages('evict-me')).toHaveLength(2);
+
+      manager._gcSweep(); // past grace → evict bodies from memory
+      // Meta stays listable; bodies gone from RAM.
+      expect(manager.getSession('evict-me')?.status).toBe('closed');
+      expect(manager.getMessages('evict-me')).toHaveLength(0);
+      // meta.messageCount stays honest (the logical total).
+      expect(manager.getSession('evict-me')?.messageCount).toBe(2);
+      manager.dispose();
+
+      // On-disk copy is UNTOUCHED — a fresh manager restores the bodies.
+      const reloaded = makeManager(sessionsDir);
+      await reloaded.init();
+      expect(reloaded.getMessages('evict-me')).toHaveLength(2);
+      reloaded.dispose();
+    } finally {
+      rmSync(sessionsDir, { recursive: true, force: true });
+    }
+  });
+
+  test('explicit retention window: a closed session past the window IS deleted (opt-in)', async () => {
+    const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-retain-'));
+    try {
+      const stale: PersistedChatSession = {
+        meta: {
+          id: 'retire-me', kind: 'companion-chat', title: 'Retire', model: null, provider: null,
+          systemPrompt: null, status: 'closed', createdAt: 1, updatedAt: 1,
+          closedAt: Date.now() - 10 * 60_000, messageCount: 0,
+        },
+        messages: [],
+      };
+      await new CompanionChatPersistence(sessionsDir).save(stale);
+
+      const manager = makeManager(sessionsDir, { closedSessionRetentionMs: 5 * 60_000 });
+      await manager.init();
+      expect(manager.getSession('retire-me')).not.toBeNull();
+      manager._gcSweep(); // past the finite retention window → delete
+      await settleEvents();
+      expect(manager.getSession('retire-me')).toBeNull();
+      manager.dispose();
+
+      // Deleted from disk too.
+      const reloaded = makeManager(sessionsDir);
+      await reloaded.init();
+      expect(reloaded.getSession('retire-me')).toBeNull();
+      reloaded.dispose();
     } finally {
       rmSync(sessionsDir, { recursive: true, force: true });
     }

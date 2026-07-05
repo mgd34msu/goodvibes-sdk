@@ -312,6 +312,12 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     // Explicitly opt into disk persistence for the daemon. Default is false
     // for tests and embedded hosts.
     persist: true,
+    // Honor the runtime's injected home so an isolated-home daemon never reads
+    // or writes the real ~/.goodvibes/companion-chat.
+    sessionsDir: runtimeServices.shellPaths.resolveUserPath('companion-chat', 'sessions'),
+    // Live spine: companion sessions register INTO the shared broker at write
+    // time so /api/sessions reflects them same-process (no restart).
+    sessionBroker: runtimeServices.sessionBroker,
     // Wire the full ToolRegistry so LLM-emitted tool calls are executed.
     toolRegistry: runtimeServices.agentOrchestrator.getToolRegistry(),
     permissionManager: new PermissionManager(
