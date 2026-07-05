@@ -64277,7 +64277,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -64480,7 +64479,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -64787,7 +64785,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "required": [
                     "id",
                     "kind",
-                    "project",
                     "title",
                     "status",
                     "createdAt",
@@ -65302,7 +65299,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -65844,7 +65840,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -66348,7 +66343,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "required": [
                   "id",
                   "kind",
-                  "project",
                   "title",
                   "status",
                   "createdAt",
@@ -66682,7 +66676,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "required": [
                         "id",
                         "kind",
-                        "project",
                         "title",
                         "status",
                         "createdAt",
@@ -67205,7 +67198,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -67541,7 +67533,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -67760,7 +67751,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
-                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -68070,7 +68060,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "required": [
                     "id",
                     "kind",
-                    "project",
                     "title",
                     "status",
                     "createdAt",
