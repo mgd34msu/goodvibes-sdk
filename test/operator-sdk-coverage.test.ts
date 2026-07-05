@@ -393,6 +393,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
         session: {
           id: 'sess-1',
           kind: 'tui',
+          project: 'unknown',
           title: 'Test session',
           status: 'active',
           createdAt,

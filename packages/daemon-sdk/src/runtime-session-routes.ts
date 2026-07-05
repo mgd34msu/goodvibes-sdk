@@ -1,4 +1,5 @@
 import type { DaemonRuntimeSessionRouteHandlers, DaemonRuntimeTaskRouteHandlers } from './context.js';
+import { handleRegisterSharedSession } from './runtime-session-register.js';
 import { withAdmin } from './auth-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { jsonErrorResponse } from './error-response.js';
@@ -44,7 +45,8 @@ type SharedSessionMessageInput = {
 };
 type SharedSessionRecordResponse = {
   readonly id: string;
-  readonly kind: 'tui' | 'companion-task' | 'companion-chat';
+  readonly kind: 'tui' | 'agent' | 'webui' | 'companion-task' | 'companion-chat' | 'automation';
+  readonly project: string;
   readonly title: string;
   readonly status: 'active' | 'closed';
   readonly createdAt: number;
@@ -75,14 +77,14 @@ type SharedSessionParticipantResponse = {
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 500;
 const MAX_SESSION_TOOL_NAMES = 64;
-const SHARED_SESSION_KINDS = new Set<SharedSessionRecordResponse['kind']>(['tui', 'companion-task', 'companion-chat']);
+const SHARED_SESSION_KINDS = new Set<SharedSessionRecordResponse['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
 const SHARED_SESSION_STATUSES = new Set<SharedSessionRecordResponse['status']>(['active', 'closed']);
 
 function readBoundedLimit(url: URL, key = 'limit'): number {
   return readBoundedPositiveInteger(url.searchParams.get(key), DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT);
 }
 
-function toSharedSessionRecordResponse(
+export function toSharedSessionRecordResponse(
   sessionId: string,
   session: unknown,
   options: {
@@ -107,6 +109,7 @@ function toSharedSessionRecordResponse(
   return {
     id,
     kind,
+    project: readNonEmptyString(record.project) ?? 'unknown',
     title: readNonEmptyString(record.title) ?? `Session ${id}`,
     status,
     createdAt,
@@ -182,6 +185,7 @@ export function createDaemonRuntimeSessionRouteHandlers(
 ): DaemonRuntimeSessionRouteHandlers & DaemonRuntimeTaskRouteHandlers {
   return {
     createSharedSession: async (request) => withAdmin(context, request, () => handleCreateSharedSession(context, request)),
+    registerSharedSession: async (request) => withAdmin(context, request, () => handleRegisterSharedSession(context, request)),
     postTask: async (request) => withAdmin(context, request, () => handlePostTask(context, request)),
     getSharedSession: async (sessionId) => handleGetSharedSession(context, sessionId),
     closeSharedSession: (sessionId, request) => withAdmin(context, request, () => handleSharedSessionLifecycle(context, sessionId, 'close')),
@@ -602,14 +606,8 @@ function handleGetRuntimeTask(context: DaemonRuntimeRouteContext, taskId: string
 }
 
 /**
- * Extract the message body from an incoming POST body.
- *
- * Accepts the canonical `body` field from the request envelope.
- * Returns an empty string when the field is absent or not a string; the
- * caller must check for an empty result and return 400.
- *
- * @param body - Parsed JSON body from the request.
- * @returns Trimmed message string, or '' if none of the accepted fields are present.
+ * Extract the canonical `body` field from an incoming POST envelope. Returns ''
+ * when absent or non-string; the caller must check for '' and return 400.
  */
 export function readSharedSessionMessageBody(body: JsonRecord): string {
   return typeof body.body === 'string' ? body.body.trim() : '';

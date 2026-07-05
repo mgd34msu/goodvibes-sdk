@@ -159,9 +159,10 @@ describe('built-in operator contract method schemas', () => {
 
     expect(sessionProperties.kind).toMatchObject({
       type: 'string',
-      enum: ['tui', 'companion-task', 'companion-chat'],
+      enum: ['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation'],
     });
     expect(sessionProperties.lastActivityAt).toMatchObject({ type: 'number' });
-    expect(Array.isArray(required) ? required : []).toEqual(expect.arrayContaining(['kind', 'lastActivityAt']));
+    expect(sessionProperties.project).toMatchObject({ type: 'string' });
+    expect(Array.isArray(required) ? required : []).toEqual(expect.arrayContaining(['kind', 'project', 'lastActivityAt']));
   });
 });
