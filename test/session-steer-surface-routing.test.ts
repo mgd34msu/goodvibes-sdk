@@ -151,3 +151,100 @@ describe('steer routing — surfaceless session keeps the executor path', () => 
     expect(submission.mode).toBe('spawn');
   });
 });
+
+// D-1 — Wave-2 acceptance re-replay: steering a CLOSED session must reject
+// with SESSION_CLOSED/409 and cause NO side effects (closed sessions are
+// history — no message recorded, no input queued, no activeAgentId touched).
+// Open sessions (both the surface-collection path and the spawn fallback)
+// keep working, and a legitimately reopened session accepts steers again.
+describe('steer routing — closed session is rejected before any mutation (D-1)', () => {
+  test('steer to a closed session throws SESSION_CLOSED/409 and mutates nothing', async () => {
+    const { broker, events } = makeBroker();
+    await broker.createSession({ id: 's-closed' });
+    await broker.closeSession('s-closed');
+    events.length = 0; // only the steer's own (lack of) side effects matter below
+
+    let caught: { code?: string; status?: number } | undefined;
+    try {
+      await broker.steerMessage({
+        sessionId: 's-closed',
+        surfaceKind: 'web',
+        surfaceId: 'surface:web',
+        body: 'should not spawn',
+        allowSpawnFallback: true,
+      });
+    } catch (err) {
+      caught = err as { code?: string; status?: number };
+    }
+
+    expect(caught?.code).toBe('SESSION_CLOSED');
+    expect(caught?.status).toBe(409);
+    const session = broker.getSession('s-closed');
+    expect(session?.status).toBe('closed');
+    expect(session?.activeAgentId).toBeUndefined();
+    expect(broker.getMessages('s-closed')).toHaveLength(0);
+    expect(broker.getInputs('s-closed')).toHaveLength(0);
+    expect(innerEvents(events)).toEqual([]);
+  });
+
+  test('steer to an open surface-managed session still queues for the surface (deliver-to-surface path)', async () => {
+    const { broker } = makeBroker();
+    await broker.register({
+      sessionId: 's-open-live',
+      kind: 'tui',
+      participant: { surfaceKind: 'tui', surfaceId: 'surface:tui', lastSeenAt: Date.now() },
+    });
+    const submission = await broker.steerMessage({
+      sessionId: 's-open-live',
+      surfaceKind: 'web',
+      surfaceId: 'surface:web',
+      body: 'still works',
+      allowSpawnFallback: true,
+    });
+    expect(submission.mode).toBe('queued-for-surface');
+  });
+
+  test('steer to an open surfaceless session still falls back to spawn', async () => {
+    const { broker } = makeBroker();
+    await broker.createSession({
+      id: 's-open-headless',
+      participant: { surfaceKind: 'web', surfaceId: 'surface:web', lastSeenAt: Date.now() },
+    });
+    const submission = await broker.steerMessage({
+      sessionId: 's-open-headless',
+      surfaceKind: 'web',
+      surfaceId: 'surface:web',
+      body: 'still spawns',
+      allowSpawnFallback: true,
+    });
+    expect(submission.mode).toBe('spawn');
+  });
+
+  test('closed-then-reopened (register reopen:true) session accepts steers again', async () => {
+    const { broker } = makeBroker();
+    await broker.createSession({
+      id: 's-reopen',
+      participant: { surfaceKind: 'web', surfaceId: 'surface:web', lastSeenAt: Date.now() },
+    });
+    await broker.closeSession('s-reopen');
+    expect(broker.getSession('s-reopen')?.status).toBe('closed');
+
+    const reopenResult = await broker.register({
+      sessionId: 's-reopen',
+      participant: { surfaceKind: 'web', surfaceId: 'surface:web', lastSeenAt: Date.now() },
+      reopen: true,
+    });
+    expect(reopenResult.reopened).toBe(true);
+    expect(broker.getSession('s-reopen')?.status).toBe('active');
+
+    const submission = await broker.steerMessage({
+      sessionId: 's-reopen',
+      surfaceKind: 'web',
+      surfaceId: 'surface:web',
+      body: 'steer after reopen',
+      allowSpawnFallback: true,
+    });
+    expect(submission.mode).toBe('spawn');
+    expect(broker.getSession('s-reopen')?.status).toBe('active');
+  });
+});

@@ -447,10 +447,8 @@ function readPositiveInt(value: string | null): number | undefined {
 
 /**
  * Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver — a live surface
- * reporting collection/consumption of a queued input. Body `{consumed:true}`
- * marks it completed; otherwise it marks the input delivered (collected). Body is
- * OPTIONAL (a bare "collected" ack has no fields once path params are resolved,
- * so the wire sends none) — parseOptionalJsonBody: null body == consumed:false.
+ * reports collection (`{consumed:true}` = completed, else delivered). Body is
+ * optional: parseOptionalJsonBody treats a null/bare body as consumed:false.
  */
 async function handleDeliverSharedSessionInput(
   context: DaemonRuntimeRouteContext, sessionId: string, inputId: string, req: Request,
@@ -465,11 +463,7 @@ async function handleDeliverSharedSessionInput(
   return context.recordApiResponse(req, `/api/sessions/${sessionId}/inputs/${inputId}/deliver`, Response.json({ input }, { status: 200 }));
 }
 
-/**
- * Handle POST /api/sessions/:sessionId/messages.
- *
- * Accepts `{body}` in the request payload and returns 400 when it is absent or empty.
- */
+/** Handle POST /api/sessions/:sessionId/messages. Accepts `{body}`; 400 when absent/empty. */
 async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext, sessionId: string, req: Request): Promise<Response> {
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
@@ -513,10 +507,9 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
 }
 
 /**
- * Handles kind='message' companion main-chat messages.
- *
- * Short-circuits before sessionBroker.submitMessage() so conversation messages
- * are routed to the existing session instead of spawning continuation work.
+ * Handles kind='message' companion main-chat messages — short-circuits before
+ * sessionBroker.submitMessage() so conversation messages are routed to the
+ * existing session instead of spawning continuation work.
  */
 async function handleCompanionMessageKind(
   context: DaemonRuntimeRouteContext,
@@ -576,9 +569,8 @@ function buildCompanionMessageMetadata(input: SharedSessionMessageInput): Record
 }
 
 /**
- * Handle GET /api/sessions/:id/events — creates a session-scoped SSE stream
- * for the companion app to receive turn events (STREAM_DELTA, TURN_COMPLETED,
- * etc.) and agent events from the shared session.
+ * Handle GET /api/sessions/:id/events — a session-scoped SSE stream for turn
+ * events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events.
  */
 async function handleGetSharedSessionEvents(
   context: DaemonRuntimeRouteContext,
@@ -602,10 +594,20 @@ async function handlePostSharedSessionSteer(context: DaemonRuntimeRouteContext, 
   if (!message) {
     return jsonErrorResponse({ error: 'Missing shared session steer body' }, { status: 400 });
   }
-  const submission = await context.sessionBroker.steerMessage({
-    ...buildSharedSessionMessageInput(sessionId, body, message),
-    ...(body.allowSpawnFallback === true ? { allowSpawnFallback: true } : {}),
-  });
+  let submission: SharedSessionSteerSubmission;
+  try {
+    submission = await context.sessionBroker.steerMessage({
+      ...buildSharedSessionMessageInput(sessionId, body, message),
+      ...(body.allowSpawnFallback === true ? { allowSpawnFallback: true } : {}),
+    });
+  } catch (err: unknown) {
+    // steerMessage() throws { code: 'SESSION_CLOSED', status: 409 } for a
+    // closed session — rejected before any mutation (no message, no input,
+    // no activeAgentId). Anything else is unexpected: rethrow.
+    const closed = err as { code?: string; status?: number; message?: string };
+    if (closed.code !== 'SESSION_CLOSED') throw err;
+    return jsonErrorResponse({ error: closed.message ?? 'Session is closed', code: 'SESSION_CLOSED' }, { status: closed.status ?? 409 });
+  }
   return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/steer`, 'DaemonServer.handlePostSharedSessionSteer', {
     context: `shared-session:${submission.session.id}`,
   });

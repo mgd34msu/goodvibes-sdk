@@ -610,6 +610,8 @@ export class SharedSessionBroker {
       created = true;
     }
 
+    // Closed sessions are history: reject a steer before any mutation.
+    if (intent === 'steer' && session.status === 'closed') throw Object.assign(new Error(`Session is closed: ${session.id}`), { code: 'SESSION_CLOSED', status: 409 });
     const updatedSession = await this.attachParticipantAndRoute(session, input, binding ?? undefined);
     const userMessage = await this.appendMessage(updatedSession.id, {
       role: 'user',
@@ -706,12 +708,9 @@ export class SharedSessionBroker {
       };
     }
 
-    // Surface routing: a steer/follow-up to a surface-managed session with a LIVE
-    // registered surface participant (other than the sender) is delivered to that
-    // surface — the input stays QUEUED for the surface to collect via
-    // sessions.inputs.list and mark delivered via sessions.inputs.deliver. It does
-    // NOT spawn a daemon executor (which would fail on the daemon's own model
-    // registry). Sessions without a live surface keep the executor path below.
+    // Surface routing: a steer/follow-up with a LIVE surface participant (other
+    // than the sender) queues for that surface (sessions.inputs.list/deliver)
+    // instead of spawning a daemon executor. No live surface keeps the executor path.
     if (
       (intent === 'steer' || intent === 'follow-up') &&
       shouldRouteInputToSurface(updatedSession, Date.now(), SURFACE_ROUTE_FRESHNESS_MS, { surfaceId: input.surfaceId })
