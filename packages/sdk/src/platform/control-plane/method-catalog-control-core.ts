@@ -29,6 +29,8 @@ import {
   CONTROL_PLANE_CLIENT_DESCRIPTOR_SCHEMA,
   CONTROL_PLANE_SURFACE_MESSAGE_SCHEMA,
   CONTROL_PLANE_SNAPSHOT_SCHEMA,
+  SESSIONS_SEARCH_INPUT_SCHEMA,
+  SESSIONS_SEARCH_OUTPUT_SCHEMA,
   OTLP_LOG_DOCUMENT_SCHEMA,
   OTLP_METRIC_DOCUMENT_SCHEMA,
   OTLP_TRACE_DOCUMENT_SCHEMA,
@@ -498,6 +500,38 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     }, ['sessionId', 'inputId']),
     outputSchema: entityOutputSchema('input', SHARED_SESSION_INPUT_RECORD_SCHEMA),
   }),
+  // ── W3-S2: sessions.search ──────────────────────────────────────────────
+  // Paginated/filtered query over the home-scoped session store, extending
+  // the Wave-1 list-filter shape (project/kind/includeClosed) with free-text
+  // `query`, `surfaceKind`, `status`, and opaque cursor pagination. Handler:
+  // routes/session-search.ts (registered directly on the catalog with no
+  // `http` REST binding — see the transport note below).
+  //
+  // TRANSPORT NOTE (applies to sessions.search + the whole fleet.*/
+  // checkpoints.* block below): `transport: ['ws']` with no `http` binding is
+  // the transport-parity gate's (test/transport-parity.test.ts) own
+  // sanctioned category for a catalog method dispatchable ONLY via the
+  // generic invoke-by-id mechanism (`gatewayMethods.hasHandler`/`invoke`,
+  // daemon/control-plane.ts `invokeGatewayMethodCall`) rather than a
+  // dedicated REST path — reachable today over HTTP via
+  // `POST /api/control-plane/methods/{methodId}/invoke` AND over WebSocket
+  // via a `{type:'call', methodId}` frame (both converge on the same
+  // invokeGatewayMethodCall). A typed client wrapper (operator-sdk
+  // client-core.ts's invokeContractRoute, which dispatches by literal
+  // http.method/http.path) is NOT wired for these verbs by this brief —
+  // that is curated, consumer-side work for whichever later stage first
+  // needs a typed wrapper (W1/W2/T2), not a requirement of landing the SDK
+  // contract itself.
+  methodDescriptor({
+    id: 'sessions.search',
+    title: 'Search Shared Sessions',
+    description: 'Paginated, filtered query over shared sessions: free-text query (matches id/title), project, kind, surfaceKind, and status. Closed sessions are EXCLUDED by default — pass includeClosed:true to include them, and a returned closed session always carries an honest status:"closed" (never hidden, never relabeled). Cursor pagination returns disjoint pages that union to the full matching set.',
+    category: 'sessions',
+    scopes: ['read:sessions'],
+    transport: ['ws'],
+    inputSchema: SESSIONS_SEARCH_INPUT_SCHEMA,
+    outputSchema: SESSIONS_SEARCH_OUTPUT_SCHEMA,
+  }),
   methodDescriptor({
     id: 'tasks.list',
     title: 'List Runtime Tasks',
@@ -559,6 +593,10 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     inputSchema: objectSchema({ agentId: STRING_SCHEMA }, ['agentId']),
     outputSchema: TASK_STATUS_OUTPUT_SCHEMA,
   }),
+  // fleet.* + checkpoints.* descriptors moved to method-catalog-fleet.ts
+  // (W3-S2) — this file was already at the 800-line cap; see that file's
+  // header comment for the full design rationale, merged in by
+  // method-catalog-control.ts alongside method-catalog-control-automation.ts.
   methodDescriptor({
     id: 'approvals.list',
     title: 'List Approvals',

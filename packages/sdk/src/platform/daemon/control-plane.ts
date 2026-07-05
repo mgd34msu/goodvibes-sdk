@@ -15,6 +15,7 @@ import { extractForwardedClientIp } from '../runtime/network/index.js';
 import { resolveGatewayPathTemplate } from './helpers.js';
 import { summarizeError } from '../utils/error-display.js';
 import { validateInvocationInput } from '../control-plane/invoke-input-validation.js';
+import { isGatewayVerbError } from '../control-plane/routes/gateway-verb-error.js';
 import {
   buildMissingScopeBody,
   resolveAuthenticatedPrincipal,
@@ -522,6 +523,17 @@ export class DaemonControlPlaneHelper {
         });
         return { status: 200, ok: true, body };
       } catch (error) {
+        // A handler-registered verb (W3-S2: fleet.*, checkpoints.*,
+        // sessions.search) may throw a GatewayVerbError to report an honest
+        // caller-error status (400/404) instead of the blanket 500 below —
+        // see routes/gateway-verb-error.ts for why this seam is needed.
+        if (isGatewayVerbError(error)) {
+          return {
+            status: error.status,
+            ok: false,
+            body: { error: error.message, code: error.code },
+          };
+        }
         return {
           status: 500,
           ok: false,
