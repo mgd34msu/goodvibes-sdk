@@ -338,6 +338,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions' },
+    events: ['control.session_update'],
     inputSchema: bodyEnvelopeSchema({
       title: STRING_SCHEMA,
       surfaceKind: STRING_SCHEMA,
@@ -352,6 +353,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/register' },
+    events: ['control.session_update'],
     inputSchema: SHARED_SESSION_REGISTER_INPUT_SCHEMA,
     outputSchema: SHARED_SESSION_CREATE_OUTPUT_SCHEMA,
   }),
@@ -372,6 +374,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/close' },
+    events: ['control.session_update'],
     inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
     outputSchema: actionResultOutputSchema('session', SHARED_SESSION_RECORD_SCHEMA),
   }),
@@ -382,6 +385,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/reopen' },
+    events: ['control.session_update'],
     inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
     outputSchema: actionResultOutputSchema('session', SHARED_SESSION_RECORD_SCHEMA),
   }),
@@ -406,6 +410,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/messages' },
+    events: ['control.session_update'],
     inputSchema: bodyEnvelopeSchema({
       body: STRING_SCHEMA,
       surfaceKind: STRING_SCHEMA,
@@ -435,6 +440,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/steer' },
+    events: ['control.session_update'],
     inputSchema: bodyEnvelopeSchema({
       body: STRING_SCHEMA,
       surfaceKind: STRING_SCHEMA,
@@ -451,6 +457,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/follow-up' },
+    events: ['control.session_update'],
     inputSchema: bodyEnvelopeSchema({
       body: STRING_SCHEMA,
       surfaceKind: STRING_SCHEMA,
@@ -466,6 +473,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/inputs/{inputId}/cancel' },
+    events: ['control.session_update'],
     inputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       inputId: STRING_SCHEMA,

@@ -64820,7 +64820,7 @@ Mark a shared session as closed.
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/close`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -65018,7 +65018,7 @@ Create a shared session for a surface, route, or web client.
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -65219,7 +65219,7 @@ Queue a deferred follow-up for a shared session so it runs after the current age
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/follow-up`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -66123,7 +66123,7 @@ Cancel a queued shared-session input before it is delivered or spawned.
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/inputs/{inputId}/cancel`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -67092,7 +67092,7 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/messages`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -68029,7 +68029,7 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/register`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -68277,7 +68277,7 @@ Reopen a previously closed shared session.
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/reopen`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -68475,7 +68475,7 @@ Deliver a live steering message to the active agent for a shared session, option
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/steer`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 

@@ -130,6 +130,53 @@ describe('S2c — the session-update channel is contract-declared', () => {
 });
 
 // ---------------------------------------------------------------------------
+// S2c re-point — session mutators reference the session_update descriptor
+//
+// S2 deferred wiring the sessions.* methods' `events:[...]` to control.session_update
+// (the descriptor lives in method-catalog-events.ts, the sessions catalog in the
+// S1-owned method-catalog-control-core.ts). Post-merge that re-point is in place:
+// every write:sessions method that drives a broker `session-update` broadcast now
+// advertises the channel it produces, and every advertised event id resolves.
+// ---------------------------------------------------------------------------
+
+describe('S2c re-point — session mutators advertise control.session_update', () => {
+  test('every method.events id resolves to a declared event descriptor (referential integrity)', () => {
+    const contract = buildOperatorContract(new GatewayMethodCatalog());
+    const declared = new Set(contract.operator.events.map((e) => e.id));
+    const dangling: Array<{ method: string; event: string }> = [];
+    for (const method of contract.operator.methods) {
+      for (const eventId of method.events ?? []) {
+        if (!declared.has(eventId)) dangling.push({ method: method.id, event: eventId });
+      }
+    }
+    expect(dangling).toEqual([]);
+  });
+
+  test('every write:sessions method advertises control.session_update', () => {
+    const contract = buildOperatorContract(new GatewayMethodCatalog());
+    const writeSessionMethods = contract.operator.methods.filter(
+      (m) => m.id.startsWith('sessions.') && (m.scopes ?? []).includes('write:sessions'),
+    );
+    // Sanity: the merge really did fold in the write-side session surface (create,
+    // register, close, reopen, messages.create, steer, followUp, inputs.cancel).
+    expect(writeSessionMethods.length).toBeGreaterThanOrEqual(8);
+    const missing = writeSessionMethods
+      .filter((m) => !(m.events ?? []).includes('control.session_update'))
+      .map((m) => m.id);
+    expect(missing).toEqual([]);
+  });
+
+  test('read-only session methods do NOT over-claim the mutation channel', () => {
+    const contract = buildOperatorContract(new GatewayMethodCatalog());
+    const readClaimingUpdate = contract.operator.methods
+      .filter((m) => m.id.startsWith('sessions.') && (m.scopes ?? []).includes('read:sessions'))
+      .filter((m) => (m.events ?? []).includes('control.session_update'))
+      .map((m) => m.id);
+    expect(readClaimingUpdate).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // End-to-end broadcast through the real broker
 // ---------------------------------------------------------------------------
 

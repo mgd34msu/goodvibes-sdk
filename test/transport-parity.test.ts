@@ -48,6 +48,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.list': 'list',
   'sessions.get': 'get',
   'sessions.create': 'ensureSession',
+  'sessions.register': 'register',
   'sessions.close': 'close',
   'sessions.reopen': 'reopen',
   'sessions.steer': 'steerMessage',
