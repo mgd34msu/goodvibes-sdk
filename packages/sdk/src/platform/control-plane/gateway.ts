@@ -15,7 +15,7 @@ import {
 } from '../runtime/emitters/index.js';
 import { renderControlPlaneGatewayWebUi } from './gateway-web-ui.js';
 import { buildGatewayDisabledResponseBody } from './gateway-disabled-response.js';
-import { CHANNEL_REQUIRED_SCOPE, clientMaySeeScopedChannel } from './gateway-scope-enforcement.js';
+import { CHANNEL_REQUIRED_SCOPE, clientMayReceiveEventDomain, clientMaySeeScopedChannel } from './gateway-scope-enforcement.js';
 import type {
   ControlPlaneClientDescriptor,
   ControlPlaneServerConfig,
@@ -25,10 +25,10 @@ import { type FeatureFlagReader, isFeatureGateEnabled, requireFeatureGate } from
 import {
   DEFAULT_DOMAINS,
   DEFAULT_SERVER_CONFIG,
-  canReplayEventToClient,
   hasReplayScope,
   normalizeRuntimeDomains,
   pruneDisconnectedClientRecords,
+  replayRecentTraffic,
   serializeEnvelope,
   stripReplayScope,
   toClientDescriptor,
@@ -107,6 +107,12 @@ interface LiveControlPlaneClient {
   /** Principal scopes (SSE/WS); `admin` collapses scopes (sees every channel). */
   readonly scopes?: readonly string[] | undefined;
   readonly admin?: boolean | undefined;
+  /**
+   * Subscribed domains for the broadcast (`publishEvent`) fan-out. `null` =
+   * deliver-all (client did not opt into narrowing); a non-null set narrows to
+   * tagged events in the set. For WS this is a live ref to the subscription set.
+   */
+  readonly domains: ReadonlySet<RuntimeEventDomain> | null;
   readonly send: (event: string, payload: unknown, id?: string) => void;
 }
 
@@ -296,6 +302,8 @@ export class ControlPlaneGateway {
       if (filter?.routeId && client.routeId !== filter.routeId) continue;
       if (filter?.surfaceId && client.surfaceId !== filter.surfaceId) continue;
       if (requiredScope && !clientMaySeeScopedChannel(client, requiredScope)) continue;
+      // Domain filter, AND-ed with scope (null = deliver-all; untagged = delivered).
+      if (!clientMayReceiveEventDomain(client.domains, event)) continue;
       client.send(event, payload, record.id);
     }
   }
@@ -385,6 +393,9 @@ export class ControlPlaneGateway {
       },
     };
     const traceId = `control-plane:${clientId}`;
+    // Live ref to the WS subscription set, shared with the liveClient (null = deliver-all).
+    const wsDomains = new Set<RuntimeEventDomain>();
+    const explicitDomains = (options.domains?.length ?? 0) > 0;
     this.clients.set(clientId, clientRecord);
     this.liveClients.set(clientId, {
       clientId,
@@ -393,12 +404,13 @@ export class ControlPlaneGateway {
       routeId: options.routeId,
       scopes: options.scopes,
       admin: options.admin,
+      domains: explicitDomains ? wsDomains : null,
       send,
     });
     this.websocketClients.set(clientId, {
       clientId,
       traceId,
-      domains: new Set(),
+      domains: wsDomains,
       unsubscribers: new Map(),
     });
     this.dispatch?.syncControlPlaneState({
@@ -442,7 +454,7 @@ export class ControlPlaneGateway {
 
     this.subscribeWebSocketClient(clientId, selectedDomains);
     send('ready', { clientId, domains: selectedDomains, transport: 'websocket' });
-    this.replayRecentTraffic(send, { ...options, clientId, domains: selectedDomains });
+    replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains });
     return { clientId, domains: selectedDomains };
   }
 
@@ -575,21 +587,6 @@ export class ControlPlaneGateway {
     }, 'control-plane.gateway.ws-disconnect');
   }
 
-  private replayRecentTraffic(
-    send: (event: string, payload: unknown, id?: string) => void,
-    options: ControlPlaneEventStreamOptions,
-    sinceId?: string,
-  ): void {
-    const sinceIndex = sinceId ? this.recentEvents.findIndex((event) => event.id === sinceId) : -1;
-    const recentEvents = sinceIndex >= 0
-      ? this.recentEvents.slice(0, sinceIndex).reverse()
-      : this.recentEvents.slice(0, 20).reverse();
-    for (const recentEvent of recentEvents) {
-      if (!canReplayEventToClient(recentEvent, options)) continue;
-      send(recentEvent.event, recentEvent.payload, recentEvent.id);
-    }
-  }
-
   createEventStream(request: Request, options: ControlPlaneEventStreamOptions = {}): Response {
     if (!this.isEnabled()) {
       return Response.json(buildGatewayDisabledResponseBody(), { status: 503 });
@@ -696,6 +693,9 @@ export class ControlPlaneGateway {
           routeId: options.routeId,
           scopes: options.scopes,
           admin: options.admin,
+          // Opt-in narrowing: no `?domains=` → null (deliver-all); else the explicit
+          // set (never the DEFAULT_DOMAINS fallback — that excludes permissions/untagged).
+          domains: (options.domains?.length ?? 0) > 0 ? new Set(selectedDomains) : null,
           send,
         });
         emitStreamSubscriberConnected(this.runtimeBus!, {
@@ -764,7 +764,7 @@ export class ControlPlaneGateway {
           controller.close();
         }, { once: true });
         send('ready', { clientId, domains: selectedDomains });
-        this.replayRecentTraffic(send, { ...options, clientId, domains: selectedDomains }, lastEventId);
+        replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains }, lastEventId);
       },
       cancel: () => {
         teardown();
