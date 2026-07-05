@@ -21,6 +21,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { ConversationManager } from '../core/conversation.js';
 import type { ProviderMessage } from '../providers/interface.js';
 import type {
@@ -429,7 +430,7 @@ export class CompanionChatManager {
       throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
     }
     if (session.meta.status === 'closed') {
-      throw Object.assign(new Error(`Session is closed: ${sessionId}`), { code: 'SESSION_CLOSED', status: 409 });
+      throw Object.assign(new Error('Session is closed'), { code: SDKErrorCodes.SESSION_CLOSED, status: 409 });
     }
 
     const patch: Partial<MutableSessionMeta> = { updatedAt: Date.now() };
@@ -554,7 +555,7 @@ export class CompanionChatManager {
       throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
     }
     if (session.meta.status === 'closed') {
-      throw Object.assign(new Error(`Session is closed: ${sessionId}`), { code: 'SESSION_CLOSED', status: 409 });
+      throw Object.assign(new Error('Session is closed'), { code: SDKErrorCodes.SESSION_CLOSED, status: 409 });
     }
 
     // Rate-limit check (throws GoodVibesSdkError on violation)
