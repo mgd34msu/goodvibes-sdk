@@ -6,7 +6,7 @@
  *
  * P1: Sessions written during one manager lifetime load into a fresh instance.
  * P2: Messages (user + assistant) are restored in order.
- * P3: Closed sessions are NOT restored (terminal state).
+ * P3: Closed sessions SURVIVE restart (closed-skip fix) and stay GC-eligible.
  * P4: Session directory is created if it does not exist.
  */
 
@@ -149,11 +149,14 @@ describe('P2: messages restored in order after restart', () => {
 });
 
 // ---------------------------------------------------------------------------
-// P3: Closed sessions are NOT restored
+// P3: Closed sessions SURVIVE restart (closed-skip data-loss fix, S1 spine).
+// The old behavior dropped closed sessions on reload — the exact "299 on-disk,
+// serves 0" bug. They must now load (listable + importable); GC's grace policy
+// (_gcSweep, 5-min after closedAt) remains the ONLY deletion authority.
 // ---------------------------------------------------------------------------
 
-describe('P3: closed sessions are not restored on restart', () => {
-  test('session closed before shutdown does not appear after reload', async () => {
+describe('P3: closed sessions survive restart and stay listable', () => {
+  test('a session closed before shutdown loads after restart (closed-skip fix)', async () => {
     const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-'));
     try {
       const managerA = makeManager(sessionsDir);
@@ -169,10 +172,43 @@ describe('P3: closed sessions are not restored on restart', () => {
       const managerB = makeManager(sessionsDir);
       await managerB.init();
 
-      // Closed sessions are skipped during load
-      expect(managerB.getSession(session.id)).toBeNull();
+      // Closed sessions are now retained in a lightweight terminal state.
+      const restored = managerB.getSession(session.id);
+      expect(restored).not.toBeNull();
+      expect(restored?.status).toBe('closed');
+      // listSessions({includeClosed:true}) must not silently return fewer than on-disk.
+      expect(managerB.listSessions({ includeClosed: true }).sessions.map((s) => s.id)).toContain(session.id);
+      // Default list still hides closed sessions.
+      expect(managerB.listSessions().sessions.map((s) => s.id)).not.toContain(session.id);
 
       managerB.dispose();
+    } finally {
+      rmSync(sessionsDir, { recursive: true, force: true });
+    }
+  });
+
+  test('GC remains the sole deletion authority for restored closed sessions', async () => {
+    const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-gc-'));
+    try {
+      // Seed a closed session whose closedAt is well past the 5-min grace.
+      const stale: PersistedChatSession = {
+        meta: {
+          id: 'stale-closed', kind: 'companion-chat', title: 'Stale', model: null, provider: null,
+          systemPrompt: null, status: 'closed', createdAt: 1, updatedAt: 1,
+          closedAt: Date.now() - 10 * 60_000, messageCount: 0,
+        },
+        messages: [],
+      };
+      await new CompanionChatPersistence(sessionsDir).save(stale);
+
+      const manager = makeManager(sessionsDir);
+      await manager.init();
+      // Loaded (listable) despite being ancient-closed.
+      expect(manager.getSession('stale-closed')).not.toBeNull();
+      // GC sweeps it because it is past closedAt + grace.
+      manager._gcSweep();
+      expect(manager.getSession('stale-closed')).toBeNull();
+      manager.dispose();
     } finally {
       rmSync(sessionsDir, { recursive: true, force: true });
     }

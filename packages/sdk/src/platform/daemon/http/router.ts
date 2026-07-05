@@ -218,8 +218,7 @@ export class DaemonHttpRouter {
     return correlationCtx.run(
       { requestId: req.headers.get('x-request-id') ?? crypto.randomUUID() },
       async () => {
-        // Pre-auth routes: no auth check applied (login, remote-peer handshake,
-        // webhooks, and control-plane web UI).
+        // Pre-auth routes: no auth check (login, remote-peer handshake, webhooks, control-plane web UI).
         const preAuth = await this.dispatchPreAuthRoutes(req);
         if (preAuth) return preAuth;
 
@@ -509,6 +508,7 @@ export class DaemonHttpRouter {
           createSession: (input) => this.context.sessionBroker.createSession(
             input as Parameters<SharedSessionBroker['createSession']>[0],
           ),
+          register: (input) => this.context.sessionBroker.register(input as Parameters<SharedSessionBroker['register']>[0]),
           getSession: (sessionId) => this.context.sessionBroker.getSession(sessionId) as never,
           getMessages: (sessionId, limit) => this.context.sessionBroker.getMessages(sessionId, limit),
           getInputs: (sessionId, limit) => this.context.sessionBroker.getInputs(sessionId, limit),

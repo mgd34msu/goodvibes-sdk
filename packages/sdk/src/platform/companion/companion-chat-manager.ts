@@ -288,17 +288,17 @@ export class CompanionChatManager {
     const stored = await this.persistence.loadAll();
     for (const { meta, messages } of stored) {
       const normalizedMessages = messages.map((message) => this.normalizeMessage(message));
-      // Skip sessions that were already closed before the restart — they are
-      // in a terminal state and don't need to be in memory.
-      if (meta.status === 'closed') continue;
-
       const conversation = new ConversationManager();
-      // Replay messages into the conversation to restore LLM context
-      for (const msg of normalizedMessages) {
-        if (msg.role === 'user') {
-          conversation.addUserMessage(this.buildReplayUserContent(msg));
-        } else {
-          conversation.addAssistantMessage(msg.content);
+      // Closed-skip fix: closed sessions load in a lightweight terminal state
+      // (meta + messages retained, listable/importable; no history replay). GC
+      // (_gcSweep) remains the sole deletion authority.
+      if (meta.status !== 'closed') {
+        for (const msg of normalizedMessages) {
+          if (msg.role === 'user') {
+            conversation.addUserMessage(this.buildReplayUserContent(msg));
+          } else {
+            conversation.addAssistantMessage(msg.content);
+          }
         }
       }
 

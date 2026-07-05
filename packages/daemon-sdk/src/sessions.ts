@@ -9,6 +9,7 @@ export async function dispatchSessionRoutes(
   const method = req.method;
 
   if (pathname === '/api/sessions' && method === 'GET') return handlers.getIntegrationSessions();
+  if (pathname === '/api/sessions/register' && method === 'POST') return handlers.registerSharedSession(req);
   if (pathname === '/api/sessions' && method === 'POST') return handlers.createSharedSession(req);
 
   const sharedSessionMatch = pathname.match(/^\/api\/sessions\/([^/]+)$/);

@@ -32,7 +32,7 @@ const INBOUND_SERVER_SURFACE_SCHEMA = enumSchema(['controlPlane', 'httpListener'
 const INBOUND_TLS_MODE_SCHEMA = enumSchema(['off', 'proxy', 'direct']);
 const OUTBOUND_TRUST_MODE_SCHEMA = enumSchema(['bundled', 'bundled+custom', 'custom']);
 const OUTBOUND_CA_STRATEGY_SCHEMA = enumSchema(['bun-default', 'bundled+custom', 'custom']);
-const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'companion-task', 'companion-chat']);
+const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
 const SHARED_SESSION_INPUT_INTENT_SCHEMA = enumSchema(['submit', 'steer', 'follow-up']);
 const SHARED_SESSION_INPUT_STATE_SCHEMA = enumSchema(['queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected']);
 const SHARED_SESSION_MESSAGE_MODE_SCHEMA = enumSchema(['spawn', 'continued-live', 'queued-follow-up', 'rejected']);
@@ -71,6 +71,20 @@ export const SHARED_SESSION_PARTICIPANT_SCHEMA = objectSchema({
   lastSeenAt: NUMBER_SCHEMA,
 }, ['surfaceKind', 'surfaceId', 'lastSeenAt']);
 
+/**
+ * Input to sessions.register — the idempotent registration + heartbeat upsert
+ * keyed on the caller-supplied `sessionId`. Carries the identity spine
+ * (kind + project + participant triple). Re-calling with the same id is the
+ * heartbeat (advances participant.lastSeenAt).
+ */
+export const SHARED_SESSION_REGISTER_INPUT_SCHEMA = objectSchema({
+  sessionId: STRING_SCHEMA,
+  kind: SHARED_SESSION_KIND_SCHEMA,
+  project: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  participant: SHARED_SESSION_PARTICIPANT_SCHEMA,
+}, ['sessionId', 'participant'], { additionalProperties: true });
+
 export const SHARED_SESSION_MESSAGE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   sessionId: STRING_SCHEMA,
@@ -89,6 +103,7 @@ export const SHARED_SESSION_MESSAGE_SCHEMA = objectSchema({
 export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   kind: SHARED_SESSION_KIND_SCHEMA,
+  project: STRING_SCHEMA,
   title: STRING_SCHEMA,
   status: enumSchema(['active', 'closed']),
   createdAt: NUMBER_SCHEMA,
@@ -105,7 +120,7 @@ export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   lastAgentId: STRING_SCHEMA,
   lastError: STRING_SCHEMA,
   metadata: METADATA_SCHEMA,
-}, ['id', 'kind', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'messageCount', 'pendingInputCount', 'routeIds', 'surfaceKinds', 'participants', 'metadata']);
+}, ['id', 'kind', 'project', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'messageCount', 'pendingInputCount', 'routeIds', 'surfaceKinds', 'participants', 'metadata']);
 
 export const COMPANION_CHAT_SESSION_SCHEMA = objectSchema({
   id: STRING_SCHEMA,

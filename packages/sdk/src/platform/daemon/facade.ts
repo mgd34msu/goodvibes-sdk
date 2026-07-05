@@ -12,6 +12,7 @@ import type {
 } from '../automation/index.js';
 import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
 import type { GatewayMethodCatalog } from '../control-plane/index.js';
+import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
 import type {
   BuiltinChannelRuntime,
   ChannelReplyPipeline,
@@ -198,8 +199,7 @@ export class DaemonServer {
       handleApprovalAction: (approvalId, action, req) => this.handleApprovalAction(approvalId, action, req),
       tlsState: () => this.tlsState,
       swapManager: this.config.swapManager ?? null,
-      // Resolve companion-chat defaults from the live ProviderRegistry so session
-      // creation uses the current route, not a snapshot captured at startup.
+      // Resolve companion-chat defaults from the live ProviderRegistry (current route, not a startup snapshot).
       resolveDefaultProviderModel: () => {
         try {
           const current = resolved.runtimeServices.providerRegistry.getCurrentModel();
@@ -219,8 +219,7 @@ export class DaemonServer {
     this.providerRuntime = collaborators.providerRuntime;
     this.builtinChannels = collaborators.builtinChannels;
 
-    // Wire AgentTaskAdapter to the RuntimeEventBus so task records reach
-    // terminal states when their backing agent finishes.
+    // Wire AgentTaskAdapter to the RuntimeEventBus so task records reach terminal states on agent finish.
     this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore);
     this.agentTaskAdapterUnsub = this.agentTaskAdapter.attachRuntimeBus(this.runtimeBus);
     // Mark any tasks that were running at startup as aborted after daemon restart.
@@ -247,9 +246,8 @@ export class DaemonServer {
   }
 
   /**
-   * Enable the daemon. Requires danger.daemon = true in config.
-   * The provided token is used to authenticate all incoming requests.
-   * Returns true if enabled, false if the config forbids it.
+   * Enable the daemon. Requires danger.daemon = true in config. The provided
+   * token authenticates all incoming requests. Returns false if config forbids it.
    */
   enable(dangerConfig: DaemonDangerConfig, token?: string): boolean {
     if (!dangerConfig.daemon) {
@@ -346,6 +344,11 @@ export class DaemonServer {
         },
       });
 
+      // Boot precondition: fold legacy stores into the home store before the broker serves (idempotent).
+      await importLegacySessionStores({
+        homeStorePath: this.runtimeServices.shellPaths.resolveUserPath('control-plane', 'sessions.json'),
+        sources: discoverLegacySessionSources({ projectRoot: this.runtimeServices.shellPaths.workingDirectory }),
+      }).catch((error: unknown) => logger.warn('DaemonServer: legacy session import failed', { error: summarizeError(error) }));
       await Promise.all([
         this.sessionBroker.start(),
         this.approvalBroker.start(),
@@ -354,19 +357,16 @@ export class DaemonServer {
         this.distributedRuntime.start(),
       ]);
       await this.providerRuntime.startConfigured();
-      // Load persisted companion sessions after providers are configured.
       await this.companionChatManager.init();
       if (this.replyPoller === null) {
-        // Poll every 2 s for surface replies that have resolved asynchronously.
-        // The interval is intentionally short to keep companion response latency
-        // below a perceptible threshold while still batching concurrent replies.
+        // Poll every 2 s for asynchronously-resolved surface replies; short interval
+        // keeps companion latency low while batching concurrent replies.
         this.replyPoller = setInterval(() => {
           void this.pollPendingSurfaceReplies().catch((error: unknown) => {
             logger.warn('DaemonServer: surface reply poll failed', { error: summarizeError(error) });
           });
         }, 2_000);
-        // unref() prevents this timer from keeping the Node.js/Bun event loop
-        // alive if all other async work has completed — same pattern as animInterval.
+        // unref() so this timer never keeps the event loop alive past shutdown.
         (this.replyPoller as unknown as { unref?: () => void }).unref?.();
       }
       this.surfaceRegistry.syncConfiguredSurfaces();
