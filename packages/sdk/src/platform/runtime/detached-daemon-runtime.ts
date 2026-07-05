@@ -3,7 +3,7 @@
  *
  * When a surface spawns the daemon as a detached, standalone process, it records
  * the pid/host/port to a small JSON file under the daemon home so a later surface
- * (or `goodvibes-daemon service-status`) can discover and adopt it without a fresh
+ * (or a `GET /api/service/status` call against the daemon HTTP API) can discover and adopt it without a fresh
  * spawn. This is deliberately a plain record — not a lock — since the daemon's own
  * identity probe is the source of truth for "is it actually alive and mine".
  */
