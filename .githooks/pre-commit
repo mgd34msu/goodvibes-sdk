@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Pre-commit hook: enforces api-extractor snapshot is in sync with source.
+# Pre-commit hook: enforces api-extractor snapshot is in sync with source,
+# and the 800-line source-file cap (WO-0C).
 #
 # When a commit touches any TypeScript source under packages/*/src/, this hook
-# rebuilds the SDK and runs api:check. If etc/goodvibes-sdk.api.md drifts from
-# what the current source produces, the commit is REJECTED with instructions.
+# (1) runs line:check — cheap, no build required — to catch line-cap ratchet
+# violations before they land, then (2) rebuilds the SDK and runs api:check.
+# If etc/goodvibes-sdk.api.md drifts from what the current source produces,
+# the commit is REJECTED with instructions.
 #
 # Activated by `git config core.hooksPath .githooks` (run by the `prepare`
 # script in package.json after `bun install`).
@@ -17,7 +20,17 @@ if [ -z "$STAGED_SRC" ]; then
   exit 0
 fi
 
-echo "[pre-commit] $(echo "$STAGED_SRC" | wc -l | tr -d ' ') source files staged — running api:check to catch public-surface drift"
+echo "[pre-commit] $(echo "$STAGED_SRC" | wc -l | tr -d ' ') source files staged — running line:check"
+
+if ! bun run line:check; then
+  echo "" >&2
+  echo "[pre-commit] BLOCKED: line-cap-check failed (see above)." >&2
+  echo "" >&2
+  echo "  Bypass (emergency only): git commit --no-verify" >&2
+  exit 1
+fi
+
+echo "[pre-commit] running api:check to catch public-surface drift"
 
 if ! bun run build >/dev/null 2>&1; then
   echo "" >&2

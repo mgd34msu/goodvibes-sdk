@@ -16,6 +16,7 @@ function run(command: string, args: readonly string[], label?: string): void {
 run('bun', ['scripts/generate-api-docs.ts', '--check'], 'api-docs:check');
 run('bun', ['scripts/docs-completeness-check.ts'], 'docs:completeness');
 run('bun', ['run', 'error:check'], 'error:check');
+run('bun', ['run', 'line:check'], 'line:check');
 run('bun', ['run', 'changelog:check'], 'changelog:check');
 run('bun', ['run', 'version:check'], 'version:check');
 run('bun', ['run', 'todo:check'], 'todo:check');
