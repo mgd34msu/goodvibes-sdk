@@ -501,7 +501,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "approvals.approve",
         "title": "Approve Approval",
-        "description": "Approve a pending approval.",
+        "description": "Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400.",
         "category": "approvals",
         "source": "builtin",
         "access": "authenticated",
@@ -527,6 +527,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "remember": {
               "type": "boolean"
+            },
+            "selectedHunks": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
             }
           },
           "required": [
@@ -723,6 +729,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "modifiedArgs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -1045,6 +1078,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "modifiedArgs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -1361,6 +1421,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "modifiedArgs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -1683,6 +1770,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "modifiedArgs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -2121,6 +2235,33 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       "remember": {
                         "type": "boolean"
+                      },
+                      "modifiedArgs": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "array",
+                              "items": {}
+                            }
+                          ]
+                        }
                       }
                     },
                     "required": [
@@ -65421,6 +65562,201 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.detach",
+        "title": "Detach Shared Session Participant",
+        "description": "Remove a surface's participant and its route binding from a session so that surface stops receiving updates, WITHOUT closing or killing the session (detach != close != kill). Every participant carrying the given surfaceId is removed and any route binding they alone held is unbound; the session and all other participants keep running. Idempotent: detaching an already-detached surface, or detaching from a closed session, is a no-op success. An unknown session is a 404.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/sessions/{sessionId}/detach"
+        },
+        "events": [
+          "control.session_update"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "surfaceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "surfaceId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "project": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "closed"
+                  ]
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "lastMessageAt": {
+                  "type": "number"
+                },
+                "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
+                  "type": "number"
+                },
+                "pendingInputCount": {
+                  "type": "number"
+                },
+                "routeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "surfaceKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "participants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "surfaceKind": {
+                        "type": "string"
+                      },
+                      "surfaceId": {
+                        "type": "string"
+                      },
+                      "externalId": {
+                        "type": "string"
+                      },
+                      "userId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "routeId": {
+                        "type": "string"
+                      },
+                      "lastSeenAt": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "surfaceKind",
+                      "surfaceId",
+                      "lastSeenAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "activeAgentId": {
+                  "type": "string"
+                },
+                "lastAgentId": {
+                  "type": "string"
+                },
+                "lastError": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "title",
+                "status",
+                "createdAt",
+                "updatedAt",
+                "lastActivityAt",
+                "messageCount",
+                "pendingInputCount",
+                "routeIds",
+                "surfaceKinds",
+                "participants",
+                "metadata"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.followUp",
         "title": "Queue Shared Session Follow-Up",
         "description": "Queue a deferred follow-up for a shared session so it runs after the current agent completes, or spawn immediately when the session is idle.",
@@ -78051,6 +78387,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "session-message-appended",
                 "session-message-forwarded",
                 "session-route-attached",
+                "session-detached",
                 "session-input-queued",
                 "session-input-queued-for-surface",
                 "session-input-delivered",
@@ -78286,10 +78623,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 306,
-      "typedInputs": 306,
+      "methods": 307,
+      "typedInputs": 307,
       "genericInputs": 0,
-      "typedOutputs": 306,
+      "typedOutputs": 307,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -78298,8 +78635,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 31
     },
     "validationCoverage": {
-      "methods": 306,
-      "validated": 306,
+      "methods": 307,
+      "validated": 307,
       "skippedGeneric": 0,
       "skippedUntyped": 0
     }

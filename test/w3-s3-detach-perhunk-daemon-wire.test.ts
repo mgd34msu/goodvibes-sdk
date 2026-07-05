@@ -198,4 +198,67 @@ describe('per-hunk approvals over HTTP', () => {
     // Already approved: the deny is a no-op, the record stays approved.
     expect(body.approval.status).toBe('approved');
   });
+
+  // -------------------------------------------------------------------------
+  // W3-S1 invoke-gate interplay (landing integration): the generic invoke
+  // endpoint POST /api/control-plane/methods/{id}/invoke validates the body
+  // against our typed inputSchemas BEFORE delegating to the HTTP route. These
+  // pins record WHICH validation source fires on each failure mode so the
+  // honest-400 contract is owned deliberately, not accidentally:
+  //   - shape/type errors (missing required, wrong element type) -> S1 gate
+  //     (code INVALID_INPUT), pre-empting our handlers — fine, still honest;
+  //   - request-specific errors (hunk index out of range) -> OUR broker
+  //     (VALIDATION_FAILED), because only it knows the pending edit list.
+  // The plain-HTTP tests above bypass the gate entirely and pin our handler
+  // paths (surfaceId 400, malformed/oob selectedHunks 400).
+  // -------------------------------------------------------------------------
+  describe('invoke-layer (S1 gate) interplay', () => {
+    async function invokeVerb(methodId: string, body: Record<string, unknown>): Promise<{ status: number; json: { error?: string; code?: string } & Record<string, unknown> }> {
+      const res = await fetch(`${daemon.url}/api/control-plane/methods/${methodId}/invoke`, {
+        method: 'POST', headers: auth(), body: JSON.stringify({ body }),
+      });
+      return { status: res.status, json: await res.json() as { error?: string; code?: string } & Record<string, unknown> };
+    }
+
+    test('sessions.detach via invoke: typed schema passes the gate and reaches the handler', async () => {
+      await register('det-inv', 'tui', 'tui-inv');
+      const { status, json } = await invokeVerb('sessions.detach', { sessionId: 'det-inv', surfaceId: 'tui-inv' });
+      expect(status).toBe(200);
+      const session = (json as { session?: { status: string; participants: unknown[] } }).session;
+      expect(session?.status).toBe('active');
+      expect(session?.participants).toHaveLength(0);
+    });
+
+    test('sessions.detach via invoke with MISSING surfaceId: the S1 gate pre-empts with INVALID_INPUT (honest 400)', async () => {
+      await register('det-inv2', 'tui', 'tui-inv2');
+      const { status, json } = await invokeVerb('sessions.detach', { sessionId: 'det-inv2' });
+      expect(status).toBe(400);
+      expect(json.code).toBe('INVALID_INPUT');
+    });
+
+    test('approvals.approve via invoke with non-numeric selectedHunks: the S1 gate pre-empts with INVALID_INPUT', async () => {
+      const { id } = await seedPending('call-inv-bad');
+      const { status, json } = await invokeVerb('approvals.approve', { approvalId: id, selectedHunks: ['nope'] });
+      expect(status).toBe(400);
+      expect(json.code).toBe('INVALID_INPUT');
+      await fetch(`${daemon.url}/api/approvals/${id}/deny`, { method: 'POST', headers: auth() });
+    });
+
+    test('approvals.approve via invoke with an OUT-OF-RANGE index: type-valid passes the gate, OUR broker rejects (request-specific 400)', async () => {
+      const { id } = await seedPending('call-inv-oob');
+      const { status, json } = await invokeVerb('approvals.approve', { approvalId: id, selectedHunks: [9] });
+      expect(status).toBe(400);
+      // Not the S1 gate's INVALID_INPUT — the broker's range check fired.
+      expect(json.code).not.toBe('INVALID_INPUT');
+      expect(String(json.error)).toContain('out of range');
+      await fetch(`${daemon.url}/api/approvals/${id}/deny`, { method: 'POST', headers: auth() });
+    });
+
+    test('approvals.approve via invoke with a valid selection resolves server-side modifiedArgs end-to-end', async () => {
+      const { id, decided } = await seedPending('call-inv-ok');
+      const { status } = await invokeVerb('approvals.approve', { approvalId: id, selectedHunks: [1] });
+      expect(status).toBe(200);
+      expect((await decided).modifiedArgs?.['edits']).toEqual([e1]);
+    });
+  });
 });

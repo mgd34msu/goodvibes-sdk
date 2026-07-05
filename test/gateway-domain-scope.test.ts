@@ -66,6 +66,10 @@ describe('clientMayReceiveEventDomain — the migration-safe default', () => {
     expect(EVENT_DOMAIN['session-update']).toBe('session');
     expect(EVENT_DOMAIN['approval-update']).toBe('permissions');
   });
+
+  test('EVENT_DOMAIN tags session-detached→session (W3-S3 detach discriminant, defense-in-depth)', () => {
+    expect(EVENT_DOMAIN['session-detached']).toBe('session');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -125,6 +129,19 @@ describe('publishEvent — domain-scoped delivery', () => {
     gateway.publishEvent('session-update', { event: 'session-created' });
 
     expect(scopedDown.received).not.toContain('session-update');
+  });
+
+  test('(W3-S3) a session-detached update reaches only the session subscriber — detach rides the session-update channel', () => {
+    const gateway = makeGateway();
+    const sessionSub = connect(gateway, { clientKind: 'web', domains: ['session'] });
+    const tasksSub = connect(gateway, { clientKind: 'web', domains: ['tasks'] });
+
+    // The broker's detachParticipant publishes via publishUpdate: the top-level
+    // wire event is session-update, session-detached is the payload discriminant.
+    gateway.publishEvent('session-update', { event: 'session-detached', payload: { sessionId: 's1', surfaceId: 'tui-1' } });
+
+    expect(sessionSub.received).toContain('session-update');
+    expect(tasksSub.received).not.toContain('session-update');
   });
 
   test('an untagged broadcast event reaches a narrowed subscriber (opt-in narrowing never blacks out new events)', () => {
