@@ -36,9 +36,80 @@ function auth(extra: Record<string, string> = {}): Record<string, string> {
   return { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json', ...extra };
 }
 
-interface InvokeResult {
+/** Optional error fields present on any failed invoke response. */
+interface WireError {
+  readonly error?: string;
+  readonly code?: string;
+}
+
+interface WireProcessNode extends WireError {
+  readonly id: string;
+  readonly kind: string;
+  readonly label: string;
+}
+
+interface FleetSnapshotResponse extends WireError {
+  readonly capturedAt: number;
+  readonly nodes: WireProcessNode[];
+  readonly truncated: boolean;
+  readonly totalCount: number;
+}
+
+interface FleetListResponse extends WireError {
+  readonly items: WireProcessNode[];
+  readonly nextCursor?: string;
+  readonly hasMore: boolean;
+  readonly capturedAt: number;
+}
+
+interface WireCheckpoint {
+  readonly id: string;
+  readonly kind: string;
+  readonly label: string;
+}
+
+interface CheckpointsCreateResponse extends WireError {
+  readonly checkpoint: WireCheckpoint | null;
+  readonly noop: boolean;
+}
+
+interface CheckpointsListResponse extends WireError {
+  readonly checkpoints: WireCheckpoint[];
+}
+
+interface CheckpointsDiffResponse extends WireError {
+  readonly diff: {
+    readonly from: string;
+    readonly to: string;
+    readonly files: string[];
+    readonly unifiedDiff: string;
+    readonly stat: string;
+  };
+}
+
+interface CheckpointsRestoreResponse extends WireError {
+  readonly result: {
+    readonly checkpointId: string;
+    readonly safetyCheckpointId: string | null;
+    readonly restoredFiles: string[];
+    readonly removedFiles: string[];
+  };
+}
+
+interface WireSessionRecord {
+  readonly id: string;
+  readonly status: string;
+}
+
+interface SessionsSearchResponse extends WireError {
+  readonly sessions: WireSessionRecord[];
+  readonly nextCursor?: string;
+  readonly hasMore: boolean;
+}
+
+interface InvokeResult<T extends WireError = WireError> {
   readonly status: number;
-  readonly json: any;
+  readonly json: T;
 }
 
 /**
@@ -51,10 +122,10 @@ interface InvokeResult {
  * is a fallback the handlers also merge in (body wins); one fleet.list test
  * below covers it explicitly.
  */
-async function invokeVerb(
+async function invokeVerb<T extends WireError = WireError>(
   methodId: string,
   input: { readonly query?: unknown; readonly body?: unknown } = {},
-): Promise<InvokeResult> {
+): Promise<InvokeResult<T>> {
   const res = await fetch(`${daemon.url}/api/control-plane/methods/${methodId}/invoke`, {
     method: 'POST',
     headers: auth(),
@@ -69,7 +140,7 @@ async function invokeVerb(
       json = text;
     }
   }
-  return { status: res.status, json };
+  return { status: res.status, json: json as T };
 }
 
 beforeAll(async () => {
@@ -93,7 +164,7 @@ afterAll(async () => {
 
 describe('W3-S2 — fleet.snapshot / fleet.list', () => {
   test('fleet.snapshot returns a well-shaped, empty-or-sparse fleet before any process exists', async () => {
-    const { status, json } = await invokeVerb('fleet.snapshot');
+    const { status, json } = await invokeVerb<FleetSnapshotResponse>('fleet.snapshot');
     expect(status).toBe(200);
     expect(typeof json.capturedAt).toBe('number');
     expect(Array.isArray(json.nodes)).toBe(true);
@@ -106,7 +177,7 @@ describe('W3-S2 — fleet.snapshot / fleet.list', () => {
     // merge query in as a fallback (body wins), so optional filters may ride
     // either channel. body {} passes S1's typed-schema gate because
     // FLEET_LIST_INPUT_SCHEMA has no required fields.
-    const { status, json } = await invokeVerb('fleet.list', { query: { limit: 10 } });
+    const { status, json } = await invokeVerb<FleetListResponse>('fleet.list', { query: { limit: 10 } });
     expect(status).toBe(200);
     expect(Array.isArray(json.items)).toBe(true);
     expect(json.hasMore).toBe(false);
@@ -153,7 +224,7 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
 
   test('checkpoints.create then checkpoints.list returns the created checkpoint', async () => {
     touchWorkspaceFile();
-    const created = await invokeVerb('checkpoints.create', { body: { kind: 'manual', label: 'w3s2 test checkpoint' } });
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'w3s2 test checkpoint' } });
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
     expect(created.json.checkpoint).not.toBeNull();
@@ -161,20 +232,20 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
     expect(created.json.checkpoint.label).toBe('w3s2 test checkpoint');
     const checkpointId: string = created.json.checkpoint.id;
 
-    const list = await invokeVerb('checkpoints.list');
+    const list = await invokeVerb<CheckpointsListResponse>('checkpoints.list');
     expect(list.status).toBe(200);
     expect(Array.isArray(list.json.checkpoints)).toBe(true);
-    expect(list.json.checkpoints.some((c: any) => c.id === checkpointId)).toBe(true);
+    expect(list.json.checkpoints.some((c) => c.id === checkpointId)).toBe(true);
   });
 
   test('checkpoints.create is an honest no-op (not an error, not a fabricated record) when the tree is unchanged', async () => {
     touchWorkspaceFile();
-    const first = await invokeVerb('checkpoints.create', { body: { kind: 'manual', label: 'noop base' } });
+    const first = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'noop base' } });
     expect(first.status).toBe(200);
     expect(first.json.noop).toBe(false);
 
     // Immediately create again with NO workspace change in between.
-    const second = await invokeVerb('checkpoints.create', { body: { kind: 'manual', label: 'noop repeat' } });
+    const second = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'noop repeat' } });
     expect(second.status).toBe(200);
     expect(second.json.noop).toBe(true);
     expect(second.json.checkpoint).toBeNull();
@@ -190,7 +261,7 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
 
   test('checkpoints.diff against the live working tree returns a diff shape', async () => {
     touchWorkspaceFile();
-    const created = await invokeVerb('checkpoints.create', { body: { kind: 'manual', label: 'diff base' } });
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'diff base' } });
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
     const checkpointId: string = created.json.checkpoint.id;
@@ -202,7 +273,7 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
     // modifications — so the diff must touch a file the side-git index
     // already knows about to show up in `files`.
     writeFileSync(join(work, 'w3s2-checkpoint-seed-1.txt'), 'modified after diff-base checkpoint\n');
-    const diff = await invokeVerb('checkpoints.diff', { body: { a: checkpointId } });
+    const diff = await invokeVerb<CheckpointsDiffResponse>('checkpoints.diff', { body: { a: checkpointId } });
     expect(diff.status).toBe(200);
     expect(diff.json.diff.from).toBe(checkpointId);
     expect(diff.json.diff.to).toBe('WORKING');
@@ -232,12 +303,12 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
 
   test('checkpoints.restore of a real id executes without a server-side confirm gate', async () => {
     touchWorkspaceFile();
-    const created = await invokeVerb('checkpoints.create', { body: { kind: 'manual', label: 'restore target', paths: [] } });
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'restore target', paths: [] } });
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
     const checkpointId: string = created.json.checkpoint.id;
 
-    const restored = await invokeVerb('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false } });
+    const restored = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false } });
     expect(restored.status).toBe(200);
     expect(restored.json.result.checkpointId).toBe(checkpointId);
     expect(restored.json.result.safetyCheckpointId).toBeNull();
@@ -274,54 +345,54 @@ describe('W3-S2 — sessions.search', () => {
   });
 
   test('excludes closed sessions by default', async () => {
-    const { status, json } = await invokeVerb('sessions.search', { body: { project: searchProject } });
+    const { status, json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: searchProject } });
     expect(status).toBe(200);
-    const ids = (json.sessions as any[]).map((s) => s.id);
+    const ids = json.sessions.map((s) => s.id);
     expect(ids).toContain('w3s2-search-active');
     expect(ids).not.toContain('w3s2-search-closed');
   });
 
   test('includeClosed:true includes the closed session with an honest status', async () => {
-    const { status, json } = await invokeVerb('sessions.search', { body: { project: searchProject, includeClosed: true } });
+    const { status, json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: searchProject, includeClosed: true } });
     expect(status).toBe(200);
-    const closed = (json.sessions as any[]).find((s) => s.id === 'w3s2-search-closed');
+    const closed = json.sessions.find((s) => s.id === 'w3s2-search-closed');
     expect(closed).toBeDefined();
-    expect(closed.status).toBe('closed');
-    const active = (json.sessions as any[]).find((s) => s.id === 'w3s2-search-active');
-    expect(active.status).toBe('active');
+    expect(closed?.status).toBe('closed');
+    const active = json.sessions.find((s) => s.id === 'w3s2-search-active');
+    expect(active?.status).toBe('active');
   });
 
   test('project filter isolates the search scope', async () => {
-    const { json } = await invokeVerb('sessions.search', { body: { project: 'some-other-project-entirely', includeClosed: true } });
-    const ids = (json.sessions as any[]).map((s) => s.id);
+    const { json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: 'some-other-project-entirely', includeClosed: true } });
+    const ids = json.sessions.map((s) => s.id);
     expect(ids).not.toContain('w3s2-search-active');
     expect(ids).not.toContain('w3s2-search-closed');
   });
 
   test('free-text query matches title', async () => {
-    const { status, json } = await invokeVerb('sessions.search', { body: { project: searchProject, query: 'active session' } });
+    const { status, json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: searchProject, query: 'active session' } });
     expect(status).toBe(200);
-    const ids = (json.sessions as any[]).map((s) => s.id);
+    const ids = json.sessions.map((s) => s.id);
     expect(ids).toContain('w3s2-search-active');
   });
 
   test('cursor pagination returns disjoint pages that union to the full matching set', async () => {
-    const page1 = await invokeVerb('sessions.search', { body: { project: searchProject, includeClosed: true, limit: 1 } });
+    const page1 = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: searchProject, includeClosed: true, limit: 1 } });
     expect(page1.status).toBe(200);
     expect(page1.json.sessions.length).toBe(1);
     expect(page1.json.hasMore).toBe(true);
 
-    const page2 = await invokeVerb('sessions.search', {
+    const page2 = await invokeVerb<SessionsSearchResponse>('sessions.search', {
       body: { project: searchProject, includeClosed: true, limit: 1, cursor: page1.json.nextCursor },
     });
     expect(page2.status).toBe(200);
 
-    const unionIds = new Set([...page1.json.sessions, ...page2.json.sessions].map((s: any) => s.id));
+    const unionIds = new Set([...page1.json.sessions, ...page2.json.sessions].map((s) => s.id));
     expect(unionIds.has('w3s2-search-active')).toBe(true);
     expect(unionIds.has('w3s2-search-closed')).toBe(true);
     // Pages are disjoint.
-    const page1Ids = page1.json.sessions.map((s: any) => s.id);
-    const page2Ids = page2.json.sessions.map((s: any) => s.id);
+    const page1Ids = page1.json.sessions.map((s) => s.id);
+    const page2Ids = page2.json.sessions.map((s) => s.id);
     expect(page1Ids.some((id: string) => page2Ids.includes(id))).toBe(false);
   });
 
