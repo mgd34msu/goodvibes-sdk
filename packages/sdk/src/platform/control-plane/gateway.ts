@@ -15,6 +15,7 @@ import {
 } from '../runtime/emitters/index.js';
 import { renderControlPlaneGatewayWebUi } from './gateway-web-ui.js';
 import { buildGatewayDisabledResponseBody } from './gateway-disabled-response.js';
+import { CHANNEL_REQUIRED_SCOPE, clientMaySeeScopedChannel } from './gateway-scope-enforcement.js';
 import type {
   ControlPlaneClientDescriptor,
   ControlPlaneServerConfig,
@@ -71,6 +72,8 @@ export interface ControlPlaneEventStreamOptions {
   readonly principalId?: string | undefined;
   readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | undefined;
   readonly scopes?: readonly string[] | undefined;
+  /** Admin token — scopes collapse; sees all channels. */
+  readonly admin?: boolean | undefined;
   readonly sessionId?: string | undefined;
   readonly routeId?: string | undefined;
   readonly surfaceId?: string | undefined;
@@ -101,6 +104,9 @@ interface LiveControlPlaneClient {
     | 'daemon';
   readonly surfaceId?: string | undefined;
   readonly routeId?: string | undefined;
+  /** Principal scopes (SSE/WS); `admin` collapses scopes (sees every channel). */
+  readonly scopes?: readonly string[] | undefined;
+  readonly admin?: boolean | undefined;
   readonly send: (event: string, payload: unknown, id?: string) => void;
 }
 
@@ -120,7 +126,6 @@ export class ControlPlaneGateway {
   private readonly liveClients = new Map<string, LiveControlPlaneClient>();
   private readonly websocketClients = new Map<string, WebSocketControlPlaneClient>();
   private readonly recentMessages: ControlPlaneSurfaceMessage[] = [];
-  // Circular ring buffer for O(1) insert instead of O(n) unshift.
   private readonly _recentEventsRing: (ScopedControlPlaneRecentEvent | undefined)[];
   private _recentEventsHead = 0;
   private _recentEventsCount = 0;
@@ -136,7 +141,6 @@ export class ControlPlaneGateway {
       if (entry) {
         out.push(entry);
       } else if (process.env.NODE_ENV !== 'production') {
-        // Dev-only: undefined slot despite valid count — ring buffer accounting bug.
         logger.error('[ControlPlaneGateway] recentEvents: undefined slot at ring index', { head: this._recentEventsHead, count: this._recentEventsCount, index: idx, offset: i });
       }
     }
@@ -285,11 +289,13 @@ export class ControlPlaneGateway {
   }): void {
     if (!this.isEnabled()) return;
     const record = this.rememberEvent(event, payload, filter);
+    const requiredScope = CHANNEL_REQUIRED_SCOPE[event];
     for (const client of this.liveClients.values()) {
       if (filter?.clientKind && client.kind !== filter.clientKind) continue;
       if (filter?.clientId && client.clientId !== filter.clientId) continue;
       if (filter?.routeId && client.routeId !== filter.routeId) continue;
       if (filter?.surfaceId && client.surfaceId !== filter.surfaceId) continue;
+      if (requiredScope && !clientMaySeeScopedChannel(client, requiredScope)) continue;
       client.send(event, payload, record.id);
     }
   }
@@ -385,6 +391,8 @@ export class ControlPlaneGateway {
       kind: options.clientKind ?? 'web',
       surfaceId: options.surfaceId,
       routeId: options.routeId,
+      scopes: options.scopes,
+      admin: options.admin,
       send,
     });
     this.websocketClients.set(clientId, {
@@ -658,16 +666,11 @@ export class ControlPlaneGateway {
     }
 
     let teardown = (): void => {};
-    // ReadableStream default HWM is 1, which causes startup `ready` + replay
-    // enqueues to drop subsequent chunks before any consumer has pulled. Raise HWM to
-    // 256 chunks so initial handshake + recent-traffic replay + live events fit without
-    // tripping the backpressure guard for a healthy consumer.
+    // HWM 256 (default 1 drops handshake/replay chunks before the consumer pulls).
     const stream = new ReadableStream<Uint8Array>({
       start: (controller) => {
         const send = (event: string, payload: unknown, id?: string): void => {
-          // Drop event if the stream's internal queue is full (backpressure guard).
-          // desiredSize <= 0 means the consumer is falling behind; dropping prevents
-          // unbounded memory growth from enqueued-but-unread chunks.
+          // Backpressure guard: drop when the consumer is falling behind (desiredSize<=0).
           if ((controller.desiredSize ?? 1) <= 0) return;
           controller.enqueue(encoder.encode(`${id ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
         };
@@ -691,9 +694,10 @@ export class ControlPlaneGateway {
           kind: options.clientKind ?? 'web',
           surfaceId: options.surfaceId,
           routeId: options.routeId,
+          scopes: options.scopes,
+          admin: options.admin,
           send,
         });
-        // emit STREAM_SUBSCRIBER_CONNECTED when the SSE client is registered.
         emitStreamSubscriberConnected(this.runtimeBus!, {
           sessionId: options.sessionId ?? 'control-plane',
           source: 'control-plane.gateway',
@@ -706,7 +710,6 @@ export class ControlPlaneGateway {
         const heartbeat = setInterval(() => {
           send('heartbeat', { clientId, ts: Date.now() });
         }, 15_000);
-        // Don't block clean process exit.
         (heartbeat as unknown as { unref?: () => void }).unref?.();
         teardown = () => {
           clearInterval(heartbeat);
@@ -744,7 +747,6 @@ export class ControlPlaneGateway {
               clientId,
               reason: 'stream-closed',
             });
-            // emit STREAM_SUBSCRIBER_DISCONNECTED when the SSE client tears down.
             emitStreamSubscriberDisconnected(this.runtimeBus!, {
               sessionId: options.sessionId ?? 'control-plane',
               source: 'control-plane.gateway',
@@ -811,12 +813,10 @@ export class ControlPlaneGateway {
       payload,
       ...(replayScope && hasReplayScope(replayScope) ? { replayScope } : {}),
     };
-    // O(1) circular ring buffer write — no array shifting.
     this._recentEventsRing[this._recentEventsHead] = record;
     this._recentEventsHead = (this._recentEventsHead + 1) % this._recentEventsCapacity;
     if (this._recentEventsCount < this._recentEventsCapacity) this._recentEventsCount++;
     this._lastEventAt = record.createdAt;
-    // Debounced: coalesce N events/frame into 1 store sync.
     this._scheduleControlPlaneSync();
     return record;
   }

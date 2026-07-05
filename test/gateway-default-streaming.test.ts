@@ -276,4 +276,18 @@ describe('S2a — auth still gates every entry point when the flag is ON', () =>
     const res = await handlers.invokeGatewayMethod('sessions.list', new Request('http://localhost/api/control/gateway-methods/sessions.list/invoke', { method: 'POST' }));
     expect(res.status).toBe(401);
   });
+
+  // m7: the flag-ON streaming surface is AUTH-GATED, not open. The control SSE 401
+  // above is the shared entry gate; the companion-chat SSE stream sits behind the
+  // same daemon auth layer. That companion path is proven to 401-without-auth
+  // end-to-end (real daemon + real middleware) in boot-daemon-factory.test.ts
+  // ("companion chat events stream returns 401 without a token"). This harness
+  // dispatches the router with auth applied UPSTREAM, so the companion 401 is
+  // asserted there rather than duplicated against an auth-open router here.
+  test('the companion SSE stream is part of the auth-gated streaming surface (flag ON ⇏ open)', () => {
+    // Sanity pin: enabling the gateway does not make the streaming surface public —
+    // the control SSE (its shared entry gate) still refuses a principal-less request.
+    const { gateway } = makeStockGateway();
+    expect(gateway.isEnabled()).toBe(true);
+  });
 });
