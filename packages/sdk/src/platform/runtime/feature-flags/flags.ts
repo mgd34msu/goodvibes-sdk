@@ -404,12 +404,24 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     runtimeToggleable: true,
   },
   {
+    // NOTE: control-plane-gateway is the ONE tier-10 flag that defaults ON (One-Platform
+    // Wave 1). A stock daemon (no config) must be able to stream companion chat over SSE;
+    // leaving this OFF made a fresh daemon return 503 on the live-stream path (the W1
+    // "stock daemon is dead" bug). Auth is enforced independently at the daemon route
+    // layer (daemon-sdk/control-routes.ts requires a principal / 401 before the gateway is
+    // touched), the default bind stays loopback, and the 60/min + 5/min rate limiters are
+    // unchanged — flipping this default exposes no new network surface. It remains
+    // runtimeToggleable, so an operator who wants a request/response-only daemon can turn
+    // it back off via config (`flags: { 'control-plane-gateway': 'disabled' }`), which the
+    // manager honours over this default. Do NOT generalise this to the other tier-10
+    // siblings (slack/discord/web surfaces, delivery-engine, etc.) — they stay OFF until
+    // individually validated.
     id: 'control-plane-gateway',
     name: 'Control-Plane Gateway',
     description:
       'Enables the shared gateway/control-plane host that serves state snapshots, live streams, '
       + 'and authenticated automation control APIs to terminal hosts and remote clients.',
-    defaultState: 'disabled',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },

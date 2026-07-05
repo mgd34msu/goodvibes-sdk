@@ -5,7 +5,7 @@ Generated from the synced GoodVibes operator contract artifact.
 ## Summary
 
 - Methods: `297`
-- Events: `30`
+- Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
 - Methods catalog path: `/api/control-plane/methods`
@@ -77069,6 +77069,80 @@ Initial SSE/WebSocket handshake event emitted after a control-plane subscription
     "clientId",
     "domains",
     "transport"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `control.session_update`
+
+Shared-session lifecycle broadcast. Every session created / closed / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed. This channel is un-domained: it reaches every live SSE/WS client regardless of subscribed domains, and is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).
+
+- Title: `Session Lifecycle Update`
+- Source: `builtin`
+- Transport: `sse`, `ws`
+- Scopes: `read:sessions`
+- Domains: none
+- Wire events: `session-update`
+
+##### Payload schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "session-created",
+        "session-closed",
+        "session-reopened",
+        "session-agent-bound",
+        "session-agent-completed",
+        "session-message-appended",
+        "session-message-forwarded",
+        "session-route-attached",
+        "session-input-queued",
+        "session-input-delivered",
+        "session-input-spawned",
+        "session-input-rejected",
+        "session-input-cancelled",
+        "session-follow-up-queued",
+        "session-follow-up-spawned"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "createdAt": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "event",
+    "payload",
+    "createdAt"
   ],
   "additionalProperties": false
 }
