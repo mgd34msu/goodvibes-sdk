@@ -55,6 +55,9 @@ describe('startHostServices daemon lifecycle', () => {
       runtimeServices,
       {
         sharedDaemonToken: 'shared-token',
+        // Decouple this adoption test from version banding: it asserts the
+        // adopt-vs-embedded decision, not the compat policy (covered separately).
+        isDaemonVersionCompatible: () => true,
         probeDaemonPortInUse: async () => true,
         probeDaemonIdentity: async (host, port, token) => {
           expect(host).toBe('127.0.0.1');
@@ -80,6 +83,88 @@ describe('startHostServices daemon lifecycle', () => {
       version: '0.26.4',
       authenticated: true,
     });
+  });
+
+  test('refuses to adopt a verified GoodVibes daemon whose version is incompatible', async () => {
+    let createDaemonCalled = false;
+    const handle = await startHostServices(
+      baseConfig(),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        // Real banding: local 1.0.0 vs remote 2.0.0 is a major-axis mismatch.
+        localDaemonVersion: '1.0.0',
+        probeDaemonPortInUse: async () => true,
+        probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '2.0.0' }),
+        createDaemonServer: () => {
+          createDaemonCalled = true;
+          return createFakeService([]);
+        },
+      },
+    );
+
+    // Never adopts and never starts a second competing daemon on the occupied port.
+    expect(createDaemonCalled).toBe(false);
+    expect(handle.daemonServer).toBeNull();
+    expect(handle.daemonStatus.mode).toBe('incompatible');
+    expect(handle.daemonStatus.version).toBe('2.0.0');
+    expect(handle.daemonStatus.reason).toContain('2.0.0');
+    expect(handle.daemonStatus.reason).toContain('1.0.0');
+    expect(handle.daemonStatus.reason).toContain('3421');
+  });
+
+  test('reports incompatible (not blocked) when a bind conflict reveals an incompatible daemon', async () => {
+    const events: string[] = [];
+    const service = createFakeService(events);
+    service.start = async () => {
+      events.push('start');
+      throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
+    };
+    const handle = await startHostServices(
+      baseConfig(),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        localDaemonVersion: '0.38.0',
+        probeDaemonPortInUse: async () => false,
+        probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '0.35.0' }),
+        createDaemonServer: () => service,
+      },
+    );
+
+    // Embedded start was attempted, failed to bind, and was stopped; the
+    // re-probe found an incompatible daemon, so the final status is honest.
+    expect(events).toEqual(['enable', 'start', 'stop']);
+    expect(handle.daemonServer).toBeNull();
+    expect(handle.daemonStatus.mode).toBe('incompatible');
+    expect(handle.daemonStatus.version).toBe('0.35.0');
+  });
+
+  test('adopts a bind-conflict daemon when its version is compatible', async () => {
+    const events: string[] = [];
+    const service = createFakeService(events);
+    service.start = async () => {
+      events.push('start');
+      throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
+    };
+    const handle = await startHostServices(
+      baseConfig(),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        localDaemonVersion: '0.38.1',
+        probeDaemonPortInUse: async () => false,
+        probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '0.38.9' }),
+        createDaemonServer: () => service,
+      },
+    );
+
+    expect(handle.daemonServer).toBeNull();
+    expect(handle.daemonStatus.mode).toBe('external');
+    expect(handle.daemonStatus.version).toBe('0.38.9');
   });
 
   test('reports blocked daemon status when an occupied port is not verified as GoodVibes', async () => {
