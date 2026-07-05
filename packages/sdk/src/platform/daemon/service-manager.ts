@@ -447,27 +447,44 @@ export class PlatformServiceManager {
   private runPlatformAction(platform: ManagedServicePlatform, action: 'start' | 'stop' | 'restart'): ManagedServiceStatus {
     const serviceName = resolveServiceName(this.configManager, this.defaultServiceName);
     const path = definitionPath(platform, serviceName, this.getPaths(), this.surfaceRoot);
-    const command = platform === 'systemd'
-      ? ['systemctl', '--user', action === 'start' ? 'enable' : action, ...(action === 'start' ? ['--now'] : []), `${serviceName}.service`]
+    // Each step is an argv plus a bestEffort flag. launchd has no native restart
+    // verb, so restart is an honest unload-then-load; the unload is best-effort
+    // (the agent may simply not be loaded yet), mirroring suggestedCommands()'
+    // human-facing `launchctl unload <path> || true`.
+    const steps: ReadonlyArray<{ readonly argv: readonly string[]; readonly bestEffort?: boolean }> = platform === 'systemd'
+      ? [{ argv: ['systemctl', '--user', action === 'start' ? 'enable' : action, ...(action === 'start' ? ['--now'] : []), `${serviceName}.service`] }]
       : platform === 'launchd'
-        ? ['launchctl', action === 'stop' ? 'unload' : 'load', path]
+        ? action === 'restart'
+          ? [
+              { argv: ['launchctl', 'unload', path], bestEffort: true },
+              { argv: ['launchctl', 'load', path] },
+            ]
+          : [{ argv: ['launchctl', action === 'stop' ? 'unload' : 'load', path] }]
         : platform === 'windows'
-          ? ['schtasks', action === 'start' ? '/Run' : action === 'stop' ? '/End' : '/Run', '/TN', serviceName]
+          ? [{ argv: ['schtasks', action === 'start' ? '/Run' : action === 'stop' ? '/End' : '/Run', '/TN', serviceName] }]
           : [];
-    if (command.length === 0) {
+    if (steps.length === 0) {
       return {
         ...this.status(),
         lastAction: action,
         actionError: `Unsupported platform action: ${platform}`,
       };
     }
-    const result = this.actionRunner
-      ? this.actionRunner(command[0]!, command.slice(1))
-      : spawnSync(command[0]!, command.slice(1), { stdio: 'pipe', encoding: 'utf-8' });
+    let actionError: string | undefined;
+    for (const step of steps) {
+      const argv = step.argv;
+      const result = this.actionRunner
+        ? this.actionRunner(argv[0]!, argv.slice(1))
+        : spawnSync(argv[0]!, argv.slice(1), { stdio: 'pipe', encoding: 'utf-8' });
+      if ((result.status ?? 1) !== 0 && !step.bestEffort) {
+        actionError = ((result.stderr ?? '') || (result.stdout ?? '') || `command exited with ${result.status}`).trim();
+        break;
+      }
+    }
     return {
       ...this.status(),
       lastAction: action,
-      ...((result.status ?? 1) === 0 ? {} : { actionError: ((result.stderr ?? '') || (result.stdout ?? '') || `command exited with ${result.status}`).trim() }),
+      ...(actionError === undefined ? {} : { actionError }),
     };
   }
 

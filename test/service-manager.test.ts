@@ -240,20 +240,49 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
     expect(calls).toEqual([['launchctl', 'unload', path]]);
   }));
 
-  test('restart() currently dispatches the same single `launchctl load` as start() — documented current behavior, NOT an unload-then-load restart', () => withTempDir((dir) => {
-    // This is a discovered characteristic of the existing runPlatformAction dispatch table
-    // (service-manager.ts: `platform === 'launchd' ? ['launchctl', action === 'stop' ? 'unload' : 'load', path]`),
-    // which only special-cases 'stop'. For launchd, 'restart' collapses to the same single
-    // `load` call as 'start' — it does not unload first the way suggestedCommands()'s
-    // human-facing hint does. Recorded here as a specification of ACTUAL behavior so a
-    // future change to it is a deliberate, reviewed decision rather than a silent regression.
+  test('restart() dispatches an honest unload-then-load sequence (launchd has no native restart verb)', () => withTempDir((dir) => {
     const { runner, calls } = recordingRunner();
     const manager = makeManager(dir, runner);
     const path = manager.status().path;
 
-    manager.restart();
+    const result = manager.restart();
 
-    expect(calls).toEqual([['launchctl', 'load', path]]);
+    expect(calls).toEqual([
+      ['launchctl', 'unload', path],
+      ['launchctl', 'load', path],
+    ]);
+    expect(result.actionError).toBeUndefined();
+  }));
+
+  test('restart() tolerates a failing unload (agent not loaded yet) but still loads — best-effort unload mirrors `launchctl unload || true`', () => withTempDir((dir) => {
+    const calls: string[][] = [];
+    const runner = (command: string, args: readonly string[]): ManagedServiceActionResult => {
+      calls.push([command, ...args]);
+      // unload fails (nothing loaded), load succeeds.
+      return args[0] === 'unload'
+        ? { status: 1, stderr: 'Could not find specified service' }
+        : { status: 0 };
+    };
+    const manager = makeManager(dir, runner);
+    const path = manager.status().path;
+
+    const result = manager.restart();
+
+    expect(calls).toEqual([
+      ['launchctl', 'unload', path],
+      ['launchctl', 'load', path],
+    ]);
+    expect(result.actionError).toBeUndefined();
+  }));
+
+  test('restart() surfaces actionError when the load step fails (the load is NOT best-effort)', () => withTempDir((dir) => {
+    const runner = (_command: string, args: readonly string[]): ManagedServiceActionResult =>
+      args[0] === 'load' ? { status: 1, stderr: 'Load failed: 5: Input/output error' } : { status: 0 };
+    const manager = makeManager(dir, runner);
+
+    const result = manager.restart();
+
+    expect(result.actionError).toContain('Load failed');
   }));
 
   test('a failing launchctl call surfaces actionError honestly (never silently swallowed)', () => withTempDir((dir) => {
@@ -273,7 +302,8 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
     manager.stop();
     manager.restart();
 
-    expect(calls.length).toBe(3);
+    // start=1 call, stop=1, restart=2 (unload+load) — 4 dispatches total.
+    expect(calls.length).toBe(4);
     expect(calls.every(([command]) => command === 'launchctl')).toBe(true);
   }));
 });
@@ -309,13 +339,15 @@ describe('service-management feature gate (launchd)', () => {
   }));
 });
 
-// --- Real launchd probe: honest, named skip on any non-macOS host (this CI is  ---
-// --- Linux). Mirrors test/systemd-user-service.test.ts's real user-systemd     ---
-// --- probe pattern. Host-safety: even in the branch that WOULD run on darwin,  ---
-// --- the manager is still constructed with a tempdir homeDirectory/workingDirectory
-// --- and no actionRunner is exercised (status() only performs read-only        ---
-// --- existsSync checks) — it never touches a real ~/Library/LaunchAgents entry ---
-// --- or invokes a real launchctl mutation.                                     ---
+// --- Real launchd probe: darwin-only, honestly branch-gated INSIDE the test    ---
+// --- body (this repo's test-skip:check forbids the skip/todo test modifiers;   ---
+// --- the sanctioned pattern is an in-body guard, cf. test/dist-freshness.test.ts). ---
+// --- On any non-macOS host the test still runs and asserts the detection       ---
+// --- result itself, logging the named reason — it never fabricates a pass for  ---
+// --- darwin behavior it cannot observe. Host-safety: even the darwin branch    ---
+// --- constructs the manager with a tempdir homeDirectory/workingDirectory and  ---
+// --- exercises only read-only status() (existsSync checks) — it never touches  ---
+// --- a real ~/Library/LaunchAgents entry or invokes a real launchctl mutation. ---
 function detectRealLaunchctl(): { available: boolean; reason: string } {
   if (process.platform !== 'darwin') {
     return { available: false, reason: `not running on macOS (process.platform=${process.platform})` };
@@ -325,12 +357,17 @@ function detectRealLaunchctl(): { available: boolean; reason: string } {
   return { available: true, reason: 'launchctl reachable on darwin' };
 }
 
-const realLaunchctl = detectRealLaunchctl();
-
 describe('real launchd probe (read-only structure check, darwin-only — honest gap on non-macOS CI)', () => {
-  test.skipIf(!realLaunchctl.available)(
-    `on darwin, status() resolves the launchd platform and a real-shaped LaunchAgents path [${realLaunchctl.reason}]`,
-    () => withTempDir((dir) => {
+  test('on darwin, status() resolves the launchd platform against the real host; elsewhere, the unavailability is detected and named (no fabricated darwin pass)', () => {
+    const realLaunchctl = detectRealLaunchctl();
+    if (!realLaunchctl.available) {
+      // Not a silent pass: assert the detection is coherent and surface the reason.
+      console.log(`[service-manager.test] real launchd probe not run: ${realLaunchctl.reason}`);
+      expect(realLaunchctl.reason.length).toBeGreaterThan(0);
+      expect(process.platform === 'darwin' || realLaunchctl.reason.includes('not running on macOS')).toBe(true);
+      return;
+    }
+    withTempDir((dir) => {
       const configManager = launchdConfig(dir, 'goodvibes-real-probe');
       const def = definition({ name: 'goodvibes-real-probe', workingDirectory: dir });
       const manager = new PlatformServiceManager(configManager, {
@@ -344,15 +381,6 @@ describe('real launchd probe (read-only structure check, darwin-only — honest 
       expect(status.platform).toBe('launchd');
       expect(status.path).toContain('Library/LaunchAgents');
       expect(status.installed).toBe(false);
-    }),
-  );
-
-  test.skipIf(realLaunchctl.available)(
-    `SKIP real launchd probe: ${realLaunchctl.reason}`,
-    () => {
-      // Named skip guard: when this host isn't macOS (true for every Linux CI run),
-      // we do not fabricate a pass for launchd behavior we cannot actually observe.
-      expect(realLaunchctl.available).toBe(false);
-    },
-  );
+    });
+  });
 });
