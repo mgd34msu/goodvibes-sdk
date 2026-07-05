@@ -264,18 +264,33 @@ export class SharedSessionBroker {
   }
 
   /** Idempotent register/heartbeat (sessions.register); honest closed semantics
-   * live in {@link registerSharedSession}, this injects the broker ops. */
+   * live in {@link registerSharedSession}, this injects the broker ops.
+   *
+   * Race note: a brand-new session must be born ALREADY surface-managed in the
+   * SAME write that creates it (metadata passed straight into createSession),
+   * not patched on afterward. createSession() awaits its own persist+publish
+   * before this function's next line runs — a concurrent request (a steer, or a
+   * plain sessions.list poll) can observe the session as visible/active during
+   * that await window. If surfaceManaged were applied only AFTER createSession()
+   * resolves, a steer landing in that window would see an active-but-not-yet-
+   * surface-managed session and be routed to the doomed daemon-executor fallback
+   * instead of queued for the surface. markSurfaceManaged() below remains as the
+   * (idempotent) path for an EXISTING session's repeat register/heartbeat. */
   async register(input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult> {
     await this.start();
     const result = await registerSharedSession({
       getSession: (id) => this.sessions.get(id) ?? null,
-      createSession: (i) => this.createSession(i),
+      createSession: (i) => this.createSession({
+        ...i,
+        metadata: { ...i.metadata, [SESSION_SURFACE_MANAGED_METADATA_KEY]: true },
+      }),
       reopenSession: (id) => this.reopenSession(id),
       attachParticipant: (s, a) => this.attachParticipantAndRoute(s, a),
     }, input);
     // A spine-registered surface owns turn execution + input collection for this
     // session: mark it surface-managed so steer/follow-up route to the surface
-    // (queue-for-surface) instead of spawning a daemon executor.
+    // (queue-for-surface) instead of spawning a daemon executor. A no-op when
+    // createSession above already set it (the common brand-new-session case).
     const marked = await this.markSurfaceManaged(result.record.id);
     return marked ? { ...result, record: marked } : result;
   }
