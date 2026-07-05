@@ -416,6 +416,43 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     expect(session.lastActivityAt).toBe(createdAt);
   });
 
+  test('sessions.get tolerates a wire response that omits project (mixed-version daemon)', async () => {
+    // Regression coverage for docs/decisions/2026-07-05-session-wire-mixed-version.md:
+    // an older/mixed-version daemon may omit `project` on a shared-session record.
+    // The JSON-schema response gate in validateJsonSchemaResponse (client-core.ts)
+    // must not reject the response before normalizeSharedSessionRecord gets a
+    // chance to backfill `project` to 'unknown' — i.e. `project` must not be in
+    // SHARED_SESSION_RECORD_SCHEMA's required list.
+    const createdAt = Date.now();
+    const client = createOperatorRemoteClient(
+      makeTransport(async () => createJsonResponse({
+        session: {
+          id: 'sess-legacy',
+          kind: 'tui',
+          // project intentionally omitted
+          title: 'Legacy session',
+          status: 'active',
+          createdAt,
+          updatedAt: createdAt,
+          lastActivityAt: createdAt,
+          messageCount: 0,
+          pendingInputCount: 0,
+          routeIds: [],
+          surfaceKinds: [],
+          participants: [],
+          metadata: {},
+        },
+        messages: [],
+      })),
+      buildOperatorContract(new GatewayMethodCatalog()),
+    );
+
+    const result = await client.sessions.get('sess-legacy');
+    const session = result.session as Record<string, unknown>;
+    expect(session.id).toBe('sess-legacy');
+    expect(session.project).toBeUndefined(); // schema-gate layer does not backfill; that's normalizeSharedSessionRecord's job
+  });
+
   test('sessions.get builds path from sessionId', async () => {
     const calls: string[] = [];
     const client = makeSrcClient(async (input) => {
