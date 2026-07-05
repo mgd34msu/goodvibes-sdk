@@ -104,7 +104,15 @@ bun run refresh:contracts   # rewrites operator-contract.json, generated/operato
 bun run docs:generate       # rewrites docs/reference-operator.md + reference-runtime-events.md
 # or both at once:
 bun run refresh:docs
+bun run pretest             # tsc build — api-extractor reads compiled .d.ts, so a cold
+                            # follower MUST build before extracting (first-cold-run gap)
+bunx api-extractor run --local   # regenerates etc/goodvibes-sdk.api.md
 ```
+
+Mid-MERGE note (second first-cold-run gap): `api:check` diffs the working tree against the
+index — during a merge you must `git add` the regenerated artifacts BEFORE the diff-based
+gates (`api:check`, `refresh:contracts:check`) read true, or they fail on your own
+unstaged regen output.
 
 Commit **all** generated outputs together (JSON + the generated `.ts` files + the regenerated
 `.md`). A catalog edit without regeneration is a hard CI fail (see gates).
