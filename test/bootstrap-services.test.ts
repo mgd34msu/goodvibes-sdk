@@ -1,8 +1,22 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   startHostServices,
+  DETACHED_DAEMON_INSTALL_HINT,
   type HostServicesConfig,
+  type DetachedDaemonChild,
+  type DetachedDaemonSpawnOptions,
 } from '../packages/sdk/src/platform/runtime/bootstrap-services.ts';
+
+/** Unique temp dir so detached-spawn tests never touch the real daemon home. */
+function tempRuntimeDir(): string {
+  return mkdtempSync(join(tmpdir(), 'gv-d7a-'));
+}
+
+/** Immediate sleep so probe polling in tests does not wall-clock wait. */
+const immediateSleep = async (): Promise<void> => {};
 
 function config(values: Record<string, boolean | number | string>): HostServicesConfig {
   return {
@@ -114,7 +128,7 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.reason).toContain('3421');
   });
 
-  test('reports incompatible (not blocked) when a bind conflict reveals an incompatible daemon', async () => {
+  test('reports incompatible (not blocked) when a bind conflict reveals an incompatible daemon (embed opt-in)', async () => {
     const events: string[] = [];
     const service = createFakeService(events);
     service.start = async () => {
@@ -122,7 +136,7 @@ describe('startHostServices daemon lifecycle', () => {
       throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
     };
     const handle = await startHostServices(
-      baseConfig(),
+      baseConfig({ 'daemon.embedInProcess': true }),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
@@ -142,7 +156,7 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.version).toBe('0.35.0');
   });
 
-  test('adopts a bind-conflict daemon when its version is compatible', async () => {
+  test('adopts a bind-conflict daemon when its version is compatible (embed opt-in)', async () => {
     const events: string[] = [];
     const service = createFakeService(events);
     service.start = async () => {
@@ -150,7 +164,7 @@ describe('startHostServices daemon lifecycle', () => {
       throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
     };
     const handle = await startHostServices(
-      baseConfig(),
+      baseConfig({ 'daemon.embedInProcess': true }),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
@@ -187,10 +201,10 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.reason).toBe('Identity probe returned HTTP 404');
   });
 
-  test('reports embedded daemon status when the SDK starts the daemon', async () => {
+  test('reports embedded daemon status when daemon.embedInProcess opt-in is set (Layer 3)', async () => {
     const events: string[] = [];
     const handle = await startHostServices(
-      baseConfig(),
+      baseConfig({ 'daemon.embedInProcess': true }),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
@@ -203,17 +217,21 @@ describe('startHostServices daemon lifecycle', () => {
     expect(events).toEqual(['enable', 'start']);
     expect(handle.daemonServer).not.toBeNull();
     expect(handle.daemonStatus.mode).toBe('embedded');
+    expect(handle.daemonStartHint).toBeUndefined();
   });
 
-  test('runs an embedded daemon by default when danger.daemon is unset (daemon.enabled default on)', async () => {
+  test('runs the daemon when danger.daemon is unset (daemon.enabled default on) — embed opt-in path', async () => {
     // The daemon-by-default ruling: with the deprecated alias absent, daemon.enabled
-    // (default true) governs, so the host starts an embedded daemon without any
-    // danger.* opt-in. The reader returns undefined for the unset alias — the exact
-    // sentinel resolveDaemonEnabled relies on — and true for daemon.enabled.
+    // (default true) governs, so the host enters the port-free daemon branch without
+    // any danger.* opt-in. The reader returns undefined for the unset alias — the exact
+    // sentinel resolveDaemonEnabled relies on — and true for daemon.enabled. We set
+    // daemon.embedInProcess=true here to assert the branch is reached via the embedded
+    // path (the detached-default path is covered separately below).
     const defaultOnConfig: HostServicesConfig = {
       get: (key) => {
         if (key === 'danger.daemon') return undefined;
         if (key === 'daemon.enabled') return true;
+        if (key === 'daemon.embedInProcess') return true;
         if (key === 'danger.httpListener') return false;
         if (key === 'controlPlane.host' || key === 'httpListener.host') return '127.0.0.1';
         if (key === 'controlPlane.port') return 3421;
@@ -295,7 +313,7 @@ describe('startHostServices daemon lifecycle', () => {
     });
   });
 
-  test('stops an enabled daemon service after a bind conflict during start', async () => {
+  test('stops an enabled daemon service after a bind conflict during start (embed opt-in)', async () => {
     const events: string[] = [];
     const service = createFakeService(events);
     service.start = async () => {
@@ -303,7 +321,7 @@ describe('startHostServices daemon lifecycle', () => {
       throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
     };
     const handle = await startHostServices(
-      baseConfig(),
+      baseConfig({ 'daemon.embedInProcess': true }),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
@@ -330,5 +348,153 @@ describe('startHostServices daemon lifecycle', () => {
         createDaemonServer: () => createFakeService([]),
       },
     )).rejects.toThrow('Expected controlPlane.port to be an integer TCP port');
+  });
+});
+
+describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
+  interface CapturedSpawn {
+    command?: string;
+    args?: readonly string[];
+    options?: DetachedDaemonSpawnOptions;
+    unrefCalled: boolean;
+  }
+
+  function stubSpawn(captured: CapturedSpawn, pid = 4242): (
+    command: string,
+    args: readonly string[],
+    options: DetachedDaemonSpawnOptions,
+  ) => DetachedDaemonChild {
+    return (command, args, options) => {
+      captured.command = command;
+      captured.args = args;
+      captured.options = options;
+      return {
+        pid,
+        unref: () => { captured.unrefCalled = true; },
+        once: () => {},
+      };
+    };
+  }
+
+  test('spawns a DETACHED daemon by default (not in-process embedded) and adopts it as external with the install hint', async () => {
+    const captured: CapturedSpawn = { unrefCalled: false };
+    let createDaemonCalled = false;
+    const handle = await startHostServices(
+      baseConfig(), // no daemon.embedInProcess → default detached path
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        isDaemonVersionCompatible: () => true,
+        probeDaemonPortInUse: async () => false,
+        spawnDetachedDaemon: stubSpawn(captured),
+        daemonRuntimeDir: tempRuntimeDir(),
+        daemonHomeDir: '/home/tester',
+        sleep: immediateSleep,
+        probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '9.9.9' }),
+        createDaemonServer: () => {
+          createDaemonCalled = true;
+          return createFakeService([]);
+        },
+      },
+    );
+
+    // In-process embedding was NOT chosen.
+    expect(createDaemonCalled).toBe(false);
+    expect(handle.daemonServer).toBeNull();
+    // Spawn was detached and unref()'d.
+    expect(captured.options?.detached).toBe(true);
+    expect(captured.unrefCalled).toBe(true);
+    expect(captured.command).toBe('goodvibes-daemon');
+    expect(captured.args).toContain('--daemon-home');
+    expect(captured.args).toContain('/home/tester');
+    expect(captured.args).toContain('--port');
+    expect(captured.args).toContain('3421');
+    // Adopted as external with the spawned reason + one-time install hint.
+    expect(handle.daemonStatus.mode).toBe('external');
+    expect(handle.daemonStatus.reason).toContain('detached');
+    expect(handle.daemonStartHint).toBe(DETACHED_DAEMON_INSTALL_HINT);
+  });
+
+  test('polls until the detached daemon becomes reachable, then adopts it', async () => {
+    const captured: CapturedSpawn = { unrefCalled: false };
+    let probes = 0;
+    const handle = await startHostServices(
+      baseConfig(),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        isDaemonVersionCompatible: () => true,
+        probeDaemonPortInUse: async () => false,
+        spawnDetachedDaemon: stubSpawn(captured),
+        daemonRuntimeDir: tempRuntimeDir(),
+        sleep: immediateSleep,
+        detachedSpawnProbeIntervalMs: 1,
+        detachedSpawnProbeTimeoutMs: 1000,
+        probeDaemonIdentity: async () => {
+          probes += 1;
+          if (probes < 3) return { kind: 'unknown' as const, reason: 'not up yet' };
+          return { kind: 'goodvibes' as const, status: 'running', version: '9.9.9' };
+        },
+      },
+    );
+
+    expect(probes).toBeGreaterThanOrEqual(3);
+    expect(handle.daemonStatus.mode).toBe('external');
+    expect(handle.daemonStartHint).toBe(DETACHED_DAEMON_INSTALL_HINT);
+  });
+
+  test('falls back to embedded honestly when the detached daemon never becomes reachable', async () => {
+    const captured: CapturedSpawn = { unrefCalled: false };
+    const events: string[] = [];
+    const handle = await startHostServices(
+      baseConfig(),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        probeDaemonPortInUse: async () => false,
+        spawnDetachedDaemon: stubSpawn(captured),
+        daemonRuntimeDir: tempRuntimeDir(),
+        sleep: immediateSleep,
+        detachedSpawnProbeTimeoutMs: 0, // give up after one probe
+        detachedSpawnProbeIntervalMs: 1,
+        probeDaemonIdentity: async () => ({ kind: 'unknown' as const, reason: 'never came up' }),
+        createDaemonServer: () => createFakeService(events),
+      },
+    );
+
+    // Detached spawn was attempted (and unref'd) but the fallback embedded daemon started.
+    expect(captured.unrefCalled).toBe(true);
+    expect(events).toEqual(['enable', 'start']);
+    expect(handle.daemonServer).not.toBeNull();
+    expect(handle.daemonStatus.mode).toBe('embedded');
+    expect(handle.daemonStartHint).toBeUndefined();
+  });
+
+  test('does not spawn when a compatible daemon already occupies the port (adopts existing)', async () => {
+    const captured: CapturedSpawn = { unrefCalled: false };
+    let spawnCalled = false;
+    const handle = await startHostServices(
+      baseConfig(),
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        isDaemonVersionCompatible: () => true,
+        probeDaemonPortInUse: async () => true, // already occupied
+        probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '9.9.9' }),
+        spawnDetachedDaemon: (command, args, options) => {
+          spawnCalled = true;
+          return stubSpawn(captured)(command, args, options);
+        },
+      },
+    );
+
+    expect(spawnCalled).toBe(false);
+    expect(handle.daemonStatus.mode).toBe('external');
+    // Adopting a pre-existing daemon is not a "we started it" event: no hint.
+    expect(handle.daemonStartHint).toBeUndefined();
   });
 });

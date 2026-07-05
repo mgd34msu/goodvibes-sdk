@@ -97,6 +97,7 @@ export const coreConfigDefaults = {
   },
   daemon: {
     enabled: true,
+    embedInProcess: false,
   },
   danger: {
     // `danger.daemon` is a deprecated alias for `daemon.enabled` (removal scheduled
@@ -595,6 +596,13 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     default: true,
     description:
       'Run the local session daemon (background service that hosts the shared session broker and companion chat). Default on; binds loopback (127.0.0.1) only. Set false to run fully local with no background service.',
+  },
+  {
+    key: 'daemon.embedInProcess',
+    type: 'boolean',
+    default: false,
+    description:
+      'NOT RECOMMENDED. When true, and no daemon is already running, host the daemon INSIDE this surface process instead of spawning it as a detached background process. In-process embedding couples the daemon lifetime to this one surface: exiting the surface kills the daemon and every other surface sharing it (single point of failure). Default false — the surface spawns a detached, reboot-independent daemon (install it as a system service with `goodvibes-daemon install-service`).',
   },
   {
     key: 'danger.daemon',
