@@ -1,4 +1,4 @@
-import type { DaemonRuntimeRouteHandlers } from '../../control-plane/routes/context.js';
+import type { DaemonRuntimeRouteHandlers } from '@pellux/goodvibes-daemon-sdk';
 import type { DaemonRuntimeRouteContext as SdkDaemonRuntimeRouteContext, AutomationSurfaceKind, JsonBody } from '@pellux/goodvibes-daemon-sdk';
 import type {
   AutomationScheduleDefinition,
