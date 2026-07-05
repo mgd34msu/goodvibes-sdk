@@ -25,6 +25,7 @@ export type {
   WorkItemUsage,
   Workstream,
   WorkstreamIsolation,
+  WorkstreamProvenance,
   WorkstreamSnapshot,
 } from './types.js';
 export { CURRENT_WORKSTREAM_SCHEMA_VERSION, emptyWorkItemUsage } from './types.js';
@@ -48,7 +49,10 @@ export {
   writeWorkstreamSnapshot,
 } from './persistence.js';
 
-export { fromChainSpec } from './controller-compat.js';
+export { engineerReviewPhases, fromChainSpec } from './controller-compat.js';
+
+export { fromPlanProposal } from './proposal-workstream.js';
+export type { FromPlanProposalOptions } from './proposal-workstream.js';
 
 export type { PhaseRunnerAgentManagerLike, PhaseRunnerDeps, PhaseRunOutcome, WrfcWorktreeOps } from './phase-runner.js';
 export { runPhase } from './phase-runner.js';
@@ -58,10 +62,11 @@ export { excludeUntouchedLaunchResidue, hashWorkingTreeFile, snapshotDirtyTree }
 
 export {
   computeClaims,
+  dependencyStatus,
   firstPhase,
   nextPhaseAfter,
   phaseById,
   reviewPhaseBefore,
   sortedPhases,
 } from './scheduler.js';
-export type { PhaseClaim } from './scheduler.js';
+export type { DependencyStatus, PhaseClaim } from './scheduler.js';

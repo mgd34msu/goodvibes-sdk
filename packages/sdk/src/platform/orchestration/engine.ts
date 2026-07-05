@@ -28,7 +28,7 @@ import {
   loadWorkstreamSnapshot,
   serializeWorkstreamSnapshot,
 } from './persistence.js';
-import { computeClaims, firstPhase, nextPhaseAfter, reviewPhaseBefore, sortedPhases } from './scheduler.js';
+import { computeClaims, dependencyStatus, firstPhase, nextPhaseAfter, reviewPhaseBefore, sortedPhases } from './scheduler.js';
 import {
   CURRENT_WORKSTREAM_SCHEMA_VERSION,
   emptyWorkItemUsage,
@@ -44,6 +44,7 @@ import {
   type WorkItemUsage,
   type Workstream,
   type WorkstreamIsolation,
+  type WorkstreamProvenance,
 } from './types.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -81,6 +82,12 @@ export interface CreateWorkstreamInput {
    * contrast with `'worktree'` mode.
    */
   readonly isolation?: WorkstreamIsolation | undefined;
+  /**
+   * Workstream-level provenance (BIG-3 item 1). Set by `fromPlanProposal` when
+   * assembling from an approved PlanProposal; omitted by compat/`fromChainSpec`
+   * callers. Stored verbatim on the created Workstream.
+   */
+  readonly provenance?: WorkstreamProvenance | undefined;
 }
 
 export interface OrchestrationEngine {
@@ -100,6 +107,16 @@ export interface OrchestrationEngine {
    * the workstream doesn't exist.
    */
   updateBudget(workstreamId: string, ceiling: BudgetCeiling | undefined): boolean;
+  /**
+   * Reset a terminally-FAILED work item so it re-runs from its first phase —
+   * the documented recovery path (BIG-3 item 2) for a failed dependency and
+   * the dependents it left stuck in 'blocked-dependency'. updateBudget-style:
+   * mutates then immediately re-ticks, so the retry starts at once and any
+   * dependents unblock on the next tick after it passes. Returns false if the
+   * item doesn't exist or isn't in the 'failed' state (a passed or in-flight
+   * item is never disturbed).
+   */
+  retryItem(itemId: string): boolean;
   getPhaseResults(workstreamId: string): readonly PhaseResult[];
   serializeWorkstream(workstreamId: string): string | null;
   /** Import a serialized snapshot (a full WorkstreamSnapshot JSON string, see persistence.ts). Refuses to overwrite a non-terminal in-memory workstream unless force=true. */
@@ -199,6 +216,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       id: spec.id ?? generateId('item'),
       title: spec.title,
       task: spec.task,
+      dependsOn: spec.dependsOn ? [...spec.dependsOn] : [],
       currentPhaseId: startPhaseId,
       state: startPhaseId ? 'pending' : 'passed',
       allAgentIds: [],
@@ -221,6 +239,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       items: [],
       budget: input.budget,
       isolation: input.isolation,
+      provenance: input.provenance,
       createdAt: now(),
     };
     const first = firstPhase(workstream)?.id ?? null;
@@ -463,10 +482,72 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     );
   }
 
+  /**
+   * Dependency-gate pre-pass (BIG-3 item 2), run at the top of every tick
+   * BEFORE computeClaims. For each item still sitting at its FIRST phase in a
+   * pre-claim state (pending / awaiting-capacity / blocked-dependency) with
+   * declared dependencies, classify those dependencies and either release or
+   * refuse the item:
+   *   - every dependency 'passed' → RELEASE: if it was 'blocked-dependency',
+   *     restore it to 'pending' and clear blockedReason (emit
+   *     item-dependency-cleared) so computeClaims can pick it up this same tick.
+   *   - any dependency unmet → REFUSE: set 'blocked-dependency' with an honest
+   *     blockedReason ('waiting on: …' or 'dependency failed: …'), recomputed
+   *     every tick so it stays current as dependencies change; emit
+   *     item-blocked-dependency only on a NEW block (never once per idle tick).
+   *
+   * Only FIRST-phase items are gated. Once an item's dependencies are all
+   * passed at its first claim they stay passed (passed is terminal), so a
+   * mid-pipeline item (currentPhaseId past the first phase) is never re-gated.
+   * A retried item (engine.retryItem) is reset back to the first phase and is
+   * therefore re-gated here — which is exactly why a failed dependency's
+   * dependents recover only once the dependency is retried AND passes.
+   * A FAILED dependency keeps the dependent blocked (recoverable), never fails
+   * it — refuse-not-kill.
+   */
+  function applyDependencyGates(workstream: Workstream): void {
+    const first = firstPhase(workstream);
+    if (!first) return;
+    for (const item of workstream.items) {
+      if (item.dependsOn.length === 0) continue;
+      if (item.currentPhaseId !== first.id) continue; // only gate at entry (first phase)
+      if (item.state !== 'pending' && item.state !== 'awaiting-capacity' && item.state !== 'blocked-dependency') continue;
+      const status = dependencyStatus(workstream, item);
+      if (status.ready) {
+        if (item.state === 'blocked-dependency') {
+          item.state = 'pending';
+          item.blockedReason = undefined;
+          emit({ type: 'item-dependency-cleared', workstreamId: workstream.id, itemId: item.id });
+        }
+        continue;
+      }
+      const reason = status.failed.length > 0
+        ? `dependency failed: ${status.failed.join(', ')}`
+        : `waiting on: ${status.waiting.join(', ')}`;
+      const wasAlreadyBlocked = item.state === 'blocked-dependency';
+      item.state = 'blocked-dependency';
+      item.blockedReason = reason;
+      if (!wasAlreadyBlocked) {
+        emit({
+          type: 'item-blocked-dependency',
+          workstreamId: workstream.id,
+          itemId: item.id,
+          phaseId: item.currentPhaseId ?? '',
+          reason,
+          deps: [...item.dependsOn],
+        });
+      }
+    }
+  }
+
   function tick(workstreamId: string): void {
     if (disposed) return;
     const workstream = workstreams.get(workstreamId);
     if (!workstream) return;
+    // Dependency gate FIRST — release/refuse first-phase items by their
+    // dependencies before computeClaims decides capacity (which never sees a
+    // 'blocked-dependency' item, see scheduler.ts computeClaims).
+    applyDependencyGates(workstream);
     const claims = computeClaims(workstream);
     for (const { item, phase } of claims) {
       const budgetCheck = checkBudget(workstream);
@@ -534,6 +615,33 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     if (!workstream) return false;
     workstream.budget = ceiling;
     tick(workstreamId);
+    return true;
+  }
+
+  /**
+   * See the OrchestrationEngine.retryItem doc. Resets a failed item to
+   * 'pending' at the first phase; clears the terminal fields and the per-phase
+   * visit budget (a fresh fix-cycle allowance for the retry) but RETAINS
+   * accumulated `usage` (monotone — a retry adds to the tally, never wipes it).
+   * In worktree mode a still-present KEPT worktree is reused (ensureWorktree is
+   * idempotent on worktreePath); a worktree already removed after the failure
+   * is recreated at the next first claim.
+   */
+  function retryItem(itemId: string): boolean {
+    const found = findItemAndWorkstream(itemId);
+    if (!found) return false;
+    const { workstream, item } = found;
+    if (item.state !== 'failed') return false;
+    const first = firstPhase(workstream);
+    if (!first) return false;
+    item.state = 'pending';
+    item.currentPhaseId = first.id;
+    item.failureReason = undefined;
+    item.completedAt = undefined;
+    item.blockedReason = undefined;
+    item.visits.clear();
+    emit({ type: 'item-retried', workstreamId: workstream.id, itemId, reason: 'reset to re-run after failure' });
+    tick(workstream.id);
     return true;
   }
 
@@ -636,6 +744,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     start,
     kill,
     updateBudget,
+    retryItem,
     getPhaseResults,
     serializeWorkstream,
     importWorkstream,

@@ -226,6 +226,13 @@ async function evaluateGate(
     runtimeBus: deps.runtimeBus,
     sessionId: deps.sessionId,
     chainId: workstream.id,
+    // Worktree mode (BIG-3 item 5): run the configured quality gates INSIDE the
+    // item's isolated worktree, the same way the phantom-work guard above
+    // verifies claims against that worktree path. BIG-1 fixed only the phantom
+    // check; without this, gates (typecheck/lint/test) would run against the
+    // shared projectRoot and never see the item's isolated changes. Absent
+    // (shared mode) ⇒ runWrfcGateChecks defaults cwd to projectRoot — unchanged.
+    ...(deps.itemWorktree ? { cwd: deps.itemWorktree.path } : {}),
   })];
 
   const ranNames = new Set(results.map((r) => r.gate));

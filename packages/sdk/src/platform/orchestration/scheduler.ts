@@ -46,6 +46,38 @@ export interface PhaseClaim {
 }
 
 /**
+ * Whether an item's inter-item dependencies (BIG-3 item 2) are all satisfied,
+ * and — when not — WHY, split into dependencies still in flight vs. ones that
+ * have terminally failed. Pure (no side effects): the engine's per-tick
+ * dependency pre-pass (applyDependencyGates, engine.ts) calls this and applies
+ * the state/blockedReason transition. Missing dependency ids (no item in the
+ * workstream matches) are ignored here — assembly (fromPlanProposal) already
+ * asserts referential integrity, so a dangling id at runtime is treated as
+ * "not blocking" rather than an eternal block.
+ */
+export interface DependencyStatus {
+  /** True when every dependency has reached 'passed' (or there are none). */
+  readonly ready: boolean;
+  /** Titles of dependencies still pending/in flight (neither passed nor failed). */
+  readonly waiting: string[];
+  /** Titles of dependencies that have terminally FAILED — a recoverable block, not a terminal one for the dependent. */
+  readonly failed: string[];
+}
+
+export function dependencyStatus(workstream: Workstream, item: WorkItem): DependencyStatus {
+  const waiting: string[] = [];
+  const failed: string[] = [];
+  for (const depId of item.dependsOn) {
+    const dep = workstream.items.find((i) => i.id === depId);
+    if (!dep) continue; // dangling id — assembly guarantees this can't happen; ignore rather than block forever
+    if (dep.state === 'passed') continue;
+    if (dep.state === 'failed') failed.push(dep.title);
+    else waiting.push(dep.title);
+  }
+  return { ready: waiting.length === 0 && failed.length === 0, waiting, failed };
+}
+
+/**
  * Which (item, phase) pairs have free capacity to claim RIGHT NOW. Pure —
  * no side effects, no budget check (the caller applies budget.checkBudget
  * before actually claiming, since budget is a *decision*, not a capacity
