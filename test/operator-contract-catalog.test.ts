@@ -162,7 +162,13 @@ describe('built-in operator contract method schemas', () => {
       enum: ['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation'],
     });
     expect(sessionProperties.lastActivityAt).toMatchObject({ type: 'number' });
+    // `project` is still a real, typed field on the record...
     expect(sessionProperties.project).toMatchObject({ type: 'string' });
-    expect(Array.isArray(required) ? required : []).toEqual(expect.arrayContaining(['kind', 'project', 'lastActivityAt']));
+    expect(Array.isArray(required) ? required : []).toEqual(expect.arrayContaining(['kind', 'lastActivityAt']));
+    // ...but per docs/decisions/2026-07-05-session-wire-mixed-version.md, readers must
+    // tolerate a mixed-version daemon that omits it, so it is NOT contractually
+    // required on the wire response — the schema-level gate must not preempt
+    // normalizeSharedSessionRecord's backfill to 'unknown'.
+    expect(Array.isArray(required) ? required : []).not.toContain('project');
   });
 });
