@@ -62,19 +62,31 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
 
 interface ParityViolation { readonly id: string; readonly reason: string }
 
-/** Contract-internal transport-declaration honesty. */
+/** Contract-internal transport-declaration honesty (http AND ws legs). */
 function findTransportHonestyViolations(
-  methods: readonly { id: string; transport?: readonly string[]; http?: unknown }[],
+  methods: readonly { id: string; transport?: readonly string[]; http?: unknown; invokable?: boolean }[],
 ): ParityViolation[] {
   const violations: ParityViolation[] = [];
   for (const m of methods) {
-    const declaresHttp = (m.transport ?? []).includes('http');
+    const transport = m.transport ?? [];
+    const declaresHttp = transport.includes('http');
+    const declaresWs = transport.includes('ws');
     const hasBinding = m.http != null;
     if (declaresHttp && !hasBinding) {
       violations.push({ id: m.id, reason: 'declares http transport but has no http binding (unreachable)' });
     }
     if (hasBinding && !declaresHttp) {
       violations.push({ id: m.id, reason: 'has an http binding but does not declare http transport' });
+    }
+    // WS parity leg: the gateway WS `call` frame dispatches a method by id through
+    // its internal handler or, failing that, its http binding (control-plane.ts).
+    // So a ws-declared method must be dispatchable = has an http binding OR is an
+    // invokable gateway method. A ws advert with neither is an unreachable phantom.
+    if (declaresWs) {
+      const wsDispatchable = hasBinding || m.invokable !== false;
+      if (!wsDispatchable) {
+        violations.push({ id: m.id, reason: 'declares ws transport but is not dispatchable (no http binding and not an invokable gateway method)' });
+      }
     }
   }
   return violations;
@@ -123,10 +135,26 @@ describe('S2b parity gate — transport-declaration honesty', () => {
 
   test('the honesty check CATCHES an http-transport method with no binding', () => {
     const violations = findTransportHonestyViolations([
-      { id: 'phantom.method', transport: ['http', 'ws'], http: undefined },
+      { id: 'phantom.method', transport: ['http'], http: undefined },
     ]);
     expect(violations).toHaveLength(1);
     expect(violations[0]!.id).toBe('phantom.method');
+  });
+
+  test('the WS parity leg CATCHES a ws-declared method that is not dispatchable', () => {
+    // ws-declared, no http binding, and explicitly not invokable → unreachable phantom.
+    const violations = findTransportHonestyViolations([
+      { id: 'phantom.ws', transport: ['ws'], http: undefined, invokable: false },
+    ]);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]!.reason).toContain('ws transport');
+  });
+
+  test('the WS parity leg PASSES a ws-declared method dispatchable via its http binding', () => {
+    const violations = findTransportHonestyViolations([
+      { id: 'ok.ws', transport: ['http', 'ws'], http: { method: 'GET', path: '/api/ok' } },
+    ]);
+    expect(violations).toEqual([]);
   });
 });
 
@@ -171,6 +199,79 @@ describe('S2b parity gate — DirectTransport coverage', () => {
     );
     expect(gaps).toHaveLength(1);
     expect(gaps[0]!.reason).toContain('does not exist');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2b. DirectTransport ROUTING: a mapped name must fire the RIGHT broker method
+//     (name-existence alone cannot catch a mis-wire like list→getSession).
+// ---------------------------------------------------------------------------
+
+describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
+  // wire id → { the args to call the mapped client method with, the underlying
+  // services effect it MUST produce }. Covers all 13 manifest mappings.
+  const ROUTING: Record<string, { args: readonly unknown[]; effect: string }> = {
+    'sessions.list': { args: [10], effect: 'sessionBroker.listSessions' },
+    'sessions.get': { args: ['s'], effect: 'sessionBroker.getSession' },
+    'sessions.create': { args: [{}], effect: 'sessionBroker.ensureSession' },
+    'sessions.register': { args: [{ sessionId: 's', participant: { surfaceKind: 'tui', surfaceId: 'x', lastSeenAt: 0 } }], effect: 'sessionBroker.register' },
+    'sessions.close': { args: ['s'], effect: 'sessionBroker.closeSession' },
+    'sessions.reopen': { args: ['s'], effect: 'sessionBroker.reopenSession' },
+    'sessions.steer': { args: [{}], effect: 'sessionBroker.steerMessage' },
+    'sessions.followUp': { args: [{}], effect: 'sessionBroker.followUpMessage' },
+    'sessions.messages.list': { args: ['s'], effect: 'sessionBroker.getMessages' },
+    'sessions.messages.create': { args: [{}], effect: 'sessionBroker.submitMessage' },
+    'sessions.inputs.list': { args: ['s'], effect: 'sessionBroker.getInputs' },
+    'sessions.inputs.cancel': { args: ['s', 'i'], effect: 'sessionBroker.cancelInput' },
+    'sessions.integration.snapshot': { args: [], effect: 'readModels.session.getSnapshot' },
+  };
+
+  function makeSpyClient(): { client: ReturnType<typeof createOperatorClient>; calls: string[] } {
+    const calls: string[] = [];
+    const brokerSpy = (label: string, ret: unknown) => (..._a: unknown[]) => { calls.push(`sessionBroker.${label}`); return ret; };
+    const services = {
+      sessionBroker: {
+        listSessions: brokerSpy('listSessions', []),
+        getSession: brokerSpy('getSession', null),
+        getMessages: brokerSpy('getMessages', []),
+        getInputs: brokerSpy('getInputs', []),
+        ensureSession: brokerSpy('ensureSession', Promise.resolve({})),
+        register: brokerSpy('register', Promise.resolve({ record: {}, reopened: false })),
+        closeSession: brokerSpy('closeSession', Promise.resolve(null)),
+        reopenSession: brokerSpy('reopenSession', Promise.resolve(null)),
+        bindAgent: brokerSpy('bindAgent', Promise.resolve(null)),
+        submitMessage: brokerSpy('submitMessage', Promise.resolve({})),
+        steerMessage: brokerSpy('steerMessage', Promise.resolve({})),
+        followUpMessage: brokerSpy('followUpMessage', Promise.resolve({})),
+        cancelInput: brokerSpy('cancelInput', Promise.resolve(null)),
+      },
+      readModels: {
+        session: { getSnapshot: () => { calls.push('readModels.session.getSnapshot'); return {}; } },
+        tasks: { getSnapshot: () => ({ tasks: [] }) },
+      },
+      approvalBroker: {},
+    } as unknown as OperatorClientServices;
+    return { client: createOperatorClient(services), calls };
+  }
+
+  test('every manifest mapping routes to the correct broker/read-model effect', () => {
+    for (const [wireId, mappedMethod] of Object.entries(DIRECT_TRANSPORT_COVERAGE)) {
+      if (mappedMethod === 'http-only') continue;
+      const routing = ROUTING[wireId];
+      expect(routing, `ROUTING is missing an entry for ${wireId}`).toBeDefined();
+      const { client, calls } = makeSpyClient();
+      const fn = (client.sessions as unknown as Record<string, (...a: unknown[]) => unknown>)[mappedMethod];
+      expect(typeof fn, `${wireId} → sessions.${mappedMethod} must exist`).toBe('function');
+      void fn(...routing!.args);
+      // The RIGHT underlying method fired — a mis-wire (e.g. list→getSession) fails here.
+      expect(calls, `${wireId} → sessions.${mappedMethod} must fire ${routing!.effect}`).toContain(routing!.effect);
+    }
+  });
+
+  test('integration.snapshot maps to current → readModels.session.getSnapshot (not a broker call)', () => {
+    const { client, calls } = makeSpyClient();
+    client.sessions.current();
+    expect(calls).toEqual(['readModels.session.getSnapshot']);
   });
 });
 

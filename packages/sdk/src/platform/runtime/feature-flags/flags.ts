@@ -407,15 +407,21 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     // NOTE: control-plane-gateway is the ONE tier-10 flag that defaults ON (One-Platform
     // Wave 1). A stock daemon (no config) must be able to stream companion chat over SSE;
     // leaving this OFF made a fresh daemon return 503 on the live-stream path (the W1
-    // "stock daemon is dead" bug). Auth is enforced independently at the daemon route
-    // layer (daemon-sdk/control-routes.ts requires a principal / 401 before the gateway is
-    // touched), the default bind stays loopback, and the 60/min + 5/min rate limiters are
-    // unchanged — flipping this default exposes no new network surface. It remains
-    // runtimeToggleable, so an operator who wants a request/response-only daemon can turn
-    // it back off via config (`flags: { 'control-plane-gateway': 'disabled' }`), which the
-    // manager honours over this default. Do NOT generalise this to the other tier-10
-    // siblings (slack/discord/web surfaces, delivery-engine, etc.) — they stay OFF until
-    // individually validated.
+    // "stock daemon is dead" bug).
+    //
+    // HONEST SURFACE STATEMENT: flipping this default ON DOES expose surface — just not
+    // an UNAUTHENTICATED one. Concretely it turns on: (1) the auth-gated streaming surface
+    // — SSE `/api/control-plane/events`, the companion-chat `.../events` stream, and the WS
+    // control channel — every one of which returns 401 before any principal is resolved
+    // (daemon-sdk/control-routes.ts), and per-channel scopes are enforced on the fan-out
+    // (e.g. read:sessions on session-update); and (2) the inert pre-auth login shell — the
+    // handful of unauthenticated bootstrap endpoints that carry NO session/runtime data and
+    // exist only to establish auth. The default bind stays loopback and the 60/min + 5/min
+    // rate limiters are unchanged. It remains runtimeToggleable, so an operator who wants a
+    // request/response-only daemon can turn it back off via config
+    // (`flags: { 'control-plane-gateway': 'disabled' }`), which the manager honours over
+    // this default. Do NOT generalise this to the other tier-10 siblings (slack/discord/web
+    // surfaces, delivery-engine, etc.) — they stay OFF until individually validated.
     id: 'control-plane-gateway',
     name: 'Control-Plane Gateway',
     description:

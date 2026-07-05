@@ -207,6 +207,9 @@ export function createDaemonControlRouteHandlers(
         principalId: principal.principalId,
         principalKind: principal.principalKind,
         scopes: principal.scopes,
+        // Carry admin so the per-channel scope filter (e.g. read:sessions on
+        // session-update) honors the single-admin-token collapse.
+        admin: principal.admin,
       });
     },
   };
