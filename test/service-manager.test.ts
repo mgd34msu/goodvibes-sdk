@@ -1,0 +1,358 @@
+import { describe, expect, test } from 'bun:test';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import {
+  PlatformServiceManager,
+  type ManagedServiceActionResult,
+  type ManagedServiceDefinition,
+} from '../packages/sdk/src/platform/daemon/service-manager.js';
+
+/**
+ * Coverage for the WIRED launchd path in service-manager.ts (reached by the
+ * daemon's HTTP system routes via facade-composition.ts -> facade.ts ->
+ * @pellux/goodvibes-daemon-sdk system-routes.ts POST /api/service/install et al).
+ *
+ * This host is Linux, so every test here fakes the darwin/launchd platform via
+ * `configManager.set('service.platform', 'launchd')` (an explicit config override
+ * the class already supports — detectPlatform short-circuits on it regardless of
+ * process.platform) rather than mocking the global `process.platform`. All
+ * filesystem writes are scoped to a per-test tempdir passed as both
+ * `homeDirectory` and `workingDirectory`, so nothing here ever touches the real
+ * `~/Library/LaunchAgents` or invokes a real `launchctl`/`systemctl` binary —
+ * `start`/`stop`/`restart` always run with an injected `actionRunner` stub.
+ */
+
+const flags = (enabledIds: readonly string[]) => ({
+  isEnabled(id: string): boolean {
+    return enabledIds.includes(id);
+  },
+});
+
+function withTempDir<T>(fn: (dir: string) => T): T {
+  const dir = mkdtempSync(join(tmpdir(), 'goodvibes-service-manager-'));
+  try {
+    return fn(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function testConfigManager(dir: string): ConfigManager {
+  return new ConfigManager({ configDir: dir });
+}
+
+function launchdConfig(dir: string, serviceName = 'goodvibes-test'): ConfigManager {
+  const configManager = testConfigManager(join(dir, 'config'));
+  configManager.set('service.platform', 'launchd');
+  // definitionPath()/suggestedCommands() key off `service.serviceName`, not the
+  // (definitionOverride) ManagedServiceDefinition.name field — the two are logically
+  // separate (definition.name only feeds the plist's <Label>). Set both to the same
+  // value in these tests so the assertions read naturally.
+  configManager.set('service.serviceName', serviceName);
+  return configManager;
+}
+
+function definition(overrides: Partial<ManagedServiceDefinition> & { workingDirectory: string }): ManagedServiceDefinition {
+  return {
+    name: 'goodvibes-test',
+    description: 'GoodVibes daemon (test)',
+    command: '/usr/local/bin/goodvibes-daemon',
+    args: ['--daemon-home', '/Users/tester/.goodvibes', '--hostname', '127.0.0.1', '--port', '3421'],
+    env: { GOODVIBES_DAEMON_TOKEN: '', GOODVIBES_HTTP_TOKEN: '', NODE_ENV: 'production' },
+    restartOnFailure: true,
+    ...overrides,
+  };
+}
+
+describe('launchd plist rendering (install) — platform faked via service.platform=launchd', () => {
+  test('install() writes a plist to <home>/Library/LaunchAgents/<name>.plist with the correct structure', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-launchd-test');
+    const def = definition({
+      name: 'goodvibes-launchd-test',
+      workingDirectory: dir,
+      env: { GOODVIBES_DAEMON_TOKEN: 'secret-token', GOODVIBES_HTTP_TOKEN: '', NODE_ENV: 'production' },
+      restartOnFailure: true,
+    });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags(['service-management']),
+    });
+
+    const result = manager.install();
+
+    expect(result.platform).toBe('launchd');
+    const expectedPath = join(dir, 'Library', 'LaunchAgents', 'goodvibes-launchd-test.plist');
+    expect(result.path).toBe(expectedPath);
+    expect(existsSync(expectedPath)).toBe(true);
+
+    const contents = readFileSync(expectedPath, 'utf-8');
+    expect(contents).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(contents).toContain('<key>Label</key>');
+    expect(contents).toContain('<string>goodvibes-launchd-test</string>');
+    expect(contents).toContain('<key>ProgramArguments</key>');
+    expect(contents).toContain('<string>/usr/local/bin/goodvibes-daemon</string>');
+    expect(contents).toContain('<string>--daemon-home</string>');
+    expect(contents).toContain('<string>3421</string>');
+    expect(contents).toContain(`<key>WorkingDirectory</key>\n  <string>${dir}</string>`);
+    expect(contents).toContain('<key>RunAtLoad</key>\n  <true/>');
+    // restartOnFailure: true -> KeepAlive true
+    expect(contents).toContain('<key>KeepAlive</key>\n  <true/>');
+    // A non-empty env var must surface in the EnvironmentVariables dict.
+    expect(contents).toContain('<key>EnvironmentVariables</key>');
+    expect(contents).toContain('<key>GOODVIBES_DAEMON_TOKEN</key>\n    <string>secret-token</string>');
+    // An empty-valued env var is filtered out of the plist entirely.
+    expect(contents).not.toContain('GOODVIBES_HTTP_TOKEN');
+  }));
+
+  test('KeepAlive is false when restartOnFailure is false, and the EnvironmentVariables block is omitted when every env value is empty', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-launchd-noenv');
+    const def = definition({
+      name: 'goodvibes-launchd-noenv',
+      workingDirectory: dir,
+      args: [],
+      env: { GOODVIBES_DAEMON_TOKEN: '', GOODVIBES_HTTP_TOKEN: '' },
+      restartOnFailure: false,
+    });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags(['service-management']),
+    });
+
+    const result = manager.install();
+    const contents = readFileSync(result.path, 'utf-8');
+    expect(contents).toContain('<key>KeepAlive</key>\n  <false/>');
+    expect(contents).not.toContain('EnvironmentVariables');
+  }));
+});
+
+describe('launchd status()/uninstall() semantics', () => {
+  test('status() before install reports not-installed with the launchd path and the launchctl suggested commands', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-status-test');
+    const def = definition({ name: 'goodvibes-status-test', workingDirectory: dir });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags(['service-management']),
+    });
+
+    const status = manager.status();
+    expect(status.platform).toBe('launchd');
+    expect(status.installed).toBe(false);
+    expect(status.running).toBe(false);
+    expect(status.path).toBe(join(dir, 'Library', 'LaunchAgents', 'goodvibes-status-test.plist'));
+    expect(status.suggestedCommands).toEqual([
+      `launchctl unload ${status.path} || true`,
+      `launchctl load ${status.path}`,
+      `launchctl list | grep goodvibes-status-test`,
+    ]);
+  }));
+
+  test('status() after install reports installed:true with file contents; uninstall() removes the plist', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-roundtrip');
+    const def = definition({ name: 'goodvibes-roundtrip', workingDirectory: dir });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags(['service-management']),
+    });
+
+    manager.install();
+    const installedStatus = manager.status();
+    expect(installedStatus.installed).toBe(true);
+    expect(installedStatus.contents).toBeDefined();
+    expect(installedStatus.contents).toContain('goodvibes-roundtrip');
+
+    const uninstallResult = manager.uninstall();
+    expect(uninstallResult.installed).toBe(false);
+    expect(existsSync(uninstallResult.path)).toBe(false);
+  }));
+
+  test('uninstall() on a never-installed service is a harmless no-op (no throw, installed stays false)', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-never-installed');
+    const def = definition({ name: 'goodvibes-never-installed', workingDirectory: dir });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags(['service-management']),
+    });
+
+    const result = manager.uninstall();
+    expect(result.installed).toBe(false);
+  }));
+});
+
+describe('launchd start/stop/restart dispatch (injected actionRunner — never a real launchctl call)', () => {
+  function recordingRunner(status = 0): {
+    runner: (command: string, args: readonly string[]) => ManagedServiceActionResult;
+    calls: string[][];
+  } {
+    const calls: string[][] = [];
+    const runner = (command: string, args: readonly string[]): ManagedServiceActionResult => {
+      calls.push([command, ...args]);
+      return { status };
+    };
+    return { runner, calls };
+  }
+
+  function makeManager(
+    dir: string,
+    actionRunner: (command: string, args: readonly string[]) => ManagedServiceActionResult,
+  ): PlatformServiceManager {
+    const configManager = launchdConfig(dir, 'goodvibes-dispatch');
+    const def = definition({ name: 'goodvibes-dispatch', workingDirectory: dir });
+    return new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      actionRunner,
+      featureFlags: flags(['service-management']),
+    });
+  }
+
+  test('start() issues exactly `launchctl load <path>` via the injected runner', () => withTempDir((dir) => {
+    const { runner, calls } = recordingRunner();
+    const manager = makeManager(dir, runner);
+    const path = manager.status().path;
+
+    const result = manager.start();
+
+    expect(calls).toEqual([['launchctl', 'load', path]]);
+    expect(result.actionError).toBeUndefined();
+  }));
+
+  test('stop() issues exactly `launchctl unload <path>` via the injected runner', () => withTempDir((dir) => {
+    const { runner, calls } = recordingRunner();
+    const manager = makeManager(dir, runner);
+    const path = manager.status().path;
+
+    manager.stop();
+
+    expect(calls).toEqual([['launchctl', 'unload', path]]);
+  }));
+
+  test('restart() currently dispatches the same single `launchctl load` as start() — documented current behavior, NOT an unload-then-load restart', () => withTempDir((dir) => {
+    // This is a discovered characteristic of the existing runPlatformAction dispatch table
+    // (service-manager.ts: `platform === 'launchd' ? ['launchctl', action === 'stop' ? 'unload' : 'load', path]`),
+    // which only special-cases 'stop'. For launchd, 'restart' collapses to the same single
+    // `load` call as 'start' — it does not unload first the way suggestedCommands()'s
+    // human-facing hint does. Recorded here as a specification of ACTUAL behavior so a
+    // future change to it is a deliberate, reviewed decision rather than a silent regression.
+    const { runner, calls } = recordingRunner();
+    const manager = makeManager(dir, runner);
+    const path = manager.status().path;
+
+    manager.restart();
+
+    expect(calls).toEqual([['launchctl', 'load', path]]);
+  }));
+
+  test('a failing launchctl call surfaces actionError honestly (never silently swallowed)', () => withTempDir((dir) => {
+    const { runner } = recordingRunner(1);
+    const manager = makeManager(dir, runner);
+
+    const result = manager.start();
+
+    expect(result.actionError).toBeDefined();
+  }));
+
+  test('the real launchctl binary is never invoked — guard: the injected runner captures every dispatched call', () => withTempDir((dir) => {
+    const { runner, calls } = recordingRunner();
+    const manager = makeManager(dir, runner);
+
+    manager.start();
+    manager.stop();
+    manager.restart();
+
+    expect(calls.length).toBe(3);
+    expect(calls.every(([command]) => command === 'launchctl')).toBe(true);
+  }));
+});
+
+describe('service-management feature gate (launchd)', () => {
+  test('install()/uninstall()/start()/stop()/restart() throw when service-management is disabled; status() reports actionError instead of throwing', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-gate-test');
+    const def = definition({ name: 'goodvibes-gate-test', workingDirectory: dir });
+
+    const disabled = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags([]),
+    });
+
+    const disabledStatus = disabled.status();
+    expect(disabledStatus.platform).toBe('launchd');
+    expect(disabledStatus.actionError).toMatch(/service-management feature flag is disabled/);
+    expect(() => disabled.install()).toThrow(/service-management feature flag is disabled/);
+    expect(() => disabled.uninstall()).toThrow(/service-management feature flag is disabled/);
+    expect(() => disabled.start()).toThrow(/service-management feature flag is disabled/);
+    expect(() => disabled.stop()).toThrow(/service-management feature flag is disabled/);
+    expect(() => disabled.restart()).toThrow(/service-management feature flag is disabled/);
+
+    const enabled = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags(['service-management']),
+    });
+    expect(enabled.status().actionError).toBeUndefined();
+  }));
+});
+
+// --- Real launchd probe: honest, named skip on any non-macOS host (this CI is  ---
+// --- Linux). Mirrors test/systemd-user-service.test.ts's real user-systemd     ---
+// --- probe pattern. Host-safety: even in the branch that WOULD run on darwin,  ---
+// --- the manager is still constructed with a tempdir homeDirectory/workingDirectory
+// --- and no actionRunner is exercised (status() only performs read-only        ---
+// --- existsSync checks) — it never touches a real ~/Library/LaunchAgents entry ---
+// --- or invokes a real launchctl mutation.                                     ---
+function detectRealLaunchctl(): { available: boolean; reason: string } {
+  if (process.platform !== 'darwin') {
+    return { available: false, reason: `not running on macOS (process.platform=${process.platform})` };
+  }
+  const probe = spawnSync('launchctl', ['list'], { encoding: 'utf-8' });
+  if (probe.error) return { available: false, reason: `launchctl binary not available: ${probe.error.message}` };
+  return { available: true, reason: 'launchctl reachable on darwin' };
+}
+
+const realLaunchctl = detectRealLaunchctl();
+
+describe('real launchd probe (read-only structure check, darwin-only — honest gap on non-macOS CI)', () => {
+  test.skipIf(!realLaunchctl.available)(
+    `on darwin, status() resolves the launchd platform and a real-shaped LaunchAgents path [${realLaunchctl.reason}]`,
+    () => withTempDir((dir) => {
+      const configManager = launchdConfig(dir, 'goodvibes-real-probe');
+      const def = definition({ name: 'goodvibes-real-probe', workingDirectory: dir });
+      const manager = new PlatformServiceManager(configManager, {
+        workingDirectory: dir,
+        homeDirectory: dir,
+        definitionOverride: def,
+        featureFlags: flags(['service-management']),
+      });
+
+      const status = manager.status();
+      expect(status.platform).toBe('launchd');
+      expect(status.path).toContain('Library/LaunchAgents');
+      expect(status.installed).toBe(false);
+    }),
+  );
+
+  test.skipIf(realLaunchctl.available)(
+    `SKIP real launchd probe: ${realLaunchctl.reason}`,
+    () => {
+      // Named skip guard: when this host isn't macOS (true for every Linux CI run),
+      // we do not fabricate a pass for launchd behavior we cannot actually observe.
+      expect(realLaunchctl.available).toBe(false);
+    },
+  );
+});

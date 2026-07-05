@@ -50,7 +50,7 @@ export interface DetachedDaemonChild {
 
 /** One-time hint surfaced ONCE by the TUI after a successful detached spawn. */
 export const DETACHED_DAEMON_INSTALL_HINT =
-  'daemon started for this session — install it as a service so it survives reboots: goodvibes-daemon install-service';
+  'daemon started for this session — install it as a service so it survives reboots: POST /api/service/install on the daemon HTTP API (admin token required)';
 
 interface ServiceFactories {
   createDaemonServer?: (

@@ -4,25 +4,6 @@ export type { BootDaemonOptions, BootedDaemon } from './boot.js';
 export { HttpListener } from './http-listener.js';
 export { PlatformServiceManager } from './service-manager.js';
 export type { ManagedServiceStatus } from './service-manager.js';
-export {
-  GOODVIBES_DAEMON_UNIT_NAME,
-  DEFAULT_DAEMON_RESTART_SEC,
-  SERVICE_UNSUPPORTED_EXIT_CODE,
-  buildDaemonExecStart,
-  renderGoodvibesDaemonUnit,
-  goodvibesDaemonUnitPath,
-  installGoodvibesDaemonUserService,
-  uninstallGoodvibesDaemonUserService,
-  goodvibesDaemonUserServiceStatus,
-} from './systemd-user-service.js';
-export type {
-  DaemonUnitOptions,
-  DaemonServiceEnvironment,
-  DaemonServiceAction,
-  DaemonServiceResult,
-  SystemctlRunner,
-  SystemctlResult,
-} from './systemd-user-service.js';
 export { isPortAvailable, requirePortAvailable } from './port-check.js';
 export {
   buildMissingScopeBody,
