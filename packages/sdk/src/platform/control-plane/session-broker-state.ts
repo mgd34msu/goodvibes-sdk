@@ -7,7 +7,7 @@ import type { SharedSessionStoreSnapshot } from './session-broker-helpers.js';
 import type { SharedSessionMessage, SharedSessionParticipant, SharedSessionRecord } from './session-types.js';
 import { isRecord } from '../utils/record-coerce.js';
 
-const SESSION_KINDS = new Set<SharedSessionRecord['kind']>(['tui', 'companion-task', 'companion-chat']);
+const SESSION_KINDS = new Set<SharedSessionRecord['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
 const SESSION_STATUSES = new Set<SharedSessionRecord['status']>(['active', 'closed']);
 const MESSAGE_ROLES = new Set<SharedSessionMessage['role']>(['user', 'assistant', 'system']);
 
@@ -145,6 +145,7 @@ function normalizeSessionRecord(
     kind: typeof value['kind'] === 'string' && SESSION_KINDS.has(value['kind'] as SharedSessionRecord['kind'])
       ? value['kind'] as SharedSessionRecord['kind']
       : 'tui',
+    project: typeof value['project'] === 'string' && value['project'].length > 0 ? value['project'] : 'unknown',
     title: typeof value['title'] === 'string' && value['title'].trim().length > 0 ? value['title'] : `Session ${id}`,
     status: typeof value['status'] === 'string' && SESSION_STATUSES.has(value['status'] as SharedSessionRecord['status'])
       ? value['status'] as SharedSessionRecord['status']
@@ -351,6 +352,36 @@ export function upsertSessionParticipant(
     ...participants.filter((existing) => buildSessionParticipantId(existing) !== participantId),
     participant,
   ];
+}
+
+/**
+ * Boot-time reconciliation of a freshly-loaded broker state (mutates in place):
+ * cancels inputs stuck in `spawned`/`delivered` from a prior run (agent state is
+ * unknown after a restart) and clears stale `activeAgentId` on every session.
+ * Returns the set of session ids whose input buckets changed so the caller can
+ * refresh their pending counts.
+ */
+export function reconcileSessionBrokerBoot(
+  sessions: Map<string, SharedSessionRecord>,
+  inputs: Map<string, SharedSessionInputRecord[]>,
+): Set<string> {
+  const restartReason = 'daemon restart — agent state unknown';
+  const changed = new Set<string>();
+  for (const [sessionId, bucket] of inputs.entries()) {
+    for (let i = 0; i < bucket.length; i++) {
+      const entry = bucket[i]!;
+      if (entry.state === 'spawned' || entry.state === 'delivered') {
+        bucket[i] = { ...entry, state: 'cancelled', updatedAt: Date.now(), error: restartReason };
+        changed.add(sessionId);
+      }
+    }
+  }
+  for (const [sessionId, session] of sessions.entries()) {
+    if (session.activeAgentId) {
+      sessions.set(sessionId, { ...session, activeAgentId: undefined, updatedAt: Date.now() });
+    }
+  }
+  return changed;
 }
 
 export function countPendingSessionInputs(records: readonly SharedSessionInputRecord[]): number {

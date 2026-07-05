@@ -114,15 +114,14 @@ export interface RuntimeServicesOptions {
   readonly panelManager?: PanelManagerLike | undefined;
   readonly keybindingsManager?: KeybindingsManagerLike | undefined;
   /**
-   * Opt-in: kick off the repo source-tree code index's initial build
-   * (Wave-5 wo802, W5.3 Stage A) right after construction. Fire-and-forget —
-   * never awaited here, never blocks this call. Defaults to false/undefined
-   * so constructing RuntimeServices never surprises a caller (including the
-   * many test fixtures that build RuntimeServices against a real directory)
-   * with an unrequested full source-tree walk. A real product entry point
-   * (an interactive session bootstrap) should pass `true`.
+   * Opt-in: kick off the repo source-tree code index's initial build (Wave-5
+   * wo802, W5.3 Stage A) right after construction. Fire-and-forget — never
+   * awaited, never blocks. Defaults off so building RuntimeServices never runs
+   * an unrequested source-tree walk. Real interactive entry points pass `true`.
    */
   readonly autoStartCodeIndex?: boolean | undefined;
+  /** Override the broker store path (default: home-scoped durable store). */
+  readonly sessionStorePath?: string | undefined;
 }
 
 export interface RuntimeServices {
@@ -405,8 +404,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const approvalBroker = new ApprovalBroker({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'control-plane', 'approvals.json'),
   });
+  // ONE home-scoped durable session store; project is DATA on each record.
   const sessionBroker = new SharedSessionBroker({
-    storePath: shellPaths.resolveProjectPath(surfaceRoot, 'control-plane', 'sessions.json'),
+    storePath: options.sessionStorePath ?? shellPaths.resolveUserPath('control-plane', 'sessions.json'),
     routeBindings,
     agentStatusProvider: agentManager,
     messageSender: agentMessageBus,

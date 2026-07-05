@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { AutomationRouteBinding } from '../automation/routes.js';
 import type {
+  ParticipantRouteAttachInput,
   SharedSessionParticipant,
   SharedSessionRecord,
-  SubmitSharedSessionMessageInput,
 } from './session-types.js';
 import { dedupeSessionSurfaceKinds } from './session-broker-helpers.js';
 import { upsertSessionParticipant } from './session-broker-state.js';
@@ -17,6 +17,7 @@ export interface CreateSharedSessionRecordInput {
   readonly routeBinding?: AutomationRouteBinding | undefined;
   readonly participant?: SharedSessionParticipant | undefined;
   readonly kind?: SharedSessionRecord['kind'] | undefined;
+  readonly project?: string | undefined;
 }
 
 export function assertSharedSessionIdAllowed(id: string | undefined): void {
@@ -37,6 +38,7 @@ export function createSharedSessionRecord(input: CreateSharedSessionRecordInput)
   return {
     id: sessionId,
     kind: input.kind ?? 'tui',
+    project: input.project?.trim() || 'unknown',
     title: input.title?.trim() || input.routeBinding?.title || `Session ${sessionId}`,
     status: 'active',
     createdAt: now,
@@ -55,6 +57,27 @@ export function createSharedSessionRecord(input: CreateSharedSessionRecordInput)
     metadata: {
       ...(input.metadata ?? {}),
     },
+  };
+}
+
+/**
+ * Shape a participant triple into the attach-input the broker's
+ * participant/route merge expects. Used by `register` so a heartbeat re-attaches
+ * the participant (advancing `lastSeenAt`) without carrying a message body.
+ */
+export function participantToAttachInput(
+  participant: SharedSessionParticipant,
+  title?: string,
+): ParticipantRouteAttachInput {
+  return {
+    surfaceKind: participant.surfaceKind,
+    surfaceId: participant.surfaceId,
+    externalId: participant.externalId,
+    userId: participant.userId,
+    displayName: participant.displayName,
+    routeId: participant.routeId,
+    ...(title ? { title } : {}),
+    body: '',
   };
 }
 
@@ -91,7 +114,7 @@ export function bindSharedSessionAgent(session: SharedSessionRecord, agentId: st
 
 export function attachSharedSessionParticipantAndRoute(input: {
   readonly session: SharedSessionRecord;
-  readonly message: Omit<SubmitSharedSessionMessageInput, 'metadata'>;
+  readonly message: ParticipantRouteAttachInput;
   readonly binding?: AutomationRouteBinding | undefined;
 }): SharedSessionRecord {
   const nextRouteIds = input.binding?.id
