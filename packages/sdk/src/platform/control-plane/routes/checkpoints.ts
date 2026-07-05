@@ -23,6 +23,7 @@ import type { GatewayMethodHandler } from '../method-catalog-shared.js';
 import type { WorkspaceCheckpointManager } from '../../workspace/checkpoint/manager.js';
 import type { CheckpointKind, RetentionClass } from '../../workspace/checkpoint/types.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { readInvocationParams } from './invocation-params.js';
 
 const CHECKPOINT_KINDS: readonly CheckpointKind[] = ['turn', 'agent-run', 'manual'];
 const RETENTION_CLASSES: readonly RetentionClass[] = ['short', 'standard', 'forensic'];
@@ -55,12 +56,6 @@ async function callOrHonestNotFound<T>(fn: () => Promise<T>): Promise<T> {
     }
     throw err;
   }
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -140,10 +135,10 @@ export type CheckpointsGatewayManager = Pick<WorkspaceCheckpointManager, 'list' 
 
 export function createCheckpointsListHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
   return async (invocation) => {
-    const query = invocation.query ?? {};
-    const kind = validateCheckpointKind(query.kind, false);
-    const since = optionalNumber(query.since, 'since');
-    const limit = clampLimit(query.limit);
+    const params = readInvocationParams(invocation);
+    const kind = validateCheckpointKind(params.kind, false);
+    const since = optionalNumber(params.since, 'since');
+    const limit = clampLimit(params.limit);
     const checkpoints = await manager.list({ kind, since, limit });
     return { checkpoints };
   };
@@ -151,7 +146,7 @@ export function createCheckpointsListHandler(manager: CheckpointsGatewayManager)
 
 export function createCheckpointsCreateHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
   return async (invocation) => {
-    const body = asRecord(invocation.body);
+    const body = readInvocationParams(invocation);
     const kind = validateCheckpointKind(body.kind, true);
     if (!kind) throw new GatewayVerbError('Missing required field: kind', 'INVALID_ARGUMENT', 400);
     const checkpoint = await manager.create({
@@ -171,9 +166,9 @@ export function createCheckpointsCreateHandler(manager: CheckpointsGatewayManage
 
 export function createCheckpointsDiffHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
   return async (invocation) => {
-    const query = invocation.query ?? {};
-    const a = requiredString(query.a, 'a');
-    const b = optionalString(query.b);
+    const params = readInvocationParams(invocation);
+    const a = requiredString(params.a, 'a');
+    const b = optionalString(params.b);
     const diff = await callOrHonestNotFound(() => manager.diff(a, b));
     return { diff };
   };
@@ -181,7 +176,7 @@ export function createCheckpointsDiffHandler(manager: CheckpointsGatewayManager)
 
 export function createCheckpointsRestoreHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
   return async (invocation) => {
-    const body = asRecord(invocation.body);
+    const body = readInvocationParams(invocation);
     const id = requiredString(body.id, 'id');
     const result = await callOrHonestNotFound(() => manager.restore(id, {
       paths: optionalStringArray(body.paths),
