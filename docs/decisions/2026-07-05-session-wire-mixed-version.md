@@ -75,3 +75,32 @@ contract artifacts (`packages/contracts/src/generated/operator-contract.ts`,
 `packages/contracts/artifacts/operator-contract.json`) were regenerated via
 `bun run refresh:contracts` to drop `project` from all embedded
 `sessions.*` copies of this schema.
+
+## Addendum (2026-07-05): the enum leg — open the `kind` on read
+
+The `project`-required fix above closed one schema-gate leg; the mixed-version
+`kind` enum leg was still open. `SHARED_SESSION_RECORD_SCHEMA.kind` was an
+`enumSchema(['tui','agent','webui','companion-task','companion-chat','automation'])`.
+A 0.38-pinned operator SDK compiled that enum WITHOUT `agent`/`webui`/`automation`,
+so `validateJsonSchemaResponse` (the generic `firstJsonSchemaFailure` walker,
+which enforces `enum`) hard-failed the ENTIRE `sessions.list` envelope the moment
+any record carried a `kind` the reader's build did not know — blanking the whole
+union (webui Sessions view showed 0 rows). This is exactly the tolerance this
+decision promised readers, applied to `kind` instead of `project`.
+
+Fixed by making the READ record's `kind` an OPEN enum: `SHARED_SESSION_RECORD_SCHEMA.kind`
+now references a plain `{ type: 'string' }` (`SHARED_SESSION_KIND_READ_SCHEMA` in
+`operator-contract-schemas-runtime.ts`), so response/output validation accepts an
+unknown `kind` string per-record and one alien record can never blank a list. The
+tolerant `normalizeSharedSessionRecord` downstream still maps an unknown kind to
+the documented `'tui'` fallback and preserves the raw value under
+`metadata.wireKind`, so display stays honest.
+
+Writes stay STRICT: `SHARED_SESSION_REGISTER_INPUT_SCHEMA.kind` keeps the closed
+`SHARED_SESSION_KIND_SCHEMA` enum, so `sessions.register` still returns 400 on an
+unknown kind (leniency is a reader stance, never a writer one — decision point 4).
+The daemon's `sessions.register` handler (`runtime-session-register.ts`) already
+rejects unknown kinds against the `SHARED_SESSION_KINDS` allowlist; that is
+unchanged. Generated contract artifacts were regenerated via
+`bun run refresh:contracts` — `sessions.list`/`sessions.get` output copies now
+carry `kind: { type: 'string' }` while `sessions.register` input keeps the enum.
