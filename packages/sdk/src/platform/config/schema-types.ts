@@ -443,8 +443,9 @@ export interface GoodVibesConfig {
   watchers: WatchersConfig;
   service: ServiceConfig;
   network: NetworkConfig;
+  daemon: { enabled: boolean };     // default: true — run the local session daemon (loopback only)
   danger: {
-    daemon: boolean;                // default: false — enable daemon mode
+    daemon?: boolean;               // DEPRECATED alias for daemon.enabled; undefined when unset (removal Wave 6)
     httpListener: boolean;          // default: false — enable HTTP webhook listener
   };
   tools: {
@@ -497,10 +498,7 @@ export interface ConfigSetting {
   description: string;
   enumValues?: string[] | undefined;
   validate?: ((value: unknown) => boolean) | undefined;
-  /**
-   * Optional hint appended to the validation-failure message when `validate`
-   * returns false. E.g. `'finite number in [0.25, 4.0]'`.
-   */
+  /** Hint appended to the validation-failure message when `validate` returns false, e.g. `'finite number in [0.25, 4.0]'`. */
   validationHint?: string | undefined;
 }
 
@@ -574,6 +572,7 @@ export type ConfigKey =
   | 'tts.llmModel'
   | 'tts.speed'
   | 'release.channel'
+  | 'daemon.enabled'
   | 'danger.daemon'
   | 'danger.httpListener'
   | 'tools.llmEnabled'
@@ -853,7 +852,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'tts.llmModel' ? string :
   K extends 'tts.speed' ? number :
   K extends 'release.channel' ? 'stable' | 'preview' :
-  K extends 'danger.daemon' ? boolean :
+  K extends 'daemon.enabled' ? boolean :
+  K extends 'danger.daemon' ? boolean | undefined :
   K extends 'danger.httpListener' ? boolean :
   K extends 'tools.llmEnabled' ? boolean :
   K extends 'tools.llmProvider' ? string :

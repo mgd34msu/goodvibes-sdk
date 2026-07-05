@@ -33,6 +33,37 @@ export function isAutoApproveEnabled(configManager: Pick<ConfigManager, 'get'>):
   return configManager.get('behavior.autoApprove');
 }
 
+/**
+ * Minimal reader shape for {@link resolveDaemonEnabled}. Any object exposing a
+ * `get(key)` that returns the two relevant config values satisfies it, so both
+ * the full {@link ConfigManager} and the narrow `HostServicesConfig` used by
+ * bootstrap-services qualify without a circular import.
+ */
+export interface DaemonEnabledReader {
+  get(key: 'daemon.enabled' | 'danger.daemon'): boolean | string | number | undefined;
+}
+
+/**
+ * Resolve whether the local session daemon should run, honoring the deprecated
+ * `danger.daemon` alias.
+ *
+ * Precedence (documented contract, removal of the alias scheduled Wave 6):
+ *   1. If `danger.daemon` is explicitly set (a boolean), it WINS — a user who
+ *      wrote `danger.daemon = false` stays off, and `= true` stays on. The alias
+ *      has no default, so a boolean here means the user set it on purpose.
+ *   2. Otherwise `daemon.enabled` governs (default `true` — daemon on by default,
+ *      loopback-bound).
+ *
+ * This lives in the shared SDK config module (not TUI-local) so the standalone
+ * daemon CLI and the TUI's adopt-or-start path resolve the flag identically.
+ */
+export function resolveDaemonEnabled(config: DaemonEnabledReader): boolean {
+  const alias = config.get('danger.daemon');
+  if (typeof alias === 'boolean') return alias;
+  const enabled = config.get('daemon.enabled');
+  return typeof enabled === 'boolean' ? enabled : true;
+}
+
 export function getWorkingDirectory(configManager: Pick<ConfigManager, 'getWorkingDirectory'>): string | null {
   return configManager.getWorkingDirectory();
 }

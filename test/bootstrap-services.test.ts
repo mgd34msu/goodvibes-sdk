@@ -205,6 +205,71 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.mode).toBe('embedded');
   });
 
+  test('runs an embedded daemon by default when danger.daemon is unset (daemon.enabled default on)', async () => {
+    // The daemon-by-default ruling: with the deprecated alias absent, daemon.enabled
+    // (default true) governs, so the host starts an embedded daemon without any
+    // danger.* opt-in. The reader returns undefined for the unset alias — the exact
+    // sentinel resolveDaemonEnabled relies on — and true for daemon.enabled.
+    const defaultOnConfig: HostServicesConfig = {
+      get: (key) => {
+        if (key === 'danger.daemon') return undefined;
+        if (key === 'daemon.enabled') return true;
+        if (key === 'danger.httpListener') return false;
+        if (key === 'controlPlane.host' || key === 'httpListener.host') return '127.0.0.1';
+        if (key === 'controlPlane.port') return 3421;
+        if (key === 'httpListener.port') return 3422;
+        return undefined;
+      },
+    };
+    const events: string[] = [];
+    const handle = await startHostServices(
+      defaultOnConfig,
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        probeDaemonPortInUse: async () => false,
+        createDaemonServer: () => createFakeService(events),
+      },
+    );
+
+    expect(events).toEqual(['enable', 'start']);
+    expect(handle.daemonServer).not.toBeNull();
+    expect(handle.daemonStatus.mode).toBe('embedded');
+  });
+
+  test('deprecated danger.daemon:false forces the daemon off even though daemon.enabled defaults on', async () => {
+    const legacyOffConfig: HostServicesConfig = {
+      get: (key) => {
+        if (key === 'danger.daemon') return false; // explicit legacy opt-out
+        if (key === 'daemon.enabled') return true; // default-on
+        if (key === 'danger.httpListener') return false;
+        if (key === 'controlPlane.host' || key === 'httpListener.host') return '127.0.0.1';
+        if (key === 'controlPlane.port') return 3421;
+        if (key === 'httpListener.port') return 3422;
+        return undefined;
+      },
+    };
+    let createDaemonCalled = false;
+    const handle = await startHostServices(
+      legacyOffConfig,
+      runtimeBus,
+      hookDispatcher,
+      runtimeServices,
+      {
+        probeDaemonPortInUse: async () => false,
+        createDaemonServer: () => {
+          createDaemonCalled = true;
+          return createFakeService([]);
+        },
+      },
+    );
+
+    expect(createDaemonCalled).toBe(false);
+    expect(handle.daemonServer).toBeNull();
+    expect(handle.daemonStatus.mode).toBe('disabled');
+  });
+
   test('reports HTTP listener blocked status using the listener host and port', async () => {
     const handle = await startHostServices(
       baseConfig({

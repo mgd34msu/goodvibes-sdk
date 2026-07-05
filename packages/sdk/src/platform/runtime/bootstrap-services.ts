@@ -8,6 +8,7 @@ import { summarizeError } from '../utils/error-display.js';
 import { createTimeoutController } from '../utils/fetch-with-timeout.js';
 import { VERSION } from '../version.js';
 import { isDaemonVersionCompatible, describeVersionIncompatibility } from './daemon-version-compat.js';
+import { resolveDaemonEnabled } from '../config/index.js';
 
 interface DaemonService {
   enable(config: { daemon: boolean }, token?: string): boolean;
@@ -101,13 +102,14 @@ export interface HostServicesHandle {
 export interface HostServicesConfig {
   get(
     key:
+      | 'daemon.enabled'
       | 'danger.daemon'
       | 'danger.httpListener'
       | 'controlPlane.host'
       | 'controlPlane.port'
       | 'httpListener.host'
       | 'httpListener.port',
-  ): boolean | string | number;
+  ): boolean | string | number | undefined;
 }
 const DEFAULT_SERVICE_START_TIMEOUT_MS = 1500;
 const TCP_PORT_PROBE_TIMEOUT_MS = 250;
@@ -118,7 +120,7 @@ interface StartableService {
   stop(): Promise<void>;
 }
 
-function readBooleanSetting(config: HostServicesConfig, key: 'danger.daemon' | 'danger.httpListener'): boolean {
+function readBooleanSetting(config: HostServicesConfig, key: 'danger.httpListener'): boolean {
   const value = config.get(key);
   if (typeof value !== 'boolean') {
     throw new ConfigurationError(`Expected ${key} to be a boolean, got ${typeof value}.`);
@@ -400,12 +402,12 @@ export async function startHostServices(
 
   let embeddedDaemonServer: DaemonService | null = null;
   let embeddedHttpListener: HttpListenerService | null = null;
-  let daemonStatus = createServiceStatus('disabled', daemonHost, daemonPort, { reason: 'danger.daemon is disabled' });
+  let daemonStatus = createServiceStatus('disabled', daemonHost, daemonPort, { reason: 'daemon.enabled is false' });
   let httpListenerStatus = createServiceStatus('disabled', httpListenerHost, httpListenerPort, {
     reason: 'danger.httpListener is disabled',
   });
 
-  if (readBooleanSetting(config, 'danger.daemon')) {
+  if (resolveDaemonEnabled(config)) {
     if (await probeDaemonPortInUse(daemonHost, daemonPort)) {
       const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
       if (identity.kind === 'goodvibes') {

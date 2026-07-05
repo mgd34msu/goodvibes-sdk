@@ -33,6 +33,7 @@ export const DEFAULT_CONFIG = {
   telemetry: runtimeConfigDefaults.telemetry,
   batch: runtimeConfigDefaults.batch,
   cloudflare: runtimeConfigDefaults.cloudflare,
+  daemon: coreConfigDefaults.daemon,
   danger: coreConfigDefaults.danger,
   tools: coreConfigDefaults.tools,
   wrfc: coreConfigDefaults.wrfc,

@@ -1,5 +1,6 @@
 import { homedir } from 'node:os';
 import { ConfigManager } from '../config/manager.js';
+import { resolveDaemonEnabled } from '../config/index.js';
 import { RuntimeEventBus } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
 import { createRuntimeServices } from '../runtime/services.js';
@@ -125,7 +126,7 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown());
 
   logger.info('goodvibes daemon host started', {
-    daemon: config.get('danger.daemon'),
+    daemon: resolveDaemonEnabled(config),
     httpListener: config.get('danger.httpListener'),
     workingDir,
     daemonHomeDir,
