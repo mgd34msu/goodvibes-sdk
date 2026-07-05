@@ -1,5 +1,6 @@
 import type { SharedSessionInputRecord } from './session-intents.js';
 import type { SharedSessionMessage, SharedSessionRecord } from './session-types.js';
+import { withSessionCloseReason } from './session-broker-sessions.js';
 
 export interface SharedSessionGcStore {
   readonly sessions: Map<string, SharedSessionRecord>;
@@ -48,7 +49,6 @@ export function sweepSharedSessions(store: SharedSessionGcStore, options: Shared
       continue;
     }
 
-    if (!shouldCloseIdleSession(session, now, options)) continue;
     const reason = idleCloseReason(session, now, options);
     if (!reason) continue;
     const closed: SharedSessionRecord = {
@@ -57,6 +57,9 @@ export function sweepSharedSessions(store: SharedSessionGcStore, options: Shared
       activeAgentId: undefined,
       updatedAt: now,
       closedAt: now,
+      // Record that the SYSTEM reaper closed this (not a user/surface action) so a
+      // subsequent register heartbeat auto-reopens it (honest reopen semantics).
+      metadata: withSessionCloseReason(session.metadata, 'idle-reaped'),
     };
     store.sessions.set(sessionId, closed);
     options.publishUpdate('session-closed', { ...closed, reason });
@@ -65,12 +68,15 @@ export function sweepSharedSessions(store: SharedSessionGcStore, options: Shared
   return anyChanged;
 }
 
-function shouldCloseIdleSession(
-  session: SharedSessionRecord,
-  now: number,
-  options: SharedSessionGcOptions,
-): boolean {
-  return idleCloseReason(session, now, options) !== null;
+/**
+ * True when any participant was seen within the idle-empty window — i.e. a
+ * surface is actively holding this session open. A live participant IS activity,
+ * so an empty session with a fresh heartbeat must NOT be idle-empty reaped even
+ * if `lastActivityAt` has drifted (defense-in-depth alongside the register path
+ * advancing lastActivityAt).
+ */
+function hasFreshParticipant(session: SharedSessionRecord, now: number, idleEmptyMs: number): boolean {
+  return session.participants.some((participant) => now - participant.lastSeenAt < idleEmptyMs);
 }
 
 function idleCloseReason(
@@ -82,7 +88,12 @@ function idleCloseReason(
   if (session.activeAgentId) return null;
   if (session.pendingInputCount > 0) return null;
   const idle = now - session.lastActivityAt;
-  if (session.messageCount === 0 && idle >= options.idleEmptyMs) return 'idle-empty';
+  if (session.messageCount === 0 && idle >= options.idleEmptyMs) {
+    // A surface holding the session open (fresh participant heartbeat) exempts it
+    // from idle-empty reaping — closing it would kill a LIVE, message-less session.
+    if (hasFreshParticipant(session, now, options.idleEmptyMs)) return null;
+    return 'idle-empty';
+  }
   if (session.messageCount > 0 && idle >= options.idleLongMs) return 'idle-long';
   return null;
 }
