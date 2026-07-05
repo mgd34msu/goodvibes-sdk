@@ -1,10 +1,18 @@
 /**
  * gateway-scope-enforcement.ts
  *
- * Per-client scope enforcement for the control-plane event fan-out. Some wire
- * channels declare a read scope (e.g. `session-update` ⇒ `read:sessions`); this
- * module decides whether a given live client may receive such a channel.
+ * Per-client delivery enforcement for the control-plane event fan-out. Two
+ * orthogonal, AND-ed filters live here:
+ *   1. Scope: some wire channels declare a read scope (e.g. `session-update` ⇒
+ *      `read:sessions`); a scoped-down token cannot receive a channel it was not
+ *      granted.
+ *   2. Domain: a broadcast event (published via `ControlPlaneGateway.publishEvent`,
+ *      i.e. NOT flowing through a runtime-bus `onDomain` subscription) carries a
+ *      `RuntimeEventDomain` tag; a client that opted into a narrower set of
+ *      domains only receives events whose domain is in that set.
  */
+
+import type { RuntimeEventDomain } from '../runtime/events/index.js';
 
 /**
  * Wire events whose descriptor declares a read scope. Enforced per-client on the
@@ -36,4 +44,48 @@ export function clientMaySeeScopedChannel(client: ScopedClientView, requiredScop
   if (client.admin) return true;
   if (client.scopes === undefined) return true;
   return client.scopes.includes(requiredScope) || client.scopes.includes('*');
+}
+
+/**
+ * Maps a manually-broadcast wire event (published via
+ * `ControlPlaneGateway.publishEvent`) to the `RuntimeEventDomain` a client must
+ * have subscribed to in order to receive it. These events do NOT flow through a
+ * runtime-bus `onDomain` subscription — that path is already domain-scoped by the
+ * subscription itself — so without this map the fan-out ignored the subscriber's
+ * declared domains and over-delivered (e.g. `session-update` reached the webui,
+ * which declares no `session` domain and dropped it as inert).
+ *
+ * An event ABSENT from this map carries no domain tag and is delivered to every
+ * scope-permitted client regardless of its subscribed domains (deliver-all). That
+ * keeps domain scoping strictly opt-in narrowing: a newly-added broadcast event
+ * cannot be silently dropped just because it is not yet tagged here. New verbs
+ * (later waves) should register their broadcast events in this map.
+ */
+export const EVENT_DOMAIN: Readonly<Record<string, RuntimeEventDomain>> = {
+  'session-update': 'session',
+  'approval-update': 'permissions',
+};
+
+/**
+ * Whether a live client that subscribed to `clientDomains` should receive
+ * `event` under the domain filter.
+ *
+ * `clientDomains === null` means the client did NOT opt into domain narrowing
+ * (it connected with no `?domains=` param) and receives everything it is
+ * scope-permitted to see — today's behavior, preserved. This null=deliver-all
+ * default is the only migration-safe choice: an empty-set-means-nothing default
+ * would silently black out every consumer that did not opt in.
+ *
+ * An event with no `EVENT_DOMAIN` tag is always delivered (untagged ⇒ inert to
+ * the domain filter), so narrowing can only ever remove events we can positively
+ * attribute to a domain the client did not subscribe to.
+ */
+export function clientMayReceiveEventDomain(
+  clientDomains: ReadonlySet<RuntimeEventDomain> | null,
+  event: string,
+): boolean {
+  if (clientDomains === null) return true;
+  const domain = EVENT_DOMAIN[event];
+  if (domain === undefined) return true;
+  return clientDomains.has(domain);
 }

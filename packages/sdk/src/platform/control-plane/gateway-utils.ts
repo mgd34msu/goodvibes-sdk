@@ -3,6 +3,7 @@ import type { AnyRuntimeEvent, RuntimeEventDomain, RuntimeEventEnvelope } from '
 import { isRuntimeEventDomain } from '../runtime/events/index.js';
 import type { ControlPlaneClientDescriptor } from './types.js';
 import type { ControlPlaneServerConfig } from './types.js';
+import { clientMayReceiveEventDomain } from './gateway-scope-enforcement.js';
 
 export const DEFAULT_SERVER_CONFIG: ControlPlaneServerConfig = {
   enabled: false,
@@ -136,5 +137,32 @@ export function pruneDisconnectedClientRecords(
     const ageMs = now - (client.lastSeenAt ?? now);
     if (ageMs <= DISCONNECTED_CLIENT_TTL_MS && i < MAX_DISCONNECTED_CLIENTS) continue;
     clients.delete(client.id);
+  }
+}
+
+/**
+ * Replay recent traffic to a freshly-connected client. Mirrors live delivery:
+ * canReplayEventToClient applies the kind/route/surface/domain-name filters, and
+ * the EVENT_DOMAIN broadcast-domain filter is applied on top so a domain-narrowed
+ * client is not handed a replayed broadcast (e.g. session-update) for a domain it
+ * did not subscribe to. null domains (no opt-in) = deliver-all.
+ */
+export function replayRecentTraffic(
+  recentEvents: readonly ScopedControlPlaneRecentEvent[],
+  send: (event: string, payload: unknown, id?: string) => void,
+  options: ControlPlaneReplayClientOptions,
+  sinceId?: string,
+): void {
+  const sinceIndex = sinceId ? recentEvents.findIndex((event) => event.id === sinceId) : -1;
+  const window = sinceIndex >= 0
+    ? recentEvents.slice(0, sinceIndex).reverse()
+    : recentEvents.slice(0, 20).reverse();
+  const replayDomains = (options.domains?.length ?? 0) > 0
+    ? new Set(normalizeRuntimeDomains(options.domains))
+    : null;
+  for (const recentEvent of window) {
+    if (!canReplayEventToClient(recentEvent, options)) continue;
+    if (!clientMayReceiveEventDomain(replayDomains, recentEvent.event)) continue;
+    send(recentEvent.event, recentEvent.payload, recentEvent.id);
   }
 }
