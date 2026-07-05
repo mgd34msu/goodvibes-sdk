@@ -448,20 +448,12 @@ function readPositiveInt(value: string | null): number | undefined {
 /**
  * Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver — a live surface
  * reporting collection/consumption of a queued input. Body `{consumed:true}`
- * marks it completed (the surface finished acting on it); otherwise it marks the
- * input delivered (collected). Reuses the existing input lifecycle states.
- *
- * The body is OPTIONAL: the common "collected" ack (`consumed` absent/false)
- * carries no fields once `sessionId`/`inputId` are resolved into the path, so the
- * wire client sends no request body at all — parseJsonBody would reject that
- * empty body as invalid JSON. parseOptionalJsonBody tolerates it (null body ==
- * consumed:false, the honest default).
+ * marks it completed; otherwise it marks the input delivered (collected). Body is
+ * OPTIONAL (a bare "collected" ack has no fields once path params are resolved,
+ * so the wire sends none) — parseOptionalJsonBody: null body == consumed:false.
  */
 async function handleDeliverSharedSessionInput(
-  context: DaemonRuntimeRouteContext,
-  sessionId: string,
-  inputId: string,
-  req: Request,
+  context: DaemonRuntimeRouteContext, sessionId: string, inputId: string, req: Request,
 ): Promise<Response> {
   const body = await context.parseOptionalJsonBody(req);
   if (body instanceof Response) return body;
