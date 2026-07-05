@@ -6,6 +6,8 @@ import { logger } from '../utils/logger.js';
 import net from 'node:net';
 import { summarizeError } from '../utils/error-display.js';
 import { createTimeoutController } from '../utils/fetch-with-timeout.js';
+import { VERSION } from '../version.js';
+import { isDaemonVersionCompatible, describeVersionIncompatibility } from './daemon-version-compat.js';
 
 interface DaemonService {
   enable(config: { daemon: boolean }, token?: string): boolean;
@@ -53,9 +55,21 @@ interface ServiceFactories {
    * different tokens, or both may share the same bearer.
    */
   sharedHttpListenerToken?: string | undefined;
+  /**
+   * This surface's own SDK version, used to band-check a daemon found on the
+   * configured port before adopting it. Defaults to the SDK `VERSION`. Injected
+   * mainly so tests can drive the compatibility gate deterministically.
+   */
+  localDaemonVersion?: string | undefined;
+  /**
+   * Override for the version-compatibility predicate. Defaults to the shared
+   * `isDaemonVersionCompatible` band policy. Tests inject a stub to exercise the
+   * incompatible-adoption refusal without constructing skewed daemons.
+   */
+  isDaemonVersionCompatible?: ((localVersion: string, remoteVersion: string | undefined) => boolean) | undefined;
 }
 
-export type HostServiceMode = 'disabled' | 'embedded' | 'external' | 'blocked' | 'unavailable';
+export type HostServiceMode = 'disabled' | 'embedded' | 'external' | 'blocked' | 'incompatible' | 'unavailable';
 
 export interface HostServiceStatus {
   readonly mode: HostServiceMode;
@@ -350,6 +364,39 @@ export async function startHostServices(
   const probeDaemonPortInUse = factories.probeDaemonPortInUse ?? ((host: string, port: number) => isTcpPortInUse(host, port));
   const probeDaemonIdentity = factories.probeDaemonIdentity ?? probeGoodVibesDaemonIdentity;
   const probeHttpListenerPortInUse = factories.probeHttpListenerPortInUse ?? ((host: string, port: number) => isTcpPortInUse(host, port));
+  const localDaemonVersion = factories.localDaemonVersion ?? VERSION;
+  const versionCompatible = factories.isDaemonVersionCompatible ?? isDaemonVersionCompatible;
+
+  // A daemon whose identity probe says `goodvibes` has only proven it IS a
+  // GoodVibes daemon — not that it speaks a wire version this surface can adopt.
+  // Band-check the reported version and produce an honest `incompatible` status
+  // (never a second competing daemon) when it does not match this surface's band.
+  const resolveVerifiedDaemonStatus = (
+    identity: DaemonIdentityProbeResult,
+    reasonAdopted: string,
+  ): HostServiceStatus => {
+    if (versionCompatible(localDaemonVersion, identity.version)) {
+      return createServiceStatus('external', daemonHost, daemonPort, {
+        authenticated: true,
+        status: identity.status,
+        version: identity.version,
+        reason: reasonAdopted,
+      });
+    }
+    const reason = describeVersionIncompatibility(daemonHost, daemonPort, localDaemonVersion, identity.version);
+    logger.warn('Daemon on configured port reports an incompatible version; refusing to adopt or start a competing daemon', {
+      host: daemonHost,
+      port: daemonPort,
+      foundVersion: identity.version,
+      localVersion: localDaemonVersion,
+    });
+    return createServiceStatus('incompatible', daemonHost, daemonPort, {
+      authenticated: true,
+      status: identity.status,
+      version: identity.version,
+      reason,
+    });
+  };
 
   let embeddedDaemonServer: DaemonService | null = null;
   let embeddedHttpListener: HttpListenerService | null = null;
@@ -362,17 +409,14 @@ export async function startHostServices(
     if (await probeDaemonPortInUse(daemonHost, daemonPort)) {
       const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
       if (identity.kind === 'goodvibes') {
-        daemonStatus = createServiceStatus('external', daemonHost, daemonPort, {
-          authenticated: true,
-          status: identity.status,
-          version: identity.version,
-          reason: 'Existing GoodVibes daemon verified on configured host/port',
-        });
-        logger.info('Existing GoodVibes daemon detected; continuing without embedded daemon in this host instance', {
-          host: daemonHost,
-          port: daemonPort,
-          version: identity.version,
-        });
+        daemonStatus = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified on configured host/port');
+        if (daemonStatus.mode === 'external') {
+          logger.info('Existing GoodVibes daemon detected; continuing without embedded daemon in this host instance', {
+            host: daemonHost,
+            port: daemonPort,
+            version: identity.version,
+          });
+        }
       } else {
         daemonStatus = createServiceStatus('blocked', daemonHost, daemonPort, {
           authenticated: identity.kind !== 'unauthorized' ? undefined : false,
@@ -406,20 +450,18 @@ export async function startHostServices(
         bindConflictStatus: async (message) => {
           const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
           if (identity.kind === 'goodvibes') {
-            logger.info(
-              'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
-              {
-                host: daemonHost,
-                port: daemonPort,
-                version: identity.version,
-              },
-            );
-            return createServiceStatus('external', daemonHost, daemonPort, {
-              authenticated: true,
-              status: identity.status,
-              version: identity.version,
-              reason: 'Existing GoodVibes daemon verified after bind conflict',
-            });
+            const verified = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified after bind conflict');
+            if (verified.mode === 'external') {
+              logger.info(
+                'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
+                {
+                  host: daemonHost,
+                  port: daemonPort,
+                  version: identity.version,
+                },
+              );
+            }
+            return verified;
           }
           logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
           return createServiceStatus('blocked', daemonHost, daemonPort, {
