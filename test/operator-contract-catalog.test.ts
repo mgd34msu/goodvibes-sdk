@@ -157,10 +157,13 @@ describe('built-in operator contract method schemas', () => {
     const sessionProperties = asRecord(sessionSchema.properties, 'session properties');
     const required = sessionSchema.required;
 
-    expect(sessionProperties.kind).toMatchObject({
-      type: 'string',
-      enum: ['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation'],
-    });
+    // Per docs/decisions/2026-07-05-session-wire-mixed-version.md (the enum leg),
+    // the READ record's `kind` is an OPEN enum: a plain string with NO enum
+    // constraint, so response validation tolerates a mixed-version daemon emitting
+    // a kind this reader does not model (the normalizer backfills display). The
+    // strict enum lives on the WRITE path (sessions.register input) only.
+    expect(sessionProperties.kind).toMatchObject({ type: 'string' });
+    expect(asRecord(sessionProperties.kind, 'kind schema').enum).toBeUndefined();
     expect(sessionProperties.lastActivityAt).toMatchObject({ type: 'number' });
     // `project` is still a real, typed field on the record...
     expect(sessionProperties.project).toMatchObject({ type: 'string' });

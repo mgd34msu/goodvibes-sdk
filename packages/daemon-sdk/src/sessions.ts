@@ -40,6 +40,11 @@ export async function dispatchSessionRoutes(
     return handlers.cancelSharedSessionInput(sharedSessionCancelInputMatch[1]!, sharedSessionCancelInputMatch[2]!, req);
   }
 
+  const sharedSessionDeliverInputMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/inputs\/([^/]+)\/deliver$/);
+  if (sharedSessionDeliverInputMatch && method === 'POST') {
+    return handlers.deliverSharedSessionInput(sharedSessionDeliverInputMatch[1]!, sharedSessionDeliverInputMatch[2]!, req);
+  }
+
   const sharedSessionEventsMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/events$/);
   if (sharedSessionEventsMatch && method === 'GET') return handlers.getSharedSessionEvents(sharedSessionEventsMatch[1]!, req);
 

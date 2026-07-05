@@ -424,13 +424,15 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.inputs.list',
     title: 'List Shared Session Inputs',
-    description: 'Return explicit session inputs, including queued follow-ups and delivered steering requests.',
+    description: 'Return explicit session inputs, including queued follow-ups and delivered steering requests. A live surface collects work by filtering `state` (e.g. queued) and paging past a `since` createdAt cursor (exclusive), draining only inputs it has not yet collected.',
     category: 'sessions',
     scopes: ['read:sessions'],
     http: { method: 'GET', path: '/api/sessions/{sessionId}/inputs' },
     inputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       limit: NUMBER_SCHEMA,
+      state: STRING_SCHEMA,
+      since: NUMBER_SCHEMA,
     }, ['sessionId']),
     outputSchema: SHARED_SESSION_WITH_INPUTS_SCHEMA,
   }),
@@ -478,6 +480,21 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     inputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       inputId: STRING_SCHEMA,
+    }, ['sessionId', 'inputId']),
+    outputSchema: entityOutputSchema('input', SHARED_SESSION_INPUT_RECORD_SCHEMA),
+  }),
+  methodDescriptor({
+    id: 'sessions.inputs.deliver',
+    title: 'Mark Shared Session Input Delivered',
+    description: 'A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged.',
+    category: 'sessions',
+    scopes: ['write:sessions'],
+    http: { method: 'POST', path: '/api/sessions/{sessionId}/inputs/{inputId}/deliver' },
+    events: ['control.session_update'],
+    inputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      inputId: STRING_SCHEMA,
+      consumed: BOOLEAN_SCHEMA,
     }, ['sessionId', 'inputId']),
     outputSchema: entityOutputSchema('input', SHARED_SESSION_INPUT_RECORD_SCHEMA),
   }),

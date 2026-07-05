@@ -366,6 +366,7 @@ export interface DaemonRuntimeSessionRouteHandlers {
   postSharedSessionSteer(sessionId: string, req: Request): MaybeResponse;
   postSharedSessionFollowUp(sessionId: string, req: Request): MaybeResponse;
   cancelSharedSessionInput(sessionId: string, inputId: string, req: Request): MaybeResponse;
+  deliverSharedSessionInput(sessionId: string, inputId: string, req: Request): MaybeResponse;
   getSharedSessionEvents(sessionId: string, req: Request): MaybeResponse;
 }
 

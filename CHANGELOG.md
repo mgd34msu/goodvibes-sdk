@@ -73,6 +73,21 @@ knowledge injection for both turn loops, and a repo code index.
 - Code index reroot-during-build race (epoch-guarded abort; no cross-root
   writes), honest chunk counters, split file-cap vs total-byte-cap skip
   accounting (256MB bound now disclosed).
+- Session-wire mixed-version tolerance, enum leg (Wave-2 D1): response/output
+  validation now treats a session record's `kind` as an OPEN enum on read, so a
+  mixed-version daemon emitting a kind an older reader does not model no longer
+  blanks the entire `sessions.list` envelope (per-record tolerance; the normalizer
+  still backfills display). `sessions.register` input stays strict (unknown kind
+  still 400s).
+- Idle-empty reaper no longer closes LIVE surface sessions (Wave-2 D2): a register
+  heartbeat advances `lastActivityAt`, idle-empty exempts sessions with any
+  participant seen within the idle window, and a SYSTEM-reaped session
+  (`metadata.closeReason = 'idle-reaped'`) auto-reopens on the next heartbeat while
+  a user/surface close stays closed with an honest conflict.
+- Steer/follow-up routing to surface-backed sessions (Wave-2 D3): a steer or
+  follow-up to a surface-managed session with a live registered participant now
+  queues for the surface (`mode: 'queued-for-surface'`, no daemon executor spawn);
+  surfaceless sessions keep the executor path.
 
 ### Notes
 - `ProcessState` gains `'paused'` and `'interrupted'` (additive; stale consumers

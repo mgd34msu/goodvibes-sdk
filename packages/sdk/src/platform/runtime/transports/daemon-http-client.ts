@@ -151,8 +151,13 @@ function createOperatorClient(
         (await operatorApi.sessions.messages.list(sessionId, { limit })).messages.map((entry) =>
           normalizeSharedSessionMessage(entry as Record<string, unknown>),
         ),
-      inputs: async (sessionId, limit = 100): Promise<readonly SharedSessionInputRecord[]> => {
-        const response = await operatorApi.invoke<{ inputs: readonly Record<string, unknown>[] }>('sessions.inputs.list', { sessionId, limit });
+      inputs: async (sessionId, limit = 100, options?: { readonly state?: string | undefined; readonly since?: number | undefined }): Promise<readonly SharedSessionInputRecord[]> => {
+        const response = await operatorApi.invoke<{ inputs: readonly Record<string, unknown>[] }>('sessions.inputs.list', {
+          sessionId,
+          limit,
+          ...(options?.state !== undefined ? { state: options.state } : {}),
+          ...(options?.since !== undefined ? { since: options.since } : {}),
+        });
         return (response.inputs ?? []).map((entry) => normalizeSharedSessionInput(entry));
       },
       ensureSession: async (input: HttpSessionEnsureInput = {}): Promise<SharedSessionRecord> =>
@@ -201,6 +206,14 @@ function createOperatorClient(
       cancelInput: async (sessionId, inputId): Promise<SharedSessionInputRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.sessions.inputs.cancel(sessionId, inputId));
         return response?.input ? normalizeSharedSessionInput(response.input as Record<string, unknown>) : null;
+      },
+      deliverInput: async (sessionId, inputId, options?: { readonly consumed?: boolean | undefined }): Promise<SharedSessionInputRecord | null> => {
+        const response = await withNullOnNotFound(() => operatorApi.invoke<{ input?: Record<string, unknown> }>('sessions.inputs.deliver', {
+          sessionId,
+          inputId,
+          ...(options?.consumed === true ? { consumed: true } : {}),
+        }));
+        return response?.input ? normalizeSharedSessionInput(response.input) : null;
       },
     },
     tasks: {

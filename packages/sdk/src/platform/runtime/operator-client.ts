@@ -36,7 +36,7 @@ export interface OperatorSessionsClient {
   list(limit?: number): readonly SharedSessionRecord[];
   get(sessionId: string): SharedSessionRecord | null;
   messages(sessionId: string, limit?: number): readonly SharedSessionMessage[];
-  inputs(sessionId: string, limit?: number): readonly SharedSessionInputRecord[];
+  inputs(sessionId: string, limit?: number, options?: { readonly state?: string | undefined; readonly since?: number | undefined }): readonly SharedSessionInputRecord[];
   ensureSession(input?: OperatorSessionEnsureInput): Promise<SharedSessionRecord>;
   register(input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult>;
   close(sessionId: string): Promise<SharedSessionRecord | null>;
@@ -46,6 +46,9 @@ export interface OperatorSessionsClient {
   steerMessage(input: SteerSharedSessionMessageInput): Promise<SharedSessionSubmission>;
   followUpMessage(input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission>;
   cancelInput(sessionId: string, inputId: string): Promise<SharedSessionInputRecord | null>;
+  /** A live surface marks a collected input delivered (`consumed:false`) or
+   * consumed/completed (`consumed:true`). See sessions.inputs.deliver. */
+  deliverInput(sessionId: string, inputId: string, options?: { readonly consumed?: boolean | undefined }): Promise<SharedSessionInputRecord | null>;
 }
 
 export interface OperatorTasksClient {
@@ -130,7 +133,14 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     list: (limit = 100): readonly SharedSessionRecord[] => services.sessionBroker.listSessions(normalizeLimit(limit)),
     get: (sessionId: string): SharedSessionRecord | null => services.sessionBroker.getSession(sessionId),
     messages: (sessionId: string, limit = 100): readonly SharedSessionMessage[] => services.sessionBroker.getMessages(sessionId, normalizeLimit(limit)),
-    inputs: (sessionId: string, limit = 100): readonly SharedSessionInputRecord[] => services.sessionBroker.getInputs(sessionId, normalizeLimit(limit)),
+    inputs: (sessionId: string, limit = 100, options?: { readonly state?: string | undefined; readonly since?: number | undefined }): readonly SharedSessionInputRecord[] =>
+      (options && (options.state !== undefined || options.since !== undefined))
+        ? services.sessionBroker.getInputsSince(sessionId, {
+            ...(options.state !== undefined ? { state: options.state as SharedSessionInputRecord['state'] } : {}),
+            ...(options.since !== undefined ? { since: options.since } : {}),
+            limit: normalizeLimit(limit),
+          })
+        : services.sessionBroker.getInputs(sessionId, normalizeLimit(limit)),
     ensureSession: (input: Parameters<OperatorClientServices['sessionBroker']['ensureSession']>[0] = {}): Promise<SharedSessionRecord> => services.sessionBroker.ensureSession(input),
     register: (input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult> => services.sessionBroker.register(input),
     close: (sessionId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.closeSession(sessionId),
@@ -140,6 +150,7 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     steerMessage: (input: SteerSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.steerMessage(input),
     followUpMessage: (input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.followUpMessage(input),
     cancelInput: (sessionId: string, inputId: string): Promise<SharedSessionInputRecord | null> => services.sessionBroker.cancelInput(sessionId, inputId),
+    deliverInput: (sessionId: string, inputId: string, options: { readonly consumed?: boolean | undefined } = {}): Promise<SharedSessionInputRecord | null> => services.sessionBroker.markInputDelivered(sessionId, inputId, options),
   } satisfies OperatorSessionsClient;
 
   const tasks = {

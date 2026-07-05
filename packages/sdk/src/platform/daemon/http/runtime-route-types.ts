@@ -82,7 +82,7 @@ export interface DaemonRuntimeRouteContext extends Omit<
       metadata?: Record<string, unknown> | undefined;
       routing?: SharedSessionRoutingIntent | undefined;
     }): Promise<{
-      mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
+      mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'queued-for-surface' | 'rejected';
       input: { id: string; routing?: SharedSessionRoutingIntent };
       session: { id: string; status: string };
       routeBinding?: AutomationRouteBinding | undefined;
@@ -105,7 +105,7 @@ export interface DaemonRuntimeRouteContext extends Omit<
       routing?: SharedSessionRoutingIntent | undefined;
       allowSpawnFallback?: boolean | undefined;
     }): Promise<{
-      mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
+      mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'queued-for-surface' | 'rejected';
       input: { id: string; state: string; routing?: SharedSessionRoutingIntent };
       session: { id: string; status: string };
       routeBinding?: AutomationRouteBinding | undefined;
@@ -127,7 +127,7 @@ export interface DaemonRuntimeRouteContext extends Omit<
       metadata?: Record<string, unknown> | undefined;
       routing?: SharedSessionRoutingIntent | undefined;
     }): Promise<{
-      mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'rejected';
+      mode: 'continued-live' | 'spawn' | 'queued-follow-up' | 'queued-for-surface' | 'rejected';
       input: { id: string; state: string; routing?: SharedSessionRoutingIntent };
       session: { id: string; status: string };
       routeBinding?: AutomationRouteBinding | undefined;
@@ -174,6 +174,8 @@ export interface DaemonRuntimeRouteContext extends Omit<
     getSession(sessionId: string): { id: string; status: string; messageCount: number; activeAgentId?: string } | null;
     getMessages(sessionId: string, limit: number): unknown[];
     getInputs(sessionId: string, limit: number): unknown[];
+    getInputsSince(sessionId: string, options: { state?: string | undefined; since?: number | undefined; limit?: number | undefined }): unknown[];
+    markInputDelivered(sessionId: string, inputId: string, options: { consumed?: boolean | undefined }): Promise<unknown | null>;
     closeSession(sessionId: string): Promise<{ id: string } | null>;
     reopenSession(sessionId: string): Promise<{ id: string } | null>;
     cancelInput(sessionId: string, inputId: string): Promise<unknown | null>;
