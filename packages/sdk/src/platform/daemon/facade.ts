@@ -69,9 +69,8 @@ type JsonBody = Record<string, unknown>;
 // --- DaemonServer ---
 
 /**
- * DaemonServer — HTTP task server, disabled by default.
- *
- * Enable via: danger.daemon = true in config.
+ * DaemonServer — HTTP task server. Enabled by default via `daemon.enabled`
+ * (loopback-bound); deprecated `danger.daemon` alias overrides via resolveDaemonEnabled.
  * All routes require Bearer token auth (set via enable()).
  * POST /task    — submit a task; returns agentId.
  * GET  /task/:id — returns agent status.
@@ -244,12 +243,13 @@ export class DaemonServer {
   }
 
   /**
-   * Enable the daemon. Requires danger.daemon = true in config. The provided
-   * token authenticates all incoming requests. Returns false if config forbids it.
+   * Enable the daemon. Caller passes the resolved enable decision (from
+   * resolveDaemonEnabled). The token authenticates all requests. Returns false
+   * if the passed-in flag forbids it.
    */
   enable(dangerConfig: DaemonDangerConfig, token?: string): boolean {
     if (!dangerConfig.daemon) {
-      logger.info('DaemonServer.enable: danger.daemon is false — not enabling');
+      logger.info('DaemonServer.enable: daemon disabled by config (daemon.enabled=false) — not enabling');
       return false;
     }
     this.enabled = true;
@@ -272,7 +272,7 @@ export class DaemonServer {
    */
   async start(): Promise<void> {
     if (!this.enabled) {
-      logger.info('Daemon mode is disabled. Enable via danger.daemon config.');
+      logger.info('Daemon mode is disabled (daemon.enabled=false). It is on by default; the danger.daemon alias can also force it off.');
       return;
     }
     if (this.authToken === null) {
