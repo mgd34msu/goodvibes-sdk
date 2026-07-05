@@ -78298,8 +78298,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 31
     },
     "validationCoverage": {
-      "methods": 299,
-      "validated": 299,
+      "methods": 306,
+      "validated": 306,
       "skippedGeneric": 0,
       "skippedUntyped": 0
     }

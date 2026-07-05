@@ -28,6 +28,7 @@ import type { SurfaceKind } from '../../../events/surfaces.js';
 import { SURFACE_KINDS } from '../../../events/surfaces.js';
 import { paginateItems } from '@pellux/goodvibes-daemon-sdk';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { readInvocationParams } from './invocation-params.js';
 
 const SHARED_SESSION_KINDS: readonly SharedSessionKind[] = [
   'tui',
@@ -92,15 +93,15 @@ export type SessionSearchBroker = Pick<SharedSessionBroker, 'listSessions'>;
 
 export function createSessionsSearchHandler(broker: SessionSearchBroker): GatewayMethodHandler {
   return (invocation) => {
-    const query = invocation.query ?? {};
-    const textQuery = optionalString(query.query)?.toLowerCase();
-    const project = optionalString(query.project);
-    const kind = validateKind(query.kind);
-    const surfaceKind = validateSurfaceKind(query.surfaceKind);
-    const status = validateStatus(query.status);
-    const includeClosed = query.includeClosed === true || query.includeClosed === 'true';
-    const limit = clampLimit(query.limit);
-    const rawCursor = typeof query.cursor === 'string' ? query.cursor : null;
+    const params = readInvocationParams(invocation);
+    const textQuery = optionalString(params.query)?.toLowerCase();
+    const project = optionalString(params.project);
+    const kind = validateKind(params.kind);
+    const surfaceKind = validateSurfaceKind(params.surfaceKind);
+    const status = validateStatus(params.status);
+    const includeClosed = params.includeClosed === true || params.includeClosed === 'true';
+    const limit = clampLimit(params.limit);
+    const rawCursor = typeof params.cursor === 'string' ? params.cursor : null;
 
     // Always fetch WITH closed sessions from the broker (its own default),
     // then apply the wire-level closed policy ourselves below: sessions.search

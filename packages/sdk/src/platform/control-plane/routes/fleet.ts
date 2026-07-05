@@ -34,6 +34,7 @@ import type {
 } from '../../runtime/fleet/types.js';
 import { paginateItems } from '@pellux/goodvibes-daemon-sdk';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { readInvocationParams } from './invocation-params.js';
 
 /**
  * `fleet.snapshot` payload cap (risk #1, W3-S2 brief): the registry's
@@ -123,7 +124,7 @@ export type FleetQueryOnlyRegistry = Pick<ProcessRegistry, 'query'>;
 
 export function createFleetSnapshotHandler(registry: FleetQueryOnlyRegistry): GatewayMethodHandler {
   return (invocation) => {
-    const filter = readFleetQueryFilter(invocation.query);
+    const filter = readFleetQueryFilter(readInvocationParams(invocation));
     const snapshot = registry.query(filter);
     const truncated = snapshot.nodes.length > FLEET_SNAPSHOT_NODE_CAP;
     const nodes: readonly ProcessNode[] = truncated
@@ -140,10 +141,10 @@ export function createFleetSnapshotHandler(registry: FleetQueryOnlyRegistry): Ga
 
 export function createFleetListHandler(registry: FleetQueryOnlyRegistry): GatewayMethodHandler {
   return (invocation) => {
-    const query = invocation.query;
-    const filter = readFleetQueryFilter(query);
-    const limit = clampLimit(query?.limit, FLEET_LIST_DEFAULT_LIMIT, FLEET_LIST_MAX_LIMIT);
-    const rawCursor = typeof query?.cursor === 'string' ? query.cursor : null;
+    const params = readInvocationParams(invocation);
+    const filter = readFleetQueryFilter(params);
+    const limit = clampLimit(params.limit, FLEET_LIST_DEFAULT_LIMIT, FLEET_LIST_MAX_LIMIT);
+    const rawCursor = typeof params.cursor === 'string' ? params.cursor : null;
     const snapshot = registry.query(filter);
     // Stable sort key for cursoring: id (unique, deterministic) with
     // startedAt as the secondary/recovery key `paginateItems` uses when a

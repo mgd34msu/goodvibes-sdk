@@ -41,7 +41,16 @@ interface InvokeResult {
   readonly json: any;
 }
 
-/** Call a gateway method through the generic invoke endpoint (real HTTP). */
+/**
+ * Call a gateway method through the generic invoke endpoint (real HTTP).
+ *
+ * Params ride in the envelope's `body` — for a handler verb (no http
+ * binding) that is the channel S1's invoke-layer input gate
+ * (invoke-input-validation.ts) validates against the typed inputSchema, so
+ * these calls exercise both the gate and the handler. The `query` channel
+ * is a fallback the handlers also merge in (body wins); one fleet.list test
+ * below covers it explicitly.
+ */
 async function invokeVerb(
   methodId: string,
   input: { readonly query?: unknown; readonly body?: unknown } = {},
@@ -49,7 +58,7 @@ async function invokeVerb(
   const res = await fetch(`${daemon.url}/api/control-plane/methods/${methodId}/invoke`, {
     method: 'POST',
     headers: auth(),
-    body: JSON.stringify({ query: input.query, body: input.body ?? null }),
+    body: JSON.stringify({ query: input.query, body: input.body ?? {} }),
   });
   const text = await res.text();
   let json: unknown = null;
@@ -92,7 +101,11 @@ describe('W3-S2 — fleet.snapshot / fleet.list', () => {
     expect(json.totalCount).toBe(json.nodes.length);
   });
 
-  test('fleet.list over an empty fleet returns a well-shaped empty page', async () => {
+  test('fleet.list over an empty fleet returns a well-shaped empty page (params via the query fallback channel)', async () => {
+    // Deliberately uses the envelope's `query` channel (body {}): handlers
+    // merge query in as a fallback (body wins), so optional filters may ride
+    // either channel. body {} passes S1's typed-schema gate because
+    // FLEET_LIST_INPUT_SCHEMA has no required fields.
     const { status, json } = await invokeVerb('fleet.list', { query: { limit: 10 } });
     expect(status).toBe(200);
     expect(Array.isArray(json.items)).toBe(true);
@@ -102,25 +115,25 @@ describe('W3-S2 — fleet.snapshot / fleet.list', () => {
   });
 
   test('fleet.list rejects an unknown kind with an honest 400 (not a silent empty result)', async () => {
-    const { status, json } = await invokeVerb('fleet.list', { query: { kinds: ['not-a-real-kind'] } });
+    const { status, json } = await invokeVerb('fleet.list', { body: { kinds: ['not-a-real-kind'] } });
     expect(status).toBe(400);
     expect(typeof json.error).toBe('string');
   });
 
   test('fleet.list rejects an unknown state with an honest 400', async () => {
-    const { status, json } = await invokeVerb('fleet.list', { query: { states: ['not-a-real-state'] } });
+    const { status, json } = await invokeVerb('fleet.list', { body: { states: ['not-a-real-state'] } });
     expect(status).toBe(400);
     expect(typeof json.error).toBe('string');
   });
 
   test('fleet.list rejects a garbage cursor with an honest 400', async () => {
-    const { status, json } = await invokeVerb('fleet.list', { query: { cursor: 'not-a-real-cursor!!' } });
+    const { status, json } = await invokeVerb('fleet.list', { body: { cursor: 'not-a-real-cursor!!' } });
     expect(status).toBe(400);
     expect(typeof json.error).toBe('string');
   });
 
   test('fleet.list rejects an invalid limit with an honest 400', async () => {
-    const { status } = await invokeVerb('fleet.list', { query: { limit: -5 } });
+    const { status } = await invokeVerb('fleet.list', { body: { limit: -5 } });
     expect(status).toBe(400);
   });
 });
@@ -189,7 +202,7 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
     // modifications — so the diff must touch a file the side-git index
     // already knows about to show up in `files`.
     writeFileSync(join(work, 'w3s2-checkpoint-seed-1.txt'), 'modified after diff-base checkpoint\n');
-    const diff = await invokeVerb('checkpoints.diff', { query: { a: checkpointId } });
+    const diff = await invokeVerb('checkpoints.diff', { body: { a: checkpointId } });
     expect(diff.status).toBe(200);
     expect(diff.json.diff.from).toBe(checkpointId);
     expect(diff.json.diff.to).toBe('WORKING');
@@ -199,14 +212,14 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
   });
 
   test('checkpoints.diff of an unknown id is an honest 404, not a silent empty diff', async () => {
-    const { status, json } = await invokeVerb('checkpoints.diff', { query: { a: 'wcp_does_not_exist' } });
+    const { status, json } = await invokeVerb('checkpoints.diff', { body: { a: 'wcp_does_not_exist' } });
     expect(status).toBe(404);
     expect(typeof json.error).toBe('string');
     expect(json.code).toBe('NOT_FOUND');
   });
 
   test('checkpoints.diff requires the "a" field with an honest 400', async () => {
-    const { status } = await invokeVerb('checkpoints.diff', { query: {} });
+    const { status } = await invokeVerb('checkpoints.diff', { body: {} });
     expect(status).toBe(400);
   });
 
@@ -261,7 +274,7 @@ describe('W3-S2 — sessions.search', () => {
   });
 
   test('excludes closed sessions by default', async () => {
-    const { status, json } = await invokeVerb('sessions.search', { query: { project: searchProject } });
+    const { status, json } = await invokeVerb('sessions.search', { body: { project: searchProject } });
     expect(status).toBe(200);
     const ids = (json.sessions as any[]).map((s) => s.id);
     expect(ids).toContain('w3s2-search-active');
@@ -269,7 +282,7 @@ describe('W3-S2 — sessions.search', () => {
   });
 
   test('includeClosed:true includes the closed session with an honest status', async () => {
-    const { status, json } = await invokeVerb('sessions.search', { query: { project: searchProject, includeClosed: true } });
+    const { status, json } = await invokeVerb('sessions.search', { body: { project: searchProject, includeClosed: true } });
     expect(status).toBe(200);
     const closed = (json.sessions as any[]).find((s) => s.id === 'w3s2-search-closed');
     expect(closed).toBeDefined();
@@ -279,27 +292,27 @@ describe('W3-S2 — sessions.search', () => {
   });
 
   test('project filter isolates the search scope', async () => {
-    const { json } = await invokeVerb('sessions.search', { query: { project: 'some-other-project-entirely', includeClosed: true } });
+    const { json } = await invokeVerb('sessions.search', { body: { project: 'some-other-project-entirely', includeClosed: true } });
     const ids = (json.sessions as any[]).map((s) => s.id);
     expect(ids).not.toContain('w3s2-search-active');
     expect(ids).not.toContain('w3s2-search-closed');
   });
 
   test('free-text query matches title', async () => {
-    const { status, json } = await invokeVerb('sessions.search', { query: { project: searchProject, query: 'active session' } });
+    const { status, json } = await invokeVerb('sessions.search', { body: { project: searchProject, query: 'active session' } });
     expect(status).toBe(200);
     const ids = (json.sessions as any[]).map((s) => s.id);
     expect(ids).toContain('w3s2-search-active');
   });
 
   test('cursor pagination returns disjoint pages that union to the full matching set', async () => {
-    const page1 = await invokeVerb('sessions.search', { query: { project: searchProject, includeClosed: true, limit: 1 } });
+    const page1 = await invokeVerb('sessions.search', { body: { project: searchProject, includeClosed: true, limit: 1 } });
     expect(page1.status).toBe(200);
     expect(page1.json.sessions.length).toBe(1);
     expect(page1.json.hasMore).toBe(true);
 
     const page2 = await invokeVerb('sessions.search', {
-      query: { project: searchProject, includeClosed: true, limit: 1, cursor: page1.json.nextCursor },
+      body: { project: searchProject, includeClosed: true, limit: 1, cursor: page1.json.nextCursor },
     });
     expect(page2.status).toBe(200);
 
@@ -313,17 +326,17 @@ describe('W3-S2 — sessions.search', () => {
   });
 
   test('an invalid cursor is an honest 400', async () => {
-    const { status, json } = await invokeVerb('sessions.search', { query: { cursor: 'not-a-real-cursor!!' } });
+    const { status, json } = await invokeVerb('sessions.search', { body: { cursor: 'not-a-real-cursor!!' } });
     expect(status).toBe(400);
     expect(typeof json.error).toBe('string');
   });
 
   test('an invalid kind/status/surfaceKind filter is an honest 400', async () => {
-    const badKind = await invokeVerb('sessions.search', { query: { kind: 'not-a-real-kind' } });
+    const badKind = await invokeVerb('sessions.search', { body: { kind: 'not-a-real-kind' } });
     expect(badKind.status).toBe(400);
-    const badStatus = await invokeVerb('sessions.search', { query: { status: 'not-a-real-status' } });
+    const badStatus = await invokeVerb('sessions.search', { body: { status: 'not-a-real-status' } });
     expect(badStatus.status).toBe(400);
-    const badSurface = await invokeVerb('sessions.search', { query: { surfaceKind: 'not-a-real-surface' } });
+    const badSurface = await invokeVerb('sessions.search', { body: { surfaceKind: 'not-a-real-surface' } });
     expect(badSurface.status).toBe(400);
   });
 });
@@ -341,5 +354,37 @@ describe('W3-S2 — access gates', () => {
   test('an unknown methodId is an honest 404', async () => {
     const { status } = await invokeVerb('fleet.not-a-real-verb');
     expect(status).toBe(404);
+  });
+});
+
+describe('W3-S2 — event-emission honesty (verified-not-applicable for EVENT_DOMAIN)', () => {
+  // The W3-S2 landed scope is read/lifecycle verbs with NO broadcast events:
+  // the handlers call the managers and return; ProcessRegistry.subscribe() is
+  // an in-registry callback (explicitly not a runtime-bus event contract) and
+  // WorkspaceCheckpointManager only SUBSCRIBES to bus events for automatic
+  // snapshots. So there is nothing for S1's EVENT_DOMAIN map to tag. This test
+  // pins that: if a later wave adds a broadcast event to one of these verbs
+  // (e.g. the deferred fleet-update alongside fleet mutators), its descriptor
+  // grows an `events` declaration, this test fails, and the author is forced
+  // to register the event's domain in EVENT_DOMAIN (gateway-scope-enforcement.ts)
+  // at the same time instead of shipping an untagged over-broadcast.
+  const W3_S2_METHOD_IDS = [
+    'fleet.snapshot',
+    'fleet.list',
+    'checkpoints.list',
+    'checkpoints.create',
+    'checkpoints.diff',
+    'checkpoints.restore',
+    'sessions.search',
+  ] as const;
+
+  test('none of the W3-S2 verbs declares a wire event (no EVENT_DOMAIN entries needed)', async () => {
+    for (const methodId of W3_S2_METHOD_IDS) {
+      const res = await fetch(`${daemon.url}/api/control-plane/methods/${methodId}`, { headers: auth() });
+      expect(res.status).toBe(200);
+      const { method } = await res.json() as { method: { id: string; events?: string[] } };
+      expect(method.id).toBe(methodId);
+      expect(method.events ?? []).toEqual([]);
+    }
   });
 });
