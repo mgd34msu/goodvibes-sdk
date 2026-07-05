@@ -1237,7 +1237,7 @@ export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
     readonly productVersion: "0.38.0";
     readonly operatorMethodCount: 297;
-    readonly operatorEventCount: 30;
+    readonly operatorEventCount: 31;
     readonly peerEndpointCount: 6;
 };
 
