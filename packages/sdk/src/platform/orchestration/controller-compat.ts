@@ -28,8 +28,28 @@
  */
 import type { AgentRecord } from '../tools/agent/manager.js';
 import type { ConfigManager } from '../config/manager.js';
+import type { WrfcCommitScope } from '../agents/wrfc-config.js';
 import { getWrfcCommitScope } from '../agents/wrfc-config.js';
 import type { CreateWorkstreamInput } from './engine.js';
+import type { PhaseSpec } from './types.js';
+
+/**
+ * The canonical engineer→review phase template (BIG-3 item 1). This is the ONE
+ * definition of the standard two-phase pipeline; both the compat single-chain
+ * bridge (`fromChainSpec`, capacity 1) and the multi-item proposal assembly
+ * (`fromPlanProposal`, proposal-workstream.ts, capacity = item count) build
+ * their phases from it — "the same phase template fromChainSpec uses",
+ * parameterized only by the per-phase `capacity` knob so N proposal items can
+ * run the engineer phase concurrently (dependency-gated) while a single chain
+ * stays at capacity 1. Both phases carry the same commit scope; nothing else
+ * varies per caller.
+ */
+export function engineerReviewPhases(commitScope: WrfcCommitScope, capacity = 1): PhaseSpec[] {
+  return [
+    { role: 'engineer', capacity, kind: 'engineer', gate: { scope: commitScope, gates: [] } },
+    { role: 'reviewer', capacity, kind: 'review', gate: { scope: commitScope, gates: [] } },
+  ];
+}
 
 export function fromChainSpec(
   ownerRecord: Pick<AgentRecord, 'id' | 'task'>,
@@ -39,9 +59,6 @@ export function fromChainSpec(
   return {
     title: ownerRecord.task,
     items: [{ id: ownerRecord.id, title: ownerRecord.task, task: ownerRecord.task }],
-    phases: [
-      { role: 'engineer', capacity: 1, kind: 'engineer', gate: { scope: commitScope, gates: [] } },
-      { role: 'reviewer', capacity: 1, kind: 'review', gate: { scope: commitScope, gates: [] } },
-    ],
+    phases: engineerReviewPhases(commitScope, 1),
   };
 }

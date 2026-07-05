@@ -16,6 +16,15 @@ export async function runWrfcGateChecks(options: {
   readonly runtimeBus: RuntimeEventBus;
   readonly sessionId: string;
   readonly chainId: string;
+  /**
+   * Working directory to RUN the gate commands (and detect skip conditions) in
+   * (BIG-3 item 5). Defaults to `projectRoot`. In worktree-isolation mode the
+   * orchestration phase-runner passes the item's worktree path here, so gates
+   * execute against the item's isolated tree rather than the shared root —
+   * threaded exactly like the phantom-work guard's worktree path. Omitted ⇒
+   * projectRoot, i.e. shared-mode behavior unchanged.
+   */
+  readonly cwd?: string | undefined;
   readonly onResult?: ((results: readonly QualityGateResult[], result: QualityGateResult) => void) | undefined;
 }): Promise<QualityGateResult[]> {
   const gates = getEnabledWrfcGates(options.configManager);
@@ -29,11 +38,15 @@ export async function runWrfcGateChecks(options: {
     gateCount: gates.length,
   });
 
-  const pkgScripts = await loadPackageScripts(options.projectRoot);
+  // Resolve/detect/execute all relative to the gate cwd (worktree path in
+  // isolation mode, else projectRoot) so skip detection and command execution
+  // agree on which tree they're inspecting.
+  const gateCwd = options.cwd ?? options.projectRoot;
+  const pkgScripts = await loadPackageScripts(gateCwd);
   const results: QualityGateResult[] = [];
 
   for (const gate of gates) {
-    const skipReason = getSkippedGateReason(gate.name, options.projectRoot, pkgScripts);
+    const skipReason = getSkippedGateReason(gate.name, gateCwd, pkgScripts);
     if (skipReason !== null) {
       const result: QualityGateResult = {
         gate: gate.name,
@@ -53,7 +66,7 @@ export async function runWrfcGateChecks(options: {
     }
 
     const startedAt = Date.now();
-    const { passed, output } = await executeGateCommand(gate.command);
+    const { passed, output } = await executeGateCommand(gate.command, options.cwd);
     const result: QualityGateResult = {
       gate: gate.name,
       passed,
