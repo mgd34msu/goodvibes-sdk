@@ -90,6 +90,16 @@ export interface SharedSessionRecord {
    */
   readonly lastActivityAt: number;
   readonly messageCount: number;
+  /**
+   * How many of this session's message BODIES are actually retained in the
+   * durable store, when that is fewer than {@link messageCount}. Persistence
+   * caps retained bodies per session (see MAX_PERSISTED_MESSAGES_PER_SESSION);
+   * when the cap prunes the oldest bodies, `messageCount` stays the honest
+   * logical total and this field records how many bodies survived. Omitted when
+   * nothing was pruned (retained === messageCount), so the common case carries
+   * no marker. Readers must treat an absent value as "fully retained".
+   */
+  readonly retainedMessageCount?: number | undefined;
   readonly pendingInputCount: number;
   readonly routeIds: readonly string[];
   readonly surfaceKinds: readonly SurfaceKind[];
@@ -196,4 +206,33 @@ export interface RegisterSharedSessionInput {
   readonly project?: string | undefined;
   readonly title?: string | undefined;
   readonly participant: SharedSessionParticipant;
+  /**
+   * Explicit intent to reopen a CLOSED session. Default `false`: registering
+   * against a closed id does NOT silently reopen it — it records the heartbeat
+   * (participant.lastSeenAt) and returns the still-closed record with an honest
+   * conflict marker. Pass `true` to reopen as part of the register.
+   */
+  readonly reopen?: boolean | undefined;
+}
+
+/**
+ * Result of {@link SharedSessionBroker.register}. Carries the record plus honest
+ * lifecycle disposition so a caller (and the wire) never has to guess whether a
+ * closed session was resurrected.
+ *
+ * SPOOFING / TRUST NOTE: the control plane uses a single-admin-token model, so
+ * cross-surface writes under the same token (e.g. two surfaces heartbeating the
+ * same session id) are LEGITIMATE co-participation, not impersonation. `register`
+ * merges participants freely; what it will NOT do silently is change lifecycle
+ * status or rename a titled session.
+ */
+export interface SharedSessionRegisterResult {
+  readonly record: SharedSessionRecord;
+  /** True only when this call reopened a previously-closed session. */
+  readonly reopened: boolean;
+  /**
+   * Present when register targeted a CLOSED session without `reopen: true`. The
+   * record is returned as-is (still closed) with the heartbeat recorded.
+   */
+  readonly conflict?: { readonly status: 'closed' } | undefined;
 }

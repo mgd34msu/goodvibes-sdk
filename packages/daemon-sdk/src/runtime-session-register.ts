@@ -1,16 +1,9 @@
 import type { DaemonRuntimeRouteContext } from './runtime-route-types.js';
 import { jsonErrorResponse } from './error-response.js';
 import { isJsonRecord } from './route-helpers.js';
-import { toSharedSessionRecordResponse } from './runtime-session-routes.js';
+import { toSharedSessionRecordResponse, SHARED_SESSION_KINDS, type SharedSessionRecordResponse } from './runtime-session-routes.js';
 
-const SESSION_KINDS = new Set([
-  'tui',
-  'agent',
-  'webui',
-  'companion-task',
-  'companion-chat',
-  'automation',
-]);
+type RegisterKind = SharedSessionRecordResponse['kind'];
 
 function readString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
@@ -44,12 +37,22 @@ export async function handleRegisterSharedSession(
     );
   }
 
+  // Honest input validation: an unknown session kind is a 400, NOT a silent
+  // coercion to 'tui'. Absent kind is allowed (the broker defaults it).
+  const kindRaw = readString(body.kind);
+  if (kindRaw !== undefined && !SHARED_SESSION_KINDS.has(kindRaw as RegisterKind)) {
+    return jsonErrorResponse(
+      { error: `sessions.register: unknown session kind '${kindRaw}'. Expected one of: ${[...SHARED_SESSION_KINDS].join(', ')}.` },
+      { status: 400 },
+    );
+  }
+
   await context.sessionBroker.start();
 
-  const kind = readString(body.kind);
-  const session = await context.sessionBroker.register({
+  const reopen = body.reopen === true;
+  const result = await context.sessionBroker.register({
     sessionId,
-    ...(kind && SESSION_KINDS.has(kind) ? { kind } : {}),
+    ...(kindRaw ? { kind: kindRaw as RegisterKind } : {}),
     ...(readString(body.project) ? { project: readString(body.project) } : {}),
     ...(readString(body.title) ? { title: readString(body.title) } : {}),
     participant: {
@@ -61,9 +64,12 @@ export async function handleRegisterSharedSession(
       ...(readString(participantInput?.routeId) ? { routeId: readString(participantInput?.routeId) } : {}),
       lastSeenAt: Date.now(),
     },
+    ...(reopen ? { reopen: true } : {}),
   });
 
   return context.recordApiResponse(req, '/api/sessions/register', Response.json({
-    session: toSharedSessionRecordResponse(session.id, session),
+    session: toSharedSessionRecordResponse(result.record.id, result.record),
+    reopened: result.reopened,
+    ...(result.conflict ? { conflict: result.conflict } : {}),
   }, { status: 200 }));
 }

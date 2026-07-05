@@ -7,6 +7,7 @@ import type {
   SharedSessionInputRecord,
   SharedSessionMessage,
   SharedSessionRecord,
+  SharedSessionRegisterResult,
   SharedSessionSubmission,
 } from '../../control-plane/index.js';
 import type { RuntimeTask } from '../store/domains/tasks.js';
@@ -160,12 +161,20 @@ function createOperatorClient(
           'session',
           'sessions.create',
         )),
-      register: async (input: RegisterSharedSessionInput): Promise<SharedSessionRecord> =>
-        normalizeSharedSessionRecord(assertObjectField<Record<string, unknown>>(
-          await operatorApi.invoke<Record<string, unknown>>('sessions.register', asContractInput(input) ?? {}),
+      register: async (input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult> => {
+        const response = await operatorApi.invoke<Record<string, unknown>>('sessions.register', asContractInput(input) ?? {});
+        const record = normalizeSharedSessionRecord(assertObjectField<Record<string, unknown>>(
+          response,
           'session',
           'sessions.register',
-        )),
+        ));
+        const conflictRaw = response['conflict'];
+        const conflict = conflictRaw && typeof conflictRaw === 'object'
+          && (conflictRaw as { status?: unknown }).status === 'closed'
+          ? { status: 'closed' as const }
+          : undefined;
+        return { record, reopened: response['reopened'] === true, ...(conflict ? { conflict } : {}) };
+      },
       close: async (sessionId): Promise<SharedSessionRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.sessions.close(sessionId));
         return response?.session ? normalizeSharedSessionRecord(response.session as Record<string, unknown>) : null;

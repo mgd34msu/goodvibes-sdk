@@ -179,3 +179,87 @@ describe('migration importer — folds all three legacy stores into one home sto
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// MAJOR 1 — the persisted-message cap is PER SESSION, not global. The old cap
+// flattened every session's messages then sliced the combined stream, silently
+// dropping the OLDEST sessions' whole transcripts while messageCount stayed
+// inflated. This is the 299×10 scenario: 2 990 messages must all survive.
+// ---------------------------------------------------------------------------
+
+function companionSessionWithMessages(id: string, messageCount: number): PersistedChatSession {
+  const base = Date.now();
+  return {
+    meta: {
+      id, kind: 'companion-chat', title: `Chat ${id}`, model: null, provider: null,
+      systemPrompt: null, status: 'closed', createdAt: base, updatedAt: base,
+      closedAt: base, messageCount,
+    },
+    messages: Array.from({ length: messageCount }, (_v, i) => ({
+      id: `${id}-m${i}`, sessionId: id, role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: `${id} message ${i}`, createdAt: base + i,
+    })),
+  };
+}
+
+describe('MAJOR 1 — per-session message cap: no silent transcript loss on migration', () => {
+  test('299 closed sessions × 10 messages fold in with ZERO loss and honest counts', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'importer-cap-'));
+    try {
+      const companionDir = join(root, 'home', '.goodvibes', 'companion-chat', 'sessions');
+      const homeStorePath = join(root, 'home', '.goodvibes', 'control-plane', 'sessions.json');
+      const persistence = new CompanionChatPersistence(companionDir);
+      const N = 299;
+      for (let i = 0; i < N; i++) {
+        await persistence.save(companionSessionWithMessages(`chat-${i}`, 10));
+      }
+
+      const sources = discoverLegacySessionSources({ projectRoot: join(root, 'projX'), companionSessionsDir: companionDir });
+      const result = await importLegacySessionStores({ homeStorePath, sources });
+      expect(result.total).toBe(N);
+
+      const home = makeBroker(homeStorePath);
+      await home.start();
+      const sessions = home.listSessions(500);
+      expect(sessions).toHaveLength(N);
+
+      // Every session keeps all 10 of ITS messages — under the OLD global 2 000
+      // cap the oldest ~99 sessions would have lost their whole transcripts.
+      let totalRetained = 0;
+      for (const s of sessions) {
+        const msgs = home.getMessages(s.id, 100);
+        expect(msgs).toHaveLength(10);
+        totalRetained += msgs.length;
+        // Nothing pruned → messageCount honest, no truncation marker.
+        expect(s.messageCount).toBe(10);
+        expect((s as { retainedMessageCount?: number }).retainedMessageCount).toBeUndefined();
+      }
+      expect(totalRetained).toBe(N * 10); // 2 990 — zero silent loss
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('a session that DOES exceed the per-session cap is truncated HONESTLY (retainedMessageCount marker)', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'importer-cap-trunc-'));
+    try {
+      const companionDir = join(root, 'home', '.goodvibes', 'companion-chat', 'sessions');
+      const homeStorePath = join(root, 'home', '.goodvibes', 'control-plane', 'sessions.json');
+      // 2 500 messages > the 2 000 per-session cap.
+      await new CompanionChatPersistence(companionDir).save(companionSessionWithMessages('huge', 2_500));
+
+      const sources = discoverLegacySessionSources({ projectRoot: join(root, 'projX'), companionSessionsDir: companionDir });
+      await importLegacySessionStores({ homeStorePath, sources });
+
+      const home = makeBroker(homeStorePath);
+      await home.start();
+      const rec = home.getSession('huge') as { messageCount: number; retainedMessageCount?: number };
+      // Logical total stays honest; the marker records how many bodies survived.
+      expect(rec.messageCount).toBe(2_500);
+      expect(rec.retainedMessageCount).toBe(2_000);
+      expect(home.getMessages('huge', 5_000)).toHaveLength(2_000);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

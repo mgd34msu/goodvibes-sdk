@@ -14,6 +14,7 @@
  *   - the intent→event mapping is contract-aligned so a broker rename fails loudly
  */
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/gateway.js';
 import { createFeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/manager.js';
@@ -150,6 +151,40 @@ describe('S2c re-point — session mutators advertise control.session_update', (
       }
     }
     expect(dangling).toEqual([]);
+  });
+
+  test('every ACTUAL broker emit site is a declared wire discriminant (source introspection)', () => {
+    // Introspect the real emit sites in the broker source rather than trusting a
+    // hand-kept list: extract every publishUpdate(...) / publishInputLifecycleEvent(...)
+    // event name, expand the dynamic `session-input-${state}` site over the
+    // finalizeable input states, and assert each is declared in the enum. A future
+    // emit of an undeclared name (e.g. a new session-input-<state>) fails here.
+    const brokerSrc = readFileSync(
+      new URL('../packages/sdk/src/platform/control-plane/session-broker.ts', import.meta.url),
+      'utf-8',
+    );
+    const declared = new Set<string>(SESSION_UPDATE_WIRE_EVENTS);
+    // finalizeAgentInputs can only transition to these states (see its signature).
+    const finalizeStates = ['completed', 'failed', 'cancelled'];
+    const emitted = new Set<string>();
+    const literalRe = /publish(?:Update|InputLifecycleEvent)\(\s*[`'"]([^`'"]+)[`'"]/g;
+    for (const match of brokerSrc.matchAll(literalRe)) {
+      const raw = match[1]!;
+      if (raw.includes('${')) {
+        // Dynamic `session-input-${finalized.state}` → expand over finalize states.
+        const prefix = raw.slice(0, raw.indexOf('${'));
+        for (const state of finalizeStates) emitted.add(`${prefix}${state}`);
+      } else {
+        emitted.add(raw);
+      }
+    }
+    // Sanity: we actually found the discriminated emit names.
+    expect(emitted.has('session-created')).toBe(true);
+    expect(emitted.has('session-input-completed')).toBe(true);
+    expect(emitted.has('session-input-failed')).toBe(true);
+
+    const undeclared = [...emitted].filter((event) => !declared.has(event));
+    expect(undeclared).toEqual([]);
   });
 
   test('every write:sessions method advertises control.session_update', () => {

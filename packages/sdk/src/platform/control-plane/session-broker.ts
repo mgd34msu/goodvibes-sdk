@@ -20,6 +20,7 @@ import type {
   SharedSessionMessage,
   SharedSessionParticipant,
   SharedSessionRecord,
+  SharedSessionRegisterResult,
   SharedSessionSubmission,
   SteerSharedSessionMessageInput,
   SubmitSharedSessionMessageInput,
@@ -56,6 +57,7 @@ import {
   closeSharedSessionRecord,
   createSharedSessionRecord,
   participantToAttachInput,
+  registerSharedSession,
   reopenSharedSessionRecord,
 } from './session-broker-sessions.js';
 import { sweepSharedSessions } from './session-broker-gc.js';
@@ -66,11 +68,13 @@ const MAX_CONTINUATION_MESSAGES = 16;
 /** Max inputs retained per session bucket. */
 const MAX_PERSISTED_INPUTS = 500;
 /**
- * How long a closed session is retained in Maps before hard deletion.
- * Allows trailing reads (e.g. status checks shortly after close) to still
- * see the final record. Default: 5 minutes.
+ * Default retention for CLOSED sessions (HISTORY): `POSITIVE_INFINITY` = retain
+ * indefinitely, so the GC sweep NEVER deletes a closed session. A finite value
+ * (constructor `deletionRetentionMs`) is the opt-in deletion authority. The store
+ * is a full snapshot of memory, so there is no separate memory/disk eviction here
+ * (unlike the companion manager); memory is bounded by the per-session cap below.
  */
-const SESSION_DELETION_RETENTION_MS = 5 * 60_000;
+const SESSION_DELETION_RETENTION_MS = Number.POSITIVE_INFINITY;
 
 export class SharedSessionBroker {
   private readonly store: PersistentStore<SharedSessionStoreSnapshot>;
@@ -90,11 +94,11 @@ export class SharedSessionBroker {
   private readonly _idleEmptyMs: number;
   /** Default idle threshold for sessions with content (ms). */
   private readonly _idleLongMs: number;
+  /** Retention window (ms since closedAt) for CLOSED sessions; Infinity = retain forever. */
+  private readonly _deletionRetentionMs: number;
 
-  /**
-   * @param config.idleEmptyMs - Idle timeout for empty (0-message) sessions (default: 10 minutes).
-   * @param config.idleLongMs  - Idle timeout for sessions with content (default: 24 hours).
-   */
+  /** @param config idleEmptyMs (empty-session idle, default 10m), idleLongMs (default
+   * 24h), deletionRetentionMs (closed-session delete age, default Infinity = retain). */
   constructor(config: {
     readonly store?: PersistentStore<SharedSessionStoreSnapshot> | undefined;
     readonly storePath?: string | undefined;
@@ -103,6 +107,7 @@ export class SharedSessionBroker {
     readonly messageSender: SharedSessionMessageSender;
     readonly idleEmptyMs?: number | undefined;
     readonly idleLongMs?: number | undefined;
+    readonly deletionRetentionMs?: number | undefined;
   }) {
     if (!config.store && !config.storePath) {
       throw new Error('SharedSessionBroker requires an explicit store or storePath.');
@@ -114,6 +119,7 @@ export class SharedSessionBroker {
     this.messageSender = config.messageSender;
     this._idleEmptyMs = config.idleEmptyMs ?? 10 * 60 * 1000;  // 10 min
     this._idleLongMs  = config.idleLongMs  ?? 24 * 60 * 60 * 1000; // 24 h
+    this._deletionRetentionMs = config.deletionRetentionMs ?? SESSION_DELETION_RETENTION_MS;
   }
 
   setEventPublisher(publisher: SharedSessionEventPublisher | null): void {
@@ -252,13 +258,16 @@ export class SharedSessionBroker {
     });
   }
 
-  /**
-   * Idempotent upsert keyed on a caller-supplied session id — the external
-   * registration + heartbeat contract (sessions.register). One id always yields
-   * one record; re-calls adopt and advance `participant.lastSeenAt` (heartbeat).
-   */
-  register(input: RegisterSharedSessionInput): Promise<SharedSessionRecord> {
-    return this.ensureSession(input);
+  /** Idempotent register/heartbeat (sessions.register); honest closed semantics
+   * live in {@link registerSharedSession}, this injects the broker ops. */
+  async register(input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult> {
+    await this.start();
+    return registerSharedSession({
+      getSession: (id) => this.sessions.get(id) ?? null,
+      createSession: (i) => this.createSession(i),
+      reopenSession: (id) => this.reopenSession(id),
+      attachParticipant: (s, a) => this.attachParticipantAndRoute(s, a),
+    }, input);
   }
 
   getMessages(sessionId: string, limit = 100): SharedSessionMessage[] {
@@ -772,25 +781,15 @@ export class SharedSessionBroker {
     refreshPendingInputCount(this.sessionInputStore(), sessionId);
   }
 
-  /**
-   * Periodic idle-session GC sweep.
-   *
-   * Policy:
-   * - Sessions with messageCount === 0 AND no active agent AND idle longer than
-   *   `_idleEmptyMs` (default 10min) are closed with reason `idle-empty`.
-   * - Sessions with messageCount > 0 AND no active agent AND idle longer than
-   *   `_idleLongMs` (default 24h) are closed with reason `idle-long`.
-   *
-   * "Idle" is measured from `lastActivityAt` (updated on createInput/bindAgent/
-   * appendMessage). Sessions with an active agent are never GC'd.
-   */
+  /** Periodic sweep: idle-close active sessions and (only under a finite retention
+   * window) delete closed ones. Full policy lives in {@link sweepSharedSessions}. */
   private gcSweep(): void {
     const anyChanged = sweepSharedSessions(
       { sessions: this.sessions, messages: this.messages, inputs: this.inputs },
       {
         idleEmptyMs: this._idleEmptyMs,
         idleLongMs: this._idleLongMs,
-        deletionRetentionMs: SESSION_DELETION_RETENTION_MS,
+        deletionRetentionMs: this._deletionRetentionMs,
         publishUpdate: (event, payload) => this.publishUpdate(event, payload),
       },
     );

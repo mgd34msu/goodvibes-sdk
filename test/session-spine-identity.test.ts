@@ -24,6 +24,9 @@ import {
 } from '../packages/sdk/src/events/surfaces.ts';
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
 import type { SharedSessionKind, SharedSessionParticipant } from '../packages/sdk/src/platform/control-plane/index.ts';
+// Cross-package import: the daemon-sdk route validators are ALSO kind-declaration
+// sites and must stay in lockstep with the type / broker / wire schema.
+import { SHARED_SESSION_KINDS } from '../packages/daemon-sdk/src/runtime-session-routes.ts';
 
 const ALL_KINDS: readonly SharedSessionKind[] = [
   'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation',
@@ -88,7 +91,7 @@ describe('SurfaceKind unification', () => {
           kind: surface === 'companion' ? 'companion-chat' : surface,
           participant: participant(surface, `surf:${surface}`),
         });
-        expect(s.surfaceKinds).toContain(surface);
+        expect(s.record.surfaceKinds).toContain(surface);
       }
     });
   });
@@ -116,6 +119,14 @@ describe('SharedSessionKind lockstep (type ↔ validator ↔ wire schema)', () =
     const kindEnum = (register!.inputSchema as { properties?: { kind?: { enum?: string[] } } })
       .properties?.kind?.enum;
     expect(new Set(kindEnum)).toEqual(new Set(ALL_KINDS));
+  });
+
+  test('the daemon-sdk route validators (register + list) enumerate exactly the six kinds', () => {
+    // A kind added to the type + broker + wire schema but not here would silently
+    // drift out of lockstep with the daemon route validation. handleRegisterSharedSession
+    // now shares this single set (no duplicate register-only set), so both the
+    // register 400-guard and the response coercion are covered by this assertion.
+    expect(new Set(SHARED_SESSION_KINDS)).toEqual(new Set(ALL_KINDS));
   });
 });
 
@@ -154,7 +165,7 @@ describe('project-as-data', () => {
 // sessions.register
 // ---------------------------------------------------------------------------
 
-describe('sessions.register — idempotency + heartbeat', () => {
+describe('sessions.register — idempotency + heartbeat + honest closed semantics', () => {
   test('registering the same id twice yields one record with an advanced lastSeenAt', async () => {
     await withTempStore(async (storePath) => {
       const broker = makeBroker(storePath);
@@ -162,7 +173,8 @@ describe('sessions.register — idempotency + heartbeat', () => {
         sessionId: 'reg-1', kind: 'agent', project: '/p',
         participant: participant('agent', 'surf:agent', 'user-1'),
       });
-      const firstSeen = first.participants[0]!.lastSeenAt;
+      expect(first.reopened).toBe(false);
+      const firstSeen = first.record.participants[0]!.lastSeenAt;
       await new Promise((r) => setTimeout(r, 2));
       const second = await broker.register({
         sessionId: 'reg-1', kind: 'agent', project: '/p',
@@ -171,10 +183,10 @@ describe('sessions.register — idempotency + heartbeat', () => {
 
       // Exactly one record — no data-loss-by-duplication.
       expect(broker.listSessions(100).filter((s) => s.id === 'reg-1')).toHaveLength(1);
-      expect(second.participants).toHaveLength(1);
-      expect(second.participants[0]!.lastSeenAt).toBeGreaterThan(firstSeen);
-      expect(second.kind).toBe('agent');
-      expect(second.project).toBe('/p');
+      expect(second.record.participants).toHaveLength(1);
+      expect(second.record.participants[0]!.lastSeenAt).toBeGreaterThan(firstSeen);
+      expect(second.record.kind).toBe('agent');
+      expect(second.record.project).toBe('/p');
     });
   });
 
@@ -183,18 +195,47 @@ describe('sessions.register — idempotency + heartbeat', () => {
       const broker = makeBroker(storePath);
       await broker.register({ sessionId: 'reg-2', participant: participant('agent', 'surf:a', 'user-1') });
       const merged = await broker.register({ sessionId: 'reg-2', participant: participant('webui', 'surf:w', 'user-2') });
-      expect(merged.participants).toHaveLength(2);
-      expect(merged.surfaceKinds.sort()).toEqual(['agent', 'webui']);
+      expect(merged.record.participants).toHaveLength(2);
+      expect(merged.record.surfaceKinds.sort()).toEqual(['agent', 'webui']);
     });
   });
 
-  test('register on a closed id reopens it (ensureSession adopt semantics)', async () => {
+  test('register on a CLOSED id does NOT reopen — heartbeat recorded, honest conflict returned', async () => {
     await withTempStore(async (storePath) => {
       const broker = makeBroker(storePath);
       await broker.createSession({ id: 'reg-3', kind: 'tui', project: '/p' });
       await broker.closeSession('reg-3');
-      const reopened = await broker.register({ sessionId: 'reg-3', participant: participant('tui', 'surf:t') });
-      expect(reopened.status).toBe('active');
+      const result = await broker.register({ sessionId: 'reg-3', participant: participant('tui', 'surf:t') });
+      // Stays closed; the caller is told honestly.
+      expect(result.reopened).toBe(false);
+      expect(result.conflict).toEqual({ status: 'closed' });
+      expect(result.record.status).toBe('closed');
+      // But the heartbeat participant WAS recorded (that IS the heartbeat).
+      expect(result.record.participants.some((p) => p.surfaceId === 'surf:t')).toBe(true);
+      // And the store still shows it closed.
+      expect(broker.getSession('reg-3')?.status).toBe('closed');
+    });
+  });
+
+  test('register on a CLOSED id WITH reopen:true reopens it explicitly', async () => {
+    await withTempStore(async (storePath) => {
+      const broker = makeBroker(storePath);
+      await broker.createSession({ id: 'reg-4', kind: 'tui', project: '/p' });
+      await broker.closeSession('reg-4');
+      const result = await broker.register({ sessionId: 'reg-4', participant: participant('tui', 'surf:t'), reopen: true });
+      expect(result.reopened).toBe(true);
+      expect(result.conflict).toBeUndefined();
+      expect(result.record.status).toBe('active');
+      expect(broker.getSession('reg-4')?.status).toBe('active');
+    });
+  });
+
+  test('a heartbeat never overwrites a real (non-placeholder) title', async () => {
+    await withTempStore(async (storePath) => {
+      const broker = makeBroker(storePath);
+      await broker.register({ sessionId: 'reg-5', title: 'My Named Session', participant: participant('tui', 'surf:t') });
+      const beat = await broker.register({ sessionId: 'reg-5', title: 'Heartbeat Rename Attempt', participant: participant('tui', 'surf:t') });
+      expect(beat.record.title).toBe('My Named Session');
     });
   });
 });
@@ -222,6 +263,30 @@ describe('restart survival across projects', () => {
       expect(byId.get('closed-a')?.project).toBe('/A');
       // Boot reconciliation cleared any activeAgentId.
       for (const s of fresh.listSessions(100)) expect(s.activeAgentId).toBeUndefined();
+    });
+  });
+
+  test('a closed session survives a GC sweep run well past the old 5-min grace (default = retain indefinitely)', async () => {
+    await withTempStore(async (storePath) => {
+      const broker = makeBroker(storePath);
+      const closed = await broker.createSession({ id: 'ancient-closed', kind: 'tui', project: '/A' });
+      await broker.closeSession(closed.id);
+
+      // Backdate closedAt far past the OLD 5-min deletion grace, then execute the
+      // sweep directly. Under the new default (retain indefinitely) it must NOT delete.
+      const store = broker as unknown as {
+        sessions: Map<string, { closedAt?: number; updatedAt: number }>;
+        gcSweep: () => void;
+      };
+      const rec = store.sessions.get('ancient-closed')!;
+      store.sessions.set('ancient-closed', { ...rec, closedAt: Date.now() - 60 * 60_000 });
+      store.gcSweep(); // sweep actually executed
+
+      expect(broker.getSession('ancient-closed')?.status).toBe('closed');
+      // And it still survives a restart from disk.
+      const fresh = makeBroker(storePath);
+      await fresh.start();
+      expect(fresh.getSession('ancient-closed')?.status).toBe('closed');
     });
   });
 });

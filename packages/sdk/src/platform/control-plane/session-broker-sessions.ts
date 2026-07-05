@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { AutomationRouteBinding } from '../automation/routes.js';
 import type {
+  CreateSharedSessionInput,
   ParticipantRouteAttachInput,
+  RegisterSharedSessionInput,
   SharedSessionParticipant,
   SharedSessionRecord,
+  SharedSessionRegisterResult,
 } from './session-types.js';
 import { dedupeSessionSurfaceKinds } from './session-broker-helpers.js';
 import { upsertSessionParticipant } from './session-broker-state.js';
@@ -65,6 +68,48 @@ export function createSharedSessionRecord(input: CreateSharedSessionRecordInput)
  * participant/route merge expects. Used by `register` so a heartbeat re-attaches
  * the participant (advancing `lastSeenAt`) without carrying a message body.
  */
+/** The broker operations {@link registerSharedSession} needs, injected so the
+ * register control-flow lives here instead of bloating the broker class. */
+export interface RegisterBrokerOps {
+  getSession(id: string): SharedSessionRecord | null;
+  createSession(input: CreateSharedSessionInput): Promise<SharedSessionRecord>;
+  reopenSession(id: string): Promise<SharedSessionRecord | null>;
+  attachParticipant(session: SharedSessionRecord, attach: ParticipantRouteAttachInput): Promise<SharedSessionRecord>;
+}
+
+/**
+ * The idempotent register/heartbeat control-flow with HONEST closed semantics:
+ * a brand-new id is created; an existing OPEN id adopts the participant; an
+ * existing CLOSED id records the heartbeat but stays closed (returning a conflict
+ * marker) UNLESS `reopen: true` is passed. A titled session is never renamed by
+ * the heartbeat (that rule lives in {@link attachSharedSessionParticipantAndRoute}).
+ */
+export async function registerSharedSession(
+  ops: RegisterBrokerOps,
+  input: RegisterSharedSessionInput,
+): Promise<SharedSessionRegisterResult> {
+  const existing = ops.getSession(input.sessionId);
+  if (!existing) {
+    const created = await ops.createSession({
+      id: input.sessionId,
+      ...(input.kind !== undefined ? { kind: input.kind } : {}),
+      ...(input.project !== undefined ? { project: input.project } : {}),
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      participant: input.participant,
+    });
+    return { record: created, reopened: false };
+  }
+  const attach = participantToAttachInput(input.participant, input.title);
+  if (existing.status === 'closed') {
+    if (input.reopen === true) {
+      const reopened = (await ops.reopenSession(existing.id)) ?? existing;
+      return { record: await ops.attachParticipant(reopened, attach), reopened: true };
+    }
+    return { record: await ops.attachParticipant(existing, attach), reopened: false, conflict: { status: 'closed' } };
+  }
+  return { record: await ops.attachParticipant(existing, attach), reopened: false };
+}
+
 export function participantToAttachInput(
   participant: SharedSessionParticipant,
   title?: string,
@@ -112,6 +157,22 @@ export function bindSharedSessionAgent(session: SharedSessionRecord, agentId: st
   };
 }
 
+/**
+ * True when a session title is still the auto-generated placeholder (empty or
+ * `Session <id>`) and can be named by an incoming register/attach. A real,
+ * user-supplied title is never overwritten by this path.
+ */
+export function isPlaceholderSessionTitle(title: string, id: string): boolean {
+  const trimmed = title.trim();
+  return trimmed.length === 0 || trimmed === `Session ${id}`;
+}
+
+/**
+ * Merge a participant + optional route onto a session. This is the HEARTBEAT
+ * path — it records the participant and advances lastSeenAt, but it must NOT by
+ * itself change lifecycle status (a closed session stays closed; reopening is an
+ * explicit verb) and must NOT overwrite a real title (only names a placeholder).
+ */
 export function attachSharedSessionParticipantAndRoute(input: {
   readonly session: SharedSessionRecord;
   readonly message: ParticipantRouteAttachInput;
@@ -129,12 +190,18 @@ export function attachSharedSessionParticipantAndRoute(input: {
     routeId: input.binding?.id,
     lastSeenAt: Date.now(),
   });
+  const incomingTitle = input.message.title?.trim();
+  const title = incomingTitle && isPlaceholderSessionTitle(input.session.title, input.session.id)
+    ? incomingTitle
+    : input.session.title;
   return {
     ...input.session,
-    title: input.message.title?.trim() || input.session.title,
-    status: input.session.status === 'closed' ? 'active' : input.session.status,
+    title,
+    // Status is intentionally preserved: the participant merge is a heartbeat and
+    // cannot flip a closed session back to active. Reopening is an explicit verb.
+    status: input.session.status,
     updatedAt: Date.now(),
-    closedAt: input.session.status === 'closed' ? undefined : input.session.closedAt,
+    closedAt: input.session.closedAt,
     routeIds: nextRouteIds,
     participants,
     surfaceKinds: dedupeSessionSurfaceKinds(participants),

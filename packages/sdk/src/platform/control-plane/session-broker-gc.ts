@@ -10,6 +10,22 @@ export interface SharedSessionGcStore {
 export interface SharedSessionGcOptions {
   readonly idleEmptyMs: number;
   readonly idleLongMs: number;
+  /**
+   * Age (ms since closedAt) at which a CLOSED session's record + bodies are
+   * PERMANENTLY deleted from the store. Closed sessions are HISTORY: by default
+   * this is `Number.POSITIVE_INFINITY` (retain indefinitely — a closed session
+   * is never swept off disk), and deletion happens only when a caller opts into
+   * a finite retention window or invokes an explicit delete verb.
+   *
+   * NOTE ON MEMORY vs PERSISTENCE (divergence from the companion manager):
+   * the broker's durable store is a FULL SNAPSHOT of these in-memory maps
+   * (createSessionBrokerSnapshot), so there is no separate "memory handle" to
+   * evict independently of disk — dropping a closed session's bodies from these
+   * maps would also drop them from the next persisted snapshot. Retention is
+   * therefore all-or-nothing here: retained closed sessions stay both listable
+   * and on disk; memory stays bounded by the per-session message cap
+   * (MAX_PERSISTED_MESSAGES_PER_SESSION) rather than by body eviction.
+   */
   readonly deletionRetentionMs: number;
   readonly publishUpdate: (event: string, payload: unknown) => void;
 }
@@ -19,8 +35,11 @@ export function sweepSharedSessions(store: SharedSessionGcStore, options: Shared
   let anyChanged = false;
   for (const [sessionId, session] of store.sessions.entries()) {
     if (session.status === 'closed') {
+      // History by default. Only an explicit FINITE retention window authorizes
+      // permanent deletion; the default POSITIVE_INFINITY never trips this and
+      // the closed record stays listable (includeClosed) and on disk forever.
       const closedAt = session.closedAt ?? session.updatedAt;
-      if (now - closedAt >= options.deletionRetentionMs) {
+      if (Number.isFinite(options.deletionRetentionMs) && now - closedAt >= options.deletionRetentionMs) {
         store.sessions.delete(sessionId);
         store.messages.delete(sessionId);
         store.inputs.delete(sessionId);

@@ -41,6 +41,7 @@ import {
   SHARED_SESSION_MESSAGE_ROUTE_OUTPUT_SCHEMA,
   SHARED_SESSION_RECORD_SCHEMA,
   SHARED_SESSION_REGISTER_INPUT_SCHEMA,
+  SHARED_SESSION_REGISTER_OUTPUT_SCHEMA,
   SHARED_SESSION_ROUTING_INTENT_SCHEMA,
   SHARED_SESSION_WITH_INPUTS_SCHEMA,
   SHARED_SESSION_WITH_MESSAGES_SCHEMA,
@@ -349,13 +350,13 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.register',
     title: 'Register Shared Session',
-    description: 'Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Prefer this over sessions.create for external runtimes that own their session id.',
+    description: 'Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.',
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/register' },
     events: ['control.session_update'],
     inputSchema: SHARED_SESSION_REGISTER_INPUT_SCHEMA,
-    outputSchema: SHARED_SESSION_CREATE_OUTPUT_SCHEMA,
+    outputSchema: SHARED_SESSION_REGISTER_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'sessions.get',

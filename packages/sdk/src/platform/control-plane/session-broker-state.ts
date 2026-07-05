@@ -100,6 +100,7 @@ function normalizeSessionRecord(
   validateOptionalNumber(value['updatedAt']);
   validateOptionalNumber(value['lastActivityAt']);
   validateOptionalNumber(value['messageCount']);
+  validateOptionalNumber(value['retainedMessageCount']);
   validateOptionalNumber(value['pendingInputCount']);
   validateOptionalNumber(value['lastMessageAt']);
   validateOptionalNumber(value['closedAt']);
@@ -156,6 +157,9 @@ function normalizeSessionRecord(
     ...(closedAt !== undefined ? { closedAt } : {}),
     lastActivityAt,
     messageCount: Math.max(isFiniteNumber(value['messageCount']) ? value['messageCount'] : 0, messages.length),
+    ...(isFiniteNumber(value['retainedMessageCount']) && value['retainedMessageCount'] < Math.max(isFiniteNumber(value['messageCount']) ? value['messageCount'] : 0, messages.length)
+      ? { retainedMessageCount: value['retainedMessageCount'] }
+      : {}),
     pendingInputCount: Math.max(isFiniteNumber(value['pendingInputCount']) ? value['pendingInputCount'] : 0, countPendingSessionInputs(inputs)),
     routeIds,
     surfaceKinds,
@@ -326,19 +330,49 @@ export function loadSessionBrokerState(snapshot: SharedSessionStoreSnapshot | nu
   return { sessions, messages, inputs };
 }
 
+/**
+ * Build the durable snapshot with a PER-SESSION message cap.
+ *
+ * `maxPersistedMessagesPerSession` bounds each session's retained bodies
+ * independently — NOT the flattened total. The old global slice-after-flatten
+ * behaviour silently dropped whole sessions' transcripts (the oldest ones) once
+ * the combined message count crossed the cap, while `messageCount` stayed
+ * inflated. Capping per session keeps every session's most recent bodies and,
+ * when a session IS truncated, stamps `retainedMessageCount` so the loss is
+ * honest rather than silent (see {@link SharedSessionRecord.retainedMessageCount}).
+ */
 export function createSessionBrokerSnapshot(
   state: {
     readonly sessions: ReadonlyMap<string, SharedSessionRecord>;
     readonly messages: ReadonlyMap<string, readonly SharedSessionMessage[]>;
     readonly inputs: ReadonlyMap<string, readonly SharedSessionInputRecord[]>;
   },
-  maxPersistedMessages: number,
+  maxPersistedMessagesPerSession: number,
 ): SharedSessionStoreSnapshot {
-  const messages = [...state.messages.values()].flatMap((bucket) => bucket);
+  const cap = Math.max(1, maxPersistedMessagesPerSession);
+  const cappedMessages: SharedSessionMessage[] = [];
+  const retainedBySession = new Map<string, number>();
+  for (const [sessionId, bucket] of state.messages.entries()) {
+    const retained = sortMessages(bucket).slice(-cap);
+    for (const message of retained) cappedMessages.push(message);
+    retainedBySession.set(sessionId, retained.length);
+  }
   const inputs = [...state.inputs.values()].flatMap((bucket) => bucket);
+  const sessions = sortSessions(state.sessions.values()).map((session) => {
+    const retained = retainedBySession.get(session.id) ?? 0;
+    if (retained < session.messageCount) {
+      return { ...session, retainedMessageCount: retained };
+    }
+    // Nothing pruned — drop any stale marker so the common case carries none.
+    if (session.retainedMessageCount !== undefined) {
+      const { retainedMessageCount: _drop, ...rest } = session;
+      return rest;
+    }
+    return session;
+  });
   return {
-    sessions: sortSessions(state.sessions.values()),
-    messages: sortMessages(messages).slice(-maxPersistedMessages),
+    sessions,
+    messages: sortMessages(cappedMessages),
     inputs: sortInputs(inputs),
   };
 }
