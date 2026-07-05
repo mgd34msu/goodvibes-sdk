@@ -110,7 +110,9 @@ export interface OperatorRemoteClient {
       list(sessionId: string, ...args: KnownPathMethodArgs<'sessions.messages.list', 'sessionId'>): Promise<OperatorMethodOutput<'sessions.messages.list'>>;
     };
     inputs: {
+      list(sessionId: string, ...args: KnownPathMethodArgs<'sessions.inputs.list', 'sessionId'>): Promise<OperatorMethodOutput<'sessions.inputs.list'>>;
       cancel(sessionId: string, inputId: string, ...args: KnownPathMethodArgs<'sessions.inputs.cancel', 'sessionId' | 'inputId'>): Promise<OperatorMethodOutput<'sessions.inputs.cancel'>>;
+      deliver(sessionId: string, inputId: string, ...args: KnownPathMethodArgs<'sessions.inputs.deliver', 'sessionId' | 'inputId'>): Promise<OperatorMethodOutput<'sessions.inputs.deliver'>>;
     };
     followUp(...args: KnownMethodArgs<'sessions.followUp'>): Promise<OperatorMethodOutput<'sessions.followUp'>>;
     steer(...args: KnownMethodArgs<'sessions.steer'>): Promise<OperatorMethodOutput<'sessions.steer'>>;
@@ -303,12 +305,20 @@ export function createOperatorRemoteClient(
         },
       },
       inputs: {
+        list: (sessionId, ...args) => {
+          const [input, options] = splitClientArgs<WithoutKeys<OperatorMethodInput<'sessions.inputs.list'>, 'sessionId'>, OperatorRemoteClientInvokeOptions>(args);
+          return invokeTyped('sessions.inputs.list', mergeClientInput({ sessionId }, input), options);
+        },
         cancel: (sessionId, inputId, ...args) => {
           const [input, options] = splitClientArgs<WithoutKeys<OperatorMethodInput<'sessions.inputs.cancel'>, 'sessionId' | 'inputId'>, OperatorRemoteClientInvokeOptions>(args);
           return invokeTyped('sessions.inputs.cancel', mergeClientInput({
             sessionId,
             inputId,
           }, input), options);
+        },
+        deliver: (sessionId, inputId, ...args) => {
+          const [input, options] = splitClientArgs<WithoutKeys<OperatorMethodInput<'sessions.inputs.deliver'>, 'sessionId' | 'inputId'>, OperatorRemoteClientInvokeOptions>(args);
+          return invokeTyped('sessions.inputs.deliver', mergeClientInput({ sessionId, inputId }, input), options);
         },
       },
       followUp: (...args) => invokeTyped('sessions.followUp', ...args),
