@@ -59,6 +59,24 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.inputs.cancel': 'cancelInput',
   'sessions.inputs.deliver': 'deliverInput',
   'sessions.integration.snapshot': 'current',
+  // sessions.search (W3-S2): a NEW, wire-only query (cursor pagination over
+  // the home-scoped store) with no existing in-process consumer — every
+  // other sessions.* verb here mirrors whole-session access the TUI already
+  // gets in-process via services.sessionBroker directly (through this same
+  // operator-client), which sessions.search does not add anything over.
+  // 'http-only' documents the deliberate skip; add a DirectTransport wrapper
+  // if/when a concrete in-process consumer (e.g. T2's union surface) needs
+  // cursor pagination without going through the wire.
+  'sessions.search': 'http-only',
+  // fleet.* (W3-S2): the TUI's fleet panel (src/panels/fleet-read-model.ts)
+  // already holds a direct reference to the SDK's ProcessRegistry and calls
+  // `registry.query()` in-process — it does NOT go through operator-client
+  // at all, so no DirectTransport wrapper is needed here. fleet.snapshot/
+  // fleet.list exist for REMOTE consumers (webui, a detached session view)
+  // that don't share the daemon's process and can only reach the registry
+  // over the wire.
+  'fleet.snapshot': 'http-only',
+  'fleet.list': 'http-only',
 };
 
 interface ParityViolation { readonly id: string; readonly reason: string }
