@@ -1,4 +1,4 @@
-import type { AutomationSurfaceKind } from '../automation/types.js';
+import type { SurfaceKind } from '../../events/surfaces.js';
 import type { SharedSessionMessage, SharedSessionRecord } from './session-types.js';
 import type { SharedSessionInputRecord } from './session-intents.js';
 
@@ -24,7 +24,7 @@ export type SharedSessionMessageSender = {
 export type SharedSessionEventPublisher = (event: string, payload: unknown) => void;
 
 export function dedupeSessionSurfaceKinds(
-  participants: readonly { readonly surfaceKind: AutomationSurfaceKind }[],
-): AutomationSurfaceKind[] {
+  participants: readonly { readonly surfaceKind: SurfaceKind }[],
+): SurfaceKind[] {
   return [...new Set(participants.map((participant) => participant.surfaceKind))];
 }

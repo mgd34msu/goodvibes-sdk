@@ -11,7 +11,12 @@ import type {
   SharedSessionInputRecord,
 } from './session-intents.js';
 import type {
+  CreateSharedSessionInput,
+  EnsureSharedSessionInput,
   FindSharedSessionOptions,
+  ListSharedSessionsOptions,
+  ParticipantRouteAttachInput,
+  RegisterSharedSessionInput,
   SharedSessionMessage,
   SharedSessionParticipant,
   SharedSessionRecord,
@@ -28,6 +33,7 @@ import {
 import {
   createSessionBrokerSnapshot,
   loadSessionBrokerState,
+  reconcileSessionBrokerBoot,
   sortSessions,
 } from './session-broker-state.js';
 import {
@@ -49,6 +55,7 @@ import {
   bindSharedSessionAgent,
   closeSharedSessionRecord,
   createSharedSessionRecord,
+  participantToAttachInput,
   reopenSharedSessionRecord,
 } from './session-broker-sessions.js';
 import { sweepSharedSessions } from './session-broker-gc.js';
@@ -182,23 +189,9 @@ export class SharedSessionBroker {
       this.inputs.set(sessionId, bucket);
     }
     this.loaded = true;
-    // Startup reconciliation cancels inputs stuck in spawned/delivered from a prior run.
-    const restartReason = 'daemon restart — agent state unknown';
-    for (const [sessionId, bucket] of this.inputs.entries()) {
-      let changed = false;
-      for (let i = 0; i < bucket.length; i++) {
-        const entry = bucket[i]!;
-        if (entry.state === 'spawned' || entry.state === 'delivered') {
-          bucket[i] = { ...entry, state: 'cancelled', updatedAt: Date.now(), error: restartReason };
-          changed = true;
-        }
-      }
-          if (changed) this.refreshPendingInputCount(sessionId);
-    }
-    for (const [sessionId, session] of this.sessions.entries()) {
-      if (session.activeAgentId) {
-        this.sessions.set(sessionId, { ...session, activeAgentId: undefined, updatedAt: Date.now() });
-      }
+    // Boot reconciliation: cancel stuck spawned/delivered inputs, clear stale activeAgentId.
+    for (const sessionId of reconcileSessionBrokerBoot(this.sessions, this.inputs)) {
+      this.refreshPendingInputCount(sessionId);
     }
     await this.persist();
     if (!this._gcInterval) {
@@ -209,8 +202,15 @@ export class SharedSessionBroker {
     }
   }
 
-  listSessions(limit = 100): SharedSessionRecord[] {
-    return sortSessions(this.sessions.values()).slice(0, Math.max(1, limit));
+  listSessions(limit = 100, options: ListSharedSessionsOptions = {}): SharedSessionRecord[] {
+    const sorted = sortSessions(this.sessions.values());
+    const filtered = sorted.filter((session) => {
+      if (options.project !== undefined && session.project !== options.project) return false;
+      if (options.kind !== undefined && session.kind !== options.kind) return false;
+      if (options.includeClosed === false && session.status === 'closed') return false;
+      return true;
+    });
+    return filtered.slice(0, Math.max(1, limit));
   }
 
   getSession(sessionId: string): SharedSessionRecord | null {
@@ -223,35 +223,42 @@ export class SharedSessionBroker {
       if (!options.includeClosed && session.status === 'closed') return false;
       if (options.routeId && !session.routeIds.includes(options.routeId)) return false;
       if (options.surfaceKind && !session.surfaceKinds.includes(options.surfaceKind)) return false;
+      if (options.project !== undefined && session.project !== options.project) return false;
       return true;
     });
     return candidates[0] ?? null;
   }
 
-  async ensureSession(input: {
-    readonly sessionId?: string | undefined;
-    readonly title?: string | undefined;
-    readonly metadata?: Record<string, unknown> | undefined;
-    readonly routeBinding?: AutomationRouteBinding | undefined;
-    readonly participant?: SharedSessionParticipant | undefined;
-  } = {}): Promise<SharedSessionRecord> {
+  async ensureSession(input: EnsureSharedSessionInput = {}): Promise<SharedSessionRecord> {
     await this.start();
-    if (input.sessionId) {
-      const existing = this.sessions.get(input.sessionId);
-      if (existing) {
-        if (existing.status === 'closed') {
-          return (await this.reopenSession(existing.id)) ?? existing;
-        }
-        return existing;
-      }
+    const existing = input.sessionId ? this.sessions.get(input.sessionId) : undefined;
+    if (existing) {
+      const active = existing.status === 'closed'
+        ? (await this.reopenSession(existing.id)) ?? existing
+        : existing;
+      // Adopt: record the participant + advance lastSeenAt (register heartbeat).
+      return input.participant
+        ? this.attachParticipantAndRoute(active, participantToAttachInput(input.participant, input.title))
+        : active;
     }
     return this.createSession({
       id: input.sessionId,
+      kind: input.kind,
+      project: input.project,
       title: input.title,
       metadata: input.metadata,
       routeBinding: input.routeBinding,
       participant: input.participant,
     });
+  }
+
+  /**
+   * Idempotent upsert keyed on a caller-supplied session id — the external
+   * registration + heartbeat contract (sessions.register). One id always yields
+   * one record; re-calls adopt and advance `participant.lastSeenAt` (heartbeat).
+   */
+  register(input: RegisterSharedSessionInput): Promise<SharedSessionRecord> {
+    return this.ensureSession(input);
   }
 
   getMessages(sessionId: string, limit = 100): SharedSessionMessage[] {
@@ -263,14 +270,7 @@ export class SharedSessionBroker {
     return bucket.slice(-Math.max(1, limit));
   }
 
-  async createSession(input: {
-    readonly id?: string | undefined;
-    readonly title?: string | undefined;
-    readonly metadata?: Record<string, unknown> | undefined;
-    readonly routeBinding?: AutomationRouteBinding | undefined;
-    readonly participant?: SharedSessionParticipant | undefined;
-    readonly kind?: SharedSessionRecord['kind'] | undefined;
-  } = {}): Promise<SharedSessionRecord> {
+  async createSession(input: CreateSharedSessionInput = {}): Promise<SharedSessionRecord> {
     await this.start();
     const session = createSharedSessionRecord(input);
     this.sessions.set(session.id, session);
@@ -471,7 +471,7 @@ export class SharedSessionBroker {
 
   private async attachParticipantAndRoute(
     session: SharedSessionRecord,
-    input: Omit<SubmitSharedSessionMessageInput, 'metadata'>,
+    input: ParticipantRouteAttachInput,
     binding?: AutomationRouteBinding,
   ): Promise<SharedSessionRecord> {
     this.touch(session.id);
