@@ -82,14 +82,23 @@ async function buildSnapshotForProvider(
     models: { models: provider.models },
     usage: { streaming: true, toolCalling: true, parallelTools: false },
   } satisfies ProviderRuntimeMetadata;
-  const currentModel = providerRegistry.getCurrentModel();
+  // Read-only display path: never let an unresolved current model (e.g. a fresh
+  // isolated home whose pricing catalog has not hydrated, so the configured
+  // default has no materialized definition) turn this snapshot into a 500. Treat
+  // an unresolvable current model as "no provider is active" rather than throwing.
+  let currentModel: ModelDefinition | null;
+  try {
+    currentModel = providerRegistry.getCurrentModel();
+  } catch {
+    currentModel = null;
+  }
   const models = providerRegistry
     .listModels()
     .filter((model) => model.provider === providerId)
     .map((model) => toModelSnapshot(model, providerRegistry));
   return {
     providerId,
-    active: currentModel.provider === providerId,
+    active: currentModel?.provider === providerId,
     modelCount: models.length,
     runtime: resolvedRuntime,
     models,
