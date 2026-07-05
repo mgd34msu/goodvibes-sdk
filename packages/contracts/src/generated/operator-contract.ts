@@ -64143,9 +64143,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string",
                   "enum": [
                     "tui",
+                    "agent",
+                    "webui",
                     "companion-task",
-                    "companion-chat"
+                    "companion-chat",
+                    "automation"
                   ]
+                },
+                "project": {
+                  "type": "string"
                 },
                 "title": {
                   "type": "string"
@@ -64265,6 +64271,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
+                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -64333,9 +64340,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string",
                   "enum": [
                     "tui",
+                    "agent",
+                    "webui",
                     "companion-task",
-                    "companion-chat"
+                    "companion-chat",
+                    "automation"
                   ]
+                },
+                "project": {
+                  "type": "string"
                 },
                 "title": {
                   "type": "string"
@@ -64455,6 +64468,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
+                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -64627,9 +64641,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "string",
                       "enum": [
                         "tui",
+                        "agent",
+                        "webui",
                         "companion-task",
-                        "companion-chat"
+                        "companion-chat",
+                        "automation"
                       ]
+                    },
+                    "project": {
+                      "type": "string"
                     },
                     "title": {
                       "type": "string"
@@ -64749,6 +64769,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "required": [
                     "id",
                     "kind",
+                    "project",
                     "title",
                     "status",
                     "createdAt",
@@ -65132,9 +65153,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string",
                   "enum": [
                     "tui",
+                    "agent",
+                    "webui",
                     "companion-task",
-                    "companion-chat"
+                    "companion-chat",
+                    "automation"
                   ]
+                },
+                "project": {
+                  "type": "string"
                 },
                 "title": {
                   "type": "string"
@@ -65254,6 +65281,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
+                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -65661,9 +65689,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string",
                   "enum": [
                     "tui",
+                    "agent",
+                    "webui",
                     "companion-task",
-                    "companion-chat"
+                    "companion-chat",
+                    "automation"
                   ]
+                },
+                "project": {
+                  "type": "string"
                 },
                 "title": {
                   "type": "string"
@@ -65783,6 +65817,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
+                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -66155,9 +66190,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "type": "string",
                     "enum": [
                       "tui",
+                      "agent",
+                      "webui",
                       "companion-task",
-                      "companion-chat"
+                      "companion-chat",
+                      "automation"
                     ]
+                  },
+                  "project": {
+                    "type": "string"
                   },
                   "title": {
                     "type": "string"
@@ -66277,6 +66318,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "required": [
                   "id",
                   "kind",
+                  "project",
                   "title",
                   "status",
                   "createdAt",
@@ -66476,9 +66518,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "type": "string",
                           "enum": [
                             "tui",
+                            "agent",
+                            "webui",
                             "companion-task",
-                            "companion-chat"
+                            "companion-chat",
+                            "automation"
                           ]
+                        },
+                        "project": {
+                          "type": "string"
                         },
                         "title": {
                           "type": "string"
@@ -66598,6 +66646,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "required": [
                         "id",
                         "kind",
+                        "project",
                         "title",
                         "status",
                         "createdAt",
@@ -66989,9 +67038,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string",
                   "enum": [
                     "tui",
+                    "agent",
+                    "webui",
                     "companion-task",
-                    "companion-chat"
+                    "companion-chat",
+                    "automation"
                   ]
+                },
+                "project": {
+                  "type": "string"
                 },
                 "title": {
                   "type": "string"
@@ -67111,6 +67166,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
+                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -67217,9 +67273,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "sessions.reopen",
-        "title": "Reopen Shared Session",
-        "description": "Reopen a previously closed shared session.",
+        "id": "sessions.register",
+        "title": "Register Shared Session",
+        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Prefer this over sessions.create for external runtimes that own their session id.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
@@ -67232,19 +67288,69 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "POST",
-          "path": "/api/sessions/{sessionId}/reopen"
+          "path": "/api/sessions/register"
         },
         "inputSchema": {
           "type": "object",
           "properties": {
             "sessionId": {
               "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "tui",
+                "agent",
+                "webui",
+                "companion-task",
+                "companion-chat",
+                "automation"
+              ]
+            },
+            "project": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "participant": {
+              "type": "object",
+              "properties": {
+                "surfaceKind": {
+                  "type": "string"
+                },
+                "surfaceId": {
+                  "type": "string"
+                },
+                "externalId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "routeId": {
+                  "type": "string"
+                },
+                "lastSeenAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "surfaceKind",
+                "surfaceId",
+                "lastSeenAt"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
-            "sessionId"
+            "sessionId",
+            "participant"
           ],
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "outputSchema": {
           "type": "object",
@@ -67259,9 +67365,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string",
                   "enum": [
                     "tui",
+                    "agent",
+                    "webui",
                     "companion-task",
-                    "companion-chat"
+                    "companion-chat",
+                    "automation"
                   ]
+                },
+                "project": {
+                  "type": "string"
                 },
                 "title": {
                   "type": "string"
@@ -67381,6 +67493,201 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "id",
                 "kind",
+                "project",
+                "title",
+                "status",
+                "createdAt",
+                "updatedAt",
+                "lastActivityAt",
+                "messageCount",
+                "pendingInputCount",
+                "routeIds",
+                "surfaceKinds",
+                "participants",
+                "metadata"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.reopen",
+        "title": "Reopen Shared Session",
+        "description": "Reopen a previously closed shared session.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/sessions/{sessionId}/reopen"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tui",
+                    "agent",
+                    "webui",
+                    "companion-task",
+                    "companion-chat",
+                    "automation"
+                  ]
+                },
+                "project": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "closed"
+                  ]
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "lastMessageAt": {
+                  "type": "number"
+                },
+                "closedAt": {
+                  "type": "number"
+                },
+                "lastActivityAt": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "pendingInputCount": {
+                  "type": "number"
+                },
+                "routeIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "surfaceKinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "participants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "surfaceKind": {
+                        "type": "string"
+                      },
+                      "surfaceId": {
+                        "type": "string"
+                      },
+                      "externalId": {
+                        "type": "string"
+                      },
+                      "userId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "routeId": {
+                        "type": "string"
+                      },
+                      "lastSeenAt": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "surfaceKind",
+                      "surfaceId",
+                      "lastSeenAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "activeAgentId": {
+                  "type": "string"
+                },
+                "lastAgentId": {
+                  "type": "string"
+                },
+                "lastError": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "project",
                 "title",
                 "status",
                 "createdAt",
@@ -67556,9 +67863,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "string",
                       "enum": [
                         "tui",
+                        "agent",
+                        "webui",
                         "companion-task",
-                        "companion-chat"
+                        "companion-chat",
+                        "automation"
                       ]
+                    },
+                    "project": {
+                      "type": "string"
                     },
                     "title": {
                       "type": "string"
@@ -67678,6 +67991,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "required": [
                     "id",
                     "kind",
+                    "project",
                     "title",
                     "status",
                     "createdAt",
@@ -76493,10 +76807,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 297,
-      "typedInputs": 297,
+      "methods": 298,
+      "typedInputs": 298,
       "genericInputs": 0,
-      "typedOutputs": 297,
+      "typedOutputs": 298,
       "genericOutputs": 0
     },
     "eventCoverage": {
