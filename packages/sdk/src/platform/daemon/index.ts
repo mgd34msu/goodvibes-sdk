@@ -1,4 +1,6 @@
 export { DaemonServer } from './server.js';
+export { bootDaemon } from './boot.js';
+export type { BootDaemonOptions, BootedDaemon } from './boot.js';
 export { HttpListener } from './http-listener.js';
 export { PlatformServiceManager } from './service-manager.js';
 export type { ManagedServiceStatus } from './service-manager.js';
