@@ -91,6 +91,7 @@ export type SDKErrorCode =
   // Resource
   | 'NOT_FOUND'
   | 'CONFLICT'
+  | 'SESSION_CLOSED'
   // Validation
   | 'VALIDATION_FAILED'
   // Agent execution
@@ -132,6 +133,7 @@ export const SDKErrorCodes = {
   CANCELLED: 'CANCELLED',
   NOT_FOUND: 'NOT_FOUND',
   CONFLICT: 'CONFLICT',
+  SESSION_CLOSED: 'SESSION_CLOSED',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   AGENT_TIMEOUT: 'AGENT_TIMEOUT',
   AGENT_FAILED: 'AGENT_FAILED',

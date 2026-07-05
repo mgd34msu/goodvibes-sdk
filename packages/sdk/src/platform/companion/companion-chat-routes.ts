@@ -17,6 +17,7 @@
  * dispatching to API routes).
  */
 
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import type {
   CompanionChatMessageAttachmentInput,
   CreateCompanionChatSessionInput,
@@ -446,7 +447,7 @@ async function handleGetEvents(
   }
   if (session.status === 'closed') {
     return Response.json(
-      { error: 'Session is closed', code: 'SESSION_CLOSED' },
+      { error: 'Session is closed', code: SDKErrorCodes.SESSION_CLOSED },
       { status: 410 },
     );
   }

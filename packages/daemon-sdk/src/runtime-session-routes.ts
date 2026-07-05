@@ -3,6 +3,7 @@ import { handleRegisterSharedSession } from './runtime-session-register.js';
 import { withAdmin } from './auth-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { jsonErrorResponse } from './error-response.js';
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import type {
   AutomationSurfaceKind,
   DaemonRuntimeRouteContext,
@@ -83,6 +84,19 @@ const SHARED_SESSION_STATUSES = new Set<SharedSessionRecordResponse['status']>([
 
 function readBoundedLimit(url: URL, key = 'limit'): number {
   return readBoundedPositiveInteger(url.searchParams.get(key), DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT);
+}
+
+/** Runs a submit/steer/follow-up broker call, converting its closed-session
+ * guard throw ({ code: SDKErrorCodes.SESSION_CLOSED, status: 409 }, thrown
+ * before any mutation) into the same structured 409 other routes return. */
+async function callOrSessionClosed<T>(fn: () => Promise<T>): Promise<T | Response> {
+  try {
+    return await fn();
+  } catch (err: unknown) {
+    const closed = err as { code?: string; status?: number };
+    if (closed.code !== SDKErrorCodes.SESSION_CLOSED) throw err;
+    return jsonErrorResponse({ error: 'Session is closed', code: SDKErrorCodes.SESSION_CLOSED }, { status: closed.status ?? 409 });
+  }
 }
 
 export function toSharedSessionRecordResponse(
@@ -264,7 +278,7 @@ async function handlePostTask(context: DaemonRuntimeRouteContext, req: Request):
   if (input instanceof Response) return input;
   const wantsSharedSession = typeof body.sessionId === 'string' || typeof body.routeId === 'string' || typeof body.surfaceKind === 'string';
   if (wantsSharedSession) {
-    const submission = await context.sessionBroker.submitMessage({
+    const submission = await callOrSessionClosed(() => context.sessionBroker.submitMessage({
       sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
       routeId: typeof body.routeId === 'string' ? body.routeId : undefined,
       surfaceKind: typeof body.surfaceKind === 'string' ? body.surfaceKind as AutomationSurfaceKind : 'web',
@@ -277,7 +291,8 @@ async function handlePostTask(context: DaemonRuntimeRouteContext, req: Request):
       body: input.task,
       metadata: typeof body.metadata === 'object' && body.metadata !== null ? body.metadata as Record<string, unknown> : {},
       ...(input.routing ? { routing: input.routing } : {}),
-    });
+    }));
+    if (submission instanceof Response) return submission;
 
     if (submission.mode === 'continued-live') {
       return context.recordApiResponse(req, '/task', Response.json({
@@ -445,11 +460,8 @@ function readPositiveInt(value: string | null): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
-/**
- * Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver — a live surface
- * reports collection (`{consumed:true}` = completed, else delivered). Body is
- * optional: parseOptionalJsonBody treats a null/bare body as consumed:false.
- */
+/** Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver — a live surface reports
+ * collection (`{consumed:true}` = completed, else delivered); optional body, null/bare = consumed:false. */
 async function handleDeliverSharedSessionInput(
   context: DaemonRuntimeRouteContext, sessionId: string, inputId: string, req: Request,
 ): Promise<Response> {
@@ -468,8 +480,7 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
   const body = await context.parseJsonBody(req);
   if (body instanceof Response) return body;
 
-  // Validate kind field. Ordinary session messages default to conversation
-  // routing; callers must explicitly opt into kind='task' for agent/WRFC work.
+  // Ordinary session messages default to conversation routing; callers must opt into kind='task' for agent/WRFC work.
   const kind = body.kind === undefined ? 'message' : body.kind;
   if (kind !== 'task' && kind !== 'message' && kind !== 'followup') {
     return jsonErrorResponse(
@@ -487,7 +498,8 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
 
   // kind='followup' — always queues/spawns a follow-up turn via followUpMessage()
   if (kind === 'followup') {
-    const followUpSubmission = await context.sessionBroker.followUpMessage(input);
+    const followUpSubmission = await callOrSessionClosed(() => context.sessionBroker.followUpMessage(input));
+    if (followUpSubmission instanceof Response) return followUpSubmission;
     return await respondToSessionSubmission(context, req, followUpSubmission, message, `/api/sessions/${sessionId}/messages`, 'DaemonServer.handlePostSharedSessionMessage.followup', {
       context: `shared-session:${followUpSubmission.session.id}`,
     });
@@ -499,18 +511,16 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
     return handleCompanionMessageKind(context, sessionId, req, input);
   }
 
-  const submission = await context.sessionBroker.submitMessage(input);
+  const submission = await callOrSessionClosed(() => context.sessionBroker.submitMessage(input));
+  if (submission instanceof Response) return submission;
 
   return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/messages`, 'DaemonServer.handlePostSharedSessionMessage', {
     context: `shared-session:${submission.session.id}`,
   });
 }
 
-/**
- * Handles kind='message' companion main-chat messages — short-circuits before
- * sessionBroker.submitMessage() so conversation messages are routed to the
- * existing session instead of spawning continuation work.
- */
+/** Handles kind='message' companion main-chat messages — short-circuits before
+ * sessionBroker.submitMessage() so conversation messages route to the existing session instead of spawning continuation work. */
 async function handleCompanionMessageKind(
   context: DaemonRuntimeRouteContext,
   sessionId: string,
@@ -522,7 +532,7 @@ async function handleCompanionMessageKind(
     return jsonErrorResponse({ error: 'Unknown shared session', code: 'SESSION_NOT_FOUND' }, { status: 404 });
   }
   if (session.status === 'closed') {
-    return jsonErrorResponse({ error: 'Session is closed', code: 'SESSION_CLOSED' }, { status: 409 });
+    return jsonErrorResponse({ error: 'Session is closed', code: SDKErrorCodes.SESSION_CLOSED }, { status: 409 });
   }
   const messageId = `companion-${randomUUID()}`;
   const timestamp = Date.now();
@@ -568,10 +578,8 @@ function buildCompanionMessageMetadata(input: SharedSessionMessageInput): Record
   return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
-/**
- * Handle GET /api/sessions/:id/events — a session-scoped SSE stream for turn
- * events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events.
- */
+/** Handle GET /api/sessions/:id/events — a session-scoped SSE stream for turn events
+ * (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events. */
 async function handleGetSharedSessionEvents(
   context: DaemonRuntimeRouteContext,
   sessionId: string,
@@ -594,20 +602,11 @@ async function handlePostSharedSessionSteer(context: DaemonRuntimeRouteContext, 
   if (!message) {
     return jsonErrorResponse({ error: 'Missing shared session steer body' }, { status: 400 });
   }
-  let submission: SharedSessionSteerSubmission;
-  try {
-    submission = await context.sessionBroker.steerMessage({
-      ...buildSharedSessionMessageInput(sessionId, body, message),
-      ...(body.allowSpawnFallback === true ? { allowSpawnFallback: true } : {}),
-    });
-  } catch (err: unknown) {
-    // steerMessage() throws { code: 'SESSION_CLOSED', status: 409 } for a
-    // closed session — rejected before any mutation (no message, no input,
-    // no activeAgentId). Anything else is unexpected: rethrow.
-    const closed = err as { code?: string; status?: number; message?: string };
-    if (closed.code !== 'SESSION_CLOSED') throw err;
-    return jsonErrorResponse({ error: closed.message ?? 'Session is closed', code: 'SESSION_CLOSED' }, { status: closed.status ?? 409 });
-  }
+  const submission = await callOrSessionClosed(() => context.sessionBroker.steerMessage({
+    ...buildSharedSessionMessageInput(sessionId, body, message),
+    ...(body.allowSpawnFallback === true ? { allowSpawnFallback: true } : {}),
+  }));
+  if (submission instanceof Response) return submission;
   return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/steer`, 'DaemonServer.handlePostSharedSessionSteer', {
     context: `shared-session:${submission.session.id}`,
   });
@@ -620,7 +619,8 @@ async function handlePostSharedSessionFollowUp(context: DaemonRuntimeRouteContex
   if (!message) {
     return jsonErrorResponse({ error: 'Missing shared session follow-up body' }, { status: 400 });
   }
-  const submission = await context.sessionBroker.followUpMessage(buildSharedSessionMessageInput(sessionId, body, message));
+  const submission = await callOrSessionClosed(() => context.sessionBroker.followUpMessage(buildSharedSessionMessageInput(sessionId, body, message)));
+  if (submission instanceof Response) return submission;
   return await respondToSessionSubmission(context, req, submission, message, `/api/sessions/${sessionId}/follow-up`, 'DaemonServer.handlePostSharedSessionFollowUp', {
     context: `shared-session:${submission.session.id}`,
   });

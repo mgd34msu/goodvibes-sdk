@@ -1,3 +1,4 @@
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { logger } from '../utils/logger.js';
 import { sessionsActive } from '../runtime/metrics.js';
 import { PersistentStore } from '../state/persistent-store.js';
@@ -610,8 +611,9 @@ export class SharedSessionBroker {
       created = true;
     }
 
-    // Closed sessions are history: reject a steer before any mutation.
-    if (intent === 'steer' && session.status === 'closed') throw Object.assign(new Error(`Session is closed: ${session.id}`), { code: 'SESSION_CLOSED', status: 409 });
+    // Closed sessions are history: steer/follow-up/submit against an EXISTING
+    // closed record are rejected before mutation; auto-create for a missing session is untouched.
+    if (session.status === 'closed') throw Object.assign(new Error('Session is closed'), { code: SDKErrorCodes.SESSION_CLOSED, status: 409 });
     const updatedSession = await this.attachParticipantAndRoute(session, input, binding ?? undefined);
     const userMessage = await this.appendMessage(updatedSession.id, {
       role: 'user',
@@ -708,9 +710,8 @@ export class SharedSessionBroker {
       };
     }
 
-    // Surface routing: a steer/follow-up with a LIVE surface participant (other
-    // than the sender) queues for that surface (sessions.inputs.list/deliver)
-    // instead of spawning a daemon executor. No live surface keeps the executor path.
+    // Surface routing: a steer/follow-up with a LIVE surface participant (other than the
+    // sender) queues for that surface (sessions.inputs.list/deliver); no live surface keeps the executor path below.
     if (
       (intent === 'steer' || intent === 'follow-up') &&
       shouldRouteInputToSurface(updatedSession, Date.now(), SURFACE_ROUTE_FRESHNESS_MS, { surfaceId: input.surfaceId })

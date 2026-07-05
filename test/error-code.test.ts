@@ -52,6 +52,7 @@ describe('SDKErrorCodes const object', () => {
       'CANCELLED',
       'NOT_FOUND',
       'CONFLICT',
+      'SESSION_CLOSED',
       'VALIDATION_FAILED',
       'AGENT_TIMEOUT',
       'AGENT_FAILED',
@@ -423,6 +424,7 @@ describe('switch exhaustiveness', () => {
         case 'CANCELLED':
         case 'NOT_FOUND':
         case 'CONFLICT':
+        case 'SESSION_CLOSED':
         case 'VALIDATION_FAILED':
         case 'AGENT_TIMEOUT':
         case 'AGENT_FAILED':
