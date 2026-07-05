@@ -255,6 +255,7 @@ export const OPERATOR_METHOD_IDS = [
   "sessions.followUp",
   "sessions.get",
   "sessions.inputs.cancel",
+  "sessions.inputs.deliver",
   "sessions.inputs.list",
   "sessions.integration.snapshot",
   "sessions.list",

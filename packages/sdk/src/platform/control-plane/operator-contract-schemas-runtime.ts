@@ -33,9 +33,22 @@ const INBOUND_TLS_MODE_SCHEMA = enumSchema(['off', 'proxy', 'direct']);
 const OUTBOUND_TRUST_MODE_SCHEMA = enumSchema(['bundled', 'bundled+custom', 'custom']);
 const OUTBOUND_CA_STRATEGY_SCHEMA = enumSchema(['bun-default', 'bundled+custom', 'custom']);
 const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
+/**
+ * READ-path kind schema: an OPEN enum. The known kinds are the same set as
+ * {@link SHARED_SESSION_KIND_SCHEMA}, but response/output validation must accept
+ * an unknown `kind` string per-record instead of hard-failing the whole envelope
+ * — a mixed-version daemon (or a future build) can emit a kind this reader does
+ * not model, and the tolerant normalizer downstream (`normalizeSharedSessionRecord`)
+ * already maps an unknown kind to the documented 'tui' fallback while preserving
+ * the raw value under `metadata.wireKind`. See
+ * docs/decisions/2026-07-05-session-wire-mixed-version.md (the enum leg). Writes
+ * stay strict: {@link SHARED_SESSION_REGISTER_INPUT_SCHEMA} keeps the closed enum
+ * so `sessions.register` still 400s on an unknown kind.
+ */
+const SHARED_SESSION_KIND_READ_SCHEMA = { type: 'string' } as Record<string, unknown>;
 const SHARED_SESSION_INPUT_INTENT_SCHEMA = enumSchema(['submit', 'steer', 'follow-up']);
 const SHARED_SESSION_INPUT_STATE_SCHEMA = enumSchema(['queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected']);
-const SHARED_SESSION_MESSAGE_MODE_SCHEMA = enumSchema(['spawn', 'continued-live', 'queued-follow-up', 'rejected']);
+const SHARED_SESSION_MESSAGE_MODE_SCHEMA = enumSchema(['spawn', 'continued-live', 'queued-follow-up', 'queued-for-surface', 'rejected']);
 const COMPANION_CHAT_SESSION_STATUS_SCHEMA = enumSchema(['active', 'closed']);
 const COMPANION_CHAT_MESSAGE_ROLE_SCHEMA = enumSchema(['user', 'assistant']);
 const PROVIDER_SELECTION_SCHEMA = enumSchema(['inherit-current', 'concrete', 'synthetic']);
@@ -103,7 +116,9 @@ export const SHARED_SESSION_MESSAGE_SCHEMA = objectSchema({
 
 export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
-  kind: SHARED_SESSION_KIND_SCHEMA,
+  // Open on READ: an unknown kind must not blank the record (or, per-record, the
+  // whole list). Write validation stays strict via SHARED_SESSION_REGISTER_INPUT_SCHEMA.
+  kind: SHARED_SESSION_KIND_READ_SCHEMA,
   project: STRING_SCHEMA,
   title: STRING_SCHEMA,
   status: enumSchema(['active', 'closed']),

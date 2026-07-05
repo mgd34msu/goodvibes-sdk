@@ -64143,15 +64143,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -64345,15 +64337,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -64651,15 +64635,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "string"
                     },
                     "kind": {
-                      "type": "string",
-                      "enum": [
-                        "tui",
-                        "agent",
-                        "webui",
-                        "companion-task",
-                        "companion-chat",
-                        "automation"
-                      ]
+                      "type": "string"
                     },
                     "project": {
                       "type": "string"
@@ -65100,6 +65076,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "spawn",
                 "continued-live",
                 "queued-follow-up",
+                "queued-for-surface",
                 "rejected"
               ]
             },
@@ -65165,15 +65142,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -65664,9 +65633,271 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.inputs.deliver",
+        "title": "Mark Shared Session Input Delivered",
+        "description": "A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/sessions/{sessionId}/inputs/{inputId}/deliver"
+        },
+        "events": [
+          "control.session_update"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "inputId": {
+              "type": "string"
+            },
+            "consumed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "inputId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "input": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "intent": {
+                  "type": "string",
+                  "enum": [
+                    "submit",
+                    "steer",
+                    "follow-up"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "delivered",
+                    "spawned",
+                    "completed",
+                    "cancelled",
+                    "failed",
+                    "rejected"
+                  ]
+                },
+                "correlationId": {
+                  "type": "string"
+                },
+                "causationId": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "routeId": {
+                  "type": "string"
+                },
+                "surfaceKind": {
+                  "type": "string"
+                },
+                "surfaceId": {
+                  "type": "string"
+                },
+                "externalId": {
+                  "type": "string"
+                },
+                "threadId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "activeAgentId": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "routing": {
+                  "type": "object",
+                  "properties": {
+                    "providerId": {
+                      "type": "string"
+                    },
+                    "modelId": {
+                      "type": "string"
+                    },
+                    "providerSelection": {
+                      "type": "string",
+                      "enum": [
+                        "inherit-current",
+                        "concrete",
+                        "synthetic"
+                      ]
+                    },
+                    "providerFailurePolicy": {
+                      "type": "string",
+                      "enum": [
+                        "ordered-fallbacks",
+                        "fail"
+                      ]
+                    },
+                    "fallbackModels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "helperModel": {
+                      "type": "object",
+                      "properties": {
+                        "providerId": {
+                          "type": "string"
+                        },
+                        "modelId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "providerId",
+                        "modelId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "executionIntent": {
+                      "type": "object",
+                      "properties": {
+                        "riskClass": {
+                          "type": "string",
+                          "enum": [
+                            "safe",
+                            "elevated",
+                            "dangerous"
+                          ]
+                        },
+                        "requiresApproval": {
+                          "type": "boolean"
+                        },
+                        "networkPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "inherit",
+                            "allow",
+                            "deny",
+                            "scoped"
+                          ]
+                        },
+                        "filesystemPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "inherit",
+                            "workspace-write",
+                            "read-only",
+                            "isolated"
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "reasoningEffort": {
+                      "type": "string",
+                      "enum": [
+                        "instant",
+                        "low",
+                        "medium",
+                        "high"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "intent",
+                "state",
+                "correlationId",
+                "body",
+                "createdAt",
+                "updatedAt",
+                "metadata"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "input"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.inputs.list",
         "title": "List Shared Session Inputs",
-        "description": "Return explicit session inputs, including queued follow-ups and delivered steering requests.",
+        "description": "Return explicit session inputs, including queued follow-ups and delivered steering requests. A live surface collects work by filtering `state` (e.g. queued) and paging past a `since` createdAt cursor (exclusive), draining only inputs it has not yet collected.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
@@ -65689,6 +65920,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "limit": {
               "type": "number"
+            },
+            "state": {
+              "type": "string"
+            },
+            "since": {
+              "type": "number"
             }
           },
           "required": [
@@ -65706,15 +65943,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -66209,15 +66438,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "type": "string"
                   },
                   "kind": {
-                    "type": "string",
-                    "enum": [
-                      "tui",
-                      "agent",
-                      "webui",
-                      "companion-task",
-                      "companion-chat",
-                      "automation"
-                    ]
+                    "type": "string"
                   },
                   "project": {
                     "type": "string"
@@ -66542,15 +66763,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "type": "string"
                         },
                         "kind": {
-                          "type": "string",
-                          "enum": [
-                            "tui",
-                            "agent",
-                            "webui",
-                            "companion-task",
-                            "companion-chat",
-                            "automation"
-                          ]
+                          "type": "string"
                         },
                         "project": {
                           "type": "string"
@@ -66991,6 +67204,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "spawn",
                     "continued-live",
                     "queued-follow-up",
+                    "queued-for-surface",
                     "rejected"
                   ]
                 },
@@ -67064,15 +67278,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -67399,15 +67605,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -67617,15 +67815,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "tui",
-                    "agent",
-                    "webui",
-                    "companion-task",
-                    "companion-chat",
-                    "automation"
-                  ]
+                  "type": "string"
                 },
                 "project": {
                   "type": "string"
@@ -67926,15 +68116,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "string"
                     },
                     "kind": {
-                      "type": "string",
-                      "enum": [
-                        "tui",
-                        "agent",
-                        "webui",
-                        "companion-task",
-                        "companion-chat",
-                        "automation"
-                      ]
+                      "type": "string"
                     },
                     "project": {
                       "type": "string"
@@ -68375,6 +68557,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "spawn",
                 "continued-live",
                 "queued-follow-up",
+                "queued-for-surface",
                 "rejected"
               ]
             },
@@ -76719,6 +76902,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "session-message-forwarded",
                 "session-route-attached",
                 "session-input-queued",
+                "session-input-queued-for-surface",
                 "session-input-delivered",
                 "session-input-spawned",
                 "session-input-completed",
@@ -76952,10 +77136,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 298,
-      "typedInputs": 298,
+      "methods": 299,
+      "typedInputs": 299,
       "genericInputs": 0,
-      "typedOutputs": 298,
+      "typedOutputs": 299,
       "genericOutputs": 0
     },
     "eventCoverage": {
