@@ -14,13 +14,13 @@ import {
   emitStreamSubscriberDisconnected,
 } from '../runtime/emitters/index.js';
 import { renderControlPlaneGatewayWebUi } from './gateway-web-ui.js';
+import { buildGatewayDisabledResponseBody } from './gateway-disabled-response.js';
 import type {
   ControlPlaneClientDescriptor,
   ControlPlaneServerConfig,
   ControlPlaneSurfaceMessage,
 } from './types.js';
-import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
-import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
+import { type FeatureFlagReader, isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
 import {
   DEFAULT_DOMAINS,
   DEFAULT_SERVER_CONFIG,
@@ -584,7 +584,7 @@ export class ControlPlaneGateway {
 
   createEventStream(request: Request, options: ControlPlaneEventStreamOptions = {}): Response {
     if (!this.isEnabled()) {
-      return Response.json({ error: 'control-plane-gateway feature flag is disabled' }, { status: 503 });
+      return Response.json(buildGatewayDisabledResponseBody(), { status: 503 });
     }
     if (!this.runtimeBus) {
       return Response.json({ error: 'Runtime event bus unavailable' }, { status: 503 });
@@ -780,7 +780,7 @@ export class ControlPlaneGateway {
 
   renderWebUi(authTokenHint = ''): Response {
     if (!this.isEnabled()) {
-      return Response.json({ error: 'control-plane-gateway feature flag is disabled' }, { status: 503 });
+      return Response.json(buildGatewayDisabledResponseBody(), { status: 503 });
     }
     return renderControlPlaneGatewayWebUi(authTokenHint);
   }
