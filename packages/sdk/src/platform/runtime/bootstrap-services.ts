@@ -4,11 +4,16 @@ import type { RuntimeServices } from './services.js';
 import { ConfigurationError } from '@pellux/goodvibes-errors';
 import { logger } from '../utils/logger.js';
 import net from 'node:net';
+import os from 'node:os';
+import { closeSync, mkdirSync, openSync } from 'node:fs';
+import { join } from 'node:path';
+import { spawn, type SpawnOptions } from 'node:child_process';
 import { summarizeError } from '../utils/error-display.js';
 import { createTimeoutController } from '../utils/fetch-with-timeout.js';
 import { VERSION } from '../version.js';
 import { isDaemonVersionCompatible, describeVersionIncompatibility } from './daemon-version-compat.js';
 import { resolveDaemonEnabled } from '../config/index.js';
+import { recordDetachedDaemonRuntime } from './detached-daemon-runtime.js';
 
 interface DaemonService {
   enable(config: { daemon: boolean }, token?: string): boolean;
@@ -23,12 +28,61 @@ interface HttpListenerService {
   stop(): Promise<void>;
 }
 
+/**
+ * Options passed to the injectable detached-daemon spawn seam. Mirrors the subset
+ * of `child_process.SpawnOptions` the detached spawn relies on. `detached: true`
+ * and the caller's subsequent `unref()` are what let the daemon outlive this
+ * surface — tests assert both are present.
+ */
+export interface DetachedDaemonSpawnOptions {
+  readonly detached: boolean;
+  readonly stdio: 'ignore' | ReadonlyArray<'ignore' | number>;
+  readonly cwd?: string | undefined;
+  readonly env?: NodeJS.ProcessEnv | undefined;
+}
+
+/** Minimal child-process shape the detached spawn seam must return. */
+export interface DetachedDaemonChild {
+  readonly pid?: number | undefined;
+  unref(): void;
+  once?(event: 'error' | 'exit', listener: (arg: unknown) => void): void;
+}
+
+/** One-time hint surfaced ONCE by the TUI after a successful detached spawn. */
+export const DETACHED_DAEMON_INSTALL_HINT =
+  'daemon started for this session — install it as a service so it survives reboots: goodvibes-daemon install-service';
+
 interface ServiceFactories {
   createDaemonServer?: (
     runtimeBus: RuntimeEventBus,
     userAuth: RuntimeServices['localUserAuthManager'],
     runtimeServices: RuntimeServices,
   ) => DaemonService;
+  /**
+   * Injectable spawn seam for the detached standalone daemon (Layer 2 default).
+   * Defaults to `child_process.spawn`. Tests stub this to assert that detached
+   * spawn — not in-process embedding — is chosen by default, and that the options
+   * carry `detached: true` (the caller then `unref()`s the returned child).
+   */
+  spawnDetachedDaemon?: (
+    command: string,
+    args: readonly string[],
+    options: DetachedDaemonSpawnOptions,
+  ) => DetachedDaemonChild;
+  /** Command used to launch the detached daemon. Default: `GOODVIBES_DAEMON_BINARY` env or `goodvibes-daemon`. */
+  daemonLaunchCommand?: string | undefined;
+  /** Extra CLI args appended after the resolved `--daemon-home/--hostname/--port` flags. */
+  daemonLaunchArgs?: readonly string[] | undefined;
+  /** Daemon home directory passed via `--daemon-home`. Default: `os.homedir()`. */
+  daemonHomeDir?: string | undefined;
+  /** Directory where the detached daemon records pid/port + log. Default `<daemonHomeDir>/.goodvibes/daemon`. */
+  daemonRuntimeDir?: string | undefined;
+  /** Bounded time to wait for the detached daemon to bind + pass the identity probe. */
+  detachedSpawnProbeTimeoutMs?: number | undefined;
+  /** Poll interval while waiting for the detached daemon to become reachable. */
+  detachedSpawnProbeIntervalMs?: number | undefined;
+  /** Sleep function (injectable so tests drive the probe loop deterministically). */
+  sleep?: ((ms: number) => Promise<void>) | undefined;
   createHttpListener?: (
     hookDispatcher: HookDispatcher,
     userAuth: RuntimeServices['localUserAuthManager'],
@@ -95,6 +149,13 @@ export interface HostServicesHandle {
   readonly httpListener: HttpListenerService | null;
   readonly daemonStatus: HostServiceStatus;
   readonly httpListenerStatus: HostServiceStatus;
+  /**
+   * One-time, honest hint the surface can display ONCE after this host instance
+   * spawned a detached daemon for the session. Present only when a detached
+   * daemon was just started (Layer 2); undefined when a daemon was adopted,
+   * embedded, disabled, or unavailable. See {@link DETACHED_DAEMON_INSTALL_HINT}.
+   */
+  readonly daemonStartHint?: string | undefined;
   listRecentControlPlaneEvents(limit: number): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[];
   stop(): Promise<void>;
 }
@@ -103,6 +164,7 @@ export interface HostServicesConfig {
   get(
     key:
       | 'daemon.enabled'
+      | 'daemon.embedInProcess'
       | 'danger.daemon'
       | 'danger.httpListener'
       | 'controlPlane.host'
@@ -126,6 +188,15 @@ function readBooleanSetting(config: HostServicesConfig, key: 'danger.httpListene
     throw new ConfigurationError(`Expected ${key} to be a boolean, got ${typeof value}.`);
   }
   return value;
+}
+
+/**
+ * Whether the daemon should be hosted IN THIS PROCESS (Layer 3 opt-in). Default
+ * false: the surface spawns a detached daemon instead. Reads leniently so an
+ * unset value (undefined) means false rather than throwing.
+ */
+function readDaemonEmbedInProcess(config: HostServicesConfig): boolean {
+  return config.get('daemon.embedInProcess') === true;
 }
 
 function readHostSetting(
@@ -400,8 +471,106 @@ export async function startHostServices(
     });
   };
 
+  // Layer 2: spawn the daemon as a DETACHED standalone process (default), then
+  // poll (bounded) for it to bind and pass the identity probe. On success adopt
+  // it as 'external' with a one-time install-service hint. Returns an honest
+  // failure reason otherwise so the caller can fall back.
+  const attemptDetachedDaemonSpawn = async (): Promise<
+    { readonly status: HostServiceStatus; readonly hint: string } | { readonly reason: string }
+  > => {
+    const spawnDetached: NonNullable<ServiceFactories['spawnDetachedDaemon']> =
+      factories.spawnDetachedDaemon
+      ?? ((command, args, options) => spawn(command, [...args], {
+        detached: options.detached,
+        stdio: options.stdio as SpawnOptions['stdio'],
+        ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
+        ...(options.env !== undefined ? { env: options.env } : {}),
+      }) as unknown as DetachedDaemonChild);
+
+    const command = (factories.daemonLaunchCommand ?? process.env.GOODVIBES_DAEMON_BINARY ?? 'goodvibes-daemon').trim()
+      || 'goodvibes-daemon';
+    const daemonHomeDir = factories.daemonHomeDir ?? os.homedir();
+    const runtimeDir = factories.daemonRuntimeDir ?? join(daemonHomeDir, '.goodvibes', 'daemon');
+    const logFilePath = join(runtimeDir, 'detached-daemon.log');
+    const args = [
+      '--daemon-home', daemonHomeDir,
+      '--hostname', daemonHost,
+      '--port', String(daemonPort),
+      ...(factories.daemonLaunchArgs ?? []),
+    ];
+
+    let stdio: DetachedDaemonSpawnOptions['stdio'] = 'ignore';
+    let closeStdio: (() => void) | null = null;
+    try {
+      mkdirSync(runtimeDir, { recursive: true });
+      const out = openSync(logFilePath, 'a');
+      const err = openSync(logFilePath, 'a');
+      stdio = ['ignore', out, err];
+      closeStdio = () => {
+        try { closeSync(out); } catch { /* already closed */ }
+        try { closeSync(err); } catch { /* already closed */ }
+      };
+    } catch {
+      stdio = 'ignore';
+    }
+
+    let child: DetachedDaemonChild;
+    try {
+      child = spawnDetached(command, args, {
+        detached: true,
+        stdio,
+        cwd: daemonHomeDir,
+        env: { ...process.env, GOODVIBES_DAEMON_HOME: daemonHomeDir },
+      });
+    } catch (error) {
+      return { reason: `Detached daemon spawn failed to launch: ${summarizeError(error)}` };
+    } finally {
+      // The child has inherited the fds; the parent's copies can be closed now.
+      closeStdio?.();
+    }
+    child.unref();
+
+    let processError: string | null = null;
+    child.once?.('error', (err) => { processError = summarizeError(err); });
+
+    recordDetachedDaemonRuntime(runtimeDir, {
+      pid: child.pid,
+      host: daemonHost,
+      port: daemonPort,
+      command,
+      startedAt: new Date().toISOString(),
+      logFilePath,
+    });
+
+    const timeoutMs = factories.detachedSpawnProbeTimeoutMs ?? 5000;
+    const intervalMs = factories.detachedSpawnProbeIntervalMs ?? 150;
+    const sleep = factories.sleep ?? ((ms: number) => new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      timer.unref?.();
+    }));
+    const deadline = Date.now() + timeoutMs;
+    let lastReason = 'Detached daemon did not become reachable before timeout';
+    // Probe at least once, then poll until the deadline.
+    for (;;) {
+      if (processError) return { reason: `Detached daemon process error: ${processError}` };
+      const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
+      if (identity.kind === 'goodvibes') {
+        const verified = resolveVerifiedDaemonStatus(identity, 'Spawned detached daemon for this session');
+        if (verified.mode === 'external') {
+          return { status: verified, hint: DETACHED_DAEMON_INSTALL_HINT };
+        }
+        // Incompatible: do not keep a competing daemon around; report honestly.
+        return { reason: verified.reason ?? 'Spawned daemon reported an incompatible version' };
+      }
+      lastReason = identity.reason ?? lastReason;
+      if (Date.now() >= deadline) return { reason: lastReason };
+      await sleep(intervalMs);
+    }
+  };
+
   let embeddedDaemonServer: DaemonService | null = null;
   let embeddedHttpListener: HttpListenerService | null = null;
+  let daemonStartHint: string | undefined;
   let daemonStatus = createServiceStatus('disabled', daemonHost, daemonPort, { reason: 'daemon.enabled is false' });
   let httpListenerStatus = createServiceStatus('disabled', httpListenerHost, httpListenerPort, {
     reason: 'danger.httpListener is disabled',
@@ -434,46 +603,75 @@ export async function startHostServices(
         );
       }
     } else {
-      const pendingDaemonServer = factories.createDaemonServer
-        ? factories.createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices)
-        : await createDefaultDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
-      const service = pendingDaemonServer;
-      service.enable({ daemon: true }, factories.sharedDaemonToken);
-      const started = await startGuardedService({
-        label: 'Daemon server',
-        service,
-        timeoutMs: startupTimeoutMs,
-        timedOutStatus: () => createServiceStatus('unavailable', daemonHost, daemonPort, {
-          reason: 'Daemon server startup timed out',
-        }),
-        startedStatus: () => createServiceStatus('embedded', daemonHost, daemonPort, {
-          reason: 'Embedded daemon started in this host instance',
-        }),
-        bindConflictStatus: async (message) => {
-          const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
-          if (identity.kind === 'goodvibes') {
-            const verified = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified after bind conflict');
-            if (verified.mode === 'external') {
-              logger.info(
-                'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
-                {
-                  host: daemonHost,
-                  port: daemonPort,
-                  version: identity.version,
-                },
-              );
+      // Port is free. Owner ruling (D7a): the daemon is a SYSTEM SERVICE, so
+      // starting a surface must NOT couple the daemon's lifetime to this process.
+      // DEFAULT (Layer 2): spawn the daemon as a detached standalone process and
+      // adopt it as 'external'. In-process embedding is an explicit opt-in
+      // (Layer 3: daemon.embedInProcess).
+      const startEmbeddedDaemon = async (): Promise<{ readonly service: DaemonService | null; readonly status: HostServiceStatus }> => {
+        const pendingDaemonServer = factories.createDaemonServer
+          ? factories.createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices)
+          : await createDefaultDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
+        const service = pendingDaemonServer;
+        service.enable({ daemon: true }, factories.sharedDaemonToken);
+        return startGuardedService({
+          label: 'Daemon server',
+          service,
+          timeoutMs: startupTimeoutMs,
+          timedOutStatus: () => createServiceStatus('unavailable', daemonHost, daemonPort, {
+            reason: 'Daemon server startup timed out',
+          }),
+          startedStatus: () => createServiceStatus('embedded', daemonHost, daemonPort, {
+            reason: 'Embedded daemon started in this host instance (daemon.embedInProcess opt-in)',
+          }),
+          bindConflictStatus: async (message) => {
+            const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
+            if (identity.kind === 'goodvibes') {
+              const verified = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified after bind conflict');
+              if (verified.mode === 'external') {
+                logger.info(
+                  'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
+                  { host: daemonHost, port: daemonPort, version: identity.version },
+                );
+              }
+              return verified;
             }
-            return verified;
-          }
-          logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
-          return createServiceStatus('blocked', daemonHost, daemonPort, {
-            authenticated: identity.kind !== 'unauthorized' ? undefined : false,
-            reason: identity.reason ?? message,
+            logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
+            return createServiceStatus('blocked', daemonHost, daemonPort, {
+              authenticated: identity.kind !== 'unauthorized' ? undefined : false,
+              reason: identity.reason ?? message,
+            });
+          },
+        });
+      };
+
+      if (readDaemonEmbedInProcess(config)) {
+        logger.warn(
+          'daemon.embedInProcess is enabled: hosting the daemon in-process couples its lifetime to this surface (single point of failure)',
+        );
+        const started = await startEmbeddedDaemon();
+        embeddedDaemonServer = started.service;
+        daemonStatus = started.status;
+      } else {
+        const detached = await attemptDetachedDaemonSpawn();
+        if ('status' in detached) {
+          daemonStatus = detached.status;
+          daemonStartHint = detached.hint;
+          logger.info('Spawned detached GoodVibes daemon for this session', {
+            host: daemonHost,
+            port: daemonPort,
+            version: detached.status.version,
           });
-        },
-      });
-      embeddedDaemonServer = started.service;
-      daemonStatus = started.status;
+        } else {
+          logger.warn(
+            'Detached daemon spawn did not become reachable; falling back to in-process embedded daemon for this session',
+            { reason: detached.reason },
+          );
+          const started = await startEmbeddedDaemon();
+          embeddedDaemonServer = started.service;
+          daemonStatus = started.status;
+        }
+      }
     }
   }
 
@@ -517,6 +715,7 @@ export async function startHostServices(
     httpListener: embeddedHttpListener,
     daemonStatus,
     httpListenerStatus,
+    ...(daemonStartHint !== undefined ? { daemonStartHint } : {}),
     listRecentControlPlaneEvents(limit: number): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[] {
       return embeddedDaemonServer?.listRecentControlPlaneEvents(limit) ?? [];
     },
