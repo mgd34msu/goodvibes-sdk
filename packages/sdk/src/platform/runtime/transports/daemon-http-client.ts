@@ -2,6 +2,7 @@ import { getOperatorContract, getPeerContract } from '@pellux/goodvibes-contract
 import type { AutomationSurfaceKind } from '../../automation/types.js';
 import type {
   ControlPlaneRecentEvent,
+  RegisterSharedSessionInput,
   SharedApprovalRecord,
   SharedSessionInputRecord,
   SharedSessionMessage,
@@ -158,6 +159,12 @@ function createOperatorClient(
           await operatorApi.sessions.create(buildSessionEnsureBody(input)),
           'session',
           'sessions.create',
+        )),
+      register: async (input: RegisterSharedSessionInput): Promise<SharedSessionRecord> =>
+        normalizeSharedSessionRecord(assertObjectField<Record<string, unknown>>(
+          await operatorApi.invoke<Record<string, unknown>>('sessions.register', asContractInput(input) ?? {}),
+          'session',
+          'sessions.register',
         )),
       close: async (sessionId): Promise<SharedSessionRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.sessions.close(sessionId));

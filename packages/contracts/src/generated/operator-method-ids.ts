@@ -260,6 +260,7 @@ export const OPERATOR_METHOD_IDS = [
   "sessions.list",
   "sessions.messages.create",
   "sessions.messages.list",
+  "sessions.register",
   "sessions.reopen",
   "sessions.steer",
   "settings.snapshot",

@@ -25,10 +25,17 @@ export type {
   GatewayMethodTransport,
 } from './method-catalog.js';
 export type {
+  CreateSharedSessionInput,
+  EnsureSharedSessionInput,
   FindSharedSessionOptions,
+  ListSharedSessionsOptions,
+  ParticipantRouteAttachInput,
+  RegisterSharedSessionInput,
+  SharedSessionKind,
   SharedSessionMessage,
   SharedSessionParticipant,
   SharedSessionRecord,
+  SharedSessionStatus,
   SharedSessionSubmission,
   SteerSharedSessionMessageInput,
   SubmitSharedSessionMessageInput,
@@ -44,6 +51,14 @@ export type {
   SharedSessionRoutingIntent,
 } from './session-intents.js';
 export { SharedSessionBroker } from './session-broker.js';
+export {
+  discoverLegacySessionSources,
+  importLegacySessionStores,
+} from './session-store-importer.js';
+export type {
+  LegacySessionSource,
+  ImportLegacySessionsResult,
+} from './session-store-importer.js';
 export type {
   SharedApprovalRecord,
   SharedApprovalAuditRecord,
