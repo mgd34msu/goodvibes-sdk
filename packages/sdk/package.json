@@ -340,6 +340,10 @@
       "types": "./dist/platform/runtime/sandbox.d.ts",
       "import": "./dist/platform/runtime/sandbox.js"
     },
+    "./platform/runtime/session-spine": {
+      "types": "./dist/platform/runtime/session-spine/index.d.ts",
+      "import": "./dist/platform/runtime/session-spine/index.js"
+    },
     "./platform/runtime/settings": {
       "types": "./dist/platform/runtime/settings.d.ts",
       "import": "./dist/platform/runtime/settings.js"
