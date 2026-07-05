@@ -25,6 +25,7 @@ export type {
   OperatorEventContract,
   OperatorMethodContract,
   OperatorSchemaCoverageContract,
+  OperatorValidationCoverageContract,
   PeerContractManifest,
   PeerEndpointContract,
 } from './types.js';

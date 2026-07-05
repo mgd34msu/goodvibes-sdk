@@ -37,6 +37,7 @@ export type {
   OperatorEventCoverageContract,
   OperatorMethodContract,
   OperatorSchemaCoverageContract,
+  OperatorValidationCoverageContract,
   PeerContractManifest,
   PeerEndpointContract,
   RuntimeEventDomain,

@@ -23754,6 +23754,30 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "withWireEvents"
                       ],
                       "additionalProperties": false
+                    },
+                    "validationCoverage": {
+                      "type": "object",
+                      "properties": {
+                        "methods": {
+                          "type": "number"
+                        },
+                        "validated": {
+                          "type": "number"
+                        },
+                        "skippedGeneric": {
+                          "type": "number"
+                        },
+                        "skippedUntyped": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "methods",
+                        "validated",
+                        "skippedGeneric",
+                        "skippedUntyped"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -77146,6 +77170,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "events": 31,
       "withDomains": 27,
       "withWireEvents": 31
+    },
+    "validationCoverage": {
+      "methods": 299,
+      "validated": 299,
+      "skippedGeneric": 0,
+      "skippedUntyped": 0
     }
   },
   "peer": {

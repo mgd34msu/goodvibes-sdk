@@ -15,6 +15,7 @@ import {
   CONTROL_AUTH_LOGIN_REQUEST_SCHEMA,
   CONTROL_AUTH_LOGIN_RESPONSE_SCHEMA,
 } from './operator-contract-schemas.js';
+import { summarizeInvokeValidationCoverage } from './invoke-input-validation.js';
 import type { OperatorContractManifest } from '../types/foundation-contract.js';
 import { VERSION } from '../version.js';
 import { OPERATOR_SESSION_COOKIE_NAME } from '../security/http-auth.js';
@@ -113,6 +114,12 @@ export const OPERATOR_CONTRACT_SCHEMA = objectSchema({
       withDomains: NUMBER_SCHEMA,
       withWireEvents: NUMBER_SCHEMA,
     }, ['events', 'withDomains', 'withWireEvents']),
+    validationCoverage: objectSchema({
+      methods: NUMBER_SCHEMA,
+      validated: NUMBER_SCHEMA,
+      skippedGeneric: NUMBER_SCHEMA,
+      skippedUntyped: NUMBER_SCHEMA,
+    }, ['methods', 'validated', 'skippedGeneric', 'skippedUntyped']),
   }, ['methods', 'events', 'schemaCoverage', 'eventCoverage']),
   peer: objectSchema({
     contractPath: STRING_SCHEMA,
@@ -209,6 +216,7 @@ export function buildOperatorContract(catalog: GatewayMethodCatalog): OperatorCo
       events,
       schemaCoverage: summarizeSchemaCoverage(catalog.list()),
       eventCoverage: summarizeEventCoverage(catalog.listEvents()),
+      validationCoverage: summarizeInvokeValidationCoverage(catalog.list()),
     },
   };
 }
