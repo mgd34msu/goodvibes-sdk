@@ -15,6 +15,7 @@
  */
 
 import { ConfigManager } from '../config/manager.js';
+import type { ApprovalBroker } from '../control-plane/index.js';
 import { DaemonServer } from './facade.js';
 
 export interface BootDaemonOptions {
@@ -39,6 +40,12 @@ export interface BootDaemonOptions {
 export interface BootedDaemon {
   /** The running daemon server. */
   readonly server: DaemonServer;
+  /**
+   * The daemon's shared approval broker (same instance the HTTP approvals routes
+   * resolve through). Lets a proof test seed a pending approval and then exercise
+   * approve/deny — including per-hunk selection — over the live wire.
+   */
+  readonly approvals: ApprovalBroker;
   /** The bound host. */
   readonly host: string;
   /** The bound TCP port (resolves an ephemeral 0 to the real port). */
@@ -83,6 +90,7 @@ export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaem
   const port = server.boundPort;
   return {
     server,
+    approvals: server.approvals,
     host,
     port,
     url: `http://${host}:${port}`,

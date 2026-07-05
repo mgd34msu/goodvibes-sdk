@@ -444,6 +444,18 @@ export const APPROVAL_ACTION_INPUT_SCHEMA = objectSchema({
   remember: BOOLEAN_SCHEMA,
 }, ['approvalId'], { additionalProperties: false });
 
+// approvals.approve additionally accepts an optional per-hunk selection. Absent
+// selectedHunks = approve the whole request (exact back-compat). When present,
+// the broker filters the edit-tool `edits` array to those indices server-side
+// so TUI and webui produce identical modified-edit args; an out-of-range index
+// or a non-edit approval is a 400.
+export const APPROVAL_APPROVE_INPUT_SCHEMA = objectSchema({
+  approvalId: STRING_SCHEMA,
+  note: STRING_SCHEMA,
+  remember: BOOLEAN_SCHEMA,
+  selectedHunks: arraySchema(NUMBER_SCHEMA),
+}, ['approvalId'], { additionalProperties: false });
+
 export const APPROVAL_ACTION_OUTPUT_SCHEMA = objectSchema({
   approval: SHARED_APPROVAL_RECORD_SCHEMA,
 }, ['approval']);

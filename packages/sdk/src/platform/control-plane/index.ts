@@ -67,6 +67,12 @@ export type {
   RequestSharedApprovalInput,
 } from './approval-broker.js';
 export { ApprovalBroker } from './approval-broker.js';
+export {
+  buildModifiedEditArgs,
+  readApprovalEditHunks,
+  resolveApprovalHunkSelection,
+} from './approval-hunk-apply.js';
+export type { EditHunkLike, ApprovalHunkSelectionResolution } from './approval-hunk-apply.js';
 export type { ControlPlaneAuthMode, ControlPlaneAuthSnapshot } from '../../client-auth/control-plane-auth-snapshot.js';
 export type { MessageSource, ConversationMessageEnvelope } from './conversation-message.js';
 export { buildOperatorContract } from './operator-contract.js';

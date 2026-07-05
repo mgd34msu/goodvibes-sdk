@@ -28,6 +28,7 @@ export const SESSION_UPDATE_WIRE_EVENTS = [
   'session-message-appended',
   'session-message-forwarded',
   'session-route-attached',
+  'session-detached',
   'session-input-queued',
   'session-input-queued-for-surface',
   'session-input-delivered',
@@ -46,7 +47,7 @@ export const SESSION_UPDATE_WIRE_EVENTS = [
  */
 export const SESSION_UPDATE_INTENT_MAP = {
   created: ['session-created'],
-  updated: ['session-message-appended', 'session-agent-completed', 'session-route-attached', 'session-reopened'],
+  updated: ['session-message-appended', 'session-agent-completed', 'session-route-attached', 'session-detached', 'session-reopened'],
   steered: ['session-input-queued-for-surface', 'session-input-delivered', 'session-message-forwarded'],
   closed: ['session-closed'],
 } as const satisfies Record<string, readonly (typeof SESSION_UPDATE_WIRE_EVENTS)[number][]>;

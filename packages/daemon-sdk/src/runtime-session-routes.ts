@@ -208,6 +208,7 @@ export function createDaemonRuntimeSessionRouteHandlers(
     getSharedSession: async (sessionId) => handleGetSharedSession(context, sessionId),
     closeSharedSession: (sessionId, request) => withAdmin(context, request, () => handleSharedSessionLifecycle(context, sessionId, 'close')),
     reopenSharedSession: (sessionId, request) => withAdmin(context, request, () => handleSharedSessionLifecycle(context, sessionId, 'reopen')),
+    detachSharedSession: (sessionId, request) => withAdmin(context, request, () => handleSharedSessionDetach(context, sessionId, request)),
     getSharedSessionMessages: async (sessionId, url) => handleGetSharedSessionMessages(context, sessionId, url),
     getSharedSessionInputs: async (sessionId, url) => handleGetSharedSessionInputs(context, sessionId, url),
     postSharedSessionMessage: (sessionId, request) => withAdmin(context, request, () => handlePostSharedSessionMessage(context, sessionId, request)),
@@ -396,6 +397,25 @@ async function handleSharedSessionLifecycle(
     : await context.sessionBroker.reopenSession(sessionId);
   return session
     ? Response.json({ session: toSharedSessionRecordResponse(sessionId, session, { status: action === 'close' ? 'closed' : 'active' }) })
+    : jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
+}
+
+async function handleSharedSessionDetach(
+  context: DaemonRuntimeRouteContext,
+  sessionId: string,
+  req: Request,
+): Promise<Response> {
+  const body = await context.parseOptionalJsonBody(req);
+  if (body instanceof Response) return body;
+  const payload = body ?? {};
+  const surfaceId = typeof payload.surfaceId === 'string' ? payload.surfaceId.trim() : '';
+  if (surfaceId.length === 0) {
+    return jsonErrorResponse({ error: 'surfaceId is required.' }, { status: 400 });
+  }
+  await context.sessionBroker.start();
+  const session = await context.sessionBroker.detachParticipant(sessionId, surfaceId);
+  return session
+    ? Response.json({ session: toSharedSessionRecordResponse(sessionId, session) })
     : jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
 }
 

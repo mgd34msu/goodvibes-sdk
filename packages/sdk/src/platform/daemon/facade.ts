@@ -268,6 +268,15 @@ export class DaemonServer {
   get boundHost(): string { return this.host; }
 
   /**
+   * The daemon's shared approval broker. Exposed so embedders (and the boot
+   * factory's proof tests) can seed or inspect approvals against the SAME broker
+   * the HTTP approvals routes resolve through — e.g. to bridge an external
+   * approval UI, or to prove per-hunk approve/deny over the live wire without a
+   * running agent to originate a real tool-call approval.
+   */
+  get approvals(): ApprovalBroker { return this.approvalBroker; }
+
+  /**
    * Start the daemon. Refuses to start if not explicitly enabled.
    */
   async start(): Promise<void> {

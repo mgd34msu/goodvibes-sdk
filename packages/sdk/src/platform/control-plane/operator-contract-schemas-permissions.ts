@@ -41,6 +41,11 @@ export const PERMISSION_PROMPT_REQUEST_SCHEMA = objectSchema({
 export const PERMISSION_PROMPT_DECISION_SCHEMA = objectSchema({
   approved: BOOLEAN_SCHEMA,
   remember: BOOLEAN_SCHEMA,
+  // Present when a per-hunk (or otherwise argument-modifying) approval replaced
+  // the tool call's original args — e.g. the edit-tool `edits` array filtered to
+  // the approved hunks. Computed server-side by the approval broker so every
+  // surface sees the same modified args on the resolved decision.
+  modifiedArgs: TOOL_ARGUMENTS_SCHEMA,
 }, ['approved'], { additionalProperties: false });
 
 export const PERMISSION_MODE_SCHEMA = enumSchema([

@@ -41,6 +41,9 @@ export interface OperatorSessionsClient {
   register(input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult>;
   close(sessionId: string): Promise<SharedSessionRecord | null>;
   reopen(sessionId: string): Promise<SharedSessionRecord | null>;
+  /** Detach a surface's participant/route from a session without closing it
+   * (detach != close != kill). Idempotent; see sessions.detach. */
+  detach(sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null>;
   bindAgent(sessionId: string, agentId: string): Promise<SharedSessionRecord | null>;
   submitMessage(input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission>;
   steerMessage(input: SteerSharedSessionMessageInput): Promise<SharedSessionSubmission>;
@@ -71,6 +74,9 @@ export interface OperatorApprovalsClient {
       readonly actor: string;
       readonly actorSurface?: string | undefined;
       readonly note?: string | undefined;
+      /** Optional per-hunk selection (edit-tool approvals) — the broker filters
+       * the approval's own edit list to these indices server-side. */
+      readonly selectedHunks?: readonly number[] | undefined;
     },
   ): Promise<SharedApprovalRecord | null>;
   approve(approvalId: string, actor: string, actorSurface?: string, note?: string): Promise<SharedApprovalRecord | null>;
@@ -145,6 +151,7 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     register: (input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult> => services.sessionBroker.register(input),
     close: (sessionId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.closeSession(sessionId),
     reopen: (sessionId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.reopenSession(sessionId),
+    detach: (sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.detachParticipant(sessionId, surfaceId),
     bindAgent: (sessionId: string, agentId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.bindAgent(sessionId, agentId),
     submitMessage: (input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.submitMessage(input),
     steerMessage: (input: SteerSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.steerMessage(input),
@@ -171,6 +178,7 @@ export function createOperatorClient(services: OperatorClientServices): Operator
       readonly actor: string;
       readonly actorSurface?: string | undefined;
       readonly note?: string | undefined;
+      readonly selectedHunks?: readonly number[] | undefined;
     }): Promise<SharedApprovalRecord | null> => services.approvalBroker.resolveApproval(approvalId, input),
     approve: (approvalId: string, actor: string, actorSurface = 'operator', note?: string): Promise<SharedApprovalRecord | null> => services.approvalBroker.resolveApproval(approvalId, {
       approved: true,

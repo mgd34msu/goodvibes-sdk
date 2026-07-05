@@ -191,6 +191,7 @@ export interface DaemonRuntimeRouteContext {
     markInputDelivered(sessionId: string, inputId: string, options: { consumed?: boolean | undefined }): Promise<unknown | null>;
     closeSession(sessionId: string): Promise<{ id: string } | null>;
     reopenSession(sessionId: string): Promise<{ id: string } | null>;
+    detachParticipant(sessionId: string, surfaceId: string): Promise<{ id: string; status: string } | null>;
     cancelInput(sessionId: string, inputId: string): Promise<unknown | null>;
     completeAgent(sessionId: string, agentId: string, message: string, meta: { status: string; routeId?: string }): Promise<void>;
     appendCompanionMessage(sessionId: string, input: {

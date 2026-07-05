@@ -360,6 +360,7 @@ export interface DaemonRuntimeSessionRouteHandlers {
   getSharedSession(sessionId: string): MaybeResponse;
   closeSharedSession(sessionId: string, req: Request): MaybeResponse;
   reopenSharedSession(sessionId: string, req: Request): MaybeResponse;
+  detachSharedSession(sessionId: string, req: Request): MaybeResponse;
   getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
   getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
   postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;

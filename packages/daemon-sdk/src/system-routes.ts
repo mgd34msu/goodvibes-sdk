@@ -396,14 +396,47 @@ async function handleApprovalAction(
       ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
       : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, jsonErrorResponse({ error: 'Unknown approval' }, { status: 404 }));
   }
-  const approval = await context.approvalBroker.resolveApproval(approvalId, {
-    approved: action === 'approve',
-    remember: typeof payload.remember === 'boolean' ? payload.remember : false,
-    actor,
-    actorSurface: 'web',
-    note,
-  });
+  const selectedHunks = action === 'approve' ? readSelectedHunks(payload.selectedHunks) : undefined;
+  if (selectedHunks instanceof Response) {
+    return context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, selectedHunks);
+  }
+  let approval: unknown | null;
+  try {
+    approval = await context.approvalBroker.resolveApproval(approvalId, {
+      approved: action === 'approve',
+      remember: typeof payload.remember === 'boolean' ? payload.remember : false,
+      actor,
+      actorSurface: 'web',
+      note,
+      ...(selectedHunks !== undefined ? { selectedHunks } : {}),
+    });
+  } catch (error) {
+    // The broker throws a 400-tagged error for an out-of-range or non-edit
+    // per-hunk selection. Surface it as an honest HTTP 400, not a 500.
+    const status = typeof (error as { status?: unknown })?.status === 'number' ? (error as { status: number }).status : 500;
+    const message = error instanceof Error ? error.message : 'Approval resolution failed.';
+    return context.recordApiResponse(
+      req,
+      `/api/approvals/${approvalId}/${action}`,
+      jsonErrorResponse({ error: message }, { status }),
+    );
+  }
   return approval
     ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
     : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, jsonErrorResponse({ error: 'Unknown approval' }, { status: 404 }));
+}
+
+/**
+ * Read an optional selectedHunks array off the request payload. Returns the
+ * validated number[] when present and well-formed, undefined when absent, or a
+ * 400 Response when present but malformed (non-array, or an entry that is not a
+ * finite integer). Range validation against the specific approval's hunk count
+ * is the broker's job (it owns the pending edit list).
+ */
+function readSelectedHunks(value: unknown): readonly number[] | undefined | Response {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || !value.every((entry) => Number.isInteger(entry))) {
+    return jsonErrorResponse({ error: 'selectedHunks must be an array of integer hunk indices.' }, { status: 400 });
+  }
+  return value as readonly number[];
 }

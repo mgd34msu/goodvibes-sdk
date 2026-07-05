@@ -15,11 +15,12 @@ export async function dispatchSessionRoutes(
   const sharedSessionMatch = pathname.match(/^\/api\/sessions\/([^/]+)$/);
   if (sharedSessionMatch && method === 'GET') return handlers.getSharedSession(sharedSessionMatch[1]!);
 
-  const sharedSessionCloseMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/(close|reopen)$/);
-  if (sharedSessionCloseMatch && method === 'POST') {
-    return sharedSessionCloseMatch[2]! === 'close'
-      ? handlers.closeSharedSession(sharedSessionCloseMatch[1]!, req)
-      : handlers.reopenSharedSession(sharedSessionCloseMatch[1]!, req);
+  const sharedSessionLifecycleMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/(close|reopen|detach)$/);
+  if (sharedSessionLifecycleMatch && method === 'POST') {
+    const [, sessionId, action] = sharedSessionLifecycleMatch;
+    if (action === 'close') return handlers.closeSharedSession(sessionId!, req);
+    if (action === 'reopen') return handlers.reopenSharedSession(sessionId!, req);
+    return handlers.detachSharedSession(sessionId!, req);
   }
 
   const sharedSessionMessagesMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/messages$/);

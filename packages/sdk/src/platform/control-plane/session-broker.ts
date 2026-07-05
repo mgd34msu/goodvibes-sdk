@@ -61,6 +61,7 @@ import {
   bindSharedSessionAgent,
   closeSharedSessionRecord,
   createSharedSessionRecord,
+  detachSharedSessionParticipant,
   participantToAttachInput,
   registerSharedSession,
   reopenSharedSessionRecord,
@@ -339,6 +340,30 @@ export class SharedSessionBroker {
     this.sessions.set(sessionId, updated);
     await this.persist();
     this.publishUpdate('session-reopened', updated);
+    return updated;
+  }
+
+  /**
+   * Detach a surface's participant + route binding without closing or killing the
+   * session ("detach != close != kill"). Emits `session-detached`. Idempotent:
+   * unknown session -> null (404); closed session or no matching participant ->
+   * returned unchanged (a closed session emits no updates, so "stop receiving
+   * updates" is already satisfied). See {@link detachSharedSessionParticipant}.
+   */
+  async detachParticipant(sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null> {
+    await this.start();
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+    if (session.status === 'closed') return session;
+    const { session: updated, changed } = detachSharedSessionParticipant(session, surfaceId);
+    if (!changed) return session;
+    this.sessions.set(sessionId, updated);
+    await this.persist();
+    this.publishUpdate('session-detached', {
+      sessionId: updated.id,
+      surfaceId,
+      participants: updated.participants.length,
+    });
     return updated;
   }
 
