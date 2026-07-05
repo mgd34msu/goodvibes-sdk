@@ -94,6 +94,33 @@ describe('idle-empty reaper — live surface exemption', () => {
   });
 });
 
+describe('D7b — reaper is per-session among many', () => {
+  test('one idle-dead session among live ones: only the dead one is reaped', () => {
+    // Five sessions share one store; four have a fresh participant heartbeat, one
+    // (the 3rd) went stale. The sweep must reap EXACTLY the stale one.
+    const sessions = new Map<string, SharedSessionRecord>();
+    const events: Array<{ event: string; payload: unknown }> = [];
+    const ids = ['live-1', 'live-2', 'dead-3', 'live-4', 'live-5'];
+    for (const id of ids) {
+      const stale = id === 'dead-3';
+      sessions.set(id, record({
+        id,
+        participants: [participant({ lastSeenAt: stale ? NOW - IDLE_EMPTY_MS * 2 : NOW })],
+      }));
+    }
+    sweepSharedSessionsAt(sessions, NOW, (event, payload) => events.push({ event, payload }));
+
+    expect(sessions.get('dead-3')!.status).toBe('closed');
+    expect(readSessionCloseReason(sessions.get('dead-3')!)).toBe('idle-reaped');
+    for (const id of ['live-1', 'live-2', 'live-4', 'live-5']) {
+      expect(sessions.get(id)!.status, `${id} must stay active`).toBe('active');
+    }
+    // Exactly one close event fired, for the dead session.
+    const closedEvents = events.filter((e) => e.event === 'session-closed');
+    expect(closedEvents).toHaveLength(1);
+  });
+});
+
 describe('close-reason marking', () => {
   test('explicit close defaults to a user close reason', () => {
     const closed = closeSharedSessionRecord(record());
