@@ -63,6 +63,22 @@ export type SharedSessionKind =
   | 'companion-chat'
   | 'automation';
 
+/**
+ * Why a session was closed. Drives the honest reopen-on-heartbeat rule:
+ * - 'idle-reaped': the GC sweep closed an idle session. It AUTO-REOPENS on the
+ *   next register heartbeat from a participant (a surface coming back to a
+ *   session the SYSTEM closed underneath it is not a conflict).
+ * - 'user' / 'surface': a deliberate close. It does NOT auto-reopen — register
+ *   records the heartbeat and returns the still-closed record with a conflict
+ *   marker unless `reopen: true` is passed (the Wave-1 honest-register semantics).
+ *
+ * Carried on the record under `metadata[SESSION_CLOSE_REASON_METADATA_KEY]` so it
+ * rides the wire without a schema change and old readers ignore it (metadata is
+ * an open record). Absent means the session is open, or was closed by a build
+ * that predates this field.
+ */
+export type SharedSessionCloseReason = 'idle-reaped' | 'user' | 'surface';
+
 export interface SharedSessionRecord {
   readonly id: string;
   readonly kind: SharedSessionKind;
@@ -116,7 +132,7 @@ export interface SharedSessionSubmission {
   readonly routeBinding?: AutomationRouteBinding | undefined;
   readonly input: SharedSessionInputRecord;
   readonly intent: SharedSessionInputIntent;
-  readonly mode: 'spawn' | 'continued-live' | 'queued-follow-up' | 'rejected';
+  readonly mode: 'spawn' | 'continued-live' | 'queued-follow-up' | 'queued-for-surface' | 'rejected';
   readonly state: SharedSessionInputRecord['state'];
   readonly task?: string | undefined;
   readonly activeAgentId?: string | undefined;
