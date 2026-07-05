@@ -122,7 +122,7 @@ export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   lastAgentId: STRING_SCHEMA,
   lastError: STRING_SCHEMA,
   metadata: METADATA_SCHEMA,
-}, ['id', 'kind', 'project', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'messageCount', 'pendingInputCount', 'routeIds', 'surfaceKinds', 'participants', 'metadata']);
+}, ['id', 'kind', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'messageCount', 'pendingInputCount', 'routeIds', 'surfaceKinds', 'participants', 'metadata']);
 
 export const COMPANION_CHAT_SESSION_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
