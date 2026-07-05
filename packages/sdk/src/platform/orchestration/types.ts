@@ -85,7 +85,25 @@ export type WorkItemState =
    * carries the human-readable reason for as long as the item stays blocked
    * (cleared the moment it reclaims a slot).
    */
-  | 'blocked-budget';
+  | 'blocked-budget'
+  /**
+   * Recoverable, not terminal — the item cannot be claimed yet because at
+   * least one of its `dependsOn` items has not reached 'passed'. This is a
+   * REFUSE-not-kill gate (BIG-3 item 2): the item sits here, out of the
+   * claimable waiting set (computeClaims excludes it), until the engine's
+   * per-tick dependency pre-pass (applyDependencyGates, engine.ts) finds every
+   * dependency passed and flips it back to 'pending'. `blockedReason` is
+   * recomputed every tick so it stays honest as dependencies change:
+   *   - `waiting on: <titles>` while dependencies are still pending/running,
+   *   - `dependency failed: <titles>` once a dependency has terminally failed.
+   * A FAILED dependency does NOT terminally fail the dependent — it stays here,
+   * recoverable: if that dependency is later retried (engine.retryItem) and
+   * passes, the next tick clears this block and the item proceeds. Only ever
+   * set on an item that has not started yet (no phase has run); once an item's
+   * dependencies are all passed at its first claim they stay passed (passed is
+   * terminal), so a mid-pipeline item is never re-gated.
+   */
+  | 'blocked-dependency';
 
 /** Token/cost usage rolled up across every agent this work-item has ever spawned. */
 export interface WorkItemUsage {
@@ -157,6 +175,18 @@ export interface WorkItem {
   readonly id: string;
   title: string;
   readonly task: string;
+  /**
+   * IDs of the sibling work items this item depends on (BIG-3 item 2). The
+   * item is not claimable until EVERY id here refers to an item that has
+   * reached 'passed'; until then it sits in 'blocked-dependency' with an
+   * honest `blockedReason`. Empty (the common case) ⇒ no dependency gate, the
+   * item is claimable as soon as capacity and budget allow. Populated from a
+   * PlanProposal's resolved `dependsOn` by `fromPlanProposal`
+   * (proposal-workstream.ts); the assembly asserts these reference real items
+   * and form no cycle. JSON-safe (a plain string[]), so it serializes with the
+   * work item unchanged.
+   */
+  dependsOn: string[];
   /** The phase this item is currently queued for or running in; null once terminal. */
   currentPhaseId: string | null;
   state: WorkItemState;
@@ -217,6 +247,14 @@ export interface WorkItemSpec {
   readonly id?: string | undefined;
   readonly title: string;
   readonly task: string;
+  /**
+   * IDs of other items in the SAME workstream this item depends on (BIG-3
+   * item 2). Omitted/empty ⇒ no dependency gate. Every id must match another
+   * item's id in the same CreateWorkstreamInput; `fromPlanProposal` asserts
+   * this (and acyclicity) at assembly, and the engine gates the claim path on
+   * it (see the 'blocked-dependency' state doc).
+   */
+  readonly dependsOn?: readonly string[] | undefined;
 }
 
 /**
@@ -250,6 +288,27 @@ export interface BudgetCeiling {
   readonly maxCostUsd?: number | undefined;
 }
 
+/**
+ * Workstream-level provenance (BIG-3 item 1) — honest, machine-readable record
+ * of where a workstream's items came from when it was assembled from an
+ * approved PlanProposal by `fromPlanProposal` (proposal-workstream.ts). Absent
+ * on workstreams built the compat way (`fromChainSpec`) or authored directly.
+ * Carried through serialization and surfaced in status/fleet so a resumed or
+ * observed workstream reports its origin without guessing.
+ */
+export interface WorkstreamProvenance {
+  /** Whether a read-only planning agent decomposed the goal, or the heuristic single-item path did. Mirrors PlanProposal.decomposedBy. */
+  readonly decomposedBy?: 'agent' | 'heuristic' | undefined;
+  /** The id of the PlanProposal this workstream was assembled from. */
+  readonly proposalId?: string | undefined;
+  /** The proposal's execution strategy label (e.g. 'parallel', 'sequential'), for display. */
+  readonly strategy?: string | undefined;
+  /** Estimated dollar cost of the planning-agent decomposition run, when priced. */
+  readonly agentCostUsd?: number | undefined;
+  /** Wall-clock time the planning agent ran, in ms (when the agent path ran). */
+  readonly elapsedMs?: number | undefined;
+}
+
 export interface Workstream {
   readonly id: string;
   title: string;
@@ -271,6 +330,13 @@ export interface Workstream {
    * events, so a resumed or observed workstream reports its isolation honestly.
    */
   readonly isolation?: WorkstreamIsolation | undefined;
+  /**
+   * Where this workstream's items came from (BIG-3 item 1). Set only when the
+   * workstream was assembled from an approved PlanProposal via
+   * `fromPlanProposal`; absent for compat/`fromChainSpec` or hand-authored
+   * workstreams. Persisted and surfaced for honest origin reporting.
+   */
+  readonly provenance?: WorkstreamProvenance | undefined;
   readonly createdAt: number;
 }
 
@@ -371,6 +437,20 @@ export type OrchestrationEvent =
   | { readonly type: 'item-cancelled'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   | { readonly type: 'item-passed'; readonly workstreamId: string; readonly itemId: string; readonly warnings?: readonly string[] | undefined }
   | { readonly type: 'item-failed'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
+  /**
+   * Dependency-gating lifecycle (BIG-3 item 2). `item-blocked-dependency`
+   * fires once per NEW block (not every idle tick), naming the unmet
+   * dependencies by id in `deps` and carrying the current human-readable
+   * `reason` ('waiting on: …' or 'dependency failed: …'). `item-dependency-cleared`
+   * fires when a previously-blocked item's dependencies all reach passed and it
+   * is released back to the claimable set. `item-retried` fires when a
+   * terminally-failed item is deliberately reset to re-run via engine.retryItem
+   * — the documented recovery path that lets a failed dependency (and its
+   * stuck dependents) recover.
+   */
+  | { readonly type: 'item-blocked-dependency'; readonly workstreamId: string; readonly itemId: string; readonly phaseId: string; readonly reason: string; readonly deps: readonly string[] }
+  | { readonly type: 'item-dependency-cleared'; readonly workstreamId: string; readonly itemId: string }
+  | { readonly type: 'item-retried'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   /** Emitted once per item on `importWorkstream` for every item reconciled from a crash-artifact 'in-phase' snapshot back to 'pending' — see the 'in-phase' state doc. */
   | { readonly type: 'item-requeued'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   | { readonly type: 'workstream-persisted'; readonly workstreamId: string }

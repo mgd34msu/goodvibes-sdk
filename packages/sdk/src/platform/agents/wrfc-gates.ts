@@ -37,11 +37,17 @@ export function getSkippedGateReason(
   return null;
 }
 
-export async function executeGateCommand(command: string): Promise<{ passed: boolean; output: string }> {
+export async function executeGateCommand(command: string, cwd?: string): Promise<{ passed: boolean; output: string }> {
   try {
+    // `cwd` (BIG-3 item 5): in worktree-isolation mode the caller passes the
+    // item's worktree path so the gate command runs INSIDE that worktree — its
+    // typecheck/lint/test (and any file it writes) see the item's isolated
+    // changes, not the shared projectRoot. Omitted (shared mode) ⇒ Bun.spawn
+    // inherits the process cwd exactly as before — shared-mode gates unchanged.
     const proc = Bun.spawn(['/bin/sh', '-c', command], {
       stdout: 'pipe',
       stderr: 'pipe',
+      ...(cwd ? { cwd } : {}),
     });
     const timer = setTimeout(() => {
       killGateProcess(proc, 'timeout');

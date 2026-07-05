@@ -132,6 +132,14 @@ function workItemState(item: WorkItem): ProcessState {
       // reconsideration is automatic the instant the ceiling changes, but a
       // fixed ceiling on its own never lifts the block (usage only grows).
       return 'stalled';
+    case 'blocked-dependency':
+      // Same "stuck, not progressing" signal as blocked-budget, for the same
+      // reason (BIG-3 item 2): the item is out of the claimable set until every
+      // dependency reaches 'passed'. Distinct from 'queued' (which WILL be
+      // claimed by free capacity) — a dependency-blocked item waits on other
+      // items, or on engine.retryItem reviving a failed dependency. blockedReason
+      // carries the honest 'waiting on: …' / 'dependency failed: …' detail.
+      return 'stalled';
     case 'in-phase':
       return 'executing-tool';
   }
@@ -141,7 +149,7 @@ function workstreamState(workstream: Workstream): ProcessState {
   if (workstream.items.length === 0) return 'idle';
   if (workstream.items.some((item) => item.state === 'in-phase')) return 'executing-tool';
   if (workstream.items.some((item) => item.state === 'pending' || item.state === 'awaiting-capacity')) return 'queued';
-  if (workstream.items.some((item) => item.state === 'blocked-budget')) return 'stalled';
+  if (workstream.items.some((item) => item.state === 'blocked-budget' || item.state === 'blocked-dependency')) return 'stalled';
   return workstream.items.some((item) => item.state === 'failed') ? 'failed' : 'done';
 }
 
@@ -245,12 +253,19 @@ export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: st
       : undefined,
     costUsd: usage.costUsd,
     costState: usage.costState,
-    // Blocked-budget items surface their reason (set/cleared by the engine
-    // alongside the state transition, types.ts WorkItem.blockedReason) in
-    // place of the bare phase id — the phase id alone doesn't tell an
-    // operator WHY the item stopped moving.
+    // Blocked items surface their reason (set/cleared by the engine alongside
+    // the state transition, types.ts WorkItem.blockedReason) in place of the
+    // bare phase id — the phase id alone doesn't tell an operator WHY the item
+    // stopped moving. Covers both budget blocks and dependency blocks (BIG-3
+    // item 2: 'waiting on: …' / 'dependency failed: …').
     currentActivity: item.currentPhaseId
-      ? { kind: 'phase', text: item.state === 'blocked-budget' && item.blockedReason ? item.blockedReason : item.currentPhaseId, at: item.createdAt }
+      ? {
+          kind: 'phase',
+          text: (item.state === 'blocked-budget' || item.state === 'blocked-dependency') && item.blockedReason
+            ? item.blockedReason
+            : item.currentPhaseId,
+          at: item.createdAt,
+        }
       : undefined,
     capabilities: {
       interruptible: activeAgentId !== undefined,
