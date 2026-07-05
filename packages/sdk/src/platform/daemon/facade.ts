@@ -464,8 +464,8 @@ export class DaemonServer {
       this._configWatchUnsub = null;
     }
 
-    // Synchronous pre-stop teardown
-    this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped');
+    // Synchronous pre-stop teardown. Only stop the heartbeat watcher when start() engaged it (registered solely behind `watchers.enabled`); stopWatcher() runs requireFeatureGate('watcher-framework') and THROWS when that gate is off, which would break a clean shutdown of a watchers-disabled daemon.
+    if (this.configManager.get('watchers.enabled')) this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped');
     if (this.replyPoller !== null) {
       clearInterval(this.replyPoller);
       this.replyPoller = null;
