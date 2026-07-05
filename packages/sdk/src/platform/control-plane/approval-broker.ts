@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { PersistentStore } from '../state/persistent-store.js';
 import type { PermissionPromptDecision, PermissionPromptRequest, PermissionRequestHandler } from '../permissions/prompt.js';
 import type { ControlPlaneSurfaceMessage } from './types.js';
 import { logger } from '../utils/logger.js';
 import { isRecord } from '../utils/record-coerce.js';
+import { resolveApprovalHunkSelection } from './approval-hunk-apply.js';
 
 export type SharedApprovalStatus = 'pending' | 'claimed' | 'approved' | 'denied' | 'cancelled' | 'expired';
 
@@ -334,6 +336,17 @@ export class ApprovalBroker {
       readonly approved: boolean;
       readonly remember?: boolean | undefined;
       readonly modifiedArgs?: Record<string, unknown> | undefined;
+      /**
+       * Optional per-hunk selection (edit-tool approvals only). When present and
+       * the approval is being APPROVED, the broker computes the modified args
+       * server-side from THIS approval's own `request.args.edits`, so every
+       * surface (TUI, webui) produces identical results. It supersedes any
+       * `modifiedArgs` passed by the caller. Omitting it is the back-compat
+       * whole-request approve-all path. An out-of-range index or a non-edit
+       * approval throws a VALIDATION_FAILED (400) error, mirroring the closed-
+       * session guard's honest-4xx shape.
+       */
+      readonly selectedHunks?: readonly number[] | undefined;
       readonly actor: string;
       readonly actorSurface?: string | undefined;
       readonly note?: string | undefined;
@@ -345,6 +358,20 @@ export class ApprovalBroker {
     if (approval.status === 'approved' || approval.status === 'denied' || approval.status === 'cancelled' || approval.status === 'expired') {
       return approval;
     }
+    // Per-hunk selection is only meaningful on approve; a deny is always a
+    // whole-request rejection. Compute the modified args from the pending
+    // request's OWN edits so the result is identical for every calling surface.
+    let modifiedArgs = input.modifiedArgs;
+    if (input.selectedHunks !== undefined && input.approved) {
+      const resolution = resolveApprovalHunkSelection(approval.request, input.selectedHunks);
+      if (!resolution.ok) {
+        throw Object.assign(new Error(resolution.reason), {
+          code: SDKErrorCodes.VALIDATION_FAILED,
+          status: 400,
+        });
+      }
+      modifiedArgs = resolution.modifiedArgs;
+    }
     const updated: SharedApprovalRecord = {
       ...approval,
       status: input.approved ? 'approved' : 'denied',
@@ -354,7 +381,7 @@ export class ApprovalBroker {
       decision: {
         approved: input.approved,
         ...(input.remember !== undefined ? { remember: input.remember } : {}),
-        ...(input.modifiedArgs !== undefined ? { modifiedArgs: input.modifiedArgs } : {}),
+        ...(modifiedArgs !== undefined ? { modifiedArgs } : {}),
       },
       audit: [
         ...approval.audit,

@@ -17,6 +17,7 @@ import {
 } from './method-catalog-shared.js';
 import {
   APPROVAL_ACTION_INPUT_SCHEMA,
+  APPROVAL_APPROVE_INPUT_SCHEMA,
   APPROVAL_ACTION_OUTPUT_SCHEMA,
   APPROVAL_SNAPSHOT_SCHEMA,
   COMPANION_CHAT_MESSAGES_LIST_SCHEMA,
@@ -393,6 +394,20 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     outputSchema: actionResultOutputSchema('session', SHARED_SESSION_RECORD_SCHEMA),
   }),
   methodDescriptor({
+    id: 'sessions.detach',
+    title: 'Detach Shared Session Participant',
+    description: 'Remove a surface\'s participant and its route binding from a session so that surface stops receiving updates, WITHOUT closing or killing the session (detach != close != kill). Every participant carrying the given surfaceId is removed and any route binding they alone held is unbound; the session and all other participants keep running. Idempotent: detaching an already-detached surface, or detaching from a closed session, is a no-op success. An unknown session is a 404.',
+    category: 'sessions',
+    scopes: ['write:sessions'],
+    http: { method: 'POST', path: '/api/sessions/{sessionId}/detach' },
+    events: ['control.session_update'],
+    inputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      surfaceId: STRING_SCHEMA,
+    }, ['sessionId', 'surfaceId']),
+    outputSchema: actionResultOutputSchema('session', SHARED_SESSION_RECORD_SCHEMA),
+  }),
+  methodDescriptor({
     id: 'sessions.messages.list',
     title: 'List Shared Session Messages',
     description: 'Return message history for a shared session.',
@@ -620,11 +635,11 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'approvals.approve',
     title: 'Approve Approval',
-    description: 'Approve a pending approval.',
+    description: 'Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval\'s own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400.',
     category: 'approvals',
     scopes: ['write:approvals'],
     http: { method: 'POST', path: '/api/approvals/{approvalId}/approve' },
-    inputSchema: APPROVAL_ACTION_INPUT_SCHEMA,
+    inputSchema: APPROVAL_APPROVE_INPUT_SCHEMA,
     outputSchema: APPROVAL_ACTION_OUTPUT_SCHEMA,
   }),
   methodDescriptor({

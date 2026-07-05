@@ -519,6 +519,7 @@ export class DaemonHttpRouter {
           markInputDelivered: (sessionId, inputId, options) => this.context.sessionBroker.markInputDelivered(sessionId, inputId, options),
           closeSession: (sessionId) => this.context.sessionBroker.closeSession(sessionId),
           reopenSession: (sessionId) => this.context.sessionBroker.reopenSession(sessionId),
+          detachParticipant: (sessionId, surfaceId) => this.context.sessionBroker.detachParticipant(sessionId, surfaceId) as never,
           cancelInput: (sessionId, inputId) => this.context.sessionBroker.cancelInput(sessionId, inputId),
           completeAgent: async (sessionId, agentId, message, meta) => {
             await this.context.sessionBroker.completeAgent(sessionId, agentId, message, meta);

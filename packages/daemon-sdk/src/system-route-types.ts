@@ -130,6 +130,13 @@ export interface ApprovalBrokerLike {
       readonly actor: string;
       readonly actorSurface: string;
       readonly note?: string | undefined;
+      /**
+       * Optional per-hunk selection (edit-tool approvals only). The broker
+       * filters the approval's own edit list to these indices server-side. An
+       * out-of-range index or a non-edit approval throws a 400-tagged error the
+       * route layer converts to an HTTP 400.
+       */
+      readonly selectedHunks?: readonly number[] | undefined;
     },
   ): Promise<unknown | null>;
 }

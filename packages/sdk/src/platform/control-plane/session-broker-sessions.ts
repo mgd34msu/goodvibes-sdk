@@ -309,3 +309,45 @@ export function attachSharedSessionParticipantAndRoute(input: {
     },
   };
 }
+
+/**
+ * The inverse of {@link attachSharedSessionParticipantAndRoute}: remove EVERY
+ * participant bound to `surfaceId` and unbind the route bindings those
+ * participants alone held. This is "detach != close != kill" — the session and
+ * all other participants keep running; the detached surface simply stops being a
+ * routing target (and, filtered by domain, stops receiving session updates).
+ *
+ * Route pruning is conservative: a routeId is dropped from the session only when
+ * NO surviving participant still references it, so detaching one surface never
+ * severs another surface's live binding.
+ *
+ * Returns `{ session, changed }`. `changed` is false when no participant matched
+ * `surfaceId` (the caller can treat a no-match detach as an idempotent no-op and
+ * skip persistence/emit). Status, title, and closedAt are preserved untouched —
+ * detach is never a lifecycle transition.
+ */
+export function detachSharedSessionParticipant(
+  session: SharedSessionRecord,
+  surfaceId: string,
+): { readonly session: SharedSessionRecord; readonly changed: boolean } {
+  const remaining = session.participants.filter((participant) => participant.surfaceId !== surfaceId);
+  if (remaining.length === session.participants.length) {
+    return { session, changed: false };
+  }
+  const survivingRouteIds = new Set(
+    remaining
+      .map((participant) => participant.routeId)
+      .filter((routeId): routeId is string => typeof routeId === 'string'),
+  );
+  const routeIds = session.routeIds.filter((routeId) => survivingRouteIds.has(routeId));
+  return {
+    session: {
+      ...session,
+      updatedAt: Date.now(),
+      participants: remaining,
+      surfaceKinds: dedupeSessionSurfaceKinds(remaining),
+      routeIds,
+    },
+    changed: true,
+  };
+}
