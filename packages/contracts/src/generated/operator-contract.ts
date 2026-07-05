@@ -21279,6 +21279,407 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "checkpoints.create",
+        "title": "Create Workspace Checkpoint",
+        "description": "Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an error) when the workspace tree is identical to the most recent checkpoint — no commit, ref, or manifest entry is created in that case.",
+        "category": "checkpoints",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "turn",
+                "agent-run",
+                "manual"
+              ]
+            },
+            "label": {
+              "type": "string"
+            },
+            "retentionClass": {
+              "type": "string",
+              "enum": [
+                "short",
+                "standard",
+                "forensic"
+              ]
+            },
+            "turnId": {
+              "type": "string"
+            },
+            "agentId": {
+              "type": "string"
+            },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "checkpoint": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "turn",
+                        "agent-run",
+                        "manual"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "number"
+                    },
+                    "parentId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "turnId": {
+                      "type": "string"
+                    },
+                    "agentId": {
+                      "type": "string"
+                    },
+                    "retentionClass": {
+                      "type": "string",
+                      "enum": [
+                        "short",
+                        "standard",
+                        "forensic"
+                      ]
+                    },
+                    "commit": {
+                      "type": "string"
+                    },
+                    "sizeBytes": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "label",
+                    "createdAt",
+                    "parentId",
+                    "retentionClass",
+                    "commit",
+                    "sizeBytes"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "noop": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "checkpoint",
+            "noop"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "checkpoints.diff",
+        "title": "Diff Workspace Checkpoints",
+        "description": "Diff two checkpoints, or one checkpoint against the live working tree when `b` is omitted. An unknown/gc'd checkpoint id is an honest 404, not a silent empty diff.",
+        "category": "checkpoints",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "a"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "diff": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "unifiedDiff": {
+                  "type": "string"
+                },
+                "stat": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "from",
+                "to",
+                "files",
+                "unifiedDiff",
+                "stat"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "diff"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "checkpoints.list",
+        "title": "List Workspace Checkpoints",
+        "description": "Return workspace checkpoints (whole-workspace filesystem snapshots), newest first, optionally filtered by kind/since and capped by limit.",
+        "category": "checkpoints",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "turn",
+                "agent-run",
+                "manual"
+              ]
+            },
+            "since": {
+              "type": "number"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "checkpoints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "turn",
+                      "agent-run",
+                      "manual"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "parentId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "turnId": {
+                    "type": "string"
+                  },
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "retentionClass": {
+                    "type": "string",
+                    "enum": [
+                      "short",
+                      "standard",
+                      "forensic"
+                    ]
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "label",
+                  "createdAt",
+                  "parentId",
+                  "retentionClass",
+                  "commit",
+                  "sizeBytes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "checkpoints"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "checkpoints.restore",
+        "title": "Restore Workspace Checkpoint",
+        "description": "DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Executes immediately with NO server-side confirmation — the calling surface (TUI/webui) owns the confirm UX before invoking this verb. An unknown/gc'd checkpoint id is an honest 404, not a silent no-op.",
+        "category": "checkpoints",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "safetyCheckpoint": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "result": {
+              "type": "object",
+              "properties": {
+                "checkpointId": {
+                  "type": "string"
+                },
+                "safetyCheckpointId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "restoredFiles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "removedFiles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "checkpointId",
+                "safetyCheckpointId",
+                "restoredFiles",
+                "removedFiles"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
         "id": "companion.chat.events.stream",
         "title": "Stream Companion Chat Events",
         "description": "Server-Sent Events stream of turn and agent events scoped to a single companion-chat session.",
@@ -25653,6 +26054,516 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "fleet.list",
+        "title": "List Fleet Processes",
+        "description": "Paginated, filtered (kinds/states) query over the live process registry. Cursor pagination returns disjoint pages that union to the full matching set at query time.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "states": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limit": {
+              "type": "number"
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "wrfc-chain",
+                      "wrfc-subtask",
+                      "workflow",
+                      "trigger",
+                      "schedule",
+                      "watcher",
+                      "background-process",
+                      "workstream",
+                      "phase",
+                      "work-item",
+                      "code-index"
+                    ]
+                  },
+                  "parentId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "task": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "thinking",
+                      "executing-tool",
+                      "awaiting-approval",
+                      "streaming",
+                      "stalled",
+                      "retrying",
+                      "done",
+                      "failed",
+                      "killed",
+                      "interrupted",
+                      "idle",
+                      "queued",
+                      "paused"
+                    ]
+                  },
+                  "startedAt": {
+                    "type": "number"
+                  },
+                  "completedAt": {
+                    "type": "number"
+                  },
+                  "elapsedMs": {
+                    "type": "number"
+                  },
+                  "usage": {
+                    "type": "object",
+                    "properties": {
+                      "inputTokens": {
+                        "type": "number"
+                      },
+                      "outputTokens": {
+                        "type": "number"
+                      },
+                      "cacheReadTokens": {
+                        "type": "number"
+                      },
+                      "cacheWriteTokens": {
+                        "type": "number"
+                      },
+                      "reasoningTokens": {
+                        "type": "number"
+                      },
+                      "llmCallCount": {
+                        "type": "number"
+                      },
+                      "turnCount": {
+                        "type": "number"
+                      },
+                      "toolCallCount": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "inputTokens",
+                      "outputTokens",
+                      "cacheReadTokens",
+                      "cacheWriteTokens",
+                      "llmCallCount",
+                      "turnCount",
+                      "toolCallCount"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "costUsd": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "costState": {
+                    "type": "string",
+                    "enum": [
+                      "priced",
+                      "unpriced",
+                      "estimated"
+                    ]
+                  },
+                  "currentActivity": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "tool",
+                          "output-line",
+                          "phase"
+                        ]
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "toolName": {
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "text",
+                      "at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "capabilities": {
+                    "type": "object",
+                    "properties": {
+                      "interruptible": {
+                        "type": "boolean"
+                      },
+                      "killable": {
+                        "type": "boolean"
+                      },
+                      "pausable": {
+                        "type": "boolean"
+                      },
+                      "resumable": {
+                        "type": "boolean"
+                      },
+                      "steerable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "interruptible",
+                      "killable",
+                      "pausable",
+                      "resumable",
+                      "steerable"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "sessionRef": {
+                    "type": "object",
+                    "properties": {
+                      "sessionId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "label",
+                  "state",
+                  "elapsedMs",
+                  "costState",
+                  "capabilities"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "nextCursor": {
+              "type": "string"
+            },
+            "hasMore": {
+              "type": "boolean"
+            },
+            "capturedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "items",
+            "hasMore",
+            "capturedAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "fleet.snapshot",
+        "title": "Fleet Snapshot",
+        "description": "Return a point-in-time capture of every live/completed runtime process (agents, WRFC chains/subtasks, workflow FSMs/triggers/schedules, watchers, background processes) as a flat, parentId-linked node list. Capped at 2000 nodes (truncated:true + totalCount when the live fleet exceeds the cap) — use fleet.list to page through a larger fleet.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "capturedAt": {
+              "type": "number"
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "wrfc-chain",
+                      "wrfc-subtask",
+                      "workflow",
+                      "trigger",
+                      "schedule",
+                      "watcher",
+                      "background-process",
+                      "workstream",
+                      "phase",
+                      "work-item",
+                      "code-index"
+                    ]
+                  },
+                  "parentId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "task": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "thinking",
+                      "executing-tool",
+                      "awaiting-approval",
+                      "streaming",
+                      "stalled",
+                      "retrying",
+                      "done",
+                      "failed",
+                      "killed",
+                      "interrupted",
+                      "idle",
+                      "queued",
+                      "paused"
+                    ]
+                  },
+                  "startedAt": {
+                    "type": "number"
+                  },
+                  "completedAt": {
+                    "type": "number"
+                  },
+                  "elapsedMs": {
+                    "type": "number"
+                  },
+                  "usage": {
+                    "type": "object",
+                    "properties": {
+                      "inputTokens": {
+                        "type": "number"
+                      },
+                      "outputTokens": {
+                        "type": "number"
+                      },
+                      "cacheReadTokens": {
+                        "type": "number"
+                      },
+                      "cacheWriteTokens": {
+                        "type": "number"
+                      },
+                      "reasoningTokens": {
+                        "type": "number"
+                      },
+                      "llmCallCount": {
+                        "type": "number"
+                      },
+                      "turnCount": {
+                        "type": "number"
+                      },
+                      "toolCallCount": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "inputTokens",
+                      "outputTokens",
+                      "cacheReadTokens",
+                      "cacheWriteTokens",
+                      "llmCallCount",
+                      "turnCount",
+                      "toolCallCount"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "costUsd": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "costState": {
+                    "type": "string",
+                    "enum": [
+                      "priced",
+                      "unpriced",
+                      "estimated"
+                    ]
+                  },
+                  "currentActivity": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "tool",
+                          "output-line",
+                          "phase"
+                        ]
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "toolName": {
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "text",
+                      "at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "capabilities": {
+                    "type": "object",
+                    "properties": {
+                      "interruptible": {
+                        "type": "boolean"
+                      },
+                      "killable": {
+                        "type": "boolean"
+                      },
+                      "pausable": {
+                        "type": "boolean"
+                      },
+                      "resumable": {
+                        "type": "boolean"
+                      },
+                      "steerable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "interruptible",
+                      "killable",
+                      "pausable",
+                      "resumable",
+                      "steerable"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "sessionRef": {
+                    "type": "object",
+                    "properties": {
+                      "sessionId": {
+                        "type": "string"
+                      },
+                      "agentId": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "label",
+                  "state",
+                  "elapsedMs",
+                  "costState",
+                  "capabilities"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "totalCount": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "capturedAt",
+            "nodes",
+            "truncated",
+            "totalCount"
+          ],
+          "additionalProperties": false
+        },
         "invokable": true
       },
       {
@@ -67988,6 +68899,221 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.search",
+        "title": "Search Shared Sessions",
+        "description": "Paginated, filtered query over shared sessions: free-text query (matches id/title), project, kind, surfaceKind, and status. Closed sessions are EXCLUDED by default — pass includeClosed:true to include them, and a returned closed session always carries an honest status:\"closed\" (never hidden, never relabeled). Cursor pagination returns disjoint pages that union to the full matching set.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            },
+            "project": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "surfaceKind": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "closed"
+              ]
+            },
+            "includeClosed": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "closed"
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "lastMessageAt": {
+                    "type": "number"
+                  },
+                  "closedAt": {
+                    "type": "number"
+                  },
+                  "lastActivityAt": {
+                    "type": "number"
+                  },
+                  "messageCount": {
+                    "type": "number"
+                  },
+                  "retainedMessageCount": {
+                    "type": "number"
+                  },
+                  "pendingInputCount": {
+                    "type": "number"
+                  },
+                  "routeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "surfaceKinds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "participants": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "surfaceKind": {
+                          "type": "string"
+                        },
+                        "surfaceId": {
+                          "type": "string"
+                        },
+                        "externalId": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "routeId": {
+                          "type": "string"
+                        },
+                        "lastSeenAt": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "surfaceKind",
+                        "surfaceId",
+                        "lastSeenAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "activeAgentId": {
+                    "type": "string"
+                  },
+                  "lastAgentId": {
+                    "type": "string"
+                  },
+                  "lastError": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "status",
+                  "createdAt",
+                  "updatedAt",
+                  "lastActivityAt",
+                  "messageCount",
+                  "pendingInputCount",
+                  "routeIds",
+                  "surfaceKinds",
+                  "participants",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "nextCursor": {
+              "type": "string"
+            },
+            "hasMore": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessions",
+            "hasMore"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.steer",
         "title": "Steer Shared Session",
         "description": "Deliver a live steering message to the active agent for a shared session, optionally falling back to spawn when explicitly allowed.",
@@ -77160,10 +78286,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 299,
-      "typedInputs": 299,
+      "methods": 306,
+      "typedInputs": 306,
       "genericInputs": 0,
-      "typedOutputs": 299,
+      "typedOutputs": 306,
       "genericOutputs": 0
     },
     "eventCoverage": {

@@ -8,7 +8,7 @@ import { SubscriptionManager } from '../config/subscriptions.js';
 import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } from '../automation/index.js';
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
-import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker } from '../control-plane/index.js';
+import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerW3S2GatewayMethods } from '../control-plane/index.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { ArtifactStore } from '../artifacts/index.js';
@@ -696,8 +696,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     return (usage.inputTokens * pricing.input + usage.outputTokens * pricing.output) / 1_000_000;
   };
 
-  // Orchestration engine (Wave 4, wo701) — ships alongside wrfcController,
-  // untouched by this change. See the RuntimeServices interface comment.
+  // Orchestration engine (Wave 4, wo701) — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
   const orchestrationEngine = createOrchestrationEngine({
     agentManager,
     configManager,
@@ -727,6 +726,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexService: codeIndexStore,
   });
 
+  registerW3S2GatewayMethods(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker }); // W3-S2 (routes/register-w3-s2.ts)
   return {
     workingDirectory,
     homeDirectory,

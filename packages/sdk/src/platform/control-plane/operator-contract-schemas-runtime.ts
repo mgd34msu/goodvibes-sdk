@@ -45,7 +45,7 @@ const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'agent', 'webui', 'compani
  * stay strict: {@link SHARED_SESSION_REGISTER_INPUT_SCHEMA} keeps the closed enum
  * so `sessions.register` still 400s on an unknown kind.
  */
-const SHARED_SESSION_KIND_READ_SCHEMA = { type: 'string' } as Record<string, unknown>;
+export const SHARED_SESSION_KIND_READ_SCHEMA = { type: 'string' } as Record<string, unknown>;
 const SHARED_SESSION_INPUT_INTENT_SCHEMA = enumSchema(['submit', 'steer', 'follow-up']);
 const SHARED_SESSION_INPUT_STATE_SCHEMA = enumSchema(['queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected']);
 const SHARED_SESSION_MESSAGE_MODE_SCHEMA = enumSchema(['spawn', 'continued-live', 'queued-follow-up', 'queued-for-surface', 'rejected']);
