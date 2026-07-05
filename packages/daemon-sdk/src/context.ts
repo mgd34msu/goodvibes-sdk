@@ -356,6 +356,7 @@ export interface DaemonMultimodalRouteHandlers {
 /** Route handlers for shared session management: creation, messaging, steering, follow-up, and SSE events. */
 export interface DaemonRuntimeSessionRouteHandlers {
   createSharedSession(req: Request): MaybeResponse;
+  registerSharedSession(req: Request): MaybeResponse;
   getSharedSession(sessionId: string): MaybeResponse;
   closeSharedSession(sessionId: string, req: Request): MaybeResponse;
   reopenSharedSession(sessionId: string, req: Request): MaybeResponse;

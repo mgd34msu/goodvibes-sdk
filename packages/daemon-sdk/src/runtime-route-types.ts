@@ -164,6 +164,21 @@ export interface DaemonRuntimeRouteContext {
         lastSeenAt: number;
       } | undefined;
     }): Promise<{ id: string }>;
+    register(input: {
+      sessionId: string;
+      kind?: string | undefined;
+      project?: string | undefined;
+      title?: string | undefined;
+      participant: {
+        surfaceKind: string;
+        surfaceId: string;
+        externalId?: string | undefined;
+        userId?: string | undefined;
+        displayName?: string | undefined;
+        routeId?: string | undefined;
+        lastSeenAt: number;
+      };
+    }): Promise<{ id: string }>;
     getSession(sessionId: string): { id: string; status: string; messageCount: number; activeAgentId?: string } | null;
     getMessages(sessionId: string, limit: number): unknown[];
     getInputs(sessionId: string, limit: number): unknown[];

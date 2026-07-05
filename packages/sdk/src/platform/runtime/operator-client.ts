@@ -1,5 +1,6 @@
 import type {
   ControlPlaneRecentEvent,
+  RegisterSharedSessionInput,
   SharedApprovalRecord,
   SharedSessionInputRecord,
   SharedSessionMessage,
@@ -36,6 +37,7 @@ export interface OperatorSessionsClient {
   messages(sessionId: string, limit?: number): readonly SharedSessionMessage[];
   inputs(sessionId: string, limit?: number): readonly SharedSessionInputRecord[];
   ensureSession(input?: OperatorSessionEnsureInput): Promise<SharedSessionRecord>;
+  register(input: RegisterSharedSessionInput): Promise<SharedSessionRecord>;
   close(sessionId: string): Promise<SharedSessionRecord | null>;
   reopen(sessionId: string): Promise<SharedSessionRecord | null>;
   bindAgent(sessionId: string, agentId: string): Promise<SharedSessionRecord | null>;
@@ -129,6 +131,7 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     messages: (sessionId: string, limit = 100): readonly SharedSessionMessage[] => services.sessionBroker.getMessages(sessionId, normalizeLimit(limit)),
     inputs: (sessionId: string, limit = 100): readonly SharedSessionInputRecord[] => services.sessionBroker.getInputs(sessionId, normalizeLimit(limit)),
     ensureSession: (input: Parameters<OperatorClientServices['sessionBroker']['ensureSession']>[0] = {}): Promise<SharedSessionRecord> => services.sessionBroker.ensureSession(input),
+    register: (input: RegisterSharedSessionInput): Promise<SharedSessionRecord> => services.sessionBroker.register(input),
     close: (sessionId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.closeSession(sessionId),
     reopen: (sessionId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.reopenSession(sessionId),
     bindAgent: (sessionId: string, agentId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.bindAgent(sessionId, agentId),

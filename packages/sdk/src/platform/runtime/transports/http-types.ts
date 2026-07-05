@@ -7,7 +7,7 @@ import type {
   SharedSessionRecord,
   SharedSessionSubmission,
 } from '../../control-plane/index.js';
-import type { SteerSharedSessionMessageInput } from '../../control-plane/index.js';
+import type { RegisterSharedSessionInput, SteerSharedSessionMessageInput } from '../../control-plane/index.js';
 import type { ProviderRuntimeSnapshot, ProviderUsageSnapshot } from '../../providers/runtime-snapshot.js';
 import type {
   TelemetryAggregates,
@@ -77,6 +77,7 @@ export interface HttpTransportSessionsClient {
   messages(sessionId: string, limit?: number): Promise<readonly SharedSessionMessage[]>;
   inputs(sessionId: string, limit?: number): Promise<readonly SharedSessionInputRecord[]>;
   ensureSession(input?: HttpSessionEnsureInput): Promise<SharedSessionRecord>;
+  register(input: RegisterSharedSessionInput): Promise<SharedSessionRecord>;
   close(sessionId: string): Promise<SharedSessionRecord | null>;
   reopen(sessionId: string): Promise<SharedSessionRecord | null>;
   submitMessage(sessionId: string, input: HttpSessionMessageInput): Promise<SharedSessionSubmission>;
