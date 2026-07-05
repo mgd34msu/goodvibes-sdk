@@ -53,6 +53,7 @@
     "dist:check": "bun scripts/check-dist-freshness.ts",
     "docs:check": "bun scripts/generate-api-docs.ts --check && bun scripts/docs-completeness-check.ts",
     "error:check": "bun scripts/error-contract-check.ts",
+    "line:check": "bun scripts/check-line-cap.ts",
     "pack:check": "bun scripts/pack-check.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "platform-console:check": "bun scripts/no-platform-console.ts",
