@@ -141,3 +141,128 @@ describe('m7 — companion SSE requires auth', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ---------------------------------------------------------------------------
+// W3-S1 Part A — SSE domain-scoped delivery, proved against the webui's exact
+// subscription profile over a REAL operator SSE stream. useRealtimeInvalidation
+// connects with ?domains=tasks,permissions,providers,knowledge,control-plane and
+// declares no `session` domain (it drops session-update as inert). After the
+// domain-scope fix the webui must (a) STOP receiving session-update — even though
+// the operator token is admin and bypasses the read:sessions scope gate, the
+// domain filter still excludes it — while (b) STILL receiving events in the five
+// domains it subscribed to (control-plane here, emitted when a second client
+// connects). Domain and scope are AND-ed, so this could only pass with the domain
+// filter in place.
+// ---------------------------------------------------------------------------
+describe('W3-S1 — webui SSE compatibility (domain-scoped delivery)', () => {
+  const WEBUI_DOMAINS = 'tasks,permissions,providers,knowledge,control-plane';
+
+  /** Read an operator SSE stream for `windowMs`, firing `onOpen` once the first
+   *  bytes arrive (by which point the server-side subscriptions are live), and
+   *  return the parsed `event:` names. */
+  async function readSse(
+    domains: string,
+    windowMs: number,
+    onOpen: () => Promise<void>,
+  ): Promise<string[]> {
+    const ac = new AbortController();
+    const res = await fetch(`${daemon.url}/api/control-plane/events?domains=${domains}`, {
+      headers: { authorization: `Bearer ${TOKEN}` },
+      signal: ac.signal,
+    });
+    expect(res.status).toBe(200);
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    const events: string[] = [];
+    // Bound the stream read: an idle SSE stream only speaks again at the 15s
+    // heartbeat, so abort at the window to unblock a pending reader.read().
+    const timer = setTimeout(() => ac.abort(), windowMs);
+    let buf = '';
+    let opened = false;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const records = buf.split('\n\n');
+        buf = records.pop() ?? '';
+        for (const rec of records) {
+          const m = rec.match(/event: (.+)/);
+          if (m) events.push(m[1]!.trim());
+        }
+        if (!opened) {
+          opened = true;
+          await onOpen();
+        }
+      }
+    } catch {
+      // aborted / closed — expected at window end
+    } finally {
+      clearTimeout(timer);
+      ac.abort();
+      await reader.cancel().catch(() => {});
+    }
+    return events;
+  }
+
+  test('webui profile receives its subscribed domains but NOT session-update', async () => {
+    const events = await readSse(WEBUI_DOMAINS, 900, async () => {
+      // (a) publishEvent('session-update') — tagged `session`, absent from the webui domain set.
+      await fetch(`${daemon.url}/api/sessions/register`, {
+        method: 'POST',
+        headers: auth(),
+        body: JSON.stringify({
+          sessionId: 'w3s1-webui-sse',
+          kind: 'tui',
+          participant: { surfaceKind: 'tui', surfaceId: 'sx', lastSeenAt: Date.now() },
+        }),
+      });
+      // (b) a second SSE connection emits a `control-plane` domain event the first
+      //     stream (subscribed to control-plane) must still receive.
+      const ac2 = new AbortController();
+      await fetch(`${daemon.url}/api/control-plane/events`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+        signal: ac2.signal,
+      }).catch(() => {});
+      // give the events a beat to propagate before the read window closes
+      await new Promise<void>((r) => setTimeout(r, 250));
+      ac2.abort();
+    });
+
+    // The fix: session-update is domain-filtered out despite admin bypassing scope.
+    expect(events).not.toContain('session-update');
+    // Regression guard: the five subscribed domains still deliver (control-plane here).
+    expect(events).toContain('control-plane');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W3-S1 Part B — invoke-layer input validation over the real HTTP invoke seam.
+// A verb with a typed inputSchema must reject a wrong-typed body with an honest
+// 400 + INVALID_INPUT code before its handler runs, while a well-typed body
+// passes the gate. panels.open (inputSchema requires a string `id`) is the probe.
+// ---------------------------------------------------------------------------
+describe('W3-S1 — invoke-layer input validation', () => {
+  async function invoke(methodId: string, body: unknown): Promise<{ status: number; json: Record<string, unknown> }> {
+    const res = await fetch(`${daemon.url}/api/control-plane/methods/${methodId}/invoke`, {
+      method: 'POST',
+      headers: auth(),
+      body: JSON.stringify({ body }),
+    });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return { status: res.status, json };
+  }
+
+  test('a typed verb with a wrong-typed field is a 400 INVALID_INPUT (not silent coercion)', async () => {
+    const { status, json } = await invoke('panels.open', { id: 123 });
+    expect(status).toBe(400);
+    expect(json.code).toBe('INVALID_INPUT');
+    expect(String(json.error)).toContain('id');
+  });
+
+  test('valid params pass the input gate unchanged (no INVALID_INPUT rejection)', async () => {
+    const { json } = await invoke('panels.open', { id: 'w3s1-panel', pane: 'main' });
+    // Whatever the handler ultimately returns, the validation gate must not reject it.
+    expect(json.code).not.toBe('INVALID_INPUT');
+  });
+});
