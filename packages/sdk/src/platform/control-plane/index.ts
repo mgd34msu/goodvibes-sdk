@@ -31,6 +31,7 @@ export type {
   ListSharedSessionsOptions,
   ParticipantRouteAttachInput,
   RegisterSharedSessionInput,
+  SharedSessionRegisterResult,
   SharedSessionKind,
   SharedSessionMessage,
   SharedSessionParticipant,

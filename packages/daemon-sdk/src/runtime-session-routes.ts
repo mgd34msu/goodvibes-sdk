@@ -43,7 +43,7 @@ type SharedSessionMessageInput = {
   readonly metadata?: Record<string, unknown> | undefined;
   readonly routing?: SharedSessionRoutingIntent | undefined;
 };
-type SharedSessionRecordResponse = {
+export type SharedSessionRecordResponse = {
   readonly id: string;
   readonly kind: 'tui' | 'agent' | 'webui' | 'companion-task' | 'companion-chat' | 'automation';
   readonly project: string;
@@ -55,6 +55,7 @@ type SharedSessionRecordResponse = {
   readonly closedAt?: number | undefined;
   readonly lastActivityAt: number;
   readonly messageCount: number;
+  readonly retainedMessageCount?: number | undefined; // retained bodies when < messageCount
   readonly pendingInputCount: number;
   readonly routeIds: readonly string[];
   readonly surfaceKinds: readonly string[];
@@ -77,7 +78,7 @@ type SharedSessionParticipantResponse = {
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 500;
 const MAX_SESSION_TOOL_NAMES = 64;
-const SHARED_SESSION_KINDS = new Set<SharedSessionRecordResponse['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
+export const SHARED_SESSION_KINDS = new Set<SharedSessionRecordResponse['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
 const SHARED_SESSION_STATUSES = new Set<SharedSessionRecordResponse['status']>(['active', 'closed']);
 
 function readBoundedLimit(url: URL, key = 'limit'): number {
@@ -106,6 +107,8 @@ export function toSharedSessionRecordResponse(
   const activeAgentId = readNonEmptyString(record.activeAgentId);
   const lastAgentId = readNonEmptyString(record.lastAgentId);
   const lastError = readNonEmptyString(record.lastError);
+  const messageCount = Math.max(readFiniteNumber(record.messageCount) ?? 0, options.messageCount ?? 0);
+  const retained = readFiniteNumber(record.retainedMessageCount);
   return {
     id,
     kind,
@@ -117,7 +120,8 @@ export function toSharedSessionRecordResponse(
     ...(lastMessageAt !== undefined ? { lastMessageAt } : {}),
     ...(closedAt !== undefined ? { closedAt } : {}),
     lastActivityAt,
-    messageCount: Math.max(readFiniteNumber(record.messageCount) ?? 0, options.messageCount ?? 0),
+    messageCount,
+    ...(retained !== undefined && retained < messageCount ? { retainedMessageCount: retained } : {}),
     pendingInputCount: Math.max(readFiniteNumber(record.pendingInputCount) ?? 0, options.pendingInputCount ?? 0),
     routeIds: readStringArray(record.routeIds),
     surfaceKinds: readStringArray(record.surfaceKinds),
@@ -493,9 +497,8 @@ async function handleCompanionMessageKind(
     timestamp,
     ...(metadata ? { metadata } : {}),
   });
-  // Notify in-process subscribers via the conversation follow-up event. The
-  // runtime subscriber turns this persisted message into a normal conversation
-  // turn whose events stream to both local and remote clients.
+  // Notify in-process subscribers via the conversation follow-up event (the
+  // runtime subscriber turns it into a normal conversation turn that streams out).
   context.publishConversationFollowup(sessionId, {
     messageId,
     body: input.body,
@@ -503,8 +506,7 @@ async function handleCompanionMessageKind(
     timestamp,
     ...(metadata ? { metadata } : {}),
   });
-  // The { routedTo: 'conversation' } shape signals the companion app that the message
-  // was received and persisted (isConversationRouteResult check).
+  // { routedTo: 'conversation' } signals the companion app the message was persisted.
   return context.recordApiResponse(req, `/api/sessions/${sessionId}/messages`, Response.json({
     messageId,
     routedTo: 'conversation',

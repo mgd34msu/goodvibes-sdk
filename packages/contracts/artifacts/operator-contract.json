@@ -64182,6 +64182,9 @@
                 "messageCount": {
                   "type": "number"
                 },
+                "retainedMessageCount": {
+                  "type": "number"
+                },
                 "pendingInputCount": {
                   "type": "number"
                 },
@@ -64380,6 +64383,9 @@
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -64684,6 +64690,9 @@
                       "type": "number"
                     },
                     "messageCount": {
+                      "type": "number"
+                    },
+                    "retainedMessageCount": {
                       "type": "number"
                     },
                     "pendingInputCount": {
@@ -65196,6 +65205,9 @@
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -65737,6 +65749,9 @@
                 "messageCount": {
                   "type": "number"
                 },
+                "retainedMessageCount": {
+                  "type": "number"
+                },
                 "pendingInputCount": {
                   "type": "number"
                 },
@@ -66238,6 +66253,9 @@
                   "messageCount": {
                     "type": "number"
                   },
+                  "retainedMessageCount": {
+                    "type": "number"
+                  },
                   "pendingInputCount": {
                     "type": "number"
                   },
@@ -66567,6 +66585,9 @@
                           "type": "number"
                         },
                         "messageCount": {
+                          "type": "number"
+                        },
+                        "retainedMessageCount": {
                           "type": "number"
                         },
                         "pendingInputCount": {
@@ -67089,6 +67110,9 @@
                 "messageCount": {
                   "type": "number"
                 },
+                "retainedMessageCount": {
+                  "type": "number"
+                },
                 "pendingInputCount": {
                   "type": "number"
                 },
@@ -67288,7 +67312,7 @@
       {
         "id": "sessions.register",
         "title": "Register Shared Session",
-        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Prefer this over sessions.create for external runtimes that own their session id.",
+        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
@@ -67360,6 +67384,9 @@
                 "lastSeenAt"
               ],
               "additionalProperties": false
+            },
+            "reopen": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -67417,6 +67444,9 @@
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -67523,10 +67553,29 @@
                 "metadata"
               ],
               "additionalProperties": false
+            },
+            "reopened": {
+              "type": "boolean"
+            },
+            "conflict": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "closed"
+                  ]
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
-            "session"
+            "session",
+            "reopened"
           ],
           "additionalProperties": false
         },
@@ -67614,6 +67663,9 @@
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -67921,6 +67973,9 @@
                       "type": "number"
                     },
                     "messageCount": {
+                      "type": "number"
+                    },
+                    "retainedMessageCount": {
                       "type": "number"
                     },
                     "pendingInputCount": {
@@ -76675,6 +76730,8 @@
                 "session-input-queued",
                 "session-input-delivered",
                 "session-input-spawned",
+                "session-input-completed",
+                "session-input-failed",
                 "session-input-rejected",
                 "session-input-cancelled",
                 "session-follow-up-queued",

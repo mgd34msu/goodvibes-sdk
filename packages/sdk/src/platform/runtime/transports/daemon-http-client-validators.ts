@@ -173,6 +173,13 @@ export function assertTelemetryMetricsSnapshot(value: unknown, endpoint: string)
   return value as HttpTransportTelemetryMetricsSnapshot;
 }
 
+/** The session kinds this build knows. A response carrying anything else is
+ * from a newer/older peer; we degrade honestly rather than surface an invalid
+ * kind (mixed-version stance — docs/decisions/2026-07-05-session-wire-mixed-version.md). */
+const KNOWN_SESSION_KINDS = new Set<SharedSessionRecord['kind']>([
+  'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation',
+]);
+
 export function normalizeSharedSessionRecord(record: SharedSessionRecord | Record<string, unknown>): SharedSessionRecord {
   const candidate = record as SharedSessionRecord & {
     readonly surfaceKinds?: readonly string[] | undefined;
@@ -186,8 +193,24 @@ export function normalizeSharedSessionRecord(record: SharedSessionRecord | Recor
       readonly lastSeenAt: number;
     }>;
   };
+  // Parse-with-backfill so a 0.38-pinned consumer reading a newer daemon's frame
+  // (and vice-versa) degrades honestly instead of carrying dishonest values:
+  //  - absent/blank project → 'unknown' (the documented home-scoped default);
+  //  - an unknown kind → 'tui' (documented fallback); the raw value is preserved
+  //    under metadata.wireKind so nothing is silently lost.
+  const rawKind = candidate.kind as string | undefined;
+  const kindIsKnown = typeof rawKind === 'string' && KNOWN_SESSION_KINDS.has(rawKind as SharedSessionRecord['kind']);
+  const project = typeof candidate.project === 'string' && candidate.project.trim().length > 0
+    ? candidate.project
+    : 'unknown';
+  const baseMetadata = (candidate.metadata && typeof candidate.metadata === 'object')
+    ? candidate.metadata as Record<string, unknown>
+    : {};
   return {
     ...candidate,
+    kind: kindIsKnown ? (rawKind as SharedSessionRecord['kind']) : 'tui',
+    project,
+    ...(kindIsKnown ? {} : { metadata: { ...baseMetadata, wireKind: rawKind ?? null } }),
     surfaceKinds: (candidate.surfaceKinds ?? []) as readonly AutomationSurfaceKind[],
     participants: (candidate.participants ?? []).map((participant) => ({
       ...participant,

@@ -31,6 +31,8 @@ export const SESSION_UPDATE_WIRE_EVENTS = [
   'session-input-queued',
   'session-input-delivered',
   'session-input-spawned',
+  'session-input-completed',
+  'session-input-failed',
   'session-input-rejected',
   'session-input-cancelled',
   'session-follow-up-queued',

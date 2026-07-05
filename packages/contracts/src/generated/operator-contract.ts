@@ -64184,6 +64184,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "messageCount": {
                   "type": "number"
                 },
+                "retainedMessageCount": {
+                  "type": "number"
+                },
                 "pendingInputCount": {
                   "type": "number"
                 },
@@ -64382,6 +64385,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -64686,6 +64692,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "number"
                     },
                     "messageCount": {
+                      "type": "number"
+                    },
+                    "retainedMessageCount": {
                       "type": "number"
                     },
                     "pendingInputCount": {
@@ -65198,6 +65207,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -65739,6 +65751,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "messageCount": {
                   "type": "number"
                 },
+                "retainedMessageCount": {
+                  "type": "number"
+                },
                 "pendingInputCount": {
                   "type": "number"
                 },
@@ -66240,6 +66255,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "messageCount": {
                     "type": "number"
                   },
+                  "retainedMessageCount": {
+                    "type": "number"
+                  },
                   "pendingInputCount": {
                     "type": "number"
                   },
@@ -66569,6 +66587,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "type": "number"
                         },
                         "messageCount": {
+                          "type": "number"
+                        },
+                        "retainedMessageCount": {
                           "type": "number"
                         },
                         "pendingInputCount": {
@@ -67091,6 +67112,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "messageCount": {
                   "type": "number"
                 },
+                "retainedMessageCount": {
+                  "type": "number"
+                },
                 "pendingInputCount": {
                   "type": "number"
                 },
@@ -67290,7 +67314,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.register",
         "title": "Register Shared Session",
-        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Prefer this over sessions.create for external runtimes that own their session id.",
+        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
@@ -67362,6 +67386,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "lastSeenAt"
               ],
               "additionalProperties": false
+            },
+            "reopen": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -67419,6 +67446,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -67525,10 +67555,29 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "metadata"
               ],
               "additionalProperties": false
+            },
+            "reopened": {
+              "type": "boolean"
+            },
+            "conflict": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "closed"
+                  ]
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
-            "session"
+            "session",
+            "reopened"
           ],
           "additionalProperties": false
         },
@@ -67616,6 +67665,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "number"
                 },
                 "messageCount": {
+                  "type": "number"
+                },
+                "retainedMessageCount": {
                   "type": "number"
                 },
                 "pendingInputCount": {
@@ -67923,6 +67975,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "number"
                     },
                     "messageCount": {
+                      "type": "number"
+                    },
+                    "retainedMessageCount": {
                       "type": "number"
                     },
                     "pendingInputCount": {
@@ -76677,6 +76732,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "session-input-queued",
                 "session-input-delivered",
                 "session-input-spawned",
+                "session-input-completed",
+                "session-input-failed",
                 "session-input-rejected",
                 "session-input-cancelled",
                 "session-follow-up-queued",

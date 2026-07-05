@@ -178,7 +178,12 @@ export interface DaemonRuntimeRouteContext {
         routeId?: string | undefined;
         lastSeenAt: number;
       };
-    }): Promise<{ id: string }>;
+      reopen?: boolean | undefined;
+    }): Promise<{
+      record: { id: string };
+      reopened: boolean;
+      conflict?: { readonly status: 'closed' } | undefined;
+    }>;
     getSession(sessionId: string): { id: string; status: string; messageCount: number; activeAgentId?: string } | null;
     getMessages(sessionId: string, limit: number): unknown[];
     getInputs(sessionId: string, limit: number): unknown[];

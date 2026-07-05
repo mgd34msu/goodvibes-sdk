@@ -83,6 +83,7 @@ export const SHARED_SESSION_REGISTER_INPUT_SCHEMA = objectSchema({
   project: STRING_SCHEMA,
   title: STRING_SCHEMA,
   participant: SHARED_SESSION_PARTICIPANT_SCHEMA,
+  reopen: BOOLEAN_SCHEMA,
 }, ['sessionId', 'participant'], { additionalProperties: true });
 
 export const SHARED_SESSION_MESSAGE_SCHEMA = objectSchema({
@@ -112,6 +113,7 @@ export const SHARED_SESSION_RECORD_SCHEMA = objectSchema({
   closedAt: NUMBER_SCHEMA,
   lastActivityAt: NUMBER_SCHEMA,
   messageCount: NUMBER_SCHEMA,
+  retainedMessageCount: NUMBER_SCHEMA,
   pendingInputCount: NUMBER_SCHEMA,
   routeIds: STRING_LIST_SCHEMA,
   surfaceKinds: STRING_LIST_SCHEMA,
@@ -242,6 +244,19 @@ export const SHARED_SESSION_WITH_INPUTS_SCHEMA = objectSchema({
 export const SHARED_SESSION_CREATE_OUTPUT_SCHEMA = objectSchema({
   session: SHARED_SESSION_RECORD_SCHEMA,
 }, ['session']);
+
+/**
+ * Output of sessions.register. Beyond the record it carries honest lifecycle
+ * disposition: `reopened` is true only when this call reopened a closed session,
+ * and `conflict` is present (status:'closed') when register targeted a closed
+ * session WITHOUT reopen:true — the heartbeat was recorded but the session was
+ * left closed.
+ */
+export const SHARED_SESSION_REGISTER_OUTPUT_SCHEMA = objectSchema({
+  session: SHARED_SESSION_RECORD_SCHEMA,
+  reopened: BOOLEAN_SCHEMA,
+  conflict: objectSchema({ status: enumSchema(['closed']) }, ['status']),
+}, ['session', 'reopened']);
 
 export const SHARED_SESSION_CONVERSATION_ROUTE_OUTPUT_SCHEMA = objectSchema({
   messageId: STRING_SCHEMA,

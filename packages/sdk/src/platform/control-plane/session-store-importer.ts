@@ -31,8 +31,14 @@ import type { SharedSessionInputRecord } from './session-intents.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
-/** How many messages to retain per session when re-persisting the merged store. */
-const MAX_PERSISTED_MESSAGES = 2_000;
+/**
+ * How many message bodies to retain PER SESSION when re-persisting the merged
+ * store. This is a per-session cap, not a global one: every session keeps its
+ * most-recent 2 000 bodies independently, and a session that is truncated is
+ * stamped with an honest `retainedMessageCount` (see createSessionBrokerSnapshot).
+ * Migration therefore never silently drops whole sessions' transcripts.
+ */
+const MAX_PERSISTED_MESSAGES_PER_SESSION = 2_000;
 
 /** A legacy store to fold into the home store. */
 export interface LegacySessionSource {
@@ -286,5 +292,5 @@ function buildSnapshot(state: MergeState): SharedSessionStoreSnapshot {
   for (const inputRecord of state.inputs.values()) {
     inputs.set(inputRecord.sessionId, [...(inputs.get(inputRecord.sessionId) ?? []), inputRecord]);
   }
-  return createSessionBrokerSnapshot({ sessions, messages, inputs }, MAX_PERSISTED_MESSAGES);
+  return createSessionBrokerSnapshot({ sessions, messages, inputs }, MAX_PERSISTED_MESSAGES_PER_SESSION);
 }
