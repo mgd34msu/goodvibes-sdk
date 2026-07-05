@@ -121,6 +121,33 @@ describe('migration importer — folds all three legacy stores into one home sto
     }
   });
 
+  test('facade boot order: a broker constructed BEFORE the import still serves folded sessions after start()', async () => {
+    const fx = await buildFixture();
+    try {
+      // Mirror the daemon facade boot sequence (facade.ts): this.sessionBroker is
+      // constructed at init — before any legacy data is folded — then the importer runs,
+      // then broker.start(). The broker loads its store in start() (not the constructor),
+      // so a broker built before the fold must still serve the folded sessions. This pins
+      // the importer→broker seam in the real construction order (the isolation test above
+      // constructs the broker AFTER the import and so cannot catch a construct-time snapshot).
+      const broker = makeBroker(fx.homeStorePath);
+      const sources = discoverLegacySessionSources({
+        projectRoot: fx.projectRoot,
+        companionSessionsDir: fx.companionDir,
+      });
+      const result = await importLegacySessionStores({ homeStorePath: fx.homeStorePath, sources });
+      expect(result.imported).toBe(5);
+
+      await broker.start();
+      const ids = new Set(broker.listSessions(500).map((s) => s.id));
+      for (const id of ['comp-active', 'comp-closed', 'tui-a', 'tui-closed', 'agent-a']) {
+        expect(ids.has(id)).toBe(true);
+      }
+    } finally {
+      rmSync(fx.root, { recursive: true, force: true });
+    }
+  });
+
   test('a corrupt companion file is logged and skipped; the run completes', async () => {
     const fx = await buildFixture();
     try {

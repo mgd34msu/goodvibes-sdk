@@ -64118,6 +64118,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/close"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -64312,6 +64315,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -64509,6 +64515,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/follow-up"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -65405,6 +65414,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/inputs/{inputId}/cancel"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -66361,6 +66373,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/messages"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -67290,6 +67305,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/register"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -67534,6 +67552,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/reopen"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -67728,6 +67749,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/steer"
         },
+        "events": [
+          "control.session_update"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
