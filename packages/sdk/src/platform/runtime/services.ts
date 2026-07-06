@@ -8,7 +8,7 @@ import { SubscriptionManager } from '../config/subscriptions.js';
 import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } from '../automation/index.js';
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
-import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerW3S2GatewayMethods } from '../control-plane/index.js';
+import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerGatewayVerbGroups } from '../control-plane/index.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { ArtifactStore } from '../artifacts/index.js';
@@ -726,7 +726,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexService: codeIndexStore,
   });
 
-  registerW3S2GatewayMethods(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker }); // see routes/register-w3-s2.ts
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,

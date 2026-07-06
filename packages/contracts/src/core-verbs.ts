@@ -167,6 +167,14 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // bearing operation than a generic `update` that would also touch content).
     'add', 'update-review',
   ],
+  'push-delivery': [
+    // Browser-push delivery action: `verify` sends a live test notification to
+    // a stored subscription and returns an honest delivery receipt (proving the
+    // encryption + endpoint round trip). It is a single-purpose delivery probe,
+    // not a generic read/lifecycle word — the subscription lifecycle itself uses
+    // core verbs (push.subscriptions.create/list/delete, push.vapid.get).
+    'verify',
+  ],
   'process-control': [
     // OS/service process lifecycle verbs (distinct domain from
     // enable/disable, which toggle a *record's* activation state) plus

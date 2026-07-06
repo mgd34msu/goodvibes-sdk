@@ -99,3 +99,8 @@ export {
 } from './operator-contract-schemas-knowledge.js';
 // fleet.*/checkpoints.*/sessions.search verb registration (see routes/register-w3-s2.ts).
 export { registerW3S2GatewayMethods } from './routes/register-w3-s2.js';
+// The single verb-group registrar the runtime-services composition root calls:
+// folds in the fleet/checkpoints group above and constructs + wires the
+// browser-push group (see routes/register-gateway-verb-groups.ts).
+export { registerGatewayVerbGroups } from './routes/register-gateway-verb-groups.js';
+export type { GatewayVerbGroupDeps } from './routes/register-gateway-verb-groups.js';

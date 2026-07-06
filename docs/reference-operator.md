@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `315`
+- Methods: `320`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -60238,6 +60238,331 @@ Return usage and pricing posture for a single provider.
     "usage"
   ],
   "additionalProperties": true
+}
+```
+
+### push
+
+#### `push.subscriptions.create`
+
+Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. Re-registering the same endpoint updates its keys in place rather than duplicating it. The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.
+
+- Title: `Register Web Push Subscription`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:push`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "endpoint": {
+      "type": "string"
+    },
+    "keys": {
+      "type": "object",
+      "properties": {
+        "p256dh": {
+          "type": "string"
+        },
+        "auth": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "p256dh",
+        "auth"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "endpoint",
+    "keys"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "subscription": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "principalId": {
+          "type": "string"
+        },
+        "endpointOrigin": {
+          "type": "string"
+        },
+        "endpointHash": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "lastDeliveryAt": {
+          "type": "number"
+        },
+        "lastOutcome": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "principalId",
+        "endpointOrigin",
+        "endpointHash",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "subscription"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `push.subscriptions.delete`
+
+Permanently remove one of the authenticated operator's push subscriptions: the stored record (endpoint + keys) is dropped and cannot be listed afterward. An unknown id, or one owned by another principal, is a 404 SUBSCRIPTION_NOT_FOUND, never a 200-noop.
+
+- Title: `Delete Web Push Subscription`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:push`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "subscriptionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "subscriptionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "subscriptionId": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "subscriptionId",
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `push.subscriptions.list`
+
+List the authenticated operator's registered push devices as redacted subscription views (id, endpoint origin + hash, timestamps, last delivery outcome). The capability URL and key material are never included.
+
+- Title: `List Web Push Subscriptions`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:push`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+none
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "subscriptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "principalId": {
+            "type": "string"
+          },
+          "endpointOrigin": {
+            "type": "string"
+          },
+          "endpointHash": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "lastDeliveryAt": {
+            "type": "number"
+          },
+          "lastOutcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "principalId",
+          "endpointOrigin",
+          "endpointHash",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "subscriptions"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `push.subscriptions.verify`
+
+Send a live test notification to one of the authenticated operator's subscriptions and return an honest delivery receipt (delivered / pruned / failed). A subscription whose endpoint reports 404/410 gone is pruned as part of the attempt and the receipt says so. An unknown id, or one owned by another principal, is a 404 SUBSCRIPTION_NOT_FOUND.
+
+- Title: `Send Test Web Push`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:push`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "subscriptionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "subscriptionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receipt": {
+      "type": "object",
+      "properties": {
+        "subscriptionId": {
+          "type": "string"
+        },
+        "endpointOrigin": {
+          "type": "string"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "httpStatus": {
+          "type": "number"
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscriptionId",
+        "endpointOrigin",
+        "outcome"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "receipt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `push.vapid.get`
+
+Return the daemon's public VAPID key (base64url application-server key) that a browser client passes to pushManager.subscribe(). The matching private key never leaves the daemon and is never returned by any verb.
+
+- Title: `Get Web Push Public Key`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:push`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+none
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "publicKey": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "publicKey"
+  ],
+  "additionalProperties": false
 }
 ```
 

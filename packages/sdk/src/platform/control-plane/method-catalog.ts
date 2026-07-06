@@ -22,6 +22,9 @@ import {
 import {
   builtinGatewayMediaMethodDescriptors,
 } from './method-catalog-media.js';
+import {
+  builtinGatewayPushMethodDescriptors,
+} from './method-catalog-push.js';
 import type {
   GatewayEventDescriptor,
   GatewayEventListOptions,
@@ -71,6 +74,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayKnowledgeMethodDescriptors,
   ...builtinGatewayMediaMethodDescriptors,
   ...builtinGatewayAdminMethodDescriptors,
+  ...builtinGatewayPushMethodDescriptors,
 ];
 
 function normalizeDescriptor(descriptor: GatewayMethodDescriptor): GatewayMethodDescriptor {
