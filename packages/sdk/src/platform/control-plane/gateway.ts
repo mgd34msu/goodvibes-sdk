@@ -454,7 +454,7 @@ export class ControlPlaneGateway {
 
     this.subscribeWebSocketClient(clientId, selectedDomains);
     send('ready', { clientId, domains: selectedDomains, transport: 'websocket' });
-    replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains });
+    replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains }, explicitDomains ? wsDomains : null);
     return { clientId, domains: selectedDomains };
   }
 
@@ -686,6 +686,8 @@ export class ControlPlaneGateway {
           const record = this.rememberEvent(domain, serialized);
           send(domain, serialized, record.id);
         }));
+        // Opt-in narrowing (null=deliver-all, never the DEFAULT_DOMAINS fallback); reused below for replay.
+        const sseLiveDomains = (options.domains?.length ?? 0) > 0 ? new Set(selectedDomains) : null;
         this.liveClients.set(clientId, {
           clientId,
           kind: options.clientKind ?? 'web',
@@ -693,9 +695,7 @@ export class ControlPlaneGateway {
           routeId: options.routeId,
           scopes: options.scopes,
           admin: options.admin,
-          // Opt-in narrowing: no `?domains=` → null (deliver-all); else the explicit
-          // set (never the DEFAULT_DOMAINS fallback — that excludes permissions/untagged).
-          domains: (options.domains?.length ?? 0) > 0 ? new Set(selectedDomains) : null,
+          domains: sseLiveDomains,
           send,
         });
         emitStreamSubscriberConnected(this.runtimeBus!, {
@@ -764,7 +764,7 @@ export class ControlPlaneGateway {
           controller.close();
         }, { once: true });
         send('ready', { clientId, domains: selectedDomains });
-        replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains }, lastEventId);
+        replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains }, sseLiveDomains, lastEventId);
       },
       cancel: () => {
         teardown();

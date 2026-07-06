@@ -145,21 +145,28 @@ export function pruneDisconnectedClientRecords(
  * canReplayEventToClient applies the kind/route/surface/domain-name filters, and
  * the EVENT_DOMAIN broadcast-domain filter is applied on top so a domain-narrowed
  * client is not handed a replayed broadcast (e.g. session-update) for a domain it
- * did not subscribe to. null domains (no opt-in) = deliver-all.
+ * did not subscribe to.
+ *
+ * `replayDomains` MUST be the same null-or-set value the caller registered on the
+ * live client (`LiveControlPlaneClient.domains`) — null when the client did NOT
+ * opt into narrowing (deliver-all, matching live), a `Set` when it did. Do NOT
+ * derive this from `options.domains` here: by the time options reaches this
+ * function it has already been normalized (empty/undefined domains fall back to
+ * DEFAULT_DOMAINS, which excludes e.g. 'permissions'), so re-deriving from it
+ * would always look "explicit" and silently narrow every default consumer's
+ * replay — the bug this parameter exists to prevent.
  */
 export function replayRecentTraffic(
   recentEvents: readonly ScopedControlPlaneRecentEvent[],
   send: (event: string, payload: unknown, id?: string) => void,
   options: ControlPlaneReplayClientOptions,
+  replayDomains: ReadonlySet<RuntimeEventDomain> | null,
   sinceId?: string,
 ): void {
   const sinceIndex = sinceId ? recentEvents.findIndex((event) => event.id === sinceId) : -1;
   const window = sinceIndex >= 0
     ? recentEvents.slice(0, sinceIndex).reverse()
     : recentEvents.slice(0, 20).reverse();
-  const replayDomains = (options.domains?.length ?? 0) > 0
-    ? new Set(normalizeRuntimeDomains(options.domains))
-    : null;
   for (const recentEvent of window) {
     if (!canReplayEventToClient(recentEvent, options)) continue;
     if (!clientMayReceiveEventDomain(replayDomains, recentEvent.event)) continue;
