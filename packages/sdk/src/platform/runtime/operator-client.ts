@@ -44,6 +44,9 @@ export interface OperatorSessionsClient {
   /** Detach a surface's participant/route from a session without closing it
    * (detach != close != kill). Idempotent; see sessions.detach. */
   detach(sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null>;
+  /** Permanently remove a session (W5-S1: delete != close). Requires the
+   * session already closed — see sessions.delete. */
+  delete(sessionId: string): Promise<'deleted' | 'not-found' | 'active'>;
   bindAgent(sessionId: string, agentId: string): Promise<SharedSessionRecord | null>;
   submitMessage(input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission>;
   steerMessage(input: SteerSharedSessionMessageInput): Promise<SharedSessionSubmission>;
@@ -152,6 +155,7 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     close: (sessionId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.closeSession(sessionId),
     reopen: (sessionId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.reopenSession(sessionId),
     detach: (sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.detachParticipant(sessionId, surfaceId),
+    delete: (sessionId: string): Promise<'deleted' | 'not-found' | 'active'> => services.sessionBroker.deleteSession(sessionId),
     bindAgent: (sessionId: string, agentId: string): Promise<SharedSessionRecord | null> => services.sessionBroker.bindAgent(sessionId, agentId),
     submitMessage: (input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.submitMessage(input),
     steerMessage: (input: SteerSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.steerMessage(input),

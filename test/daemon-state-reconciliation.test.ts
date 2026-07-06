@@ -127,6 +127,7 @@ describe('AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
 import type { SharedSessionRecord, SharedSessionMessage } from '../packages/sdk/src/platform/control-plane/session-types.js';
 import type { SharedSessionInputRecord } from '../packages/sdk/src/platform/control-plane/session-intents.js';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.js';
+import { finalizeAgentSessionInputs } from '../packages/sdk/src/platform/control-plane/session-broker-inputs.js';
 import type { SharedSessionStoreSnapshot, SharedSessionEventPublisher } from '../packages/sdk/src/platform/control-plane/session-broker-helpers.js';
 import type { PersistentStore } from '../packages/sdk/src/platform/state/persistent-store.js';
 import type { RouteBindingManager } from '../packages/sdk/src/platform/channels/route-manager.js';
@@ -553,8 +554,14 @@ describe('lastActivityAt is bumped at touch sites', () => {
     await broker.bindAgent(sess.id, 'ag-finalize');
     const before = broker.getSession(sess.id)!.lastActivityAt;
     await settleEvents(2);
-    // Call finalizeAgentInputs directly (bypasses completeAgent)
-    (broker as unknown as { finalizeAgentInputs(sessionId: string, agentId: string, outcome: string): void }).finalizeAgentInputs(sess.id, 'ag-finalize', 'completed');
+    // Call finalizeAgentSessionInputs directly against the broker's internal
+    // input store (bypasses completeAgent) — proves the touch side effect
+    // fires from the finalize path itself, not just completeAgent's other
+    // writes. sessionInputStore() is a private accessor on the broker; the
+    // underlying finalize/touch behavior itself is the same pure function
+    // (session-broker-inputs.ts) the broker's own methods delegate to.
+    const store = (broker as unknown as { sessionInputStore(): { sessions: Map<string, SharedSessionRecord>; inputs: Map<string, SharedSessionInputRecord[]> } }).sessionInputStore();
+    finalizeAgentSessionInputs(store, sess.id, 'ag-finalize', 'completed');
     const after = broker.getSession(sess.id)!.lastActivityAt;
     expect(after).toBeGreaterThan(before);
   });

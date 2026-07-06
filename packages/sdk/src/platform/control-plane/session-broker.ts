@@ -344,6 +344,34 @@ export class SharedSessionBroker {
   }
 
   /**
+   * Permanently remove a shared session record and its queued messages/inputs
+   * from the home-scoped store (W5-S1: a real hard-delete verb, distinct from
+   * `closeSession` — closed sessions are HISTORY and are never touched by this
+   * path unless explicitly asked). Requires the session to already be closed:
+   * deleting a still-active session returns `'active'` so the caller can
+   * surface an honest 409 (close it, then delete) rather than yanking a
+   * record out from under a live participant/agent. An unknown OR
+   * already-deleted id returns `'not-found'` — delete is not a 200-noop; a
+   * second delete of the same id is an honest 404 at the route layer.
+   *
+   * Emits `session-deleted` on the same `session-update` wire channel as
+   * close/reopen/detach so subscribers drop the row live.
+   */
+  async deleteSession(sessionId: string): Promise<'deleted' | 'not-found' | 'active'> {
+    await this.start();
+    const session = this.sessions.get(sessionId);
+    if (!session) return 'not-found';
+    if (session.status !== 'closed') return 'active';
+    this.sessions.delete(sessionId);
+    this.messages.delete(sessionId);
+    this.inputs.delete(sessionId);
+    await this.persist();
+    sessionsActive.set(this.sessions.size);
+    this.publishUpdate('session-deleted', { sessionId });
+    return 'deleted';
+  }
+
+  /**
    * Detach a surface's participant + route binding without closing or killing the
    * session ("detach != close != kill"). Emits `session-detached`. Idempotent:
    * unknown session -> null (404); closed session or no matching participant ->
@@ -373,7 +401,7 @@ export class SharedSessionBroker {
     if (!session) return null;
     const updated = bindSharedSessionAgent(session, agentId);
     this.sessions.set(sessionId, updated);
-    const claimed = this.claimNextQueuedInput(sessionId, agentId);
+    const claimed = claimNextQueuedSessionInput(this.sessionInputStore(), sessionId, agentId);
     await this.persist();
     this.publishUpdate('session-agent-bound', updated);
     if (claimed) {
@@ -454,7 +482,8 @@ export class SharedSessionBroker {
       ...(metadata.status === 'failed' ? { lastError: body } : {}),
     };
     this.sessions.set(sessionId, updated);
-    const finalizedInputs = this.finalizeAgentInputs(
+    const finalizedInputs = finalizeAgentSessionInputs(
+      this.sessionInputStore(),
       sessionId,
       agentId,
       metadata.status === 'failed' ? 'failed' : metadata.status === 'cancelled' ? 'cancelled' : 'completed',
@@ -479,7 +508,7 @@ export class SharedSessionBroker {
 
   async cancelInput(sessionId: string, inputId: string): Promise<SharedSessionInputRecord | null> {
     await this.start();
-    const updated = this.updateInput(sessionId, inputId, (entry) => {
+    const updated = updateSharedSessionInput(this.sessionInputStore(), sessionId, inputId, (entry) => {
       if (entry.state !== 'queued') return entry;
       return {
         ...entry,
@@ -653,7 +682,14 @@ export class SharedSessionBroker {
         sessionIntent: intent,
       },
     });
-    const queuedInput = this.recordInput(updatedSession.id, intent, input, binding?.id, userMessage.id);
+    const queuedInput = recordSharedSessionInput(this.sessionInputStore(), {
+      sessionId: updatedSession.id,
+      intent,
+      message: input,
+      routeId: binding?.id,
+      causationId: userMessage.id,
+      maxPersistedInputs: MAX_PERSISTED_INPUTS,
+    });
     this.publishInputLifecycleEvent('session-input-queued', queuedInput, {
       messageId: userMessage.id,
     });
@@ -662,7 +698,7 @@ export class SharedSessionBroker {
     if (intent !== 'follow-up' && activeAgentId) {
       const sent = this.messageSender.send('orchestrator', activeAgentId, input.body, { kind: 'directive' });
       if (sent) {
-        const delivered = this.updateInput(updatedSession.id, queuedInput.id, (entry) => ({
+        const delivered = updateSharedSessionInput(this.sessionInputStore(), updatedSession.id, queuedInput.id, (entry) => ({
           ...entry,
           state: 'delivered',
           activeAgentId,
@@ -693,7 +729,7 @@ export class SharedSessionBroker {
         };
       }
       if (intent === 'steer' && !allowSpawnFallback) {
-        const rejected = this.updateInput(updatedSession.id, queuedInput.id, (entry) => ({
+        const rejected = updateSharedSessionInput(this.sessionInputStore(), updatedSession.id, queuedInput.id, (entry) => ({
           ...entry,
           state: 'rejected',
           updatedAt: Date.now(),
@@ -797,43 +833,6 @@ export class SharedSessionBroker {
     return updated;
   }
 
-  private recordInput(
-    sessionId: string,
-    intent: SharedSessionInputIntent,
-    input: SubmitSharedSessionMessageInput,
-    routeId?: string,
-    causationId?: string,
-  ): SharedSessionInputRecord {
-    return recordSharedSessionInput(this.sessionInputStore(), {
-      sessionId,
-      intent,
-      message: input,
-      routeId,
-      causationId,
-      maxPersistedInputs: MAX_PERSISTED_INPUTS,
-    });
-  }
-
-  private updateInput(
-    sessionId: string,
-    inputId: string,
-    transform: (input: SharedSessionInputRecord) => SharedSessionInputRecord,
-  ): SharedSessionInputRecord | null {
-    return updateSharedSessionInput(this.sessionInputStore(), sessionId, inputId, transform);
-  }
-
-  private claimNextQueuedInput(sessionId: string, agentId: string): SharedSessionInputRecord | null {
-    return claimNextQueuedSessionInput(this.sessionInputStore(), sessionId, agentId);
-  }
-
-  private finalizeAgentInputs(
-    sessionId: string,
-    agentId: string,
-    nextState: Extract<SharedSessionInputRecord['state'], 'completed' | 'failed' | 'cancelled'>,
-    error?: string,
-  ): SharedSessionInputRecord[] {
-    return finalizeAgentSessionInputs(this.sessionInputStore(), sessionId, agentId, nextState, error);
-  }
 
   private async runQueuedFollowUp(sessionId: string): Promise<{ input: SharedSessionInputRecord; agentId: string } | null> {
     if (!this.continuationRunner) return null;

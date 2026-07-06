@@ -53,6 +53,7 @@ import {
   handleRemotePeerWorkComplete,
 } from './remote-routes.js';
 import { createDaemonRuntimeRouteHandlers } from './runtime-routes.js';
+import { buildRouterSessionBrokerAdapter } from './router-session-broker-adapter.js';
 import { snapshotMetrics } from '../../runtime/metrics.js';
 import { createDaemonControlRouteHandlers } from './control-routes.js';
 import { createDaemonIntegrationRouteHandlers } from './integration-routes.js';
@@ -491,42 +492,7 @@ export class DaemonHttpRouter {
         parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
         recordApiResponse: (request, path, response) => this.recordApiResponse(request, path, response),
         requireAdmin: (request) => this.context.requireAdmin(request),
-        sessionBroker: {
-          start: () => this.context.sessionBroker.start(),
-          submitMessage: (input) => this.context.sessionBroker.submitMessage(
-            input as Parameters<SharedSessionBroker['submitMessage']>[0],
-          ) as never,
-          steerMessage: (input) => this.context.sessionBroker.steerMessage(
-            input as Parameters<SharedSessionBroker['steerMessage']>[0],
-          ) as never,
-          followUpMessage: (input) => this.context.sessionBroker.followUpMessage(
-            input as Parameters<SharedSessionBroker['followUpMessage']>[0],
-          ) as never,
-          bindAgent: async (sessionId, agentId) => {
-            await this.context.sessionBroker.bindAgent(sessionId, agentId);
-          },
-          createSession: (input) => this.context.sessionBroker.createSession(
-            input as Parameters<SharedSessionBroker['createSession']>[0],
-          ),
-          register: (input) => this.context.sessionBroker.register(input as Parameters<SharedSessionBroker['register']>[0]),
-          getSession: (sessionId) => this.context.sessionBroker.getSession(sessionId) as never,
-          getMessages: (sessionId, limit) => this.context.sessionBroker.getMessages(sessionId, limit),
-          getInputs: (sessionId, limit) => this.context.sessionBroker.getInputs(sessionId, limit),
-          getInputsSince: (sessionId, options) => this.context.sessionBroker.getInputsSince(
-            sessionId,
-            options as Parameters<SharedSessionBroker['getInputsSince']>[1],
-          ),
-          markInputDelivered: (sessionId, inputId, options) => this.context.sessionBroker.markInputDelivered(sessionId, inputId, options),
-          closeSession: (sessionId) => this.context.sessionBroker.closeSession(sessionId),
-          reopenSession: (sessionId) => this.context.sessionBroker.reopenSession(sessionId),
-          detachParticipant: (sessionId, surfaceId) => this.context.sessionBroker.detachParticipant(sessionId, surfaceId) as never,
-          cancelInput: (sessionId, inputId) => this.context.sessionBroker.cancelInput(sessionId, inputId),
-          completeAgent: async (sessionId, agentId, message, meta) => {
-            await this.context.sessionBroker.completeAgent(sessionId, agentId, message, meta);
-          },
-          appendCompanionMessage: (sessionId, input) =>
-            this.context.sessionBroker.appendCompanionMessage(sessionId, input),
-        },
+        sessionBroker: buildRouterSessionBrokerAdapter(this.context.sessionBroker),
         agentManager: {
           getStatus: (agentId) => this.context.agentManager.getStatus(agentId),
           cancel: (agentId) => this.context.agentManager.cancel(agentId),

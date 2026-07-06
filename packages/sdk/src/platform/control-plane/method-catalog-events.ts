@@ -22,6 +22,7 @@ import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../../events/dom
 export const SESSION_UPDATE_WIRE_EVENTS = [
   'session-created',
   'session-closed',
+  'session-deleted',
   'session-reopened',
   'session-agent-bound',
   'session-agent-completed',
@@ -50,6 +51,7 @@ export const SESSION_UPDATE_INTENT_MAP = {
   updated: ['session-message-appended', 'session-agent-completed', 'session-route-attached', 'session-detached', 'session-reopened'],
   steered: ['session-input-queued-for-surface', 'session-input-delivered', 'session-message-forwarded'],
   closed: ['session-closed'],
+  deleted: ['session-deleted'],
 } as const satisfies Record<string, readonly (typeof SESSION_UPDATE_WIRE_EVENTS)[number][]>;
 
 const RUNTIME_DOMAIN_DESCRIPTIONS = {
@@ -125,14 +127,15 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
     id: 'control.session_update',
     title: 'Session Lifecycle Update',
     description:
-      'Shared-session lifecycle broadcast. Every session created / closed / reopened / '
+      'Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / '
       + 'agent-bound / agent-completed / message-appended / message-forwarded / route-attached '
       + 'and every input & follow-up lifecycle transition is published on the single '
       + '`session-update` wire event; the specific lifecycle name is the discriminated '
       + '`payload.event` field. Cross-surface invalidation mapping (webui/TUI): '
       + 'created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / '
       + 'session-route-attached / session-reopened; steered ⇐ session-input-delivered / '
-      + 'session-message-forwarded; closed ⇐ session-closed. This channel is un-domained: it '
+      + 'session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard '
+      + 'removal — the record is gone, not merely closed). This channel is un-domained: it '
       + 'reaches every live SSE/WS client regardless of subscribed domains, and is dropped '
       + 'entirely when the control-plane-gateway flag is turned off (no phantom buffering).',
     category: 'transport',

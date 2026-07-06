@@ -52,6 +52,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.close': 'close',
   'sessions.reopen': 'reopen',
   'sessions.detach': 'detach',
+  'sessions.delete': 'delete',
   'sessions.steer': 'steerMessage',
   'sessions.followUp': 'followUpMessage',
   'sessions.messages.list': 'messages',
@@ -229,7 +230,7 @@ describe('S2b parity gate — DirectTransport coverage', () => {
 
 describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
   // wire id → { the args to call the mapped client method with, the underlying
-  // services effect it MUST produce }. Covers all 13 manifest mappings.
+  // services effect it MUST produce }. Covers all non-http-only manifest mappings.
   const ROUTING: Record<string, { args: readonly unknown[]; effect: string }> = {
     'sessions.list': { args: [10], effect: 'sessionBroker.listSessions' },
     'sessions.get': { args: ['s'], effect: 'sessionBroker.getSession' },
@@ -238,6 +239,7 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
     'sessions.close': { args: ['s'], effect: 'sessionBroker.closeSession' },
     'sessions.reopen': { args: ['s'], effect: 'sessionBroker.reopenSession' },
     'sessions.detach': { args: ['s', 'surface-1'], effect: 'sessionBroker.detachParticipant' },
+    'sessions.delete': { args: ['s'], effect: 'sessionBroker.deleteSession' },
     'sessions.steer': { args: [{}], effect: 'sessionBroker.steerMessage' },
     'sessions.followUp': { args: [{}], effect: 'sessionBroker.followUpMessage' },
     'sessions.messages.list': { args: ['s'], effect: 'sessionBroker.getMessages' },
@@ -262,6 +264,7 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
         closeSession: brokerSpy('closeSession', Promise.resolve(null)),
         reopenSession: brokerSpy('reopenSession', Promise.resolve(null)),
         detachParticipant: brokerSpy('detachParticipant', Promise.resolve(null)),
+        deleteSession: brokerSpy('deleteSession', Promise.resolve('deleted')),
         bindAgent: brokerSpy('bindAgent', Promise.resolve(null)),
         submitMessage: brokerSpy('submitMessage', Promise.resolve({})),
         steerMessage: brokerSpy('steerMessage', Promise.resolve({})),
