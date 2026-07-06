@@ -146,33 +146,53 @@ into the durable `MemoryStore` — that is W6-C2's canonical-store design questi
 (scope/schema/honesty-contract), not a naming fix; this brief coordinates the
 `/memory` surface with W6-C2 per file ownership, it does not own the store.
 
-### 6. TASKS verb-set drift (worst-class collision #3) — parity via existing SDK capability, no rename
+### 6. TASKS verb-set drift (worst-class collision #3) — ruled a deliberate architectural boundary, not a bug: HONEST NO-OP
 
-**Finding**: `opsApi.tasks` (the SDK's local, in-process runtime-task control plane —
+**Finding (revised after reading agent's actual code, not just grepping it)**:
+`opsApi.tasks` (the SDK's local, in-process runtime-task control plane —
 `platform/runtime/runtime-ops-api.ts`) and the wire `OPERATOR_METHOD_IDS` `tasks.*`
 family (`list`/`get`/`create`/`cancel`/`retry`/`status`, "submit a task to the daemon
 or a shared session") are legitimately different resources that share a name: one is
 local in-process subtask tracking, the other is cross-surface daemon-mediated
-submission. That is not itself a bug. The REAL bug: TUI's `/tasks` command exposes
-the full local write surface (`create`/`update`/`complete`/`fail`/`cancel`/`pause`/
-`resume`/`retry`), while the agent's `/tasks` command is read-only (`list`/`show`/
-`output`/`open`/`panel`) — the SAME capability (`opsApi.tasks`, already present in
-the pinned SDK both consumers depend on) is available to one surface's command
-registry and not the other's.
+submission — not itself a bug. TUI's `/tasks` command exposes the full local write
+surface (`create`/`update`/`complete`/`fail`/`cancel`/`pause`/`resume`/`retry`);
+agent's `/tasks` (`input/commands/tasks-runtime.ts`) is read-only (`list`/`show`/
+`output`/`open`/`panel`). The first pass over this (grep-only) treated the asymmetry
+as an accidental gap and planned to add the missing write subcommands to the agent.
+**Reading the actual file disproves that**: agent's `/tasks` has an explicit
+`BLOCKED_TASK_MUTATIONS` set and a `printTaskMutationBlocked` message —
+*"policy connected-host tasks are read-only from the Agent TUI; normal work stays in
+the main conversation... build/fix/review use /delegate \<task\> to hand explicit
+implementation work to GoodVibes TUI"* — and the whole command is `hidden: true` with
+its own note that `/workplan` is agent's recommended, visible durable-task surface.
+This is the SAME deliberate policy already established for `/session`
+(`printSessionGraphMutationBlocked`: *"explicit build/fix/review handoff must use
+/delegate so GoodVibes TUI owns execution"*) — the agent is a planning/conversation
+surface; execution-side mutation is intentionally TUI-only, consistently, across two
+different commands. It is not a drift bug; it is the one-platform architecture's
+division of responsibility, already documented in the code the audit's grep pass
+didn't read closely enough to catch.
 
-**Decision**: bring the agent's `/tasks` command to parity with the TUI's, adding the
-missing write subcommands driving the identical, already-existing `opsApi.tasks`
-methods. Zero SDK change required (the capability already exists); this is a
-consumer-side, SDK-independent fix landing on the agent repo directly.
+**Decision**: rule this an HONEST NO-OP for W6-C3 — no code change to agent's
+`/tasks`. The read-only verb vocabulary that agent DOES expose (`list`/`show`/
+`output`) already matches TUI's naming exactly for the shared read-only subset; there
+is no actual vocabulary inconsistency to fix, only a deliberate capability boundary
+that predates this wave and belongs to the one-platform division-of-responsibility
+ruling, not a naming/collision pass. Per Mike's no-deferral rule, ruling a "fix" a
+no-op requires a real, checked reason — this is that reason, not convenience: forcing
+write capability into the agent here would reverse an existing, actively-documented
+architectural decision without a mandate to do so.
 
-**REJECTED** renaming `opsApi.tasks` to disambiguate it from the wire `tasks.*`
-family — that touches the SDK's core ops-control-plane property name across dozens of
-call sites in both consumers for a naming clarity gain that doesn't fix an actual
-behavior bug, in a wave explicitly scoped to worst-class fixes only (risk #6).
-**REJECTED** deleting the wire `tasks.retry`/`tasks.status` as "undriven" — they are a
-real, intentional remote-submission capability for a future/other consumer, not dead
-code; removing published capability to satisfy a lint would violate the wave's own
-"never regress working behavior" bar.
+**REJECTED** (the original, grep-only plan) adding create/update/complete/fail/
+cancel/pause/resume/retry subcommands to agent's `/tasks` — this would silently
+reverse the agent's documented read-only-execution boundary, which is exactly the
+kind of scope creep risk #6 warns against, just discovered one investigation step
+later than the schedule/session findings. **REJECTED** renaming `opsApi.tasks` to
+disambiguate it from the wire `tasks.*` family — touches the SDK's core
+ops-control-plane property name across dozens of call sites for a naming-clarity gain
+that doesn't fix an actual behavior bug. **REJECTED** deleting the wire
+`tasks.retry`/`tasks.status` as "undriven" — real, intentional remote-submission
+capability for a future/other consumer, not dead code.
 
 ### 7. Agent `/session` orphan (worst-class collision #4) — delete the dead registrar, fix the stale usage text
 
