@@ -324,6 +324,10 @@
       "types": "./dist/platform/plugins/index.d.ts",
       "import": "./dist/platform/plugins/index.js"
     },
+    "./platform/presentation": {
+      "types": "./dist/platform/presentation/index.d.ts",
+      "import": "./dist/platform/presentation/index.js"
+    },
     "./platform/profiles": {
       "types": "./dist/platform/profiles/index.d.ts",
       "import": "./dist/platform/profiles/index.js"
