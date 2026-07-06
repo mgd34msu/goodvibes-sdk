@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-06
+
 ### Added
 - **Memory over the wire is now complete, so a client surface fully detaches from
   the store file.** The daemon's memory API gained the rest of the operations a
@@ -30,6 +32,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   and says so; past its freshness window it is flagged stale with a stated reason —
   never a silent empty that reads as "nothing was ever stored." See the decision
   record at `docs/decisions/2026-07-06-memory-wire-full-detach.md`.
+- **One shared text-to-speech engine now powers every surface's spoken output.**
+  The live speech pipeline — splitting a reply into sentences, batching and
+  merging them into a bounded number of concurrent requests to the speech
+  provider, retrying a failed request with backoff and honestly skipping ahead
+  rather than losing the rest of the reply, and knowing when to let speech
+  finish naturally versus cut it off immediately on interrupt — used to be
+  copied by hand between the terminal app and the agent. It now ships once in
+  the SDK behind a small pluggable interface (an "audio sink") that only has to
+  play, stop, and report when it's drained; the terminal surfaces keep their
+  existing subprocess-based audio players as sinks, unchanged, and a browser
+  sink is documented so a browser-based build can speak with the exact same
+  behavior. See the decision record at
+  `docs/decisions/2026-07-06-spoken-turn-tts-policy-sdk-hoist.md`.
 
 ## [1.1.0] - 2026-07-06
 
