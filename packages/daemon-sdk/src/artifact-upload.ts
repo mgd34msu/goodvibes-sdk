@@ -62,6 +62,45 @@ function artifactSizeError(maxBytes: number): GoodVibesSdkError {
   });
 }
 
+/**
+ * Reads and discards a request body reader to completion.
+ *
+ * Bun (and Node) keep-alive connection reuse depends on the previous
+ * request's body having been fully read off the wire. `stream.cancel()`
+ * signals "stop delivering chunks to me" but does not, in practice, drain the
+ * underlying connection buffer — leaving the connection's NEXT request
+ * stalled for several seconds waiting for the runtime to notice the
+ * connection is actually free (verified directly against a bare
+ * `Bun.serve()`, no SDK code involved: cancelling left a follow-up request on
+ * the same connection stuck for ~12s; fully draining resolved it to ~0ms).
+ * Best-effort: a drain failure must not mask the original 413.
+ */
+async function drainReader(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+  try {
+    for (;;) {
+      const { done } = await reader.read();
+      if (done) break;
+    }
+  } catch {
+    // Best-effort.
+  }
+}
+
+async function drainUnreadBody(body: ReadableStream<Uint8Array> | null): Promise<void> {
+  if (!body) return;
+  const reader = body.getReader();
+  try {
+    await drainReader(reader);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function earlyOversizeResponse(maxBytes: number, body: ReadableStream<Uint8Array> | null): Promise<Response> {
+  await drainUnreadBody(body);
+  return jsonErrorResponse({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
+}
+
 export function isJsonContentType(contentType: string | null): boolean {
   const lower = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
   return lower === '' || lower === 'application/json' || lower.endsWith('+json');
@@ -213,7 +252,12 @@ async function createArtifactFromStreamingMultipart(
     const artifactId = readArtifactId(artifact);
     return artifactId instanceof Response ? artifactId : { artifact, artifactId, fields: spooled.fields };
   } catch (error) {
-    return jsonErrorResponse(error, { status: error instanceof GoodVibesSdkError && error.status ? error.status : 400 });
+    // spoolMultipartUpload drains any unread body bytes itself (both the
+    // Content-Length precheck and the mid-read catch) before rethrowing, so
+    // the connection is left healthy for reuse regardless of which error
+    // this is.
+    const status = error instanceof GoodVibesSdkError && error.status ? error.status : 400;
+    return jsonErrorResponse(error, { status });
   } finally {
     await spooled?.cleanup();
   }
@@ -230,7 +274,7 @@ async function createArtifactFromRawBody(
   const maxBytes = artifactStore.getMaxBytes?.();
   const sizeBytes = readContentLength(req);
   if (typeof maxBytes === 'number' && typeof sizeBytes === 'number' && sizeBytes > maxBytes) {
-    return jsonErrorResponse({ error: `Artifact exceeds the ${maxBytes}-byte limit.` }, { status: 413 });
+    return earlyOversizeResponse(maxBytes, req.body);
   }
   const artifact = await createArtifactFromStream(artifactStore, {
     stream: req.body,
@@ -360,6 +404,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
     && typeof contentLength === 'number'
     && contentLength > maxFileBytes + MAX_MULTIPART_BODY_OVERHEAD_BYTES
   ) {
+    await drainUnreadBody(req.body);
     throw artifactSizeError(maxFileBytes);
   }
 
@@ -504,6 +549,11 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
       },
     };
   } catch (error) {
+    // Any early exit here (size cap, malformed boundary, truncated part, …)
+    // can leave bytes unread on the wire. Drain them before rethrowing so the
+    // connection stays healthy for reuse instead of stalling the caller's
+    // next request — see drainReader's doc comment.
+    await drainReader(reader);
     await cleanupTempDir(tempDir, error);
     throw error;
   } finally {
