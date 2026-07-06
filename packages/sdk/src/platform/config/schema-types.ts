@@ -62,6 +62,14 @@ export interface ControlPlaneConfig {
     enabled: boolean;
     pathPrefix: string;
   };
+  webui: {
+    serve: boolean;
+    bundleDir: string;
+  };
+  cors: {
+    enabled: boolean;
+    allowedOrigins: string;
+  };
   tls: {
     mode: 'off' | 'proxy' | 'direct';
     certFile: string;
@@ -611,6 +619,10 @@ export type ConfigKey =
   | 'controlPlane.trustProxy'
   | 'controlPlane.openaiCompatible.enabled'
   | 'controlPlane.openaiCompatible.pathPrefix'
+  | 'controlPlane.webui.serve'
+  | 'controlPlane.webui.bundleDir'
+  | 'controlPlane.cors.enabled'
+  | 'controlPlane.cors.allowedOrigins'
   | 'controlPlane.tls.mode'
   | 'controlPlane.tls.certFile'
   | 'controlPlane.tls.keyFile'
@@ -891,6 +903,10 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'controlPlane.trustProxy' ? boolean :
   K extends 'controlPlane.openaiCompatible.enabled' ? boolean :
   K extends 'controlPlane.openaiCompatible.pathPrefix' ? string :
+  K extends 'controlPlane.webui.serve' ? boolean :
+  K extends 'controlPlane.webui.bundleDir' ? string :
+  K extends 'controlPlane.cors.enabled' ? boolean :
+  K extends 'controlPlane.cors.allowedOrigins' ? string :
   K extends 'controlPlane.tls.mode' ? 'off' | 'proxy' | 'direct' :
   K extends 'controlPlane.tls.certFile' ? string :
   K extends 'controlPlane.tls.keyFile' ? string :

@@ -104,6 +104,19 @@ See [Home Assistant integration](./homeassistant-integration.md) for the Assist 
 
 See [Runtime orchestration](./runtime-orchestration.md#openai-compatible-ingress) for the contract and scope.
 
+## Web UI Bundle Serving & Cross-Origin Access
+
+Both capabilities default off; the daemon stays loopback-only until you opt in explicitly.
+
+| Config key | Default | Notes |
+|------|---------|-------|
+| `controlPlane.webui.serve` | `false` | Serve a built web UI bundle same-origin from the daemon at `/`. The bundle is public; the app token-authenticates its own API calls. |
+| `controlPlane.webui.bundleDir` | `''` | Directory holding the built bundle (`index.html` + assets). Empty disables serving. |
+| `controlPlane.cors.enabled` | `false` | Answer OPTIONS preflight and emit `Access-Control-Allow-*` for allowlisted origins. Never wildcards; credentials are allowlist-gated. |
+| `controlPlane.cors.allowedOrigins` | `''` | Comma-separated explicit origin allowlist (e.g. `http://localhost:5173`). Empty refuses every cross-origin request. |
+
+See [Web UI Integration → Deployment topology](./web-ui-integration.md#deployment-topology-same-origin-vs-cross-origin) and the decision record [`docs/decisions/2026-07-07-webui-cross-origin-deployment.md`](./decisions/2026-07-07-webui-cross-origin-deployment.md).
+
 ## Spoken Output / TTS
 
 | Config key | Default | Notes |
