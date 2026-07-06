@@ -25954,7 +25954,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "email.inbox.list",
@@ -26041,7 +26041,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "email.inbox.read",
@@ -26131,7 +26131,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "email.send",
@@ -26195,7 +26195,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "fleet.list",
