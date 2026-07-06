@@ -27,6 +27,7 @@ import {
   listGraphCalendars,
   listGraphEvents,
 } from './microsoft-graph-api.js';
+import { compareMergedCalendarEventsByStart } from './merged-calendar-model.js';
 import type {
   AuthCodeFlowStart,
   CalendarProviderId,
@@ -158,8 +159,11 @@ export class CalendarConnector {
 
   /**
    * List events across all of the provider's calendars in a window, normalized into
-   * the merged model and source-labeled. Callers merge this with A9's ICS/local
-   * events into the unified /calendar view.
+   * the merged model, source-labeled, and sorted chronologically (through the ONE
+   * documented cross-zone comparator, `compareMergedCalendarEventsByStart` — see
+   * merged-calendar-model.ts for why a raw string/localeCompare sort of `start.value`
+   * is wrong once utc and tzid/floating events are mixed). Callers merge this with
+   * A9's ICS/local events into the unified /calendar view.
    */
   async listEvents(config: ResolvedClientConfig, window: EventWindow): Promise<MergedCalendarEvent[]> {
     const token = await this.store.getFreshAccessToken(config.provider, config, this.fetchImpl);
@@ -183,7 +187,7 @@ export class CalendarConnector {
           });
       out.push(...events);
     }
-    return out;
+    return [...out].sort(compareMergedCalendarEventsByStart);
   }
 
   // --- Write: create an event on an explicitly chosen provider --------------

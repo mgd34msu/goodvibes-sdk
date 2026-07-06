@@ -25,6 +25,35 @@ export interface GatewayMethodDescriptor {
   readonly outputSchema?: Record<string, unknown> | undefined;
   readonly pluginId?: string | undefined;
   readonly dangerous?: boolean | undefined;
+  /**
+   * Defaults to `true`. When explicitly `false`, this method is NOT dispatchable
+   * through the generic HTTP/WS method-invocation surface
+   * (`invokeGatewayMethodCall`/`invokeWebSocketControlPlaneCall` in
+   * `../daemon/control-plane.ts`, guarded by `validateGatewayInvocation`, which
+   * rejects it with an honest 400 `NOT_INVOKABLE` before any handler or route is
+   * even considered) — nothing more, nothing less.
+   *
+   * This is a statement about ONE dispatch path, not a claim that the method can
+   * never run anywhere. Two independent reasons a descriptor carries
+   * `invokable: false`:
+   *  - No route or internal handler exists at all for this build (e.g. `email.*`,
+   *    `calendar.*` — cataloged so the contract is honest about the capability's
+   *    shape, but genuinely unavailable everywhere).
+   *  - A real route DOES exist and IS served (e.g. `voice.tts.stream`,
+   *    `control.events.stream`, `artifacts.content.get`), just not through the
+   *    generic JSON-envelope invoke path — the response is binary/streaming/HTML
+   *    (see `metadata.responseKind`) and callers must use the direct HTTP path
+   *    instead.
+   *
+   * A runtime that registers a real in-process handler for this method id (via
+   * `GatewayMethodCatalog.register(descriptor, handler)`) and calls
+   * `GatewayMethodCatalog.invoke()` DIRECTLY (bypassing `validateGatewayInvocation`)
+   * still serves it — `invoke()` itself does not consult this flag, by design: a
+   * consuming runtime that has wired up a genuine handler is authoritative over
+   * whether the method actually works, this descriptor is not. `invoke()` only
+   * refuses when BOTH `invokable === false` AND no handler is registered — see
+   * `method-catalog.ts`'s `invoke()`.
+   */
   readonly invokable?: boolean | undefined;
   readonly metadata?: Record<string, unknown> | undefined;
 }

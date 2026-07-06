@@ -107,6 +107,9 @@ export {
   normalizeGoogleEvent,
   normalizeGraphEvent,
   normalizeOffsetDateTime,
+  eventDateTimeEpochMs,
+  compareEventDateTime,
+  compareMergedCalendarEventsByStart,
 } from './merged-calendar-model.js';
 
 export {

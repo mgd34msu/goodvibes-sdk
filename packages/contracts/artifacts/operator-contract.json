@@ -63372,6 +63372,9 @@
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -63637,6 +63640,7 @@
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -63677,6 +63681,9 @@
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -63942,6 +63949,7 @@
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -63982,6 +63990,9 @@
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -64247,6 +64258,7 @@
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -64287,6 +64299,9 @@
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -64552,6 +64567,7 @@
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -64592,6 +64608,9 @@
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -64857,6 +64876,7 @@
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -64897,6 +64917,9 @@
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -65162,6 +65185,7 @@
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",

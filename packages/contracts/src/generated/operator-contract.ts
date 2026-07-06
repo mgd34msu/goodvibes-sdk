@@ -63374,6 +63374,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -63639,6 +63642,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -63679,6 +63683,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -63944,6 +63951,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -63984,6 +63992,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -64249,6 +64260,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -64289,6 +64301,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -64554,6 +64569,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -64594,6 +64610,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -64859,6 +64878,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
@@ -64899,6 +64919,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "platform": {
               "type": "string"
             },
+            "serviceName": {
+              "type": "string"
+            },
             "path": {
               "type": "string"
             },
@@ -65164,6 +65187,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "platform",
+            "serviceName",
             "path",
             "installed",
             "autostart",
