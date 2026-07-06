@@ -1003,13 +1003,17 @@ export class CompanionChatManager {
 
   /**
    * Hard-remove a session's persisted file and in-memory record. The ONE
-   * removal code path — shared by the explicit {@link deleteSession} API
-   * (awaited, so a caller can prove the record is gone) and the GC
-   * 'delete-persistent' sweep action (fire-and-forget). Never fork this.
+   * removal code path — shared by {@link deleteSession} and the GC
+   * 'delete-persistent' action. Never fork this. Order matters (Wave-5 F1):
+   * drop the map entry, drain any in-flight {@link _persist} save for this
+   * id, THEN unlink — else a save mid-write from {@link closeSession} can
+   * resurrect the file post-unlink.
    */
   private async _hardRemove(sessionId: string): Promise<void> {
-    await this.persistence?.delete(sessionId);
     this.sessions.delete(sessionId);
+    const pendingSave = this._pendingSaves.get(sessionId);
+    if (pendingSave) await pendingSave.catch(() => {});
+    await this.persistence?.delete(sessionId);
   }
 
   /**

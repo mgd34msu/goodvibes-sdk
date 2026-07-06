@@ -17,6 +17,8 @@ import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.ts';
+import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.ts';
+import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.ts';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
 
@@ -97,6 +99,115 @@ describe('R3 — companion registers into the broker live (same-process)', () =>
     await manager.flushBrokerSync();
     expect(manager.getSession(created.id)).not.toBeNull();
     manager.dispose();
+  });
+});
+
+function makeRouteContext(chatManager: CompanionChatManager): CompanionChatRouteContext {
+  return {
+    chatManager,
+    async parseJsonBody(req) {
+      try {
+        return await req.json();
+      } catch {
+        return new Response('Bad JSON', { status: 400 });
+      }
+    },
+    async parseOptionalJsonBody(req) {
+      const text = await req.text();
+      if (!text) return null;
+      try {
+        return JSON.parse(text);
+      } catch {
+        return new Response('Bad JSON', { status: 400 });
+      }
+    },
+    openSessionEventStream: (_req, sessionId) =>
+      new Response(`data: connected sessionId=${sessionId}\n\n`, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// F2 (Wave-5 review-fix) — the companion HTTP routes actually flush the
+// broker mirror before responding, matching CompanionBrokerSync's documented
+// contract ("the daemon's companion HTTP routes call this before responding
+// so /api/sessions reflects the change synchronously"). Previously nothing
+// called flushBrokerSync() outside of tests — the doc was aspirational, not
+// true. These assert the shared broker record is already up to date by the
+// time each route's Response comes back, with NO extra manual flush call.
+// ---------------------------------------------------------------------------
+
+describe('F2 — companion HTTP routes flush the broker mirror before responding', () => {
+  test('POST /sessions: the broker already lists the session by the time the route responds', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'companion-route-flush-create-'));
+    try {
+      const broker = makeBroker(join(dir, 'sessions.json'));
+      await broker.start();
+      const manager = new CompanionChatManager({
+        provider: mockProvider(),
+        eventPublisher: { publishEvent() {} },
+        gcIntervalMs: 999_999,
+        rateLimiter: false,
+        sessionBroker: broker,
+      });
+      const context = makeRouteContext(manager);
+
+      const res = await dispatchCompanionChatRoutes(
+        new Request('http://daemon/api/companion/chat/sessions', {
+          method: 'POST',
+          body: JSON.stringify({ title: 'Route Flush', provider: 'test-provider', model: 'test-model' }),
+        }),
+        context,
+      );
+      expect(res?.status).toBe(201);
+      const { sessionId } = await res!.json() as { sessionId: string };
+
+      // No await manager.flushBrokerSync() here — the route must have already done it.
+      expect(broker.getSession(sessionId)).not.toBeNull();
+      manager.dispose();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('POST /sessions/:id/close then DELETE: the broker reflects close then removal with no manual flush', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'companion-route-flush-delete-'));
+    try {
+      const broker = makeBroker(join(dir, 'sessions.json'));
+      await broker.start();
+      const manager = new CompanionChatManager({
+        provider: mockProvider(),
+        eventPublisher: { publishEvent() {} },
+        gcIntervalMs: 999_999,
+        rateLimiter: false,
+        sessionBroker: broker,
+      });
+      const context = makeRouteContext(manager);
+
+      const created = manager.createSession();
+      await manager.flushBrokerSync(); // settle the create-time registration first
+
+      const closeRes = await dispatchCompanionChatRoutes(
+        new Request(`http://daemon/api/companion/chat/sessions/${created.id}/close`, { method: 'POST' }),
+        context,
+      );
+      expect(closeRes?.status).toBe(200);
+      expect(broker.getSession(created.id)?.status).toBe('closed');
+
+      const deleteRes = await dispatchCompanionChatRoutes(
+        new Request(`http://daemon/api/companion/chat/sessions/${created.id}`, { method: 'DELETE' }),
+        context,
+      );
+      expect(deleteRes?.status).toBe(200);
+
+      // No await manager.flushBrokerSync() here — the route must have already done it.
+      expect(broker.getSession(created.id)).toBeNull();
+      manager.dispose();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

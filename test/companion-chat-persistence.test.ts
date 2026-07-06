@@ -11,8 +11,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { settleEvents } from './_helpers/test-timeout.js';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { settleEvents, withTestTimeout } from './_helpers/test-timeout.js';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
@@ -357,6 +357,84 @@ describe('P5: persistence failures are observable', () => {
       await expect(persistence.delete('blocked')).rejects.toThrow(
         'Companion chat session delete failed for blocked',
       );
+    } finally {
+      rmSync(sessionsDir, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// P6: deleteSession never loses a race against closeSession's fire-and-forget
+// persist save (Wave-5 F1 regression). closeSession schedules its save via
+// _persist() without awaiting it, so a caller that immediately follows close
+// with delete (the webui's normal close-then-delete sequence) can have that
+// save's write+rename still in flight when the delete would unlink. Forcing
+// the save to hang on a controllable gate makes the race deterministic:
+// deleteSession must drain the in-flight save BEFORE it unlinks, so the file
+// never gets resurrected after "delete" reports success.
+// ---------------------------------------------------------------------------
+
+describe('P6: deleteSession drains an in-flight close-time save before unlinking', () => {
+  test('a gated close-time save cannot resurrect the file after delete, even across a simulated restart', async () => {
+    const sessionsDir = mkdtempSync(join(tmpdir(), 'companion-persist-race-'));
+    try {
+      const manager = makeManager(sessionsDir);
+      await manager.init();
+
+      const session = manager.createSession();
+      // Let the create-time save land so the file genuinely exists first.
+      await settleEvents();
+      const filePath = join(sessionsDir, `${session.id}.json`);
+      expect(existsSync(filePath)).toBe(true);
+
+      // Gate the persistence layer's save() so we control exactly when the
+      // close-time write actually reaches disk.
+      const persistence = (manager as unknown as {
+        persistence: { save(session: PersistedChatSession): Promise<void> };
+      }).persistence;
+      const realSave = persistence.save.bind(persistence);
+      let releaseSave: (() => void) | undefined;
+      const gate = new Promise<void>((resolve) => { releaseSave = resolve; });
+      let saveEntered = false;
+      persistence.save = async (persisted: PersistedChatSession): Promise<void> => {
+        saveEntered = true;
+        await gate;
+        return realSave(persisted);
+      };
+
+      // Close: schedules the (now-gated) fire-and-forget persist save.
+      manager.closeSession(session.id);
+      await settleEvents(10); // let the save chain reach the gate
+      expect(saveEntered).toBe(true);
+
+      // Fire delete WHILE the close-time save is still gated open (in flight).
+      const deletePromise = manager.deleteSession(session.id);
+
+      // Give delete every chance to race ahead if it were going to: it must
+      // NOT have unlinked the file yet, because the save it must drain is
+      // still blocked on our gate.
+      await settleEvents(20);
+      expect(existsSync(filePath)).toBe(true);
+
+      // Now release the gate — the drained save completes its write, and
+      // only then should deleteSession proceed to unlink.
+      releaseSave!();
+      const result = await withTestTimeout(deletePromise, 2_000, 'deleteSession did not settle after the gated save was released');
+      expect(result).toEqual({ sessionId: session.id, deleted: true });
+
+      // The resurrected-then-deleted file must be gone, not resurrected.
+      expect(existsSync(filePath)).toBe(false);
+      await settleEvents();
+      expect(existsSync(filePath)).toBe(false);
+
+      manager.dispose();
+
+      // Simulated re-init (fresh manager instance, same dir) must not reload
+      // the deleted session — proving there's no leftover file to reload.
+      const reloaded = makeManager(sessionsDir);
+      await reloaded.init();
+      expect(reloaded.getSession(session.id)).toBeNull();
+      reloaded.dispose();
     } finally {
       rmSync(sessionsDir, { recursive: true, force: true });
     }
