@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `308`
+- Methods: `313`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -57942,6 +57942,906 @@ Set the active default memory embedding provider.
     "vector",
     "embeddings",
     "checkedAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.records.add`
+
+Add a memory record to the daemon-owned canonical store. The daemon is the single writer for its store; a client surface routes its writes here instead of opening the store file, so two processes never write the same sql.js file. New records default to confidence 60 (the recall floor) and reviewState fresh unless the review block overrides them.
+
+- Title: `Add Memory Record`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/memory/records`
+- Scopes: `write:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "cls": {
+      "type": "string",
+      "enum": [
+        "decision",
+        "constraint",
+        "incident",
+        "pattern",
+        "fact",
+        "risk",
+        "runbook",
+        "architecture",
+        "ownership"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "session",
+        "project",
+        "team"
+      ]
+    },
+    "detail": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "session",
+              "turn",
+              "task",
+              "event",
+              "file"
+            ]
+          },
+          "ref": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "reviewed",
+            "stale",
+            "contradicted"
+          ]
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "reviewedBy": {
+          "type": "string"
+        },
+        "staleReason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "cls",
+    "summary"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "session",
+            "project",
+            "team"
+          ]
+        },
+        "cls": {
+          "type": "string",
+          "enum": [
+            "decision",
+            "constraint",
+            "incident",
+            "pattern",
+            "fact",
+            "risk",
+            "runbook",
+            "architecture",
+            "ownership"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "session",
+                  "turn",
+                  "task",
+                  "event",
+                  "file"
+                ]
+              },
+              "ref": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reviewState": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "reviewed",
+            "stale",
+            "contradicted"
+          ]
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "reviewedAt": {
+          "type": "number"
+        },
+        "reviewedBy": {
+          "type": "string"
+        },
+        "staleReason": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "scope",
+        "cls",
+        "summary",
+        "tags",
+        "provenance",
+        "reviewState",
+        "confidence",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "record"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.records.delete`
+
+Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed — an honest boolean, never a 200 that pretends a phantom row was removed.
+
+- Title: `Delete Memory Record`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/memory/records/{id}`
+- Scopes: `write:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.records.get`
+
+Return a single memory record by id from the canonical store, or 404 when no record with that id exists.
+
+- Title: `Get Memory Record`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/memory/records/{id}`
+- Scopes: `read:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "session",
+            "project",
+            "team"
+          ]
+        },
+        "cls": {
+          "type": "string",
+          "enum": [
+            "decision",
+            "constraint",
+            "incident",
+            "pattern",
+            "fact",
+            "risk",
+            "runbook",
+            "architecture",
+            "ownership"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "session",
+                  "turn",
+                  "task",
+                  "event",
+                  "file"
+                ]
+              },
+              "ref": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reviewState": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "reviewed",
+            "stale",
+            "contradicted"
+          ]
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "reviewedAt": {
+          "type": "number"
+        },
+        "reviewedBy": {
+          "type": "string"
+        },
+        "staleReason": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "scope",
+        "cls",
+        "summary",
+        "tags",
+        "provenance",
+        "reviewState",
+        "confidence",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "record"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.records.search`
+
+Search the canonical store, literal or semantic. When semantic is requested but the semantic index cannot be consulted, the search falls back to a literal scan and states the reason in indexUnavailableReason rather than returning a silent empty result that reads as "nothing was ever stored". With recall=true the cross-surface recall-honesty contract is applied: flagged (stale/contradicted) records are excluded outright and records below the 60% confidence floor are dropped, each exclusion counted honestly.
+
+- Title: `Search Memory Records`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/memory/records/search`
+- Scopes: `read:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "enum": [
+        "session",
+        "project",
+        "team"
+      ]
+    },
+    "cls": {
+      "type": "string",
+      "enum": [
+        "decision",
+        "constraint",
+        "incident",
+        "pattern",
+        "fact",
+        "risk",
+        "runbook",
+        "architecture",
+        "ownership"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "query": {
+      "type": "string"
+    },
+    "semantic": {
+      "type": "boolean"
+    },
+    "since": {
+      "type": "number"
+    },
+    "reviewState": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "fresh",
+          "reviewed",
+          "stale",
+          "contradicted"
+        ]
+      }
+    },
+    "minConfidence": {
+      "type": "number"
+    },
+    "provenanceKinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "session",
+          "turn",
+          "task",
+          "event",
+          "file"
+        ]
+      }
+    },
+    "staleOnly": {
+      "type": "boolean"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "recall": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "session",
+              "project",
+              "team"
+            ]
+          },
+          "cls": {
+            "type": "string",
+            "enum": [
+              "decision",
+              "constraint",
+              "incident",
+              "pattern",
+              "fact",
+              "risk",
+              "runbook",
+              "architecture",
+              "ownership"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provenance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "session",
+                    "turn",
+                    "task",
+                    "event",
+                    "file"
+                  ]
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ref"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "reviewState": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "reviewed",
+              "stale",
+              "contradicted"
+            ]
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "reviewedAt": {
+            "type": "number"
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "staleReason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "cls",
+          "summary",
+          "tags",
+          "provenance",
+          "reviewState",
+          "confidence",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "literal",
+        "semantic"
+      ]
+    },
+    "requestedSemantic": {
+      "type": "boolean"
+    },
+    "indexUnavailableReason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "caveat": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recallFiltered": {
+      "type": "boolean"
+    },
+    "excludedFlaggedCount": {
+      "type": "number"
+    },
+    "excludedBelowFloorCount": {
+      "type": "number"
+    },
+    "totalBeforeRecallFilter": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "records",
+    "mode",
+    "requestedSemantic",
+    "indexUnavailableReason",
+    "caveat",
+    "recallFiltered",
+    "excludedFlaggedCount",
+    "excludedBelowFloorCount",
+    "totalBeforeRecallFilter"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.records.update-review`
+
+Update a record's review signal (reviewState, confidence, reviewer, staleReason) in the canonical store. Marking a record stale or contradicted flags it so the recall-honesty contract will never inject it into a prompt again regardless of confidence. Returns 404 when no record with that id exists.
+
+- Title: `Update Memory Record Review`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/memory/records/{id}/review`
+- Scopes: `write:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "fresh",
+        "reviewed",
+        "stale",
+        "contradicted"
+      ]
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
+    "staleReason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "session",
+            "project",
+            "team"
+          ]
+        },
+        "cls": {
+          "type": "string",
+          "enum": [
+            "decision",
+            "constraint",
+            "incident",
+            "pattern",
+            "fact",
+            "risk",
+            "runbook",
+            "architecture",
+            "ownership"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "session",
+                  "turn",
+                  "task",
+                  "event",
+                  "file"
+                ]
+              },
+              "ref": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reviewState": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "reviewed",
+            "stale",
+            "contradicted"
+          ]
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "reviewedAt": {
+          "type": "number"
+        },
+        "reviewedBy": {
+          "type": "string"
+        },
+        "staleReason": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "scope",
+        "cls",
+        "summary",
+        "tags",
+        "provenance",
+        "reviewState",
+        "confidence",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "record"
   ],
   "additionalProperties": false
 }

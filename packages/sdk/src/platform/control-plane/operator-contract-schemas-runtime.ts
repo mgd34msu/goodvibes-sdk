@@ -693,3 +693,51 @@ export const MEMORY_DOCTOR_REPORT_SCHEMA = objectSchema({
   embeddings: MEMORY_EMBEDDING_DOCTOR_REPORT_SCHEMA,
   checkedAt: NUMBER_SCHEMA,
 }, ['vector', 'embeddings', 'checkedAt']);
+
+// ── Memory record wire schemas (daemon-owned single-writer store) ──────────────
+export const MEMORY_SCOPE_SCHEMA = enumSchema(['session', 'project', 'team']);
+export const MEMORY_CLASS_SCHEMA = enumSchema([
+  'decision', 'constraint', 'incident', 'pattern', 'fact', 'risk', 'runbook', 'architecture', 'ownership',
+]);
+export const MEMORY_REVIEW_STATE_SCHEMA = enumSchema(['fresh', 'reviewed', 'stale', 'contradicted']);
+export const MEMORY_PROVENANCE_KIND_SCHEMA = enumSchema(['session', 'turn', 'task', 'event', 'file']);
+
+export const MEMORY_PROVENANCE_LINK_SCHEMA = objectSchema({
+  kind: MEMORY_PROVENANCE_KIND_SCHEMA,
+  ref: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+}, ['kind', 'ref']);
+
+export const MEMORY_RECORD_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  scope: MEMORY_SCOPE_SCHEMA,
+  cls: MEMORY_CLASS_SCHEMA,
+  summary: STRING_SCHEMA,
+  detail: STRING_SCHEMA,
+  tags: STRING_LIST_SCHEMA,
+  provenance: arraySchema(MEMORY_PROVENANCE_LINK_SCHEMA),
+  reviewState: MEMORY_REVIEW_STATE_SCHEMA,
+  confidence: NUMBER_SCHEMA,
+  reviewedAt: NUMBER_SCHEMA,
+  reviewedBy: STRING_SCHEMA,
+  staleReason: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+  updatedAt: NUMBER_SCHEMA,
+}, ['id', 'scope', 'cls', 'summary', 'tags', 'provenance', 'reviewState', 'confidence', 'createdAt', 'updatedAt'], { additionalProperties: true });
+
+export const MEMORY_RECORD_SEARCH_OUTPUT_SCHEMA = objectSchema({
+  records: arraySchema(MEMORY_RECORD_SCHEMA),
+  mode: enumSchema(['literal', 'semantic']),
+  requestedSemantic: BOOLEAN_SCHEMA,
+  indexUnavailableReason: nullableSchema(STRING_SCHEMA),
+  caveat: nullableSchema(STRING_SCHEMA),
+  recallFiltered: BOOLEAN_SCHEMA,
+  excludedFlaggedCount: NUMBER_SCHEMA,
+  excludedBelowFloorCount: NUMBER_SCHEMA,
+  totalBeforeRecallFilter: NUMBER_SCHEMA,
+}, ['records', 'mode', 'requestedSemantic', 'indexUnavailableReason', 'caveat', 'recallFiltered', 'excludedFlaggedCount', 'excludedBelowFloorCount', 'totalBeforeRecallFilter']);
+
+export const MEMORY_RECORD_DELETE_OUTPUT_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  deleted: BOOLEAN_SCHEMA,
+}, ['id', 'deleted']);
