@@ -15457,7 +15457,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.events.get",
@@ -15534,7 +15534,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.events.list",
@@ -15620,7 +15620,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.ics.export",
@@ -15671,7 +15671,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.ics.import",
@@ -15736,7 +15736,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.accounts.action.default",
@@ -18879,7 +18879,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.drafts.get",
@@ -18965,7 +18965,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "additionalProperties": true
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.drafts.list",
@@ -19072,7 +19072,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.drafts.save",
@@ -19224,7 +19224,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.inbox.list",
@@ -19333,7 +19333,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.lifecycle.get",
@@ -20358,7 +20358,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.routing.delete",
@@ -20407,7 +20407,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.routing.list",
@@ -20492,7 +20492,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.setup.get",

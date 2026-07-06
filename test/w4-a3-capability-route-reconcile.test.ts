@@ -14,11 +14,14 @@
  *      advertised live.
  *   2. the build/boot regression gate: no descriptor in the live catalog
  *      is advertised-but-undispatchable without also being marked
- *      unavailable, except a small, explicit, pre-existing debt list
- *      (calendar.* — a distinct, out-of-ownership finding this reconcile
- *      surfaced incidentally; see the KNOWN_PRE_EXISTING_ROUTE_DEBT comment).
- *      A new, unmarked advertise-without-route method changes the observed
- *      violation set and fails this test.
+ *      unavailable. KNOWN_PRE_EXISTING_ROUTE_DEBT started as a grandfather
+ *      list for calendar.* and channels.inbox/routing/drafts.* (distinct,
+ *      out-of-ownership findings this reconcile surfaced incidentally) and
+ *      has since been retired to empty: every one of those methods is now
+ *      marked `invokable: false` at the source (method-catalog-calendar.ts,
+ *      method-catalog-channels.ts), so the exact-set comparison below holds
+ *      with no exceptions. A new, unmarked advertise-without-route method
+ *      changes the observed violation set and fails this test.
  *   3. a genuinely-served method (control.auth.current) still reconciles
  *      as 'live' — the reconcile must not cry wolf on real routes.
  */
@@ -34,34 +37,26 @@ import {
 
 /**
  * Pre-existing advertise-without-route debt discovered incidentally while
- * building the W4-A3 reconcile gate: these methods have the identical defect
+ * building the W4-A3 reconcile gate: these methods had the identical defect
  * class as email.* (an http path with no router.ts dispatch chain serving
  * it, confirmed by grepping the full path across packages/sdk/src and
- * packages/daemon-sdk/src), but they live in other work items' files —
+ * packages/daemon-sdk/src), but lived in other work items' files —
  * method-catalog-calendar.ts (calendar.*) and method-catalog-channels.ts
  * (channels.drafts.* / channels.inbox.list / channels.routing.*) — not
- * method-catalog-email.ts, which is W4-A3's exclusive ownership. Grandfathered
- * explicitly (by id, not by category) so the gate ships green without hiding
- * the debt or masking a future regression in some OTHER method in those same
- * files that isn't already on this list. Remove an entry once its route is
- * wired or it is marked `invokable: false` at the source — shrink this list,
- * don't grow it.
+ * method-catalog-email.ts, which was W4-A3's exclusive ownership at the
+ * time. Grandfathered explicitly (by id, not by category) so the gate
+ * shipped green without hiding the debt or masking a future regression in
+ * some OTHER method in those same files that wasn't already on this list.
+ *
+ * Retired to empty: every method above is now re-verified against the real
+ * dispatch chain (still no route anywhere — channel-routes.ts defines no
+ * inbox/routing/drafts handler, and there is no calendar-routes.ts at all)
+ * and marked `invokable: false` at the source, so the gate now guards them
+ * for real instead of grandfathering them. Re-add an entry only if a new,
+ * genuinely pre-existing, out-of-ownership case shows up — shrink this
+ * list, don't grow it.
  */
-const KNOWN_PRE_EXISTING_ROUTE_DEBT: readonly string[] = [
-  'calendar.events.list',
-  'calendar.events.get',
-  'calendar.events.create',
-  'calendar.ics.import',
-  'calendar.ics.export',
-  'channels.inbox.list',
-  'channels.routing.list',
-  'channels.routing.assign',
-  'channels.routing.delete',
-  'channels.drafts.list',
-  'channels.drafts.get',
-  'channels.drafts.save',
-  'channels.drafts.delete',
-];
+const KNOWN_PRE_EXISTING_ROUTE_DEBT: readonly string[] = [];
 
 function liveCatalogDescriptors() {
   return new GatewayMethodCatalog().list();

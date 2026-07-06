@@ -15455,7 +15455,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.events.get",
@@ -15532,7 +15532,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.events.list",
@@ -15618,7 +15618,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.ics.export",
@@ -15669,7 +15669,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "calendar.ics.import",
@@ -15734,7 +15734,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.accounts.action.default",
@@ -18877,7 +18877,7 @@
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.drafts.get",
@@ -18963,7 +18963,7 @@
           },
           "additionalProperties": true
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.drafts.list",
@@ -19070,7 +19070,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.drafts.save",
@@ -19222,7 +19222,7 @@
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.inbox.list",
@@ -19331,7 +19331,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.lifecycle.get",
@@ -20356,7 +20356,7 @@
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.routing.delete",
@@ -20405,7 +20405,7 @@
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.routing.list",
@@ -20490,7 +20490,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "channels.setup.get",

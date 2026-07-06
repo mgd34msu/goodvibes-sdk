@@ -36,6 +36,22 @@ const CALENDAR_EVENT_DETAIL_SCHEMA = objectSchema({
  * import/export through the standard operator method protocol. Daemon-backed;
  * the SDK publishes the typed contract surface (no internal handler). Local .ics
  * parsing is handled agent-side and does not depend on these contracts.
+ *
+ * Route-reconcile debt (surfaced by W4-A3, retired here): none of these five
+ * http paths are served by the daemon router — there is no /api/calendar
+ * surface at any prefix (confirmed by reading router.ts, every dispatch
+ * chain it delegates to, and grepping the full path across packages/sdk/src
+ * and packages/daemon-sdk/src; there is no calendar-routes.ts and no
+ * calendar handler anywhere). These were originally grandfathered into
+ * KNOWN_PRE_EXISTING_ROUTE_DEBT in test/w4-a3-capability-route-reconcile.test.ts
+ * as an out-of-ownership finding W4-A3 incidentally surfaced; marked
+ * `invokable: false` here so the published contract and the live
+ * method-dispatch path both say "cataloged, not callable" instead of
+ * letting a caller discover the 404 the hard way. Un-mark a method once its
+ * real CalDAV-backed route or handler exists — the route-reconcile
+ * regression gate (method-catalog-route-reconcile.ts, exercised in
+ * test/w4-a3-capability-route-reconcile.test.ts) will catch it if this
+ * comment goes stale and a route reappears without the flag being cleared.
  */
 export const builtinGatewayCalendarMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
@@ -52,6 +68,7 @@ export const builtinGatewayCalendarMethodDescriptors: readonly GatewayMethodDesc
       limit: NUMBER_SCHEMA,
     }),
     outputSchema: listOutputSchema('events', CALENDAR_EVENT_SUMMARY_SCHEMA),
+    invokable: false,
   }),
   methodDescriptor({
     id: 'calendar.events.get',
@@ -65,6 +82,7 @@ export const builtinGatewayCalendarMethodDescriptors: readonly GatewayMethodDesc
       calendarId: STRING_SCHEMA,
     }, ['eventId']),
     outputSchema: CALENDAR_EVENT_DETAIL_SCHEMA,
+    invokable: false,
   }),
   methodDescriptor({
     id: 'calendar.events.create',
@@ -89,6 +107,7 @@ export const builtinGatewayCalendarMethodDescriptors: readonly GatewayMethodDesc
       uid: STRING_SCHEMA,
       createdAt: STRING_SCHEMA,
     }, ['eventId', 'uid', 'createdAt']),
+    invokable: false,
   }),
   methodDescriptor({
     id: 'calendar.ics.import',
@@ -108,6 +127,7 @@ export const builtinGatewayCalendarMethodDescriptors: readonly GatewayMethodDesc
       eventIds: arraySchema(STRING_SCHEMA),
       errors: arraySchema(STRING_SCHEMA),
     }, ['imported', 'eventIds', 'errors']),
+    invokable: false,
   }),
   methodDescriptor({
     id: 'calendar.ics.export',
@@ -125,5 +145,6 @@ export const builtinGatewayCalendarMethodDescriptors: readonly GatewayMethodDesc
       icsContent: STRING_SCHEMA,
       eventCount: NUMBER_SCHEMA,
     }, ['icsContent', 'eventCount']),
+    invokable: false,
   }),
 ];
