@@ -353,6 +353,7 @@ async function dispatchOperatorRoutesInner(
   if (pathname === '/api/panels' && method === 'GET') return handlers.getPanels();
   if (pathname === '/api/panels/open' && method === 'POST') return handlers.postPanelOpen(req);
   if (pathname === '/api/events' && method === 'GET') return handlers.getEvents(req);
+  if (pathname === '/config/credentials' && method === 'GET') return handlers.getCredentials(req);
   if (pathname === '/config' && method === 'GET') return handlers.getConfig(req);
   if (pathname === '/config' && method === 'POST') return handlers.postConfig(req);
 

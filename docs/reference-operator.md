@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `307`
+- Methods: `308`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -23282,6 +23282,94 @@ Set a config value through the daemon API.
     "key"
   ],
   "additionalProperties": true
+}
+```
+
+#### `credentials.get`
+
+Return secret-free credential status (configured/usable) for the shared store. Never returns raw secret bytes. Optional ?key= narrows to one credential.
+
+- Title: `Get Credential Status`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `GET /config/credentials`
+- Scopes: `read:config`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "available": {
+      "type": "boolean"
+    },
+    "credentials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "usable": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "secure": {
+            "type": "boolean"
+          },
+          "overriddenByEnv": {
+            "type": "boolean"
+          },
+          "refSource": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "configured",
+          "usable",
+          "source",
+          "scope",
+          "secure",
+          "overriddenByEnv"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "available",
+    "credentials"
+  ],
+  "additionalProperties": false
 }
 ```
 

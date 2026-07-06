@@ -96,6 +96,7 @@ export {
 } from './openai-codex-auth.js';
 export type { OpenAICodexLoginStart, OpenAICodexTokenResult } from './openai-codex-auth.js';
 export * from './secret-refs.js';
+export { createCredentialStatusProvider } from './credential-status.js';
 export { SecretsManager } from './secrets.js';
 export type {
   SecretDeleteOptions,

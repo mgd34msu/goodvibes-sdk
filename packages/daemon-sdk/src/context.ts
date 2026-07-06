@@ -230,6 +230,12 @@ export interface DaemonSystemRouteHandlers {
   approvalAction(approvalId: string, action: 'claim' | 'approve' | 'deny' | 'cancel', req: Request): MaybeResponse;
   getConfig(req: Request): MaybeResponse;
   postConfig(req: Request): MaybeResponse;
+  /**
+   * `credentials.get` — admin + read:config. Returns secret-free credential
+   * STATUS metadata for the daemon's shared store (never plaintext). An optional
+   * `?key=` query narrows to a single caller-named credential.
+   */
+  getCredentials(req: Request): MaybeResponse;
 }
 
 /** Route handlers for remote peer management: pair requests, peer tokens, remote work, and node host contract. */

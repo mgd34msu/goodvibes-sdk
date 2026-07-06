@@ -3,6 +3,7 @@ import { EMPTY_OBJECT_SCHEMA,STRING_SCHEMA,objectSchema,listOutputSchema,entityO
 import {
   CONFIG_SET_OUTPUT_SCHEMA,
   CONFIG_SNAPSHOT_SCHEMA,
+  CREDENTIALS_SNAPSHOT_SCHEMA,
   LOCAL_AUTH_USER_SCHEMA,
   LOCAL_AUTH_BOOTSTRAP_DELETE_OUTPUT_SCHEMA,
   LOCAL_AUTH_DELETE_OUTPUT_SCHEMA,
@@ -119,6 +120,17 @@ export const builtinGatewayAdminMethodDescriptors: readonly GatewayMethodDescrip
     http: { method: 'GET', path: '/config' },
     inputSchema: EMPTY_OBJECT_SCHEMA,
     outputSchema: CONFIG_SNAPSHOT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'credentials.get',
+    title: 'Get Credential Status',
+    description: 'Return secret-free credential status (configured/usable) for the shared store. Never returns raw secret bytes. Optional ?key= narrows to one credential.',
+    category: 'config',
+    scopes: ['read:config'],
+    access: 'admin',
+    http: { method: 'GET', path: '/config/credentials' },
+    inputSchema: objectSchema({ key: STRING_SCHEMA }, []),
+    outputSchema: CREDENTIALS_SNAPSHOT_SCHEMA,
   }),
   methodDescriptor({
     id: 'config.set',

@@ -87,6 +87,8 @@ export type {
   AutomationSurfaceKind,
   AutomationThreadPolicy,
   ConfigManagerLike as DaemonSystemConfigManagerLike,
+  CredentialStatusProviderLike,
+  CredentialStatusRecord,
   DaemonApiClientKind,
   DaemonSystemRouteContext,
   IntegrationApprovalSnapshotSourceLike,

@@ -150,9 +150,52 @@ export interface WorkspaceSwapManagerLike {
   >;
 }
 
+/**
+ * Secret-free status metadata for a single credential held in the daemon's
+ * shared store (or overridden by an environment variable). This is the ONLY
+ * shape the credential-read wire method (`credentials.get`) ever returns — the
+ * plaintext secret value never crosses the wire. `usable` reflects a real
+ * in-process resolution attempt, so a configured-but-unresolvable reference
+ * (e.g. a broken `op://` ref) reports `configured: true, usable: false`.
+ */
+export interface CredentialStatusRecord {
+  readonly key: string;
+  /** A value exists in the shared store (or, for a named probe, in env). */
+  readonly configured: boolean;
+  /** The value/reference resolved to non-empty plaintext in-process. */
+  readonly usable: boolean;
+  /** Where the value was found: 'env' | 'user-secure' | 'project-secure' | … */
+  readonly source: string;
+  /** 'user' | 'project' | 'env'. */
+  readonly scope: string;
+  /** Backed by an encrypted store (vs plaintext). */
+  readonly secure: boolean;
+  /** A same-named environment variable overrides the stored value. */
+  readonly overriddenByEnv: boolean;
+  /** External-reference provider, when the stored value is a secret ref. */
+  readonly refSource?: string | undefined;
+}
+
+/**
+ * Reads credential STATUS (never plaintext) from the daemon's shared secret
+ * store. Enumeration (`list`) is over stored keys only — never `process.env` —
+ * so it cannot leak the names of unrelated environment variables. A named probe
+ * (`get`) may consult env for that one caller-named key.
+ */
+export interface CredentialStatusProviderLike {
+  list(): Promise<readonly CredentialStatusRecord[]>;
+  get(key: string): Promise<CredentialStatusRecord | null>;
+}
+
 export interface DaemonSystemRouteContext {
   readonly approvalBroker: ApprovalBrokerLike;
   readonly configManager: ConfigManagerLike;
+  /**
+   * Secret-free credential-status source for `credentials.get`. Null when the
+   * daemon host wires no shared secret store — the handler then reports an
+   * honest 503 rather than a false "no credentials".
+   */
+  readonly credentialStatus: CredentialStatusProviderLike | null;
   readonly integrationHelpers: IntegrationApprovalSnapshotSourceLike | null;
   readonly inspectInboundTls: (surface: 'controlPlane' | 'httpListener') => unknown;
   readonly inspectOutboundTls: () => unknown;

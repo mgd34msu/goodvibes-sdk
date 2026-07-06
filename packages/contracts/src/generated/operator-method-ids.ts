@@ -98,6 +98,7 @@ export const OPERATOR_METHOD_IDS = [
   "control.snapshot",
   "control.status",
   "control.web",
+  "credentials.get",
   "deliveries.get",
   "deliveries.list",
   "email.draft.create",
