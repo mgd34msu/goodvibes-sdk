@@ -97,6 +97,31 @@ export interface SessionUnionCacheOptions {
    * probe can never hang past ~1 refresh interval.
    */
   readonly probeTimeoutMs?: number;
+  /**
+   * Optional live accessor for the TRUE shared identity of "which wire rows
+   * are mine" — typically `() => sessionSpineClient.mirroredSessionIds`
+   * (see {@link SessionSpineClient.mirroredSessionIds}). When supplied, every
+   * wire row whose id appears in this set is dropped from the wire side of
+   * the union BEFORE merging with `local`: the module doc's own invariant is
+   * that `local` holds exactly this surface's own sessions, so `local` is
+   * always the authoritative view for them regardless of what id the wire
+   * mirror happens to carry for the same conceptual session.
+   *
+   * Why this matters: the plain merge below dedups by raw `record.id`
+   * equality between `wireCache` and `local.listSessions()`. That is only
+   * correct if whatever mirrored a local session onto the wire used the EXACT
+   * same id the local reader reports for it — an assumption this facade
+   * cannot verify and a caller can violate (e.g. a local record created
+   * without an explicit id, auto-assigned one scheme, mirrored to the wire
+   * under a separately-chosen id). When that happens, id-only dedup counts
+   * the surface's own session TWICE: once from `wireCache` under the
+   * wire-registered id, once from `local` under its own id — a constant +1
+   * that can spuriously trip a caller's overflow cap. Filtering wireCache by
+   * the CANONICAL registered-id set fixes this for any number of self
+   * sessions, with no special-casing, and is a no-op (byte-identical result)
+   * whenever the ids already agree.
+   */
+  readonly selfSessionIds?: (() => ReadonlySet<string>) | undefined;
   /** Injectable timer seam for deterministic tests. */
   readonly scheduler?: {
     setInterval?: (fn: () => void, ms: number) => ReturnType<typeof setInterval>;
@@ -144,6 +169,7 @@ export class SessionUnionCache implements SessionReadFacade {
   private readonly staleAfterMs: number;
   private readonly wireLimit: number;
   private readonly probeTimeoutMs: number;
+  private readonly selfSessionIds: (() => ReadonlySet<string>) | undefined;
   private readonly scheduler: {
     setInterval: (fn: () => void, ms: number) => ReturnType<typeof setInterval>;
     clearInterval: (handle: ReturnType<typeof setInterval>) => void;
@@ -185,6 +211,7 @@ export class SessionUnionCache implements SessionReadFacade {
     this.staleAfterMs = options.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
     this.wireLimit = options.wireLimit ?? DEFAULT_WIRE_LIMIT;
     this.probeTimeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
+    this.selfSessionIds = options.selfSessionIds;
     this.scheduler = {
       setInterval: options.scheduler?.setInterval ?? ((fn, ms) => {
         const handle = setInterval(fn, ms);
@@ -345,8 +372,20 @@ export class SessionUnionCache implements SessionReadFacade {
       return this.local.listSessions(limit);
     }
     // Adopted + online: serve the deduped union (local wins for its own rows).
+    // `mine` is the TRUE shared identity of "wire rows this surface itself
+    // mirrored" (see SessionUnionCacheOptions.selfSessionIds) — every such row
+    // is dropped from the wire side before merging, so `local` (documented to
+    // hold exactly this surface's own sessions) is unconditionally
+    // authoritative for them regardless of what id the wire copy carries.
+    // When ids already agree (the common case, and the whole story when no
+    // selfSessionIds accessor is supplied) this is a no-op: local's overlay
+    // below re-adds the identical row under the identical key.
+    const mine = this.selfSessionIds?.();
     const merged = new Map<string, SharedSessionRecord>();
-    for (const record of this.wireCache) merged.set(record.id, record);
+    for (const record of this.wireCache) {
+      if (mine?.has(record.id)) continue;
+      merged.set(record.id, record);
+    }
     for (const record of this.local.listSessions()) merged.set(record.id, record);
     const union = Array.from(merged.values());
     return typeof limit === 'number' && limit >= 0 ? union.slice(0, limit) : union;
@@ -356,6 +395,11 @@ export class SessionUnionCache implements SessionReadFacade {
     const localRecord = this.local.getSession(sessionId);
     if (localRecord) return localRecord;
     if (this.mode === 'adopted' && this.online) {
+      // A wire row this surface itself mirrored is not a genuine cross-surface
+      // hit once `local` failed to resolve it under this exact id — honest
+      // behavior is "not found" (matching listSessions()'s exclusion) rather
+      // than surfacing a stale self-mirror the local view no longer vouches for.
+      if (this.selfSessionIds?.().has(sessionId)) return null;
       return this.wireCache.find((record) => record.id === sessionId) ?? null;
     }
     return null;

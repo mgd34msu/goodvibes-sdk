@@ -324,6 +324,110 @@ describe('SessionUnionCache — honest cross-surface read facade', () => {
     });
   });
 
+  describe('self-mirror identity (D-TUI-1): dedup on the TRUE shared identity, not raw id equality', () => {
+    test('local record + its wire mirror under the SAME id still dedup to exactly one row (no regression)', async () => {
+      const local = localReader([record('self-1', { title: 'local-title' })]);
+      const wire = wireReader({ rows: [record('other-1'), record('self-1', { title: 'wire-title' })] });
+      const cache = new SessionUnionCache({
+        local,
+        scheduler: noopScheduler,
+        log: silent,
+        selfSessionIds: () => new Set(['self-1']),
+      });
+      cache.activate(wire.reader);
+      await cache.refresh();
+      const union = cache.listSessions();
+      expect(union.map((r) => r.id).sort()).toEqual(['other-1', 'self-1']);
+      // local wins for its own row even though it was also excluded from the wire side.
+      expect(union.find((r) => r.id === 'self-1')?.title).toBe('local-title');
+    });
+
+    test('local id and its wire-mirrored id DIFFER for the same session: still exactly one row for it, via mirroredSessionIds', async () => {
+      // The realistic failure mode: a local record created under one id
+      // (e.g. auto-assigned by a local store) gets mirrored to the wire under
+      // a DIFFERENT id the caller separately chose for SessionSpineClient.
+      // Raw id-equality dedup cannot catch this; selfSessionIds can, because
+      // it is keyed on what was ACTUALLY sent to the wire, independent of the
+      // local reader's own id for the same conceptual session.
+      const local = localReader([record('local-own-id')]);
+      const wire = wireReader({ rows: [record('other-1'), record('wire-mirrored-id')] });
+      const cache = new SessionUnionCache({
+        local,
+        scheduler: noopScheduler,
+        log: silent,
+        selfSessionIds: () => new Set(['wire-mirrored-id']),
+      });
+      cache.activate(wire.reader);
+      await cache.refresh();
+      const union = cache.listSessions();
+      // Exactly N (other-1) + 1 (local-own-id) = 2 rows, NOT 3 — the
+      // wire-mirrored-id row is recognized as "mine" and dropped, while
+      // local's own view (under its own id) is kept.
+      expect(union.map((r) => r.id).sort()).toEqual(['local-own-id', 'other-1']);
+      expect(union).toHaveLength(2);
+    });
+
+    test('N wire sessions + 1 self session (mismatched id) -> N+1 total, never N+2', async () => {
+      const others = ['other-0', 'other-1', 'other-2', 'other-3'].map((id) => record(id));
+      const local = localReader([record('tui-self')]);
+      const wire = wireReader({ rows: [...others, record('daemon-self-mirror')] });
+      const cache = new SessionUnionCache({
+        local,
+        scheduler: noopScheduler,
+        log: silent,
+        selfSessionIds: () => new Set(['daemon-self-mirror']),
+      });
+      cache.activate(wire.reader);
+      await cache.refresh();
+      const union = cache.listSessions();
+      expect(union).toHaveLength(5); // N=4 others + 1 self, not 6
+      expect(union.map((r) => r.id).sort()).toEqual(['other-0', 'other-1', 'other-2', 'other-3', 'tui-self']);
+    });
+
+    test('multiple self sessions (2 mismatched ids) still resolve to exactly N + 2, no special-casing "subtract one"', async () => {
+      const others = ['other-0', 'other-1', 'other-2'].map((id) => record(id));
+      const local = localReader([record('self-local-a'), record('self-local-b')]);
+      const wire = wireReader({ rows: [...others, record('self-wire-a'), record('self-wire-b')] });
+      const cache = new SessionUnionCache({
+        local,
+        scheduler: noopScheduler,
+        log: silent,
+        selfSessionIds: () => new Set(['self-wire-a', 'self-wire-b']),
+      });
+      cache.activate(wire.reader);
+      await cache.refresh();
+      const union = cache.listSessions();
+      expect(union).toHaveLength(5); // N=3 others + 2 self
+      expect(union.map((r) => r.id).sort()).toEqual(['other-0', 'other-1', 'other-2', 'self-local-a', 'self-local-b']);
+    });
+
+    test('getSession() is consistent with listSessions(): a self-mirrored wire id not present locally resolves to null, not a phantom cross-surface hit', async () => {
+      const local = localReader([record('local-own-id')]);
+      const wire = wireReader({ rows: [record('wire-mirrored-id')] });
+      const cache = new SessionUnionCache({
+        local,
+        scheduler: noopScheduler,
+        log: silent,
+        selfSessionIds: () => new Set(['wire-mirrored-id']),
+      });
+      cache.activate(wire.reader);
+      await cache.refresh();
+      expect(cache.getSession('wire-mirrored-id')).toBeNull();
+      expect(cache.getSession('local-own-id')?.id).toBe('local-own-id');
+    });
+
+    test('no selfSessionIds accessor supplied: behavior is byte-identical to before (pure id-equality dedup)', async () => {
+      const local = localReader([record('shared-1', { title: 'local-title' })]);
+      const wire = wireReader({ rows: [record('shared-1', { title: 'wire-title' }), record('wire-only')] });
+      const cache = new SessionUnionCache({ local, scheduler: noopScheduler, log: silent });
+      cache.activate(wire.reader);
+      await cache.refresh();
+      const union = cache.listSessions();
+      expect(union.map((r) => r.id).sort()).toEqual(['shared-1', 'wire-only']);
+      expect(union.find((r) => r.id === 'shared-1')?.title).toBe('local-title');
+    });
+  });
+
   test('panel-consumer stand-in: renders union rows online, and local rows + offline note when down', async () => {
     function renderPanel(facade: SessionReadFacade): { ids: string[]; note: string | null } {
       return { ids: facade.listSessions().map((r) => r.id).sort(), note: facade.crossSurfaceView.offlineNote };

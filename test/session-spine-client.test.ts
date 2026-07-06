@@ -415,6 +415,50 @@ describe('SessionSpineClient — activation modes', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// mirroredSessionIds (D-TUI-1 fix): the CANONICAL "which wire rows are mine"
+// set — what SessionUnionCache consults instead of assuming a caller's local
+// reader id happens to match what THIS client actually sent to the wire.
+// ---------------------------------------------------------------------------
+describe('SessionSpineClient — mirroredSessionIds (the true shared identity for a self-mirrored wire row)', () => {
+  test('starts empty; register() adds the id even while dormant (queued, not yet flushed)', () => {
+    const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, log: silent });
+    expect(client.mirroredSessionIds.size).toBe(0);
+    client.register({ sessionId: 's1', project: '/p', title: 'T' });
+    expect(client.mirroredSessionIds).toEqual(new Set(['s1']));
+    client.dispose();
+  });
+
+  test('reopen() adds its id too; multiple distinct sessions accumulate (no special-casing a single self session)', () => {
+    const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, log: silent });
+    client.register({ sessionId: 's1', project: '/p' });
+    client.reopen({ sessionId: 's2', project: '/p' });
+    expect(client.mirroredSessionIds).toEqual(new Set(['s1', 's2']));
+    client.dispose();
+  });
+
+  test('close() removes exactly that id — a closed session is no longer "mine" on the wire', async () => {
+    const typed = typedAdapter();
+    const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, transport: typed.transport, log: silent });
+    client.register({ sessionId: 's1', project: '/p' });
+    client.register({ sessionId: 's2', project: '/p' });
+    await settle();
+    expect(client.mirroredSessionIds).toEqual(new Set(['s1', 's2']));
+    client.close('s1');
+    await settle();
+    expect(client.mirroredSessionIds).toEqual(new Set(['s2']));
+    client.dispose();
+  });
+
+  test('registering the same id twice does not duplicate it in the set', () => {
+    const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, log: silent });
+    client.register({ sessionId: 's1', project: '/p' });
+    client.register({ sessionId: 's1', project: '/p', title: 'renamed attempt' });
+    expect(client.mirroredSessionIds).toEqual(new Set(['s1']));
+    client.dispose();
+  });
+});
+
 describe('foldLegacySpineStore', () => {
   let root: string;
   beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'goodvibes-sdk-spine-fold-')); });
