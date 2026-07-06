@@ -421,8 +421,8 @@
     "rationale": "public platform seam; measured 227 B gzip @ commit 4e5a5e2; headroom max(ceil(227*1.2)=273, 227+50=277) → 277 (+50 B floor dominates by 4 B)"
   },
   "./platform/voice": {
-    "gzip_bytes": 168,
-    "rationale": "public facade; measured 118 B gzip @ commit 4e5a5e2; headroom max(ceil(118*1.2)=142, 118+50=168) → 168 (+50 B floor dominates by 26 B)"
+    "gzip_bytes": 309,
+    "rationale": "public facade; grew when the spoken-turn (live TTS) policy engine was hoisted into platform/voice and re-exported here; measured 257 B gzip @ wo/tts-hoist; headroom max(ceil(257*1.2)=309, 257+50=307) → 309 (1.2x multiplier dominates)"
   },
   "./platform/watchers": {
     "gzip_bytes": 182,
