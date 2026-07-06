@@ -497,7 +497,17 @@ export class DaemonControlPlaneHelper {
   }): Promise<{ status: number; ok: boolean; body: unknown }> {
     const descriptor = this.context.gatewayMethods.get(input.methodId);
     if (!descriptor) {
-      return { status: 404, ok: false, body: { error: `Unknown gateway method: ${input.methodId}` } };
+      return {
+        status: 404,
+        ok: false,
+        body: {
+          error: `Unknown gateway method: ${input.methodId}`,
+          // Machine-readable, mirroring the NOT_INVOKABLE convention just below
+          // (validateGatewayInvocation) — the uncataloged-id 404 gets its own code so
+          // no consumer has to string-match "Unknown gateway method".
+          code: SDKErrorCodes.METHOD_NOT_FOUND,
+        },
+      };
     }
     const denied = this.validateGatewayInvocation(descriptor, input.context);
     if (denied) return denied;

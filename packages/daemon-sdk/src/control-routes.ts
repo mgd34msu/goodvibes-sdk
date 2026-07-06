@@ -1,5 +1,6 @@
 import type { DaemonControlRouteHandlers } from './context.js';
 import { isRuntimeEventDomain, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse } from './error-response.js';
 import type { AuthenticatedPrincipal } from './http-policy.js';
 import {
@@ -159,11 +160,17 @@ export function createDaemonControlRouteHandlers(
       const method = context.gatewayMethods.get(methodId);
       return method
         ? serializableJsonResponse({ method })
-        : jsonErrorResponse({ error: 'Unknown gateway method' }, { status: 404 });
+        // Machine-readable: METHOD_NOT_FOUND distinguishes "this id isn't cataloged at
+        // all" from NOT_INVOKABLE ("cataloged but refuses dispatch") so a capability
+        // probe (e.g. webui's isMethodUnavailableError) never has to string-match
+        // "Unknown gateway method".
+        : jsonErrorResponse({ error: 'Unknown gateway method', code: SDKErrorCodes.METHOD_NOT_FOUND }, { status: 404 });
     },
     invokeGatewayMethod: async (methodId, req) => {
       const descriptor = context.gatewayMethods.get(methodId);
-      if (!descriptor) return jsonErrorResponse({ error: 'Unknown gateway method' }, { status: 404 });
+      if (!descriptor) {
+        return jsonErrorResponse({ error: 'Unknown gateway method', code: SDKErrorCodes.METHOD_NOT_FOUND }, { status: 404 });
+      }
       const access = descriptor.access ?? 'admin';
       if (access === 'admin' || access === 'remote-peer') {
         const admin = context.requireAdmin(req);
