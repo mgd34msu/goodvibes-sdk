@@ -6,22 +6,61 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-06
+
 ### Added
-- **Browser push (Web Push) subscriptions** — a new `push.*` operator verb group
-  through the full catalog pipeline so a browser/PWA client can receive
-  approvals and completions as notifications: `push.vapid.get` (serve the public
-  VAPID key), `push.subscriptions.create` (register a device), `.list`,
-  `.delete` (unsubscribe — delete means delete), and `.verify` (send a live test
-  push). The daemon generates one P-256 VAPID keypair on first use and stores it
-  through the SecretsManager exactly like any credential — the private key never
-  enters the config, is never logged, and is never returned by any read verb;
-  only the public key is served. Delivery encrypts each message with RFC 8291 /
-  RFC 8188 (`aes128gcm`) using Node's built-in crypto (no new dependency) and
-  posts it to the subscription endpoint with the `TTL`, `Urgency`, and VAPID
-  `Authorization` headers. A real event source is wired: an approval that needs a
-  decision fans out to every registered device. Honest degrade throughout — no
-  subscriptions means an empty receipt list (never a faked send), and an
-  endpoint that reports `404/410 gone` is pruned with a `pruned` receipt.
+- **Cross-surface memory served by the daemon** — the daemon now hosts the one
+  canonical memory store and serves it over its HTTP API, so no surface (TUI,
+  agent, or web UI) opens the memory database file directly; a client surface
+  reads and writes memory over the wire instead. This closes a real corruption
+  risk: the underlying store rewrites the whole file on every save with no
+  locking, so two processes writing it directly could clobber each other. The
+  same recall-honesty rules apply everywhere memory is reached — a search that
+  can't consult its semantic index falls back to a plain scan and says so
+  (never a silent empty result), and stale or contradicted records are excluded
+  and counted rather than served quietly. Offline surfaces with no daemon keep
+  working exactly as before, reading and writing their local store directly.
+- **The daemon can now serve the web UI itself, same-origin or cross-origin —
+  both off by default.** Turning on same-origin serving points the daemon at a
+  built web UI bundle and it serves the app from its own address, so the
+  browser never has to reach a different origin at all; the app still
+  authenticates every API call with a token, so serving the bundle itself
+  leaks no data. Turning on the separate cross-origin allowlist lets specific,
+  explicitly listed origins (never a wildcard) call the daemon from elsewhere;
+  requests from any other origin are refused. Neither setting changes any
+  route's authentication or admin requirements, and the existing local-only
+  default is unchanged unless one of these is turned on. See the decision
+  records at `docs/decisions/2026-07-07-webui-cross-origin-deployment.md` and
+  `docs/decisions/2026-07-07-web-push-subscriptions.md`.
+- **Chat conversations support regenerate and edit-with-branching, with full
+  history kept.** A user can now ask for a fresh answer to the same message, or
+  edit an earlier message and continue from there. In both cases the earlier
+  turns are marked as superseded and kept, never deleted, so the prior answer
+  or original wording is always still there to look back on; a new answer is
+  generated from the edited or retried point forward.
+- **Browser push (Web Push) notifications** — a browser or installed web app
+  can now subscribe to receive approvals and completions as push
+  notifications, with a full subscribe/list/unsubscribe/test-send lifecycle.
+  The daemon generates its own signing key the first time it's needed and
+  stores it the same way it stores any other credential — the private signing
+  key is never written to config, never logged, and never handed back by any
+  read; only the public key needed to create a subscription is served. Each
+  notification is encrypted before it's sent, using the standard Web Push
+  encryption scheme with no new third-party dependency. If a device has no
+  subscriptions, that's reported honestly as an empty result rather than a
+  fake success, and a subscription the browser has revoked is cleaned up
+  automatically. See the decision record at
+  `docs/decisions/2026-07-07-web-push-subscriptions.md`.
+
+### Fixed
+- **Artifact uploads now state their real size limit when they're refused, and
+  no longer stall the connection afterward.** An upload that's rejected for
+  being too large used to report a bare "too large" message and could leave
+  the connection in a state where the next request on it stalled for several
+  seconds; refusals now say the actual byte limit that was exceeded, and the
+  rest of the oversized upload is always fully read and discarded before
+  responding, so the connection stays healthy for whatever the client sends
+  next. Ordinary, correctly-sized uploads are unaffected.
 
 ## [1.0.0] - 2026-07-06
 
