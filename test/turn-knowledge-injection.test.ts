@@ -1,5 +1,5 @@
 /**
- * Wave-5 (wo801, W5.1) — turn-knowledge-injection.ts unit suite.
+ * Passive knowledge injection — turn-knowledge-injection.ts unit suite.
  *
  * buildPerTurnKnowledgeInjection is a pure function of its inputs (no agent loop, no
  * feature flag, no AgentRecord) so every honesty/budget/floor behavior is exercised

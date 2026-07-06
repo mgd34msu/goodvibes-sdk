@@ -1,4 +1,4 @@
-// turn-knowledge-injection.ts — Wave-5 (wo801, W5.1) per-turn passive retrieval.
+// turn-knowledge-injection.ts — per-turn passive retrieval (see CHANGELOG 0.38.0).
 //
 // Spawn-time knowledge injection (orchestrator-prompts.ts buildOrchestratorSystemPrompt)
 // runs `selectKnowledgeForTask` exactly ONCE against the frozen `record.task`, caches

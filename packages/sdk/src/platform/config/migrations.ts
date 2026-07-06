@@ -2,7 +2,7 @@
  * One-shot config migrations applied to raw on-disk JSON before it is
  * deep-merged with defaults in {@link ConfigManager.load}.
  *
- * Wave 6 removes the deprecated `danger.daemon` alias from the schema
+ * CHANGELOG 1.0.0 removes the deprecated `danger.daemon` alias from the schema
  * (see docs/decisions/2026-07-05-daemon-by-default.md). Once the key leaves
  * `CONFIG_SCHEMA`/`ConfigKey`, a stray `danger.daemon` value in an existing
  * settings.json would otherwise be silently ignored by the deep-merge (the
@@ -33,7 +33,7 @@ export interface DangerDaemonMigrationResult {
 
 /**
  * Migrate a raw parsed settings object: `danger.daemon` (a deprecated alias
- * for `daemon.enabled`, removal scheduled Wave 6) is removed, and if it was
+ * for `daemon.enabled`, removed in CHANGELOG 1.0.0) is removed, and if it was
  * explicitly `false`, that choice is preserved onto `daemon.enabled = false`.
  *
  * Precedence mirrors the alias it replaces (see the removed

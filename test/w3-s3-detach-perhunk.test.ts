@@ -1,5 +1,5 @@
 /**
- * W3-S3 — sessions.detach + per-hunk approvals (broker + pure-function level).
+ * sessions.detach + per-hunk approvals (broker + pure-function level).
  *
  * Covers the two new steer verbs at the unit boundary the wire sits on:
  *  A. SharedSessionBroker.detachParticipant — detach != close != kill.

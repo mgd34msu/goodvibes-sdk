@@ -1,7 +1,7 @@
 /**
  * config-credentials-share.test.ts
  *
- * W6-C1 (E7 config sharing) bootDaemon proof over real HTTP on an EPHEMERAL port
+ * Config-sharing bootDaemon proof over real HTTP on an EPHEMERAL port
  * (never 3421/4444). Proves the new admin-scoped `credentials.get` wire method:
  *
  *   1. cross-surface provider visibility — config.get carries provider.* config.

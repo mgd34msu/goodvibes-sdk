@@ -179,7 +179,7 @@ export interface DaemonRuntimeRouteContext extends Omit<
     closeSession(sessionId: string): Promise<{ id: string } | null>;
     reopenSession(sessionId: string): Promise<{ id: string } | null>;
     detachParticipant(sessionId: string, surfaceId: string): Promise<{ id: string; status: string } | null>;
-    /** Hard-remove a session record + its messages/inputs (W5-S1). Distinct from close. */
+    /** Hard-remove a session record + its messages/inputs (see CHANGELOG 1.0.0). Distinct from close. */
     deleteSession(sessionId: string): Promise<'deleted' | 'not-found' | 'active'>;
     cancelInput(sessionId: string, inputId: string): Promise<unknown | null>;
     completeAgent(sessionId: string, agentId: string, message: string, meta: { status: string; routeId?: string }): Promise<void>;

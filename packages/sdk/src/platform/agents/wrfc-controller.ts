@@ -429,7 +429,7 @@ export class WrfcController {
   }
 
   /**
-   * Item d5 (Wave 6, wo-F): resurrection-safe zombie check for a chain about
+   * Item d5 (see CHANGELOG 0.38.0): resurrection-safe zombie check for a chain about
    * to be imported at rehydrate. A non-terminal chain whose ENTIRE roster
    * (allAgentIds) is absent from THIS process's live AgentManager never
    * survived the restart — no in-process execution is coming back to finish
@@ -2687,8 +2687,8 @@ export class WrfcController {
     // default forever unless rolled up here from the real numbers its phase
     // agents accumulated. This is what makes AgentManager.getStatus()/list()
     // — the read path TUI per-agent surfaces actually use — return real data
-    // for the owner instead of the never-updated zeros (WO-305 wired the
-    // AGENT_COMPLETED.usage forwarding but nothing populated the source).
+    // for the owner instead of the never-updated zeros (a previous fix wired
+    // the AGENT_COMPLETED.usage forwarding but nothing populated the source).
     owner.usage = this.aggregateChainUsage(chain);
     owner.toolCallCount = this.aggregateChainToolCallCount(chain);
     chain.ownerTerminalEmitted = true;

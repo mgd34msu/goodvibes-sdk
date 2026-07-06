@@ -70,7 +70,7 @@ export type SharedSessionKind =
  *   session the SYSTEM closed underneath it is not a conflict).
  * - 'user' / 'surface': a deliberate close. It does NOT auto-reopen — register
  *   records the heartbeat and returns the still-closed record with a conflict
- *   marker unless `reopen: true` is passed (the Wave-1 honest-register semantics).
+ *   marker unless `reopen: true` is passed (the session-spine honest-register semantics, see CHANGELOG 1.0.0).
  *
  * Carried on the record under `metadata[SESSION_CLOSE_REASON_METADATA_KEY]` so it
  * rides the wire without a schema change and old readers ignore it (metadata is

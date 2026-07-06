@@ -10,9 +10,9 @@ import {
 import type { MemoryRecord, MemoryVectorStats } from '../packages/sdk/src/platform/state/index.js';
 
 /**
- * W6-C2 (E6) — the cross-surface recall-honesty contract.
+ * The cross-surface recall-honesty contract (memory unification).
  *
- * Promotes the agent's Wave-4 W4-A1 discipline to the SDK so every surface shares
+ * Promotes the agent's memory-honesty discipline to the SDK so every surface shares
  * ONE honesty contract. Asserts: floor is 60 (not a starving 70), the eligibility
  * receipt is honest, flagged records are excluded regardless of confidence, and an
  * unavailable index degrades with a STATED reason (not a silent empty).

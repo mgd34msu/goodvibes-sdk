@@ -1,7 +1,7 @@
 /**
  * fleet-list-pagination.test.ts
  *
- * Finding 3 (Wave-3 review): `fleet.list`'s paginateItems call sorted nodes by
+ * Review finding: `fleet.list`'s paginateItems call sorted nodes by
  * `id` but handed `startedAt` to paginateItems as the deleted-cursor recovery
  * key WITHOUT `{ descending }` matching that sort — the recovery key and the
  * array's actual order disagreed, so once a process is gc'd between page

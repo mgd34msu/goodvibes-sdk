@@ -1,6 +1,6 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
-// ── Fleet — live process registry (W2.1) ────────────────────────────────────
+// ── Fleet — live process registry ───────────────────────────────────────────
 // Curated named-export barrel (no `export *`), mirroring the observability
 // barrel convention: the public fleet surface is an explicit allowlist.
 export type {

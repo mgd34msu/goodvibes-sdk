@@ -1,8 +1,8 @@
 /**
- * gateway-default-streaming.test.ts  (One-Platform Wave 1, S2a)
+ * gateway-default-streaming.test.ts
  *
  * Proves the control-plane-gateway flag defaults ON so a STOCK daemon (no config) can
- * stream companion chat over SSE — the literal W1 "stock daemon is dead" repro — while
+ * stream companion chat over SSE — the literal "stock daemon is dead" repro — while
  * keeping every honest failure mode intact:
  *   - default-ON assertion + kill-switch honesty (config can still turn it off)
  *   - stock-daemon companion SSE happy path: 200 text/event-stream through the REAL

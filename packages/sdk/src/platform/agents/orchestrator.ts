@@ -35,7 +35,7 @@ import { runAgentTask, type AgentOrchestratorRunContext } from './orchestrator-r
 export { summarizeToolArgs } from './orchestrator-utils.js';
 
 /**
- * Wave-3 Part C6 bridge: where AgentOrchestrator forwards a running agent's
+ * Conversation-snapshot bridge (Part C6): where AgentOrchestrator forwards a running agent's
  * live conversation-snapshot accessor. In production this is AgentManager's
  * registerConversationSource/releaseConversationSource, wired post-
  * construction in runtime/services.ts (AgentOrchestrator is constructed
@@ -48,7 +48,7 @@ export interface AgentConversationSink {
 }
 
 /**
- * Wave-4 cooperative cancellation bridge (wo701): where AgentOrchestrator
+ * Cooperative cancellation bridge: where AgentOrchestrator
  * looks up a per-agent AbortSignal registered by an orchestration engine's
  * work-item run. Same shape/wiring precedent as AgentConversationSink — a
  * setter rather than a constructor dependency, wired post-construction in
@@ -148,7 +148,7 @@ export class AgentOrchestrator {
   }
 
   /**
-   * Wire the Wave-3 Part C6 conversation-snapshot bridge (see
+   * Wire the conversation-snapshot bridge (Part C6; see
    * AgentConversationSink). Pass null to detach — createRunContext() then
    * omits the register/release callbacks entirely and orchestrator-runner's
    * `?.()` calls become no-ops.
@@ -158,7 +158,7 @@ export class AgentOrchestrator {
   }
 
   /**
-   * Wire the Wave-4 cancellation bridge (see AgentCancellationSource). Pass
+   * Wire the cancellation bridge (see AgentCancellationSource). Pass
    * null to detach — createRunContext() then omits getCancellationSignal
    * entirely and orchestrator-runner's `?.()` call becomes a no-op, so every
    * tool call runs with `opts` undefined exactly as before this change.

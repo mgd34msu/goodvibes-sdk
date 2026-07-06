@@ -1,10 +1,10 @@
 /**
- * memory-recall-contract.ts — the CROSS-SURFACE recall-honesty contract (Wave-6 E6).
+ * memory-recall-contract.ts — the CROSS-SURFACE recall-honesty contract (see CHANGELOG 1.0.0).
  *
- * PROVENANCE. This is the agent's Wave-4 W4-A1 memory-honesty discipline, promoted
+ * PROVENANCE. This is the agent's memory-honesty discipline, promoted
  * verbatim from a single surface (the agent's memory-prompt.ts) into the SDK so it
  * is ONE shared contract, not a discipline re-derived (and re-weakened) per surface.
- * Under E6 the store is unified and cross-surface, which multiplies the cost of a
+ * Under memory unification the store is unified and cross-surface, which multiplies the cost of a
  * dishonest recall — so this discipline becomes MORE load-bearing, not less. A
  * unified store must not be able to lie more loudly than the siloed one did.
  *

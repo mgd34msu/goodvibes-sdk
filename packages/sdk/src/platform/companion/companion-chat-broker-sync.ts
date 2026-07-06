@@ -8,7 +8,7 @@
  * companion HTTP routes can await in-flight ops before responding
  * (deterministic for tests).
  *
- * Split out of CompanionChatManager (W5-S1) to stay under the repo's
+ * Split out of CompanionChatManager (see CHANGELOG 1.0.0) to stay under the repo's
  * grandfathered line-cap ceiling (see scripts/check-line-cap.ts) — a pure
  * file-organization move, not a behavior change: same chaining, same
  * best-effort swallow-and-log-on-failure semantics.
@@ -80,7 +80,7 @@ export class CompanionBrokerSync {
     }
   }
 
-  /** Hard-remove the mirrored shared-session record (W5-S1: companion delete is a real removal). */
+  /** Hard-remove the mirrored shared-session record (see CHANGELOG 1.0.0: companion delete is a real removal). */
   async deleteSession(sessionId: string): Promise<void> {
     const broker = this.broker;
     if (!broker) return;

@@ -1,5 +1,5 @@
 /**
- * W0.2 — network/transport failure classification.
+ * Network/transport failure classification.
  *
  * Root cause: orchestrator-runner.ts's isNetworkError() only matched a fixed
  * substring allowlist on err.message and never looked at the structured

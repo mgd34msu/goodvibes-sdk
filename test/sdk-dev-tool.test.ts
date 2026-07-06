@@ -2,7 +2,7 @@
 // sdk-dev-tool.test.ts
 //
 // Unit + fixture-level coverage for scripts/sdk-dev.ts, the canonical local-
-// SDK overlay tool consolidated in W6-DEV (Wave 6). Covers:
+// SDK overlay tool consolidated into one SDK-shipped script. Covers:
 //   - workspace enumeration (all 9 public packages incl. contracts; private/
 //     non-public packages excluded; a synthetic 10th package is picked up
 //     with zero code changes — the drift class this brief closes).
@@ -18,7 +18,7 @@
 //
 // The FULL link -> build -> overlay(9 pkgs incl. contracts) -> status ->
 // restore(byte-identical) cycle against a real SDK build and a real consumer
-// checkout is a manual proof (see the W6-DEV report), not automated here —
+// checkout is a manual proof (documented separately), not automated here —
 // it requires a full `tsc -b` build of all 9 packages, which is too slow for
 // a unit-test loop and (per the existing webui/agent precedent) not
 // something CI can run without a local SDK checkout.

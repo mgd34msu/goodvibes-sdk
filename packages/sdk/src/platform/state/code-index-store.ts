@@ -2,7 +2,7 @@
 
 /**
  * CodeIndexStore — an incremental, tree-sitter-chunked, embedding-backed index
- * of a repo's source tree (Wave-5, W5.3, Stage A).
+ * of a repo's source tree (Stage A; see CHANGELOG 0.38.0).
  *
  * Deliberately MIRRORS MemoryStore + SqliteVecMemoryIndex (state/memory-store.ts,
  * state/memory-vector-store.ts) rather than reusing them: those classes are

@@ -8,7 +8,7 @@ import { SubscriptionManager } from '../config/subscriptions.js';
 import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } from '../automation/index.js';
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
-import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerW3S2GatewayMethods } from '../control-plane/index.js';
+import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerFleetCheckpointSessionGatewayMethods } from '../control-plane/index.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { ArtifactStore } from '../artifacts/index.js';
@@ -114,8 +114,8 @@ export interface RuntimeServicesOptions {
   readonly panelManager?: PanelManagerLike | undefined;
   readonly keybindingsManager?: KeybindingsManagerLike | undefined;
   /**
-   * Opt-in: kick off the repo source-tree code index's initial build (Wave-5
-   * wo802, W5.3 Stage A) right after construction. Fire-and-forget — never
+   * Opt-in: kick off the repo source-tree code index's initial build
+   * (Stage A) right after construction. Fire-and-forget — never
    * awaited, never blocks. Defaults off so building RuntimeServices never runs
    * an unrequested source-tree walk. Real interactive entry points pass `true`.
    */
@@ -153,7 +153,7 @@ export interface RuntimeServices {
   readonly memoryStore: MemoryStore;
   readonly memoryRegistry: MemoryRegistry;
   /**
-   * Repo source-tree code index (Wave-5 wo802, W5.3 Stage A). Constructed and
+   * Repo source-tree code index (Stage A). Constructed and
    * schema-initialized eagerly like memoryStore, but the actual walk/chunk/
    * embed build is NOT auto-triggered here — call `.scheduleBuild()` from an
    * explicit call site (a `/codebase reindex` command, a session-start hook,
@@ -164,7 +164,7 @@ export interface RuntimeServices {
    * surprising for embedders that never asked for it.
    */
   readonly codeIndexStore: CodeIndexStore;
-  /** Wave-5 Stage B tool-site incremental reindex scheduler (bound to codeIndexStore). */
+  /** Stage B tool-site incremental reindex scheduler (bound to codeIndexStore). */
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
   readonly serviceRegistry: ServiceRegistry;
   readonly secretsManager: SecretsManager;
@@ -219,7 +219,7 @@ export interface RuntimeServices {
   readonly agentOrchestrator: AgentOrchestrator;
   readonly wrfcController: WrfcController;
   /**
-   * Orchestration engine (Wave 4, wo701) — ships ALONGSIDE wrfcController,
+   * Orchestration engine — ships ALONGSIDE wrfcController,
    * stage 1 of the 3-stage migration (see platform/orchestration/
    * controller-compat.ts). WrfcController is unchanged; this is a new,
    * opt-in surface for callers that want the pipeline/capacity-matching
@@ -230,7 +230,7 @@ export interface RuntimeServices {
   readonly orchestrationEngine: OrchestrationEngine;
   readonly processManager: ProcessManager;
   /**
-   * Live process registry (W2.1): queryable + subscribable fleet aggregation
+   * Live process registry: queryable + subscribable fleet aggregation
    * over agentManager/wrfcController/processManager/watcherRegistry/workflow.
    * LIFECYCLE NOTE: RuntimeServices has no shutdown/dispose seam today, so
    * nothing calls processRegistry.dispose() here — the registry's coalesced
@@ -373,7 +373,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     executor: agentOrchestrator,
     configManager,
   });
-  // Wave-3 Part C6 bridge: AgentOrchestrator is constructed before
+  // Conversation-snapshot sink bridge: AgentOrchestrator is constructed before
   // AgentManager exists, so the conversation-snapshot sink is wired here via
   // setConversationSink rather than as a constructor dependency (same
   // ordering constraint as setRuntimeBus above).
@@ -381,7 +381,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     register: (agentId, source) => agentManager.registerConversationSource(agentId, source),
     release: (agentId) => agentManager.releaseConversationSource(agentId),
   });
-  // Wave-4 cooperative cancellation bridge (wo701): same ordering constraint
+  // Cooperative cancellation bridge: same ordering constraint
   // and setter pattern as setConversationSink above — AgentOrchestrator is
   // constructed before AgentManager exists.
   agentOrchestrator.setCancellationSource({
@@ -427,7 +427,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     embeddingRegistry: memoryEmbeddingRegistry,
   });
   const memoryRegistry = new MemoryRegistry(memoryStore);
-  // Repo source-tree code index (Wave-5 wo802, W5.3 Stage A) — shares
+  // Repo source-tree code index (Stage A) — shares
   // memoryEmbeddingRegistry so code + memory embeddings use one provider and
   // one dimensionality. Schema init only; build is not auto-triggered here
   // (see the RuntimeServices.codeIndexStore doc comment).
@@ -437,7 +437,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   if (options.autoStartCodeIndex) {
     codeIndexStore.scheduleBuild();
   }
-  // Wave-5 Stage B: tool-site incremental reindex. Gated on the SDK's autoStartCodeIndex opt-in
+  // Stage B: tool-site incremental reindex. Gated on the SDK's autoStartCodeIndex opt-in
   // (this library's storage.codeIndexEnabled analog) AND the built-state check inside the
   // scheduler — an unbuilt index is a no-op either way.
   const codeInjectionSettingEnabled = (): boolean => options.autoStartCodeIndex === true;
@@ -696,7 +696,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     return (usage.inputTokens * pricing.input + usage.outputTokens * pricing.output) / 1_000_000;
   };
 
-  // Orchestration engine (Wave 4, wo701) — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
+  // Orchestration engine — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
   const orchestrationEngine = createOrchestrationEngine({
     agentManager,
     configManager,
@@ -705,7 +705,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     priceUsage,
   });
 
-  // Live process registry (W2.1) — narrow structural deps only, constructed
+  // Live process registry — narrow structural deps only, constructed
   // after every source manager exists. See the RuntimeServices interface
   // comment for the dispose story (no RuntimeServices-wide shutdown seam yet).
   const processRegistry = createProcessRegistry({
@@ -726,7 +726,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexService: codeIndexStore,
   });
 
-  registerW3S2GatewayMethods(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker }); // W3-S2 (routes/register-w3-s2.ts)
+  registerFleetCheckpointSessionGatewayMethods(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker }); // see routes/register-fleet-checkpoint-session-routes.ts
   return {
     workingDirectory,
     homeDirectory,
@@ -822,7 +822,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       await memoryStore.reroot(newMemoryDbPath);
 
       // Step 1b: Re-root the code index alongside memory — otherwise it keeps
-      // pointing at the old tree after a workspace swap (Wave-5 wo802 risk #7).
+      // pointing at the old tree after a workspace swap.
       const newCodeIndexDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'code-index.sqlite');
       await codeIndexStore.reroot(newWorkingDir, newCodeIndexDbPath);
 

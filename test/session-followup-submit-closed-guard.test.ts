@@ -1,21 +1,21 @@
 /**
  * session-followup-submit-closed-guard.test.ts
  *
- * Wave-2 final-batch fix — D-1's closed-session guard in
+ * Final-batch fix — the closed-session guard in
  * SharedSessionBroker.handleIntent (session-broker.ts) covered ONLY
  * `intent === 'steer'`. `followUpMessage()` (intent='follow-up') and
  * `submitMessage()` (intent='submit', when the caller supplies a sessionId
  * that resolves to an EXISTING closed record) both skipped the guard,
  * mutated the closed record (message appended, input queued) and could bind
  * a fresh agent onto history via the spawn fallback — the exact zombie-agent
- * state D-1 was supposed to eliminate, just reached through a different
+ * state the guard was supposed to eliminate, just reached through a different
  * intent. The guard now fires for all three intents whenever session
  * resolution lands on a pre-existing closed record; a MISSING session still
  * auto-creates for submit/follow-up exactly as before (creation always
  * yields an active session, so the guard never fires for that path).
  *
  * These are broker-level tests (real SharedSessionBroker + in-memory store),
- * mirroring the D-1 proof in session-steer-surface-routing.test.ts.
+ * mirroring the proof in session-steer-surface-routing.test.ts.
  */
 
 import { describe, expect, test } from 'bun:test';

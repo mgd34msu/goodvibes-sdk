@@ -2,7 +2,7 @@
 
 /**
  * Code-index chunking — pure content → chunk transformation for CodeIndexStore
- * (Wave-5, W5.3 Stage A; extracted from code-index-store.ts to keep that file
+ * (Stage A, see CHANGELOG 0.38.0; extracted from code-index-store.ts to keep that file
  * within the 800-line source discipline).
  *
  * Everything here is side-effect-free with respect to the store: given file

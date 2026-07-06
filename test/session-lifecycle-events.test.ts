@@ -1,5 +1,5 @@
 /**
- * session-lifecycle-events.test.ts  (One-Platform Wave 1, S2c)
+ * session-lifecycle-events.test.ts
  *
  * The SharedSessionBroker collapses every lifecycle signal onto a single `session-update`
  * wire event whose real name lives in `payload.event`. Before this item that channel was
@@ -248,7 +248,7 @@ describe('S2c — SSE client sees each lifecycle event end-to-end', () => {
     expect((closed!.data as { payload: { id: string } }).payload.id).toBe('lifecycle-session');
   });
 
-  test('deleteSession fires session-deleted on the same channel (W5-S1)', async () => {
+  test('deleteSession fires session-deleted on the same channel', async () => {
     const gateway = makeGateway(true);
     const broker = makeBroker();
     broker.setEventPublisher((event, payload) => gateway.publishEvent(event, payload));

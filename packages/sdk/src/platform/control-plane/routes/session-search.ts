@@ -1,9 +1,9 @@
 /**
  * routes/session-search.ts
  *
- * W3-S2 — `sessions.search`: a paginated/filtered query over the
+ * `sessions.search` (see CHANGELOG 1.0.0): a paginated/filtered query over the
  * ALREADY-daemon-resident `SharedSessionBroker`'s home-scoped store,
- * extending the Wave-1 list-filter shape (`ListSharedSessionsOptions`:
+ * extending the session-spine list-filter shape (`ListSharedSessionsOptions`:
  * project/kind/includeClosed) with a free-text `query`, `surfaceKind`,
  * `status`, and opaque cursor pagination (mirrors the
  * daemon-sdk `paginateItems` convention already used by
@@ -16,9 +16,9 @@
  * is built from the broker's existing public `listSessions()` — no new
  * broker state, no new broker method.
  *
- * Bounded in-memory filter+sort (risk #3, W3-S2 brief): the store is
+ * Bounded in-memory filter+sort: the store is
  * single-user scale, so a full unbounded scan per call is intentional (no
- * index) — see the brief's decision record for the documented ceiling.
+ * index) — this ceiling is a deliberate, documented decision.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';

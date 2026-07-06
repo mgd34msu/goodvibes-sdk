@@ -1,5 +1,5 @@
 /**
- * Wave-5 (wo801, W5.1) — knowledge-injection.ts regression: extracting
+ * Passive knowledge injection (per-turn budgeted retrieval) — knowledge-injection.ts regression: extracting
  * `selectKnowledgeForTaskScored` out of `selectKnowledgeForTask` must not change
  * `selectKnowledgeForTask`'s observable output for any existing caller (spawn-time
  * injection in orchestrator-prompts.ts). This suite pins that contract and exercises

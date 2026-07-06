@@ -1,7 +1,7 @@
 /**
  * w4-a3-capability-route-reconcile.test.ts
  *
- * W4-A3 (capability-advertisement honesty): proves the SDK's
+ * Capability-advertisement honesty: proves the SDK's
  * advertisement-vs-route reconcile (method-catalog-route-reconcile.ts)
  * against the REAL dispatch chain — dispatchDaemonApiRoutes from
  * @pellux/goodvibes-daemon-sdk, the same function DaemonHttpRouter delegates
@@ -37,13 +37,13 @@ import {
 
 /**
  * Pre-existing advertise-without-route debt discovered incidentally while
- * building the W4-A3 reconcile gate: these methods had the identical defect
+ * building this route-reconcile gate (an audit finding): these methods had the identical defect
  * class as email.* (an http path with no router.ts dispatch chain serving
  * it, confirmed by grepping the full path across packages/sdk/src and
  * packages/daemon-sdk/src), but lived in other work items' files —
  * method-catalog-calendar.ts (calendar.*) and method-catalog-channels.ts
  * (channels.drafts.* / channels.inbox.list / channels.routing.*) — not
- * method-catalog-email.ts, which was W4-A3's exclusive ownership at the
+ * method-catalog-email.ts, which was this audit finding's exclusive ownership at the
  * time. Grandfathered explicitly (by id, not by category) so the gate
  * shipped green without hiding the debt or masking a future regression in
  * some OTHER method in those same files that wasn't already on this list.
@@ -119,7 +119,7 @@ describe('W4-A3 capability-advertisement honesty: route reconcile', () => {
   test('a method with no http binding is left unchecked, not flagged', async () => {
     const probe = createDaemonSdkRouteProbe();
     const descriptors = liveCatalogDescriptors();
-    // fleet.snapshot (W3-S2) is handler-registered with no http binding at
+    // fleet.snapshot is handler-registered with no http binding at
     // catalog-construction time (registered later, at RuntimeServices
     // construction) — reconcile must not treat "no binding yet" as a
     // violation.

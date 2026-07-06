@@ -6801,7 +6801,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "automation.jobs.update",
         "title": "Update Automation Job",
-        "description": "Update a durable automation job. (Renamed from automation.jobs.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)",
+        "description": "Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -62798,7 +62798,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "routes.bindings.update",
         "title": "Update Route Binding",
-        "description": "Update an existing route binding. (Renamed from routes.bindings.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)",
+        "description": "Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)",
         "category": "routes",
         "source": "builtin",
         "access": "admin",
@@ -76437,7 +76437,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "watchers.update",
         "title": "Update Watcher",
-        "description": "Update an existing watcher. (Renamed from watchers.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)",
+        "description": "Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)",
         "category": "watchers",
         "source": "builtin",
         "access": "admin",

@@ -1,7 +1,7 @@
 /**
  * exec-tool-result-shape.test.ts
  *
- * Regression coverage for W0.1 fix #2: createExecTool(...).execute() must
+ * Regression coverage: createExecTool(...).execute() must
  * populate a top-level `error` summary whenever any command fails, so that
  * consumers keying off `.error` alone (not just `.output`) get a coherent
  * signal. `output` already carried the full per-command diagnostics before

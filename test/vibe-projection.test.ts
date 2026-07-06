@@ -14,7 +14,7 @@ import {
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 /**
- * W6-C2 (E6) — VIBE.md as a projection of persona/constraint records.
+ * VIBE.md as a projection of persona/constraint records.
  *
  * Asserts: the '## VIBE.md' block renders from constraint records (not a file),
  * the precedence caveat is preserved, a persona edit via a record changes the

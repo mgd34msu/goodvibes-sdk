@@ -5,7 +5,7 @@
  * home-scoped durable broker store. Idempotent and safe to run repeatedly — the
  * merge is keyed on session id, so a re-run over the same sources is a no-op.
  *
- * Sources folded in (One-Platform Wave 1, S1 spine):
+ * Sources folded in (the one-broker session-spine effort, see CHANGELOG 1.0.0, S1 spine):
  *  1. Companion chat files — ~/.goodvibes/companion-chat/sessions/*.json
  *     (home-scoped, projectless → project 'unknown'); INCLUDING closed sessions.
  *  2. Per-project broker snapshots — <root>/.goodvibes/<surface>/control-plane/

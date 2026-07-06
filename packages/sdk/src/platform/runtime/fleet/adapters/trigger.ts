@@ -5,10 +5,9 @@ import type { ProcessNode } from '../types.js';
 
 /**
  * TriggerDefinition → ProcessNode. Triggers have no timestamps and no run
- * state — enabled means armed ('idle'), disabled maps to 'paused' (Wave 6,
- * wo-F item d2 — NOT 'killed': the definition still exists and
- * TriggerManager.enable() can re-arm it). resumable mirrors the inverse of
- * pausable.
+ * state — enabled means armed ('idle'), disabled maps to 'paused' (NOT
+ * 'killed': the definition still exists and TriggerManager.enable() can
+ * re-arm it). resumable mirrors the inverse of pausable.
  */
 export function adaptTrigger(def: TriggerDefinition): ProcessNode {
   return {

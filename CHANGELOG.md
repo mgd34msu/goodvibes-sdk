@@ -11,7 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 First stable release. `1.0.0` stabilizes the public operator/peer contract, the
 runtime and platform surfaces, and the nine `@pellux/goodvibes-*` workspace
 packages, all published together in lockstep. It closes the goodvibes-tui
-evolution arc (Waves 1–6): the SDK is now the one platform substrate shared by
+evolution arc: the SDK is now the one platform substrate shared by
 the TUI, the agent fork, and the browser web UI — sessions, config, memory, and
 presentation are cross-surface by construction, reached through one daemon.
 
@@ -47,20 +47,20 @@ scaffolding); see **Removed** and **Migration**.
 - **Delete-means-delete** — real hard-delete for companion chat plus a new spine
   `sessions.delete` verb; delete can never resurrect (map-delete, drain pending
   saves, then unlink; routes flush the broker sync before responding).
-- **Config sharing across surfaces (E7)** — a daemon-served shared config tier so
+- **Config sharing across surfaces** — a daemon-served shared config tier so
   a provider configured once is visible everywhere, reached through the existing
   `config.get`/`providers.*` plus one new admin-scoped, `read:config`-scoped
   credential-status read method. API keys stay env-only; the config snapshot stays
   secret-free; unavailable reads report an honest degraded state rather than a
   stale confident value.
-- **Memory unification (E6)** — one canonical cross-surface `MemoryStore` (a fact
-  learned on one surface recalls on another), with the agent's Wave-4 recall
-  honesty raised to the cross-surface contract (semantic-by-default; an
+- **Memory unification** — one canonical cross-surface `MemoryStore` (a fact
+  learned on one surface recalls on another), with the agent's recall-honesty
+  discipline raised to the cross-surface contract (semantic-by-default; an
   unavailable index falls back to literal *with a stated reason*, never a silent
   empty; the injection floor is tied to the store's real baseline). `VIBE.md` is
   re-framed as a rendered projection of persona/constraint records rather than a
   separate source of truth.
-- **Core-verb command spec (E8)** — an SDK-owned canonical verb vocabulary
+- **Core-verb command spec** — an SDK-owned canonical verb vocabulary
   (`packages/contracts`) with a conformance lint that keeps shared verbs identical
   across surfaces, plus fixes to the worst-class collisions (schedule
   triple-meaning, memory fragmentation, the agent `/session` orphan).
@@ -78,7 +78,7 @@ scaffolding); see **Removed** and **Migration**.
   (not a drift bug).
 
 ### Fixed
-- **Uncataloged-method 404 now carries a machine code (W6-C4)** — the
+- **Uncataloged-method 404 now carries a machine code** — the
   "method unavailable" family is distinguished by code everywhere instead of by
   string-matching prose; `NOT_INVOKABLE` behavior is unchanged.
 - Idle-empty reaper never closes a live surface session; honest reopen-on-heartbeat.
@@ -89,7 +89,7 @@ scaffolding); see **Removed** and **Migration**.
 
 ### Removed
 - **BREAKING**: the deprecated `danger.daemon` config alias for `daemon.enabled` is
-  removed (scheduled Wave 6, see `docs/decisions/2026-07-05-daemon-by-default.md`).
+  removed (see `docs/decisions/2026-07-05-daemon-by-default.md`).
   `resolveDaemonEnabled`'s signature and 7 existing callers are unchanged.
   `danger.daemon` is no longer a valid `ConfigKey`.
 - **BREAKING**: the TUI staged-switch scaffolding for the session-spine conversion
@@ -104,7 +104,7 @@ scaffolding); see **Removed** and **Migration**.
 
 ## [0.38.0] - 2026-07-04
 
-Waves 2–6 of the goodvibes-tui evolution effort, batched: the SDK becomes an
+A broad batch from the goodvibes-tui evolution effort: the SDK becomes an
 observability and orchestration substrate — a queryable process registry over
 every runtime concern, workstream orchestration beyond fixed chains, passive
 knowledge injection for both turn loops, and a repo code index.
@@ -129,8 +129,8 @@ knowledge injection for both turn loops, and a repo code index.
   `updateBudget` recovery, `fromChainSpec` compat, and the planner's
   `PlanProposal` (`assemblePlanProposal` / `singleItemProposal`).
 - `@pellux/goodvibes-sdk`: additive `Tool.execute(args, opts?: { signal? })` —
-  cooperative cancellation reaches exec/fetch child processes (closes the W0.1
-  deferral).
+  cooperative cancellation reaches exec/fetch child processes (closing a
+  previously deferred gap).
 - `@pellux/goodvibes-sdk`: **passive knowledge injection for BOTH turn loops** —
   per-turn budgeted retrieval (default 800 tokens, relevance floor 95) composed
   fresh on every LLM roundtrip (including chat retries), gated by the
@@ -169,18 +169,18 @@ knowledge injection for both turn loops, and a repo code index.
 - Code index reroot-during-build race (epoch-guarded abort; no cross-root
   writes), honest chunk counters, split file-cap vs total-byte-cap skip
   accounting (256MB bound now disclosed).
-- Session-wire mixed-version tolerance, enum leg (Wave-2 D1): response/output
+- Session-wire mixed-version tolerance, enum leg: response/output
   validation now treats a session record's `kind` as an OPEN enum on read, so a
   mixed-version daemon emitting a kind an older reader does not model no longer
   blanks the entire `sessions.list` envelope (per-record tolerance; the normalizer
   still backfills display). `sessions.register` input stays strict (unknown kind
   still 400s).
-- Idle-empty reaper no longer closes LIVE surface sessions (Wave-2 D2): a register
+- Idle-empty reaper no longer closes LIVE surface sessions: a register
   heartbeat advances `lastActivityAt`, idle-empty exempts sessions with any
   participant seen within the idle window, and a SYSTEM-reaped session
   (`metadata.closeReason = 'idle-reaped'`) auto-reopens on the next heartbeat while
   a user/surface close stays closed with an honest conflict.
-- Steer/follow-up routing to surface-backed sessions (Wave-2 D3): a steer or
+- Steer/follow-up routing to surface-backed sessions: a steer or
   follow-up to a surface-managed session with a live registered participant now
   queues for the surface (`mode: 'queued-for-surface'`, no daemon executor spawn);
   surfaceless sessions keep the executor path.
@@ -205,7 +205,7 @@ knowledge injection for both turn loops, and a repo code index.
 
 ## [0.37.0] - 2026-07-03
 
-Wave 1 of the goodvibes-tui evolution effort: reversibility. The headline is the workspace checkpoint engine — cheap whole-workspace snapshots and rewind, with zero pollution of the user's git state.
+An early stage of the goodvibes-tui evolution effort, focused on reversibility. The headline is the workspace checkpoint engine — cheap whole-workspace snapshots and rewind, with zero pollution of the user's git state.
 
 ### Added
 - `@pellux/goodvibes-sdk`: **WorkspaceCheckpointManager** (`./platform/workspace`) — a hidden side git repository (isolated `GIT_DIR`, the workspace as work-tree) provides content-addressed whole-workspace checkpoints: automatic snapshots at turn and agent-run boundaries (subscribing to existing TURN_*/AGENT_COMPLETED events), named manual checkpoints, checkpoint-to-checkpoint and checkpoint-to-working-tree diffs, and whole-workspace restore with a default safety checkpoint. Never touches the user repo's HEAD/index/stash (proven byte-identical in tests); works in non-git directories; honors .gitignore; bounded retention via the existing RetentionPolicy with ref-deletion GC. Constructed in `createRuntimeServices` and exposed on `RuntimeServices`.
@@ -219,7 +219,7 @@ Wave 1 of the goodvibes-tui evolution effort: reversibility. The headline is the
 
 ## [0.36.0] - 2026-07-03
 
-Wave 0 "trust repairs" from the goodvibes-tui live-dogfooding effort: every fix closes a defect reproduced against v1.0.0 of the TUI where the SDK reported something other than the truth to the model or the user.
+An early "trust repairs" round from the goodvibes-tui live-dogfooding effort: every fix closes a defect reproduced against v1.0.0 of the TUI where the SDK reported something other than the truth to the model or the user.
 
 ### Added
 - `@pellux/goodvibes-sdk`: `STREAM_RETRY` TurnEvent — in-flight provider `chat()` retries (the withRetry backoff path) now emit an observable event with attempt/max fields so consumers can render honest "reconnecting" state instead of a frozen spinner.

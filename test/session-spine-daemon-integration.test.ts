@@ -1,7 +1,7 @@
 /**
  * session-spine-daemon-integration.test.ts
  *
- * W3-S4 consumability proof: drives the extracted SDK SessionSpineClient against a
+ * Consumability proof: drives the extracted SDK SessionSpineClient against a
  * REAL bootDaemon (isolated home, ephemeral port) over a real HttpTransport — no
  * mocked wire — using the transport adapter EXACTLY as the TUI's bootstrap builds
  * it (register/close over httpTransport.operator.sessions, resolve->ok / throw->

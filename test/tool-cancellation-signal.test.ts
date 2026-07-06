@@ -1,5 +1,5 @@
 /**
- * W4.1 (wo701) — Tool.execute's additive `opts.signal` (types/tools.ts) and
+ * Tool.execute's additive `opts.signal` (types/tools.ts) and
  * its propagation into the process-spawning tools that opted in (exec,
  * fetch). Proves signal -> child-process termination for exec (no orphan)
  * and signal -> runtime-dep pass-through for fetch.

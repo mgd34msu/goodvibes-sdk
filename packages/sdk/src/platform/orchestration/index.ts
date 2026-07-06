@@ -1,6 +1,6 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
-// ── Orchestration engine (W4.1, wo701) ──────────────────────────────────────
+// ── Orchestration engine (see CHANGELOG 0.38.0) ─────────────────────────────
 // Curated named-export barrel (no `export *`), mirroring runtime/fleet/
 // index.ts's allowlist convention. TUI import path:
 // '@pellux/goodvibes-sdk/platform/orchestration'.

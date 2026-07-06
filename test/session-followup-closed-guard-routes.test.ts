@@ -1,7 +1,7 @@
 /**
  * session-followup-closed-guard-routes.test.ts
  *
- * Wave-2 final-batch fix — HTTP route surface proof that BOTH follow-up
+ * Final-batch fix — HTTP route surface proof that BOTH follow-up
  * entry points (`POST /api/sessions/:id/follow-up` and
  * `POST /api/sessions/:id/messages` with `kind:'followup'`) and the submit
  * entry points (`POST /task` and `POST /api/sessions/:id/messages` with

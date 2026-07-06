@@ -300,7 +300,7 @@ export interface ExecCommandResult {
   expectation_error?: string | undefined;
   /** Set when command exceeded timeout. */
   timed_out?: boolean | undefined;
-  /** Set when an external AbortSignal cancelled the command (Wave 4, wo701 — orchestration engine cancellation). Never combined with timed_out. */
+  /** Set when an external AbortSignal cancelled the command (orchestration engine cancellation). Never combined with timed_out. */
   cancelled?: boolean | undefined;
   /** Set when command ran in background. */
   process_id?: string | undefined;

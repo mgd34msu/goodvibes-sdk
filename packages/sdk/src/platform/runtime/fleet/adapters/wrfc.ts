@@ -141,7 +141,7 @@ function sumUsage(nodes: readonly ProcessNode[]): ProcessUsage | undefined {
  *
  * The owner agent is EXCLUDED from aggregation: it runs no LLM turns itself —
  * its AgentRecord.usage is populated FROM the phase children at completion
- * time (Wave-0/1), so including it would double-count.
+ * time, so including it would double-count.
  */
 function aggregateCost(members: readonly ProcessNode[]): { costUsd: number | null; costState: ProcessNode['costState'] } {
   const withUsage = members.filter((node) => node.usage !== undefined);

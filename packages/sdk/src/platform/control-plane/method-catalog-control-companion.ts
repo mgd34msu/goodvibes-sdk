@@ -2,7 +2,7 @@
  * method-catalog-control-companion.ts
  *
  * Companion-chat method catalog registration, split out of
- * method-catalog-control-core.ts (W5-S1) to stay under the repo's 800-line
+ * method-catalog-control-core.ts (see CHANGELOG 1.0.0) to stay under the repo's 800-line
  * hand-authored file cap (see scripts/check-line-cap.ts) — this block is
  * self-contained (companion.chat.* descriptors only) and control.ts folds it
  * in unchanged, so this is a pure file-organization move with no API surface

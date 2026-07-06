@@ -1,16 +1,15 @@
 // check-line-cap.ts
 //
 // CI/pre-commit gate: enforces an 800-line cap on hand-authored TypeScript
-// source files under packages/*/src (WO-0C, One-Platform Wave 0). See
-// line-cap-rule.ts for the ratchet semantics and line-cap-grandfather.ts for
-// the current grandfather list.
+// source files under packages/*/src. See line-cap-rule.ts for the ratchet
+// semantics and line-cap-grandfather.ts for the current grandfather list.
 //
 // Excluded from scanning:
 //   - dist/, node_modules/ (build output / vendored install)
 //   - any directory named "generated" at any depth (e.g.
 //     packages/contracts/src/generated/**) — generated code is not
 //     hand-authored and isn't subject to hand-authored line-count discipline;
-//     this generalizes past the WO's literal contracts/generated/** example
+//     this generalizes past the original contracts/generated/** example
 //     to also cover packages/sdk/src/platform/types/generated/, following
 //     the same convention no-todo-markers.ts already uses.
 //   - any directory named "vendor" at any depth (e.g.

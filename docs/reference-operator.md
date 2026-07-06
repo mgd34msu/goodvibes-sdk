@@ -6656,7 +6656,7 @@ Trigger an automation job immediately.
 
 #### `automation.jobs.update`
 
-Update a durable automation job. (Renamed from automation.jobs.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)
+Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)
 
 - Title: `Update Automation Job`
 - Source: `builtin`
@@ -63534,7 +63534,7 @@ Return configured route bindings.
 
 #### `routes.bindings.update`
 
-Update an existing route binding. (Renamed from routes.bindings.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)
+Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)
 
 - Title: `Update Route Binding`
 - Source: `builtin`
@@ -77348,7 +77348,7 @@ Stop a watcher instance.
 
 #### `watchers.update`
 
-Update an existing watcher. (Renamed from watchers.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)
+Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)
 
 - Title: `Update Watcher`
 - Source: `builtin`

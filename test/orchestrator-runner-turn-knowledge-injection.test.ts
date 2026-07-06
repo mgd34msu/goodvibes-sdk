@@ -1,5 +1,5 @@
 /**
- * Wave-5 (wo801, W5.1) — orchestrator-runner integration: per-turn passive knowledge
+ * Orchestrator-runner integration: per-turn passive knowledge
  * injection wiring inside `runAgentTask`.
  *
  * Drives the REAL turn loop (`runAgentTask`) against a scripted fake LLMProvider and a
@@ -359,7 +359,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
 
     expect(chatCallCount).toBe(2);
     // The spawn-time baseline (buildOrchestratorSystemPrompt, pre-existing/out-of-scope
-    // for W5.1) is unaffected by this flag and may still appear in both prompts — that is
+    // for this per-turn injection feature) is unaffected by this flag and may still appear in both prompts — that is
     // fine and expected. What must hold, and is asserted here, is that turn 2's prompt is
     // BYTE-IDENTICAL to turn 1's (the steer changed nothing) and that no per-turn record
     // was ever produced.
@@ -409,7 +409,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
 
     expect(chatCallCount).toBe(2);
     // As in the flag-disabled test above: the spawn-time baseline is untouched by this
-    // config knob (out of W5.1's scope) and may appear in both; what matters is that the
+    // config knob (out of this per-turn injection feature's scope) and may appear in both; what matters is that the
     // two prompts are byte-identical and no per-turn record was produced.
     expect(capturedSystemPrompts[0]).toBe(capturedSystemPrompts[1]);
     expect(record.turnInjections ?? []).toEqual([]);
@@ -457,7 +457,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
     // NOTE: the actual chat() call wraps the composed systemPrompt in
     // appendGoodVibesRuntimeAwarenessPrompt(...) at the call site — a fixed-size runtime
     // notice appended AFTER every budget/threshold decision runs (pre-existing behavior,
-    // unrelated to and unchanged by W5.1: neither the old nor the new code counts this
+    // unrelated to and unchanged by the per-turn knowledge injection feature: neither the old nor the new code counts this
     // suffix in applyContextWindowAwareness's own sysTokens estimate). Folding its cost
     // into the probe measurement here makes THIS TEST's wire-level "never exceeds
     // threshold" assertion honest, without changing what the runner itself measures.

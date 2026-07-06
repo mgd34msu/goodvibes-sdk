@@ -1,5 +1,5 @@
 /**
- * invoke-input-validation.ts (W3-S1, Part B)
+ * invoke-input-validation.ts (see CHANGELOG 1.0.0, Part B)
  *
  * A central, catalog-driven input gate for the gateway invoke layer. Before a
  * resolved verb's handler (or its HTTP delegate) runs, the invocation's params

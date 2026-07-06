@@ -1,5 +1,5 @@
 /**
- * W4.1 (wo701) — orchestration-engine fleet adapters: Workstream/Phase/
+ * Orchestration-engine fleet adapters: Workstream/Phase/
  * WorkItem -> ProcessNode shape, parentId nesting, per-kind capabilities,
  * and registry-level kill/steer dispatch (kill routes through
  * orchestrationEngine.kill, not a raw AgentManager.cancel cascade).

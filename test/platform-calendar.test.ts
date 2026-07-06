@@ -1,7 +1,7 @@
 /**
  * platform-calendar.test.ts
  *
- * One-Platform Wave 4, A9 — external-calendar READ connectivity. Covers:
+ * External-calendar READ connectivity. Covers:
  *  - parseIcs: VEVENT extraction (UID/SUMMARY/LOCATION/DESCRIPTION), line unfolding,
  *    TEXT unescaping, honest DTSTART zone anchoring (utc/floating/tzid, VALUE=DATE),
  *    synthetic UID for a UID-less event, and honest skip of a DTSTART-less VEVENT.

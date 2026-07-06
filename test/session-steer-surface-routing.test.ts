@@ -152,12 +152,12 @@ describe('steer routing — surfaceless session keeps the executor path', () => 
   });
 });
 
-// D-1 — Wave-2 acceptance re-replay: steering a CLOSED session must reject
+// Acceptance re-replay: steering a CLOSED session must reject
 // with SESSION_CLOSED/409 and cause NO side effects (closed sessions are
 // history — no message recorded, no input queued, no activeAgentId touched).
 // Open sessions (both the surface-collection path and the spawn fallback)
 // keep working, and a legitimately reopened session accepts steers again.
-describe('steer routing — closed session is rejected before any mutation (D-1)', () => {
+describe('steer routing — closed session is rejected before any mutation', () => {
   test('steer to a closed session throws SESSION_CLOSED/409 and mutates nothing', async () => {
     const { broker, events } = makeBroker();
     await broker.createSession({ id: 's-closed' });

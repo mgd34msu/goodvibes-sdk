@@ -1,5 +1,5 @@
 /**
- * Wave-5 (wo802, W5.3 Stage A) — CodeIndexStore unit suite: chunking
+ * Repo code index (Stage A) — CodeIndexStore unit suite: chunking
  * determinism, incremental reindex (unchanged/changed/deleted files), and
  * the "never silently drop a file" fallback contract.
  */

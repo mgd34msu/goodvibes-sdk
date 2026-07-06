@@ -130,7 +130,7 @@ function makeRouteContext(chatManager: CompanionChatManager): CompanionChatRoute
 }
 
 // ---------------------------------------------------------------------------
-// F2 (Wave-5 review-fix) — the companion HTTP routes actually flush the
+// F2 — the companion HTTP routes actually flush the
 // broker mirror before responding, matching CompanionBrokerSync's documented
 // contract ("the daemon's companion HTTP routes call this before responding
 // so /api/sessions reflects the change synchronously"). Previously nothing

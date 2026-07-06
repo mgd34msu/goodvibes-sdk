@@ -93,7 +93,7 @@ export class ToolRegistry {
   /**
    * Execute a named tool with the given arguments. Wraps errors in ToolResult.
    *
-   * `opts.signal` (Wave 4, wo701) is an additive pass-through to
+   * `opts.signal` is an additive pass-through to
    * `tool.execute` — only tools that opt in (exec, fetch) read it. Callers
    * that don't have a cancellation signal (the common case) omit `opts`.
    */

@@ -1,7 +1,7 @@
 // line-cap-rule.ts
 //
-// Pure ratchet logic for the 800-line source-file cap (WO-0C, One-Platform
-// Wave 0). Kept separate from check-line-cap.ts (the filesystem-walking CLI)
+// Pure ratchet logic for the 800-line source-file cap. Kept separate from
+// check-line-cap.ts (the filesystem-walking CLI)
 // so the ratchet semantics can be exercised directly from tests with plain
 // in-memory fixtures — no disk I/O required.
 //

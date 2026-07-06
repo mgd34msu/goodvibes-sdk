@@ -1,8 +1,8 @@
 /**
- * vibe-projection.ts — VIBE.md as a PROJECTION of memory records (Wave-6 E6).
+ * vibe-projection.ts — VIBE.md as a PROJECTION of memory records (see CHANGELOG 1.0.0).
  *
- * BEFORE E6, VIBE.md was a persona file read off disk and injected into the prompt
- * — a projection of ITSELF, a source of truth disjoint from the memory store. E6
+ * BEFORE memory unification, VIBE.md was a persona file read off disk and injected into the prompt
+ * — a projection of ITSELF, a source of truth disjoint from the memory store. Memory unification
  * demotes the file to an import/export FORMAT and makes the prompt block a
  * projection of first-class memory records:
  *

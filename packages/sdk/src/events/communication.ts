@@ -14,7 +14,7 @@ export type CommunicationKind =
   | 'escalation'
   | 'completion'
   /**
-   * Wave-3 steering: an operator (human)-originated message queued for a
+   * Steering (see CHANGELOG 0.38.0): an operator (human)-originated message queued for a
    * live in-process agent via `ProcessRegistry.steer()`. Framed verbatim as
    * a user turn at the drain site (orchestrator-runner.ts), not wrapped in
    * the `[Kind from sender]` inter-agent directive framing.

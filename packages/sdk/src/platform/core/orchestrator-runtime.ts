@@ -38,17 +38,17 @@ export type OrchestratorCoreServices = {
   sessionMemoryStore?: Pick<SessionMemoryStore, 'list'> | undefined;
   favoritesStore?: Pick<FavoritesStore, 'recordUsage'> | undefined;
   /**
-   * Wave-5 (wo805) narrow injection seam for the MAIN interactive session's per-turn
+   * Narrow injection seam for the MAIN interactive session's per-turn
    * passive knowledge injection (see core/orchestrator-turn-loop.ts). Optional/undefined
    * is a hard no-op — the feature never runs and the base system prompt is
-   * byte-identical, matching the agent path's (wo801) `memoryRegistry` semantics. Wired
+   * byte-identical, matching the agent path's `memoryRegistry` semantics. Wired
    * in post-construction via `Orchestrator.setCoreServices({ memoryRegistry })` since,
    * like `sessionMemoryStore`/`planManager` above, it is not required at construction
    * time.
    */
   memoryRegistry?: TurnKnowledgeRegistrySource | undefined;
   /**
-   * Wave-5 Stage B code-index injection seam for the MAIN interactive session. Optional/
+   * Stage B code-index injection seam for the MAIN interactive session. Optional/
    * undefined is a hard no-op (memory-only injection, base prompt byte-identical). Whether code
    * hits are actually injected is additionally gated by the `agent-passive-code-injection`
    * feature flag (DEFAULT OFF) and `isCodeInjectionSettingEnabled` below — both must hold.
@@ -61,7 +61,7 @@ export type OrchestratorCoreServices = {
    */
   isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
   /**
-   * Wave-5 Stage B tool-site reindex scheduler. Optional/undefined is a hard no-op. When wired,
+   * Stage B tool-site reindex scheduler. Optional/undefined is a hard no-op. When wired,
    * a successful write/edit tool call schedules a debounced incremental reindex of the touched
    * path(s) (never blocking the tool result).
    */

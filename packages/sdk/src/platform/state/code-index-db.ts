@@ -2,7 +2,7 @@
 
 /**
  * Code-index SQL layer — schema plus every direct table operation for
- * CodeIndexStore's bun:sqlite database (Wave-5, W5.3 Stage A; extracted from
+ * CodeIndexStore's bun:sqlite database (Stage A, see CHANGELOG 0.38.0; extracted from
  * code-index-store.ts to keep that file within the 800-line source discipline).
  *
  * Three tables:

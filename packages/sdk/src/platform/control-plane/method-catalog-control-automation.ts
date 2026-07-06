@@ -106,7 +106,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'automation.jobs.update',
     title: 'Update Automation Job',
-    description: 'Update a durable automation job. (Renamed from automation.jobs.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)',
+    description: 'Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'PATCH', path: '/api/automation/jobs/{jobId}' },
@@ -174,8 +174,8 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     inputSchema: objectSchema({ jobId: STRING_SCHEMA }, ['jobId']),
     outputSchema: objectSchema({ id: STRING_SCHEMA, enabled: BOOLEAN_SCHEMA }, ['id', 'enabled'], { additionalProperties: true }),
   }),
-  // automation.jobs.pause / automation.jobs.resume were RETIRED in the Wave-6
-  // core-verb pass (W6-C3): they were a byte-identical redundant lifecycle
+  // automation.jobs.pause / automation.jobs.resume were RETIRED in the 1.0.0
+  // core-verb rename (see CHANGELOG 1.0.0): they were a byte-identical redundant lifecycle
   // pair with automation.jobs.disable/enable (same {id,enabled} output shape,
   // same semantics — pause==disable, resume==enable). The canonical verbs are
   // enable/disable; consumers that exposed a "pause"/"resume" user-facing verb
@@ -429,7 +429,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'routes.bindings.update',
     title: 'Update Route Binding',
-    description: 'Update an existing route binding. (Renamed from routes.bindings.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)',
+    description: 'Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)',
     category: 'routes',
     scopes: ['write:routes'],
     access: 'admin',

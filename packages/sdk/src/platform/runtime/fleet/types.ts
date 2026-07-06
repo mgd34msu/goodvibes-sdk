@@ -2,12 +2,12 @@
 
 /**
  * Fleet types — the normalized process-tree contract for the live process
- * registry (W2.1). One queryable + subscribable aggregation surface that
+ * registry. One queryable + subscribable aggregation surface that
  * enumerates every live/completed runtime process (agents incl. WRFC roles,
  * WRFC chains + subtasks, workflow-tool FSMs/triggers/schedules, watchers,
  * background processes) as flat `ProcessNode` records with parentId edges.
  *
- * Consumers (the TUI fleet tree, Wave-3 session tabs, Wave-4 orchestration
+ * Consumers (the TUI fleet tree, session tabs, orchestration
  * nesting) build the tree from the flat list — this keeps the registry cheap
  * and lets each surface reorder/filter independently.
  */
@@ -22,14 +22,14 @@ export type ProcessKind =
   | 'schedule'
   | 'watcher'
   | 'background-process'
-  // Wave 4 (wo701) — orchestration-engine pipeline nesting: workstream
+  // Orchestration-engine pipeline nesting: workstream
   // (parent) -> phase (grouping) -> work-item, mirroring wrfc-chain/subtask.
   | 'workstream'
   | 'phase'
   | 'work-item'
-  // Wave 5 (wo802, W5.3 Stage A) — the repo source-tree code index's initial
-  // build. Not 'background-process': an index build has no pid (ProcessManager
-  // is shell/OS-process-only), so it gets its own kind, mirroring the Wave-4
+  // The repo source-tree code index's initial build (Stage A). Not
+  // 'background-process': an index build has no pid (ProcessManager
+  // is shell/OS-process-only), so it gets its own kind, mirroring the
   // orchestrationEngine-dep precedent (optional dep, degrades to today when absent).
   | 'code-index';
 
@@ -40,17 +40,17 @@ export type ProcessKind =
  * ScheduleEntry-between-runs and pending agents need honest states rather
  * than being force-fit into an active state.
  *
- * `interrupted` (Wave-3 verb formalization) is a distinct TERMINAL outcome
+ * `interrupted` is a distinct TERMINAL outcome
  * from `killed`: both come from AgentManager.cancel(), but a graceful
  * interrupt request and a hard kill are display-distinguishable via
  * AgentRecord.terminationKind. There is no resume path — `cancel()` is
  * terminal in the current SDK, so 'interrupted' does NOT mean "process still
  * alive"; it means "the operator asked nicely" vs. "the operator killed it".
  *
- * `paused` (Wave 6, wo-F item d2) is NOT terminal and NOT the same as
+ * `paused` is NOT terminal and NOT the same as
  * `killed`: a disabled trigger/schedule/automation-job still exists and can
  * be re-armed via `ProcessRegistry.resume()` — collapsing it into `killed`
- * (the pre-Wave-6 behavior) was dishonest, since `killed` implies the
+ * (the previous behavior) was dishonest, since `killed` implies the
  * process is gone for good. See ProcessCapabilities.resumable.
  */
 export type ProcessState =
@@ -95,7 +95,7 @@ export interface ProcessCapabilities {
   readonly killable: boolean;
   readonly pausable: boolean;
   /**
-   * Wave 6 (wo-F item d2): whether `ProcessRegistry.resume()` can re-arm
+   * Whether `ProcessRegistry.resume()` can re-arm
    * this node. True only for a node currently in the `paused` state whose
    * source manager exposes an `enable` control (trigger, schedule,
    * automation job) — false for every other kind/state, including a
@@ -103,7 +103,7 @@ export interface ProcessCapabilities {
    */
   readonly resumable: boolean;
   /**
-   * Wave-3: whether `ProcessRegistry.steer()` can queue a message for this
+   * Whether `ProcessRegistry.steer()` can queue a message for this
    * node. True only for a live in-process agent (or a wrfc-subtask with a
    * live member agent) AND only when the registry was constructed with a
    * `messageBus` dep — false everywhere when that dep is absent (graceful
@@ -114,7 +114,7 @@ export interface ProcessCapabilities {
   readonly steerable: boolean;
 }
 
-/** Wave-3 tab attach point: session/agent identity for transcript drill-downs. */
+/** Tab attach point: session/agent identity for transcript drill-downs. */
 export interface ProcessSessionRef {
   readonly sessionId?: string | undefined;
   readonly agentId?: string | undefined;
@@ -206,7 +206,7 @@ export interface ProcessRegistry {
    */
   interrupt(id: string): boolean;
   /**
-   * Wave 6 (wo-F item d2): re-arm a `paused` node — triggers/schedules via
+   * Re-arm a `paused` node — triggers/schedules via
    * their manager's `enable()`, the inverse of `interrupt()`'s disable.
    * Honest refusal (returns false, no throw) for a node that is not
    * resumable: not found, not currently `paused`, or a kind whose source

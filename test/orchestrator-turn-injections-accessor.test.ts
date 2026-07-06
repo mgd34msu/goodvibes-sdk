@@ -1,8 +1,8 @@
 /**
- * Wave-5 (wo805) — Orchestrator.getTurnInjections() accessor wiring.
+ * Orchestrator.getTurnInjections() accessor wiring.
  *
- * The MAIN interactive session has no AgentRecord (that's wo801's per-agent
- * `AgentRecord.turnInjections` ring), so wo805 exposes a session-lifetime equivalent
+ * The MAIN interactive session has no AgentRecord (that's the agent path's per-agent
+ * `AgentRecord.turnInjections` ring), so the orchestrator exposes a session-lifetime equivalent
  * directly on the Orchestrator class: `getTurnInjections(): readonly TurnInjectionRecord[]`.
  * This is the exact accessor a `/recall`-style renderer should read as the main-session
  * default when no agent id is given (see core/orchestrator-turn-loop.ts's

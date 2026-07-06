@@ -1,7 +1,7 @@
 /**
  * routes/fleet.ts
  *
- * W3-S2 — `fleet.snapshot` / `fleet.list` gateway-method handlers over the
+ * `fleet.snapshot` / `fleet.list` gateway-method handlers (see CHANGELOG 1.0.0) over the
  * ALREADY daemon-resident `ProcessRegistry` (createProcessRegistry(),
  * ../../runtime/fleet/registry.ts:204, constructed + exposed on
  * RuntimeServices at ../../runtime/services.ts:712/:242). This is thin verb
@@ -37,7 +37,7 @@ import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
 /**
- * `fleet.snapshot` payload cap (risk #1, W3-S2 brief): the registry's
+ * `fleet.snapshot` payload cap: the registry's
  * `query()` is a cheap O(n) in-memory scan, but the wire response must not
  * grow unbounded with fleet size. Nodes beyond this cap are dropped (newest
  * activity first is NOT guaranteed here — see `truncated`/`totalCount` so a

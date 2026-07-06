@@ -1,11 +1,11 @@
 /**
- * transport-parity.test.ts  (One-Platform Wave 1, S2b)
+ * transport-parity.test.ts  (One-Platform parity gate, S2b)
  *
  * THE PARITY GATE. HTTP + WebSocket parity is automatic (the operator-sdk client is
  * contract-driven), but DirectTransport (the TUI's in-process path) is HAND-WIRED in
  * runtime/operator-client.ts — a method can be HTTP-reachable while being invisible
  * in-process, and nothing caught that today. This gate makes the asymmetry fail loudly so
- * Wave-3 `fleet.*` (which the TUI renders locally) cannot silently ship HTTP-only.
+ * a later `fleet.*` addition (which the TUI renders locally) cannot silently ship HTTP-only.
  *
  * It enforces three properties:
  *   1. Transport-declaration honesty: a method that advertises `http` transport MUST carry
@@ -61,7 +61,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.inputs.cancel': 'cancelInput',
   'sessions.inputs.deliver': 'deliverInput',
   'sessions.integration.snapshot': 'current',
-  // sessions.search (W3-S2): a NEW, wire-only query (cursor pagination over
+  // sessions.search: a NEW, wire-only query (cursor pagination over
   // the home-scoped store) with no existing in-process consumer — every
   // other sessions.* verb here mirrors whole-session access the TUI already
   // gets in-process via services.sessionBroker directly (through this same
@@ -70,7 +70,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // if/when a concrete in-process consumer (e.g. T2's union surface) needs
   // cursor pagination without going through the wire.
   'sessions.search': 'http-only',
-  // fleet.* (W3-S2): the TUI's fleet panel (src/panels/fleet-read-model.ts)
+  // fleet.*: the TUI's fleet panel (src/panels/fleet-read-model.ts)
   // already holds a direct reference to the SDK's ProcessRegistry and calls
   // `registry.query()` in-process — it does NOT go through operator-client
   // at all, so no DirectTransport wrapper is needed here. fleet.snapshot/
@@ -203,7 +203,7 @@ describe('S2b parity gate — DirectTransport coverage', () => {
   });
 
   test('the coverage gate FAILS for a new namespace method with no disposition (forcing function)', () => {
-    // Simulate Wave-3 adding fleet.list HTTP-only without a DirectTransport decision.
+    // Simulate a later addition of fleet.list HTTP-only without a DirectTransport decision.
     const gaps = findDirectTransportGaps(
       ['sessions.list', 'fleet.list'],
       { 'sessions.list': 'list' }, // fleet.list intentionally absent

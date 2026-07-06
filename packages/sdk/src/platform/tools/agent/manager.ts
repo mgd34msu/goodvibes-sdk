@@ -51,7 +51,7 @@ export interface AgentManagerDependencies {
 }
 
 /**
- * Wave-3 tab attach point (Part C6): default bound on how many recently
+ * Conversation-snapshot tab attach point (Part C6): default bound on how many recently
  * finished agents' final conversation snapshot AgentManager keeps around
  * after their live source is released. Without a bound, a long-lived process
  * that spawns many short-lived agents would retain every finished agent's
@@ -132,7 +132,7 @@ export interface AgentRecord {
   /**
    * Set by cancel(id, kind) when status transitions to 'cancelled'. Distinguishes
    * a graceful interrupt request from a hard kill for display purposes
-   * (Wave-3 verb formalization) without overloading `status`, which is
+   * (verb formalization) without overloading `status`, which is
    * consumed widely (ledger parse, orchestrator finalize, exportState/
    * importState). Absent on records cancelled before this field existed, and
    * on any record cancelled via the single-arg cancel(id) call — both default
@@ -166,7 +166,7 @@ export interface AgentRecord {
   fanoutCollapse?: AgentInput['fanoutCollapse'] | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
   /**
-   * Wave-4 orchestration engine tag (wo701): set by phase-runner.ts when it
+   * Orchestration engine tag: set by phase-runner.ts when it
    * spawns an agent to run one WorkItem through one Phase. Mirrors
    * wrfcId/wrfcSubtaskId — the fleet's agent adapter uses it to parent this
    * agent node under its work-item ProcessNode (adapters/agent.ts
@@ -208,7 +208,7 @@ export interface AgentRecord {
     reviewState: 'fresh' | 'reviewed' | 'stale' | 'contradicted';
   }>;
   /**
-   * Wave-5 (wo801, W5.1) bounded ring of per-turn passive-injection honesty
+   * Bounded ring of per-turn passive-injection honesty
    * records — one entry per turn that actually ran retrieval (turns that
    * reused the prior turn's cached block, or that ran with the feature
    * flag/budget off, append nothing). See turn-knowledge-injection.ts for
@@ -230,14 +230,14 @@ export class AgentManager {
   private executor: AgentExecutor | null;
   private readonly configManager: Pick<ConfigManager, 'get'> | null;
   /**
-   * Live snapshot accessors for RUNNING agents (Wave-3 Part C6 bridge).
+   * Live snapshot accessors for RUNNING agents (conversation-snapshot bridge, Part C6).
    * Registered by the executor (orchestrator-runner.ts) right after it
    * creates the agent's ConversationManager; the manager never stores
    * messages itself while an agent is running — it just holds a callback.
    */
   private readonly conversationSources = new Map<string, () => ConversationMessageSnapshot[]>();
   /**
-   * Wave-4 cooperative cancellation bridge (wo701): per-agent AbortSignal
+   * Cooperative cancellation bridge: per-agent AbortSignal
    * registered by an orchestration-engine work item for the duration of one
    * phase run. AgentOrchestrator reads this via
    * setCancellationSource/getCancellationSignal and threads it into
@@ -703,7 +703,7 @@ export class AgentManager {
 
   /**
    * Register the live conversation-snapshot source for a running agent
-   * (Wave-3 Part C6 bridge). Called by the executor (orchestrator-runner.ts)
+   * (conversation-snapshot bridge, Part C6). Called by the executor (orchestrator-runner.ts)
    * once its ConversationManager exists — `source` is invoked on demand by
    * getConversationSnapshot(); the manager never copies or stores the
    * messages itself while the agent is running.
@@ -713,7 +713,7 @@ export class AgentManager {
   }
 
   /**
-   * Wave-4 cooperative cancellation bridge (wo701): register the AbortSignal
+   * Cooperative cancellation bridge: register the AbortSignal
    * an orchestration engine's cancellation registry created for a work
    * item's current agent. Called by the engine right after
    * AgentManager.spawn() so the signal is in place before the agent's first
@@ -740,7 +740,7 @@ export class AgentManager {
    * open at the moment of completion keeps showing content instead of going
    * blank. Once evicted (oldest-first, beyond the retention bound),
    * getConversationSnapshot falls back to an empty array — callers past that
-   * point are expected to degrade to the on-disk event ledger (Wave-3 TUI
+   * point are expected to degrade to the on-disk event ledger (TUI
    * Part C6's documented fallback for completed/detached agents).
    *
    * Safe to call even when no source was ever registered for this agentId
@@ -769,7 +769,7 @@ export class AgentManager {
   }
 
   /**
-   * The Wave-3 tab attach point: a full-fidelity conversation history for a
+   * The conversation-snapshot tab attach point: a full-fidelity conversation history for a
    * fleet agent (ConversationMessageSnapshot[] — the same shape the main
    * session surface renders via MessageLineCache/conversation.ts).
    *

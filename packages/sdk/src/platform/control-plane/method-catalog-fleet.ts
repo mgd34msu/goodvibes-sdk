@@ -1,7 +1,7 @@
 /**
  * method-catalog-fleet.ts
  *
- * W3-S2 — fleet.* + checkpoints.* method descriptors. Split out of
+ * (see CHANGELOG 1.0.0) — fleet.* + checkpoints.* method descriptors. Split out of
  * method-catalog-control-core.ts (which was already at the 800-line
  * source-file cap) rather than grown into it, mirroring how
  * method-catalog-control-automation.ts is a sibling split of the same file

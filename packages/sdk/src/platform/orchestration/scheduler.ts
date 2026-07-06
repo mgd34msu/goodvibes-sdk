@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Scheduler (Wave 4, wo701) — pure capacity-matching helpers, no side
+ * Scheduler (see CHANGELOG 0.38.0) — pure capacity-matching helpers, no side
  * effects. The hard departure from WrfcController's pairwise
  * engineer<->reviewer binding (startReview:883/startFix:1042): each tick,
  * for every phase in ordinal order, free capacity slots (capacity minus

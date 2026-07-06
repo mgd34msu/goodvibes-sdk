@@ -1,5 +1,5 @@
 /**
- * W3.1 Part C6 (SDK side) — conversation-snapshot bridge wiring.
+ * Conversation-snapshot bridge wiring (SDK side).
  *
  * agent-manager-conversation-snapshot.test.ts proves AgentManager's bridge
  * API in isolation. These tests prove the two real call sites actually use

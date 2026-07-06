@@ -1,8 +1,8 @@
 /**
- * WO fix: AgentManager.getStatus()/list() must return real per-agent usage
- * after a completion that carries it (cross-repo reviewer finding on WO-305).
+ * Fix: AgentManager.getStatus()/list() must return real per-agent usage
+ * after a completion that carries it (a cross-repo reviewer finding).
  *
- * WO-305 added real usage to AGENT_COMPLETED events and to RuntimeAgent.usage
+ * Real usage was added to AGENT_COMPLETED events and to RuntimeAgent.usage
  * in the runtime store, but the TUI's per-agent surfaces read AgentRecord
  * objects from AgentManager.getStatus()/list(), not RuntimeAgent. This test
  * proves two things:

@@ -50,7 +50,7 @@ export interface DaemonEnabledReader {
  *
  * `daemon.enabled` governs (default `true` — daemon on by default,
  * loopback-bound). The deprecated `danger.daemon` alias that used to
- * override this was removed in Wave 6 (its explicit-`false` off-switch is
+ * override this was removed in CHANGELOG 1.0.0 (its explicit-`false` off-switch is
  * preserved for existing users by a one-time config migration onto
  * `daemon.enabled`, applied at {@link ConfigManager.load} — see migrations.ts).
  *

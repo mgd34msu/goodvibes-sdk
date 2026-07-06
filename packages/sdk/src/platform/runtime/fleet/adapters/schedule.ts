@@ -10,10 +10,10 @@ export function scheduleNodeId(name: string): string {
 
 /**
  * ScheduleEntry → ProcessNode. A schedule between runs is honestly 'idle'
- * (not force-fit into an active state); disabled maps to 'paused' (Wave 6,
- * wo-F item d2 — NOT 'killed': the entry still exists and ScheduleManager.
- * enable() can re-arm it, so collapsing it into a terminal state was
- * dishonest). resumable mirrors the inverse of pausable.
+ * (not force-fit into an active state); disabled maps to 'paused' (NOT
+ * 'killed': the entry still exists and ScheduleManager.enable() can re-arm
+ * it, so collapsing it into a terminal state was dishonest). resumable
+ * mirrors the inverse of pausable.
  */
 export function adaptSchedule(entry: ScheduleEntry): ProcessNode {
   return {

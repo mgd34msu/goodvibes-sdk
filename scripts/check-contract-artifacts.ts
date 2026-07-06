@@ -12,7 +12,7 @@ await import('./refresh-contract-artifacts.ts');
 // regenerates operator-contract/operator-method-ids/peer-contract/
 // peer-endpoint-ids/foundation-metadata) — that file is emitted by
 // scripts/export-foundation-artifacts.ts, which is absent from this repo
-// (W5-S2 decision record: unrecoverable, hand-authored fallback with a
+// (an unrecoverable-source decision: hand-authored fallback with a
 // mandatory consistency check). Run that check here so `contracts:check`
 // stays the one gate that catches drift in either generated surface.
 await import('./check-foundation-io-types.ts');

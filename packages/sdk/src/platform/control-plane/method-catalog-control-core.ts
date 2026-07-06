@@ -524,9 +524,9 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     }, ['sessionId', 'inputId']),
     outputSchema: entityOutputSchema('input', SHARED_SESSION_INPUT_RECORD_SCHEMA),
   }),
-  // ── W3-S2: sessions.search ──────────────────────────────────────────────
+  // ── sessions.search (see CHANGELOG 1.0.0) ────────────────────────────────
   // Paginated/filtered query over the home-scoped session store, extending
-  // the Wave-1 list-filter shape (project/kind/includeClosed) with free-text
+  // the session-spine list-filter shape (project/kind/includeClosed) with free-text
   // `query`, `surfaceKind`, `status`, and opaque cursor pagination. Handler:
   // routes/session-search.ts (registered directly on the catalog with no
   // `http` REST binding — see the transport note below).
@@ -618,7 +618,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     outputSchema: TASK_STATUS_OUTPUT_SCHEMA,
   }),
   // fleet.* + checkpoints.* descriptors moved to method-catalog-fleet.ts
-  // (W3-S2) — this file was already at the 800-line cap; see that file's
+  // (see CHANGELOG 1.0.0) — this file was already at the 800-line cap; see that file's
   // header comment for the full design rationale, merged in by
   // method-catalog-control.ts alongside method-catalog-control-automation.ts.
   methodDescriptor({

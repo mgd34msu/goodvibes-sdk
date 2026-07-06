@@ -497,7 +497,7 @@ describe('companion-chat-routes: post message and events', () => {
   });
 });
 
-describe('companion-chat-routes: close vs delete (W5-S1 delete-means-delete)', () => {
+describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
   test('POST /close soft-closes: status closed, session still gettable', async () => {
     const publisher = makeEventPublisher();
     const manager = new CompanionChatManager({

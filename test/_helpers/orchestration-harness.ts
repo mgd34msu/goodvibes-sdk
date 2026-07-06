@@ -1,5 +1,5 @@
 /**
- * Shared test harness for the orchestration engine (W4.1, wo701).
+ * Shared test harness for the orchestration engine.
  *
  * Mirrors test/wrfc-controller.test.ts's harness shape (fake AgentManager
  * driven by real RuntimeEventBus emitters) so the two systems' tests read

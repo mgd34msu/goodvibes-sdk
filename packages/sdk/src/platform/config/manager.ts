@@ -381,7 +381,7 @@ export class ConfigManager {
   }
 
   /**
-   * Removal-of-`danger.daemon` migration (Wave 6): rewrite an explicit legacy
+   * Removal-of-`danger.daemon` migration (see CHANGELOG 1.0.0): rewrite an explicit legacy
    * `danger.daemon = false` onto `daemon.enabled = false` before the raw JSON
    * is merged with defaults, so the removed alias's two-year off-switch is
    * honored rather than silently flipped on. Reports honestly via the logger

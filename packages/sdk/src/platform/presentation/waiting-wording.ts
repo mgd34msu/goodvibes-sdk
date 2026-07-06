@@ -11,7 +11,7 @@
  * TUI's precedence order — approval beats reconnect beats pre-first-token
  * beats stalled beats thinking) and calls waitingPhrase(state, ctx) for the
  * exact wording. Neither renderer should carry its own copy of these five
- * strings/rotation — that duplication is exactly what the W4-R1 audit found
+ * strings/rotation — that duplication is exactly what the renderer/input parity audit found
  * (the agent's ui-factory.ts:308-313 was rotating-only, with no honest
  * stall/reconnect/approval split at all).
  *

@@ -2,7 +2,7 @@
  * credential-status.ts
  *
  * Promotes the internal SecretsManager to a secret-FREE status source for the
- * daemon's `credentials.get` wire method (W6-C1 / E7 config sharing).
+ * daemon's `credentials.get` wire method (config sharing, see CHANGELOG 1.0.0).
  *
  * The returned provider reports whether each credential in the shared store is
  * configured and usable — it NEVER exposes the plaintext value. `usable` is a

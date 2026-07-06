@@ -1,5 +1,5 @@
 /**
- * core-verbs-conformance.test.ts — W6-C3.
+ * core-verbs-conformance.test.ts — the core-verb command spec conformance lint.
  *
  * The forcing function for packages/contracts/src/core-verbs.ts: every id in
  * OPERATOR_METHOD_IDS must classify as either a core verb, an explicitly
@@ -76,13 +76,13 @@ describe('core-verbs conformance', () => {
     expect(conflicts).toEqual([]);
   });
 
-  // ── Regression guards for the specific Wave-6 worst-class collision fixes ──
+  // ── Regression guards for the specific worst-class collision fixes ──
 
   test('SCHEDULE: no bare top-level "schedules.*" family remains (collision #1)', () => {
     const bareSchedules = OPERATOR_METHOD_IDS.filter((id) => id.startsWith('schedules.'));
     expect(
       bareSchedules,
-      'The bare "schedules.*" namespace was renamed to "automation.schedules.*" in W6-C3 ' +
+      'The bare "schedules.*" namespace was renamed to "automation.schedules.*" in the 1.0.0 core-verb rename ' +
         'to stop colliding with the agent reminder/routine tooling and with knowledge.schedule(s).*.',
     ).toEqual([]);
   });

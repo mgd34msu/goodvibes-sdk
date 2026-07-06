@@ -1,5 +1,5 @@
 /**
- * W1.4 — compaction accounts for subagent work.
+ * Compaction accounts for subagent work.
  *
  * Covers:
  *  - buildCompletedAgentWork(): the new "## Completed Agent Work" section that
