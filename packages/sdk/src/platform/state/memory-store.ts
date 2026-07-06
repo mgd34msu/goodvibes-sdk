@@ -219,6 +219,11 @@ export class MemoryStore {
     return this.ready;
   }
 
+  /** The on-disk database path backing this store, or null when ephemeral. */
+  get dbPath(): string | null {
+    return this.sqlite.databasePath;
+  }
+
   /** Add a new memory record. Returns the created record. */
   async add(opts: MemoryAddOptions): Promise<MemoryRecord> {
     if (!this.ready) throw new Error('MemoryStore: not initialized');
