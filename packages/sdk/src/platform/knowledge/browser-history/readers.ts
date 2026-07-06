@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { Database } from 'bun:sqlite';
+import { createRequire } from 'node:module';
 import bplistParserDefault from 'bplist-parser';
 import { copyLockedBrowserSqlite } from './locked-db.js';
 import type {
@@ -12,6 +12,17 @@ import type {
 const bplistParser = bplistParserDefault as unknown as {
   parseFileSync<T = unknown>(path: string): T[];
 };
+
+// bun:sqlite is a Bun-only builtin; a static import makes this module unloadable
+// under any non-Bun runtime (Node's ESM linker rejects the `bun:` scheme at link
+// time, breaking the release install-smoke check and any Node import of the
+// surfaces that transitively reach this module). Resolve the Database constructor
+// lazily via require so the `bun:` specifier stays off the static import graph —
+// it is only pulled on the Bun-only code path that opens a browser database.
+let bunDatabaseCtor: typeof import('bun:sqlite').Database | null = null;
+function bunSqliteDatabase(): typeof import('bun:sqlite').Database {
+  return (bunDatabaseCtor ??= createRequire(import.meta.url)('bun:sqlite').Database);
+}
 
 export interface BrowserKnowledgeReadOptions {
   readonly limit?: number | undefined;
@@ -92,7 +103,7 @@ async function readChromiumHistory(profile: BrowserKnowledgeProfile, options: Br
   const since = typeof options.sinceMs === 'number' ? msToChromiumMicros(options.sinceMs) : 0;
   const copy = await copyLockedBrowserSqlite(profile.historyPath);
   try {
-    const db = new Database(copy.copiedDbPath, { readonly: true });
+    const db = new (bunSqliteDatabase())(copy.copiedDbPath, { readonly: true });
     try {
       const urlRows = db.query<ChromiumUrlRow, []>('SELECT id, url, title, visit_count FROM urls').all();
       const urlMap = new Map(urlRows.map((row) => [row.id, row]));
@@ -201,7 +212,7 @@ async function readGeckoHistory(profile: BrowserKnowledgeProfile, options: Brows
   if (!profile.historyPath) return [];
   const copy = await copyLockedBrowserSqlite(profile.historyPath);
   try {
-    const db = new Database(copy.copiedDbPath, { readonly: true });
+    const db = new (bunSqliteDatabase())(copy.copiedDbPath, { readonly: true });
     try {
       const since = typeof options.sinceMs === 'number' ? Math.floor(options.sinceMs * 1000) : 0;
       const rows = db.query<GeckoVisitRow, [number, number]>(
@@ -269,7 +280,7 @@ async function readGeckoBookmarks(profile: BrowserKnowledgeProfile, options: Bro
   if (!path) return [];
   const copy = await copyLockedBrowserSqlite(path);
   try {
-    const db = new Database(copy.copiedDbPath, { readonly: true });
+    const db = new (bunSqliteDatabase())(copy.copiedDbPath, { readonly: true });
     try {
       const rows = db.query<GeckoBookmarkRow, []>('SELECT id, type, parent, title, fk, dateAdded FROM moz_bookmarks ORDER BY id').all();
       const places = db.query<GeckoPlaceRow, []>('SELECT id, url, title FROM moz_places').all();
@@ -312,7 +323,7 @@ async function readWebKitHistory(profile: BrowserKnowledgeProfile, options: Brow
   if (!profile.historyPath) return [];
   const copy = await copyLockedBrowserSqlite(profile.historyPath);
   try {
-    const db = new Database(copy.copiedDbPath, { readonly: true });
+    const db = new (bunSqliteDatabase())(copy.copiedDbPath, { readonly: true });
     try {
       if (profile.browser === 'epiphany') {
         const since = typeof options.sinceMs === 'number' ? Math.floor(options.sinceMs / 1000) : 0;

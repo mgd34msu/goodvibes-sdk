@@ -10,10 +10,22 @@ import { Parser, Language, Query, Tree } from 'web-tree-sitter';
 import type { QueryMatch } from 'web-tree-sitter';
 import { logger } from '../../utils/logger.js';
 import { detectLanguage } from './languages.js';
-import { TREE_SITTER_WASM, GRAMMAR_WASM } from './embedded-wasm.js';
 import { summarizeError } from '../../utils/error-display.js';
 
 const MAX_CACHE_SIZE = 100;
+
+// The embedded-wasm module uses Bun's `with { type: 'file' }` import attribute,
+// which is invalid under any non-Bun runtime (Node throws
+// ERR_IMPORT_ATTRIBUTE_UNSUPPORTED the instant the module is evaluated). Loading
+// it lazily keeps it OUT of the static import graph of `platform/runtime` etc.,
+// so a Node consumer (or the release install-smoke check) can import those
+// surfaces without ever evaluating it. It is only pulled when tree-sitter
+// actually initializes / loads a grammar — a Bun-only code path — so real Bun
+// behavior is unchanged.
+let embeddedWasmPromise: Promise<typeof import('./embedded-wasm.js')> | null = null;
+function loadEmbeddedWasm(): Promise<typeof import('./embedded-wasm.js')> {
+  return (embeddedWasmPromise ??= import('./embedded-wasm.js'));
+}
 
 interface CacheEntry {
   tree: Tree;
@@ -38,7 +50,9 @@ export class TreeSitterService {
       try {
         // TREE_SITTER_WASM is the embedded WASM path from embedded-wasm.ts.
         // In compiled binaries it resolves to the embedded file; in dev mode
-        // it resolves to the absolute filesystem path. Both work.
+        // it resolves to the absolute filesystem path. Both work. Loaded lazily
+        // (see loadEmbeddedWasm) so this Bun-only module stays off the static graph.
+        const { TREE_SITTER_WASM } = await loadEmbeddedWasm();
         await Parser.init({
           locateFile: (_path: string) => TREE_SITTER_WASM,
         });
@@ -64,6 +78,7 @@ export class TreeSitterService {
 
     // Look up the embedded WASM path. If not present, the grammar package is
     // not installed — return null rather than throwing.
+    const { GRAMMAR_WASM } = await loadEmbeddedWasm();
     const wasmPath = GRAMMAR_WASM[langId]!;
     if (!wasmPath) {
       logger.warn('TreeSitterService: grammar WASM not embedded', { langId });

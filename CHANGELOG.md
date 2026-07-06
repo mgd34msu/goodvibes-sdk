@@ -6,14 +6,101 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-06
+
+First stable release. `1.0.0` stabilizes the public operator/peer contract, the
+runtime and platform surfaces, and the nine `@pellux/goodvibes-*` workspace
+packages, all published together in lockstep. It closes the goodvibes-tui
+evolution arc (Waves 1–6): the SDK is now the one platform substrate shared by
+the TUI, the agent fork, and the browser web UI — sessions, config, memory, and
+presentation are cross-surface by construction, reached through one daemon.
+
+This release also executes the two breaking removals that were deliberately
+parked for the major bump (the `danger.daemon` alias and the TUI staged-switch
+scaffolding); see **Removed** and **Migration**.
+
+### Added
+- **One-broker session spine** — a single canonical session identity spine
+  (`SurfaceKind` unification, expanded `SharedSessionKind`, project-as-data) with
+  the `sessions.register` wire method through the full contract pipeline, a boot
+  migration importer that folds legacy per-surface stores into one home store,
+  and one extracted SDK session-spine surface client + read facade
+  (`./platform/runtime/session-spine`). Register is idempotent; the union view
+  dedups a surface's own wire-mirrored session; restart survival is proven.
+- **Daemon is a system service** — detached spawn by default with opt-in
+  in-process embedding (`daemon.enabled`, default on), a version-compatibility
+  gate on adopt-or-start (refuse an incompatible daemon), and honest launchd
+  restart (unload-then-load).
+- **Control-plane read + lifecycle verbs over the wire** — `fleet.*`,
+  `checkpoints.*`, `sessions.search`, `sessions.detach`, per-hunk approvals,
+  catalog-driven invoke input validation, and SSE domain-scoped delivery for the
+  broadcast fan-out. Typed I/O for the fleet/checkpoints/sessions.search/detach
+  verbs.
+- **Presentation contract hoisted into the SDK** (`./platform/presentation`) —
+  glyphs, tones, spinner frames, and waiting/thinking wording as one
+  cross-surface source, so every surface renders identically.
+- **External calendar connectivity** — READ machinery (ICS parser, an honest
+  RRULE subset, a feed-subscription store) plus OAuth 2.0 provider connectivity
+  for Google Calendar API v3 and Microsoft Graph over auth-code+PKCE and
+  device-code. Unconfigured providers refuse honestly (`client-not-configured`)
+  rather than faking success.
+- **Delete-means-delete** — real hard-delete for companion chat plus a new spine
+  `sessions.delete` verb; delete can never resurrect (map-delete, drain pending
+  saves, then unlink; routes flush the broker sync before responding).
+- **Config sharing across surfaces (E7)** — a daemon-served shared config tier so
+  a provider configured once is visible everywhere, reached through the existing
+  `config.get`/`providers.*` plus one new admin-scoped, `read:config`-scoped
+  credential-status read method. API keys stay env-only; the config snapshot stays
+  secret-free; unavailable reads report an honest degraded state rather than a
+  stale confident value.
+- **Memory unification (E6)** — one canonical cross-surface `MemoryStore` (a fact
+  learned on one surface recalls on another), with the agent's Wave-4 recall
+  honesty raised to the cross-surface contract (semantic-by-default; an
+  unavailable index falls back to literal *with a stated reason*, never a silent
+  empty; the injection floor is tied to the store's real baseline). `VIBE.md` is
+  re-framed as a rendered projection of persona/constraint records rather than a
+  separate source of truth.
+- **Core-verb command spec (E8)** — an SDK-owned canonical verb vocabulary
+  (`packages/contracts`) with a conformance lint that keeps shared verbs identical
+  across surfaces, plus fixes to the worst-class collisions (schedule
+  triple-meaning, memory fragmentation, the agent `/session` orphan).
+- **Consolidated local-SDK overlay tool** — one SDK-shipped `scripts/sdk-dev.ts`
+  that enumerates the workspace packages (all nine, including
+  `@pellux/goodvibes-contracts`); consumers reduce to a one-line alias, closing
+  the contracts re-sync gap.
+
+### Changed
+- **BREAKING**: several operator method ids were renamed to conform to the
+  core-verb vocabulary (e.g. `watchers.patch` → `watchers.update`). Consumers move
+  in lockstep with this release; there are no deprecation aliases (this is the
+  major bump).
+- The `TASKS` read-only boundary is documented as a deliberate design decision
+  (not a drift bug).
+
+### Fixed
+- **Uncataloged-method 404 now carries a machine code (W6-C4)** — the
+  "method unavailable" family is distinguished by code everywhere instead of by
+  string-matching prose; `NOT_INVOKABLE` behavior is unchanged.
+- Idle-empty reaper never closes a live surface session; honest reopen-on-heartbeat.
+- Steer to a closed session is rejected with `409 SESSION_CLOSED`; the closed-session
+  guard closes the follow-up/submit gap.
+- Session `kind` is an OPEN enum on READ so mixed-version records don't blank the
+  list (register input stays strict).
+
 ### Removed
 - **BREAKING**: the deprecated `danger.daemon` config alias for `daemon.enabled` is
   removed (scheduled Wave 6, see `docs/decisions/2026-07-05-daemon-by-default.md`).
-  `resolveDaemonEnabled`'s signature and 7 existing callers are unchanged. A config
-  migration (`platform/config/migrations.ts`, wired into `ConfigManager.load`)
-  preserves any existing explicit `danger.daemon: false` by rewriting it onto
-  `daemon.enabled: false` at load time, so the legacy off-switch is never silently
-  flipped on. `danger.daemon` is no longer a valid `ConfigKey`.
+  `resolveDaemonEnabled`'s signature and 7 existing callers are unchanged.
+  `danger.daemon` is no longer a valid `ConfigKey`.
+- **BREAKING**: the TUI staged-switch scaffolding for the session-spine conversion
+  is retired; the converted spine-client path is the standing path. The legitimate
+  embedded/offline daemon topology is preserved (it was never staging scaffolding).
+
+### Migration
+- A config migration (`platform/config/migrations.ts`, wired into
+  `ConfigManager.load`) preserves any existing explicit `danger.daemon: false` by
+  rewriting it onto `daemon.enabled: false` at load time, so the legacy off-switch
+  is never silently flipped on. `unset`/`true` need no rewrite (daemon defaults on).
 
 ## [0.38.0] - 2026-07-04
 
