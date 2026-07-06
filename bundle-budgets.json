@@ -361,8 +361,8 @@
     "rationale": "new public entrypoint (fleet process registry, 0.38.0 Wave 2); measured 280 B gzip @ v0.38.0; headroom max(ceil(280*1.2)=336, 280+50=330) → 336 (1.2x dominates by 6 B)"
   },
   "./platform/runtime/memory-spine": {
-    "gzip_bytes": 443,
-    "rationale": "public runtime seam for the daemon-owned memory service (memory.records.*), landed on main ahead of this change; measured 369 B gzip; headroom max(ceil(369*1.2)=443, 369+50=419) → 443 (1.2x dominates by 24 B); added here only to unblock bundle:check — the entry was missing from a prior unrelated commit, not introduced by this change"
+    "gzip_bytes": 675,
+    "rationale": "public runtime seam for the daemon-owned memory service; full-detach 1.2.0 added the extended verb catalog (list/searchSemantic/update/link/linksFor/reviewQueue/export/import/vectorStats/doctor) plus the freshness-stamped recall snapshot seam (recall-snapshot.ts); measured 562 B gzip; headroom max(ceil(562*1.2)=675, 562+50=612) → 675 (1.2x dominates by 63 B); bumped from 443 to 675 for the widened surface"
   },
   "./platform/runtime/observability": {
     "gzip_bytes": 1265,

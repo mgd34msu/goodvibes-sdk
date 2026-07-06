@@ -741,3 +741,49 @@ export const MEMORY_RECORD_DELETE_OUTPUT_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   deleted: BOOLEAN_SCHEMA,
 }, ['id', 'deleted']);
+
+// ── Full-detach catalog wire schemas (1.2.0) ──────────────────────────────────
+
+export const MEMORY_LINK_SCHEMA = objectSchema({
+  fromId: STRING_SCHEMA,
+  toId: STRING_SCHEMA,
+  relation: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+}, ['fromId', 'toId', 'relation', 'createdAt']);
+
+// distance may be Infinity for a no-vector-match fallback; JSON serializes that to
+// null, so the wire field is nullable — honest about the "not ranked by vector" case.
+export const MEMORY_SEMANTIC_RESULT_SCHEMA = objectSchema({
+  record: MEMORY_RECORD_SCHEMA,
+  distance: nullableSchema(NUMBER_SCHEMA),
+  similarity: NUMBER_SCHEMA,
+  score: NUMBER_SCHEMA,
+}, ['record', 'similarity', 'score']);
+
+export const MEMORY_BUNDLE_SCHEMA = objectSchema({
+  schemaVersion: enumSchema(['v1']),
+  exportedAt: NUMBER_SCHEMA,
+  scope: enumSchema(['session', 'project', 'team', 'all']),
+  recordCount: NUMBER_SCHEMA,
+  linkCount: NUMBER_SCHEMA,
+  records: arraySchema(MEMORY_RECORD_SCHEMA),
+  links: arraySchema(MEMORY_LINK_SCHEMA),
+}, ['schemaVersion', 'exportedAt', 'scope', 'recordCount', 'linkCount', 'records', 'links']);
+
+export const MEMORY_IMPORT_RESULT_SCHEMA = objectSchema({
+  importedRecords: NUMBER_SCHEMA,
+  skippedRecords: NUMBER_SCHEMA,
+  importedLinks: NUMBER_SCHEMA,
+}, ['importedRecords', 'skippedRecords', 'importedLinks']);
+
+export const MEMORY_RECORD_LIST_OUTPUT_SCHEMA = objectSchema({
+  records: arraySchema(MEMORY_RECORD_SCHEMA),
+}, ['records']);
+
+export const MEMORY_RECORD_SEMANTIC_OUTPUT_SCHEMA = objectSchema({
+  results: arraySchema(MEMORY_SEMANTIC_RESULT_SCHEMA),
+}, ['results']);
+
+export const MEMORY_RECORD_LINKS_OUTPUT_SCHEMA = objectSchema({
+  links: arraySchema(MEMORY_LINK_SCHEMA),
+}, ['links']);

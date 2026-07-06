@@ -90,6 +90,29 @@ export interface MemoryRecordReviewInput {
   readonly staleReason?: string | undefined;
 }
 
+/** The editable-field update body (scope/summary/detail/tags) — NOT a review update. */
+export interface MemoryRecordUpdateInput {
+  readonly scope?: string | undefined;
+  readonly summary?: string | undefined;
+  readonly detail?: string | undefined;
+  readonly tags?: readonly string[] | undefined;
+}
+
+/** The link-create body — the source id comes from the path, target + relation from the body. */
+export interface MemoryLinkInput {
+  readonly toId: string;
+  readonly relation: string;
+}
+
+/** The import body — a { bundle } envelope. The bundle is passed through loosely to the store. */
+export interface MemoryBundleInput {
+  readonly bundle: {
+    readonly records: readonly unknown[];
+    readonly links?: readonly unknown[] | undefined;
+    readonly [key: string]: unknown;
+  };
+}
+
 /**
  * The memory subsystem the daemon exposes to its routes. The concrete SDK
  * `MemoryRegistry` satisfies this structurally (method params are compared
@@ -113,6 +136,21 @@ export interface MemoryRegistryLike {
   get(id: string): unknown | null;
   review(id: string, patch: MemoryRecordReviewInput): unknown | null;
   delete(id: string): boolean;
+  // ── Full-detach catalog (1.2.0) ─────────────────────────────────────────────
+  /** Literal search / bulk read. Serves both records.list and getAll (empty filter). */
+  search(filter?: MemoryRecordSearchFilterInput): unknown[];
+  /** Scored semantic search — returns MemorySemanticSearchResult[] the route wraps as { results }. */
+  searchSemantic(filter?: MemoryRecordSearchFilterInput): unknown[];
+  /** Edit scope/summary/detail/tags. Returns the updated record or null when the id is unknown. */
+  update(id: string, patch: MemoryRecordUpdateInput): unknown | null;
+  /** Relate two records. Returns the link or null when either id is unknown. */
+  link(fromId: string, toId: string, relation: string): Promise<unknown | null>;
+  /** All links touching a record. */
+  linksFor(id: string): unknown[];
+  /** Export a no-loss bundle for the given filter. */
+  exportBundle(filter?: MemoryRecordSearchFilterInput): unknown;
+  /** Import a bundle (id-keyed union, no overwrite). Returns the import result. */
+  importBundle(bundle: unknown): Promise<unknown>;
 }
 
 export interface MemoryEmbeddingRegistryLike {
