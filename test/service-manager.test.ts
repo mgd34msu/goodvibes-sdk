@@ -219,37 +219,52 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
     });
   }
 
-  test('start() issues exactly `launchctl load <path>` via the injected runner', () => withTempDir((dir) => {
+  // Every start()/stop()/restart() call returns `{ ...this.status(), ... }`, and
+  // status() now live-queries `launchctl list` (Finding 2) through this SAME
+  // injected runner — so each dispatch below ends with one extra `list` call
+  // beyond the load/unload verb(s) themselves.
+
+  test('start() issues `launchctl load <path>` then a status `launchctl list` query via the injected runner', () => withTempDir((dir) => {
     const { runner, calls } = recordingRunner();
     const manager = makeManager(dir, runner);
     const path = manager.status().path;
+    calls.length = 0; // drop the status() call above's own query
 
     const result = manager.start();
 
-    expect(calls).toEqual([['launchctl', 'load', path]]);
+    expect(calls).toEqual([
+      ['launchctl', 'load', path],
+      ['launchctl', 'list'],
+    ]);
     expect(result.actionError).toBeUndefined();
   }));
 
-  test('stop() issues exactly `launchctl unload <path>` via the injected runner', () => withTempDir((dir) => {
+  test('stop() issues `launchctl unload <path>` then a status `launchctl list` query via the injected runner', () => withTempDir((dir) => {
     const { runner, calls } = recordingRunner();
     const manager = makeManager(dir, runner);
     const path = manager.status().path;
+    calls.length = 0;
 
     manager.stop();
 
-    expect(calls).toEqual([['launchctl', 'unload', path]]);
+    expect(calls).toEqual([
+      ['launchctl', 'unload', path],
+      ['launchctl', 'list'],
+    ]);
   }));
 
-  test('restart() dispatches an honest unload-then-load sequence (launchd has no native restart verb)', () => withTempDir((dir) => {
+  test('restart() dispatches an honest unload-then-load sequence (launchd has no native restart verb) then a status query', () => withTempDir((dir) => {
     const { runner, calls } = recordingRunner();
     const manager = makeManager(dir, runner);
     const path = manager.status().path;
+    calls.length = 0;
 
     const result = manager.restart();
 
     expect(calls).toEqual([
       ['launchctl', 'unload', path],
       ['launchctl', 'load', path],
+      ['launchctl', 'list'],
     ]);
     expect(result.actionError).toBeUndefined();
   }));
@@ -258,19 +273,22 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
     const calls: string[][] = [];
     const runner = (command: string, args: readonly string[]): ManagedServiceActionResult => {
       calls.push([command, ...args]);
-      // unload fails (nothing loaded), load succeeds.
+      // unload fails (nothing loaded), load succeeds; the trailing status()
+      // query's `list` call also falls through to the `{ status: 0 }` branch.
       return args[0] === 'unload'
         ? { status: 1, stderr: 'Could not find specified service' }
         : { status: 0 };
     };
     const manager = makeManager(dir, runner);
     const path = manager.status().path;
+    calls.length = 0;
 
     const result = manager.restart();
 
     expect(calls).toEqual([
       ['launchctl', 'unload', path],
       ['launchctl', 'load', path],
+      ['launchctl', 'list'],
     ]);
     expect(result.actionError).toBeUndefined();
   }));
@@ -302,8 +320,10 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
     manager.stop();
     manager.restart();
 
-    // start=1 call, stop=1, restart=2 (unload+load) — 4 dispatches total.
-    expect(calls.length).toBe(4);
+    // Each dispatch's own verb(s) plus one trailing `launchctl list` status
+    // query (Finding 2): start=load+list=2, stop=unload+list=2,
+    // restart=unload+load+list=3 — 7 dispatches total, all launchctl.
+    expect(calls.length).toBe(7);
     expect(calls.every(([command]) => command === 'launchctl')).toBe(true);
   }));
 });
@@ -336,6 +356,125 @@ describe('service-management feature gate (launchd)', () => {
       featureFlags: flags(['service-management']),
     });
     expect(enabled.status().actionError).toBeUndefined();
+  }));
+});
+
+describe('status() running detection — systemd/launchd query through the injected actionRunner (Finding 2)', () => {
+  function makeQueryManager(
+    dir: string,
+    platform: 'systemd' | 'launchd',
+    serviceName: string,
+    actionRunner: (command: string, args: readonly string[]) => ManagedServiceActionResult,
+  ): PlatformServiceManager {
+    const configManager = testConfigManager(join(dir, 'config'));
+    configManager.set('service.platform', platform);
+    configManager.set('service.serviceName', serviceName);
+    const def = definition({ name: serviceName, workingDirectory: dir });
+    return new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      actionRunner,
+      featureFlags: flags(['service-management']),
+    });
+  }
+
+  test('systemd: `systemctl --user is-active` reporting "active" makes status().running true, via the injected runner', () => withTempDir((dir) => {
+    const calls: string[][] = [];
+    const manager = makeQueryManager(dir, 'systemd', 'goodvibes-systemd-active', (command, args) => {
+      calls.push([command, ...args]);
+      return { status: 0, stdout: 'active\n' };
+    });
+
+    const status = manager.status();
+
+    expect(status.running).toBe(true);
+    expect(calls).toEqual([['systemctl', '--user', 'is-active', 'goodvibes-systemd-active.service']]);
+  }));
+
+  test('systemd: `systemctl --user is-active` reporting "inactive" (nonzero exit) makes status().running false', () => withTempDir((dir) => {
+    const manager = makeQueryManager(
+      dir,
+      'systemd',
+      'goodvibes-systemd-inactive',
+      () => ({ status: 3, stdout: 'inactive\n' }),
+    );
+
+    const status = manager.status();
+
+    expect(status.running).toBe(false);
+  }));
+
+  test('systemd: a zero exit with unexpected stdout is NOT treated as active (state string must be exactly "active")', () => withTempDir((dir) => {
+    const manager = makeQueryManager(dir, 'systemd', 'goodvibes-systemd-weird', () => ({ status: 0, stdout: 'activating\n' }));
+
+    expect(manager.status().running).toBe(false);
+  }));
+
+  test('launchd: a numeric PID in `launchctl list`\'s own tabular line makes status().running true with that pid', () => withTempDir((dir) => {
+    const manager = makeQueryManager(dir, 'launchd', 'goodvibes-launchd-active', (command, args) => {
+      if (args[0] === 'list' && args.length === 1) {
+        return {
+          status: 0,
+          stdout: [
+            '4242\t0\tgoodvibes-launchd-active',
+            '-\t0\tcom.apple.something.else',
+          ].join('\n'),
+        };
+      }
+      return { status: 0 };
+    });
+
+    const status = manager.status();
+
+    expect(status.running).toBe(true);
+    expect(status.pid).toBe(4242);
+  }));
+
+  test('launchd: a "-" PID column (loaded but stopped) makes status().running false', () => withTempDir((dir) => {
+    const manager = makeQueryManager(dir, 'launchd', 'goodvibes-launchd-stopped', () => ({
+      status: 0,
+      stdout: '-\t0\tgoodvibes-launchd-stopped\n',
+    }));
+
+    const status = manager.status();
+
+    expect(status.running).toBe(false);
+    expect(status.pid).toBeUndefined();
+  }));
+
+  test('launchd: no matching line in `launchctl list` (not loaded at all) makes status().running false', () => withTempDir((dir) => {
+    const manager = makeQueryManager(dir, 'launchd', 'goodvibes-launchd-unloaded', () => ({
+      status: 0,
+      stdout: '-\t0\tcom.apple.something.else\n',
+    }));
+
+    const status = manager.status();
+
+    expect(status.running).toBe(false);
+  }));
+
+  test('manual: status() never invokes the actionRunner at all — pid-file semantics are unchanged by Finding 2', () => withTempDir((dir) => {
+    let called = false;
+    const configManager = testConfigManager(join(dir, 'config'));
+    configManager.set('service.platform', 'manual');
+    const def = definition({ name: 'goodvibes-manual', workingDirectory: dir });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      actionRunner: () => {
+        called = true;
+        return { status: 0 };
+      },
+      featureFlags: flags(['service-management']),
+    });
+
+    const status = manager.status();
+
+    expect(status.platform).toBe('manual');
+    expect(status.running).toBe(false); // no pid file has ever been written
+    expect(called).toBe(false);
   }));
 });
 

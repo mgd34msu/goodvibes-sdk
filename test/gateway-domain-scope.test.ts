@@ -153,3 +153,131 @@ describe('publishEvent — domain-scoped delivery', () => {
     expect(narrow.received).toContain('conversation.followup.companion');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Replay parity (Finding 1) — a reconnecting client must receive the same
+// approval-update it would have received live. Before the fix, both replay
+// callers (WS + SSE) handed replayRecentTraffic the already-normalized
+// `selectedDomains` (which falls back to DEFAULT_DOMAINS, excluding
+// 'permissions'), so a default consumer's replay silently dropped
+// approval-update even though the live path (null=deliver-all) would have
+// delivered it. These tests reconnect DURING a pending approval (the event is
+// recorded to the ring while no live client is connected/subscribed) and
+// assert the replayed frame reaches a default consumer and a
+// domains=permissions consumer, but not a domains=tasks consumer — on both
+// transports.
+// ---------------------------------------------------------------------------
+
+/** Read SSE frames off a stream whose body is already fully buffered (synchronous replay). */
+async function readSseFrames(
+  res: Response,
+  minCount: number,
+  timeoutMs = 200,
+): Promise<{ event: string; data: unknown }[]> {
+  const frames: { event: string; data: unknown }[] = [];
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  const deadline = Date.now() + timeoutMs;
+  let buffer = '';
+  try {
+    while (frames.length < minCount && Date.now() < deadline) {
+      const chunk = await Promise.race([
+        reader.read(),
+        new Promise<{ done: true; value: undefined }>((resolve) =>
+          setTimeout(() => resolve({ done: true, value: undefined }), Math.max(1, deadline - Date.now())),
+        ),
+      ]);
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let sep: number;
+      while ((sep = buffer.indexOf('\n\n')) !== -1) {
+        const raw = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        let event = 'message';
+        let data = '';
+        for (const line of raw.split('\n')) {
+          if (line.startsWith('event: ')) event = line.slice(7);
+          else if (line.startsWith('data: ')) data = line.slice(6);
+        }
+        frames.push({ event, data: data ? JSON.parse(data) : undefined });
+      }
+    }
+    return frames;
+  } finally {
+    reader.releaseLock();
+    await res.body?.cancel().catch(() => {});
+  }
+}
+
+describe('replay parity — reconnect must mirror live delivery (Finding 1)', () => {
+  test('(WS) a default consumer that reconnects during a pending approval receives the replayed approval-update', () => {
+    const gateway = makeGateway();
+    // Connect + disconnect first so the event is recorded to the shared ring
+    // while no live client is subscribed to it (mirrors "reconnect during a
+    // pending approval").
+    const first = connect(gateway, { clientKind: 'web' });
+    gateway.closeWebSocketClient(first.clientId);
+    gateway.publishEvent('approval-update', { id: 'a1' });
+
+    const replayed: string[] = [];
+    gateway.openWebSocketClient({ clientKind: 'web' }, (event) => replayed.push(event));
+
+    expect(replayed).toContain('approval-update');
+  });
+
+  test('(WS) a domains=permissions consumer also receives the replayed approval-update', () => {
+    const gateway = makeGateway();
+    gateway.publishEvent('approval-update', { id: 'a1' });
+
+    const replayed: string[] = [];
+    gateway.openWebSocketClient({ clientKind: 'web', domains: ['permissions'] }, (event) => replayed.push(event));
+
+    expect(replayed).toContain('approval-update');
+  });
+
+  test('(WS) a domains=tasks consumer does NOT receive the replayed approval-update', () => {
+    const gateway = makeGateway();
+    gateway.publishEvent('approval-update', { id: 'a1' });
+
+    const replayed: string[] = [];
+    gateway.openWebSocketClient({ clientKind: 'web', domains: ['tasks'] }, (event) => replayed.push(event));
+
+    expect(replayed).not.toContain('approval-update');
+  });
+
+  test('(SSE) a default consumer that reconnects during a pending approval receives the replayed approval-update', async () => {
+    const gateway = makeGateway();
+    gateway.publishEvent('approval-update', { id: 'a1' });
+
+    const res = gateway.createEventStream(new Request('http://localhost/stream'), { clientKind: 'web' });
+    const frames = await readSseFrames(res, 2);
+
+    expect(frames.map((frame) => frame.event)).toContain('approval-update');
+  });
+
+  test('(SSE) a domains=permissions consumer also receives the replayed approval-update', async () => {
+    const gateway = makeGateway();
+    gateway.publishEvent('approval-update', { id: 'a1' });
+
+    const res = gateway.createEventStream(new Request('http://localhost/stream'), {
+      clientKind: 'web',
+      domains: ['permissions'],
+    });
+    const frames = await readSseFrames(res, 2);
+
+    expect(frames.map((frame) => frame.event)).toContain('approval-update');
+  });
+
+  test('(SSE) a domains=tasks consumer does NOT receive the replayed approval-update', async () => {
+    const gateway = makeGateway();
+    gateway.publishEvent('approval-update', { id: 'a1' });
+
+    const res = gateway.createEventStream(new Request('http://localhost/stream'), {
+      clientKind: 'web',
+      domains: ['tasks'],
+    });
+    const frames = await readSseFrames(res, 1, 150); // only 'ready' should ever arrive
+
+    expect(frames.map((frame) => frame.event)).not.toContain('approval-update');
+  });
+});

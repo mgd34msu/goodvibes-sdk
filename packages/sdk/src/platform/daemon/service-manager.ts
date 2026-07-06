@@ -291,12 +291,7 @@ export class PlatformServiceManager {
       };
     }
     const installed = existsSync(path);
-    const pidPath = pidFilePath(platform, this.workingDirectory, this.surfaceRoot);
-    const pid = existsSync(pidPath) ? this.readPid(pidPath) : undefined;
-    const running = pid !== undefined ? this.isPidRunning(pid) : false;
-    if (!running && existsSync(pidPath)) {
-      rmSync(pidPath, { force: true });
-    }
+    const { running, pid } = this.queryRunning(platform, serviceName);
     const definition = this.resolveDefinition();
     return {
       platform,
@@ -473,9 +468,7 @@ export class PlatformServiceManager {
     let actionError: string | undefined;
     for (const step of steps) {
       const argv = step.argv;
-      const result = this.actionRunner
-        ? this.actionRunner(argv[0]!, argv.slice(1))
-        : spawnSync(argv[0]!, argv.slice(1), { stdio: 'pipe', encoding: 'utf-8' });
+      const result = this.runQuery(argv[0]!, argv.slice(1));
       if ((result.status ?? 1) !== 0 && !step.bestEffort) {
         actionError = ((result.stderr ?? '') || (result.stdout ?? '') || `command exited with ${result.status}`).trim();
         break;
@@ -486,6 +479,63 @@ export class PlatformServiceManager {
       lastAction: action,
       ...(actionError === undefined ? {} : { actionError }),
     };
+  }
+
+  /**
+   * Resolves `running` (+ `pid` when known) for `status()`. Only the manual
+   * platform's `startManual` ever writes the pid file (`start()` branches on
+   * `platform === 'manual'` before ever calling `runPlatformAction`), so for
+   * systemd/launchd the pid file is permanently absent and a pid-file-only
+   * check would report `running: false` for a genuinely active unit. systemd
+   * and launchd are queried live instead, through the same injected
+   * `actionRunner` used by start/stop/restart (never a raw exec bypassing it,
+   * so tests can fake the query deterministically).
+   */
+  private queryRunning(platform: ManagedServicePlatform, serviceName: string): { running: boolean; pid?: number | undefined } {
+    if (platform === 'systemd' || platform === 'launchd') {
+      return this.queryPlatformRunning(platform, serviceName);
+    }
+    const pidPath = pidFilePath(platform, this.workingDirectory, this.surfaceRoot);
+    const pid = existsSync(pidPath) ? this.readPid(pidPath) : undefined;
+    const running = pid !== undefined ? this.isPidRunning(pid) : false;
+    if (!running && existsSync(pidPath)) {
+      rmSync(pidPath, { force: true });
+    }
+    return running ? { running, pid } : { running };
+  }
+
+  private queryPlatformRunning(
+    platform: 'systemd' | 'launchd',
+    serviceName: string,
+  ): { running: boolean; pid?: number | undefined } {
+    if (platform === 'systemd') {
+      const result = this.runQuery('systemctl', ['--user', 'is-active', `${serviceName}.service`]);
+      const state = (result.stdout ?? '').trim();
+      return { running: (result.status ?? 1) === 0 && state === 'active' };
+    }
+    // launchd: no single-job query is used here — `launchctl list <label>` prints
+    // a plist dump on modern macOS, not a stable parseable field. Instead run the
+    // plain `launchctl list` (same command this module's suggestedCommands()
+    // already tells operators to run: `launchctl list | grep <name>`) and find the
+    // job's own tabular line: `<pid-or-dash>\t<last-exit-status>\t<label>`. No
+    // matching line = not loaded = not running; a `-` PID column = loaded but
+    // stopped; a numeric PID = running.
+    const result = this.runQuery('launchctl', ['list']);
+    const match = (result.stdout ?? '')
+      .split('\n')
+      .map((line) => line.trim().split(/\s+/))
+      .find((fields) => fields[fields.length - 1] === serviceName);
+    if (!match) return { running: false };
+    const pidToken = match[0];
+    const pid = pidToken && /^\d+$/.test(pidToken) ? Number(pidToken) : undefined;
+    return pid !== undefined ? { running: true, pid } : { running: false };
+  }
+
+  /** Runs a service-management query/action through the injected actionRunner when present, else a real spawnSync — the single choke point start/stop/restart/status share. */
+  private runQuery(command: string, args: readonly string[]): ManagedServiceActionResult {
+    return this.actionRunner
+      ? this.actionRunner(command, args)
+      : spawnSync(command, args, { stdio: 'pipe', encoding: 'utf-8' });
   }
 
   private readPid(path: string): number | undefined {

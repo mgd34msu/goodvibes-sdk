@@ -146,16 +146,27 @@ export function createFleetListHandler(registry: FleetQueryOnlyRegistry): Gatewa
     const limit = clampLimit(params.limit, FLEET_LIST_DEFAULT_LIMIT, FLEET_LIST_MAX_LIMIT);
     const rawCursor = typeof params.cursor === 'string' ? params.cursor : null;
     const snapshot = registry.query(filter);
-    // Stable sort key for cursoring: id (unique, deterministic) with
-    // startedAt as the secondary/recovery key `paginateItems` uses when a
-    // cursor's id has fallen out of the live set between pages.
-    const sorted = [...snapshot.nodes].sort((a, b) => a.id.localeCompare(b.id));
+    // Sort key and recovery key MUST agree (mirrors sessions.search's
+    // sortSessions-then-paginateItems pattern in session-search.ts): the array
+    // is sorted newest-first by startedAt (id tiebreak for determinism when
+    // two nodes share a timestamp, or neither has started), and paginateItems
+    // is handed that SAME startedAt extractor with { descending: true }. A
+    // node's `startedAt` is optional (not-yet-started processes), so absent
+    // values are normalized to 0 for both the sort and the recovery key —
+    // otherwise `paginateItems`' deleted-cursor recovery (which does a
+    // findIndex assuming the array is actually ordered by the field it is
+    // given) would search a startedAt-ordered predicate over an array that
+    // was really sorted by id, silently skipping or repeating nodes once a
+    // process is gc'd between pages.
+    const startedAtOf = (node: ProcessNode): number => node.startedAt ?? 0;
+    const sorted = [...snapshot.nodes].sort((a, b) => startedAtOf(b) - startedAtOf(a) || a.id.localeCompare(b.id));
     const page = paginateItems(
       sorted,
       limit,
       rawCursor,
       (node) => node.id,
-      (node) => node.startedAt,
+      startedAtOf,
+      { descending: true },
     );
     if ('error' in page) {
       throw new GatewayVerbError(page.error, 'INVALID_CURSOR', 400);
