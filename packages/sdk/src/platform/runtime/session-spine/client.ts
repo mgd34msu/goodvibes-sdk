@@ -217,6 +217,20 @@ export class SessionSpineClient {
   }
 
   /**
+   * The CANONICAL "which wire rows are mine" set: every sessionId this client
+   * has register()/reopen()'d and not yet close()'d, regardless of whatever id
+   * a caller's own local store separately uses for the same conceptual
+   * session. register()/reopen() send exactly the `sessionId` the caller
+   * passes in — this client never assumes that string also matches a local
+   * broker's own idea of the session's id. A cross-surface read facade (the
+   * SDK's SessionUnionCache) uses this to recognize its own wire mirror by
+   * the id ACTUALLY SENT, not by hoping a local reader's id happens to agree.
+   */
+  get mirroredSessionIds(): ReadonlySet<string> {
+    return new Set(this.records.keys());
+  }
+
+  /**
    * DORMANT-MODE activation: attach the transport once a compatible external daemon
    * has been adopted. Flushes anything queued while dormant, starts the keepalive.
    * Reachability stays 'unknown' until the first wire call resolves.
