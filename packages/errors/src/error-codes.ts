@@ -54,6 +54,7 @@ export type SDKErrorCode =
   | 'SESSION_CLOSED'
   // Gateway method dispatch
   | 'NOT_INVOKABLE'
+  | 'METHOD_NOT_FOUND'
   // Validation
   | 'VALIDATION_FAILED'
   // Agent execution
@@ -97,6 +98,7 @@ export const SDKErrorCodes = {
   CONFLICT: 'CONFLICT',
   SESSION_CLOSED: 'SESSION_CLOSED',
   NOT_INVOKABLE: 'NOT_INVOKABLE',
+  METHOD_NOT_FOUND: 'METHOD_NOT_FOUND',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   AGENT_TIMEOUT: 'AGENT_TIMEOUT',
   AGENT_FAILED: 'AGENT_FAILED',

@@ -34,6 +34,7 @@ import {
   builtinGatewayRuntimeMethodDescriptors,
 } from './method-catalog-runtime.js';
 import { GatewayVerbError } from './routes/gateway-verb-error.js';
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 
 export type {
   GatewayEventDescriptor,
@@ -249,7 +250,15 @@ export class GatewayMethodCatalog {
    */
   async invoke(id: string, invocation: GatewayMethodInvocation): Promise<unknown> {
     const entry = this.methods.get(id);
-    if (!entry) throw new Error(`Unknown gateway method: ${id}`);
+    // Uncataloged id — a real machine code (METHOD_NOT_FOUND), not a prose Error, so
+    // any direct caller of invoke() (bypassing the HTTP dispatch's own 404 below) gets
+    // the same code-driven signal as invokeGatewayMethod/getGatewayMethod
+    // (daemon-sdk/control-routes.ts) and invokeGatewayMethodCall (../daemon/control-
+    // plane.ts) — distinct from NOT_INVOKABLE (cataloged but not invokable), which is
+    // the id existing but refusing dispatch, not the id being unknown outright.
+    if (!entry) {
+      throw new GatewayVerbError(`Unknown gateway method: ${id}`, SDKErrorCodes.METHOD_NOT_FOUND, 404);
+    }
     if (!entry.handler) {
       // A method explicitly marked invokable:false with no registered handler is
       // honestly "not invokable anywhere" (see the field's doc comment) — distinct
