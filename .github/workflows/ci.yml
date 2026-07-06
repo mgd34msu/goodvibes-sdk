@@ -121,6 +121,14 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
+      - name: Configure git identity for worktree/orchestration tests
+        # The orchestration worktree flow makes real git commits and relies on
+        # ambient git config (as in a real user environment). A fresh CI runner
+        # has no identity, so those commits fail and the worktree integration
+        # tests hang/timeout. Provide a deterministic identity.
+        run: |
+          git config --global user.email "ci@goodvibes.local"
+          git config --global user.name "GoodVibes CI"
       - name: Run test suite (${{ matrix.platform }})
         run: ${{ matrix.test-cmd }}
 

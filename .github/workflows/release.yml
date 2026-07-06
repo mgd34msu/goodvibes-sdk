@@ -121,6 +121,14 @@ jobs:
           node-version: "22"
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Configure git identity for worktree/orchestration tests
+        # The orchestration worktree flow makes real git commits and relies on
+        # ambient git config (as it does in a real user environment). A fresh CI
+        # runner has no identity, so those commits fail and the worktree
+        # integration tests hang/timeout. Provide a deterministic identity.
+        run: |
+          git config --global user.email "ci@goodvibes.local"
+          git config --global user.name "GoodVibes CI"
       - name: Reject manual non-dry-run release
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true'
         run: |
