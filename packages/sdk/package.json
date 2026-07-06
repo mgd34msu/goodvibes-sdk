@@ -224,6 +224,10 @@
       "types": "./dist/platform/bookmarks/index.d.ts",
       "import": "./dist/platform/bookmarks/index.js"
     },
+    "./platform/calendar": {
+      "types": "./dist/platform/calendar/index.d.ts",
+      "import": "./dist/platform/calendar/index.js"
+    },
     "./platform/channels": {
       "types": "./dist/platform/channels/index.d.ts",
       "import": "./dist/platform/channels/index.js"
