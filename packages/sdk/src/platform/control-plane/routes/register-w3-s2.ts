@@ -1,5 +1,5 @@
 /**
- * routes/register-fleet-checkpoint-session-routes.ts
+ * routes/register-w3-s2.ts
  *
  * Single composite entry point for the fleet.*, checkpoints.*, sessions.search
  * verb-registration calls (see CHANGELOG 1.0.0), so ../../runtime/services.ts —
@@ -18,13 +18,13 @@ import { registerFleetGatewayMethods, type FleetQueryOnlyRegistry } from './flee
 import { registerCheckpointGatewayMethods, type CheckpointsGatewayManager } from './checkpoints.js';
 import { registerSessionSearchGatewayMethod, type SessionSearchBroker } from './session-search.js';
 
-export interface FleetCheckpointSessionGatewayDeps {
+export interface W3S2GatewayDeps {
   readonly processRegistry: FleetQueryOnlyRegistry;
   readonly workspaceCheckpointManager: CheckpointsGatewayManager;
   readonly sessionBroker: SessionSearchBroker;
 }
 
-export function registerFleetCheckpointSessionGatewayMethods(catalog: GatewayMethodCatalog, deps: FleetCheckpointSessionGatewayDeps): void {
+export function registerW3S2GatewayMethods(catalog: GatewayMethodCatalog, deps: W3S2GatewayDeps): void {
   registerFleetGatewayMethods(catalog, deps.processRegistry);
   registerCheckpointGatewayMethods(catalog, deps.workspaceCheckpointManager);
   registerSessionSearchGatewayMethod(catalog, deps.sessionBroker);

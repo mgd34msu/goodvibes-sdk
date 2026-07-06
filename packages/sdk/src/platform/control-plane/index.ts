@@ -97,5 +97,5 @@ export {
   KNOWLEDGE_INJECTION_PROMPT_SCHEMA,
   KNOWLEDGE_INJECTION_SCHEMA,
 } from './operator-contract-schemas-knowledge.js';
-// fleet.*/checkpoints.*/sessions.search verb registration (see routes/register-fleet-checkpoint-session-routes.ts).
-export { registerFleetCheckpointSessionGatewayMethods } from './routes/register-fleet-checkpoint-session-routes.js';
+// fleet.*/checkpoints.*/sessions.search verb registration (see routes/register-w3-s2.ts).
+export { registerW3S2GatewayMethods } from './routes/register-w3-s2.js';
