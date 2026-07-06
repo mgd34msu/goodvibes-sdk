@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `299`
+- Methods: `307`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -290,7 +290,7 @@ Return provider account posture.
 
 #### `approvals.approve`
 
-Approve a pending approval.
+Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400.
 
 - Title: `Approve Approval`
 - Source: `builtin`
@@ -316,6 +316,12 @@ Approve a pending approval.
     },
     "remember": {
       "type": "boolean"
+    },
+    "selectedHunks": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
     }
   },
   "required": [
@@ -517,6 +523,33 @@ Approve a pending approval.
             },
             "remember": {
               "type": "boolean"
+            },
+            "modifiedArgs": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
             }
           },
           "required": [
@@ -843,6 +876,33 @@ Cancel a pending approval.
             },
             "remember": {
               "type": "boolean"
+            },
+            "modifiedArgs": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
             }
           },
           "required": [
@@ -1163,6 +1223,33 @@ Claim a pending approval for operator handling.
             },
             "remember": {
               "type": "boolean"
+            },
+            "modifiedArgs": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
             }
           },
           "required": [
@@ -1489,6 +1576,33 @@ Deny a pending approval.
             },
             "remember": {
               "type": "boolean"
+            },
+            "modifiedArgs": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
             }
           },
           "required": [
@@ -1931,6 +2045,33 @@ Return pending and historical approval records.
               },
               "remember": {
                 "type": "boolean"
+              },
+              "modifiedArgs": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
               }
             },
             "required": [
@@ -15151,7 +15292,7 @@ Create an event on the configured CalDAV calendar. Requires explicit confirmatio
 - Scopes: `write:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -15234,7 +15375,7 @@ Return the full event object including attendees, recurrence, and raw iCalendar 
 - Scopes: `read:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -15315,7 +15456,7 @@ Return calendar event summaries from the configured CalDAV calendar within an op
 - Scopes: `read:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -15405,7 +15546,7 @@ Export events from the configured CalDAV calendar as raw .ics content within an 
 - Scopes: `read:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -15460,7 +15601,7 @@ Import raw .ics content into the configured CalDAV calendar. Requires explicit c
 - Scopes: `write:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -18693,7 +18834,7 @@ Remove a channel draft from the daemon-side store.
 - Scopes: `write:channels`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -18745,7 +18886,7 @@ Return a single daemon-mirrored channel draft by id, or a notFound marker.
 - Scopes: `read:channels`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -18835,7 +18976,7 @@ Return daemon-mirrored channel drafts for cross-device sync. Webhook values are 
 - Scopes: `read:channels`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -18946,7 +19087,7 @@ Mirror a channel draft to the daemon-side store. Webhook values must be redacted
 - Scopes: `write:channels`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -19101,7 +19242,7 @@ Return per-provider inbound message feeds (Slack DMs, Discord messages, email th
 - Scopes: `read:channels`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -20176,7 +20317,7 @@ Create or update a channel-to-profile routing rule in the daemon-persisted routi
 - Scopes: `write:channels`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -20262,7 +20403,7 @@ Remove a channel-to-profile routing rule from the daemon-persisted routing table
 - Scopes: `write:channels`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -20314,7 +20455,7 @@ Return the daemon-persisted channel-to-profile routing table.
 - Scopes: `read:channels`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -21335,6 +21476,444 @@ Return operator tools for a single channel surface.
   },
   "required": [
     "tools"
+  ],
+  "additionalProperties": false
+}
+```
+
+### checkpoints
+
+#### `checkpoints.create`
+
+Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an error) when the workspace tree is identical to the most recent checkpoint — no commit, ref, or manifest entry is created in that case.
+
+- Title: `Create Workspace Checkpoint`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:checkpoints`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "turn",
+        "agent-run",
+        "manual"
+      ]
+    },
+    "label": {
+      "type": "string"
+    },
+    "retentionClass": {
+      "type": "string",
+      "enum": [
+        "short",
+        "standard",
+        "forensic"
+      ]
+    },
+    "turnId": {
+      "type": "string"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "checkpoint": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "turn",
+                "agent-run",
+                "manual"
+              ]
+            },
+            "label": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "number"
+            },
+            "parentId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "turnId": {
+              "type": "string"
+            },
+            "agentId": {
+              "type": "string"
+            },
+            "retentionClass": {
+              "type": "string",
+              "enum": [
+                "short",
+                "standard",
+                "forensic"
+              ]
+            },
+            "commit": {
+              "type": "string"
+            },
+            "sizeBytes": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "label",
+            "createdAt",
+            "parentId",
+            "retentionClass",
+            "commit",
+            "sizeBytes"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "noop": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "checkpoint",
+    "noop"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkpoints.diff`
+
+Diff two checkpoints, or one checkpoint against the live working tree when `b` is omitted. An unknown/gc'd checkpoint id is an honest 404, not a silent empty diff.
+
+- Title: `Diff Workspace Checkpoints`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:checkpoints`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "a": {
+      "type": "string"
+    },
+    "b": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "a"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "diff": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unifiedDiff": {
+          "type": "string"
+        },
+        "stat": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "files",
+        "unifiedDiff",
+        "stat"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "diff"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkpoints.list`
+
+Return workspace checkpoints (whole-workspace filesystem snapshots), newest first, optionally filtered by kind/since and capped by limit.
+
+- Title: `List Workspace Checkpoints`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:checkpoints`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "turn",
+        "agent-run",
+        "manual"
+      ]
+    },
+    "since": {
+      "type": "number"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "turn",
+              "agent-run",
+              "manual"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "turnId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "retentionClass": {
+            "type": "string",
+            "enum": [
+              "short",
+              "standard",
+              "forensic"
+            ]
+          },
+          "commit": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "createdAt",
+          "parentId",
+          "retentionClass",
+          "commit",
+          "sizeBytes"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "checkpoints"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkpoints.restore`
+
+DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Executes immediately with NO server-side confirmation — the calling surface (TUI/webui) owns the confirm UX before invoking this verb. An unknown/gc'd checkpoint id is an honest 404, not a silent no-op.
+
+- Title: `Restore Workspace Checkpoint`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:checkpoints`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "safetyCheckpoint": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "result": {
+      "type": "object",
+      "properties": {
+        "checkpointId": {
+          "type": "string"
+        },
+        "safetyCheckpointId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "restoredFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "removedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "checkpointId",
+        "safetyCheckpointId",
+        "restoredFiles",
+        "removedFiles"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "result"
   ],
   "additionalProperties": false
 }
@@ -23885,6 +24464,30 @@ Return the operator-facing control-plane contract manifest, including auth, tran
                 "withWireEvents"
               ],
               "additionalProperties": false
+            },
+            "validationCoverage": {
+              "type": "object",
+              "properties": {
+                "methods": {
+                  "type": "number"
+                },
+                "validated": {
+                  "type": "number"
+                },
+                "skippedGeneric": {
+                  "type": "number"
+                },
+                "skippedUntyped": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "methods",
+                "validated",
+                "skippedGeneric",
+                "skippedUntyped"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -25502,7 +26105,7 @@ Append a draft message to the configured IMAP Drafts folder. Distinct from the l
 - Scopes: `write:email`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -25568,7 +26171,7 @@ Return inbox message summaries fetched live from the configured IMAP account. Re
 - Scopes: `read:email`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -25659,7 +26262,7 @@ Return the full body and attachment metadata for a single inbox message by IMAP 
 - Scopes: `read:email`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -25753,7 +26356,7 @@ Send a composed email via the configured SMTP account. Irreversible external sen
 - Scopes: `write:email`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `yes`
+- Invokable: `no`
 
 ##### Input schema
 
@@ -25803,6 +26406,536 @@ Send a composed email via the configured SMTP account. Irreversible external sen
   "required": [
     "messageId",
     "sentAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+### fleet
+
+#### `fleet.list`
+
+Paginated, filtered (kinds/states) query over the live process registry. Cursor pagination returns disjoint pages that union to the full matching set at query time.
+
+- Title: `List Fleet Processes`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "kinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limit": {
+      "type": "number"
+    },
+    "cursor": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "wrfc-chain",
+              "wrfc-subtask",
+              "workflow",
+              "trigger",
+              "schedule",
+              "watcher",
+              "background-process",
+              "workstream",
+              "phase",
+              "work-item",
+              "code-index"
+            ]
+          },
+          "parentId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "task": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "thinking",
+              "executing-tool",
+              "awaiting-approval",
+              "streaming",
+              "stalled",
+              "retrying",
+              "done",
+              "failed",
+              "killed",
+              "interrupted",
+              "idle",
+              "queued",
+              "paused"
+            ]
+          },
+          "startedAt": {
+            "type": "number"
+          },
+          "completedAt": {
+            "type": "number"
+          },
+          "elapsedMs": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputTokens": {
+                "type": "number"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "cacheReadTokens": {
+                "type": "number"
+              },
+              "cacheWriteTokens": {
+                "type": "number"
+              },
+              "reasoningTokens": {
+                "type": "number"
+              },
+              "llmCallCount": {
+                "type": "number"
+              },
+              "turnCount": {
+                "type": "number"
+              },
+              "toolCallCount": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "inputTokens",
+              "outputTokens",
+              "cacheReadTokens",
+              "cacheWriteTokens",
+              "llmCallCount",
+              "turnCount",
+              "toolCallCount"
+            ],
+            "additionalProperties": false
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "costState": {
+            "type": "string",
+            "enum": [
+              "priced",
+              "unpriced",
+              "estimated"
+            ]
+          },
+          "currentActivity": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "tool",
+                  "output-line",
+                  "phase"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "at": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "text",
+              "at"
+            ],
+            "additionalProperties": false
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "interruptible": {
+                "type": "boolean"
+              },
+              "killable": {
+                "type": "boolean"
+              },
+              "pausable": {
+                "type": "boolean"
+              },
+              "resumable": {
+                "type": "boolean"
+              },
+              "steerable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "interruptible",
+              "killable",
+              "pausable",
+              "resumable",
+              "steerable"
+            ],
+            "additionalProperties": false
+          },
+          "sessionRef": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "agentId": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "state",
+          "elapsedMs",
+          "costState",
+          "capabilities"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "nextCursor": {
+      "type": "string"
+    },
+    "hasMore": {
+      "type": "boolean"
+    },
+    "capturedAt": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "items",
+    "hasMore",
+    "capturedAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.snapshot`
+
+Return a point-in-time capture of every live/completed runtime process (agents, WRFC chains/subtasks, workflow FSMs/triggers/schedules, watchers, background processes) as a flat, parentId-linked node list. Capped at 2000 nodes (truncated:true + totalCount when the live fleet exceeds the cap) — use fleet.list to page through a larger fleet.
+
+- Title: `Fleet Snapshot`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "capturedAt": {
+      "type": "number"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "wrfc-chain",
+              "wrfc-subtask",
+              "workflow",
+              "trigger",
+              "schedule",
+              "watcher",
+              "background-process",
+              "workstream",
+              "phase",
+              "work-item",
+              "code-index"
+            ]
+          },
+          "parentId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "task": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "thinking",
+              "executing-tool",
+              "awaiting-approval",
+              "streaming",
+              "stalled",
+              "retrying",
+              "done",
+              "failed",
+              "killed",
+              "interrupted",
+              "idle",
+              "queued",
+              "paused"
+            ]
+          },
+          "startedAt": {
+            "type": "number"
+          },
+          "completedAt": {
+            "type": "number"
+          },
+          "elapsedMs": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputTokens": {
+                "type": "number"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "cacheReadTokens": {
+                "type": "number"
+              },
+              "cacheWriteTokens": {
+                "type": "number"
+              },
+              "reasoningTokens": {
+                "type": "number"
+              },
+              "llmCallCount": {
+                "type": "number"
+              },
+              "turnCount": {
+                "type": "number"
+              },
+              "toolCallCount": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "inputTokens",
+              "outputTokens",
+              "cacheReadTokens",
+              "cacheWriteTokens",
+              "llmCallCount",
+              "turnCount",
+              "toolCallCount"
+            ],
+            "additionalProperties": false
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "costState": {
+            "type": "string",
+            "enum": [
+              "priced",
+              "unpriced",
+              "estimated"
+            ]
+          },
+          "currentActivity": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "tool",
+                  "output-line",
+                  "phase"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "at": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "text",
+              "at"
+            ],
+            "additionalProperties": false
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "interruptible": {
+                "type": "boolean"
+              },
+              "killable": {
+                "type": "boolean"
+              },
+              "pausable": {
+                "type": "boolean"
+              },
+              "resumable": {
+                "type": "boolean"
+              },
+              "steerable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "interruptible",
+              "killable",
+              "pausable",
+              "resumable",
+              "steerable"
+            ],
+            "additionalProperties": false
+          },
+          "sessionRef": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "agentId": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "state",
+          "elapsedMs",
+          "costState",
+          "capabilities"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "totalCount": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "capturedAt",
+    "nodes",
+    "truncated",
+    "totalCount"
   ],
   "additionalProperties": false
 }
@@ -65197,6 +66330,202 @@ Create a shared session for a surface, route, or web client.
 }
 ```
 
+#### `sessions.detach`
+
+Remove a surface's participant and its route binding from a session so that surface stops receiving updates, WITHOUT closing or killing the session (detach != close != kill). Every participant carrying the given surfaceId is removed and any route binding they alone held is unbound; the session and all other participants keep running. Idempotent: detaching an already-detached surface, or detaching from a closed session, is a no-op success. An unknown session is a 404.
+
+- Title: `Detach Shared Session Participant`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/sessions/{sessionId}/detach`
+- Scopes: `write:sessions`
+- Emits events: `control.session_update`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "surfaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "surfaceId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "closed"
+          ]
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "lastMessageAt": {
+          "type": "number"
+        },
+        "closedAt": {
+          "type": "number"
+        },
+        "lastActivityAt": {
+          "type": "number"
+        },
+        "messageCount": {
+          "type": "number"
+        },
+        "retainedMessageCount": {
+          "type": "number"
+        },
+        "pendingInputCount": {
+          "type": "number"
+        },
+        "routeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "surfaceKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "surfaceKind": {
+                "type": "string"
+              },
+              "surfaceId": {
+                "type": "string"
+              },
+              "externalId": {
+                "type": "string"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "routeId": {
+                "type": "string"
+              },
+              "lastSeenAt": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "surfaceKind",
+              "surfaceId",
+              "lastSeenAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "activeAgentId": {
+          "type": "string"
+        },
+        "lastAgentId": {
+          "type": "string"
+        },
+        "lastError": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "lastActivityAt",
+        "messageCount",
+        "pendingInputCount",
+        "routeIds",
+        "surfaceKinds",
+        "participants",
+        "metadata"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "session"
+  ],
+  "additionalProperties": true
+}
+```
+
 #### `sessions.followUp`
 
 Queue a deferred follow-up for a shared session so it runs after the current agent completes, or spawn immediately when the session is idle.
@@ -68695,6 +70024,230 @@ Reopen a previously closed shared session.
     "session"
   ],
   "additionalProperties": true
+}
+```
+
+#### `sessions.search`
+
+Paginated, filtered query over shared sessions: free-text query (matches id/title), project, kind, surfaceKind, and status. Closed sessions are EXCLUDED by default — pass includeClosed:true to include them, and a returned closed session always carries an honest status:"closed" (never hidden, never relabeled). Cursor pagination returns disjoint pages that union to the full matching set.
+
+- Title: `Search Shared Sessions`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string"
+    },
+    "project": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "surfaceKind": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "closed"
+      ]
+    },
+    "includeClosed": {
+      "type": "boolean"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "cursor": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "closed"
+            ]
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          },
+          "lastMessageAt": {
+            "type": "number"
+          },
+          "closedAt": {
+            "type": "number"
+          },
+          "lastActivityAt": {
+            "type": "number"
+          },
+          "messageCount": {
+            "type": "number"
+          },
+          "retainedMessageCount": {
+            "type": "number"
+          },
+          "pendingInputCount": {
+            "type": "number"
+          },
+          "routeIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "surfaceKinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "surfaceKind": {
+                  "type": "string"
+                },
+                "surfaceId": {
+                  "type": "string"
+                },
+                "externalId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "routeId": {
+                  "type": "string"
+                },
+                "lastSeenAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "surfaceKind",
+                "surfaceId",
+                "lastSeenAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "activeAgentId": {
+            "type": "string"
+          },
+          "lastAgentId": {
+            "type": "string"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "lastActivityAt",
+          "messageCount",
+          "pendingInputCount",
+          "routeIds",
+          "surfaceKinds",
+          "participants",
+          "metadata"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "nextCursor": {
+      "type": "string"
+    },
+    "hasMore": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessions",
+    "hasMore"
+  ],
+  "additionalProperties": false
 }
 ```
 
@@ -77648,6 +79201,7 @@ Shared-session lifecycle broadcast. Every session created / closed / reopened / 
         "session-message-appended",
         "session-message-forwarded",
         "session-route-attached",
+        "session-detached",
         "session-input-queued",
         "session-input-queued-for-surface",
         "session-input-delivered",
