@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `307`
+- Methods: `309`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -22208,6 +22208,58 @@ Return the message list for a companion-chat session.
 }
 ```
 
+#### `companion.chat.sessions.close`
+
+Close a companion-chat session (soft close). The session record and its messages are preserved in closed state and remain listable with includeClosed. Distinct from companion.chat.sessions.delete, which permanently removes the record.
+
+- Title: `Close Companion Chat Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/companion/chat/sessions/{sessionId}/close`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "status"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `companion.chat.sessions.create`
 
 Create a new companion-chat session. Optional `provider` / `model` override the registry default; `title` and `systemPrompt` are stored on the session record.
@@ -22356,9 +22408,9 @@ Create a new companion-chat session. Optional `provider` / `model` override the 
 
 #### `companion.chat.sessions.delete`
 
-Close a companion-chat session. The session record is preserved in closed state.
+Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store — this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.
 
-- Title: `Close Companion Chat Session`
+- Title: `Delete Companion Chat Session`
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
@@ -22394,13 +22446,13 @@ Close a companion-chat session. The session record is preserved in closed state.
     "sessionId": {
       "type": "string"
     },
-    "status": {
-      "type": "string"
+    "deleted": {
+      "type": "boolean"
     }
   },
   "required": [
     "sessionId",
-    "status"
+    "deleted"
   ],
   "additionalProperties": false
 }
@@ -64120,6 +64172,9 @@ Install the GoodVibes platform service.
     "platform": {
       "type": "string"
     },
+    "serviceName": {
+      "type": "string"
+    },
     "path": {
       "type": "string"
     },
@@ -64385,6 +64440,7 @@ Install the GoodVibes platform service.
   },
   "required": [
     "platform",
+    "serviceName",
     "path",
     "installed",
     "autostart",
@@ -64429,6 +64485,9 @@ Restart the GoodVibes platform service.
     "platform": {
       "type": "string"
     },
+    "serviceName": {
+      "type": "string"
+    },
     "path": {
       "type": "string"
     },
@@ -64694,6 +64753,7 @@ Restart the GoodVibes platform service.
   },
   "required": [
     "platform",
+    "serviceName",
     "path",
     "installed",
     "autostart",
@@ -64738,6 +64798,9 @@ Start the GoodVibes platform service.
     "platform": {
       "type": "string"
     },
+    "serviceName": {
+      "type": "string"
+    },
     "path": {
       "type": "string"
     },
@@ -65003,6 +65066,7 @@ Start the GoodVibes platform service.
   },
   "required": [
     "platform",
+    "serviceName",
     "path",
     "installed",
     "autostart",
@@ -65047,6 +65111,9 @@ Return platform service installation and runtime posture.
     "platform": {
       "type": "string"
     },
+    "serviceName": {
+      "type": "string"
+    },
     "path": {
       "type": "string"
     },
@@ -65312,6 +65379,7 @@ Return platform service installation and runtime posture.
   },
   "required": [
     "platform",
+    "serviceName",
     "path",
     "installed",
     "autostart",
@@ -65356,6 +65424,9 @@ Stop the GoodVibes platform service.
     "platform": {
       "type": "string"
     },
+    "serviceName": {
+      "type": "string"
+    },
     "path": {
       "type": "string"
     },
@@ -65621,6 +65692,7 @@ Stop the GoodVibes platform service.
   },
   "required": [
     "platform",
+    "serviceName",
     "path",
     "installed",
     "autostart",
@@ -65665,6 +65737,9 @@ Uninstall the GoodVibes platform service.
     "platform": {
       "type": "string"
     },
+    "serviceName": {
+      "type": "string"
+    },
     "path": {
       "type": "string"
     },
@@ -65930,6 +66005,7 @@ Uninstall the GoodVibes platform service.
   },
   "required": [
     "platform",
+    "serviceName",
     "path",
     "installed",
     "autostart",
@@ -66325,6 +66401,58 @@ Create a shared session for a surface, route, or web client.
   },
   "required": [
     "session"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `sessions.delete`
+
+Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb — NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.
+
+- Title: `Delete Shared Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/sessions/{sessionId}`
+- Scopes: `write:sessions`
+- Emits events: `control.session_update`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "deleted"
   ],
   "additionalProperties": false
 }
@@ -79175,7 +79303,7 @@ Initial SSE/WebSocket handshake event emitted after a control-plane subscription
 
 #### `control.session_update`
 
-Shared-session lifecycle broadcast. Every session created / closed / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed. This channel is un-domained: it reaches every live SSE/WS client regardless of subscribed domains, and is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).
+Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal — the record is gone, not merely closed). This channel is un-domained: it reaches every live SSE/WS client regardless of subscribed domains, and is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).
 
 - Title: `Session Lifecycle Update`
 - Source: `builtin`
@@ -79195,6 +79323,7 @@ Shared-session lifecycle broadcast. Every session created / closed / reopened / 
       "enum": [
         "session-created",
         "session-closed",
+        "session-deleted",
         "session-reopened",
         "session-agent-bound",
         "session-agent-completed",

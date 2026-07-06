@@ -106,20 +106,25 @@ shapes are correct.
   only at the real `0.38.0 -> 1.0.0` npm pin-bump, not before. W5-TC's local
   bridge-type seam is the intended decoupling; this work does not change
   that.
-- **`sessions.delete` was NOT added.** This worktree branched from SDK main
-  @ `01ee9b3a`, before W5-S1 (parallel worktree). At this commit,
-  `sessions.delete` is not a registered method id anywhere in the catalog
-  (`operator-method-ids.ts` has no such entry, and
-  `method-catalog-control-core.ts`'s spine-session block is still
-  close/reopen/detach only) — there is no schema to type it against yet.
-  Inventing a shape for a method that doesn't exist would itself be
-  dishonest generation. When S1 lands `sessions.delete` (per its decision
-  record's PREFERRED ruling), extending this checker to cover it is a
-  ~5-line addition: import its input/output schema and add one row to
-  `check-foundation-io-types.ts`'s `ENTRIES` array, then insert the rendered
-  entries into `foundation-client-types.ts` the same way this change did for
-  `sessions.detach`. Flagged for whoever serializes the S1+S2 land on the
-  shared artifacts.
+- **W5-S1 delete-honesty verbs covered at the serialized land** (addendum,
+  same day). This change originally branched from SDK main @ `01ee9b3a`,
+  before W5-S1, when `sessions.delete` and the companion close/delete split
+  did not exist in the catalog — the first cut deliberately did not invent
+  shapes for methods that did not exist yet. At the rebase onto `192ef2eb`
+  (W5-S1 landed), the planned follow-up was executed: `sessions.delete`,
+  `companion.chat.sessions.close`, and `companion.chat.sessions.delete` were
+  added to the checker's `ENTRIES` and to both maps. Since these verbs
+  declare their schemas inline on their catalog descriptors (no named schema
+  exports), the checker now pulls them straight off the exported descriptor
+  arrays (`builtinGatewayControlCoreMethodDescriptors` /
+  `builtinGatewayControlCompanionMethodDescriptors`) — the same objects the
+  daemon registers — and `sessions.detach`'s previously hand-mirrored inline
+  schema was replaced with the descriptor-sourced one at the same time.
+  Notably, the check caught a REAL stale entry on arrival:
+  `OperatorMethodOutputMap["companion.chat.sessions.delete"]` still carried
+  the pre-S1 soft-close shape `{ sessionId; status }` while S1 had changed
+  the wire to `{ sessionId; deleted }` — exactly the drift class this check
+  exists to catch, on its first real occasion.
 
 ## Rejected alternatives
 

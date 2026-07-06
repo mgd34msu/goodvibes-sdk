@@ -20,8 +20,9 @@
  * same TS-type-string convention used throughout foundation-client-types.ts
  * (verified against dozens of existing entries — see the render* functions
  * below for the specific rules and their evidence) and diffs the render
- * against what's actually committed for each of the 16 map entries (8 methods
- * x input+output).
+ * against what's actually committed for each covered method's two map entries
+ * (input+output; see ENTRIES below for the covered set — the original four
+ * W5-S2 families plus the W5-S1 delete-honesty verbs).
  *
  * Usage:
  *   bun run scripts/check-foundation-io-types.ts          # print rendered entries
@@ -42,10 +43,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { builtinGatewayControlCompanionMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-companion.ts';
+import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import {
-  actionResultOutputSchema,
   EMPTY_OBJECT_SCHEMA,
-  STRING_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-shared.ts';
 import {
   CHECKPOINTS_CREATE_INPUT_SCHEMA,
@@ -62,7 +63,6 @@ import {
   SESSIONS_SEARCH_INPUT_SCHEMA,
   SESSIONS_SEARCH_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-fleet.ts';
-import { SHARED_SESSION_RECORD_SCHEMA } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-runtime.ts';
 import { METADATA_SCHEMA } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-shared.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -73,20 +73,21 @@ const FOUNDATION_TYPES_PATH = resolve(
   'packages/contracts/src/generated/foundation-client-types.ts',
 );
 
-// sessions.detach's input schema is declared inline in
-// method-catalog-control-core.ts (not a named export) — mirror it exactly:
-//   objectSchema({ sessionId: STRING_SCHEMA, surfaceId: STRING_SCHEMA }, ['sessionId', 'surfaceId'])
-const SESSIONS_DETACH_INPUT_SCHEMA = {
-  type: 'object',
-  properties: { sessionId: STRING_SCHEMA, surfaceId: STRING_SCHEMA },
-  required: ['sessionId', 'surfaceId'],
-  additionalProperties: false,
-} as const;
-// sessions.detach's output schema: actionResultOutputSchema('session', SHARED_SESSION_RECORD_SCHEMA)
-const SESSIONS_DETACH_OUTPUT_SCHEMA = actionResultOutputSchema('session', SHARED_SESSION_RECORD_SCHEMA);
+// sessions.detach/delete and companion.chat.sessions.close/delete declare
+// their schemas INLINE on their catalog descriptors (no named schema exports)
+// — pull them straight off the exported descriptor arrays so the check reads
+// the same object the daemon registers, with zero mirroring.
+const CATALOG_DESCRIPTORS = [
+  ...builtinGatewayControlCoreMethodDescriptors,
+  ...builtinGatewayControlCompanionMethodDescriptors,
+];
 
-function isRecordOf(schema: Record<string, unknown>, valueSchema: unknown): boolean {
-  return schema.type === 'object' && !('properties' in schema) && schema.additionalProperties === valueSchema;
+function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
+  const descriptor = CATALOG_DESCRIPTORS.find((d) => d.id === methodId);
+  if (!descriptor?.inputSchema || !descriptor.outputSchema) {
+    throw new Error(`method-catalog descriptor for "${methodId}" is missing or lacks input/output schemas`);
+  }
+  return { input: descriptor.inputSchema, output: descriptor.outputSchema };
 }
 
 /** Renders a single schema node to the TS type-string convention used in foundation-client-types.ts. */
@@ -155,7 +156,12 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'checkpoints.diff', input: CHECKPOINTS_DIFF_INPUT_SCHEMA, output: CHECKPOINTS_DIFF_OUTPUT_SCHEMA },
   { methodId: 'checkpoints.restore', input: CHECKPOINTS_RESTORE_INPUT_SCHEMA, output: CHECKPOINTS_RESTORE_OUTPUT_SCHEMA },
   { methodId: 'sessions.search', input: SESSIONS_SEARCH_INPUT_SCHEMA, output: SESSIONS_SEARCH_OUTPUT_SCHEMA },
-  { methodId: 'sessions.detach', input: SESSIONS_DETACH_INPUT_SCHEMA, output: SESSIONS_DETACH_OUTPUT_SCHEMA },
+  { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
+  // W5-S1 delete-honesty verbs (landed after this check's first cut; covered
+  // per the follow-up noted in docs/decisions/2026-07-06-foundation-io-types-hand-authored.md):
+  { methodId: 'sessions.delete', ...descriptorSchemas('sessions.delete') },
+  { methodId: 'companion.chat.sessions.close', ...descriptorSchemas('companion.chat.sessions.close') },
+  { methodId: 'companion.chat.sessions.delete', ...descriptorSchemas('companion.chat.sessions.delete') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');
@@ -199,5 +205,5 @@ if (drifted) {
   console.error(`\n[check-foundation-io-types] drift detected across ${report.length} entr${report.length === 1 ? 'y' : 'ies'} — regenerate foundation-client-types.ts to match the method-catalog schemas.`);
   if (CHECK_ONLY) process.exit(1);
 } else {
-  console.log('[check-foundation-io-types] all 16 entries (8 methods x input/output) match their source schemas.');
+  console.log(`[check-foundation-io-types] all ${ENTRIES.length * 2} entries (${ENTRIES.length} methods x input/output) match their source schemas.`);
 }

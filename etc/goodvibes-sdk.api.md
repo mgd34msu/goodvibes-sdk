@@ -3011,6 +3011,10 @@ export interface OperatorMethodInputMap {
         sessionId: string;
     };
     // (undocumented)
+    "companion.chat.sessions.close": {
+        sessionId: string;
+    };
+    // (undocumented)
     "companion.chat.sessions.create": ({
         title?: string;
         provider?: string;
@@ -3961,6 +3965,10 @@ export interface OperatorMethodInputMap {
     } & {
         readonly [key: string]: unknown;
     });
+    // (undocumented)
+    "sessions.delete": {
+        sessionId: string;
+    };
     // (undocumented)
     "sessions.detach": {
         sessionId: string;
@@ -7255,6 +7263,11 @@ export interface OperatorMethodOutputMap {
         messages: readonly CompanionChatMessage[];
     };
     // (undocumented)
+    "companion.chat.sessions.close": {
+        sessionId: string;
+        status: string;
+    };
+    // (undocumented)
     "companion.chat.sessions.create": {
         sessionId: string;
         createdAt: number;
@@ -7263,7 +7276,7 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "companion.chat.sessions.delete": {
         sessionId: string;
-        status: CompanionChatSessionStatus;
+        deleted: boolean;
     };
     // (undocumented)
     "companion.chat.sessions.get": {
@@ -11859,6 +11872,11 @@ export interface OperatorMethodOutputMap {
                 }) | boolean | null | number | readonly JsonValue[] | string;
             });
         };
+    };
+    // (undocumented)
+    "sessions.delete": {
+        sessionId: string;
+        deleted: boolean;
     };
     // (undocumented)
     "sessions.detach": ({
