@@ -360,6 +360,10 @@
     "gzip_bytes": 336,
     "rationale": "new public entrypoint (fleet process registry, 0.38.0 Wave 2); measured 280 B gzip @ v0.38.0; headroom max(ceil(280*1.2)=336, 280+50=330) → 336 (1.2x dominates by 6 B)"
   },
+  "./platform/runtime/memory-spine": {
+    "gzip_bytes": 443,
+    "rationale": "public runtime seam for the daemon-owned memory service (memory.records.*), landed on main ahead of this change; measured 369 B gzip; headroom max(ceil(369*1.2)=443, 369+50=419) → 443 (1.2x dominates by 24 B); added here only to unblock bundle:check — the entry was missing from a prior unrelated commit, not introduced by this change"
+  },
   "./platform/runtime/observability": {
     "gzip_bytes": 1265,
     "rationale": "public runtime seam; replaced 5 export* wildcards with 84 named re-exports across diagnostics/eval/forensics/idempotency/perf sections (per surface NIT-01); measured 1054 B gzip @ commit 32e7909; headroom max(ceil(1054*1.2)=1265, 1054+50=1104) → 1265 (1.2x dominates by 161 B); budget bumped from 692 to 1265 to accommodate the named-export expansion"
