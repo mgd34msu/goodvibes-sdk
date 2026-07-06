@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
-import { Database, type SQLQueryBindings } from 'bun:sqlite';
+import type { Database, SQLQueryBindings } from 'bun:sqlite';
+import { createRequire } from 'node:module';
 import type { MemoryClass, MemoryRecord, MemoryReviewState, MemoryScope } from './memory-store.js';
 import {
   MemoryEmbeddingProviderRegistry,
@@ -16,6 +17,18 @@ import { summarizeError } from '../utils/error-display.js';
 // the exact same native extension the exact same way. Re-exported here so
 // existing callers that import resolveSqliteVecPath from this module keep working.
 export { resolveSqliteVecPath } from './sqlite-vec-loader.js';
+
+// bun:sqlite is a Bun-only builtin; a static import makes this module unloadable
+// under any non-Bun runtime (Node's ESM linker rejects the `bun:` scheme at link
+// time, breaking the release install-smoke check and any Node import of the
+// surfaces that transitively reach this module). Resolve the Database constructor
+// lazily via require so the `bun:` specifier stays off the static import graph —
+// it is only pulled on the Bun-only code path that opens a database. Real Bun
+// behavior is unchanged.
+let bunDatabaseCtor: typeof import('bun:sqlite').Database | null = null;
+function bunSqliteDatabase(): typeof import('bun:sqlite').Database {
+  return (bunDatabaseCtor ??= createRequire(import.meta.url)('bun:sqlite').Database);
+}
 
 // Keep this in sync with DEFAULT_MEMORY_EMBEDDING_DIMS in memory-embeddings.ts.
 // Duplicating the literal here avoids an initialization cycle when state/index.ts
@@ -119,7 +132,7 @@ export class SqliteVecMemoryIndex {
       if (this.dbPath !== ':memory:') {
         mkdirSync(dirname(this.dbPath), { recursive: true });
       }
-      this.db = new Database(this.dbPath);
+      this.db = new (bunSqliteDatabase())(this.dbPath);
       loadSqliteVecExtension(this.db);
       this.available = true;
       this.enabled = true;

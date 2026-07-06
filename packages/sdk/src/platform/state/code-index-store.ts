@@ -56,7 +56,8 @@
 
 import { dirname, join, relative, sep } from 'node:path';
 import { mkdirSync, statSync } from 'node:fs';
-import { Database, type SQLQueryBindings } from 'bun:sqlite';
+import type { Database, SQLQueryBindings } from 'bun:sqlite';
+import { createRequire } from 'node:module';
 import { loadSqliteVecExtension } from './sqlite-vec-loader.js';
 import {
   HASHED_MEMORY_EMBEDDING_PROVIDER,
@@ -100,6 +101,15 @@ import {
 } from '../tools/find/shared.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+
+// bun:sqlite is a Bun-only builtin; a static import makes this module unloadable
+// under Node (breaks the release install-smoke check). Lazily require the ctor so
+// the `bun:` specifier stays off the static graph — only pulled on the Bun-only
+// path that opens a database.
+let bunDatabaseCtor: typeof import('bun:sqlite').Database | null = null;
+function bunSqliteDatabase(): typeof import('bun:sqlite').Database {
+  return (bunDatabaseCtor ??= createRequire(import.meta.url)('bun:sqlite').Database);
+}
 
 export type { CodeChunk, CodeChunkMode } from './code-index-chunking.js';
 
@@ -264,7 +274,7 @@ export class CodeIndexStore {
       if (this.dbPath !== ':memory:') {
         mkdirSync(dirname(this.dbPath), { recursive: true });
       }
-      this.db = new Database(this.dbPath);
+      this.db = new (bunSqliteDatabase())(this.dbPath);
       loadSqliteVecExtension(this.db);
       this.available = true;
       createCodeIndexSchema(this.db);
