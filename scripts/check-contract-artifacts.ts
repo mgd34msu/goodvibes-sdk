@@ -6,3 +6,13 @@ if (!process.argv.includes('--check')) {
 }
 
 await import('./refresh-contract-artifacts.ts');
+
+// refresh-contract-artifacts.ts never touches
+// packages/contracts/src/generated/foundation-client-types.ts (it only
+// regenerates operator-contract/operator-method-ids/peer-contract/
+// peer-endpoint-ids/foundation-metadata) — that file is emitted by
+// scripts/export-foundation-artifacts.ts, which is absent from this repo
+// (W5-S2 decision record: unrecoverable, hand-authored fallback with a
+// mandatory consistency check). Run that check here so `contracts:check`
+// stays the one gate that catches drift in either generated surface.
+await import('./check-foundation-io-types.ts');
