@@ -143,6 +143,10 @@ async function handleCreateSession(
   }
 
   const session = context.chatManager.createSession(input);
+  // Drain the best-effort broker mirror before responding so /api/sessions
+  // reflects this session synchronously, matching CompanionBrokerSync's
+  // documented contract (see companion-chat-broker-sync.ts).
+  await context.chatManager.flushBrokerSync();
   return Response.json(
     { sessionId: session.id, createdAt: session.createdAt, session },
     { status: 201 },
@@ -276,6 +280,9 @@ async function handleUpdateSession(
 
   try {
     const session = context.chatManager.updateSession(sessionId, input);
+    // Drain the best-effort broker mirror before responding — an update
+    // heartbeats the shared record (see CompanionBrokerSync.registerSession).
+    await context.chatManager.flushBrokerSync();
     return Response.json({ session });
   } catch (err: unknown) {
     const e = err as { code?: string; status?: number; message?: string };
@@ -299,6 +306,9 @@ async function handleCloseSession(
   if (!session) {
     return Response.json({ error: 'Session not found', code: 'SESSION_NOT_FOUND' }, { status: 404 });
   }
+  // Drain the best-effort broker mirror before responding so /api/sessions
+  // reflects the close synchronously (matches CompanionBrokerSync's docs).
+  await context.chatManager.flushBrokerSync();
   return Response.json({ sessionId: session.id, status: session.status });
 }
 
@@ -312,6 +322,9 @@ async function handleDeleteSession(
 ): Promise<Response> {
   try {
     const result = await context.chatManager.deleteSession(sessionId);
+    // Drain the best-effort broker mirror before responding so /api/sessions
+    // no longer shows the session by the time this response returns.
+    await context.chatManager.flushBrokerSync();
     return Response.json(result);
   } catch (err: unknown) {
     const e = err as { code?: string; status?: number; message?: string };
