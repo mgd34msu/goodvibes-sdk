@@ -248,6 +248,27 @@ describe('S2c — SSE client sees each lifecycle event end-to-end', () => {
     expect((closed!.data as { payload: { id: string } }).payload.id).toBe('lifecycle-session');
   });
 
+  test('deleteSession fires session-deleted on the same channel (W5-S1)', async () => {
+    const gateway = makeGateway(true);
+    const broker = makeBroker();
+    broker.setEventPublisher((event, payload) => gateway.publishEvent(event, payload));
+
+    await broker.createSession({ id: 'lifecycle-delete-session' });
+    await broker.closeSession('lifecycle-delete-session');
+
+    const stream = gateway.createEventStream(new Request('http://localhost/stream'), {
+      clientKind: 'web',
+      principalId: 'shared-token',
+      scopes: ['read:sessions'],
+    });
+    const deletedPromise = readUntil(stream, isSessionUpdate('session-deleted'));
+    const result = await broker.deleteSession('lifecycle-delete-session');
+    expect(result).toBe('deleted');
+    const deleted = await deletedPromise;
+    expect(deleted).not.toBeNull();
+    expect((deleted!.data as { payload: { sessionId: string } }).payload.sessionId).toBe('lifecycle-delete-session');
+  });
+
   test('a steer-class frame (session-input-delivered) carries on the same channel', async () => {
     // Driving the full steer state machine needs an active agent; here we assert the wire
     // channel carries the steered discriminant that SESSION_UPDATE_INTENT_MAP.steered names,
@@ -315,7 +336,7 @@ describe('S2c — intent→event mapping stays contract-aligned', () => {
     }
   });
 
-  test('created/updated/steered/closed intents are all covered', () => {
-    expect(Object.keys(SESSION_UPDATE_INTENT_MAP).sort()).toEqual(['closed', 'created', 'steered', 'updated']);
+  test('created/updated/steered/closed/deleted intents are all covered', () => {
+    expect(Object.keys(SESSION_UPDATE_INTENT_MAP).sort()).toEqual(['closed', 'created', 'deleted', 'steered', 'updated']);
   });
 });

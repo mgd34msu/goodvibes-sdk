@@ -22100,6 +22100,54 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "companion.chat.sessions.close",
+        "title": "Close Companion Chat Session",
+        "description": "Close a companion-chat session (soft close). The session record and its messages are preserved in closed state and remain listable with includeClosed. Distinct from companion.chat.sessions.delete, which permanently removes the record.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/companion/chat/sessions/{sessionId}/close"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "companion.chat.sessions.create",
         "title": "Create Companion Chat Session",
         "description": "Create a new companion-chat session. Optional `provider` / `model` override the registry default; `title` and `systemPrompt` are stored on the session record.",
@@ -22243,8 +22291,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       },
       {
         "id": "companion.chat.sessions.delete",
-        "title": "Close Companion Chat Session",
-        "description": "Close a companion-chat session. The session record is preserved in closed state.",
+        "title": "Delete Companion Chat Session",
+        "description": "Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store — this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.",
         "category": "companion",
         "source": "builtin",
         "access": "authenticated",
@@ -22277,13 +22325,13 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "sessionId": {
               "type": "string"
             },
-            "status": {
-              "type": "string"
+            "deleted": {
+              "type": "boolean"
             }
           },
           "required": [
             "sessionId",
-            "status"
+            "deleted"
           ],
           "additionalProperties": false
         },
@@ -65586,6 +65634,57 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.delete",
+        "title": "Delete Shared Session",
+        "description": "Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb — NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/sessions/{sessionId}"
+        },
+        "events": [
+          "control.session_update"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "deleted"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.detach",
         "title": "Detach Shared Session Participant",
         "description": "Remove a surface's participant and its route binding from a session so that surface stops receiving updates, WITHOUT closing or killing the session (detach != close != kill). Every participant carrying the given surfaceId is removed and any route binding they alone held is unbound; the session and all other participants keep running. Idempotent: detaching an already-detached surface, or detaching from a closed session, is a no-op success. An unknown session is a 404.",
@@ -78384,7 +78483,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "control.session_update",
         "title": "Session Lifecycle Update",
-        "description": "Shared-session lifecycle broadcast. Every session created / closed / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed. This channel is un-domained: it reaches every live SSE/WS client regardless of subscribed domains, and is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).",
+        "description": "Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal — the record is gone, not merely closed). This channel is un-domained: it reaches every live SSE/WS client regardless of subscribed domains, and is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).",
         "category": "transport",
         "source": "builtin",
         "transport": [
@@ -78405,6 +78504,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "enum": [
                 "session-created",
                 "session-closed",
+                "session-deleted",
                 "session-reopened",
                 "session-agent-bound",
                 "session-agent-completed",
@@ -78647,10 +78747,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 307,
-      "typedInputs": 307,
+      "methods": 309,
+      "typedInputs": 309,
       "genericInputs": 0,
-      "typedOutputs": 307,
+      "typedOutputs": 309,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -78659,8 +78759,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 31
     },
     "validationCoverage": {
-      "methods": 307,
-      "validated": 307,
+      "methods": 309,
+      "validated": 309,
       "skippedGeneric": 0,
       "skippedUntyped": 0
     }

@@ -45,6 +45,7 @@ import {
 } from './companion-chat-attachments.js';
 import { planCompanionSweep } from './companion-chat-gc.js';
 import type { CompanionSessionBrokerBridge } from './companion-chat-broker-bridge.js';
+import { CompanionBrokerSync } from './companion-chat-broker-sync.js';
 import { CompanionChatRateLimiter } from './companion-chat-rate-limiter.js';
 import type { CompanionChatRateLimiterOptions } from './companion-chat-rate-limiter.js';
 import type { ToolRegistry } from '../tools/registry.js';
@@ -242,9 +243,8 @@ export class CompanionChatManager {
   private readonly idleEmptyMs: number;
   private readonly closedMemoryGraceMs: number;
   private readonly closedRetentionMs: number | undefined;
-  private readonly sessionBroker: CompanionSessionBrokerBridge | null;
-  /** Per-session broker-sync chains (serialized so register→close stays ordered). */
-  private readonly _pendingBrokerOps = new Map<string, Promise<void>>();
+  /** Live mirror of sessions into the shared broker store (S1 item D). */
+  private readonly _brokerSync: CompanionBrokerSync;
   private gcTimer: ReturnType<typeof setInterval> | null = null;
   /** Tracks whether the async init() has completed. */
   private initCompleted = false;
@@ -268,7 +268,7 @@ export class CompanionChatManager {
     this.idleEmptyMs = config.idleEmptyMs ?? DEFAULT_IDLE_EMPTY_MS;
     this.closedMemoryGraceMs = config.closedSessionMemoryGraceMs ?? DEFAULT_CLOSED_MEMORY_GRACE_MS;
     this.closedRetentionMs = config.closedSessionRetentionMs;
-    this.sessionBroker = config.sessionBroker ?? null;
+    this._brokerSync = new CompanionBrokerSync(config.sessionBroker ?? null);
 
     // Persistence
     // Default is false — most callers (tests, downstream consumers) get the
@@ -376,7 +376,7 @@ export class CompanionChatManager {
     this._persist(id);
     // Live spine: mirror the new session into the shared broker at write time so
     // /api/sessions reflects it same-process (no restart). Best-effort.
-    this._trackBrokerOp(meta.id, () => this._registerCompanionSession(meta));
+    this._brokerSync.track(meta.id, () => this._brokerSync.registerSession(meta));
 
     return meta;
   }
@@ -443,7 +443,7 @@ export class CompanionChatManager {
     this._persist(sessionId);
     // Heartbeat the broker record (advances participant.lastSeenAt). Title is
     // never overwritten by this path (broker treats register as a heartbeat).
-    this._trackBrokerOp(updated.id, () => this._registerCompanionSession(updated));
+    this._brokerSync.track(updated.id, () => this._brokerSync.registerSession(updated));
     return updated;
   }
 
@@ -475,9 +475,39 @@ export class CompanionChatManager {
 
     this._persist(sessionId);
     // Live spine: flip the shared broker record to closed at write time.
-    this._trackBrokerOp(sessionId, () => this._closeCompanionSession(sessionId));
+    this._brokerSync.track(sessionId, () => this._brokerSync.closeSession(sessionId));
 
     return updated;
+  }
+
+  /**
+   * Permanently delete a session (W5-S1: `delete` is now a genuine removal,
+   * distinct from `closeSession` above). Aborts any in-flight turn, removes
+   * the on-disk record file, and drops the in-memory entry — reusing
+   * {@link _hardRemove}, the SAME primitive the GC 'delete-persistent' sweep
+   * action uses, so there is exactly one removal code path.
+   *
+   * Requires the session to already be closed: deleting a still-active
+   * session throws `{ code: 'SESSION_ACTIVE', status: 409 }` (the caller must
+   * close it first, mirroring the SESSION_CLOSED-throw convention elsewhere
+   * in this file). An unknown OR already-deleted id throws
+   * `{ code: 'SESSION_NOT_FOUND', status: 404 }` — delete is not a 200-noop.
+   */
+  async deleteSession(sessionId: string): Promise<{ readonly sessionId: string; readonly deleted: true }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
+    }
+    if (session.meta.status !== 'closed') {
+      throw Object.assign(new Error('Session is active — close it, then delete.'), { code: 'SESSION_ACTIVE', status: 409 });
+    }
+
+    session.abortController.abort();
+    await this._hardRemove(sessionId);
+    // Live spine: drop the mirrored shared broker record entirely (not just closed).
+    this._brokerSync.track(sessionId, () => this._brokerSync.deleteSession(sessionId));
+
+    return { sessionId, deleted: true };
   }
 
   /**
@@ -926,7 +956,7 @@ export class CompanionChatManager {
           session.abortController.abort();
           this._updateMeta(session, { status: 'closed', closedAt: now, updatedAt: now });
           this._persist(id);
-          this._trackBrokerOp(id, () => this._closeCompanionSession(id));
+          this._brokerSync.track(id, () => this._brokerSync.closeSession(id));
           break;
         case 'evict-memory':
           // Free heavy handles; keep meta (listable) and the persisted file.
@@ -935,13 +965,12 @@ export class CompanionChatManager {
           session.messagesEvicted = true;
           break;
         case 'delete-persistent':
-          void this.persistence?.delete(id).catch((error: unknown) => {
+          void this._hardRemove(id).catch((error: unknown) => {
             logger.warn('[companion-chat] session delete failed', {
               sessionId: id,
               error: summarizeError(error),
             });
           });
-          this.sessions.delete(id);
           break;
         case 'retain':
           break;
@@ -959,7 +988,7 @@ export class CompanionChatManager {
   }
 
   // ---------------------------------------------------------------------------
-  // Live shared-broker registration (S1 item D)
+  // Live shared-broker registration (S1 item D) — see companion-chat-broker-sync.ts
   // ---------------------------------------------------------------------------
 
   /**
@@ -969,50 +998,18 @@ export class CompanionChatManager {
    * deterministic. A no-op when no broker bridge is configured.
    */
   async flushBrokerSync(): Promise<void> {
-    await Promise.all([...this._pendingBrokerOps.values()]);
+    await this._brokerSync.flush();
   }
 
-  /** Chain a broker op AFTER any prior op for the same session so register and
-   * close never race (order = call order). Best-effort; errors are swallowed. */
-  private _trackBrokerOp(sessionId: string, run: () => Promise<void>): void {
-    if (!this.sessionBroker) return;
-    const prior = this._pendingBrokerOps.get(sessionId) ?? Promise.resolve();
-    const next = prior.catch(() => {}).then(run).catch(() => {});
-    this._pendingBrokerOps.set(sessionId, next.finally(() => {
-      if (this._pendingBrokerOps.get(sessionId) === next) this._pendingBrokerOps.delete(sessionId);
-    }));
-  }
-
-  private async _registerCompanionSession(meta: CompanionChatSession): Promise<void> {
-    const broker = this.sessionBroker;
-    if (!broker) return;
-    try {
-      await broker.register({
-        sessionId: meta.id,
-        kind: 'companion-chat',
-        project: 'unknown',
-        title: meta.title,
-        participant: { surfaceKind: 'companion', surfaceId: meta.id, lastSeenAt: Date.now() },
-      });
-    } catch (error) {
-      logger.warn('[companion-chat] broker registration failed', {
-        sessionId: meta.id,
-        error: summarizeError(error),
-      });
-    }
-  }
-
-  private async _closeCompanionSession(sessionId: string): Promise<void> {
-    const broker = this.sessionBroker;
-    if (!broker) return;
-    try {
-      await broker.closeSession(sessionId);
-    } catch (error) {
-      logger.warn('[companion-chat] broker close failed', {
-        sessionId,
-        error: summarizeError(error),
-      });
-    }
+  /**
+   * Hard-remove a session's persisted file and in-memory record. The ONE
+   * removal code path — shared by the explicit {@link deleteSession} API
+   * (awaited, so a caller can prove the record is gone) and the GC
+   * 'delete-persistent' sweep action (fire-and-forget). Never fork this.
+   */
+  private async _hardRemove(sessionId: string): Promise<void> {
+    await this.persistence?.delete(sessionId);
+    this.sessions.delete(sessionId);
   }
 
   /**

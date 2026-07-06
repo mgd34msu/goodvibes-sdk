@@ -1,5 +1,11 @@
 import type { DaemonRuntimeSessionRouteHandlers, DaemonRuntimeTaskRouteHandlers } from './context.js';
 import { handleRegisterSharedSession } from './runtime-session-register.js';
+import {
+  handleDeleteSharedSession,
+  handleGetSharedSession,
+  handleSharedSessionDetach,
+  handleSharedSessionLifecycle,
+} from './runtime-session-lifecycle-routes.js';
 import { withAdmin } from './auth-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { jsonErrorResponse } from './error-response.js';
@@ -209,6 +215,7 @@ export function createDaemonRuntimeSessionRouteHandlers(
     closeSharedSession: (sessionId, request) => withAdmin(context, request, () => handleSharedSessionLifecycle(context, sessionId, 'close')),
     reopenSharedSession: (sessionId, request) => withAdmin(context, request, () => handleSharedSessionLifecycle(context, sessionId, 'reopen')),
     detachSharedSession: (sessionId, request) => withAdmin(context, request, () => handleSharedSessionDetach(context, sessionId, request)),
+    deleteSharedSession: (sessionId, request) => withAdmin(context, request, () => handleDeleteSharedSession(context, sessionId)),
     getSharedSessionMessages: async (sessionId, url) => handleGetSharedSessionMessages(context, sessionId, url),
     getSharedSessionInputs: async (sessionId, url) => handleGetSharedSessionInputs(context, sessionId, url),
     postSharedSessionMessage: (sessionId, request) => withAdmin(context, request, () => handlePostSharedSessionMessage(context, sessionId, request)),
@@ -371,52 +378,6 @@ async function handlePostTask(context: DaemonRuntimeRouteContext, req: Request):
     model: spawnResult.model ?? null,
     tools: spawnResult.tools,
   }, { status: 202 }));
-}
-
-async function handleGetSharedSession(context: DaemonRuntimeRouteContext, sessionId: string): Promise<Response> {
-  await context.sessionBroker.start();
-  const session = context.sessionBroker.getSession(sessionId);
-  if (!session) {
-    return jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
-  }
-  const messages = context.sessionBroker.getMessages(sessionId, 100);
-  return Response.json({
-    session: toSharedSessionRecordResponse(sessionId, session, { messageCount: messages.length }),
-    messages,
-  });
-}
-
-async function handleSharedSessionLifecycle(
-  context: DaemonRuntimeRouteContext,
-  sessionId: string,
-  action: 'close' | 'reopen',
-): Promise<Response> {
-  await context.sessionBroker.start();
-  const session = action === 'close'
-    ? await context.sessionBroker.closeSession(sessionId)
-    : await context.sessionBroker.reopenSession(sessionId);
-  return session
-    ? Response.json({ session: toSharedSessionRecordResponse(sessionId, session, { status: action === 'close' ? 'closed' : 'active' }) })
-    : jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
-}
-
-async function handleSharedSessionDetach(
-  context: DaemonRuntimeRouteContext,
-  sessionId: string,
-  req: Request,
-): Promise<Response> {
-  const body = await context.parseOptionalJsonBody(req);
-  if (body instanceof Response) return body;
-  const payload = body ?? {};
-  const surfaceId = typeof payload.surfaceId === 'string' ? payload.surfaceId.trim() : '';
-  if (surfaceId.length === 0) {
-    return jsonErrorResponse({ error: 'surfaceId is required.' }, { status: 400 });
-  }
-  await context.sessionBroker.start();
-  const session = await context.sessionBroker.detachParticipant(sessionId, surfaceId);
-  return session
-    ? Response.json({ session: toSharedSessionRecordResponse(sessionId, session) })
-    : jsonErrorResponse({ error: 'Unknown shared session' }, { status: 404 });
 }
 
 async function handleGetSharedSessionMessages(

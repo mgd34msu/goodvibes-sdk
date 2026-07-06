@@ -192,6 +192,13 @@ export interface DaemonRuntimeRouteContext {
     closeSession(sessionId: string): Promise<{ id: string } | null>;
     reopenSession(sessionId: string): Promise<{ id: string } | null>;
     detachParticipant(sessionId: string, surfaceId: string): Promise<{ id: string; status: string } | null>;
+    /**
+     * Hard-remove a session record + its messages/inputs (W5-S1: a real delete
+     * verb, distinct from close). Requires the session already closed —
+     * `'active'` means the caller must close it first (409); `'not-found'`
+     * covers an unknown OR already-deleted id (404, never a 200-noop).
+     */
+    deleteSession(sessionId: string): Promise<'deleted' | 'not-found' | 'active'>;
     cancelInput(sessionId: string, inputId: string): Promise<unknown | null>;
     completeAgent(sessionId: string, agentId: string, message: string, meta: { status: string; routeId?: string }): Promise<void>;
     appendCompanionMessage(sessionId: string, input: {

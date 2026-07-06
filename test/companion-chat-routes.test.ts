@@ -497,8 +497,8 @@ describe('companion-chat-routes: post message and events', () => {
   });
 });
 
-describe('companion-chat-routes: delete session', () => {
-  test('DELETE closes session and returns 200', async () => {
+describe('companion-chat-routes: close vs delete (W5-S1 delete-means-delete)', () => {
+  test('POST /close soft-closes: status closed, session still gettable', async () => {
     const publisher = makeEventPublisher();
     const manager = new CompanionChatManager({
       provider: makeMockProvider(),
@@ -506,17 +506,24 @@ describe('companion-chat-routes: delete session', () => {
       gcIntervalMs: 999_999,
     });
     const ctx = makeContext(manager);
-    const session = manager.createSession({ title: 'To delete' });
+    const session = manager.createSession({ title: 'To close' });
 
     const res = await dispatchCompanionChatRoutes(
-      makeRequest('DELETE', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      makeRequest('POST', `http://localhost/api/companion/chat/sessions/${session.id}/close`),
       ctx,
     );
     expect(res!.status).toBe(200);
     const body = await res!.json();
     expect(body.status).toBe('closed');
 
-    // Further messages should be rejected
+    // The record is preserved — still gettable, just closed.
+    const getRes = await dispatchCompanionChatRoutes(
+      makeRequest('GET', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      ctx,
+    );
+    expect(getRes!.status).toBe(200);
+
+    // Further messages are rejected against the closed session.
     const msgRes = await dispatchCompanionChatRoutes(
       makeRequest('POST', `http://localhost/api/companion/chat/sessions/${session.id}/messages`, {
         content: 'Will fail',
@@ -524,6 +531,90 @@ describe('companion-chat-routes: delete session', () => {
       ctx,
     );
     expect(msgRes!.status).toBe(409);
+  });
+
+  test('DELETE on an ACTIVE session is rejected 409 SESSION_ACTIVE (close it first)', async () => {
+    const manager = new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+    });
+    const ctx = makeContext(manager);
+    const session = manager.createSession({ title: 'Still active' });
+
+    const res = await dispatchCompanionChatRoutes(
+      makeRequest('DELETE', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      ctx,
+    );
+    expect(res!.status).toBe(409);
+    const body = await res!.json();
+    expect(body.code).toBe('SESSION_ACTIVE');
+
+    // The session is untouched by the rejected delete.
+    const getRes = await dispatchCompanionChatRoutes(
+      makeRequest('GET', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      ctx,
+    );
+    expect(getRes!.status).toBe(200);
+  });
+
+  test('DELETE on a CLOSED session hard-removes it: gone even with includeClosed', async () => {
+    const manager = new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+    });
+    const ctx = makeContext(manager);
+    const session = manager.createSession({ title: 'To delete' });
+    manager.closeSession(session.id);
+
+    const res = await dispatchCompanionChatRoutes(
+      makeRequest('DELETE', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      ctx,
+    );
+    expect(res!.status).toBe(200);
+    const body = await res!.json();
+    expect(body).toEqual({ sessionId: session.id, deleted: true });
+
+    // GONE — not merely filtered by includeClosed:false; it is absent outright.
+    const getRes = await dispatchCompanionChatRoutes(
+      makeRequest('GET', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      ctx,
+    );
+    expect(getRes!.status).toBe(404);
+
+    const listRes = await dispatchCompanionChatRoutes(
+      makeRequest('GET', 'http://localhost/api/companion/chat/sessions?includeClosed=true'),
+      ctx,
+    );
+    expect(listRes!.status).toBe(200);
+    const listBody = await listRes!.json();
+    expect((listBody.sessions as Array<{ id: string }>).some((s) => s.id === session.id)).toBe(false);
+  });
+
+  test('DELETE of an already-deleted id is an honest 404, never a 200-noop', async () => {
+    const manager = new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+    });
+    const ctx = makeContext(manager);
+    const session = manager.createSession({ title: 'Delete twice' });
+    manager.closeSession(session.id);
+
+    const first = await dispatchCompanionChatRoutes(
+      makeRequest('DELETE', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      ctx,
+    );
+    expect(first!.status).toBe(200);
+
+    const second = await dispatchCompanionChatRoutes(
+      makeRequest('DELETE', `http://localhost/api/companion/chat/sessions/${session.id}`),
+      ctx,
+    );
+    expect(second!.status).toBe(404);
+    const body = await second!.json();
+    expect(body.code).toBe('SESSION_NOT_FOUND');
   });
 
   test('DELETE unknown session returns 404', async () => {

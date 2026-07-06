@@ -7,7 +7,8 @@
  *   POST   /api/companion/chat/sessions
  *   GET    /api/companion/chat/sessions/:sessionId
  *   PATCH  /api/companion/chat/sessions/:sessionId
- *   DELETE /api/companion/chat/sessions/:sessionId
+ *   POST   /api/companion/chat/sessions/:sessionId/close   (soft close — history preserved)
+ *   DELETE /api/companion/chat/sessions/:sessionId         (hard delete — record permanently removed)
  *   POST   /api/companion/chat/sessions/:sessionId/messages
  *   GET    /api/companion/chat/sessions/:sessionId/messages
  *   GET    /api/companion/chat/sessions/:sessionId/events  (SSE)
@@ -68,6 +69,11 @@ export async function dispatchCompanionChatRoutes(
   // PATCH /api/companion/chat/sessions/:sessionId
   if (!sub && req.method === 'PATCH') {
     return handleUpdateSession(req, sessionId, context);
+  }
+
+  // POST /api/companion/chat/sessions/:sessionId/close
+  if (sub === 'close' && req.method === 'POST') {
+    return handleCloseSession(sessionId, context);
   }
 
   // DELETE /api/companion/chat/sessions/:sessionId
@@ -282,10 +288,10 @@ async function handleUpdateSession(
 }
 
 // ---------------------------------------------------------------------------
-// DELETE /api/companion/chat/sessions/:sessionId
+// POST /api/companion/chat/sessions/:sessionId/close
 // ---------------------------------------------------------------------------
 
-async function handleDeleteSession(
+async function handleCloseSession(
   sessionId: string,
   context: CompanionChatRouteContext,
 ): Promise<Response> {
@@ -294,6 +300,27 @@ async function handleDeleteSession(
     return Response.json({ error: 'Session not found', code: 'SESSION_NOT_FOUND' }, { status: 404 });
   }
   return Response.json({ sessionId: session.id, status: session.status });
+}
+
+// ---------------------------------------------------------------------------
+// DELETE /api/companion/chat/sessions/:sessionId  (W5-S1: a real hard delete)
+// ---------------------------------------------------------------------------
+
+async function handleDeleteSession(
+  sessionId: string,
+  context: CompanionChatRouteContext,
+): Promise<Response> {
+  try {
+    const result = await context.chatManager.deleteSession(sessionId);
+    return Response.json(result);
+  } catch (err: unknown) {
+    const e = err as { code?: string; status?: number; message?: string };
+    const status = e.status ?? 500;
+    return Response.json(
+      { error: e.message ?? 'Internal error', code: e.code ?? 'INTERNAL_ERROR' },
+      { status },
+    );
+  }
 }
 
 /**

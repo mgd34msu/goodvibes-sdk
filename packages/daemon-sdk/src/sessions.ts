@@ -14,6 +14,7 @@ export async function dispatchSessionRoutes(
 
   const sharedSessionMatch = pathname.match(/^\/api\/sessions\/([^/]+)$/);
   if (sharedSessionMatch && method === 'GET') return handlers.getSharedSession(sharedSessionMatch[1]!);
+  if (sharedSessionMatch && method === 'DELETE') return handlers.deleteSharedSession(sharedSessionMatch[1]!, req);
 
   const sharedSessionLifecycleMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/(close|reopen|detach)$/);
   if (sharedSessionLifecycleMatch && method === 'POST') {

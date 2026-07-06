@@ -361,6 +361,8 @@ export interface DaemonRuntimeSessionRouteHandlers {
   closeSharedSession(sessionId: string, req: Request): MaybeResponse;
   reopenSharedSession(sessionId: string, req: Request): MaybeResponse;
   detachSharedSession(sessionId: string, req: Request): MaybeResponse;
+  /** Hard-delete a shared session (W5-S1). Distinct from close: the record is gone, not preserved. */
+  deleteSharedSession(sessionId: string, req: Request): MaybeResponse;
   getSharedSessionMessages(sessionId: string, url: URL): MaybeResponse;
   getSharedSessionInputs(sessionId: string, url: URL): MaybeResponse;
   postSharedSessionMessage(sessionId: string, req: Request): MaybeResponse;

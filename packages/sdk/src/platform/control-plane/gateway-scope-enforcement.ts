@@ -70,6 +70,11 @@ export const EVENT_DOMAIN: Readonly<Record<string, RuntimeEventDomain>> = {
   // defense-in-depth: if the discriminant is ever promoted to a top-level
   // broadcast, it stays in the session domain instead of silently deliver-all.
   'session-detached': 'session',
+  // W5-S1: sessions.delete's `session-deleted` is likewise a payload discriminant
+  // inside `session-update` today (already domain-scoped by the entry above); this
+  // tag is the same defense-in-depth as `session-detached` if it is ever promoted
+  // to a top-level broadcast.
+  'session-deleted': 'session',
 };
 
 /**
