@@ -1,6 +1,7 @@
 import type { MemoryAddOptions, MemoryBundle, MemoryDoctorReport, MemoryLink, MemoryRecord, MemoryReviewPatch, MemoryScope, MemorySearchFilter, MemorySemanticSearchResult, MemoryStore } from './memory-store.js';
 import type { MemoryVectorStats } from './memory-vector-store.js';
 import type { MemoryImportResult } from './memory-store.js';
+import { runHonestMemorySearch, type HonestMemorySearchOptions, type HonestMemorySearchResult } from './memory-recall-contract.js';
 
 /**
  * MemoryRegistry — thin observable wrapper around the MemoryStore.
@@ -41,6 +42,16 @@ export class MemoryRegistry {
 
   searchSemantic(filter: MemorySearchFilter = {}): MemorySemanticSearchResult[] {
     return this.store.searchSemantic(filter);
+  }
+
+  /**
+   * Search honoring the recall-honesty contract: semantic-or-literal with a stated
+   * fallback reason when the index is unavailable, and (with `options.recall`) the
+   * flagged/confidence-floor exclusion. This is the method a wire client and an
+   * offline surface both route through, so the honesty is identical either way.
+   */
+  honestSearch(filter: MemorySearchFilter = {}, options: HonestMemorySearchOptions = {}): HonestMemorySearchResult {
+    return runHonestMemorySearch(this.store, filter, options);
   }
 
   rebuildVectors(): MemoryVectorStats {

@@ -24,7 +24,7 @@
  *      distinct and both said out loud.
  */
 
-import type { MemoryRecord } from './memory-store.js';
+import type { MemoryRecord, MemorySearchFilter, MemorySemanticSearchResult } from './memory-store.js';
 import type { MemoryVectorStats } from './memory-vector-store.js';
 import { HASHED_MEMORY_EMBEDDING_PROVIDER } from './memory-embeddings.js';
 
@@ -102,4 +102,130 @@ export function describeMemoryIndexCaveat(stats: MemoryVectorStats): string | nu
     return 'running on the hashed-only fallback embedding provider (no dedicated semantic model configured) — ranking is approximate, not modeled semantic understanding';
   }
   return null;
+}
+
+/**
+ * The minimal read surface a honest search needs. MemoryStore (and MemoryRegistry)
+ * satisfy this structurally — the function stays decoupled from either concrete
+ * class so it can run over any store that exposes the three read paths.
+ */
+export interface HonestSearchStore {
+  search(filter: MemorySearchFilter): MemoryRecord[];
+  searchSemantic(filter: MemorySearchFilter): MemorySemanticSearchResult[];
+  vectorStats(): MemoryVectorStats;
+}
+
+export interface HonestMemorySearchOptions {
+  /**
+   * Apply the recall-INJECTION contract to the result set: exclude flagged
+   * (stale/contradicted) records outright and drop records below the confidence
+   * floor, counting each exclusion honestly. Off by default — a review/browse
+   * caller wants to SEE flagged and low-confidence records; only a prompt-recall
+   * caller filters them out.
+   */
+  readonly recall?: boolean | undefined;
+}
+
+/**
+ * The honest search envelope. `records` is what a caller should use; the rest is
+ * the receipt: which path actually ran, and — when a degraded path was taken —
+ * WHY, out loud. A wire client and a local surface serialize the SAME envelope, so
+ * the honesty contract cannot be re-weakened per surface.
+ */
+export interface HonestMemorySearchResult {
+  readonly records: readonly MemoryRecord[];
+  /** The path that actually ran. `'literal'` even when semantic was requested but the index could not be consulted. */
+  readonly mode: 'literal' | 'semantic';
+  readonly requestedSemantic: boolean;
+  /** Non-null ONLY when semantic was requested and the index could not be consulted, forcing the literal fallback. The stated reason — never a silent empty. */
+  readonly indexUnavailableReason: string | null;
+  /** Soft caveat when the semantic path ran on the hashed-only fallback provider. */
+  readonly caveat: string | null;
+  /** Whether the recall-injection contract filtered the set (options.recall). */
+  readonly recallFiltered: boolean;
+  readonly excludedFlaggedCount: number;
+  readonly excludedBelowFloorCount: number;
+  /** Result count BEFORE any recall-injection filtering — so a caller can tell "index empty" from "everything filtered out". */
+  readonly totalBeforeRecallFilter: number;
+}
+
+/**
+ * Run a search that HONORS the recall-honesty contract end to end:
+ *  - semantic requested + index consultable → semantic ranking (+ soft caveat when
+ *    on the hashed fallback provider);
+ *  - semantic requested + index NOT consultable → literal scan WITH the stated
+ *    `indexUnavailableReason`, never a silent empty that reads as "nothing stored";
+ *  - `recall: true` → flagged records excluded outright and sub-floor records
+ *    dropped, each exclusion counted rather than silently vanished.
+ *
+ * This is the ONE composition every surface (daemon route, wire client, offline
+ * local store) calls, so the contract is applied identically everywhere.
+ */
+export function runHonestMemorySearch(
+  store: HonestSearchStore,
+  filter: MemorySearchFilter = {},
+  options: HonestMemorySearchOptions = {},
+): HonestMemorySearchResult {
+  const requestedSemantic = filter.semantic === true;
+  let mode: 'literal' | 'semantic' = 'literal';
+  let indexUnavailableReason: string | null = null;
+  let caveat: string | null = null;
+  let baseRecords: MemoryRecord[];
+
+  if (requestedSemantic) {
+    const stats = store.vectorStats();
+    indexUnavailableReason = describeMemoryIndexUnavailable(stats);
+    if (indexUnavailableReason !== null) {
+      // Honest degrade: the index cannot be consulted, so fall back to a literal
+      // scan and SAY SO via indexUnavailableReason.
+      baseRecords = store.search({ ...filter, semantic: false });
+    } else {
+      mode = 'semantic';
+      caveat = describeMemoryIndexCaveat(stats);
+      baseRecords = store.searchSemantic(filter).map((entry) => entry.record);
+    }
+  } else {
+    baseRecords = store.search(filter);
+  }
+
+  const totalBeforeRecallFilter = baseRecords.length;
+  if (!options.recall) {
+    return {
+      records: baseRecords,
+      mode,
+      requestedSemantic,
+      indexUnavailableReason,
+      caveat,
+      recallFiltered: false,
+      excludedFlaggedCount: 0,
+      excludedBelowFloorCount: 0,
+      totalBeforeRecallFilter,
+    };
+  }
+
+  const kept: MemoryRecord[] = [];
+  let excludedFlaggedCount = 0;
+  let excludedBelowFloorCount = 0;
+  for (const record of baseRecords) {
+    if (isPromptActiveMemory(record)) {
+      kept.push(record);
+      continue;
+    }
+    if (record.reviewState === 'stale' || record.reviewState === 'contradicted') {
+      excludedFlaggedCount += 1;
+    } else {
+      excludedBelowFloorCount += 1;
+    }
+  }
+  return {
+    records: kept,
+    mode,
+    requestedSemantic,
+    indexUnavailableReason,
+    caveat,
+    recallFiltered: true,
+    excludedFlaggedCount,
+    excludedBelowFloorCount,
+    totalBeforeRecallFilter,
+  };
 }

@@ -243,6 +243,14 @@ async function dispatchOperatorRoutesInner(
   if (pathname === '/api/memory/vector' && method === 'GET') return handlers.getMemoryVectorStats();
   if (pathname === '/api/memory/vector/rebuild' && method === 'POST') return handlers.postMemoryVectorRebuild(req);
   if (pathname === '/api/memory/embeddings/default' && method === 'POST') return handlers.postMemoryEmbeddingDefault(req);
+  // Canonical-store record routes. Exact paths first, then id-templated regexes.
+  if (pathname === '/api/memory/records' && method === 'POST') return handlers.postMemoryRecordAdd(req);
+  if (pathname === '/api/memory/records/search' && method === 'POST') return handlers.postMemoryRecordSearch(req);
+  const memoryRecordReviewMatch = pathname.match(/^\/api\/memory\/records\/([^/]+)\/review$/);
+  if (memoryRecordReviewMatch && method === 'POST') return handlers.postMemoryRecordReview(safeDecodeURIComponent(memoryRecordReviewMatch[1]!), req);
+  const memoryRecordMatch = pathname.match(/^\/api\/memory\/records\/([^/]+)$/);
+  if (memoryRecordMatch && method === 'GET') return handlers.getMemoryRecord(safeDecodeURIComponent(memoryRecordMatch[1]!));
+  if (memoryRecordMatch && method === 'DELETE') return handlers.deleteMemoryRecord(safeDecodeURIComponent(memoryRecordMatch[1]!));
 
   if (pathname === '/api/knowledge/status' && method === 'GET') return handlers.getKnowledgeStatus(url);
   if (pathname === '/api/knowledge/sources' && method === 'GET') return handlers.getKnowledgeSources(url);

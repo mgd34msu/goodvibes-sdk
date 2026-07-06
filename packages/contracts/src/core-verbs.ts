@@ -157,6 +157,16 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // report, not a generic "get"/"list".
     'doctor', 'stats', 'capacity', 'settings', 'catalog', 'reject', 'review-queue',
   ],
+  'memory-record-store': [
+    // The daemon-owned canonical memory store mirrors the MemoryStore engine's
+    // own long-standing API verbs rather than the generic CRUD words. `add`
+    // (MemoryStore.add stamps a new record at the recall-confidence floor — the
+    // recall-honesty contract is written in terms of `add`, not `create`) and
+    // `update-review` (mutates ONLY a record's review signal —
+    // reviewState/confidence/reviewer/staleReason — a narrower, honesty-load-
+    // bearing operation than a generic `update` that would also touch content).
+    'add', 'update-review',
+  ],
   'process-control': [
     // OS/service process lifecycle verbs (distinct domain from
     // enable/disable, which toggle a *record's* activation state) plus

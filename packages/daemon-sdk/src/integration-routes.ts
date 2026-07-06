@@ -8,6 +8,11 @@ import {
   readOptionalStringField,
   readStringArrayField,
 } from './route-helpers.js';
+import {
+  parseMemoryRecordAddBody,
+  parseMemoryRecordReviewBody,
+  parseMemoryRecordSearchBody,
+} from './memory-record-body.js';
 
 const MAX_LOCAL_AUTH_ROLES = 32;
 
@@ -138,6 +143,45 @@ export function createDaemonIntegrationRouteHandlers(
       } catch (error) {
         return jsonErrorResponse(error, { status: 400 });
       }
+    },
+    // Canonical-store record CRUD/search. The daemon is the single writer; a client
+    // surface reaches its store ONLY through these routes and never opens the file.
+    postMemoryRecordAdd: async (req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const input = parseMemoryRecordAddBody(body);
+      if (input instanceof Response) return input;
+      try {
+        const record = await context.memoryRegistry.add(input);
+        return Response.json({ record }, { status: 201 });
+      } catch (error) {
+        return jsonErrorResponse(error, { status: 400 });
+      }
+    },
+    postMemoryRecordSearch: async (req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const { filter, recall } = parseMemoryRecordSearchBody(body);
+      return Response.json(context.memoryRegistry.honestSearch(filter, { recall }));
+    },
+    getMemoryRecord: (id) => {
+      const record = context.memoryRegistry.get(id);
+      return record
+        ? Response.json({ record })
+        : jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+    },
+    postMemoryRecordReview: async (id, req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const patch = parseMemoryRecordReviewBody(body);
+      const record = context.memoryRegistry.review(id, patch);
+      return record
+        ? Response.json({ record })
+        : jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+    },
+    deleteMemoryRecord: (id) => {
+      const deleted = context.memoryRegistry.delete(id);
+      return Response.json({ id, deleted });
     },
     getLocalAuth: (req) => {
       const admin = context.requireAdmin(req);

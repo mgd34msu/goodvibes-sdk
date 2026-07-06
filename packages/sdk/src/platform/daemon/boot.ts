@@ -46,6 +46,12 @@ export interface BootedDaemon {
    * approve/deny — including per-hunk selection — over the live wire.
    */
   readonly approvals: ApprovalBroker;
+  /**
+   * The daemon's canonical memory registry — the same single-writer store the HTTP
+   * memory routes serve. A proof test adds a record over the wire and reads it back
+   * here to confirm the write reached the canonical store, not a detached copy.
+   */
+  readonly memory: DaemonServer['memory'];
   /** The bound host. */
   readonly host: string;
   /** The bound TCP port (resolves an ephemeral 0 to the real port). */
@@ -91,6 +97,7 @@ export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaem
   return {
     server,
     approvals: server.approvals,
+    memory: server.memory,
     host,
     port,
     url: `http://${host}:${port}`,

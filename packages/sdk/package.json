@@ -348,6 +348,10 @@
       "types": "./dist/platform/runtime/sandbox.d.ts",
       "import": "./dist/platform/runtime/sandbox.js"
     },
+    "./platform/runtime/memory-spine": {
+      "types": "./dist/platform/runtime/memory-spine/index.d.ts",
+      "import": "./dist/platform/runtime/memory-spine/index.js"
+    },
     "./platform/runtime/session-spine": {
       "types": "./dist/platform/runtime/session-spine/index.d.ts",
       "import": "./dist/platform/runtime/session-spine/index.js"

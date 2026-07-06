@@ -267,14 +267,11 @@ export class DaemonServer {
   /** The host the daemon is bound to. */
   get boundHost(): string { return this.host; }
 
-  /**
-   * The daemon's shared approval broker. Exposed so embedders (and the boot
-   * factory's proof tests) can seed or inspect approvals against the SAME broker
-   * the HTTP approvals routes resolve through — e.g. to bridge an external
-   * approval UI, or to prove per-hunk approve/deny over the live wire without a
-   * running agent to originate a real tool-call approval.
-   */
+  /** The daemon's shared approval broker — the SAME broker the HTTP approvals routes resolve through. Exposed so embedders and boot-factory proof tests can seed/inspect approvals (bridge an external UI, or prove per-hunk approve/deny over the live wire). */
   get approvals(): ApprovalBroker { return this.approvalBroker; }
+
+  /** The daemon's canonical single-writer memory registry — the SAME store the HTTP memory routes serve. Exposed so embedders and boot-factory proof tests can read back a wire write as a direct canonical-store read. */
+  get memory(): RuntimeServices['memoryRegistry'] { return this.runtimeServices.memoryRegistry; }
 
   /**
    * Start the daemon. Refuses to start if not explicitly enabled.
@@ -377,6 +374,8 @@ export class DaemonServer {
       ]);
       await this.providerRuntime.startConfigured();
       await this.companionChatManager.init();
+      // Init the canonical memory store so the daemon is a live single-writer memory service on accept (memory.records.add would else throw "not initialized" on a cold store).
+      await this.runtimeServices.memoryStore.init();
       if (this.replyPoller === null) {
         // Poll every 2 s for asynchronously-resolved surface replies; short interval
         // keeps companion latency low while batching concurrent replies.

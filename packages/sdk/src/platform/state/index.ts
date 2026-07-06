@@ -55,8 +55,14 @@ export {
   isPromptActiveMemory,
   describeMemoryIndexUnavailable,
   describeMemoryIndexCaveat,
+  runHonestMemorySearch,
 } from './memory-recall-contract.js';
-export type { MemoryPromptEligibility } from './memory-recall-contract.js';
+export type {
+  MemoryPromptEligibility,
+  HonestSearchStore,
+  HonestMemorySearchOptions,
+  HonestMemorySearchResult,
+} from './memory-recall-contract.js';
 export {
   VIBE_PERSONA_TAG,
   VIBE_PROJECTION_HEADING,

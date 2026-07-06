@@ -179,13 +179,18 @@ export interface DaemonPlatformStatusRouteHandlers {
   getIntelligence(): MaybeResponse;
 }
 
-/** Route handlers for the memory subsystem: diagnostics, vector stats, review queue, rebuild, and embedding config. */
+/** Route handlers for the memory subsystem: diagnostics, vector stats, review queue, rebuild, embedding config, and canonical-store record CRUD/search. */
 export interface DaemonMemoryRouteHandlers {
   getMemoryDoctor(): MaybeResponse;
   getMemoryVectorStats(): MaybeResponse;
   getMemoryReviewQueue(url: URL): MaybeResponse;
   postMemoryVectorRebuild(req: Request): MaybeResponse;
   postMemoryEmbeddingDefault(req: Request): MaybeResponse;
+  postMemoryRecordAdd(req: Request): MaybeResponse;
+  postMemoryRecordSearch(req: Request): MaybeResponse;
+  getMemoryRecord(id: string): MaybeResponse;
+  postMemoryRecordReview(id: string, req: Request): MaybeResponse;
+  deleteMemoryRecord(id: string): MaybeResponse;
 }
 
 /** Route handlers for local auth administration: users, passwords, sessions, and bootstrap file management. */
