@@ -31,6 +31,10 @@ import type {
   CompanionChatTurnEvent,
   ConversationMessageEnvelope,
   CreateCompanionChatSessionInput,
+  EditCompanionChatMessageInput,
+  EditCompanionChatMessageOutput,
+  RegenerateCompanionChatMessageInput,
+  RegenerateCompanionChatMessageOutput,
   UpdateCompanionChatSessionInput,
 } from './companion-chat-types.js';
 import {
@@ -43,17 +47,25 @@ import {
   resolveAttachments,
   type CompanionChatArtifactStore,
 } from './companion-chat-attachments.js';
+import {
+  activeMessages,
+  applyEditBranch,
+  planRegenerate,
+} from './companion-chat-branching.js';
+import {
+  executeCompanionToolCalls,
+  runToolExhaustionFinalizer,
+} from './companion-chat-turn-execution.js';
 import { planCompanionSweep } from './companion-chat-gc.js';
 import type { CompanionSessionBrokerBridge } from './companion-chat-broker-bridge.js';
 import { CompanionBrokerSync } from './companion-chat-broker-sync.js';
 import { CompanionChatRateLimiter } from './companion-chat-rate-limiter.js';
 import type { CompanionChatRateLimiterOptions } from './companion-chat-rate-limiter.js';
 import type { ToolRegistry } from '../tools/registry.js';
-import type { ToolCall, ToolDefinition, ToolResult } from '../types/tools.js';
+import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import type { PermissionManager } from '../permissions/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { HookEvent, HookResult } from '../hooks/types.js';
-import { executeToolCalls as executeOrchestratorToolCalls } from '../core/orchestrator-tool-runtime.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
@@ -758,12 +770,18 @@ export class CompanionChatManager {
           break;
         }
 
-        const toolResults = await this._executeToolCalls(toolCalls, publish, sessionId, turnId);
+        const toolResults = await executeCompanionToolCalls(
+          { toolRegistry: this.toolRegistry, permissionManager: this.permissionManager, hookDispatcher: this.hookDispatcher, runtimeBus: this.runtimeBus },
+          toolCalls, publish, sessionId, turnId,
+        );
         session.conversation.addToolResults(toolResults);
       }
 
       if (!completed && !abortSignal.aborted) {
-        const finalResponse = await this._finalizeAfterToolExhaustion(session, abortSignal, turnId, publish);
+        const finalResponse = await runToolExhaustionFinalizer(
+          { provider: this.provider, finalizerPrompt: TOOL_EXHAUSTION_FINALIZER_PROMPT },
+          session, abortSignal, turnId, publish,
+        );
         if (finalResponse.trim()) {
           assistantContent += finalResponse;
           session.conversation.addAssistantMessage(finalResponse);
@@ -822,102 +840,83 @@ export class CompanionChatManager {
     }
   }
 
-  private async _finalizeAfterToolExhaustion(
-    session: InternalSession,
-    abortSignal: AbortSignal,
-    turnId: string,
-    publish: (event: CompanionChatTurnEvent) => void,
-  ): Promise<string> {
-    const sessionId = session.meta.id;
-    let finalContent = '';
-    const stream = this.provider.chatStream([...session.conversation.getMessagesForLLM()], {
-      systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(
-        [session.meta.systemPrompt, TOOL_EXHAUSTION_FINALIZER_PROMPT].filter(Boolean).join('\n\n'),
-      ),
-      model: session.meta.model,
-      provider: session.meta.provider,
-      abortSignal,
-    });
+  // ---------------------------------------------------------------------------
+  // Regenerate + edit-and-branch (honest lineage — see companion-chat-branching.ts)
+  // ---------------------------------------------------------------------------
 
-    for await (const chunk of stream) {
-      if (abortSignal.aborted) break;
-
-      switch (chunk.type) {
-        case 'text_delta': {
-          const delta = chunk.delta ?? '';
-          finalContent += delta;
-          publish({ type: 'turn.delta', sessionId, turnId, delta });
-          break;
-        }
-        case 'error':
-          throw new Error(chunk.error ?? 'Provider streaming error');
-        case 'tool_call':
-        case 'tool_result':
-        case 'done':
-          break;
-      }
-    }
-
-    return finalContent;
+  /**
+   * Regenerate an assistant response: supersede the target assistant message (an
+   * explicit id, or the latest response) and everything after it — retained as
+   * history, never deleted — then re-run a fresh turn from the preceding user
+   * message. Refuses a closed (409 SESSION_CLOSED) or unknown (404
+   * SESSION_NOT_FOUND) session; honest code when there is nothing to regenerate.
+   */
+  regenerateMessage(
+    sessionId: string,
+    input: RegenerateCompanionChatMessageInput = {},
+  ): RegenerateCompanionChatMessageOutput {
+    const session = this._requireOpenSession(sessionId);
+    this.rateLimiter?.check(sessionId, '');
+    const now = Date.now();
+    const plan = planRegenerate(session, input.messageId, now);
+    this._commitBranchAndRun(session, sessionId, plan.anchorUserMessageId, now);
+    const { regeneratedFrom, supersededMessageIds } = plan;
+    return { sessionId, regeneratedFrom, supersededMessageIds, turnStarted: true };
   }
 
-  private async _executeToolCalls(
-    toolCalls: ToolCall[],
-    publish: (event: CompanionChatTurnEvent) => void,
+  /**
+   * Edit a user message and branch from it: supersede the target user message and
+   * everything after it (retained history), append a new user message carrying
+   * `revisionOf` back to the original, and run a fresh turn. Same closed/unknown
+   * refusals as {@link regenerateMessage}.
+   */
+  editMessage(
     sessionId: string,
-    turnId: string,
-  ): Promise<ToolResult[]> {
-    const toolRegistry = this.toolRegistry;
-    if (!toolRegistry) return [];
+    input: EditCompanionChatMessageInput,
+  ): EditCompanionChatMessageOutput {
+    const session = this._requireOpenSession(sessionId);
+    this.rateLimiter?.check(sessionId, '');
+    const now = Date.now();
+    const plan = applyEditBranch(session, sessionId, input, this.artifactStore, now);
+    this._commitBranchAndRun(session, sessionId, plan.newMessageId, now);
+    const { editedFrom, newMessageId, supersededMessageIds } = plan;
+    return { sessionId, editedFrom, messageId: newMessageId, supersededMessageIds, turnStarted: true };
+  }
 
-    if (!this.permissionManager) {
-      return toolCalls.map((call) => {
-        const toolResult: ToolResult = {
-          callId: call.id,
-          success: false,
-          error: 'Tool execution denied: permission manager unavailable for companion chat',
-        };
-        publish({
-          type: 'turn.tool_result',
-          sessionId,
-          turnId,
-          toolCallId: call.id,
-          toolName: call.name,
-          result: toolResult.error,
-          isError: true,
-        });
-        return toolResult;
-      });
+  /** Look up an active (open) session or throw the closed/not-found machine codes. */
+  private _requireOpenSession(sessionId: string): InternalSession {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
     }
-
-    const results = await executeOrchestratorToolCalls({
-      toolRegistry,
-      permissionManager: this.permissionManager,
-      hookDispatcher: this.hookDispatcher,
-      runtimeBus: this.runtimeBus,
-      sessionId,
-      emitterContext: (id) => ({
-        sessionId,
-        traceId: `${sessionId}:${id}`,
-        source: 'companion-chat',
-      }),
-    }, turnId, toolCalls);
-
-    for (const [index, toolResult] of results.entries()) {
-      const call = toolCalls[index]!;
-      if (!call) continue;
-      publish({
-        type: 'turn.tool_result',
-        sessionId,
-        turnId,
-        toolCallId: call.id,
-        toolName: call.name,
-        result: toolResult.output ?? toolResult.error ?? null,
-        isError: !toolResult.success,
-      });
+    if (session.meta.status === 'closed') {
+      throw Object.assign(new Error('Session is closed'), { code: SDKErrorCodes.SESSION_CLOSED, status: 409 });
     }
+    return session;
+  }
 
-    return results;
+  /**
+   * Shared tail of regenerate/edit: rebuild the LLM-facing conversation from the
+   * ACTIVE (non-superseded) chain (mirroring init()'s replay so the next turn
+   * sees only the live branch), persist, and fire the new turn.
+   */
+  private _commitBranchAndRun(
+    session: InternalSession,
+    sessionId: string,
+    anchorUserMessageId: string,
+    now: number,
+  ): void {
+    const conversation = new ConversationManager();
+    for (const msg of activeMessages(session.messages)) {
+      if (msg.role === 'user') conversation.addUserMessage(buildReplayUserContent(msg));
+      else conversation.addAssistantMessage(msg.content);
+    }
+    session.conversation = conversation;
+    this._updateMeta(session, { messageCount: session.messages.length, updatedAt: now });
+    this._persist(sessionId);
+    void this._runTurn(session, anchorUserMessageId).catch((error: unknown) => {
+      logger.warn('[companion-chat] branch turn execution failed', { sessionId, error: summarizeError(error) });
+    });
   }
 
   // ---------------------------------------------------------------------------

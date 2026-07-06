@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `313`
+- Methods: `315`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -21934,6 +21934,104 @@ Post a user message to a companion-chat session. Accepts either `body` or `conte
 }
 ```
 
+#### `companion.chat.messages.edit`
+
+Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED — retained as history, never deleted — a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.
+
+- Title: `Edit Companion Chat Message And Branch`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/companion/chat/sessions/{sessionId}/messages/edit`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifactId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "artifactId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "editedFrom": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    },
+    "supersededMessageIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "turnStarted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "editedFrom",
+    "messageId",
+    "supersededMessageIds",
+    "turnStarted"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `companion.chat.messages.list`
 
 Return the message list for a companion-chat session.
@@ -22099,6 +22197,66 @@ Return the message list for a companion-chat session.
   "required": [
     "sessionId",
     "messages"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.messages.retry`
+
+Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED — kept in the message list and on disk, flagged as retained history — never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.
+
+- Title: `Regenerate Companion Chat Response`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/companion/chat/sessions/{sessionId}/messages/retry`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "regeneratedFrom": {
+      "type": "string"
+    },
+    "supersededMessageIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "turnStarted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "regeneratedFrom",
+    "supersededMessageIds",
+    "turnStarted"
   ],
   "additionalProperties": false
 }
