@@ -22,8 +22,10 @@ import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import type {
   CompanionChatMessageAttachmentInput,
   CreateCompanionChatSessionInput,
+  EditCompanionChatMessageInput,
   ListCompanionChatSessionsInput,
   PostCompanionChatMessageInput,
+  RegenerateCompanionChatMessageInput,
   UpdateCompanionChatSessionInput,
 } from './companion-chat-types.js';
 import type { CompanionChatRouteContext } from './companion-chat-route-types.js';
@@ -88,6 +90,16 @@ export async function dispatchCompanionChatRoutes(
 
   if (sub === 'messages' && req.method === 'GET') {
     return handleGetMessages(sessionId, context);
+  }
+
+  // POST /api/companion/chat/sessions/:sessionId/messages/retry   (regenerate)
+  if (sub === 'messages/retry' && req.method === 'POST') {
+    return handleRegenerateMessage(req, sessionId, context);
+  }
+
+  // POST /api/companion/chat/sessions/:sessionId/messages/edit    (edit + branch)
+  if (sub === 'messages/edit' && req.method === 'POST') {
+    return handleEditMessage(req, sessionId, context);
   }
 
   // GET /api/companion/chat/sessions/:sessionId/events
@@ -448,6 +460,87 @@ async function handlePostMessage(
       { error: e.message ?? 'Internal error', code: e.code ?? 'INTERNAL_ERROR' },
       { status },
     );
+  }
+}
+
+/**
+ * Map a `{ code, status }`-carrying manager error to an honest JSON error
+ * response, mirroring the catch blocks used by the update/delete handlers.
+ */
+function respondWithManagerError(err: unknown): Response {
+  const e = err as { code?: string; status?: number; message?: string };
+  const status = e.status ?? 500;
+  return Response.json(
+    { error: e.message ?? 'Internal error', code: e.code ?? 'INTERNAL_ERROR' },
+    { status },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/companion/chat/sessions/:sessionId/messages/retry  (regenerate)
+// ---------------------------------------------------------------------------
+
+/**
+ * Regenerate an assistant response. Optional `messageId` in the body targets a
+ * specific assistant message; omitted, the latest assistant response is re-run.
+ * The prior response is superseded (retained as history), never deleted.
+ */
+async function handleRegenerateMessage(
+  req: Request,
+  sessionId: string,
+  context: CompanionChatRouteContext,
+): Promise<Response> {
+  const bodyOrResponse = await context.parseOptionalJsonBody(req);
+  if (bodyOrResponse instanceof Response) return bodyOrResponse;
+  const body = (bodyOrResponse ?? {}) as Record<string, unknown>;
+  const input: RegenerateCompanionChatMessageInput = {
+    messageId: typeof body['messageId'] === 'string' ? body['messageId'] : undefined,
+  };
+  try {
+    return Response.json(context.chatManager.regenerateMessage(sessionId, input), { status: 202 });
+  } catch (err: unknown) {
+    return respondWithManagerError(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/companion/chat/sessions/:sessionId/messages/edit  (edit + branch)
+// ---------------------------------------------------------------------------
+
+/**
+ * Edit a user message and branch the conversation from it. Accepts `messageId`
+ * (required) plus the edited text as `body` or `content` (as the message-post
+ * route does). The original message and everything after it are superseded
+ * (retained as history) and a fresh turn runs from the edited message.
+ */
+async function handleEditMessage(
+  req: Request,
+  sessionId: string,
+  context: CompanionChatRouteContext,
+): Promise<Response> {
+  const bodyOrResponse = await context.parseJsonBody(req);
+  if (bodyOrResponse instanceof Response) return bodyOrResponse;
+  const body = bodyOrResponse as Record<string, unknown>;
+
+  const messageId = typeof body['messageId'] === 'string' ? body['messageId'].trim() : '';
+  if (!messageId) {
+    return Response.json({ error: 'messageId is required', code: 'INVALID_INPUT' }, { status: 400 });
+  }
+  const attachments = readCompanionChatAttachments(body);
+  if (attachments instanceof Response) return attachments;
+
+  const input: EditCompanionChatMessageInput = {
+    messageId,
+    content: readCompanionChatMessageBody(body),
+    attachments,
+    metadata: typeof body['metadata'] === 'object' && body['metadata'] !== null
+      ? (body['metadata'] as Record<string, unknown>)
+      : undefined,
+  };
+  try {
+    return Response.json(context.chatManager.editMessage(sessionId, input), { status: 202 });
+  } catch (err: unknown) {
+    return respondWithManagerError(err);
   }
 }
 

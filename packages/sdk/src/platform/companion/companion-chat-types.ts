@@ -34,6 +34,22 @@ export interface CompanionChatMessageAttachment extends ArtifactDescriptor {
   readonly label?: string | undefined;
 }
 
+/**
+ * Why a message was superseded. A superseded message is NEVER deleted — it is
+ * retained in the message list and on disk, flagged so a client can tell the
+ * active conversation chain from the retained history behind a regenerate or an
+ * edit. This is the honest-lineage contract: regenerating a response or editing
+ * a message forks the conversation and keeps the old branch retrievable, it does
+ * not silently drop it.
+ *
+ * - `regenerate` — the assistant response was re-run; this is the previous
+ *   response (and any turns that followed it), kept as history.
+ * - `edit` — the user edited an earlier message and the conversation branched
+ *   from there; this is the original message (or a turn after the edit point),
+ *   kept as history.
+ */
+export type CompanionChatSupersededReason = 'regenerate' | 'edit';
+
 export interface CompanionChatMessage {
   readonly id: string;
   readonly sessionId: string;
@@ -42,6 +58,21 @@ export interface CompanionChatMessage {
   readonly attachments: readonly CompanionChatMessageAttachment[];
   readonly metadata?: Record<string, unknown> | undefined;
   readonly createdAt: number;
+  /**
+   * Timestamp at which this message was superseded by a regenerate or an edit.
+   * Absent = the message is part of the active conversation chain. Present = the
+   * message is retained history behind a fork (still returned by list/get, never
+   * removed), so nothing is silently lost.
+   */
+  readonly supersededAt?: number | undefined;
+  /** Why this message was superseded (only set together with `supersededAt`). */
+  readonly supersededReason?: CompanionChatSupersededReason | undefined;
+  /**
+   * On a replacement message, the id of the message it replaces: the new user
+   * message points back at the original it was edited from, giving an explicit
+   * forward lineage link in addition to the `supersededAt` marker on the old one.
+   */
+  readonly revisionOf?: string | undefined;
 }
 
 export interface CompanionChatSession {
@@ -113,6 +144,51 @@ export interface PostCompanionChatMessageOutput {
 export interface GetCompanionChatSessionOutput {
   readonly session: CompanionChatSession;
   readonly messages: CompanionChatMessage[];
+}
+
+// ---------------------------------------------------------------------------
+// Regenerate / edit-and-branch I/O shapes (honest lineage)
+// ---------------------------------------------------------------------------
+
+export interface RegenerateCompanionChatMessageInput {
+  /**
+   * The assistant message to regenerate. Omit to regenerate the latest assistant
+   * response. The referenced message and any messages after it are superseded
+   * (retained as history), then a fresh turn re-runs from the preceding user
+   * message.
+   */
+  readonly messageId?: string | undefined;
+}
+
+export interface RegenerateCompanionChatMessageOutput {
+  readonly sessionId: string;
+  /** The assistant message id whose turn was re-run (now superseded, still retrievable). */
+  readonly regeneratedFrom: string;
+  /** Every message id superseded by this regenerate — retained history, never deleted. */
+  readonly supersededMessageIds: readonly string[];
+  /** True when a new turn was started to produce the replacement response. */
+  readonly turnStarted: boolean;
+}
+
+export interface EditCompanionChatMessageInput {
+  /** The user message to edit and branch from. Required. */
+  readonly messageId: string;
+  /** The edited message text. Required (unless attachments carry the content). */
+  readonly content: string;
+  readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+}
+
+export interface EditCompanionChatMessageOutput {
+  readonly sessionId: string;
+  /** The original user message id that was edited (now superseded, still retrievable). */
+  readonly editedFrom: string;
+  /** The id of the new user message carrying the edited content. */
+  readonly messageId: string;
+  /** Every message id superseded by this edit — retained history, never deleted. */
+  readonly supersededMessageIds: readonly string[];
+  /** True when a new turn was started to answer the edited message. */
+  readonly turnStarted: boolean;
 }
 
 // ---------------------------------------------------------------------------

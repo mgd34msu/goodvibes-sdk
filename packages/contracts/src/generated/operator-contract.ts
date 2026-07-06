@@ -21832,6 +21832,100 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "companion.chat.messages.edit",
+        "title": "Edit Companion Chat Message And Branch",
+        "description": "Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED — retained as history, never deleted — a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/companion/chat/sessions/{sessionId}/messages/edit"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "messageId": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "attachments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "artifactId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "artifactId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "editedFrom": {
+              "type": "string"
+            },
+            "messageId": {
+              "type": "string"
+            },
+            "supersededMessageIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "turnStarted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "editedFrom",
+            "messageId",
+            "supersededMessageIds",
+            "turnStarted"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "companion.chat.messages.list",
         "title": "List Companion Chat Messages",
         "description": "Return the message list for a companion-chat session.",
@@ -21992,6 +22086,62 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "sessionId",
             "messages"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.messages.retry",
+        "title": "Regenerate Companion Chat Response",
+        "description": "Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED — kept in the message list and on disk, flagged as retained history — never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/companion/chat/sessions/{sessionId}/messages/retry"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "messageId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "regeneratedFrom": {
+              "type": "string"
+            },
+            "supersededMessageIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "turnStarted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "regeneratedFrom",
+            "supersededMessageIds",
+            "turnStarted"
           ],
           "additionalProperties": false
         },
@@ -79609,10 +79759,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 313,
-      "typedInputs": 313,
+      "methods": 315,
+      "typedInputs": 315,
       "genericInputs": 0,
-      "typedOutputs": 313,
+      "typedOutputs": 315,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -79621,8 +79771,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 31
     },
     "validationCoverage": {
-      "methods": 313,
-      "validated": 313,
+      "methods": 315,
+      "validated": 315,
       "skippedGeneric": 0,
       "skippedUntyped": 0
     }
