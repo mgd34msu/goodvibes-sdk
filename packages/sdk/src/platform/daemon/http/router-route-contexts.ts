@@ -120,6 +120,7 @@ export function buildChannelRouteContext(input: {
 export function buildSystemRouteContext(input: {
   readonly approvalBroker: ApprovalBroker;
   readonly configManager: ConfigManager;
+  readonly credentialStatus: DaemonSystemRouteContext['credentialStatus'];
   readonly integrationHelpers: IntegrationHelperService | null;
   readonly inspectInboundTls: (surface: 'controlPlane' | 'httpListener') => unknown;
   readonly inspectOutboundTls: () => unknown;
@@ -157,6 +158,7 @@ export function buildSystemRouteContext(input: {
   return {
     approvalBroker: input.approvalBroker,
     configManager: input.configManager,
+    credentialStatus: input.credentialStatus,
     integrationHelpers: input.integrationHelpers,
     inspectInboundTls: input.inspectInboundTls,
     inspectOutboundTls: input.inspectOutboundTls,

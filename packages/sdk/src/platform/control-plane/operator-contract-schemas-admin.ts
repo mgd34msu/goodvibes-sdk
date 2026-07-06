@@ -97,6 +97,28 @@ export const CONFIG_SET_OUTPUT_SCHEMA = objectSchema({
   value: JSON_VALUE_SCHEMA,
 }, ['success', 'key'], { additionalProperties: true });
 
+/**
+ * Secret-FREE status metadata for a single shared-store credential. Carries NO
+ * secret value / raw key bytes by construction — the plaintext never crosses the
+ * wire. `usable` reflects a real in-process resolution attempt.
+ */
+export const CREDENTIAL_STATUS_RECORD_SCHEMA = objectSchema({
+  key: STRING_SCHEMA,
+  configured: BOOLEAN_SCHEMA,
+  usable: BOOLEAN_SCHEMA,
+  source: STRING_SCHEMA,
+  scope: STRING_SCHEMA,
+  secure: BOOLEAN_SCHEMA,
+  overriddenByEnv: BOOLEAN_SCHEMA,
+  refSource: STRING_SCHEMA,
+}, ['key', 'configured', 'usable', 'source', 'scope', 'secure', 'overriddenByEnv'], { additionalProperties: false });
+
+/** Output of `credentials.get` — a secret-free credential-status snapshot. */
+export const CREDENTIALS_SNAPSHOT_SCHEMA = objectSchema({
+  available: BOOLEAN_SCHEMA,
+  credentials: arraySchema(CREDENTIAL_STATUS_RECORD_SCHEMA),
+}, ['available', 'credentials']);
+
 const AUTOMATION_JOB_STATUS_SCHEMA = enumSchema(['enabled', 'paused', 'error', 'archived']);
 const AUTOMATION_RUN_STATUS_SCHEMA = enumSchema(['queued', 'running', 'completed', 'failed', 'cancelled']);
 const AUTOMATION_RUN_TRIGGER_SCHEMA = enumSchema([

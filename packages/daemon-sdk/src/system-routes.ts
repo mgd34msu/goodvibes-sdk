@@ -193,6 +193,30 @@ export function createDaemonSystemRouteHandlers(
       if (admin) return admin;
       return Response.json(context.configManager.getAll());
     },
+    getCredentials: async (req) => {
+      const admin = context.requireAdmin(req);
+      if (admin) return admin;
+      if (!context.credentialStatus) {
+        // Honest degraded state: no shared secret store is wired, so we cannot
+        // truthfully report credential status. Never fabricate an empty "no
+        // credentials" answer that a caller would read as "nothing configured".
+        return jsonErrorResponse(
+          { error: 'Shared credential store unavailable', code: 'CREDENTIAL_STORE_UNAVAILABLE' },
+          { status: 503 },
+        );
+      }
+      const key = new URL(req.url).searchParams.get('key');
+      if (key !== null) {
+        const trimmed = key.trim();
+        if (!trimmed) {
+          return jsonErrorResponse({ error: 'Missing or invalid key' }, { status: 400 });
+        }
+        const record = await context.credentialStatus.get(trimmed);
+        return Response.json({ available: true, credentials: record ? [record] : [] });
+      }
+      const credentials = await context.credentialStatus.list();
+      return Response.json({ available: true, credentials });
+    },
     postConfig: async (req) => {
       const admin = context.requireAdmin(req);
       if (admin) return admin;

@@ -23145,6 +23145,90 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "credentials.get",
+        "title": "Get Credential Status",
+        "description": "Return secret-free credential status (configured/usable) for the shared store. Never returns raw secret bytes. Optional ?key= narrows to one credential.",
+        "category": "config",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:config"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/config/credentials"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "credentials": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "configured": {
+                    "type": "boolean"
+                  },
+                  "usable": {
+                    "type": "boolean"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string"
+                  },
+                  "secure": {
+                    "type": "boolean"
+                  },
+                  "overriddenByEnv": {
+                    "type": "boolean"
+                  },
+                  "refSource": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "configured",
+                  "usable",
+                  "source",
+                  "scope",
+                  "secure",
+                  "overriddenByEnv"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "available",
+            "credentials"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "continuity.snapshot",
         "title": "Continuity Snapshot",
         "description": "Return the continuity integration snapshot.",
@@ -78645,10 +78729,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 307,
-      "typedInputs": 307,
+      "methods": 308,
+      "typedInputs": 308,
       "genericInputs": 0,
-      "typedOutputs": 307,
+      "typedOutputs": 308,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -78657,8 +78741,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 31
     },
     "validationCoverage": {
-      "methods": 307,
-      "validated": 307,
+      "methods": 308,
+      "validated": 308,
       "skippedGeneric": 0,
       "skippedUntyped": 0
     }

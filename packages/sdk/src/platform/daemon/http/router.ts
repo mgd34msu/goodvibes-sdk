@@ -1,6 +1,7 @@
 import type { ConfigManager } from '../../config/manager.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import { isValidConfigKey } from '../../config/schema.js';
+import { createCredentialStatusProvider } from '../../config/credential-status.js';
 import type { UserAuthManager } from '../../security/user-auth.js';
 import { buildOperatorSessionCookie, OPERATOR_SESSION_COOKIE_NAME } from '../../security/http-auth.js';
 import type { AgentManager } from '../../tools/agent/index.js';
@@ -182,7 +183,7 @@ interface DaemonHttpRouterContext {
    * Without this, the production router always passes undefined and the secrets
    * tier is permanently dead on live code paths.
    */
-  readonly secretsManager?: Pick<import('../../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
+  readonly secretsManager?: Pick<import('../../config/secrets.js').SecretsManager, 'get' | 'set' | 'getGlobalHome' | 'list' | 'listDetailed'> | null | undefined;
   readonly trySpawnAgent: (
     input: Parameters<AgentManager['spawn']>[0],
     logLabel?: string,
@@ -472,6 +473,9 @@ export class DaemonHttpRouter {
         ...buildSystemRouteContext({
           approvalBroker: this.context.approvalBroker,
           configManager: this.context.configManager,
+          credentialStatus: this.context.secretsManager
+            ? createCredentialStatusProvider(this.context.secretsManager)
+            : null,
           integrationHelpers: this.context.integrationHelpers,
           inspectInboundTls: (surface) => inspectInboundTls(this.context.configManager, surface),
           inspectOutboundTls: () => inspectOutboundTls(this.context.configManager),
