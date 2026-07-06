@@ -1,5 +1,5 @@
 /**
- * W3.1 Part C6 (SDK side) — conversation-snapshot bridge.
+ * Conversation-snapshot bridge (SDK side).
  *
  * The audit's central finding: a fleet agent's real ConversationManager (full
  * message content) is a local variable in orchestrator-runner.ts's
@@ -34,7 +34,7 @@ function makeManager(conversationSnapshotRetention?: number): AgentManager {
 
 const snap = (text: string): ConversationMessageSnapshot[] => [{ role: 'user', content: text }];
 
-describe('AgentManager — conversation snapshot bridge (W3.1 Part C6)', () => {
+describe('AgentManager — conversation snapshot bridge', () => {
   test('unknown / never-registered agent returns an empty array', () => {
     const manager = makeManager();
     expect(manager.getConversationSnapshot('never-seen')).toEqual([]);

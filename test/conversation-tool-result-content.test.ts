@@ -1,7 +1,7 @@
 /**
  * conversation-tool-result-content.test.ts
  *
- * Regression coverage for W0.1: ConversationManager.addToolResults() must never
+ * Regression coverage: ConversationManager.addToolResults() must never
  * silently discard `result.output` when `result.success` is false. Before the
  * fix, any failing tool result with `output` set but `error` unset rendered as
  * the literal string "Unknown error" to the model, even though `output` held

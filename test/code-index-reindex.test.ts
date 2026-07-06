@@ -1,5 +1,5 @@
 /**
- * Wave-5 Stage B — code-index-reindex.ts (tool-site incremental reindex) unit suite.
+ * Stage B — code-index-reindex.ts (tool-site incremental reindex) unit suite.
  *
  * Covers path extraction from write/edit tool args, the debounce+coalesce shape, the
  * no-op gates (setting off / index never built / failed tool), and contained failure

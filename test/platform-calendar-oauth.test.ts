@@ -1,7 +1,7 @@
 /**
  * platform-calendar-oauth.test.ts
  *
- * One-Platform Wave 4, A10 — authenticated calendar provider connectivity (Google
+ * Authenticated calendar provider connectivity (Google
  * Calendar API v3 + Microsoft Graph over OAuth 2.0). The ENTIRE flow is proven
  * against in-memory fake servers behind the connector's injected HttpFetch — there
  * is NO real network, no real port, and no real keychain anywhere in this file.

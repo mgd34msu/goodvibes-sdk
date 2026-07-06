@@ -2,7 +2,7 @@
  * oauth-providers.ts — the fixed provider profiles for Google Calendar and
  * Microsoft Outlook (Graph), plus client-config resolution.
  *
- * Design (One-Platform Wave 4, A10, per Mike's least-friction rule): the DEFAULT
+ * Design (see CHANGELOG 1.0.0, A10, per Mike's least-friction rule): the DEFAULT
  * experience uses a bundled project-level client id (rclone/gh pattern). A native-
  * app / public-client id is not a secret (RFC 8252), so paired with PKCE no client
  * secret is needed. Power users MAY override with their own client id (+ secret for

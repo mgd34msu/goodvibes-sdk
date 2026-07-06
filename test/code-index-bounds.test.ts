@@ -1,5 +1,5 @@
 /**
- * Wave-5 (wo802, W5.3 Stage A) — CodeIndexStore bounds + honest skip
+ * Repo code index (Stage A) — CodeIndexStore bounds + honest skip
  * reporting: maxFiles/maxFileBytes/binary/gitignore exclusions all appear in
  * the skip report with honest counts, and .gitignore'd paths are never indexed.
  */

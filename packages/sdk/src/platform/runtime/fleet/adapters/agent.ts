@@ -18,7 +18,7 @@ export function subtaskNodeId(subtaskId: string): string {
   return `subtask:${subtaskId}`;
 }
 
-/** Work-item node ids are namespaced to avoid colliding with agent/process ids (Wave 4, wo701). */
+/** Work-item node ids are namespaced to avoid colliding with agent/process ids. */
 export function workItemNodeId(workItemId: string): string {
   return `work-item:${workItemId}`;
 }
@@ -52,7 +52,7 @@ export interface AgentAdapterContext {
   readonly chainIds: ReadonlySet<string>;
   /** Raw WrfcSubtask ids present in this snapshot. */
   readonly subtaskIds: ReadonlySet<string>;
-  /** Raw orchestration-engine WorkItem ids present in this snapshot (Wave 4, wo701). */
+  /** Raw orchestration-engine WorkItem ids present in this snapshot. */
   readonly workItemIds: ReadonlySet<string>;
   /** orchestrationNodeId → owning agentId, for parentNodeId edge resolution. */
   readonly agentIdByOrchestrationNodeId: ReadonlyMap<string, string>;
@@ -83,9 +83,9 @@ export function usageFromAgentRecord(record: AgentRecord): ProcessUsage | undefi
 }
 
 /**
- * parentId precedence (brief-mandated, Wave-4 stable):
+ * parentId precedence (brief-mandated, stable):
  * wrfcSubtaskId → `subtask:<id>` else wrfcId → `chain:<id>` else
- * workItemId → `work-item:<id>` (Wave 4, wo701 — orchestration-engine phase
+ * workItemId → `work-item:<id>` (orchestration-engine phase
  * agents, a separate track from WRFC so the two systems' agents are never
  * conflated) else orchestrationNodeId/parentNodeId (resolved to the owning
  * agent) else parentAgentId. Every step falls through when the referenced
@@ -125,7 +125,7 @@ function deriveAgentState(
       return 'failed';
     case 'cancelled':
       // terminationKind distinguishes a graceful interrupt request from a hard
-      // kill for display purposes (Wave-3 verb formalization). Records
+      // kill for display purposes. Records
       // persisted before this field existed have no terminationKind and
       // default to 'killed' — the historical behavior.
       return record.terminationKind === 'interrupt' ? 'interrupted' : 'killed';

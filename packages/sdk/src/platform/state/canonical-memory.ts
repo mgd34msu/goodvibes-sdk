@@ -1,28 +1,28 @@
 /**
- * canonical-memory.ts — the ONE cross-surface memory identity (Wave-6 E6).
+ * canonical-memory.ts — the ONE cross-surface memory identity (see CHANGELOG 1.0.0).
  *
- * BACKGROUND (the E6 silo). The MemoryStore engine (memory-store.ts) is a good
+ * BACKGROUND. The MemoryStore engine (memory-store.ts) is a good
  * single engine, but it is instantiated as disjoint SQLite files per surface:
  *   - the SDK daemon runtime  → <workingDir>/.goodvibes/<surface>/memory.sqlite
  *   - the agent               → <userRoot>/goodvibes-agent/memory.sqlite (global)
  *   - the TUI                 → <workingDir>/.goodvibes/tui/memory.sqlite
- * A fact learned in one surface is invisible to the others. E6 collapses those to
+ * A fact learned in one surface is invisible to the others. This module collapses those to
  * ONE canonical store identity.
  *
- * CANONICAL PLACEMENT (ruled in the Wave-6 decision record). The SQLiteStore is
+ * CANONICAL PLACEMENT (ruled in the memory-unification decision record). The SQLiteStore is
  * backed by sql.js: every open loads the whole database into memory and every
  * save() rewrites the entire file via writeFileSync. There is no row locking and
  * no WAL, so two live processes writing the SAME file would clobber each other on
  * save — a whole-file lost-update that would DELETE memory, the exact honesty
- * violation E6 must not introduce. Therefore:
+ * violation this module must not introduce. Therefore:
  *
  *   TARGET  (end-state): the daemon owns the single canonical store and surfaces
  *           read/write add/search/searchSemantic THROUGH it (one process = one
- *           writer). Deferred out of Wave-6 because it adds new wire methods that
+ *           writer). Deferred out of this step because it adds new wire methods that
  *           serialize the land and gate the release train, and cannot be proven
  *           under the no-real-daemons test rule.
  *
- *   Wave-6 STEP (what this module delivers): one canonical PATH resolver so every
+ *   THIS STEP (what this module delivers): one canonical PATH resolver so every
  *           surface names the same store identity, plus a no-loss FOLD/RECONCILE
  *           primitive built on the existing exportBundle/importBundle seam
  *           (memory-sync.ts prior art). Access is sequential/owned, never a naive
@@ -190,7 +190,7 @@ export async function foldMemoryStores(
 /** Render a human-readable summary of a fold report (for surfacing at boot). */
 export function formatMemoryFoldReport(report: MemoryFoldReport): string {
   const lines: string[] = [
-    'Memory unification (E6) — fold into canonical store',
+    'Memory unification — fold into canonical store',
     `  canonical ${report.canonicalPath}`,
     `  imported ${report.totalImported}  already-present ${report.totalSkipped}  links ${report.totalLinks}`,
   ];

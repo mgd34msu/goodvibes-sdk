@@ -26,7 +26,7 @@ export function isAutomationJobRaw(raw: unknown): raw is AutomationJobRaw {
 }
 
 /**
- * AutomationJob → ProcessNode (Wave 6, wo-F item d4). Reuses the 'schedule'
+ * AutomationJob → ProcessNode. Reuses the 'schedule'
  * kind rather than inventing a new one — a job created via `/schedule` IS a
  * schedule from the user's viewpoint, even though it lives in a completely
  * separate subsystem (platform/automation) from the workflow-tool's

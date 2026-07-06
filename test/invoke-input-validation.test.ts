@@ -1,5 +1,5 @@
 /**
- * invoke-input-validation.test.ts (W3-S1, Part B)
+ * invoke-input-validation.test.ts
  *
  * The catalog-driven invoke input gate: typed inputSchemas are structurally
  * validated (wrong type / missing required → honest error); generic and untyped

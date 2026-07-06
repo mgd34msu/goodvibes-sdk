@@ -1,7 +1,7 @@
 /**
  * gateway-method-not-found.test.ts
  *
- * W6-C4: gives the uncataloged-method 404 a machine code (`METHOD_NOT_FOUND`),
+ * Gives the uncataloged-method 404 a machine code (`METHOD_NOT_FOUND`),
  * distinct from `NOT_INVOKABLE` (the id exists in the catalog but refuses
  * dispatch). Before this brief, the uncataloged-id path was a plain
  * `Error('Unknown gateway method: <id>')` / `{error: 'Unknown gateway method'}`

@@ -1,7 +1,7 @@
 /**
  * routes/invocation-params.ts
  *
- * W3-S2 (post-S1 alignment) — one params view for the handler-registered
+ * (see CHANGELOG 1.0.0, post-S1 alignment) — one params view for the handler-registered
  * verbs (fleet.*, checkpoints.*, sessions.search).
  *
  * S1's invoke-layer input gate (invoke-input-validation.ts, wired in

@@ -1,7 +1,7 @@
 /**
  * session-steer-closed-guard.test.ts
  *
- * D-1 (Wave-2 acceptance re-replay) — the HTTP route surface for
+ * Acceptance re-replay — the HTTP route surface for
  * `POST /api/sessions/:id/steer`. The broker (session-broker.ts) now throws
  * `{ code: 'SESSION_CLOSED', status: 409 }` before any mutation when the
  * target session is closed (see session-steer-surface-routing.test.ts for the

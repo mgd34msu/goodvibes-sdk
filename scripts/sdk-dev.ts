@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * sdk-dev — the canonical local-SDK overlay tool (Wave 6, W6-DEV).
+ * sdk-dev — the canonical local-SDK overlay tool (see CHANGELOG 1.0.0).
  *
  * Consolidates what were three independently-drifted copies (TUI 154 lines,
  * agent 172 lines, webui 114 lines) into ONE tool that ships FROM the SDK.
@@ -18,16 +18,16 @@
  * `restore` Remove the overlay and reinstall the pinned npm version byte-exact.
  *
  * Discipline preserved from the TUI's copy (the most-correct of the three):
- *  - unlink-before-copy (WO-0B): bun hardlinks node_modules package files to
+ *  - unlink-before-copy: bun hardlinks node_modules package files to
  *    its global install cache (~/.bun/install/cache/...). Overwriting a file
  *    IN PLACE (cpSync onto an existing file) writes through that hardlink and
  *    silently corrupts the shared cache entry for the pinned npm version —
  *    poisoning every other project on the machine that resolves it. Always
  *    rm the destination first so cpSync creates a fresh inode.
- *  - all-siblings overlay (S3b): refreshing only goodvibes-sdk leaves sibling
+ *  - all-siblings overlay: refreshing only goodvibes-sdk leaves sibling
  *    packages (contracts, transport-*, operator-sdk, ...) at their stale
  *    published build, so a consumer's real-HTTP-client test can validate the
- *    local SDK's records against an OLD wire schema (S3b: transport-parity
+ *    local SDK's records against an OLD wire schema (a transport-parity test
  *    rejected a new field because only goodvibes-sdk was overlaid). This was
  *    already true in the TUI's copy but NEVER true in agent/webui's copies —
  *    the live re-sync gap this brief closes.
@@ -173,7 +173,7 @@ function fail(msg: string): never {
 /**
  * Overlay one monorepo package's dist + package.json into a consumer's
  * node_modules. MUST unlink package.json (and the dist dir) before copying —
- * see the WO-0B cache-safety note in the file header. Returns false when the
+ * see the cache-safety note in the file header. Returns false when the
  * package is not installed in this consumer / not built in the SDK (skip;
  * not every consumer depends on every sibling package).
  */

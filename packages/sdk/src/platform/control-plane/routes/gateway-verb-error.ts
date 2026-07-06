@@ -1,7 +1,7 @@
 /**
  * gateway-verb-error.ts
  *
- * W3-S2 (fleet.*, checkpoints.*, sessions.search): a structured error for
+ * (fleet.*, checkpoints.*, sessions.search — see CHANGELOG 1.0.0): a structured error for
  * gateway methods registered with a direct handler via
  * `GatewayMethodCatalog.register(descriptor, handler)`.
  *

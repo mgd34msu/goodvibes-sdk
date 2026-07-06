@@ -1,9 +1,9 @@
 /**
- * Wave-5 (wo802, W5.3 Stage A) — adaptCodeIndex fleet adapter + registry
+ * Repo code index (Stage A) — adaptCodeIndex fleet adapter + registry
  * integration: a 'code-index' ProcessNode surfaces progress while building
  * and a terminal state ('done'/'idle') when caught up; an absent
  * codeIndexService dep yields zero code-index nodes (degrade-to-today),
- * mirroring the Wave-4 orchestrationEngine-dep precedent
+ * mirroring the orchestration engine's own dep precedent
  * (test/orchestration-fleet-adapters.test.ts).
  */
 import { describe, expect, test } from 'bun:test';

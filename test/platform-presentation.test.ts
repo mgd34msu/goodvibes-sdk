@@ -1,7 +1,7 @@
 /**
  * platform-presentation.test.ts
  *
- * One-Platform Wave 4, S1 — the presentation contract. Covers:
+ * The presentation contract. Covers:
  *  - resolveTones('dark') is reference-identical to TONE_TOKENS (the TUI
  *    no-op-swap guarantee); resolveTones('light') inverts exactly the
  *    documented chrome/accent/state roles and leaves everything else alone.

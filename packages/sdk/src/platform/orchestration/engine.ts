@@ -1,10 +1,9 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * OrchestrationEngine (Wave 4, wo701) — owns Workstream state and drives the
+ * OrchestrationEngine (see CHANGELOG 0.38.0) — owns Workstream state and drives the
  * pipeline. WRAPS a canned/authored workstream; does not rewrite or touch
- * WrfcController (stage 1 of the 3-stage migration — see controller-compat.ts
- * and the work-order report).
+ * WrfcController (stage 1 of the 3-stage migration — see controller-compat.ts).
  *
  * The tick loop is reactive, not timer-driven: `start()` runs one tick;
  * every phase-run completion re-runs tick() for its workstream. Because JS
@@ -158,7 +157,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return () => listeners.delete(listener);
   }
 
-  // Dirty-residue guard (Wave 6, wo-F item 4): snapshot the working tree's
+  // Dirty-residue guard (see CHANGELOG 0.38.0): snapshot the working tree's
   // dirty paths + content hashes ONCE, right at engine launch (synchronous —
   // see dirty-guard.ts's doc comment for why this must not be a promise
   // backed by real subprocess I/O), before any phase of this run has had a

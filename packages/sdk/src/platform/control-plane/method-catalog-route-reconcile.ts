@@ -3,7 +3,7 @@ import type { DaemonApiRouteHandlers } from '@pellux/goodvibes-daemon-sdk';
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 
 /**
- * method-catalog-route-reconcile.ts (W4-A3)
+ * method-catalog-route-reconcile.ts
  *
  * Advertisement-vs-route reconciliation. Every method descriptor that
  * carries an `http` binding is a promise to a caller: "this daemon actually

@@ -1,7 +1,7 @@
 /**
  * session-union-cache.test.ts
  *
- * Unit evidence for the cross-surface read facade moved into the SDK (W3-S4). Drives
+ * Unit evidence for the cross-surface read facade moved into the SDK. Drives
  * the facade with a fake sync local reader + a fake async wire reader (no real
  * daemon here — the daemon-integration test covers the real wire) to prove the
  * honesty contract: embedded/local passthrough; adopted-online union (deduped, local

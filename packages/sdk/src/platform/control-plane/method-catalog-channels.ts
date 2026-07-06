@@ -486,7 +486,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'watchers.update',
     title: 'Update Watcher',
-    description: 'Update an existing watcher. (Renamed from watchers.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)',
+    description: 'Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)',
     category: 'watchers',
     scopes: ['write:watchers'],
     access: 'admin',
@@ -627,7 +627,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
     dangerous: true,
   }),
   /**
-   * Route-reconcile debt (surfaced by W4-A3, retired here): the eight
+   * Route-reconcile debt (surfaced by an audit finding, retired here): the eight
    * channels.inbox.* / channels.routing.* / channels.drafts.* methods below
    * advertise http paths with no dispatch route anywhere — confirmed by
    * reading router.ts, every dispatch chain it delegates to (operator.ts in
@@ -637,7 +637,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
    * drafts handler at all, so there is nothing for a route to call even in
    * principle. These were originally grandfathered into
    * KNOWN_PRE_EXISTING_ROUTE_DEBT in test/w4-a3-capability-route-reconcile.test.ts
-   * as an out-of-ownership finding W4-A3 incidentally surfaced; marked
+   * as an out-of-ownership finding the audit incidentally surfaced; marked
    * `invokable: false` here so the published contract and the live
    * method-dispatch path both say "cataloged, not callable" instead of
    * letting a caller discover the 404 the hard way. Un-mark a method once

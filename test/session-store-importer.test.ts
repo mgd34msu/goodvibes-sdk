@@ -1,7 +1,7 @@
 /**
  * session-store-importer.test.ts
  *
- * One-Platform Wave 1, S1 — the migration importer. Folds ALL THREE legacy store
+ * The migration importer. Folds ALL THREE legacy store
  * classes (299-style companion dir + per-project broker store + stale agent store)
  * into the ONE home store, idempotently, with no session dropped (closed included),
  * and tolerating corrupt files.

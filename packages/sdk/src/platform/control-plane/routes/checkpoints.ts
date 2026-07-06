@@ -1,7 +1,7 @@
 /**
  * routes/checkpoints.ts
  *
- * W3-S2 — `checkpoints.list` / `checkpoints.create` / `checkpoints.diff` /
+ * (see CHANGELOG 1.0.0) — `checkpoints.list` / `checkpoints.create` / `checkpoints.diff` /
  * `checkpoints.restore` gateway-method handlers over the ALREADY
  * daemon-resident `WorkspaceCheckpointManager` (constructed +
  * eagerly-`init()`'d at ../../runtime/services.ts:620, exposed on

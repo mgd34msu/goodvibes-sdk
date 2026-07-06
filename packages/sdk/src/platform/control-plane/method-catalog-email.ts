@@ -42,7 +42,7 @@ const EMAIL_MESSAGE_DETAIL_SCHEMA = objectSchema({
  * connector actions in addition to the direct-socket path. Daemon-backed; the SDK
  * publishes the typed contract surface (no internal handler).
  *
- * W4-A3 (capability-advertisement honesty): none of these four http paths are
+ * Capability-advertisement honesty: none of these four http paths are
  * currently served by the daemon router — there is no /api/email surface at
  * any prefix (confirmed by reading router.ts and every dispatch chain it
  * delegates to; see method-catalog-route-reconcile.ts). The daemon's own 404

@@ -2,7 +2,7 @@
  * @pellux/goodvibes-sdk/platform/presentation
  *
  * The presentation contract — the four genuinely-duplicated presentation
- * tables named by the W4-R1 renderer/input parity audit (goodvibes-tui vs
+ * tables named by the renderer/input parity audit (see CHANGELOG 1.0.0; goodvibes-tui vs
  * goodvibes-agent), hoisted into one pure, dependency-free module per Mike's
  * SDK-boundary rule (machinery needed by 2+ surfaces => SDK):
  *
@@ -15,8 +15,8 @@
  * The TUI is the reference for every value here; dark stays byte-identical to
  * today's TUI. See docs/decisions/2026-07-05-presentation-contract-sdk-extraction.md
  * for the full decision record, including the GLYPHS status-group reconciliation
- * ruling and the consumption plan (agent this wave via R4; TUI swap deferred to
- * a Wave-6 coherence pass).
+ * ruling and the consumption plan (the agent picks this up via R4; the TUI swap is
+ * deferred to a future coherence pass).
  *
  * PURE — no fs, no terminal I/O, no process globals. Painting stays
  * renderer-owned; this module owns only tokens and pure wording functions.

@@ -31,7 +31,7 @@
  * from the render/keystroke hot path — reads are served from the cache
  * synchronously, so the facade adds zero awaits to any interactive path.
  *
- * MOVE NOTE (One-Platform Wave 3, S4): this generalizes cleanly (SDK-clean deps,
+ * MOVE NOTE (One-Platform): this generalizes cleanly (SDK-clean deps,
  * already parameterized via injected local + wireReader, generation-guarded probes)
  * and serves the union goal, so it now lives in the SDK alongside the spine client.
  * That "generalizes cleanly" is ARCHITECTURAL until a second real consumer imports

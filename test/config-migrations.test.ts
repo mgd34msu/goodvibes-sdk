@@ -1,5 +1,5 @@
 /**
- * The Wave-6 danger.daemon removal migration.
+ * The danger.daemon removal migration.
  *
  * Removing `danger.daemon` from the schema means an existing settings.json
  * with an explicit `danger.daemon = false` (the two-year off-switch) would

@@ -1,7 +1,7 @@
 /**
  * thinking-phrases.ts — the rotating "thinking" phrase pool, hoisted from
  * `goodvibes-tui` src/renderer/ui-factory.ts (THINKING_PHRASES). Verbatim
- * identical to the agent's copy today (per the W4-R1 parity audit) — a pure
+ * identical to the agent's copy today (per the renderer/input parity audit) — a pure
  * move, no reconciliation needed.
  *
  * Vaporwave / good-vibes themed; shown by waitingPhrase()'s 'thinking' case

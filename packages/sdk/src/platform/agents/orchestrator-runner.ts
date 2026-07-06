@@ -74,7 +74,7 @@ export interface AgentOrchestratorRunContext {
   readonly emitOrchestrationCompleted: (record: AgentRecord, output: string) => void;
   readonly emitStreamDelta: (recordId: string, content: string, accumulated: string) => void;
   /**
-   * Wave-3 conversation-snapshot bridge (Part C6): register the running
+   * Conversation-snapshot bridge (Part C6): register the running
    * agent's live snapshot accessor with AgentManager so
    * AgentManager.getConversationSnapshot(agentId) can serve a full-fidelity
    * live transcript to a fleet tab. Optional — contexts that don't wire a
@@ -88,7 +88,7 @@ export interface AgentOrchestratorRunContext {
    */
   readonly releaseConversationSource?: ((agentId: string) => void) | undefined;
   /**
-   * Wave-4 cooperative cancellation bridge (wo701): look up the AbortSignal
+   * Cooperative cancellation bridge: look up the AbortSignal
    * an orchestration-engine work item registered for this agent, if any.
    * Threaded into `toolRegistry.execute` opts so opted-in tools (exec,
    * fetch) can abort an in-flight child process/request the instant
@@ -103,7 +103,7 @@ export interface AgentOrchestratorRunContext {
   readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'> | undefined;
   readonly memoryRegistry?: Pick<import('../state/index.js').MemoryRegistry, 'getAll' | 'searchSemantic' | 'vectorStats'> | undefined;
   /**
-   * Wave-5 Stage B — repo code index for per-turn code injection in a spawned agent run.
+   * Stage B — repo code index for per-turn code injection in a spawned agent run.
    * Undefined is a hard no-op. Actual injection additionally requires the
    * `agent-passive-code-injection` flag (DEFAULT OFF) and `isCodeInjectionSettingEnabled`.
    */
@@ -111,12 +111,12 @@ export interface AgentOrchestratorRunContext {
   /** Live gate for the embedder's storage.codeIndexEnabled setting. Undefined defaults to allowed. */
   readonly isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
   /**
-   * Wave-5 Stage B — called once per executed tool (toolName, args, success) so a code-index
+   * Stage B — called once per executed tool (toolName, args, success) so a code-index
    * reindex scheduler can debounce an incremental reindex of touched files. Never awaited.
    */
   readonly onToolExecuted?: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | undefined;
   /**
-   * Wave-5 (wo801, W5.1) per-turn passive-injection knobs. Both optional —
+   * Per-turn passive-injection knobs (see CHANGELOG 0.38.0). Both optional —
    * undefined means "use the derived default" (see turn-knowledge-injection.ts:
    * defaultTurnKnowledgeBudgetTokens / DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR).
    * Setting passiveKnowledgeInjectionBudgetTokens to 0 is the config-level
@@ -511,7 +511,7 @@ export async function runAgentTask(
 
     conversation = new ConversationManager();
     conversation.addUserMessage(record.task);
-    // Wave-3 Part C6 bridge: hand AgentManager a live accessor onto THIS
+    // Conversation-snapshot bridge (Part C6): hand AgentManager a live accessor onto THIS
     // ConversationManager instance so a fleet tab can render a full-fidelity
     // transcript while the agent runs. `activeConversation` is a separate
     // const (rather than closing over the outer `let conversation`) so the
@@ -521,7 +521,7 @@ export async function runAgentTask(
 
     let systemPrompt = buildOrchestratorSystemPrompt(record, undefined, context);
 
-    // Wave-5 (wo801, W5.1) per-turn passive-injection state. `knowledgeIdsAlreadySurfaced`
+    // Per-turn passive-injection state (see CHANGELOG 0.38.0). `knowledgeIdsAlreadySurfaced`
     // seeds from the spawn-time baseline (record.knowledgeInjections, just populated by the
     // call above) and grows with every id a later turn injects, so no record is ever listed
     // twice across the whole run. `priorTurnKnowledgeBlock` is the last successfully-built
@@ -584,7 +584,7 @@ export async function runAgentTask(
       // signal below — deferred until the turn's chat call actually succeeds.
       // See the comment at the emission site for why this can't fire here.
       const drainedSteerMessageIds: string[] = [];
-      // Wave-5 (wo801, W5.1): true when this turn actually added new content to the
+      // True when this turn actually added new content to the
       // conversation the model will see — turn 1 (the initial task) or any steer/directive
       // drained just above. Gates per-turn knowledge re-retrieval: no new input means the
       // evolving-conversation query would be identical to last turn's, so the prior turn's
@@ -634,7 +634,7 @@ export async function runAgentTask(
         );
       }
 
-      // Wave-5 (wo801, W5.1): per-turn passive knowledge injection. Gated on the feature
+      // Per-turn passive knowledge injection. Gated on the feature
       // flag AND on there being new conversation input this turn; otherwise
       // priorTurnKnowledgeBlock (unchanged) is reused. `priorTurnKnowledgeBlock` and
       // `systemPrompt` are combined into a request-time-only string just below
@@ -688,7 +688,7 @@ export async function runAgentTask(
         }
       }
 
-      // Wave-5 (wo801, W5.1): compose the per-turn knowledge block onto the base
+      // Compose the per-turn knowledge block onto the base
       // systemPrompt fresh at EVERY call site (including each chat-retry iteration below),
       // instead of hoisting a single `const turnSystemPrompt` computed once before the
       // retry loop. This matters because the emergency-compaction retry path inside that
@@ -947,7 +947,7 @@ export async function runAgentTask(
   } catch (err) {
     await handleAgentRunFailure(context, record, conversation, session, preAgentProcessIds, err);
   } finally {
-    // Wave-3 Part C6 bridge: release on EVERY exit path (normal completion,
+    // Conversation-snapshot bridge (Part C6): release on EVERY exit path (normal completion,
     // the mid-loop cancellation/MAX_TURNS early returns above, and the catch
     // above) so the live source is never retained past the run and a final
     // snapshot always lands in AgentManager's retention ring. A no-op when

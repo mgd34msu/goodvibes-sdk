@@ -539,8 +539,8 @@ export class DaemonControlPlaneHelper {
         });
         return { status: 200, ok: true, body };
       } catch (error) {
-        // A handler-registered verb (W3-S2: fleet.*, checkpoints.*,
-        // sessions.search) may throw a GatewayVerbError to report an honest
+        // A handler-registered verb (fleet.*, checkpoints.*,
+        // sessions.search — see CHANGELOG 1.0.0) may throw a GatewayVerbError to report an honest
         // caller-error status (400/404) instead of the blanket 500 below —
         // see routes/gateway-verb-error.ts for why this seam is needed.
         if (isGatewayVerbError(error)) {

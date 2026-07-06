@@ -1,10 +1,10 @@
 /**
- * core-verbs.ts — the canonical operator-method verb vocabulary (E8, W6-C3).
+ * core-verbs.ts — the canonical operator-method verb vocabulary (see CHANGELOG 1.0.0).
  *
  * WHY THIS EXISTS: OPERATOR_METHOD_IDS (generated/operator-method-ids.ts) is a
  * flat list of dotted ids (`<namespace...>.<verb>`). Before this file, nothing
  * enumerated or constrained the verb vocabulary — every method-catalog author
- * picked whatever word felt right, which is how the wave-6 audit found three
+ * picked whatever word felt right, which is how an audit found three
  * worst-class collisions on the word "schedule", a redundant lifecycle pair
  * (`enable`/`disable` duplicated by `pause`/`resume`), and an update-verb split
  * (`patch` vs `update`). This module is the forcing function that keeps that
@@ -72,20 +72,21 @@ export const CORE_VERBS = [
 export type CoreVerb = typeof CORE_VERBS[number];
 
 /**
- * Verbs that were retired by a Wave-6 core-verb ruling and must never
- * reappear as a method id's final dotted segment. A verb lands here (instead
- * of just being deleted from history) so the conformance test keeps banning
- * it even if someone re-adds it later without knowing why it was removed.
+ * Verbs that were retired by the core-verb ruling (see CHANGELOG 1.0.0) and
+ * must never reappear as a method id's final dotted segment. A verb lands
+ * here (instead of just being deleted from history) so the conformance test
+ * keeps banning it even if someone re-adds it later without knowing why it
+ * was removed.
  *
  * - `patch` — retired in favor of `update` (automation.jobs.patch ->
  *   automation.jobs.update, routes.bindings.patch -> routes.bindings.update,
- *   watchers.patch -> watchers.update, all W6-C3). `update` is the one
+ *   watchers.patch -> watchers.update). `update` is the one
  *   canonical partial-mutation verb; `patch` mirrored the HTTP-verb name
  *   (PATCH) instead of the operator-method vocabulary in these three places —
  *   the HTTP method on the descriptor is unaffected, only the id's verb tail
  *   changed.
  * - `pause` / `resume` — retired as a byte-identical redundant lifecycle pair
- *   with `enable`/`disable` (automation.jobs.pause/resume -> deleted, W6-C3;
+ *   with `enable`/`disable` (automation.jobs.pause/resume -> deleted;
  *   same `{id, enabled}` output shape, same semantics). A caller-facing
  *   "pause"/"resume" user verb should map onto `disable`/`enable` at the wire.
  */
@@ -164,13 +165,13 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     'install', 'restart', 'start', 'stop', 'uninstall', 'open', 'reload',
   ],
   'legacy-verb-aliases': [
-    // KNOWN, OUT-OF-SCOPE minor inconsistency (not one of Wave-6's ranked
+    // KNOWN, OUT-OF-SCOPE minor inconsistency (not one of the ranked
     // worst-class collisions): mcp.servers.remove means exactly what `delete`
     // means everywhere else in the catalog. Flagged here rather than fixed,
-    // per the Wave-6 scope discipline of fixing only the ranked worst-class
+    // per the scope discipline of fixing only the ranked worst-class
     // items (schedule/memory/tasks/session-orphan/sessions-visibility) —
     // renaming every already-consistent-but-differently-worded single
-    // outlier is explicitly out of scope for this wave (W6-C3 risk #6). A
+    // outlier was explicitly out of scope for this pass. A
     // future pass can fold this into `delete`.
     'remove',
   ],

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Orchestration engine — the model (W4.1, wo701).
+ * Orchestration engine — the model (see CHANGELOG 0.38.0).
  *
  * A phase/work-item pipeline layered OVER (not replacing) WrfcController. The
  * hard departure from WrfcController is pipeline semantics: an item advances
@@ -349,7 +349,7 @@ export interface GateOutcome {
 }
 
 /**
- * Recorded on a PhaseResult when a scoped commit (Wave 6, wo-F item 4)
+ * Recorded on a PhaseResult when a scoped commit (see CHANGELOG 0.38.0)
  * excluded one or more candidate paths because they were already dirty
  * before this engine run launched and this phase never actually touched
  * them (see dirty-guard.ts's excludeUntouchedLaunchResidue). `skipped: true`
@@ -493,7 +493,7 @@ export type OrchestrationEvent =
    */
   | { readonly type: 'orphan-worktree-reconciled'; readonly workstreamId: string; readonly path: string; readonly branch: string; readonly disposition: 'adopted' | 'reported' }
   /**
-   * Emitted once per engine instance (Wave 6, wo-F item 4), right after the
+   * Emitted once per engine instance (see CHANGELOG 0.38.0), right after the
    * launch-time dirty-tree snapshot resolves, ONLY when it is non-empty.
    * Engine-wide, not workstream-scoped — `workstreamId` is absent (unlike
    * every other variant above) because it fires before any workstream is

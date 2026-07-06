@@ -131,14 +131,14 @@ export interface OrchestratorOptions {
    */
   sessionId?: string | undefined;
   /**
-   * Wave-5 (wo805) per-turn passive-injection budget override for the main session,
+   * Per-turn passive-injection budget override for the main session,
    * mirroring agents/orchestrator-runner.ts's `passiveKnowledgeInjectionBudgetTokens`.
    * Omitted uses the derived default (defaultTurnKnowledgeBudgetTokens). `0` is a hard
    * no-op, independent of the feature flag's own state.
    */
   passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   /**
-   * Wave-5 (wo805) per-turn passive-injection relevance-floor override for the main
+   * Per-turn passive-injection relevance-floor override for the main
    * session, mirroring agents/orchestrator-runner.ts's
    * `passiveKnowledgeInjectionRelevanceFloor`. Omitted uses DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR.
    */
@@ -249,7 +249,7 @@ export class Orchestrator {
   private hookDispatcher: HookDispatcherLike | null;
 
   /**
-   * Wave-5 (wo805) per-turn passive-injection state for the MAIN interactive session —
+   * Per-turn passive-injection state for the MAIN interactive session —
    * see core/orchestrator-turn-loop.ts for the retrieval/budget wiring that reads and
    * mutates these. `turnKnowledgeIdsAlreadySurfaced` has no spawn-time baseline (unlike
    * an AgentRecord's `knowledgeInjections`) so it starts empty and grows monotonically
@@ -425,9 +425,9 @@ export class Orchestrator {
   }
 
   /**
-   * Wave-5 (wo805): bounded ring of per-turn passive-injection honesty records for the
+   * Bounded ring of per-turn passive-injection honesty records for the
    * MAIN interactive session — the main-session counterpart to `AgentRecord.turnInjections`
-   * (wo801). There is no AgentRecord for the primary conversation, so this is the exact
+   * on the agent path. There is no AgentRecord for the primary conversation, so this is the exact
    * accessor a `/recall`-style renderer should read as the main-session default when no
    * agent id is given. See agents/turn-knowledge-injection.ts for the record shape and
    * recordTurnInjection for the ring-eviction policy (same bounded size as the agent path).
@@ -967,7 +967,7 @@ export class Orchestrator {
   }
 
   /**
-   * Returns `true` when Wave-5 (wo801/wo805) per-turn passive knowledge injection is
+   * Returns `true` when per-turn passive knowledge injection is
    * active for this session. Shares the SAME `agent-passive-knowledge-injection` flag as
    * the agent path (agents/orchestrator-runner.ts) rather than a sibling main-session
    * flag — the flag's own description already promises "the EVOLVING main-session
@@ -995,7 +995,7 @@ export class Orchestrator {
   }
 
   /**
-   * Wave-5 (wo805): ids never to re-surface in a later per-turn knowledge block. The main
+   * Ids never to re-surface in a later per-turn knowledge block. The main
    * session has no spawn-time `AgentRecord.knowledgeInjections` baseline, so this starts
    * empty and grows monotonically for the life of the Orchestrator.
    */
@@ -1003,17 +1003,17 @@ export class Orchestrator {
     return [...this.turnKnowledgeIdsAlreadySurfaced];
   }
 
-  /** Wave-5 (wo805): mark ids as surfaced so they are never listed twice this session. */
+  /** Mark ids as surfaced so they are never listed twice this session. */
   private addInjectedKnowledgeIds(ids: readonly string[]): void {
     for (const id of ids) this.turnKnowledgeIdsAlreadySurfaced.add(id);
   }
 
-  /** Wave-5 (wo805): append one honesty record to the bounded ring behind {@link getTurnInjections}. */
+  /** Append one honesty record to the bounded ring behind {@link getTurnInjections}. */
   private recordTurnKnowledgeInjection(record: TurnInjectionRecord): void {
     this.turnInjectionRing = recordTurnInjection(this.turnInjectionRing, record);
   }
 
-  /** Wave-5 (wo805): monotonic per-Orchestrator-lifetime sequence number for TurnInjectionRecord.turn. */
+  /** Monotonic per-Orchestrator-lifetime sequence number for TurnInjectionRecord.turn. */
   private nextTurnKnowledgeSequence(): number {
     return ++this.turnKnowledgeSequence;
   }

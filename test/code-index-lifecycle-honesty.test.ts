@@ -1,5 +1,5 @@
 /**
- * Wave-5 (W5.3 Stage A, review fix round) — CodeIndexStore lifecycle honesty:
+ * Stage A review fix round — CodeIndexStore lifecycle honesty:
  *
  *  1. reroot()-during-build race: an in-flight buildFull() started against
  *     tree A must ABORT (epoch check after every await) when the store is

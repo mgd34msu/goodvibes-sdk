@@ -1,5 +1,5 @@
 /**
- * W3-S3 — sessions.detach + per-hunk approvals, proven over a REAL bootDaemon.
+ * sessions.detach + per-hunk approvals, proven over a REAL bootDaemon.
  *
  * Follows the boot-daemon-factory R1 pattern: a live daemon on an ephemeral
  * port, token auth, exercised over HTTP including its honest 4xx shapes.
@@ -200,7 +200,7 @@ describe('per-hunk approvals over HTTP', () => {
   });
 
   // -------------------------------------------------------------------------
-  // W3-S1 invoke-gate interplay (landing integration): the generic invoke
+  // Invoke-gate interplay (landing integration): the generic invoke
   // endpoint POST /api/control-plane/methods/{id}/invoke validates the body
   // against our typed inputSchemas BEFORE delegating to the HTTP route. These
   // pins record WHICH validation source fires on each failure mode so the

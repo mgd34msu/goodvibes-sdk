@@ -1,6 +1,6 @@
 /**
  * oauth-types.ts — the shared type surface for the calendar OAuth + API connector
- * layer (One-Platform Wave 4, A10). Sits alongside A9's .ics reader/subscription
+ * layer (see CHANGELOG 1.0.0, A10). Sits alongside A9's .ics reader/subscription
  * store in the same module: A9 owns file/feed reading; this half owns authenticated
  * provider connectivity (Google Calendar API v3, Microsoft Graph) over OAuth 2.0.
  *

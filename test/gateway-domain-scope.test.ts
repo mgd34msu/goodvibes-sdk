@@ -1,5 +1,5 @@
 /**
- * gateway-domain-scope.test.ts (W3-S1, Part A)
+ * gateway-domain-scope.test.ts
  *
  * The SSE/WS broadcast fan-out (ControlPlaneGateway.publishEvent) must reach only
  * the clients whose subscribed domains include the event's domain — WITHOUT

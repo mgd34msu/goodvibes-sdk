@@ -77,7 +77,7 @@ export type ToolExecutionDeps = {
   sessionId: string;
   emitterContext: EmitterContextFactory;
   /**
-   * Wave-5 Stage B: called once per executed tool with (toolName, resolved args, success) so a
+   * Stage B: called once per executed tool with (toolName, resolved args, success) so a
    * code-index reindex scheduler can debounce an incremental reindex of touched files. Invoked
    * for BOTH success and failure (the scheduler no-ops on failure); never awaited — it must not
    * block the tool-result path.

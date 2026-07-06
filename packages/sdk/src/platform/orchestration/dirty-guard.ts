@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Dirty-residue guard (Wave 6, wo-F item 4) — prevents an orchestration
+ * Dirty-residue guard (see CHANGELOG 0.38.0) — prevents an orchestration
  * engine run's scoped commit from sweeping in uncommitted changes that were
  * ALREADY sitting in the working tree before this engine launched (typically
  * residue left behind by a previously killed run sharing the same

@@ -1,7 +1,7 @@
 /**
  * w6-c3-core-verb-rename-daemon-wire.test.ts
  *
- * W6-C3 — bootDaemon-based proof (real HTTP, ephemeral port, isolated home)
+ * bootDaemon-based proof (real HTTP, ephemeral port, isolated home)
  * that the core-verb renames actually work end to end over the wire, not
  * just in the generated catalog: the renamed/new ids are invokable and
  * behave identically to their pre-rename counterparts, and the retired ids

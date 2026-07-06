@@ -1,11 +1,11 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Budget enforcement (Wave 4, wo701). Enforcement point is BEFORE the
+ * Budget enforcement (see CHANGELOG 0.38.0). Enforcement point is BEFORE the
  * scheduler claims an item into a new phase (i.e. before a new agent spawn)
  * — never mid-item. An in-flight item's phase always runs to completion even
  * if a later check here would refuse a NEW claim: honest semantics, never a
- * mid-run kill on budget (see design doc (e)).
+ * mid-run kill on budget.
  *
  * Usage is summed directly from WorkItem.usage, which phase-runner.ts
  * populates from the SAME `priceUsage` function threaded through

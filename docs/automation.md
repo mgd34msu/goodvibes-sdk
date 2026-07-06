@@ -33,7 +33,7 @@ Operator methods:
 Automation config controls enablement, max concurrent runs, run history,
 default timeout, catch-up window, failure cooldown, and delete-after-run.
 
-> **Wave-6 core-verb pass (W6-C3):** `automation.jobs.patch` was renamed to
+> **Core-verb rename (see CHANGELOG 1.0.0):** `automation.jobs.patch` was renamed to
 > `automation.jobs.update` — the canonical verb is `update`, not `patch`. The
 > separate `automation.jobs.pause` / `automation.jobs.resume` methods were
 > retired: they were a byte-identical redundant lifecycle pair with
@@ -55,7 +55,7 @@ The schedule endpoints manage host-owned schedule records:
 - `automation.schedules.disable`
 - `automation.schedules.run`
 
-> **Wave-6 core-verb pass (W6-C3):** this family was renamed from the bare
+> **Core-verb rename (see CHANGELOG 1.0.0):** this family was renamed from the bare
 > `schedules.*` (no namespace prefix) to `automation.schedules.*`. The bare
 > name collided with two unrelated things that also used the word "schedule":
 > the agent's own reminder/routine tooling (which called these methods under

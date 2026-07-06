@@ -1,13 +1,13 @@
 /**
- * Wave-5 (wo805) — main-session integration: per-turn passive knowledge injection wiring
+ * Main-session integration: per-turn passive knowledge injection wiring
  * inside `executeOrchestratorTurnLoop` (core/orchestrator-turn-loop.ts).
  *
- * wo801 (W5.1) wired this feature into the AGENT path only
+ * An earlier change wired this feature into the AGENT path only
  * (agents/orchestrator-runner.ts runAgentTask) — the TUI's MAIN interactive session runs a
  * completely separate turn loop that never called buildPerTurnKnowledgeInjection at all.
  * This suite drives that main-loop turn loop directly (it accepts a fully mockable
  * `OrchestratorTurnLoopContext`, so no `Orchestrator` construction is needed — the same
- * "pure function over an injected context" seam wo801's own tests exploit for
+ * "pure function over an injected context" seam the agent-path's own tests exploit for
  * runAgentTask), covering the brief's integration test matrix:
  *  - a relevant memory record composes onto the systemPrompt actually sent to
  *    provider.chat(), and a TurnInjectionRecord is handed to
@@ -48,7 +48,7 @@ import type { TurnKnowledgeRegistrySource, TurnInjectionRecord } from '../packag
 
 const BASE_SYSTEM_PROMPT = 'You are the goodvibes assistant.';
 // getSystemPrompt() output is always passed through appendGoodVibesRuntimeAwarenessPrompt
-// at the call site (pre-existing, unrelated to wo805) before any per-turn knowledge block
+// at the call site (pre-existing, unrelated to this per-turn knowledge injection feature) before any per-turn knowledge block
 // is composed onto it — this is the "no injection happened" baseline every "byte-identical"
 // assertion in this suite compares against, not the raw BASE_SYSTEM_PROMPT.
 const EXPECTED_BASE_PROMPT = appendGoodVibesRuntimeAwarenessPrompt(BASE_SYSTEM_PROMPT);

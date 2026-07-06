@@ -1,5 +1,5 @@
 /**
- * W4.1 (wo701) — OrchestrationEngine: pipeline scheduling, dynamic phase
+ * OrchestrationEngine: pipeline scheduling, dynamic phase
  * insertion, budget refusal, resume prefix replay, cancellation, and
  * primitive reuse (phantom guard + scoped commit).
  */

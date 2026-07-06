@@ -1,5 +1,5 @@
 /**
- * W2.1 — Live process registry (packages/sdk/src/platform/runtime/fleet/).
+ * Live process registry (packages/sdk/src/platform/runtime/fleet/).
  *
  * Covers the brief's test matrix with stub managers:
  *  1. Per-kind adapter mapping (agent/chain/subtask/workflow/trigger/schedule/watcher/background-process).
@@ -267,7 +267,7 @@ describe('fleet registry — adapter mapping', () => {
     registry.dispose();
   });
 
-  // W3.1 Part A2: terminationKind splits the single 'cancelled' status into
+  // terminationKind splits the single 'cancelled' status into
   // two display states without touching `status` itself.
   test('cancelled agent: terminationKind splits killed vs interrupted; missing/unknown kind defaults to killed', () => {
     const agents = [
@@ -371,7 +371,7 @@ describe('fleet registry — adapter mapping', () => {
     registry.dispose();
   });
 
-  // W3.1 Part A4: chain terminal truth. WrfcController has no cancel/abort of
+  // Chain terminal truth: WrfcController has no cancel/abort of
   // its own, so a cascade kill (registry.ts kill('chain:<id>')) only cancels
   // the member agents — chain.state never leaves whatever active phase it was
   // in when killed. Before the fix this rendered 'executing-tool' forever
@@ -511,7 +511,7 @@ describe('fleet registry — adapter mapping', () => {
     expect(trgNode.capabilities.resumable).toBe(false); // already armed — nothing to resume
     const schNode = nodeById(registry, 'schedule:nightly');
     expect(schNode.kind).toBe('schedule');
-    // Wave 6 (wo-F item d2): disabled is 'paused', NOT 'killed' — the entry
+    // A disabled schedule entry is 'paused', NOT 'killed' — the entry
     // still exists and ScheduleManager.enable() can re-arm it.
     expect(schNode.state).toBe('paused');
     expect(schNode.capabilities.resumable).toBe(true);
@@ -1009,7 +1009,7 @@ describe('fleet registry — subscribe/tick/dispose', () => {
 // ── 8. Control dispatch ───────────────────────────────────────────────────────
 
 describe('fleet registry — control dispatch', () => {
-  // W3.1 Part A3: registry routing must pass the termination intent through
+  // Registry routing must pass the termination intent through
   // to AgentManager.cancel(id, kind) — kill() always 'kill' (direct agent
   // kill, and chain/subtask cascade via cancelAgents), interrupt() always
   // 'interrupt'. Spy on the exact args cancel() receives.
@@ -1244,7 +1244,7 @@ describe('fleet registry — control dispatch', () => {
   });
 });
 
-// ── 9. Steer (Wave-3, W3.2) ────────────────────────────────────────────────
+// ── 9. Steer ───────────────────────────────────────────────────────────────
 
 interface FakeSend {
   send: (fromId: string, toId: string, content: string, opts?: unknown) => boolean;

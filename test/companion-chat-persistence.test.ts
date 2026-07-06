@@ -365,7 +365,7 @@ describe('P5: persistence failures are observable', () => {
 
 // ---------------------------------------------------------------------------
 // P6: deleteSession never loses a race against closeSession's fire-and-forget
-// persist save (Wave-5 F1 regression). closeSession schedules its save via
+// persist save (regression). closeSession schedules its save via
 // _persist() without awaiting it, so a caller that immediately follows close
 // with delete (the webui's normal close-then-delete sequence) can have that
 // save's write+rename still in flight when the delete would unlink. Forcing

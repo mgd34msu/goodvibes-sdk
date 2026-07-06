@@ -1,7 +1,7 @@
 /**
  * session-union-cache-daemon-integration.test.ts
  *
- * W3-S4 acceptance evidence: drives the SDK SessionUnionCache against a REAL
+ * Acceptance evidence for the extracted SDK session-spine read facade: drives the SDK SessionUnionCache against a REAL
  * bootDaemon over a real HttpTransport (no mocked wire). Proves the adopted-mode
  * union genuinely includes a session that exists ONLY on the daemon (registered by
  * a different surface), which the local reader alone would miss — and that losing
@@ -114,7 +114,7 @@ describe('SDK SessionUnionCache against a real bootDaemon (adopted-mode union)',
 });
 
 // ---------------------------------------------------------------------------
-// D-TUI-1 (Wave-3 replay): SessionUnionCache.listSessions() was counting the
+// Regression coverage: SessionUnionCache.listSessions() was counting the
 // adopting surface's OWN session twice — once from the local broker's record,
 // once from its wire-mirrored copy — because the merge deduped on raw
 // `record.id` equality, which silently assumed the local reader's own id and

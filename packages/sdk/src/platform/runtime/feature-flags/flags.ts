@@ -404,9 +404,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     runtimeToggleable: true,
   },
   {
-    // NOTE: control-plane-gateway is the ONE tier-10 flag that defaults ON (One-Platform
-    // Wave 1). A stock daemon (no config) must be able to stream companion chat over SSE;
-    // leaving this OFF made a fresh daemon return 503 on the live-stream path (the W1
+    // NOTE: control-plane-gateway is the ONE tier-10 flag that defaults ON (One-Platform).
+    // A stock daemon (no config) must be able to stream companion chat over SSE;
+    // leaving this OFF made a fresh daemon return 503 on the live-stream path (the
     // "stock daemon is dead" bug).
     //
     // HONEST SURFACE STATEMENT: flipping this default ON DOES expose surface — just not

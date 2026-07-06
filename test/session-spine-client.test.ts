@@ -1,7 +1,7 @@
 /**
  * session-spine-client.test.ts
  *
- * Unit evidence for the extracted SDK session-spine core (W3-S4). Proves the ONE
+ * Unit evidence for the extracted SDK session-spine core. Proves the ONE
  * core drives identically through BOTH real transport shapes:
  *  - a TYPED adapter (TUI-style: wraps a typed sessions client, resolve->ok /
  *    throw->offline), and
@@ -416,7 +416,7 @@ describe('SessionSpineClient — activation modes', () => {
 });
 
 // ---------------------------------------------------------------------------
-// mirroredSessionIds (D-TUI-1 fix): the CANONICAL "which wire rows are mine"
+// mirroredSessionIds (self-mirror identity fix): the CANONICAL "which wire rows are mine"
 // set — what SessionUnionCache consults instead of assuming a caller's local
 // reader id happens to match what THIS client actually sent to the wire.
 // ---------------------------------------------------------------------------

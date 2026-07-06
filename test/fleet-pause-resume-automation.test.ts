@@ -1,6 +1,6 @@
 /**
- * Wave 6, wo-F items d2 (pause<->resume through the fleet registry) and d4
- * (/schedule automation jobs into the fleet tree).
+ * Pause<->resume through the fleet registry, and /schedule automation jobs
+ * surfacing into the fleet tree.
  */
 import { describe, expect, test, spyOn, type Mock } from 'bun:test';
 import { createProcessRegistry } from '../packages/sdk/src/platform/runtime/fleet/index.js';

@@ -1,7 +1,7 @@
 # Contract regeneration recipe — adding an operator namespace end to end
 
 This is the **load-bearing, follow-it-cold** procedure for adding a new operator method or
-namespace (e.g. Wave-3 `fleet.*`, `checkpoints.*`) to the SDK's control-plane contract and
+namespace (e.g. `fleet.*`, `checkpoints.*`) to the SDK's control-plane contract and
 having it reachable across **every** transport, documented, and gated.
 
 The checked-in contract artifacts are **generated, never hand-edited**. You describe a method

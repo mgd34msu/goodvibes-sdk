@@ -225,7 +225,7 @@ describe('startHostServices daemon lifecycle', () => {
     // host enters the port-free daemon branch. daemon.embedInProcess=true here
     // asserts the branch is reached via the embedded path (the detached-default
     // path is covered separately below). The deprecated danger.daemon alias that
-    // used to override this was removed in Wave 6 (see config-migrations.test.ts
+    // used to override this was removed (see config-migrations.test.ts
     // for the migration that preserves an existing explicit off-switch).
     const defaultOnConfig: HostServicesConfig = {
       get: (key) => {

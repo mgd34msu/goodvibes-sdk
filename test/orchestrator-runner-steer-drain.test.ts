@@ -1,5 +1,5 @@
 /**
- * W3.2 — orchestrator-runner steer drain (Wave-3, SDK half).
+ * Orchestrator-runner steer drain, SDK half.
  *
  * Drives the REAL per-agent turn loop (`runAgentTask`, orchestrator-runner.ts)
  * against a scripted fake LLMProvider, with a real AgentMessageBus, a real
@@ -15,9 +15,9 @@
  *  - `communication.consumed` fires exactly once, carrying the queued
  *    messageId, the agentId, and the turn it was drained on.
  *  - A steer queued after the agent has taken its last turn is never drained
- *    and never emits consumed (the honest "stranded" case — risk 2 in the
- *    W3.2 brief; resolving the dangling badge is the TUI's job, not the
- *    SDK's, but the SDK must not lie about consumption that never happened).
+ *    and never emits consumed (the honest "stranded" case; resolving the
+ *    dangling badge is the TUI's job, not the SDK's, but the SDK must not
+ *    lie about consumption that never happened).
  */
 import { describe, expect, test, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';

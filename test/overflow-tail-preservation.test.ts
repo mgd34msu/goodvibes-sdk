@@ -1,7 +1,7 @@
 /**
  * overflow-tail-preservation.test.ts
  *
- * Regression coverage for W0.1 secondary fix #3: OverflowHandler.handle()
+ * Regression coverage: OverflowHandler.handle()
  * truncation must preserve the tail (not just the head). Test runners print
  * their failure summary at the very end of output, so a marker placed near
  * the end of long content must survive truncation.

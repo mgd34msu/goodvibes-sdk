@@ -21,7 +21,7 @@ export function codeIndexNodeId(): string {
  * background-process): liveness rides the registry tick. An index build has
  * no pid, so it is NOT a 'background-process' node (ProcessManager is
  * shell/OS-process-only) — it gets its own ProcessKind, mirroring the
- * Wave-4 orchestrationEngine-dep precedent.
+ * orchestrationEngine-dep precedent.
  */
 export function adaptCodeIndex(service: CodeIndexProcessSource, now: number): ProcessNode {
   const building = service.isBuilding();

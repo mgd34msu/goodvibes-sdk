@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Phase-runner (Wave 4, wo701) — runs one WorkItem through one Phase: spawn
+ * Phase-runner (see CHANGELOG 0.38.0) — runs one WorkItem through one Phase: spawn
  * agent, await completion, verify claims, run gates, commit, cleanup.
  *
  * REUSES the hardened WRFC primitives verbatim (same functions WrfcController
@@ -27,7 +27,7 @@
  * itself has either. This module therefore mirrors WrfcController's ACTUAL
  * (shared-directory) behavior rather than the brief's aspirational
  * per-item-isolated-worktree fan-out; true fan-out isolation is a valuable,
- * separately-scoped follow-up (see the work-order report).
+ * separately-scoped follow-up.
  *
  * SECOND REALITY-WINS DIVERGENCE: AgentManager.spawn()'s root-spawn
  * normalization (tools/agent/wrfc-batch-policy.ts isRootReviewRoleTask) force
@@ -107,8 +107,8 @@ export interface PhaseRunnerDeps {
   readonly priceUsage?: ((model: string | undefined, usage: WorkItemUsage) => number | null) | undefined;
   readonly skipClaimVerification?: boolean | undefined;
   /**
-   * The dirty-tree snapshot taken synchronously at engine launch (Wave 6,
-   * wo-F item 4 — see dirty-guard.ts). Absent (undefined) degrades to
+   * The dirty-tree snapshot taken synchronously at engine launch (see
+   * CHANGELOG 0.38.0 and dirty-guard.ts). Absent (undefined) degrades to
    * today's behavior: no exclusion, every candidate path is committed.
    */
   readonly launchDirtySnapshot?: DirtyLaunchSnapshot | undefined;

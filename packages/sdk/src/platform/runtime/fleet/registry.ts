@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Live process registry (W2.1) — one queryable + subscribable aggregation
+ * Live process registry — one queryable + subscribable aggregation
  * surface over the already-composed runtime managers. ZERO new store state:
  * every query is an aggregate-on-read over the managers' in-memory maps, and
  * the only registry-owned mutable state is the agent activity side-table fed
@@ -92,7 +92,7 @@ export interface ProcessRegistryDeps {
   readonly agentManager: Pick<AgentManager, 'list' | 'cancel'>;
   readonly wrfcController: Pick<WrfcController, 'listChains'>;
   /**
-   * Optional (Wave 4, wo701): folds workstream/phase/work-item nodes into
+   * Optional: folds workstream/phase/work-item nodes into
    * the fleet, nested workstream -> phase -> work-item, mirroring the
    * wrfc-chain/subtask nesting. Without this dep the registry degrades to
    * exactly today's behavior — no orchestration nodes, no new capability.
@@ -110,23 +110,23 @@ export interface ProcessRegistryDeps {
   readonly watcherRegistry: Pick<WatcherRegistry, 'list' | 'stopWatcher'>;
   readonly workflow: {
     readonly workflowManager: Pick<WorkflowManager, 'list' | 'cancel'>;
-    /** `enable` (Wave 6, wo-F item d2) backs ProcessRegistry.resume() — the inverse of `disable`'s interrupt/pause. */
+    /** `enable` backs ProcessRegistry.resume() — the inverse of `disable`'s interrupt/pause. */
     readonly triggerManager: Pick<TriggerManager, 'list' | 'remove' | 'disable' | 'enable'>;
     readonly scheduleManager: Pick<ScheduleManager, 'list' | 'remove' | 'disable' | 'enable'>;
   };
   /** Optional: awaiting-approval derivation. Non-control-plane runtimes still build a fleet. */
   readonly approvalBroker?: Pick<ApprovalBroker, 'listApprovals'> | undefined;
-  /** Optional: populates ProcessNode.sessionRef.sessionId (Wave-3 tab attach point). */
+  /** Optional: populates ProcessNode.sessionRef.sessionId (tab attach point). */
   readonly sessionBroker?: Pick<SharedSessionBroker, 'listSessions'> | undefined;
   /**
-   * Optional: the repo source-tree code index (Wave-5 wo802, W5.3 Stage A).
+   * Optional: the repo source-tree code index (Stage A).
    * When present, its build/idle state surfaces as a single 'code-index'
    * ProcessNode. Without this dep the fleet degrades to exactly today's
    * behavior — zero code-index nodes, no new capability.
    */
   readonly codeIndexService?: CodeIndexProcessSource | undefined;
   /**
-   * Optional (Wave 6, wo-F item d4): folds `/schedule` automation jobs
+   * Optional: folds `/schedule` automation jobs
    * (platform/automation, a SEPARATE subsystem from the workflow-tool's
    * ScheduleManager above) into the fleet as 'schedule'-kind nodes — see
    * adapters/automation.ts. Without this dep the fleet degrades to exactly
@@ -134,7 +134,7 @@ export interface ProcessRegistryDeps {
    */
   readonly automationManager?: Pick<AutomationManager, 'listJobs' | 'setEnabled' | 'removeJob'> | undefined;
   /**
-   * Optional: backs `steer()` and the `steerable` capability (Wave-3). The
+   * Optional: backs `steer()` and the `steerable` capability. The
    * bus already exists in the composed runtime and already feeds every
    * in-process agent's per-turn inbox drain (orchestrator-runner.ts) — this
    * just hands the registry a narrow `send`-only pick of it. Without this
@@ -537,8 +537,8 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
   }
 
   /**
-   * Fire-and-forget an AutomationManager async control call (Wave 6, wo-F
-   * item d4): the registry's own kill/interrupt/resume verbs are
+   * Fire-and-forget an AutomationManager async control call: the
+   * registry's own kill/interrupt/resume verbs are
    * synchronous, but AutomationManager.removeJob/setEnabled are Promises —
    * dispatch without awaiting rather than making every registry verb async,
    * but never let a rejection vanish silently. The next tick's assemble()
@@ -689,7 +689,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
   }
 
   /**
-   * Wave 6 (wo-F item d2): re-arm a `paused` trigger/schedule via the owning
+   * Re-arm a `paused` trigger/schedule via the owning
    * manager's `enable()` — the inverse of interrupt()'s disable. Re-assemble
    * + dispatch-by-kind mirrors interrupt()/kill()'s own shape exactly (same
    * synchronous, no-owned-state pattern as every other control verb here).

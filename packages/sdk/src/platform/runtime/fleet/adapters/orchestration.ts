@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Orchestration-engine fleet adapters (Wave 4, wo701) — Workstream/Phase/
+ * Orchestration-engine fleet adapters — Workstream/Phase/
  * WorkItem -> ProcessNode, mirroring adapters/wrfc.ts's chain/subtask
  * pattern: a workstream is a root node (no native cancel of its own, so kill
  * is DERIVED — cascades AgentManager.cancel over every agent any item ever

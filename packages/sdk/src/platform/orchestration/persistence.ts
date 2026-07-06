@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Persistence (Wave 4, wo701) — mirrors the WrfcController chain seams
+ * Persistence (see CHANGELOG 0.38.0) — mirrors the WrfcController chain seams
  * exactly: serializeChain:323 / deserializeChain:345 (including the
  * future-schemaVersion-reject guard at :364) / importChain:402. Writes to
  * `.goodvibes/orchestration/<workstreamId>.json` — SEPARATE from the TUI's
@@ -183,7 +183,7 @@ export function attachDebouncedWriter(
   }
 
   const unsubscribe = subscribe((event) => {
-    // 'dirty-tree-at-launch' (Wave 6, wo-F item 4) is engine-wide, not
+    // 'dirty-tree-at-launch' (see CHANGELOG 0.38.0) is engine-wide, not
     // workstream-scoped — it has no workstreamId to schedule a write for.
     if (event.type === 'dirty-tree-at-launch') return;
     scheduleWrite(event.workstreamId);

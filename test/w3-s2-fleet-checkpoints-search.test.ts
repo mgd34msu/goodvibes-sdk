@@ -1,7 +1,7 @@
 /**
  * w3-s2-fleet-checkpoints-search.test.ts
  *
- * W3-S2 bootDaemon parity proof: fleet.snapshot / fleet.list / checkpoints.* /
+ * bootDaemon parity proof for fleet.snapshot / fleet.list / checkpoints.* /
  * sessions.search, each proven over a REAL live daemon (bootDaemon, port 0,
  * isolated home) via the generic gateway-method invoke endpoint
  * `POST /api/control-plane/methods/{methodId}/invoke` — mirrors the R1
@@ -17,7 +17,7 @@
  * over the real (here: empty) ProcessRegistry — correct shape, filtering,
  * pagination, and honest 400s — which is the full surface this brief owns;
  * ProcessRegistry's own aggregation from live sources is pre-existing,
- * already-tested machinery from an earlier wave (W2.1), not part of this
+ * already-tested machinery from an earlier wave, not part of this
  * verb-registration brief.
  */
 
@@ -429,7 +429,7 @@ describe('W3-S2 — access gates', () => {
 });
 
 describe('W3-S2 — event-emission honesty (verified-not-applicable for EVENT_DOMAIN)', () => {
-  // The W3-S2 landed scope is read/lifecycle verbs with NO broadcast events:
+  // The landed scope for this verb set is read/lifecycle verbs with NO broadcast events:
   // the handlers call the managers and return; ProcessRegistry.subscribe() is
   // an in-registry callback (explicitly not a runtime-bus event contract) and
   // WorkspaceCheckpointManager only SUBSCRIBES to bus events for automatic

@@ -1,7 +1,7 @@
 /**
  * w5-s1-delete-daemon-wire.test.ts
  *
- * W5-S1 — DELETE-MEANS-DELETE, proven over a REAL bootDaemon (isolated home,
+ * DELETE-MEANS-DELETE, proven over a REAL bootDaemon (isolated home,
  * ephemeral port, token auth — the boot-daemon-factory R1 pattern).
  *
  * PART A — companion-chat close vs delete:

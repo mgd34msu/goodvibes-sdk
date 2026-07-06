@@ -1,7 +1,7 @@
 /**
  * gateway-method-not-invokable.test.ts
  *
- * F5 (Wave-4 review-fix): codifies the `invokable` flag's real semantics. It is
+ * Review-fix: codifies the `invokable` flag's real semantics. It is
  * enforced on the generic HTTP/WS method-dispatch path
  * (`validateGatewayInvocation` / `invokeGatewayMethodCall` in
  * ../packages/sdk/src/platform/daemon/control-plane.ts) but `GatewayMethodCatalog`'s

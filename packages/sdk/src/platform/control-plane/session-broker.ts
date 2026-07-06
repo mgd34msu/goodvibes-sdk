@@ -345,7 +345,7 @@ export class SharedSessionBroker {
 
   /**
    * Permanently remove a shared session record and its queued messages/inputs
-   * from the home-scoped store (W5-S1: a real hard-delete verb, distinct from
+   * from the home-scoped store (see CHANGELOG 1.0.0: a real hard-delete verb, distinct from
    * `closeSession` — closed sessions are HISTORY and are never touched by this
    * path unless explicitly asked). Requires the session to already be closed:
    * deleting a still-active session returns `'active'` so the caller can

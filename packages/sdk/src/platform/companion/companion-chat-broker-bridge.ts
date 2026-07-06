@@ -37,6 +37,6 @@ export interface CompanionBrokerRegisterInput {
 export interface CompanionSessionBrokerBridge {
   register(input: CompanionBrokerRegisterInput): Promise<unknown>;
   closeSession(sessionId: string): Promise<unknown>;
-  /** Hard-remove the mirrored shared-session record (W5-S1: companion delete is a real removal, not a close). */
+  /** Hard-remove the mirrored shared-session record (see CHANGELOG 1.0.0: companion delete is a real removal, not a close). */
   deleteSession(sessionId: string): Promise<unknown>;
 }

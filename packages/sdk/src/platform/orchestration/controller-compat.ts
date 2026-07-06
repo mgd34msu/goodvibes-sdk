@@ -1,9 +1,8 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Controller-compat (Wave 4, wo701) — stage 1 of the 3-stage WrfcController
- * migration (see design doc (g) and the work-order report's design-
- * divergences section).
+ * Controller-compat (see CHANGELOG 0.38.0) — stage 1 of the 3-stage WrfcController
+ * migration.
  *
  * `fromChainSpec()` produces the canned two-phase engineer->review
  * WORKSTREAM SPEC that a `WrfcController.createChain(ownerRecord)` call

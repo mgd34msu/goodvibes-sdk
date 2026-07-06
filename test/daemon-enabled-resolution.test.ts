@@ -1,9 +1,9 @@
 /**
  * daemon.enabled default-on ruling.
  *
- * Wave 2 One-Platform ruling: the local session daemon runs BY DEFAULT
- * (`daemon.enabled`, default true, loopback-bound). Wave 6 removed the
- * deprecated `danger.daemon` alias from the schema (a config migration in
+ * One-Platform ruling: the local session daemon runs BY DEFAULT
+ * (`daemon.enabled`, default true, loopback-bound). The deprecated
+ * `danger.daemon` alias was removed from the schema (a config migration in
  * ConfigManager.load honors any existing explicit `danger.daemon = false`
  * by rewriting it onto `daemon.enabled = false` — see
  * config-migrations.test.ts for that contract).

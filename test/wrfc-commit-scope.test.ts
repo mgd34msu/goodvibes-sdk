@@ -1,5 +1,5 @@
 /**
- * W0.3 — wrfc.commitScope config surface + readWrfcConfig/getWrfcCommitScope resolution.
+ * wrfc.commitScope config surface + readWrfcConfig/getWrfcCommitScope resolution.
  *
  * The behavioral (auto-commit staging) tests live in wrfc-controller.test.ts and
  * agent-worktree.test.ts. This file covers just the config schema/plumbing:

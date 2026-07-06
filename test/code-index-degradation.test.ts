@@ -1,5 +1,5 @@
 /**
- * Wave-5 (wo802, W5.3 Stage A) — no-embedding-provider degradation.
+ * Repo code index (Stage A) — no-embedding-provider degradation.
  *
  * The registry ALWAYS has HASHED_MEMORY_EMBEDDING_PROVIDER as its default —
  * there is never literally "no provider" — but the hashed one is a
@@ -9,9 +9,9 @@
  * nagging), and a real provider flips retrieval quality to 'semantic' with no
  * further prompting.
  *
- * Stage B (auto-injection into coding turns) is explicitly out of scope for
- * this work order — see the wo802 report for the staging decision — so this
- * suite does not exercise selectCodeContextForTask (it does not exist yet).
+ * Stage B (auto-injection into coding turns) is explicitly deferred — see the
+ * repo code index's staging decision — so this suite does not exercise
+ * selectCodeContextForTask (it does not exist yet).
  */
 import { describe, expect, test, afterEach } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';

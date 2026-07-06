@@ -1576,7 +1576,7 @@ describe('WrfcController — state machine', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Wave 6, wo-F item d5 — zombie chain reap at rehydrate (importChain)
+// Zombie chain reap at rehydrate (importChain)
 // ---------------------------------------------------------------------------
 
 function makeImportableChain(overrides: Partial<WrfcChain> & { id: string }): WrfcChain {

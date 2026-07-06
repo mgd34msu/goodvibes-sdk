@@ -1,5 +1,5 @@
 /**
- * Wave-5 Stage B — turn-knowledge-injection.ts code-injection unit suite.
+ * Stage B — turn-knowledge-injection.ts code-injection unit suite.
  *
  * buildPerTurnKnowledgeInjection now optionally merges repo code-index hits into the
  * SAME token budget / relevance floor as memory records, tagging each injected line with

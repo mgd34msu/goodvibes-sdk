@@ -1,8 +1,8 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Per-work-item cancellation registry (Wave 4, wo701) — the deferred W0.1
- * cooperative-cancellation piece.
+ * Per-work-item cancellation registry (see CHANGELOG 0.38.0) — closing a
+ * previously deferred cooperative-cancellation gap.
  *
  * One AbortController per in-flight WorkItem. `engine.kill(itemId)` aborts
  * the controller here AND calls `agentManager.cancel(agentId, 'kill')` — the

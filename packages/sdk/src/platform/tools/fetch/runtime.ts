@@ -23,7 +23,7 @@ export interface FetchRuntimeDeps {
   readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null | undefined;
   readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
   /**
-   * Wave-4 cooperative cancellation (wo701): an externally-supplied signal,
+   * Cooperative cancellation: an externally-supplied signal,
    * combined with each request's own per-URL timeout signal via
    * `AbortSignal.any`. Optional and additive — omitted, behavior is
    * unchanged from before this field existed.

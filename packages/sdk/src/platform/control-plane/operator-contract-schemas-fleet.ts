@@ -1,7 +1,7 @@
 /**
  * operator-contract-schemas-fleet.ts
  *
- * W3-S2 — contract schemas for fleet.*, checkpoints.*, and sessions.search.
+ * (see CHANGELOG 1.0.0) — contract schemas for fleet.*, checkpoints.*, and sessions.search.
  * Split out of operator-contract-schemas-runtime.ts (which was already at
  * the 800-line source-file cap) rather than grown into it; re-exported
  * through operator-contract-schemas.ts alongside the other schema modules.

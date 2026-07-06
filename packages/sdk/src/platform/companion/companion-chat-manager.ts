@@ -481,7 +481,7 @@ export class CompanionChatManager {
   }
 
   /**
-   * Permanently delete a session (W5-S1: `delete` is now a genuine removal,
+   * Permanently delete a session (see CHANGELOG 1.0.0: `delete` is now a genuine removal,
    * distinct from `closeSession` above). Aborts any in-flight turn, removes
    * the on-disk record file, and drops the in-memory entry — reusing
    * {@link _hardRemove}, the SAME primitive the GC 'delete-persistent' sweep
@@ -1004,7 +1004,7 @@ export class CompanionChatManager {
   /**
    * Hard-remove a session's persisted file and in-memory record. The ONE
    * removal code path — shared by {@link deleteSession} and the GC
-   * 'delete-persistent' action. Never fork this. Order matters (Wave-5 F1):
+   * 'delete-persistent' action. Never fork this. Order matters:
    * drop the map entry, drain any in-flight {@link _persist} save for this
    * id, THEN unlink — else a save mid-write from {@link closeSession} can
    * resurrect the file post-unlink.

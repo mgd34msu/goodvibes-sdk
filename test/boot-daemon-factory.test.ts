@@ -143,7 +143,7 @@ describe('m7 — companion SSE requires auth', () => {
 });
 
 // ---------------------------------------------------------------------------
-// W3-S1 Part A — SSE domain-scoped delivery, proved against the webui's exact
+// SSE domain-scoped delivery, proved against the webui's exact
 // subscription profile over a REAL operator SSE stream. useRealtimeInvalidation
 // connects with ?domains=tasks,permissions,providers,knowledge,control-plane and
 // declares no `session` domain (it drops session-update as inert). After the
@@ -237,7 +237,7 @@ describe('W3-S1 — webui SSE compatibility (domain-scoped delivery)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// W3-S1 Part B — invoke-layer input validation over the real HTTP invoke seam.
+// Invoke-layer input validation over the real HTTP invoke seam.
 // A verb with a typed inputSchema must reject a wrong-typed body with an honest
 // 400 + INVALID_INPUT code before its handler runs, while a well-typed body
 // passes the gate. panels.open (inputSchema requires a string `id`) is the probe.

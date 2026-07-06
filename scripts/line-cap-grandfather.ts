@@ -1,7 +1,7 @@
 // line-cap-grandfather.ts
 //
 // Ratchet list for the 800-line source-file cap enforced by
-// check-line-cap.ts (WO-0C, One-Platform Wave 0).
+// check-line-cap.ts.
 //
 // Every file below already exceeded the cap when this gate was introduced
 // (2026-07, measured against packages/*/src at commit ddadc094). Each entry
@@ -38,7 +38,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   // schema-types.ts ~1.07k — config schema type surface, pre-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
     ceiling: 1066,
-    justification: 'config schema type surface, pre-split, shrink-only; +2 for Wave-2 D7a daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry)',
+    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry)',
   },
   // orchestrator.ts ~1.06k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
@@ -123,7 +123,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   // router.ts (daemon/http) ~0.85k — daemon HTTP router, pre-split, shrink-only
   'packages/sdk/src/platform/daemon/http/router.ts': {
     ceiling: 846,
-    justification: 'daemon HTTP router, pre-split, shrink-only; +5 for Wave-2 D3 in-process sessionBroker adapter (getInputsSince/markInputDelivered surface-collection delegations); +1 for Wave-3 W3-S3 detachParticipant adapter delegation',
+    justification: 'daemon HTTP router, pre-split, shrink-only; +5 for the in-process sessionBroker adapter (getInputsSince/markInputDelivered surface-collection delegations); +1 for the detachParticipant adapter delegation',
   },
   // index.ts (tools/state) ~0.84k — tools state store, pre-split, shrink-only
   'packages/sdk/src/platform/tools/state/index.ts': {
@@ -138,7 +138,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   // facade.ts (daemon) ~0.83k — daemon facade, pre-split, shrink-only
   'packages/sdk/src/platform/daemon/facade.ts': {
     ceiling: 835,
-    justification: 'daemon facade, pre-split, shrink-only; +9 for Wave-3 W3-S3 approvals broker accessor (embedder/test seam) + doc',
+    justification: 'daemon facade, pre-split, shrink-only; +9 for the approvals broker accessor (embedder/test seam) + doc',
   },
   // gateway.ts (control-plane) ~0.83k — control-plane gateway, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/gateway.ts': {
@@ -148,7 +148,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   // runtime-session-routes.ts ~0.87k — daemon runtime-session route surface, pre-split, shrink-only
   'packages/daemon-sdk/src/runtime-session-routes.ts': {
     ceiling: 893,
-    justification: 'daemon runtime-session route surface, pre-split, shrink-only; +55 for Wave-2 D3 surface-collection wire (queued-for-surface response handling, sessions.inputs.deliver route + handler, sessions.inputs.list state/since cursor); +20 for Wave-3 W3-S3 sessions.detach handler (surfaceId 400 guard + broker delegation)',
+    justification: 'daemon runtime-session route surface, pre-split, shrink-only; +55 for the surface-collection wire (queued-for-surface response handling, sessions.inputs.deliver route + handler, sessions.inputs.list state/since cursor); +20 for the sessions.detach handler (surfaceId 400 guard + broker delegation)',
   },
   // registry.ts (runtime/fleet) ~0.81k — runtime fleet registry, pre-split, shrink-only
   'packages/sdk/src/platform/runtime/fleet/registry.ts': {
@@ -158,6 +158,6 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   // session-broker.ts (control-plane) ~0.88k — control-plane session broker, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/session-broker.ts': {
     ceiling: 905,
-    justification: 'control-plane session broker, pre-split, shrink-only; +75 for Wave-2 D2/D3 (surface-managed marking on register, steer/follow-up surface-routing branch in handleIntent, getInputsSince/markInputDelivered surface-collection delegations); +25 for Wave-3 W3-S3 detachParticipant (idempotent detach != close != kill) — pruning logic extracted to detachSharedSessionParticipant in session-broker-sessions.ts; handleIntent remains a split candidate',
+    justification: 'control-plane session broker, pre-split, shrink-only; +75 for surface-managed session routing (surface-managed marking on register, steer/follow-up surface-routing branch in handleIntent, getInputsSince/markInputDelivered surface-collection delegations); +25 for detachParticipant (idempotent detach != close != kill) — pruning logic extracted to detachSharedSessionParticipant in session-broker-sessions.ts; handleIntent remains a split candidate',
   },
 };

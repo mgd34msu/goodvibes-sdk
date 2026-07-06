@@ -1,7 +1,7 @@
 /**
  * session-spine-identity.test.ts
  *
- * One-Platform Wave 1, S1 — the identity spine. Covers:
+ * The identity spine. Covers:
  *  - SurfaceKind / SharedSessionKind vocabulary lockstep (a value added in one
  *    place must be reflected in the others, or these fail).
  *  - project-as-data: createSession stamps project; listSessions filters by

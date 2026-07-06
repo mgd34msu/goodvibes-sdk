@@ -313,7 +313,7 @@ async function handleCloseSession(
 }
 
 // ---------------------------------------------------------------------------
-// DELETE /api/companion/chat/sessions/:sessionId  (W5-S1: a real hard delete)
+// DELETE /api/companion/chat/sessions/:sessionId  (see CHANGELOG 1.0.0: a real hard delete)
 // ---------------------------------------------------------------------------
 
 async function handleDeleteSession(

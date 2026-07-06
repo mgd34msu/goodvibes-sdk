@@ -2,7 +2,7 @@
  * runtime-session-lifecycle-routes.ts
  *
  * Shared-session lifecycle route handlers (get / close / reopen / detach /
- * delete). Split out of runtime-session-routes.ts (W5-S1) to stay under the
+ * delete). Split out of runtime-session-routes.ts (see CHANGELOG 1.0.0) to stay under the
  * repo's grandfathered line-cap ceiling (see scripts/check-line-cap.ts) — a
  * pure file-organization move: these four handlers already formed a
  * cohesive, self-contained unit (single-session lifecycle actions), disjoint
@@ -41,7 +41,7 @@ export async function handleSharedSessionLifecycle(
 }
 
 /**
- * DELETE /api/sessions/:sessionId (W5-S1). Hard-removes the session record +
+ * DELETE /api/sessions/:sessionId (see CHANGELOG 1.0.0). Hard-removes the session record +
  * its messages/inputs — distinct from `close`, which preserves history.
  * Requires the session already closed: an active session yields an honest
  * 409 ('close it, then delete') rather than yanking state out from under a

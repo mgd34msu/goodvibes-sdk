@@ -13,7 +13,7 @@ import { loadSqliteVecExtension } from './sqlite-vec-loader.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
-// Lifted to sqlite-vec-loader.ts (Wave-5 W5.3) so code-index-store.ts can load
+// Lifted to sqlite-vec-loader.ts (see CHANGELOG 0.38.0) so code-index-store.ts can load
 // the exact same native extension the exact same way. Re-exported here so
 // existing callers that import resolveSqliteVecPath from this module keep working.
 export { resolveSqliteVecPath } from './sqlite-vec-loader.js';

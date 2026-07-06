@@ -44,7 +44,7 @@ export interface OperatorSessionsClient {
   /** Detach a surface's participant/route from a session without closing it
    * (detach != close != kill). Idempotent; see sessions.detach. */
   detach(sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null>;
-  /** Permanently remove a session (W5-S1: delete != close). Requires the
+  /** Permanently remove a session (delete != close). Requires the
    * session already closed — see sessions.delete. */
   delete(sessionId: string): Promise<'deleted' | 'not-found' | 'active'>;
   bindAgent(sessionId: string, agentId: string): Promise<SharedSessionRecord | null>;

@@ -1,7 +1,7 @@
 /**
  * exec-phase-timeout.test.ts
  *
- * Regression coverage for W0.1 secondary fix #4 (narrow scope only): the
+ * Regression coverage (narrow scope only): the
  * `executing` phase timeout must never undercut an exec call's own
  * `timeout_ms` input. Full cooperative-cancellation/signal wiring (so an
  * abandoned child process actually gets killed when a phase timeout does

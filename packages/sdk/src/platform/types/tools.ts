@@ -46,7 +46,7 @@ export interface ToolResult {
 /**
  * Optional per-call execution options.
  *
- * `signal` (Wave 4, wo701) is ADDITIVE: it was not present before, and every
+ * `signal` is ADDITIVE: it was not present before, and every
  * existing tool implementation that declares `execute(args)` with a single
  * parameter remains a valid implementation of this interface (structural
  * typing — an unused trailing optional parameter is simply never read). Only

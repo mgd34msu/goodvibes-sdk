@@ -152,7 +152,7 @@ function buildTimedOutResult(cmdStr: string, cwd: string | undefined, durationMs
   return { cmd: cmdStr, exit_code: null, stdout: '', stderr: '', success: false, timed_out: true, duration_ms: durationMs, cwd, ...(progressFile ? { progress_file: progressFile } : {}) };
 }
 
-/** Wave-4 cooperative cancellation (wo701): mirrors buildTimedOutResult's shape for the AbortSignal path. */
+/** Cooperative cancellation: mirrors buildTimedOutResult's shape for the AbortSignal path. */
 function buildCancelledResult(cmdStr: string, cwd: string | undefined, durationMs: number): ExecCommandResult {
   return { cmd: cmdStr, exit_code: null, stdout: '', stderr: '', success: false, cancelled: true, duration_ms: durationMs, cwd };
 }
@@ -166,7 +166,7 @@ function buildCancelledResult(cmdStr: string, cwd: string | undefined, durationM
 const POST_STOP_DRAIN_GRACE_MS = 500;
 
 /**
- * Wave-4 cooperative cancellation (wo701): after a timeout/abort kill the
+ * Cooperative cancellation: after a timeout/abort kill the
  * child has already been SIGKILL'd, but a grandchild that inherited the
  * stdout/stderr pipe can hold it open, so reading those streams to EOF may
  * never settle. Awaiting the full IO promise unbounded here could therefore
@@ -260,11 +260,11 @@ async function runCommand(
   const mergedEnv = { ...buildCleanEnv(), ...cmdInput.env };
   const startTime = Date.now();
 
-  // Wave-4 cooperative cancellation (wo701) is wired for the foreground and
+  // Cooperative cancellation is wired for the foreground and
   // progress-streamed paths (the common cases — progress auto-engages once
   // timeout_ms exceeds PROGRESS_AUTO_THRESHOLD_MS, which the 120s default
   // timeout always does). `until`-pattern commands are explicitly deferred
-  // (see the WO report) — the timeout kill-timer they already have still
+  // — the timeout kill-timer they already have still
   // applies, just not an external AbortSignal.
   if (cmdInput.until) {
     return runUntil(processManager, overflowHandler, cmdStr, cmdInput, cwd, mergedEnv, timeoutMs, startTime);
@@ -610,7 +610,7 @@ export function isRetryableExecResult(
 ): boolean {
   // Timed-out commands are never auto-retried — callers must decide
   if (result.timed_out) return false;
-  // Cancelled commands (Wave 4, wo701) must never be retried — retrying
+  // Cancelled commands must never be retried — retrying
   // after an operator/engine kill would defeat the cancellation entirely.
   if (result.cancelled) return false;
 

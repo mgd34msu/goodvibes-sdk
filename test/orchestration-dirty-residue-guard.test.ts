@@ -1,5 +1,5 @@
 /**
- * Wave 6, wo-F item 4 — dirty-residue guard: a scoped commit must never
+ * Dirty-residue guard: a scoped commit must never
  * sweep in uncommitted changes left behind by a previously killed run
  * sharing the same projectRoot. Covers both the pure partition logic
  * (dirty-guard.ts, against a real scratch git repo) and the actual

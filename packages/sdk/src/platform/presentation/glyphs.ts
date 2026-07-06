@@ -4,7 +4,7 @@
  * and src/renderer/status-glyphs.ts (STATE_GLYPHS).
  *
  * This is one of the four genuinely-duplicated presentation tables named by the
- * W4-R1 renderer/input parity audit (both the TUI and the agent shipped a near-twin
+ * renderer/input parity audit (see CHANGELOG 1.0.0; both the TUI and the agent shipped a near-twin
  * copy). The TUI is the reference: it is the more-complete, more-recently-fixed
  * copy, and per the presentation-contract decision record its `status` group is
  * the one both renderers converge on.

@@ -17,7 +17,7 @@ import { load as loadSqliteVec } from 'sqlite-vec';
  * via the re-exported `load()` function.
  *
  * Shared by memory-vector-store.ts (MemoryStore's vector index) and
- * code-index-store.ts (the repo source-tree code index, Wave-5 W5.3) so both
+ * code-index-store.ts (the repo source-tree code index; see CHANGELOG 0.38.0) so both
  * indexes load the exact same native extension the exact same way.
  */
 export function resolveSqliteVecPath(): string {

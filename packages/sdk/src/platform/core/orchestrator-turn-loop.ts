@@ -50,13 +50,13 @@ import {
 
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
 /**
- * Wave-5 (wo805) per-turn passive-injection headroom clamp for the MAIN interactive
+ * Per-turn passive-injection headroom clamp for the MAIN interactive
  * session. Mirrors agents/orchestrator-runner.ts's CONTEXT_COMPACT_THRESHOLD (0.85) —
  * deliberately NOT derived from this loop's own configurable `behavior.autoCompactThreshold`
  * (default 80, see config/schema-domain-core.ts), which governs CONVERSATION compaction and
  * can be user-tuned or disabled (0) independently of this feature. Keeping this fixed keeps
- * the injection block's safety margin identical to wo801's regardless of what the operator
- * has configured for compaction.
+ * the injection block's safety margin identical to the agent-runner's regardless of what the
+ * operator has configured for compaction.
  */
 const PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD = 0.85;
 
@@ -115,10 +115,10 @@ export interface OrchestratorTurnLoopContext {
     cacheWrite: number;
   };
   /**
-   * Wave-5 (wo805) per-turn passive-injection wiring for the MAIN interactive session —
-   * the sibling of wo801's agents/orchestrator-runner.ts runAgentTask wiring, gated on the
-   * SAME `agent-passive-knowledge-injection` feature flag (its description already
-   * promised "the EVOLVING main-session conversation" coverage; see
+   * Per-turn passive-injection wiring for the MAIN interactive session —
+   * the sibling of the agent-runner's runAgentTask wiring in agents/orchestrator-runner.ts,
+   * gated on the SAME `agent-passive-knowledge-injection` feature flag (its description
+   * already promised "the EVOLVING main-session conversation" coverage; see
    * runtime/feature-flags/flags.ts). `memoryRegistry` undefined is a hard no-op, matching
    * the agent path. Budget/floor default to the same derived defaults
    * (defaultTurnKnowledgeBudgetTokens / DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR) when
@@ -129,7 +129,7 @@ export interface OrchestratorTurnLoopContext {
   readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
   /**
-   * Wave-5 Stage B — repo code index for the main session's per-turn injection. Undefined is a
+   * Stage B — repo code index for the main session's per-turn injection. Undefined is a
    * hard no-op. `isPassiveCodeInjectionEnabled` resolves the combined gate (flag AND setting);
    * both it and the source must be present for code hits to be considered this turn.
    */
@@ -138,7 +138,7 @@ export interface OrchestratorTurnLoopContext {
   /**
    * The main session has no spawn-time `AgentRecord.knowledgeInjections` baseline, so this
    * starts empty and grows monotonically for the life of the Orchestrator — no record is
-   * ever surfaced twice across the whole interactive session (mirrors wo801's
+   * ever surfaced twice across the whole interactive session (mirrors the agent-runner's
    * knowledgeIdsAlreadySurfaced, but session-lifetime instead of one-agent-run-lifetime).
    */
   readonly getAlreadyInjectedKnowledgeIds: () => readonly string[];
@@ -158,13 +158,13 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
 
   let continueLoop = true;
   const circuitBreaker = new ConsecutiveErrorBreaker();
-  // Wave-5 (wo805): true only for the FIRST LLM call this executeOrchestratorTurnLoop()
+  // True only for the FIRST LLM call this executeOrchestratorTurnLoop()
   // invocation makes (see the per-iteration gate below for why this is the main loop's
-  // analog of wo801's "new user input this turn").
+  // analog of the agent-runner's "new user input this turn").
   let isFirstIterationOfThisCall = true;
-  // Wave-5 (wo805): the last successfully-built per-turn knowledge block, reused verbatim
+  // The last successfully-built per-turn knowledge block, reused verbatim
   // on tool-continuation iterations of THIS call where nothing new arrived (mirrors
-  // wo801's priorTurnKnowledgeBlock) — declared OUTSIDE the while loop so a block built on
+  // the agent-runner's priorTurnKnowledgeBlock) — declared OUTSIDE the while loop so a block built on
   // iteration 1 (the human message that started this runTurn()) stays available to every
   // later tool round of the SAME call, not just the first LLM call. It is composed onto
   // the CURRENT `composedBaseSystemPrompt` fresh every iteration (see
@@ -270,17 +270,18 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       }
     }
 
-    // Wave-5 (wo805): per-turn passive knowledge injection for the MAIN interactive
-    // session — the missing counterpart to wo801's agents/orchestrator-runner.ts wiring.
-    // `newUserInputThisTurn` mirrors wo801's turn-1/steer-drain gate: it is true exactly
-    // on the FIRST LLM call this executeOrchestratorTurnLoop() invocation makes (the fresh
-    // human message this runTurn() call was invoked with) and false on every subsequent
-    // tool-continuation iteration of the SAME call, since the main session never drains
-    // new human input mid-call (handleUserInput queues a second message until the current
-    // runTurn() completes — see orchestrator.ts). Retrieval reruns only when
-    // newUserInputThisTurn is true; tool-continuation iterations reuse `turnKnowledgeBlock`
-    // as-is (declared before the while loop) — exactly wo801's reuse behavior for
-    // no-new-input turns, just with a different trigger for what counts as "new".
+    // Per-turn passive knowledge injection for the MAIN interactive
+    // session — the missing counterpart to the agent-runner's wiring in
+    // agents/orchestrator-runner.ts. `newUserInputThisTurn` mirrors the agent-runner's
+    // turn-1/steer-drain gate: it is true exactly on the FIRST LLM call this
+    // executeOrchestratorTurnLoop() invocation makes (the fresh human message this
+    // runTurn() call was invoked with) and false on every subsequent tool-continuation
+    // iteration of the SAME call, since the main session never drains new human input
+    // mid-call (handleUserInput queues a second message until the current runTurn()
+    // completes — see orchestrator.ts). Retrieval reruns only when newUserInputThisTurn
+    // is true; tool-continuation iterations reuse `turnKnowledgeBlock` as-is (declared
+    // before the while loop) — exactly the agent-runner's reuse behavior for no-new-input
+    // turns, just with a different trigger for what counts as "new".
     const newUserInputThisTurn = isFirstIterationOfThisCall;
     isFirstIterationOfThisCall = false;
     const passiveKnowledgeInjectionEnabled = context.isPassiveKnowledgeInjectionEnabled();
@@ -322,7 +323,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
           // is also the latest user-role message already appended to the conversation
           // before the loop started (see prepareConversationForTurn), so
           // deriveTurnKnowledgeQuery collapses to it with no duplication — the same
-          // turn-1 behavior wo801 documents for the agent path.
+          // turn-1 behavior documented for the agent path.
           task: context.text,
           conversationTail: context.conversation.getMessagesForLLM(),
           budgetTokens: turnBudgetTokens,
@@ -341,14 +342,14 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         // Hard no-op: no budget headroom this call. Never call into retrieval for a
         // budget already known to be zero, and never keep claiming a stale block from an
         // earlier iteration that no longer fits — clear it so composeTurnSystemPrompt
-        // falls back to the base prompt exactly (mirrors wo801's identical branch).
+        // falls back to the base prompt exactly (mirrors the agent-runner's identical branch).
         turnKnowledgeBlock = null;
       }
     }
     // Composed fresh at the call site (never a hoisted `const` reused across calls) so the
     // block is re-validated against LIVE tokens at the instant it is actually sent — the
-    // same "never mutate the cached base, recompute at the call site" discipline wo801's
-    // composeTurnSystemPrompt established, even though this loop has no in-call
+    // same "never mutate the cached base, recompute at the call site" discipline the
+    // agent-runner's composeTurnSystemPrompt established, even though this loop has no in-call
     // context-exceeded retry path to go stale across (compaction here is the PROACTIVE
     // checkContextWindowPreflight above, not a reactive mid-call retry-and-shrink).
     const composeTurnSystemPrompt = (base: string): string => {
