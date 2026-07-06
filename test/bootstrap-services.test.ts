@@ -26,7 +26,7 @@ function config(values: Record<string, boolean | number | string>): HostServices
 
 function baseConfig(values: Record<string, boolean | number | string> = {}): HostServicesConfig {
   return config({
-    'danger.daemon': true,
+    'daemon.enabled': true,
     'danger.httpListener': false,
     'controlPlane.host': '127.0.0.1',
     'controlPlane.port': 3421,
@@ -220,16 +220,15 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStartHint).toBeUndefined();
   });
 
-  test('runs the daemon when danger.daemon is unset (daemon.enabled default on) — embed opt-in path', async () => {
-    // The daemon-by-default ruling: with the deprecated alias absent, daemon.enabled
-    // (default true) governs, so the host enters the port-free daemon branch without
-    // any danger.* opt-in. The reader returns undefined for the unset alias — the exact
-    // sentinel resolveDaemonEnabled relies on — and true for daemon.enabled. We set
-    // daemon.embedInProcess=true here to assert the branch is reached via the embedded
-    // path (the detached-default path is covered separately below).
+  test('runs the daemon when daemon.enabled is true — embed opt-in path', async () => {
+    // The daemon-by-default ruling: daemon.enabled (default true) governs, so the
+    // host enters the port-free daemon branch. daemon.embedInProcess=true here
+    // asserts the branch is reached via the embedded path (the detached-default
+    // path is covered separately below). The deprecated danger.daemon alias that
+    // used to override this was removed in Wave 6 (see config-migrations.test.ts
+    // for the migration that preserves an existing explicit off-switch).
     const defaultOnConfig: HostServicesConfig = {
       get: (key) => {
-        if (key === 'danger.daemon') return undefined;
         if (key === 'daemon.enabled') return true;
         if (key === 'daemon.embedInProcess') return true;
         if (key === 'danger.httpListener') return false;
@@ -256,21 +255,10 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.mode).toBe('embedded');
   });
 
-  test('deprecated danger.daemon:false forces the daemon off even though daemon.enabled defaults on', async () => {
-    const legacyOffConfig: HostServicesConfig = {
-      get: (key) => {
-        if (key === 'danger.daemon') return false; // explicit legacy opt-out
-        if (key === 'daemon.enabled') return true; // default-on
-        if (key === 'danger.httpListener') return false;
-        if (key === 'controlPlane.host' || key === 'httpListener.host') return '127.0.0.1';
-        if (key === 'controlPlane.port') return 3421;
-        if (key === 'httpListener.port') return 3422;
-        return undefined;
-      },
-    };
+  test('daemon.enabled:false leaves the daemon off', async () => {
     let createDaemonCalled = false;
     const handle = await startHostServices(
-      legacyOffConfig,
+      baseConfig({ 'daemon.enabled': false }),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
@@ -291,7 +279,7 @@ describe('startHostServices daemon lifecycle', () => {
   test('reports HTTP listener blocked status using the listener host and port', async () => {
     const handle = await startHostServices(
       baseConfig({
-        'danger.daemon': false,
+        'daemon.enabled': false,
         'danger.httpListener': true,
         'controlPlane.port': 3450,
         'httpListener.port': 3451,

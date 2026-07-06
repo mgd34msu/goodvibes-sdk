@@ -165,7 +165,6 @@ export interface HostServicesConfig {
     key:
       | 'daemon.enabled'
       | 'daemon.embedInProcess'
-      | 'danger.daemon'
       | 'danger.httpListener'
       | 'controlPlane.host'
       | 'controlPlane.port'

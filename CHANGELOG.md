@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+### Removed
+- **BREAKING**: the deprecated `danger.daemon` config alias for `daemon.enabled` is
+  removed (scheduled Wave 6, see `docs/decisions/2026-07-05-daemon-by-default.md`).
+  `resolveDaemonEnabled`'s signature and 7 existing callers are unchanged. A config
+  migration (`platform/config/migrations.ts`, wired into `ConfigManager.load`)
+  preserves any existing explicit `danger.daemon: false` by rewriting it onto
+  `daemon.enabled: false` at load time, so the legacy off-switch is never silently
+  flipped on. `danger.daemon` is no longer a valid `ConfigKey`.
+
 ## [0.38.0] - 2026-07-04
 
 Waves 2–6 of the goodvibes-tui evolution effort, batched: the SDK becomes an
