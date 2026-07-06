@@ -17,12 +17,10 @@ Operator methods:
 - `automation.integration.snapshot`
 - `automation.jobs.list`
 - `automation.jobs.create`
-- `automation.jobs.patch`
+- `automation.jobs.update`
 - `automation.jobs.delete`
 - `automation.jobs.enable`
 - `automation.jobs.disable`
-- `automation.jobs.pause`
-- `automation.jobs.resume`
 - `automation.jobs.run`
 - `automation.runs.list`
 - `automation.runs.get`
@@ -35,18 +33,41 @@ Operator methods:
 Automation config controls enablement, max concurrent runs, run history,
 default timeout, catch-up window, failure cooldown, and delete-after-run.
 
+> **Wave-6 core-verb pass (W6-C3):** `automation.jobs.patch` was renamed to
+> `automation.jobs.update` — the canonical verb is `update`, not `patch`. The
+> separate `automation.jobs.pause` / `automation.jobs.resume` methods were
+> retired: they were a byte-identical redundant lifecycle pair with
+> `automation.jobs.disable` / `automation.jobs.enable` (same `{id, enabled}`
+> output, same semantics — pause==disable, resume==enable). A caller-facing
+> "pause"/"resume" verb should now invoke `automation.jobs.disable` /
+> `automation.jobs.enable`. See
+> [`packages/contracts/src/core-verbs.ts`](../packages/contracts/src/core-verbs.ts)
+> and `docs/decisions/2026-07-06-core-verb-spec.md`.
+
 ## Schedules
 
 The schedule endpoints manage host-owned schedule records:
 
-- `schedules.list`
-- `schedules.create`
-- `schedules.delete`
-- `schedules.enable`
-- `schedules.disable`
-- `schedules.run`
+- `automation.schedules.list`
+- `automation.schedules.create`
+- `automation.schedules.delete`
+- `automation.schedules.enable`
+- `automation.schedules.disable`
+- `automation.schedules.run`
 
-Knowledge jobs also have their own schedule API. The single-record methods are singular — `knowledge.schedule.get`, `knowledge.schedule.save`, `knowledge.schedule.delete`, and `knowledge.schedule.enable` — while the list method is the plural `knowledge.schedules.list`.
+> **Wave-6 core-verb pass (W6-C3):** this family was renamed from the bare
+> `schedules.*` (no namespace prefix) to `automation.schedules.*`. The bare
+> name collided with two unrelated things that also used the word "schedule":
+> the agent's own reminder/routine tooling (which called these methods under
+> the bare name) and `knowledge.schedule(s).*` below (a different resource:
+> recurring knowledge-ingestion jobs, not automation prompt jobs). The HTTP
+> paths were already `/api/automation/schedules/*` — only the operator method
+> id was inconsistent with its own route; the rename brings the two in line
+> and removes the bare top-level `schedules` namespace entirely, leaving only
+> two clearly-scoped "schedule" families: `automation.schedules.*` (this one)
+> and `knowledge.schedule(s).*` (below).
+
+Knowledge jobs also have their own schedule API. The single-record methods are singular — `knowledge.schedule.get`, `knowledge.schedule.save`, `knowledge.schedule.delete`, and `knowledge.schedule.enable` — while the list method is the plural `knowledge.schedules.list`. This singular-item/plural-list split is the CANONICAL namespace convention (see `core-verbs.ts`), not a special case — `automation.schedules.*` above has no separate single-item family because none of its callers need one yet.
 
 ## Route Bindings
 

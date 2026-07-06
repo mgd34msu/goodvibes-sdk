@@ -104,9 +104,9 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     outputSchema: AUTOMATION_JOB_SCHEMA,
   }),
   methodDescriptor({
-    id: 'automation.jobs.patch',
-    title: 'Patch Automation Job',
-    description: 'Patch a durable automation job.',
+    id: 'automation.jobs.update',
+    title: 'Update Automation Job',
+    description: 'Update a durable automation job. (Renamed from automation.jobs.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'PATCH', path: '/api/automation/jobs/{jobId}' },
@@ -174,28 +174,13 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     inputSchema: objectSchema({ jobId: STRING_SCHEMA }, ['jobId']),
     outputSchema: objectSchema({ id: STRING_SCHEMA, enabled: BOOLEAN_SCHEMA }, ['id', 'enabled'], { additionalProperties: true }),
   }),
-  methodDescriptor({
-    id: 'automation.jobs.pause',
-    title: 'Pause Automation Job',
-    description: 'Pause a durable automation job.',
-    category: 'automation',
-    scopes: ['write:automation'],
-    http: { method: 'POST', path: '/api/automation/jobs/{jobId}/pause' },
-    events: [runtimeEventId('automation')],
-    inputSchema: objectSchema({ jobId: STRING_SCHEMA }, ['jobId']),
-    outputSchema: objectSchema({ id: STRING_SCHEMA, enabled: BOOLEAN_SCHEMA }, ['id', 'enabled'], { additionalProperties: true }),
-  }),
-  methodDescriptor({
-    id: 'automation.jobs.resume',
-    title: 'Resume Automation Job',
-    description: 'Resume a durable automation job.',
-    category: 'automation',
-    scopes: ['write:automation'],
-    http: { method: 'POST', path: '/api/automation/jobs/{jobId}/resume' },
-    events: [runtimeEventId('automation')],
-    inputSchema: objectSchema({ jobId: STRING_SCHEMA }, ['jobId']),
-    outputSchema: objectSchema({ id: STRING_SCHEMA, enabled: BOOLEAN_SCHEMA }, ['id', 'enabled'], { additionalProperties: true }),
-  }),
+  // automation.jobs.pause / automation.jobs.resume were RETIRED in the Wave-6
+  // core-verb pass (W6-C3): they were a byte-identical redundant lifecycle
+  // pair with automation.jobs.disable/enable (same {id,enabled} output shape,
+  // same semantics — pause==disable, resume==enable). The canonical verbs are
+  // enable/disable; consumers that exposed a "pause"/"resume" user-facing verb
+  // now map it onto automation.jobs.disable/automation.jobs.enable. See
+  // packages/contracts/src/core-verbs.ts and docs/decisions/2026-07-06-core-verb-spec.md.
   methodDescriptor({
     id: 'automation.jobs.run',
     title: 'Run Automation Job Now',
@@ -293,7 +278,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     outputSchema: DELIVERY_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
-    id: 'schedules.list',
+    id: 'automation.schedules.list',
     title: 'List Schedules',
     description: 'Return schedule records.',
     category: 'automation',
@@ -303,7 +288,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     outputSchema: AUTOMATION_SCHEDULES_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
-    id: 'schedules.create',
+    id: 'automation.schedules.create',
     title: 'Create Schedule',
     description: 'Create a schedule record.',
     category: 'automation',
@@ -340,7 +325,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     outputSchema: AUTOMATION_JOB_SCHEMA,
   }),
   methodDescriptor({
-    id: 'schedules.delete',
+    id: 'automation.schedules.delete',
     title: 'Delete Schedule',
     description: 'Delete a schedule record.',
     category: 'automation',
@@ -351,7 +336,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     dangerous: true,
   }),
   methodDescriptor({
-    id: 'schedules.enable',
+    id: 'automation.schedules.enable',
     title: 'Enable Schedule',
     description: 'Enable a schedule record.',
     category: 'automation',
@@ -361,7 +346,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     outputSchema: objectSchema({ id: STRING_SCHEMA, enabled: BOOLEAN_SCHEMA }, ['id', 'enabled'], { additionalProperties: true }),
   }),
   methodDescriptor({
-    id: 'schedules.disable',
+    id: 'automation.schedules.disable',
     title: 'Disable Schedule',
     description: 'Disable a schedule record.',
     category: 'automation',
@@ -371,7 +356,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     outputSchema: objectSchema({ id: STRING_SCHEMA, enabled: BOOLEAN_SCHEMA }, ['id', 'enabled'], { additionalProperties: true }),
   }),
   methodDescriptor({
-    id: 'schedules.run',
+    id: 'automation.schedules.run',
     title: 'Run Schedule Now',
     description: 'Trigger a schedule immediately.',
     category: 'automation',
@@ -442,9 +427,9 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     outputSchema: ROUTE_BINDING_SCHEMA,
   }),
   methodDescriptor({
-    id: 'routes.bindings.patch',
-    title: 'Patch Route Binding',
-    description: 'Patch an existing route binding.',
+    id: 'routes.bindings.update',
+    title: 'Update Route Binding',
+    description: 'Update an existing route binding. (Renamed from routes.bindings.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)',
     category: 'routes',
     scopes: ['write:routes'],
     access: 'admin',

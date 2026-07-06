@@ -6741,9 +6741,67 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "automation.jobs.patch",
-        "title": "Patch Automation Job",
-        "description": "Patch a durable automation job.",
+        "id": "automation.jobs.run",
+        "title": "Run Automation Job Now",
+        "description": "Trigger an automation job immediately.",
+        "category": "automation",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:automation"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/automation/jobs/{jobId}/run"
+        },
+        "events": [
+          "runtime.automation"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "jobId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "jobId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "jobId": {
+              "type": "string"
+            },
+            "runId": {
+              "type": "string"
+            },
+            "agentId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "jobId",
+            "runId",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "automation.jobs.update",
+        "title": "Update Automation Job",
+        "description": "Update a durable automation job. (Renamed from automation.jobs.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)",
         "category": "automation",
         "source": "builtin",
         "access": "authenticated",
@@ -8018,166 +8076,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "successCount",
             "failureCount",
             "deleteAfterRun"
-          ],
-          "additionalProperties": true
-        },
-        "invokable": true
-      },
-      {
-        "id": "automation.jobs.pause",
-        "title": "Pause Automation Job",
-        "description": "Pause a durable automation job.",
-        "category": "automation",
-        "source": "builtin",
-        "access": "authenticated",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "scopes": [
-          "write:automation"
-        ],
-        "http": {
-          "method": "POST",
-          "path": "/api/automation/jobs/{jobId}/pause"
-        },
-        "events": [
-          "runtime.automation"
-        ],
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "jobId": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "jobId"
-          ],
-          "additionalProperties": false
-        },
-        "outputSchema": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "enabled": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "id",
-            "enabled"
-          ],
-          "additionalProperties": true
-        },
-        "invokable": true
-      },
-      {
-        "id": "automation.jobs.resume",
-        "title": "Resume Automation Job",
-        "description": "Resume a durable automation job.",
-        "category": "automation",
-        "source": "builtin",
-        "access": "authenticated",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "scopes": [
-          "write:automation"
-        ],
-        "http": {
-          "method": "POST",
-          "path": "/api/automation/jobs/{jobId}/resume"
-        },
-        "events": [
-          "runtime.automation"
-        ],
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "jobId": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "jobId"
-          ],
-          "additionalProperties": false
-        },
-        "outputSchema": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "enabled": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "id",
-            "enabled"
-          ],
-          "additionalProperties": true
-        },
-        "invokable": true
-      },
-      {
-        "id": "automation.jobs.run",
-        "title": "Run Automation Job Now",
-        "description": "Trigger an automation job immediately.",
-        "category": "automation",
-        "source": "builtin",
-        "access": "authenticated",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "scopes": [
-          "write:automation"
-        ],
-        "http": {
-          "method": "POST",
-          "path": "/api/automation/jobs/{jobId}/run"
-        },
-        "events": [
-          "runtime.automation"
-        ],
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "jobId": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "jobId"
-          ],
-          "additionalProperties": false
-        },
-        "outputSchema": {
-          "type": "object",
-          "properties": {
-            "jobId": {
-              "type": "string"
-            },
-            "runId": {
-              "type": "string"
-            },
-            "agentId": {
-              "type": "string"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "jobId",
-            "runId",
-            "status"
           ],
           "additionalProperties": true
         },
@@ -12246,7 +12144,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "schedules.create",
+        "id": "automation.schedules.create",
         "title": "Create Schedule",
         "description": "Create a schedule record.",
         "category": "automation",
@@ -13409,7 +13307,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "schedules.delete",
+        "id": "automation.schedules.delete",
         "title": "Delete Schedule",
         "description": "Delete a schedule record.",
         "category": "automation",
@@ -13457,7 +13355,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "schedules.disable",
+        "id": "automation.schedules.disable",
         "title": "Disable Schedule",
         "description": "Disable a schedule record.",
         "category": "automation",
@@ -13505,7 +13403,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "schedules.enable",
+        "id": "automation.schedules.enable",
         "title": "Enable Schedule",
         "description": "Enable a schedule record.",
         "category": "automation",
@@ -13553,7 +13451,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "schedules.list",
+        "id": "automation.schedules.list",
         "title": "List Schedules",
         "description": "Return schedule records.",
         "category": "automation",
@@ -15326,7 +15224,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "schedules.run",
+        "id": "automation.schedules.run",
         "title": "Run Schedule Now",
         "description": "Trigger a schedule immediately.",
         "category": "automation",
@@ -62814,9 +62712,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "routes.bindings.patch",
-        "title": "Patch Route Binding",
-        "description": "Patch an existing route binding.",
+        "id": "routes.bindings.update",
+        "title": "Update Route Binding",
+        "description": "Update an existing route binding. (Renamed from routes.bindings.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)",
         "category": "routes",
         "source": "builtin",
         "access": "admin",
@@ -75946,241 +75844,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "watchers.patch",
-        "title": "Patch Watcher",
-        "description": "Patch an existing watcher.",
-        "category": "watchers",
-        "source": "builtin",
-        "access": "admin",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "scopes": [
-          "write:watchers"
-        ],
-        "http": {
-          "method": "PATCH",
-          "path": "/api/watchers/{watcherId}"
-        },
-        "events": [
-          "runtime.watchers"
-        ],
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "watcherId": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "kind": {
-              "type": "string"
-            },
-            "sourceId": {
-              "type": "string"
-            },
-            "sourceKind": {
-              "type": "string"
-            },
-            "enabled": {
-              "type": "boolean"
-            },
-            "intervalMs": {
-              "type": "number"
-            },
-            "metadata": {
-              "type": "object",
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": {}
-                  },
-                  {
-                    "type": "array",
-                    "items": {}
-                  }
-                ]
-              }
-            },
-            "url": {
-              "type": "string"
-            },
-            "method": {
-              "type": "string"
-            },
-            "path": {
-              "type": "string"
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "address": {
-              "type": "string"
-            },
-            "headers": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "run": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": true
-        },
-        "outputSchema": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "kind": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "state": {
-              "type": "string"
-            },
-            "source": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "enabled": {
-                  "type": "boolean"
-                },
-                "createdAt": {
-                  "type": "number"
-                },
-                "updatedAt": {
-                  "type": "number"
-                },
-                "metadata": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": {}
-                      },
-                      {
-                        "type": "array",
-                        "items": {}
-                      }
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "id",
-                "kind",
-                "label",
-                "enabled",
-                "createdAt",
-                "updatedAt",
-                "metadata"
-              ],
-              "additionalProperties": true
-            },
-            "intervalMs": {
-              "type": "number"
-            },
-            "lastHeartbeatAt": {
-              "type": "number"
-            },
-            "sourceLagMs": {
-              "type": "number"
-            },
-            "sourceStatus": {
-              "type": "string"
-            },
-            "degradedReason": {
-              "type": "string"
-            },
-            "lastCheckpoint": {
-              "type": "string"
-            },
-            "lastError": {
-              "type": "string"
-            },
-            "metadata": {
-              "type": "object",
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": {}
-                  },
-                  {
-                    "type": "array",
-                    "items": {}
-                  }
-                ]
-              }
-            }
-          },
-          "required": [
-            "id",
-            "kind",
-            "label",
-            "state",
-            "source",
-            "metadata"
-          ],
-          "additionalProperties": true
-        },
-        "invokable": true
-      },
-      {
         "id": "watchers.run",
         "title": "Run Watcher",
         "description": "Trigger a watcher immediately.",
@@ -76550,6 +76213,241 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "watcherId"
           ],
           "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "label",
+                "enabled",
+                "createdAt",
+                "updatedAt",
+                "metadata"
+              ],
+              "additionalProperties": true
+            },
+            "intervalMs": {
+              "type": "number"
+            },
+            "lastHeartbeatAt": {
+              "type": "number"
+            },
+            "sourceLagMs": {
+              "type": "number"
+            },
+            "sourceStatus": {
+              "type": "string"
+            },
+            "degradedReason": {
+              "type": "string"
+            },
+            "lastCheckpoint": {
+              "type": "string"
+            },
+            "lastError": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "label",
+            "state",
+            "source",
+            "metadata"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "watchers.update",
+        "title": "Update Watcher",
+        "description": "Update an existing watcher. (Renamed from watchers.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)",
+        "category": "watchers",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:watchers"
+        ],
+        "http": {
+          "method": "PATCH",
+          "path": "/api/watchers/{watcherId}"
+        },
+        "events": [
+          "runtime.watchers"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "watcherId": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "sourceId": {
+              "type": "string"
+            },
+            "sourceKind": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "intervalMs": {
+              "type": "number"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "url": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "endpoint": {
+              "type": "string"
+            },
+            "address": {
+              "type": "string"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "run": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
         },
         "outputSchema": {
           "type": "object",
@@ -78747,10 +78645,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 309,
-      "typedInputs": 309,
+      "methods": 307,
+      "typedInputs": 307,
       "genericInputs": 0,
-      "typedOutputs": 309,
+      "typedOutputs": 307,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -78759,8 +78657,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 31
     },
     "validationCoverage": {
-      "methods": 309,
-      "validated": 309,
+      "methods": 307,
+      "validated": 307,
       "skippedGeneric": 0,
       "skippedUntyped": 0
     }

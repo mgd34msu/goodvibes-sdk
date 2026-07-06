@@ -30,6 +30,15 @@ export type {
   PeerEndpointContract,
 } from './types.js';
 export { DISTRIBUTED_WORK_TYPES } from './types.js';
+export {
+  BANNED_VERBS,
+  CORE_VERBS,
+  EXEMPT_VERB_CATEGORIES,
+  EXEMPT_VERBS,
+  classifyVerb,
+  verbTailOf,
+} from './core-verbs.js';
+export type { BannedVerb, CoreVerb, VerbClassification } from './core-verbs.js';
 export { FOUNDATION_METADATA } from './generated/foundation-metadata.js';
 export type {
   CompanionChatMessage,

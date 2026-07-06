@@ -1236,7 +1236,7 @@ export { forSession as forSessionRuntime }
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
     readonly productVersion: "0.38.0";
-    readonly operatorMethodCount: 309;
+    readonly operatorMethodCount: 307;
     readonly operatorEventCount: 31;
     readonly peerEndpointCount: 6;
 };
@@ -2123,7 +2123,7 @@ export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: s
 export const OPERATOR_CONTRACT: OperatorContractManifest;
 
 // @public (undocumented)
-export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.patch", "automation.jobs.pause", "automation.jobs.resume", "automation.jobs.run", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "calendar.events.create", "calendar.events.get", "calendar.events.list", "calendar.ics.export", "calendar.ics.import", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.drafts.delete", "channels.drafts.get", "channels.drafts.list", "channels.drafts.save", "channels.inbox.list", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.routing.assign", "channels.routing.delete", "channels.routing.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "checkpoints.create", "checkpoints.diff", "checkpoints.list", "checkpoints.restore", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.close", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "email.draft.create", "email.inbox.list", "email.inbox.read", "email.send", "fleet.list", "fleet.snapshot", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "mcp.config.get", "mcp.config.reload", "mcp.servers.list", "mcp.servers.remove", "mcp.servers.upsert", "mcp.tools.list", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.review-queue", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "projectPlanning.workPlan.clearCompleted", "projectPlanning.workPlan.snapshot", "projectPlanning.workPlan.task.create", "projectPlanning.workPlan.task.delete", "projectPlanning.workPlan.task.get", "projectPlanning.workPlan.task.status", "projectPlanning.workPlan.task.update", "projectPlanning.workPlan.tasks.list", "projectPlanning.workPlan.tasks.reorder", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.patch", "routes.snapshot", "scheduler.capacity", "schedules.create", "schedules.delete", "schedules.disable", "schedules.enable", "schedules.list", "schedules.run", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.delete", "sessions.detach", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.deliver", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.register", "sessions.reopen", "sessions.search", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.patch", "watchers.run", "watchers.start", "watchers.stop", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
+export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.run", "automation.jobs.update", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "automation.schedules.create", "automation.schedules.delete", "automation.schedules.disable", "automation.schedules.enable", "automation.schedules.list", "automation.schedules.run", "calendar.events.create", "calendar.events.get", "calendar.events.list", "calendar.ics.export", "calendar.ics.import", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.drafts.delete", "channels.drafts.get", "channels.drafts.list", "channels.drafts.save", "channels.inbox.list", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.repairs.list", "channels.routing.assign", "channels.routing.delete", "channels.routing.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "checkpoints.create", "checkpoints.diff", "checkpoints.list", "checkpoints.restore", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.list", "companion.chat.sessions.close", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "deliveries.get", "deliveries.list", "email.draft.create", "email.inbox.list", "email.inbox.read", "email.send", "fleet.list", "fleet.snapshot", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "mcp.config.get", "mcp.config.reload", "mcp.servers.list", "mcp.servers.remove", "mcp.servers.upsert", "mcp.tools.list", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.doctor", "memory.embeddings.default.set", "memory.review-queue", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "panels.list", "panels.open", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "projectPlanning.workPlan.clearCompleted", "projectPlanning.workPlan.snapshot", "projectPlanning.workPlan.task.create", "projectPlanning.workPlan.task.delete", "projectPlanning.workPlan.task.get", "projectPlanning.workPlan.task.status", "projectPlanning.workPlan.task.update", "projectPlanning.workPlan.tasks.list", "projectPlanning.workPlan.tasks.reorder", "providers.get", "providers.list", "providers.usage.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.update", "routes.snapshot", "scheduler.capacity", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.close", "sessions.create", "sessions.delete", "sessions.detach", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.deliver", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.register", "sessions.reopen", "sessions.search", "sessions.steer", "settings.snapshot", "surfaces.list", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.run", "watchers.start", "watchers.stop", "watchers.update", "web_search.providers.list", "web_search.query", "worktrees.snapshot"];
 
 // @public (undocumented)
 export interface OperatorContractManifest {
@@ -2624,7 +2624,11 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "automation.jobs.list": {};
     // (undocumented)
-    "automation.jobs.patch": ({
+    "automation.jobs.run": {
+        jobId: string;
+    };
+    // (undocumented)
+    "automation.jobs.update": ({
         jobId?: string;
         name?: string;
         description?: string;
@@ -2719,18 +2723,6 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
-    "automation.jobs.pause": {
-        jobId: string;
-    };
-    // (undocumented)
-    "automation.jobs.resume": {
-        jobId: string;
-    };
-    // (undocumented)
-    "automation.jobs.run": {
-        jobId: string;
-    };
-    // (undocumented)
     "automation.runs.cancel": {
         runId: string;
     };
@@ -2743,6 +2735,99 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "automation.runs.retry": {
         runId: string;
+    };
+    // (undocumented)
+    "automation.schedules.create": ({
+        name?: string;
+        prompt: string;
+        kind?: string;
+        cron?: string;
+        every?: string;
+        at?: string;
+        timezone?: string;
+        staggerMs?: number;
+        model?: string;
+        provider?: string;
+        fallbackModels?: readonly string[];
+        template?: string;
+        target?: {
+            kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
+            sessionId?: string;
+            routeId?: string;
+            threadId?: string;
+            channelId?: string;
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            pinnedSessionId?: string;
+            preserveThread?: boolean;
+            createIfMissing?: boolean;
+        };
+        reasoningEffort?: string;
+        thinking?: string;
+        wakeMode?: string;
+        timeoutMs?: number;
+        toolAllowlist?: readonly string[];
+        autoApprove?: boolean;
+        allowUnsafeExternalContent?: boolean;
+        externalContentSource?: string;
+        lightContext?: boolean;
+        delivery?: {
+            mode: "integration" | "link" | "none" | "surface" | "webhook";
+            targets: readonly ({
+                kind: "integration" | "link" | "none" | "surface" | "webhook";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                address?: string;
+                routeId?: string;
+                label?: string;
+            })[];
+            fallbackTargets: readonly ({
+                kind: "integration" | "link" | "none" | "surface" | "webhook";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                address?: string;
+                routeId?: string;
+                label?: string;
+            })[];
+            includeSummary: boolean;
+            includeTranscript: boolean;
+            includeLinks: boolean;
+            replyToRouteId?: string;
+        };
+        failure?: {
+            action: "cooldown" | "dead_letter" | "disable" | "retry";
+            maxConsecutiveFailures: number;
+            cooldownMs: number;
+            retryPolicy: {
+                maxAttempts: number;
+                delayMs: number;
+                strategy: "exponential" | "fixed" | "linear";
+                maxDelayMs?: number;
+                jitterMs?: number;
+            };
+            deadLetterRouteId?: string;
+            disableAfterFailures?: boolean;
+            notifyRouteId?: string;
+        };
+        enabled?: boolean;
+        deleteAfterRun?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "automation.schedules.delete": {
+        scheduleId: string;
+    };
+    // (undocumented)
+    "automation.schedules.disable": {
+        scheduleId: string;
+    };
+    // (undocumented)
+    "automation.schedules.enable": {
+        scheduleId: string;
+    };
+    // (undocumented)
+    "automation.schedules.list": {};
+    // (undocumented)
+    "automation.schedules.run": {
+        scheduleId: string;
     };
     // (undocumented)
     "channels.accounts.action.default": ({
@@ -3825,7 +3910,7 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "routes.bindings.list": {};
     // (undocumented)
-    "routes.bindings.patch": ({
+    "routes.bindings.update": ({
         bindingId?: string;
         sessionPolicy?: string;
         threadPolicy?: string;
@@ -3846,99 +3931,6 @@ export interface OperatorMethodInputMap {
     });
     // (undocumented)
     "routes.snapshot": {};
-    // (undocumented)
-    "schedules.create": ({
-        name?: string;
-        prompt: string;
-        kind?: string;
-        cron?: string;
-        every?: string;
-        at?: string;
-        timezone?: string;
-        staggerMs?: number;
-        model?: string;
-        provider?: string;
-        fallbackModels?: readonly string[];
-        template?: string;
-        target?: {
-            kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
-            sessionId?: string;
-            routeId?: string;
-            threadId?: string;
-            channelId?: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-            pinnedSessionId?: string;
-            preserveThread?: boolean;
-            createIfMissing?: boolean;
-        };
-        reasoningEffort?: string;
-        thinking?: string;
-        wakeMode?: string;
-        timeoutMs?: number;
-        toolAllowlist?: readonly string[];
-        autoApprove?: boolean;
-        allowUnsafeExternalContent?: boolean;
-        externalContentSource?: string;
-        lightContext?: boolean;
-        delivery?: {
-            mode: "integration" | "link" | "none" | "surface" | "webhook";
-            targets: readonly ({
-                kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                address?: string;
-                routeId?: string;
-                label?: string;
-            })[];
-            fallbackTargets: readonly ({
-                kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                address?: string;
-                routeId?: string;
-                label?: string;
-            })[];
-            includeSummary: boolean;
-            includeTranscript: boolean;
-            includeLinks: boolean;
-            replyToRouteId?: string;
-        };
-        failure?: {
-            action: "cooldown" | "dead_letter" | "disable" | "retry";
-            maxConsecutiveFailures: number;
-            cooldownMs: number;
-            retryPolicy: {
-                maxAttempts: number;
-                delayMs: number;
-                strategy: "exponential" | "fixed" | "linear";
-                maxDelayMs?: number;
-                jitterMs?: number;
-            };
-            deadLetterRouteId?: string;
-            disableAfterFailures?: boolean;
-            notifyRouteId?: string;
-        };
-        enabled?: boolean;
-        deleteAfterRun?: boolean;
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "schedules.delete": {
-        scheduleId: string;
-    };
-    // (undocumented)
-    "schedules.disable": {
-        scheduleId: string;
-    };
-    // (undocumented)
-    "schedules.enable": {
-        scheduleId: string;
-    };
-    // (undocumented)
-    "schedules.list": {};
-    // (undocumented)
-    "schedules.run": {
-        scheduleId: string;
-    };
     // (undocumented)
     "security.settings": {};
     // (undocumented)
@@ -4403,7 +4395,19 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "watchers.list": {};
     // (undocumented)
-    "watchers.patch": ({
+    "watchers.run": {
+        watcherId: string;
+    };
+    // (undocumented)
+    "watchers.start": {
+        watcherId: string;
+    };
+    // (undocumented)
+    "watchers.stop": {
+        watcherId: string;
+    };
+    // (undocumented)
+    "watchers.update": ({
         watcherId?: string;
         label?: string;
         kind?: string;
@@ -4428,18 +4432,6 @@ export interface OperatorMethodInputMap {
     } & {
         readonly [key: string]: unknown;
     });
-    // (undocumented)
-    "watchers.run": {
-        watcherId: string;
-    };
-    // (undocumented)
-    "watchers.start": {
-        watcherId: string;
-    };
-    // (undocumented)
-    "watchers.stop": {
-        watcherId: string;
-    };
     // (undocumented)
     "web_search.providers.list": {};
     // (undocumented)
@@ -5454,7 +5446,16 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
-    "automation.jobs.patch": ({
+    "automation.jobs.run": ({
+        jobId: string;
+        runId: string;
+        agentId?: string;
+        status: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "automation.jobs.update": ({
         id: string;
         name: string;
         description?: string;
@@ -5595,29 +5596,6 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: JsonValue;
             }) | boolean | null | number | readonly JsonValue[] | string;
         });
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "automation.jobs.pause": ({
-        id: string;
-        enabled: boolean;
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "automation.jobs.resume": ({
-        id: string;
-        enabled: boolean;
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "automation.jobs.run": ({
-        jobId: string;
-        runId: string;
-        agentId?: string;
-        status: string;
     } & {
         readonly [key: string]: unknown;
     });
@@ -6380,6 +6358,510 @@ export interface OperatorMethodOutputMap {
             readonly [key: string]: unknown;
         });
     };
+    // (undocumented)
+    "automation.schedules.create": ({
+        id: string;
+        name: string;
+        description?: string;
+        labels: readonly string[];
+        createdAt: number;
+        updatedAt: number;
+        status: "archived" | "enabled" | "error" | "paused";
+        enabled: boolean;
+        schedule: {
+            kind: "at";
+            at: number;
+        } | {
+            kind: "cron";
+            expression: string;
+            timezone?: string;
+            staggerMs?: number;
+        } | {
+            kind: "every";
+            intervalMs: number;
+            anchorAt?: number;
+        };
+        execution: {
+            prompt?: string;
+            template?: string;
+            target: {
+                kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
+                sessionId?: string;
+                routeId?: string;
+                threadId?: string;
+                channelId?: string;
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                pinnedSessionId?: string;
+                preserveThread?: boolean;
+                createIfMissing?: boolean;
+            };
+            modelProvider?: string;
+            modelId?: string;
+            fallbackModels?: readonly string[];
+            routing?: {
+                providerSelection?: "concrete" | "inherit-current" | "synthetic";
+                providerFailurePolicy?: "fail" | "ordered-fallbacks";
+                fallbackModels?: readonly string[];
+            };
+            executionIntent?: {
+                riskClass?: "dangerous" | "elevated" | "safe";
+                requiresApproval?: boolean;
+                networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
+                filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
+            };
+            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            thinking?: string;
+            wakeMode?: "next-heartbeat" | "now";
+            timeoutMs?: number;
+            maxAttempts?: number;
+            toolAllowlist?: readonly string[];
+            autoApprove?: boolean;
+            sandboxMode?: "inherit" | "isolate" | "off";
+            allowUnsafeExternalContent?: boolean;
+            externalContentSource?: "api" | "browser" | "channel_metadata" | "discord" | "email" | "gmail" | "ntfy" | "slack" | "unknown" | "web_fetch" | "web_search" | "webhook" | {
+                kind: string;
+                id?: string;
+                url?: string;
+                routeId?: string;
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            };
+            lightContext?: boolean;
+        };
+        delivery: {
+            mode: "integration" | "link" | "none" | "surface" | "webhook";
+            targets: readonly ({
+                kind: "integration" | "link" | "none" | "surface" | "webhook";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                address?: string;
+                routeId?: string;
+                label?: string;
+            })[];
+            fallbackTargets: readonly ({
+                kind: "integration" | "link" | "none" | "surface" | "webhook";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                address?: string;
+                routeId?: string;
+                label?: string;
+            })[];
+            includeSummary: boolean;
+            includeTranscript: boolean;
+            includeLinks: boolean;
+            replyToRouteId?: string;
+        };
+        failure: {
+            action: "cooldown" | "dead_letter" | "disable" | "retry";
+            maxConsecutiveFailures: number;
+            cooldownMs: number;
+            retryPolicy: {
+                maxAttempts: number;
+                delayMs: number;
+                strategy: "exponential" | "fixed" | "linear";
+                maxDelayMs?: number;
+                jitterMs?: number;
+            };
+            deadLetterRouteId?: string;
+            disableAfterFailures?: boolean;
+            notifyRouteId?: string;
+        };
+        source: ({
+            id: string;
+            kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
+            label: string;
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            routeId?: string;
+            enabled: boolean;
+            createdAt: number;
+            updatedAt: number;
+            lastSeenAt?: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        nextRunAt?: number;
+        lastRunAt?: number;
+        lastRunId?: string;
+        runCount: number;
+        successCount: number;
+        failureCount: number;
+        pausedReason?: string;
+        deleteAfterRun: boolean;
+        archivedAt?: number;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "automation.schedules.delete": ({
+        removed: boolean;
+        id?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "automation.schedules.disable": ({
+        id: string;
+        enabled: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "automation.schedules.enable": ({
+        id: string;
+        enabled: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "automation.schedules.list": {
+        jobs: readonly (({
+            id: string;
+            name: string;
+            description?: string;
+            labels: readonly string[];
+            createdAt: number;
+            updatedAt: number;
+            status: "archived" | "enabled" | "error" | "paused";
+            enabled: boolean;
+            schedule: {
+                kind: "at";
+                at: number;
+            } | {
+                kind: "cron";
+                expression: string;
+                timezone?: string;
+                staggerMs?: number;
+            } | {
+                kind: "every";
+                intervalMs: number;
+                anchorAt?: number;
+            };
+            execution: {
+                prompt?: string;
+                template?: string;
+                target: {
+                    kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
+                    sessionId?: string;
+                    routeId?: string;
+                    threadId?: string;
+                    channelId?: string;
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    pinnedSessionId?: string;
+                    preserveThread?: boolean;
+                    createIfMissing?: boolean;
+                };
+                modelProvider?: string;
+                modelId?: string;
+                fallbackModels?: readonly string[];
+                routing?: {
+                    providerSelection?: "concrete" | "inherit-current" | "synthetic";
+                    providerFailurePolicy?: "fail" | "ordered-fallbacks";
+                    fallbackModels?: readonly string[];
+                };
+                executionIntent?: {
+                    riskClass?: "dangerous" | "elevated" | "safe";
+                    requiresApproval?: boolean;
+                    networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
+                    filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
+                };
+                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                thinking?: string;
+                wakeMode?: "next-heartbeat" | "now";
+                timeoutMs?: number;
+                maxAttempts?: number;
+                toolAllowlist?: readonly string[];
+                autoApprove?: boolean;
+                sandboxMode?: "inherit" | "isolate" | "off";
+                allowUnsafeExternalContent?: boolean;
+                externalContentSource?: "api" | "browser" | "channel_metadata" | "discord" | "email" | "gmail" | "ntfy" | "slack" | "unknown" | "web_fetch" | "web_search" | "webhook" | {
+                    kind: string;
+                    id?: string;
+                    url?: string;
+                    routeId?: string;
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    metadata?: ({} & {
+                        readonly [key: string]: ({} & {
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
+                    });
+                };
+                lightContext?: boolean;
+            };
+            delivery: {
+                mode: "integration" | "link" | "none" | "surface" | "webhook";
+                targets: readonly ({
+                    kind: "integration" | "link" | "none" | "surface" | "webhook";
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    address?: string;
+                    routeId?: string;
+                    label?: string;
+                })[];
+                fallbackTargets: readonly ({
+                    kind: "integration" | "link" | "none" | "surface" | "webhook";
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    address?: string;
+                    routeId?: string;
+                    label?: string;
+                })[];
+                includeSummary: boolean;
+                includeTranscript: boolean;
+                includeLinks: boolean;
+                replyToRouteId?: string;
+            };
+            failure: {
+                action: "cooldown" | "dead_letter" | "disable" | "retry";
+                maxConsecutiveFailures: number;
+                cooldownMs: number;
+                retryPolicy: {
+                    maxAttempts: number;
+                    delayMs: number;
+                    strategy: "exponential" | "fixed" | "linear";
+                    maxDelayMs?: number;
+                    jitterMs?: number;
+                };
+                deadLetterRouteId?: string;
+                disableAfterFailures?: boolean;
+                notifyRouteId?: string;
+            };
+            source: ({
+                id: string;
+                kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
+                label: string;
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                routeId?: string;
+                enabled: boolean;
+                createdAt: number;
+                updatedAt: number;
+                lastSeenAt?: number;
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            });
+            nextRunAt?: number;
+            lastRunAt?: number;
+            lastRunId?: string;
+            runCount: number;
+            successCount: number;
+            failureCount: number;
+            pausedReason?: string;
+            deleteAfterRun: boolean;
+            archivedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        runs: readonly (({
+            id: string;
+            jobId: string;
+            labels: readonly string[];
+            createdAt: number;
+            updatedAt: number;
+            status: "cancelled" | "completed" | "failed" | "queued" | "running";
+            agentId?: string;
+            triggeredBy: ({
+                id: string;
+                kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
+                label: string;
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                routeId?: string;
+                enabled: boolean;
+                createdAt: number;
+                updatedAt: number;
+                lastSeenAt?: number;
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            });
+            target: {
+                kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
+                sessionId?: string;
+                routeId?: string;
+                threadId?: string;
+                channelId?: string;
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                pinnedSessionId?: string;
+                preserveThread?: boolean;
+                createIfMissing?: boolean;
+            };
+            execution: {
+                prompt?: string;
+                template?: string;
+                target: {
+                    kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
+                    sessionId?: string;
+                    routeId?: string;
+                    threadId?: string;
+                    channelId?: string;
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    pinnedSessionId?: string;
+                    preserveThread?: boolean;
+                    createIfMissing?: boolean;
+                };
+                modelProvider?: string;
+                modelId?: string;
+                fallbackModels?: readonly string[];
+                routing?: {
+                    providerSelection?: "concrete" | "inherit-current" | "synthetic";
+                    providerFailurePolicy?: "fail" | "ordered-fallbacks";
+                    fallbackModels?: readonly string[];
+                };
+                executionIntent?: {
+                    riskClass?: "dangerous" | "elevated" | "safe";
+                    requiresApproval?: boolean;
+                    networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
+                    filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
+                };
+                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                thinking?: string;
+                wakeMode?: "next-heartbeat" | "now";
+                timeoutMs?: number;
+                maxAttempts?: number;
+                toolAllowlist?: readonly string[];
+                autoApprove?: boolean;
+                sandboxMode?: "inherit" | "isolate" | "off";
+                allowUnsafeExternalContent?: boolean;
+                externalContentSource?: "api" | "browser" | "channel_metadata" | "discord" | "email" | "gmail" | "ntfy" | "slack" | "unknown" | "web_fetch" | "web_search" | "webhook" | {
+                    kind: string;
+                    id?: string;
+                    url?: string;
+                    routeId?: string;
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    metadata?: ({} & {
+                        readonly [key: string]: ({} & {
+                            readonly [key: string]: JsonValue;
+                        }) | boolean | null | number | readonly JsonValue[] | string;
+                    });
+                };
+                lightContext?: boolean;
+            };
+            scheduleKind?: "at" | "cron" | "every";
+            queuedAt: number;
+            startedAt?: number;
+            endedAt?: number;
+            durationMs?: number;
+            forceRun: boolean;
+            dueRun: boolean;
+            attempt: number;
+            sessionId?: string;
+            routeId?: string;
+            route?: ({
+                id: string;
+                kind: "channel" | "message" | "session" | "thread";
+                surfaceKind: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceId: string;
+                externalId: string;
+                sessionPolicy?: "continue-existing" | "create-or-bind" | "require-existing";
+                threadPolicy?: "detached" | "preserve" | "replace";
+                deliveryGuarantee?: "at-least-once" | "best-effort";
+                threadId?: string;
+                channelId?: string;
+                sessionId?: string;
+                jobId?: string;
+                runId?: string;
+                title?: string;
+                lastSeenAt: number;
+                createdAt: number;
+                updatedAt: number;
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            });
+            continuationMode?: "background" | "continued-live" | "shared-session" | "spawn";
+            executionIntent?: {
+                mode: "background" | "continued-live" | "shared-session" | "spawn";
+                targetKind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
+            };
+            deliveryIds: readonly string[];
+            deliveryAttempts?: readonly (({
+                id: string;
+                runId: string;
+                jobId: string;
+                target: {
+                    kind: "integration" | "link" | "none" | "surface" | "webhook";
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    address?: string;
+                    routeId?: string;
+                    label?: string;
+                };
+                status: "dead_lettered" | "failed" | "pending" | "sending" | "sent";
+                startedAt?: number;
+                endedAt?: number;
+                error?: string;
+                responseId?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            modelId?: string;
+            providerId?: string;
+            telemetry?: ({
+                usage: {
+                    inputTokens: number;
+                    outputTokens: number;
+                    cacheReadTokens: number;
+                    cacheWriteTokens: number;
+                    reasoningTokens?: number;
+                };
+                llmCallCount?: number;
+                toolCallCount?: number;
+                turnCount?: number;
+                modelId?: string;
+                providerId?: string;
+                reasoningSummaryPresent?: boolean;
+                source?: "local-agent" | "remote-device" | "remote-node" | "shared-session";
+            } & {
+                readonly [key: string]: unknown;
+            });
+            result?: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+            error?: string;
+            cancelledReason?: string;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    };
+    // (undocumented)
+    "automation.schedules.run": ({
+        jobId: string;
+        runId: string;
+        agentId?: string;
+        status: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "channels.accounts.action.default": {
         surface: string;
@@ -10840,7 +11322,7 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
-    "routes.bindings.patch": ({
+    "routes.bindings.update": ({
         id: string;
         kind: "channel" | "message" | "session" | "thread";
         surfaceKind: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
@@ -10898,510 +11380,6 @@ export interface OperatorMethodOutputMap {
             readonly [key: string]: unknown;
         }))[];
     };
-    // (undocumented)
-    "schedules.create": ({
-        id: string;
-        name: string;
-        description?: string;
-        labels: readonly string[];
-        createdAt: number;
-        updatedAt: number;
-        status: "archived" | "enabled" | "error" | "paused";
-        enabled: boolean;
-        schedule: {
-            kind: "at";
-            at: number;
-        } | {
-            kind: "cron";
-            expression: string;
-            timezone?: string;
-            staggerMs?: number;
-        } | {
-            kind: "every";
-            intervalMs: number;
-            anchorAt?: number;
-        };
-        execution: {
-            prompt?: string;
-            template?: string;
-            target: {
-                kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
-                sessionId?: string;
-                routeId?: string;
-                threadId?: string;
-                channelId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                pinnedSessionId?: string;
-                preserveThread?: boolean;
-                createIfMissing?: boolean;
-            };
-            modelProvider?: string;
-            modelId?: string;
-            fallbackModels?: readonly string[];
-            routing?: {
-                providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                providerFailurePolicy?: "fail" | "ordered-fallbacks";
-                fallbackModels?: readonly string[];
-            };
-            executionIntent?: {
-                riskClass?: "dangerous" | "elevated" | "safe";
-                requiresApproval?: boolean;
-                networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
-                filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
-            };
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
-            thinking?: string;
-            wakeMode?: "next-heartbeat" | "now";
-            timeoutMs?: number;
-            maxAttempts?: number;
-            toolAllowlist?: readonly string[];
-            autoApprove?: boolean;
-            sandboxMode?: "inherit" | "isolate" | "off";
-            allowUnsafeExternalContent?: boolean;
-            externalContentSource?: "api" | "browser" | "channel_metadata" | "discord" | "email" | "gmail" | "ntfy" | "slack" | "unknown" | "web_fetch" | "web_search" | "webhook" | {
-                kind: string;
-                id?: string;
-                url?: string;
-                routeId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                metadata?: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
-            };
-            lightContext?: boolean;
-        };
-        delivery: {
-            mode: "integration" | "link" | "none" | "surface" | "webhook";
-            targets: readonly ({
-                kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                address?: string;
-                routeId?: string;
-                label?: string;
-            })[];
-            fallbackTargets: readonly ({
-                kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                address?: string;
-                routeId?: string;
-                label?: string;
-            })[];
-            includeSummary: boolean;
-            includeTranscript: boolean;
-            includeLinks: boolean;
-            replyToRouteId?: string;
-        };
-        failure: {
-            action: "cooldown" | "dead_letter" | "disable" | "retry";
-            maxConsecutiveFailures: number;
-            cooldownMs: number;
-            retryPolicy: {
-                maxAttempts: number;
-                delayMs: number;
-                strategy: "exponential" | "fixed" | "linear";
-                maxDelayMs?: number;
-                jitterMs?: number;
-            };
-            deadLetterRouteId?: string;
-            disableAfterFailures?: boolean;
-            notifyRouteId?: string;
-        };
-        source: ({
-            id: string;
-            kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
-            label: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-            routeId?: string;
-            enabled: boolean;
-            createdAt: number;
-            updatedAt: number;
-            lastSeenAt?: number;
-            metadata: ({} & {
-                readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue;
-                }) | boolean | null | number | readonly JsonValue[] | string;
-            });
-        } & {
-            readonly [key: string]: unknown;
-        });
-        nextRunAt?: number;
-        lastRunAt?: number;
-        lastRunId?: string;
-        runCount: number;
-        successCount: number;
-        failureCount: number;
-        pausedReason?: string;
-        deleteAfterRun: boolean;
-        archivedAt?: number;
-        metadata?: ({} & {
-            readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue;
-            }) | boolean | null | number | readonly JsonValue[] | string;
-        });
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "schedules.delete": ({
-        removed: boolean;
-        id?: string;
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "schedules.disable": ({
-        id: string;
-        enabled: boolean;
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "schedules.enable": ({
-        id: string;
-        enabled: boolean;
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
-    "schedules.list": {
-        jobs: readonly (({
-            id: string;
-            name: string;
-            description?: string;
-            labels: readonly string[];
-            createdAt: number;
-            updatedAt: number;
-            status: "archived" | "enabled" | "error" | "paused";
-            enabled: boolean;
-            schedule: {
-                kind: "at";
-                at: number;
-            } | {
-                kind: "cron";
-                expression: string;
-                timezone?: string;
-                staggerMs?: number;
-            } | {
-                kind: "every";
-                intervalMs: number;
-                anchorAt?: number;
-            };
-            execution: {
-                prompt?: string;
-                template?: string;
-                target: {
-                    kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
-                    sessionId?: string;
-                    routeId?: string;
-                    threadId?: string;
-                    channelId?: string;
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                    pinnedSessionId?: string;
-                    preserveThread?: boolean;
-                    createIfMissing?: boolean;
-                };
-                modelProvider?: string;
-                modelId?: string;
-                fallbackModels?: readonly string[];
-                routing?: {
-                    providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    providerFailurePolicy?: "fail" | "ordered-fallbacks";
-                    fallbackModels?: readonly string[];
-                };
-                executionIntent?: {
-                    riskClass?: "dangerous" | "elevated" | "safe";
-                    requiresApproval?: boolean;
-                    networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
-                    filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
-                };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
-                thinking?: string;
-                wakeMode?: "next-heartbeat" | "now";
-                timeoutMs?: number;
-                maxAttempts?: number;
-                toolAllowlist?: readonly string[];
-                autoApprove?: boolean;
-                sandboxMode?: "inherit" | "isolate" | "off";
-                allowUnsafeExternalContent?: boolean;
-                externalContentSource?: "api" | "browser" | "channel_metadata" | "discord" | "email" | "gmail" | "ntfy" | "slack" | "unknown" | "web_fetch" | "web_search" | "webhook" | {
-                    kind: string;
-                    id?: string;
-                    url?: string;
-                    routeId?: string;
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                    metadata?: ({} & {
-                        readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue;
-                        }) | boolean | null | number | readonly JsonValue[] | string;
-                    });
-                };
-                lightContext?: boolean;
-            };
-            delivery: {
-                mode: "integration" | "link" | "none" | "surface" | "webhook";
-                targets: readonly ({
-                    kind: "integration" | "link" | "none" | "surface" | "webhook";
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                    address?: string;
-                    routeId?: string;
-                    label?: string;
-                })[];
-                fallbackTargets: readonly ({
-                    kind: "integration" | "link" | "none" | "surface" | "webhook";
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                    address?: string;
-                    routeId?: string;
-                    label?: string;
-                })[];
-                includeSummary: boolean;
-                includeTranscript: boolean;
-                includeLinks: boolean;
-                replyToRouteId?: string;
-            };
-            failure: {
-                action: "cooldown" | "dead_letter" | "disable" | "retry";
-                maxConsecutiveFailures: number;
-                cooldownMs: number;
-                retryPolicy: {
-                    maxAttempts: number;
-                    delayMs: number;
-                    strategy: "exponential" | "fixed" | "linear";
-                    maxDelayMs?: number;
-                    jitterMs?: number;
-                };
-                deadLetterRouteId?: string;
-                disableAfterFailures?: boolean;
-                notifyRouteId?: string;
-            };
-            source: ({
-                id: string;
-                kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
-                label: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                routeId?: string;
-                enabled: boolean;
-                createdAt: number;
-                updatedAt: number;
-                lastSeenAt?: number;
-                metadata: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
-            } & {
-                readonly [key: string]: unknown;
-            });
-            nextRunAt?: number;
-            lastRunAt?: number;
-            lastRunId?: string;
-            runCount: number;
-            successCount: number;
-            failureCount: number;
-            pausedReason?: string;
-            deleteAfterRun: boolean;
-            archivedAt?: number;
-            metadata?: ({} & {
-                readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue;
-                }) | boolean | null | number | readonly JsonValue[] | string;
-            });
-        } & {
-            readonly [key: string]: unknown;
-        }))[];
-        runs: readonly (({
-            id: string;
-            jobId: string;
-            labels: readonly string[];
-            createdAt: number;
-            updatedAt: number;
-            status: "cancelled" | "completed" | "failed" | "queued" | "running";
-            agentId?: string;
-            triggeredBy: ({
-                id: string;
-                kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
-                label: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                routeId?: string;
-                enabled: boolean;
-                createdAt: number;
-                updatedAt: number;
-                lastSeenAt?: number;
-                metadata: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
-            } & {
-                readonly [key: string]: unknown;
-            });
-            target: {
-                kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
-                sessionId?: string;
-                routeId?: string;
-                threadId?: string;
-                channelId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                pinnedSessionId?: string;
-                preserveThread?: boolean;
-                createIfMissing?: boolean;
-            };
-            execution: {
-                prompt?: string;
-                template?: string;
-                target: {
-                    kind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
-                    sessionId?: string;
-                    routeId?: string;
-                    threadId?: string;
-                    channelId?: string;
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                    pinnedSessionId?: string;
-                    preserveThread?: boolean;
-                    createIfMissing?: boolean;
-                };
-                modelProvider?: string;
-                modelId?: string;
-                fallbackModels?: readonly string[];
-                routing?: {
-                    providerSelection?: "concrete" | "inherit-current" | "synthetic";
-                    providerFailurePolicy?: "fail" | "ordered-fallbacks";
-                    fallbackModels?: readonly string[];
-                };
-                executionIntent?: {
-                    riskClass?: "dangerous" | "elevated" | "safe";
-                    requiresApproval?: boolean;
-                    networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
-                    filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
-                };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
-                thinking?: string;
-                wakeMode?: "next-heartbeat" | "now";
-                timeoutMs?: number;
-                maxAttempts?: number;
-                toolAllowlist?: readonly string[];
-                autoApprove?: boolean;
-                sandboxMode?: "inherit" | "isolate" | "off";
-                allowUnsafeExternalContent?: boolean;
-                externalContentSource?: "api" | "browser" | "channel_metadata" | "discord" | "email" | "gmail" | "ntfy" | "slack" | "unknown" | "web_fetch" | "web_search" | "webhook" | {
-                    kind: string;
-                    id?: string;
-                    url?: string;
-                    routeId?: string;
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                    metadata?: ({} & {
-                        readonly [key: string]: ({} & {
-                            readonly [key: string]: JsonValue;
-                        }) | boolean | null | number | readonly JsonValue[] | string;
-                    });
-                };
-                lightContext?: boolean;
-            };
-            scheduleKind?: "at" | "cron" | "every";
-            queuedAt: number;
-            startedAt?: number;
-            endedAt?: number;
-            durationMs?: number;
-            forceRun: boolean;
-            dueRun: boolean;
-            attempt: number;
-            sessionId?: string;
-            routeId?: string;
-            route?: ({
-                id: string;
-                kind: "channel" | "message" | "session" | "thread";
-                surfaceKind: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                surfaceId: string;
-                externalId: string;
-                sessionPolicy?: "continue-existing" | "create-or-bind" | "require-existing";
-                threadPolicy?: "detached" | "preserve" | "replace";
-                deliveryGuarantee?: "at-least-once" | "best-effort";
-                threadId?: string;
-                channelId?: string;
-                sessionId?: string;
-                jobId?: string;
-                runId?: string;
-                title?: string;
-                lastSeenAt: number;
-                createdAt: number;
-                updatedAt: number;
-                metadata: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
-            } & {
-                readonly [key: string]: unknown;
-            });
-            continuationMode?: "background" | "continued-live" | "shared-session" | "spawn";
-            executionIntent?: {
-                mode: "background" | "continued-live" | "shared-session" | "spawn";
-                targetKind: "background" | "current" | "isolated" | "main" | "pinned" | "route" | "session";
-            };
-            deliveryIds: readonly string[];
-            deliveryAttempts?: readonly (({
-                id: string;
-                runId: string;
-                jobId: string;
-                target: {
-                    kind: "integration" | "link" | "none" | "surface" | "webhook";
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
-                    address?: string;
-                    routeId?: string;
-                    label?: string;
-                };
-                status: "dead_lettered" | "failed" | "pending" | "sending" | "sent";
-                startedAt?: number;
-                endedAt?: number;
-                error?: string;
-                responseId?: string;
-            } & {
-                readonly [key: string]: unknown;
-            }))[];
-            modelId?: string;
-            providerId?: string;
-            telemetry?: ({
-                usage: {
-                    inputTokens: number;
-                    outputTokens: number;
-                    cacheReadTokens: number;
-                    cacheWriteTokens: number;
-                    reasoningTokens?: number;
-                };
-                llmCallCount?: number;
-                toolCallCount?: number;
-                turnCount?: number;
-                modelId?: string;
-                providerId?: string;
-                reasoningSummaryPresent?: boolean;
-                source?: "local-agent" | "remote-device" | "remote-node" | "shared-session";
-            } & {
-                readonly [key: string]: unknown;
-            });
-            result?: ({} & {
-                readonly [key: string]: JsonValue;
-            }) | boolean | null | number | readonly JsonValue[] | string;
-            error?: string;
-            cancelledReason?: string;
-            metadata?: ({} & {
-                readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue;
-                }) | boolean | null | number | readonly JsonValue[] | string;
-            });
-        } & {
-            readonly [key: string]: unknown;
-        }))[];
-    };
-    // (undocumented)
-    "schedules.run": ({
-        jobId: string;
-        runId: string;
-        agentId?: string;
-        status: string;
-    } & {
-        readonly [key: string]: unknown;
-    });
     // (undocumented)
     "security.settings": {
         settings: readonly ({
@@ -13480,42 +13458,6 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
-    "watchers.patch": ({
-        id: string;
-        kind: string;
-        label: string;
-        state: string;
-        source: ({
-            id: string;
-            kind: string;
-            label: string;
-            enabled: boolean;
-            createdAt: number;
-            updatedAt: number;
-            metadata: ({} & {
-                readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue;
-                }) | boolean | null | number | readonly JsonValue[] | string;
-            });
-        } & {
-            readonly [key: string]: unknown;
-        });
-        intervalMs?: number;
-        lastHeartbeatAt?: number;
-        sourceLagMs?: number;
-        sourceStatus?: string;
-        degradedReason?: string;
-        lastCheckpoint?: string;
-        lastError?: string;
-        metadata: ({} & {
-            readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue;
-            }) | boolean | null | number | readonly JsonValue[] | string;
-        });
-    } & {
-        readonly [key: string]: unknown;
-    });
-    // (undocumented)
     "watchers.run": ({
         id: string;
         kind: string;
@@ -13589,6 +13531,42 @@ export interface OperatorMethodOutputMap {
     });
     // (undocumented)
     "watchers.stop": ({
+        id: string;
+        kind: string;
+        label: string;
+        state: string;
+        source: ({
+            id: string;
+            kind: string;
+            label: string;
+            enabled: boolean;
+            createdAt: number;
+            updatedAt: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        intervalMs?: number;
+        lastHeartbeatAt?: number;
+        sourceLagMs?: number;
+        sourceStatus?: string;
+        degradedReason?: string;
+        lastCheckpoint?: string;
+        lastError?: string;
+        metadata: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "watchers.update": ({
         id: string;
         kind: string;
         label: string;
