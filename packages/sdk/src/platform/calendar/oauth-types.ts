@@ -180,7 +180,14 @@ export interface StoredTokenSet {
   readonly accessToken: string;
   readonly refreshToken?: string;
   readonly tokenType: string;
-  /** Epoch ms the access token expires, when the provider stated expires_in. */
+  /**
+   * Epoch ms the access token expires. `parseTokenResponse` (oauth-flow.ts) always
+   * sets this — coercing a numeric-string `expires_in`, or falling back to a
+   * conservative default when the provider omits it or sends something unparsable —
+   * so a token set produced by this build's flows never reads as "never expires".
+   * Still optional at the type level for token sets constructed directly (e.g. tests,
+   * or a caller building one by hand) rather than through `parseTokenResponse`.
+   */
   readonly expiresAt?: number;
   /** The scopes actually granted (from the token response), when stated. */
   readonly scopes?: readonly string[];

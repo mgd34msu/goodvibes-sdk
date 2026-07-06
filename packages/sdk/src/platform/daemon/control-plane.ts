@@ -16,6 +16,7 @@ import { resolveGatewayPathTemplate } from './helpers.js';
 import { summarizeError } from '../utils/error-display.js';
 import { validateInvocationInput } from '../control-plane/invoke-input-validation.js';
 import { isGatewayVerbError } from '../control-plane/routes/gateway-verb-error.js';
+import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import {
   buildMissingScopeBody,
   resolveAuthenticatedPrincipal,
@@ -176,6 +177,11 @@ export class DaemonControlPlaneHelper {
         ok: false,
         body: {
           error: `Gateway method is cataloged but not invokable through method dispatch: ${descriptor.id}`,
+          // Machine-readable, following the SDKErrorCodes.SESSION_CLOSED precedent
+          // (session-broker.ts) — consumers match on `code`, never on the message
+          // string. See the `invokable` field's doc comment (method-catalog-shared.ts)
+          // for what this status does and does not mean.
+          code: SDKErrorCodes.NOT_INVOKABLE,
         },
       };
     }

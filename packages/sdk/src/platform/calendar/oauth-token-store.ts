@@ -54,6 +54,15 @@ export class CalendarTokenStore {
   private readonly secrets: SecretStoreSlice;
   private readonly clock: Clock;
   private readonly leewayMs: number;
+  /**
+   * In-instance single-flight dedup for concurrent refreshes of the same provider.
+   * Providers that rotate refresh tokens (Microsoft) invalidate the prior refresh
+   * token the moment one refresh succeeds — a second concurrent call that still
+   * holds the OLD refresh token would otherwise lose the race with invalid_grant
+   * and stamp reconnect-needed over a perfectly working account. Every concurrent
+   * caller for a given provider instead awaits the SAME in-flight refresh.
+   */
+  private readonly inflightRefresh = new Map<CalendarProviderId, Promise<string>>();
 
   constructor(options: CalendarTokenStoreOptions) {
     this.secrets = options.secrets;
@@ -128,9 +137,29 @@ export class CalendarTokenStore {
       await this.markReconnectNeeded(provider);
       throw new TokenRefreshError(provider, `The ${provider} access token expired and no refresh token is stored.`);
     }
+    // Single-flight: a refresh already in progress for this provider serves every
+    // concurrent caller instead of each racing the provider with the same (possibly
+    // about-to-be-rotated) refresh token.
+    const existing = this.inflightRefresh.get(provider);
+    if (existing) return existing;
+    const refreshToken = tokens.refreshToken;
+    const inFlight = this.performRefresh(provider, config, fetchImpl, refreshToken)
+      .finally(() => {
+        if (this.inflightRefresh.get(provider) === inFlight) this.inflightRefresh.delete(provider);
+      });
+    this.inflightRefresh.set(provider, inFlight);
+    return inFlight;
+  }
+
+  private async performRefresh(
+    provider: CalendarProviderId,
+    config: ResolvedClientConfig,
+    fetchImpl: HttpFetch,
+    refreshToken: string,
+  ): Promise<string> {
     let refreshed: StoredTokenSet;
     try {
-      refreshed = await refreshAccessToken(config, fetchImpl, tokens.refreshToken, this.clock());
+      refreshed = await refreshAccessToken(config, fetchImpl, refreshToken, this.clock());
     } catch (error) {
       await this.markReconnectNeeded(provider);
       const detail = error instanceof OAuthFlowError ? error.message : String(error);
@@ -162,7 +191,21 @@ export class CalendarTokenStore {
     return { revokedRemotely };
   }
 
+  /**
+   * Stamp the durable reconnect-needed marker — UNLESS a valid (non-expired) token
+   * set already exists. A refresh can fail here while a concurrent winner (this
+   * instance's own single-flight already prevents an in-process race, but a
+   * separate process/instance sharing the same secret store is not covered by
+   * that) has already stored a fresh, working token set for the same provider.
+   * Re-reading state immediately before writing the marker means a genuinely
+   * working account is never overwritten with a false "reconnect needed".
+   */
   private async markReconnectNeeded(provider: CalendarProviderId): Promise<void> {
+    const current = await this.load(provider);
+    if (current) {
+      const stillValid = typeof current.expiresAt !== 'number' || this.clock() < current.expiresAt - this.leewayMs;
+      if (stillValid) return;
+    }
     await this.secrets.set(statusKey(provider), 'reconnect-needed');
   }
 

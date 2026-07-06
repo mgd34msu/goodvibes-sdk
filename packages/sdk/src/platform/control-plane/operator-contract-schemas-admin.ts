@@ -622,6 +622,7 @@ const SERVICE_NETWORK_SCHEMA = objectSchema({
 
 export const SERVICE_STATUS_SCHEMA = objectSchema({
   platform: STRING_SCHEMA,
+  serviceName: STRING_SCHEMA,
   path: STRING_SCHEMA,
   installed: BOOLEAN_SCHEMA,
   autostart: BOOLEAN_SCHEMA,
@@ -634,4 +635,4 @@ export const SERVICE_STATUS_SCHEMA = objectSchema({
   lastAction: STRING_SCHEMA,
   actionError: STRING_SCHEMA,
   network: SERVICE_NETWORK_SCHEMA,
-}, ['platform', 'path', 'installed', 'autostart', 'running', 'commandPreview', 'suggestedCommands'], { additionalProperties: true });
+}, ['platform', 'serviceName', 'path', 'installed', 'autostart', 'running', 'commandPreview', 'suggestedCommands'], { additionalProperties: true });

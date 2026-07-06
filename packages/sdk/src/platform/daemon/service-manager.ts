@@ -20,6 +20,8 @@ export interface ManagedServiceDefinition {
 
 export interface ManagedServiceStatus {
   readonly platform: ManagedServicePlatform;
+  /** The resolved service name (`service.serviceName` config, else the built-in default) — so a CLI/consumer never has to hardcode it. */
+  readonly serviceName: string;
   readonly path: string;
   readonly installed: boolean;
   readonly autostart: boolean;
@@ -279,6 +281,7 @@ export class PlatformServiceManager {
       const definition = this.resolveDefinition();
       return {
         platform,
+        serviceName,
         path,
         installed: false,
         autostart: false,
@@ -295,6 +298,7 @@ export class PlatformServiceManager {
     const definition = this.resolveDefinition();
     return {
       platform,
+      serviceName,
       path,
       installed,
       autostart: Boolean(this.configManager.get('service.autostart')),

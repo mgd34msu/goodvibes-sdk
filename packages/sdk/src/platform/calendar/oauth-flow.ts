@@ -73,6 +73,32 @@ interface RawTokenResponse {
   scope?: unknown;
 }
 
+/**
+ * A conservative fallback lifetime (seconds) used when a provider's token response
+ * omits `expires_in` or sends something we cannot parse as a positive number. Never
+ * treat that as "never expires" — an access token that silently 401s later, with no
+ * expiry recorded to trigger a proactive refresh, is worse than refreshing a bit
+ * early. One hour matches the common real-world default (Google/Microsoft both
+ * normally send 3600).
+ */
+const DEFAULT_EXPIRES_IN_SECONDS = 3600;
+
+/**
+ * Coerce a token response's `expires_in` into a positive number of seconds.
+ * Accepts a real number, a numeric string (some providers send `"3600"` instead of
+ * `3600`), and falls back to {@link DEFAULT_EXPIRES_IN_SECONDS} for anything else
+ * (absent, non-numeric, zero, or negative) — this build never emits a token set with
+ * no expiry at all, which the store would otherwise read as "connected forever".
+ */
+function coerceExpiresInSeconds(raw: unknown): number {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw;
+  if (typeof raw === 'string') {
+    const parsed = Number(raw.trim());
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return DEFAULT_EXPIRES_IN_SECONDS;
+}
+
 /** Turn a provider token response into a StoredTokenSet, keeping a prior refresh
  *  token when the response omits one (Google omits it on refresh). */
 export function parseTokenResponse(
@@ -94,9 +120,9 @@ export function parseTokenResponse(
     accessToken: json.access_token,
     ...(refreshToken ? { refreshToken } : {}),
     tokenType: typeof json.token_type === 'string' && json.token_type.length > 0 ? json.token_type : 'Bearer',
-    ...(typeof json.expires_in === 'number' && Number.isFinite(json.expires_in)
-      ? { expiresAt: now + json.expires_in * 1000 }
-      : {}),
+    // Always set expiresAt — never omit it just because expires_in was absent or
+    // unparsable — a coerced/defaulted lifetime beats "never expires".
+    expiresAt: now + coerceExpiresInSeconds(json.expires_in) * 1000,
     ...(scopes ? { scopes } : {}),
     obtainedAt: now,
   };

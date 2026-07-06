@@ -145,6 +145,7 @@ describe('launchd status()/uninstall() semantics', () => {
 
     const status = manager.status();
     expect(status.platform).toBe('launchd');
+    expect(status.serviceName).toBe('goodvibes-status-test');
     expect(status.installed).toBe(false);
     expect(status.running).toBe(false);
     expect(status.path).toBe(join(dir, 'Library', 'LaunchAgents', 'goodvibes-status-test.plist'));
@@ -153,6 +154,21 @@ describe('launchd status()/uninstall() semantics', () => {
       `launchctl load ${status.path}`,
       `launchctl list | grep goodvibes-status-test`,
     ]);
+  }));
+
+  test('status() reports the resolved serviceName so a caller never has to hardcode it, even when install()/uninstall() spread it back', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-name-check');
+    const def = definition({ name: 'goodvibes-name-check', workingDirectory: dir });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir,
+      homeDirectory: dir,
+      definitionOverride: def,
+      featureFlags: flags(['service-management']),
+    });
+
+    expect(manager.status().serviceName).toBe('goodvibes-name-check');
+    expect(manager.install().serviceName).toBe('goodvibes-name-check');
+    expect(manager.uninstall().serviceName).toBe('goodvibes-name-check');
   }));
 
   test('status() after install reports installed:true with file contents; uninstall() removes the plist', () => withTempDir((dir) => {

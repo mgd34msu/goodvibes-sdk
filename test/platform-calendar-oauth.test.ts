@@ -32,6 +32,7 @@ import {
   CalendarTokenStore,
   OAuthFlowError,
   TokenRefreshError,
+  parseTokenResponse,
   providerProfile,
   resolveClientConfig,
   type HttpFetch,
@@ -402,6 +403,37 @@ describe('device-code flow', () => {
 });
 
 // ---------------------------------------------------------------------------
+// F3: expires_in coercion — never silently "never expires"
+// ---------------------------------------------------------------------------
+
+describe('parseTokenResponse: expires_in coercion', () => {
+  test('a numeric expires_in sets expiresAt normally', () => {
+    const tokens = parseTokenResponse({ access_token: 'a', expires_in: 3600 }, 1_000_000);
+    expect(tokens.expiresAt).toBe(1_000_000 + 3_600_000);
+  });
+
+  test('a numeric-STRING expires_in ("3600") is coerced, not ignored', () => {
+    const tokens = parseTokenResponse({ access_token: 'a', expires_in: '3600' }, 1_000_000);
+    expect(tokens.expiresAt).toBe(1_000_000 + 3_600_000);
+  });
+
+  test('an absent expires_in gets the conservative default, never "no expiry"', () => {
+    const tokens = parseTokenResponse({ access_token: 'a' }, 1_000_000);
+    expect(tokens.expiresAt).toBe(1_000_000 + 3_600_000);
+  });
+
+  test('a non-numeric expires_in ("soon") gets the conservative default', () => {
+    const tokens = parseTokenResponse({ access_token: 'a', expires_in: 'soon' }, 1_000_000);
+    expect(tokens.expiresAt).toBe(1_000_000 + 3_600_000);
+  });
+
+  test('a zero/negative expires_in gets the conservative default rather than an already-expired or nonsensical token', () => {
+    expect(parseTokenResponse({ access_token: 'a', expires_in: 0 }, 1_000_000).expiresAt).toBe(1_000_000 + 3_600_000);
+    expect(parseTokenResponse({ access_token: 'a', expires_in: -5 }, 1_000_000).expiresAt).toBe(1_000_000 + 3_600_000);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Token refresh + honest reconnect-needed
 // ---------------------------------------------------------------------------
 
@@ -435,6 +467,87 @@ describe('token refresh lifecycle', () => {
     now = 25_000;
     await expect(store.getFreshAccessToken('google', realConfig('google'), makeFakeFetch(state))).rejects.toBeInstanceOf(TokenRefreshError);
     expect(await store.connectionState('google')).toBe('reconnect-needed');
+  });
+
+  // F2: Microsoft rotates refresh tokens on every use, so two concurrent
+  // getFreshAccessToken calls sharing one stored (soon-to-be-invalidated) refresh
+  // token must not both hit the provider — the loser would get invalid_grant on an
+  // otherwise perfectly working account.
+  test('two concurrent getFreshAccessToken calls single-flight to exactly one refresh request', async () => {
+    const state = freshState();
+    const secrets = makeSecrets();
+    let now = 10_000;
+    const store = new CalendarTokenStore({ secrets, clock: () => now });
+    state.refreshTokens.add('rt-1');
+    await store.save('google', { accessToken: 'old', refreshToken: 'rt-1', tokenType: 'Bearer', expiresAt: 100_000, obtainedAt: 10_000 }, {
+      provider: 'google', accountId: 'google', label: 'user@gmail.com', scopes: [], connectedAt: 10_000,
+    });
+    now = 200_000; // past expiry (beyond the 60s refresh leeway)
+
+    let refreshRequests = 0;
+    const base = makeFakeFetch(state);
+    const countingFetch: HttpFetch = async (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === '/token' && form(req.body).get('grant_type') === 'refresh_token') refreshRequests++;
+      return base(req);
+    };
+
+    const [a, b] = await Promise.all([
+      store.getFreshAccessToken('google', realConfig('google'), countingFetch),
+      store.getFreshAccessToken('google', realConfig('google'), countingFetch),
+    ]);
+    expect(refreshRequests).toBe(1);
+    expect(a).toBe(b);
+    expect(a).toMatch(/^access-/);
+    expect(await store.connectionState('google')).toBe('connected');
+  });
+
+  // F2: a genuinely-dead refresh token (not merely lost a single-flight race) must
+  // still produce an honest reconnect-needed — the fix to (b) below must not make
+  // real failures silently invisible.
+  test('a genuinely-dead refresh token still produces reconnect-needed', async () => {
+    const state = freshState();
+    const secrets = makeSecrets();
+    let now = 10_000;
+    const store = new CalendarTokenStore({ secrets, clock: () => now });
+    await store.save('google', { accessToken: 'old', refreshToken: 'rt-dead', tokenType: 'Bearer', expiresAt: 20_000, obtainedAt: 10_000 }, {
+      provider: 'google', accountId: 'google', label: 'user@gmail.com', scopes: [], connectedAt: 10_000,
+    });
+    now = 25_000; // rt-dead was never registered on the server -> refresh 400s
+    await expect(store.getFreshAccessToken('google', realConfig('google'), makeFakeFetch(state))).rejects.toBeInstanceOf(TokenRefreshError);
+    expect(await store.connectionState('google')).toBe('reconnect-needed');
+  });
+
+  // F2(b): markReconnectNeeded must re-read state before writing the marker. If a
+  // concurrent process/instance already stored a fresh, valid token set for the
+  // same provider (sharing the same secret store) between this refresh's failure
+  // and the marker write, the marker must NOT stamp over that working account.
+  test('a refresh failure does not stamp reconnect-needed over a token another process already refreshed', async () => {
+    const state = freshState();
+    const secrets = makeSecrets();
+    let now = 10_000;
+    const store = new CalendarTokenStore({ secrets, clock: () => now });
+    state.refreshTokens.add('rt-1');
+    await store.save('google', { accessToken: 'old', refreshToken: 'rt-1', tokenType: 'Bearer', expiresAt: 100_000, obtainedAt: 10_000 }, {
+      provider: 'google', accountId: 'google', label: 'user@gmail.com', scopes: [], connectedAt: 10_000,
+    });
+    now = 200_000;
+    const racyFetch: HttpFetch = async () => {
+      // Simulate another process/instance winning the race: it refreshes and saves
+      // a fresh, valid token set into the SAME shared secret store before this
+      // call's own (losing) refresh attempt is handled as a failure.
+      await secrets.set('GOODVIBES_CALENDAR_GOOGLE_TOKENS', JSON.stringify({
+        accessToken: 'access-from-other-process',
+        refreshToken: 'rt-2',
+        tokenType: 'Bearer',
+        expiresAt: now + 3_600_000,
+        obtainedAt: now,
+      }));
+      return jsonResponse(400, { error: 'invalid_grant' });
+    };
+    await expect(store.getFreshAccessToken('google', realConfig('google'), racyFetch)).rejects.toBeInstanceOf(TokenRefreshError);
+    // The marker must NOT have been stamped over the now-valid token.
+    expect(await store.connectionState('google')).toBe('connected');
   });
 });
 

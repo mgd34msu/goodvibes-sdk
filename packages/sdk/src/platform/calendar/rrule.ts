@@ -207,6 +207,11 @@ export function expandEvent(event: CalendarEvent, window: DateWindow): EventOccu
     return out;
   }
 
+  if (freq === 'MONTHLY' || freq === 'YEARLY') {
+    stepMonthlyOrYearly(freq, interval, seedMs, toMs, untilMs, emit);
+    return out;
+  }
+
   const step = freqStepper(freq, interval);
   let cursor = seedMs;
   for (let i = 0; i < MAX_OCCURRENCES; i++) {
@@ -216,25 +221,75 @@ export function expandEvent(event: CalendarEvent, window: DateWindow): EventOccu
   return out;
 }
 
-/** A stepper that advances a UTC-midnight ms cursor by one FREQ*INTERVAL period. */
+/** A stepper that advances a UTC-midnight ms cursor by one FREQ*INTERVAL period. DAILY/WEEKLY
+ *  only — MONTHLY/YEARLY need the anchor-day-preserving/skip-invalid logic in
+ *  stepMonthlyOrYearly below, since naive Date.UTC(y, m+1, day) arithmetic normalizes an
+ *  out-of-range day (e.g. day 31 in a 30-day month) into the NEXT month, permanently
+ *  shifting the rest of the series (the bug this file used to have). */
 function freqStepper(freq: string, interval: number): (ms: number) => number {
   switch (freq) {
     case 'DAILY':
       return (ms) => ms + DAY_MS * interval;
     case 'WEEKLY':
       return (ms) => ms + DAY_MS * 7 * interval;
-    case 'MONTHLY':
-      return (ms) => {
-        const d = new Date(ms);
-        return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + interval, d.getUTCDate());
-      };
-    case 'YEARLY':
-      return (ms) => {
-        const d = new Date(ms);
-        return Date.UTC(d.getUTCFullYear() + interval, d.getUTCMonth(), d.getUTCDate());
-      };
     default:
       return (ms) => ms + DAY_MS;
+  }
+}
+
+/**
+ * MONTHLY/YEARLY stepping, RFC 5545-correct: every candidate is measured from the
+ * ORIGINAL anchor day-of-month (`seedDay`), never from a previously normalized/drifted
+ * cursor. A candidate (year, month, seedDay) that is not a real calendar date — Feb 31,
+ * Feb 29 in a non-leap year, Apr 31, etc. — does not exist and is SKIPPED entirely: it is
+ * never passed to `emit`, so it never consumes COUNT and never appears in the output.
+ *
+ * Citation (RFC 5545 §3.3.10, "Recurrence Rule"): "Recurrence rules may generate
+ * recurrence instances with an invalid date (e.g., February 30) or nonexistent local time
+ * ... Such recurrence instances MUST be ignored and MUST NOT count towards the recurrence
+ * count specified by the COUNT rule part." This function and its COUNT bookkeeping (via
+ * the caller's `emit`) implement that rule directly: e.g. FREQ=MONTHLY anchored on the
+ * 31st walks Jan 31 -> Mar 31 -> May 31 -> ... (Feb/Apr/Jun skipped, uncounted); FREQ=YEARLY
+ * anchored on Feb 29 walks leap year -> leap year only.
+ */
+function stepMonthlyOrYearly(
+  freq: 'MONTHLY' | 'YEARLY',
+  interval: number,
+  seedMs: number,
+  toMs: number,
+  untilMs: number | undefined,
+  emit: (ms: number) => boolean,
+): void {
+  const seed = new Date(seedMs);
+  const seedYear = seed.getUTCFullYear();
+  const seedMonth = seed.getUTCMonth();
+  const seedDay = seed.getUTCDate();
+  // Generous candidate ceiling (not an occurrence ceiling — MAX_OCCURRENCES already
+  // bounds emitted occurrences via `emit`/COUNT): covers the worst case of a monthly
+  // anchor that only lands ~7 times a year (a 31st) needing many more candidate
+  // months than emitted occurrences, and a yearly Feb-29 anchor needing up to 4x the
+  // candidate years.
+  const maxCandidates = freq === 'MONTHLY' ? MAX_OCCURRENCES * 12 : MAX_OCCURRENCES * 4;
+  for (let k = 0; k < maxCandidates; k++) {
+    const year = freq === 'MONTHLY'
+      ? Math.floor((seedYear * 12 + seedMonth + k * interval) / 12)
+      : seedYear + k * interval;
+    const month = freq === 'MONTHLY'
+      ? (((seedYear * 12 + seedMonth + k * interval) % 12) + 12) % 12
+      : seedMonth;
+    // Bail out once even the FIRST of this candidate month is past every hard stop —
+    // further k only move further forward, so nothing later can help either. This
+    // check runs before the validity check so a run of skipped (invalid) candidates
+    // near the end of the window does not burn through maxCandidates.
+    const monthStartMs = Date.UTC(year, month, 1);
+    if (monthStartMs > toMs && (untilMs === undefined || monthStartMs > untilMs)) return;
+    const candidateMs = Date.UTC(year, month, seedDay);
+    const candidate = new Date(candidateMs);
+    const isRealDate = candidate.getUTCFullYear() === year
+      && candidate.getUTCMonth() === month
+      && candidate.getUTCDate() === seedDay;
+    if (!isRealDate) continue; // invalid calendar date — skipped, does not consume COUNT
+    if (!emit(candidateMs)) return;
   }
 }
 

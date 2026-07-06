@@ -33,6 +33,7 @@ import type {
 import {
   builtinGatewayRuntimeMethodDescriptors,
 } from './method-catalog-runtime.js';
+import { GatewayVerbError } from './routes/gateway-verb-error.js';
 
 export type {
   GatewayEventDescriptor,
@@ -237,10 +238,35 @@ export class GatewayMethodCatalog {
     return [...scopes].sort();
   }
 
+  /**
+   * Run a method's registered internal handler directly. Note this does NOT consult
+   * `descriptor.invokable` for a method that HAS a handler — see the field's doc
+   * comment in method-catalog-shared.ts: a runtime that registered a real handler is
+   * authoritative over whether the method works, the descriptor's `invokable` flag
+   * is not. `invokeGatewayMethodCall` (../daemon/control-plane.ts) is what enforces
+   * `invokable` for the generic HTTP/WS dispatch surface, via
+   * `validateGatewayInvocation`, BEFORE ever reaching here.
+   */
   async invoke(id: string, invocation: GatewayMethodInvocation): Promise<unknown> {
     const entry = this.methods.get(id);
     if (!entry) throw new Error(`Unknown gateway method: ${id}`);
-    if (!entry.handler) throw new Error(`Gateway method has no internal handler: ${id}`);
+    if (!entry.handler) {
+      // A method explicitly marked invokable:false with no registered handler is
+      // honestly "not invokable anywhere" (see the field's doc comment) — distinct
+      // from a method that a caller expected to have a handler here but doesn't (a
+      // real bug in that caller's wiring). A GatewayVerbError flows straight through
+      // invokeGatewayMethodCall's existing catch into an honest 400/NOT_INVOKABLE
+      // instead of a generic 500 — and gives any OTHER caller of `invoke()` directly
+      // (bypassing the HTTP gate) the same honest, typed signal.
+      if (entry.descriptor.invokable === false) {
+        throw new GatewayVerbError(
+          `Gateway method is not invokable and has no registered handler: ${id}`,
+          'NOT_INVOKABLE',
+          400,
+        );
+      }
+      throw new Error(`Gateway method has no internal handler: ${id}`);
+    }
     return entry.handler(invocation);
   }
 }
