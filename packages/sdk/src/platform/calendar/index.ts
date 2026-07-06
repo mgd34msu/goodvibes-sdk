@@ -58,3 +58,105 @@ export type {
   FeedFetchResult,
   Clock,
 } from './types.js';
+
+// ---------------------------------------------------------------------------
+// Authenticated provider connectivity — Google Calendar API v3 + Microsoft Graph
+// over OAuth 2.0 (One-Platform Wave 4, A10). This half connects to real accounts;
+// A9's half above reads .ics files and feeds. Both normalize into ONE merged event
+// model (see MergedCalendarEvent) that a unified /calendar view renders source-
+// labeled (google-api / microsoft-graph / ics-feed / local).
+//
+// The network is an injected HttpFetch, the loopback redirect an injected
+// LoopbackWaiter, token persistence an injected secret-store slice — so the full
+// OAuth + API flow runs against fake servers with no real network, port, or keychain.
+// See docs/decisions/2026-07-06-calendar-oauth-connector-sdk.md.
+
+export {
+  GOOGLE_PROFILE,
+  MICROSOFT_PROFILE,
+  GOOGLE_PLACEHOLDER_CLIENT_ID,
+  MICROSOFT_PLACEHOLDER_CLIENT_ID,
+  GOOGLE_SCOPES_DEFAULT,
+  MICROSOFT_SCOPES_DEFAULT,
+  PROVIDER_SETUP_STEPS,
+  providerProfile,
+  resolveClientConfig,
+} from './oauth-providers.js';
+
+export {
+  OAuthFlowError,
+  createPkcePair,
+  parseTokenResponse,
+  beginAuthCodeFlow,
+  completeAuthCodeFlow,
+  beginDeviceCodeFlow,
+  pollDeviceCodeFlow,
+  refreshAccessToken,
+  revokeToken,
+  type PkcePair,
+  type Sleep,
+} from './oauth-flow.js';
+
+export {
+  CalendarTokenStore,
+  TokenRefreshError,
+  type CalendarTokenStoreOptions,
+} from './oauth-token-store.js';
+
+export {
+  normalizeGoogleEvent,
+  normalizeGraphEvent,
+  normalizeOffsetDateTime,
+} from './merged-calendar-model.js';
+
+export {
+  CalendarApiError,
+  authedRequest,
+  errorFromResponse,
+} from './calendar-api-shared.js';
+
+export {
+  listGoogleCalendars,
+  listGoogleEvents,
+  createGoogleEvent,
+  type GoogleEventsQuery,
+} from './google-calendar-api.js';
+
+export {
+  listGraphCalendars,
+  listGraphEvents,
+  createGraphEvent,
+  type GraphEventsQuery,
+} from './microsoft-graph-api.js';
+
+export {
+  CalendarConnector,
+  type CalendarConnectorOptions,
+  type EventWindow,
+} from './calendar-connector.js';
+
+export { fetchAdapter } from './http-fetch-adapter.js';
+
+export type {
+  CalendarProviderId,
+  CalendarSource,
+  OAuthProviderProfile,
+  OAuthClientOverrides,
+  ResolvedClientConfig,
+  HttpFetch,
+  HttpRequest,
+  HttpResponse,
+  LoopbackWaiter,
+  LoopbackListenerFactory,
+  SecretStoreSlice,
+  StoredTokenSet,
+  ConnectionState,
+  FlowFailureReason,
+  AuthCodeFlowStart,
+  DeviceCodeFlowStart,
+  ApiDegradedState,
+  MergedCalendarEvent,
+  ProviderCalendar,
+  NewCalendarEvent,
+  ConnectedAccount,
+} from './oauth-types.js';
