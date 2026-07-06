@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `309`
+- Methods: `307`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -6595,11 +6595,70 @@ Return automation jobs and recent runs. Without ?limit/?cursor returns { jobs: [
 }
 ```
 
-#### `automation.jobs.patch`
+#### `automation.jobs.run`
 
-Patch a durable automation job.
+Trigger an automation job immediately.
 
-- Title: `Patch Automation Job`
+- Title: `Run Automation Job Now`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/automation/jobs/{jobId}/run`
+- Scopes: `write:automation`
+- Emits events: `runtime.automation`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "jobId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "jobId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "jobId": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "jobId",
+    "runId",
+    "status"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `automation.jobs.update`
+
+Update a durable automation job. (Renamed from automation.jobs.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)
+
+- Title: `Update Automation Job`
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
@@ -7874,169 +7933,6 @@ Patch a durable automation job.
     "successCount",
     "failureCount",
     "deleteAfterRun"
-  ],
-  "additionalProperties": true
-}
-```
-
-#### `automation.jobs.pause`
-
-Pause a durable automation job.
-
-- Title: `Pause Automation Job`
-- Source: `builtin`
-- Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/automation/jobs/{jobId}/pause`
-- Scopes: `write:automation`
-- Emits events: `runtime.automation`
-- Dangerous: `no`
-- Invokable: `yes`
-
-##### Input schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "jobId": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "jobId"
-  ],
-  "additionalProperties": false
-}
-```
-
-##### Output schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "id": {
-      "type": "string"
-    },
-    "enabled": {
-      "type": "boolean"
-    }
-  },
-  "required": [
-    "id",
-    "enabled"
-  ],
-  "additionalProperties": true
-}
-```
-
-#### `automation.jobs.resume`
-
-Resume a durable automation job.
-
-- Title: `Resume Automation Job`
-- Source: `builtin`
-- Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/automation/jobs/{jobId}/resume`
-- Scopes: `write:automation`
-- Emits events: `runtime.automation`
-- Dangerous: `no`
-- Invokable: `yes`
-
-##### Input schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "jobId": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "jobId"
-  ],
-  "additionalProperties": false
-}
-```
-
-##### Output schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "id": {
-      "type": "string"
-    },
-    "enabled": {
-      "type": "boolean"
-    }
-  },
-  "required": [
-    "id",
-    "enabled"
-  ],
-  "additionalProperties": true
-}
-```
-
-#### `automation.jobs.run`
-
-Trigger an automation job immediately.
-
-- Title: `Run Automation Job Now`
-- Source: `builtin`
-- Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/automation/jobs/{jobId}/run`
-- Scopes: `write:automation`
-- Emits events: `runtime.automation`
-- Dangerous: `no`
-- Invokable: `yes`
-
-##### Input schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "jobId": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "jobId"
-  ],
-  "additionalProperties": false
-}
-```
-
-##### Output schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "jobId": {
-      "type": "string"
-    },
-    "runId": {
-      "type": "string"
-    },
-    "agentId": {
-      "type": "string"
-    },
-    "status": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "jobId",
-    "runId",
-    "status"
   ],
   "additionalProperties": true
 }
@@ -12120,7 +12016,7 @@ Retry a completed or failed automation run.
 }
 ```
 
-#### `schedules.create`
+#### `automation.schedules.create`
 
 Create a schedule record.
 
@@ -13287,7 +13183,7 @@ Create a schedule record.
 }
 ```
 
-#### `schedules.delete`
+#### `automation.schedules.delete`
 
 Delete a schedule record.
 
@@ -13338,7 +13234,7 @@ Delete a schedule record.
 }
 ```
 
-#### `schedules.disable`
+#### `automation.schedules.disable`
 
 Disable a schedule record.
 
@@ -13390,7 +13286,7 @@ Disable a schedule record.
 }
 ```
 
-#### `schedules.enable`
+#### `automation.schedules.enable`
 
 Enable a schedule record.
 
@@ -13442,7 +13338,7 @@ Enable a schedule record.
 }
 ```
 
-#### `schedules.list`
+#### `automation.schedules.list`
 
 Return schedule records.
 
@@ -15219,7 +15115,7 @@ Return schedule records.
 }
 ```
 
-#### `schedules.run`
+#### `automation.schedules.run`
 
 Trigger a schedule immediately.
 

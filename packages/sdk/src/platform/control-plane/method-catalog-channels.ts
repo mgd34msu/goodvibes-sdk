@@ -484,9 +484,9 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
     outputSchema: WATCHER_RECORD_SCHEMA,
   }),
   methodDescriptor({
-    id: 'watchers.patch',
-    title: 'Patch Watcher',
-    description: 'Patch an existing watcher.',
+    id: 'watchers.update',
+    title: 'Update Watcher',
+    description: 'Update an existing watcher. (Renamed from watchers.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)',
     category: 'watchers',
     scopes: ['write:watchers'],
     access: 'admin',
