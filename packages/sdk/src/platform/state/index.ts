@@ -39,6 +39,34 @@ export {
   buildPolicyPreflightMemoryAddOptions,
 } from './memory-ingest.js';
 export {
+  resolveCanonicalMemoryDbPath,
+  foldMemoryStores,
+  formatMemoryFoldReport,
+} from './canonical-memory.js';
+export type {
+  LegacyMemorySource,
+  MemoryFoldSourceReport,
+  MemoryFoldReport,
+  FoldMemoryStoresOptions,
+} from './canonical-memory.js';
+export {
+  MIN_PROMPT_MEMORY_CONFIDENCE,
+  describeMemoryPromptEligibility,
+  isPromptActiveMemory,
+  describeMemoryIndexUnavailable,
+  describeMemoryIndexCaveat,
+} from './memory-recall-contract.js';
+export type { MemoryPromptEligibility } from './memory-recall-contract.js';
+export {
+  VIBE_PERSONA_TAG,
+  VIBE_PROJECTION_HEADING,
+  VIBE_PROJECTION_CAVEAT,
+  selectVibeRecords,
+  renderVibeProjection,
+  vibeBodyToConstraintOptions,
+} from './vibe-projection.js';
+export type { VibeProjectionOptions, VibeImportOptions } from './vibe-projection.js';
+export {
   MEMORY_VECTOR_DIMS,
   embedMemoryText,
   resolveMemoryVectorDbPath,

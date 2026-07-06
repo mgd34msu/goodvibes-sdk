@@ -35,6 +35,11 @@ export class SQLiteStore {
     return this.db !== null;
   }
 
+  /** The on-disk database path, or null for an ephemeral/in-memory store. */
+  get databasePath(): string | null {
+    return this.dbPath;
+  }
+
   async init(schema: (db: SqlDatabase) => void): Promise<void> {
     if (this.db) return;
     if (this.initPromise) return this.initPromise;
