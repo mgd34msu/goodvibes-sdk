@@ -63444,11 +63444,11 @@ Return configured route bindings.
 }
 ```
 
-#### `routes.bindings.patch`
+#### `routes.bindings.update`
 
-Patch an existing route binding.
+Update an existing route binding. (Renamed from routes.bindings.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)
 
-- Title: `Patch Route Binding`
+- Title: `Update Route Binding`
 - Source: `builtin`
 - Access: `admin`
 - Transport: `http`, `ws`
@@ -76748,242 +76748,6 @@ Return configured watchers and their runtime posture.
 }
 ```
 
-#### `watchers.patch`
-
-Patch an existing watcher.
-
-- Title: `Patch Watcher`
-- Source: `builtin`
-- Access: `admin`
-- Transport: `http`, `ws`
-- HTTP: `PATCH /api/watchers/{watcherId}`
-- Scopes: `write:watchers`
-- Emits events: `runtime.watchers`
-- Dangerous: `no`
-- Invokable: `yes`
-
-##### Input schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "watcherId": {
-      "type": "string"
-    },
-    "label": {
-      "type": "string"
-    },
-    "kind": {
-      "type": "string"
-    },
-    "sourceId": {
-      "type": "string"
-    },
-    "sourceKind": {
-      "type": "string"
-    },
-    "enabled": {
-      "type": "boolean"
-    },
-    "intervalMs": {
-      "type": "number"
-    },
-    "metadata": {
-      "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
-          }
-        ]
-      }
-    },
-    "url": {
-      "type": "string"
-    },
-    "method": {
-      "type": "string"
-    },
-    "path": {
-      "type": "string"
-    },
-    "endpoint": {
-      "type": "string"
-    },
-    "address": {
-      "type": "string"
-    },
-    "headers": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
-    },
-    "run": {
-      "type": "string"
-    }
-  },
-  "additionalProperties": true
-}
-```
-
-##### Output schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "id": {
-      "type": "string"
-    },
-    "kind": {
-      "type": "string"
-    },
-    "label": {
-      "type": "string"
-    },
-    "state": {
-      "type": "string"
-    },
-    "source": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "label": {
-          "type": "string"
-        },
-        "enabled": {
-          "type": "boolean"
-        },
-        "createdAt": {
-          "type": "number"
-        },
-        "updatedAt": {
-          "type": "number"
-        },
-        "metadata": {
-          "type": "object",
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "object",
-                "additionalProperties": {}
-              },
-              {
-                "type": "array",
-                "items": {}
-              }
-            ]
-          }
-        }
-      },
-      "required": [
-        "id",
-        "kind",
-        "label",
-        "enabled",
-        "createdAt",
-        "updatedAt",
-        "metadata"
-      ],
-      "additionalProperties": true
-    },
-    "intervalMs": {
-      "type": "number"
-    },
-    "lastHeartbeatAt": {
-      "type": "number"
-    },
-    "sourceLagMs": {
-      "type": "number"
-    },
-    "sourceStatus": {
-      "type": "string"
-    },
-    "degradedReason": {
-      "type": "string"
-    },
-    "lastCheckpoint": {
-      "type": "string"
-    },
-    "lastError": {
-      "type": "string"
-    },
-    "metadata": {
-      "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
-          }
-        ]
-      }
-    }
-  },
-  "required": [
-    "id",
-    "kind",
-    "label",
-    "state",
-    "source",
-    "metadata"
-  ],
-  "additionalProperties": true
-}
-```
-
 #### `watchers.run`
 
 Trigger a watcher immediately.
@@ -77352,6 +77116,242 @@ Stop a watcher instance.
     "watcherId"
   ],
   "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "label",
+        "enabled",
+        "createdAt",
+        "updatedAt",
+        "metadata"
+      ],
+      "additionalProperties": true
+    },
+    "intervalMs": {
+      "type": "number"
+    },
+    "lastHeartbeatAt": {
+      "type": "number"
+    },
+    "sourceLagMs": {
+      "type": "number"
+    },
+    "sourceStatus": {
+      "type": "string"
+    },
+    "degradedReason": {
+      "type": "string"
+    },
+    "lastCheckpoint": {
+      "type": "string"
+    },
+    "lastError": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "label",
+    "state",
+    "source",
+    "metadata"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `watchers.update`
+
+Update an existing watcher. (Renamed from watchers.patch in the Wave-6 core-verb pass — canonical verb is update, not patch.)
+
+- Title: `Update Watcher`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `PATCH /api/watchers/{watcherId}`
+- Scopes: `write:watchers`
+- Emits events: `runtime.watchers`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "watcherId": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "sourceId": {
+      "type": "string"
+    },
+    "sourceKind": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "intervalMs": {
+      "type": "number"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "url": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "headers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "run": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
 }
 ```
 
