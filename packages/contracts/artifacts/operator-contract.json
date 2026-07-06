@@ -25952,7 +25952,7 @@
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "email.inbox.list",
@@ -26039,7 +26039,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "email.inbox.read",
@@ -26129,7 +26129,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "email.send",
@@ -26193,7 +26193,7 @@
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": true
+        "invokable": false
       },
       {
         "id": "fleet.list",
