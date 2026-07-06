@@ -2964,6 +2964,32 @@ export interface OperatorMethodInputMap {
         surface: string;
     };
     // (undocumented)
+    "checkpoints.create": {
+        kind: "agent-run" | "manual" | "turn";
+        label?: string;
+        retentionClass?: "forensic" | "short" | "standard";
+        turnId?: string;
+        agentId?: string;
+        paths?: readonly string[];
+    };
+    // (undocumented)
+    "checkpoints.diff": {
+        a: string;
+        b?: string;
+    };
+    // (undocumented)
+    "checkpoints.list": {
+        kind?: "agent-run" | "manual" | "turn";
+        since?: number;
+        limit?: number;
+    };
+    // (undocumented)
+    "checkpoints.restore": {
+        id: string;
+        paths?: readonly string[];
+        safetyCheckpoint?: boolean;
+    };
+    // (undocumented)
     "companion.chat.events.stream": {
         sessionId: string;
     };
@@ -3069,6 +3095,15 @@ export interface OperatorMethodInputMap {
     };
     // (undocumented)
     "deliveries.list": {};
+    // (undocumented)
+    "fleet.list": {
+        kinds?: readonly string[];
+        states?: readonly string[];
+        limit?: number;
+        cursor?: string;
+    };
+    // (undocumented)
+    "fleet.snapshot": {};
     // (undocumented)
     "health.snapshot": {};
     // (undocumented)
@@ -3927,6 +3962,11 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "sessions.detach": {
+        sessionId: string;
+        surfaceId: string;
+    };
+    // (undocumented)
     "sessions.followUp": ({
         body: string;
         surfaceKind?: string;
@@ -4008,6 +4048,17 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "sessions.reopen": {
         sessionId: string;
+    };
+    // (undocumented)
+    "sessions.search": {
+        query?: string;
+        project?: string;
+        kind?: string;
+        surfaceKind?: string;
+        status?: "active" | "closed";
+        includeClosed?: boolean;
+        limit?: number;
+        cursor?: string;
     };
     // (undocumented)
     "sessions.steer": ({
@@ -7143,6 +7194,56 @@ export interface OperatorMethodOutputMap {
         })[];
     };
     // (undocumented)
+    "checkpoints.create": {
+        checkpoint: null | {
+            id: string;
+            kind: "agent-run" | "manual" | "turn";
+            label: string;
+            createdAt: number;
+            parentId: null | string;
+            turnId?: string;
+            agentId?: string;
+            retentionClass: "forensic" | "short" | "standard";
+            commit: string;
+            sizeBytes: number;
+        };
+        noop: boolean;
+    };
+    // (undocumented)
+    "checkpoints.diff": {
+        diff: {
+            from: string;
+            to: string;
+            files: readonly string[];
+            unifiedDiff: string;
+            stat: string;
+        };
+    };
+    // (undocumented)
+    "checkpoints.list": {
+        checkpoints: readonly ({
+            id: string;
+            kind: "agent-run" | "manual" | "turn";
+            label: string;
+            createdAt: number;
+            parentId: null | string;
+            turnId?: string;
+            agentId?: string;
+            retentionClass: "forensic" | "short" | "standard";
+            commit: string;
+            sizeBytes: number;
+        })[];
+    };
+    // (undocumented)
+    "checkpoints.restore": {
+        result: {
+            checkpointId: string;
+            safetyCheckpointId: null | string;
+            restoredFiles: readonly string[];
+            removedFiles: readonly string[];
+        };
+    };
+    // (undocumented)
     "companion.chat.events.stream": {};
     // (undocumented)
     "companion.chat.messages.create": {
@@ -7714,6 +7815,106 @@ export interface OperatorMethodOutputMap {
         } & {
             readonly [key: string]: unknown;
         }))[];
+    };
+    // (undocumented)
+    "fleet.list": {
+        items: readonly (({
+            id: string;
+            kind: "agent" | "background-process" | "code-index" | "phase" | "schedule" | "trigger" | "watcher" | "work-item" | "workflow" | "workstream" | "wrfc-chain" | "wrfc-subtask";
+            parentId?: string;
+            label: string;
+            task?: string;
+            state: "awaiting-approval" | "done" | "executing-tool" | "failed" | "idle" | "interrupted" | "killed" | "paused" | "queued" | "retrying" | "stalled" | "streaming" | "thinking";
+            startedAt?: number;
+            completedAt?: number;
+            elapsedMs: number;
+            usage?: {
+                inputTokens: number;
+                outputTokens: number;
+                cacheReadTokens: number;
+                cacheWriteTokens: number;
+                reasoningTokens?: number;
+                llmCallCount: number;
+                turnCount: number;
+                toolCallCount: number;
+            };
+            model?: string;
+            provider?: string;
+            costUsd?: null | number;
+            costState: "estimated" | "priced" | "unpriced";
+            currentActivity?: {
+                kind: "output-line" | "phase" | "tool";
+                text: string;
+                toolName?: string;
+                at: number;
+            };
+            capabilities: {
+                interruptible: boolean;
+                killable: boolean;
+                pausable: boolean;
+                resumable: boolean;
+                steerable: boolean;
+            };
+            sessionRef?: {
+                sessionId?: string;
+                agentId?: string;
+            };
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        nextCursor?: string;
+        hasMore: boolean;
+        capturedAt: number;
+    };
+    // (undocumented)
+    "fleet.snapshot": {
+        capturedAt: number;
+        nodes: readonly (({
+            id: string;
+            kind: "agent" | "background-process" | "code-index" | "phase" | "schedule" | "trigger" | "watcher" | "work-item" | "workflow" | "workstream" | "wrfc-chain" | "wrfc-subtask";
+            parentId?: string;
+            label: string;
+            task?: string;
+            state: "awaiting-approval" | "done" | "executing-tool" | "failed" | "idle" | "interrupted" | "killed" | "paused" | "queued" | "retrying" | "stalled" | "streaming" | "thinking";
+            startedAt?: number;
+            completedAt?: number;
+            elapsedMs: number;
+            usage?: {
+                inputTokens: number;
+                outputTokens: number;
+                cacheReadTokens: number;
+                cacheWriteTokens: number;
+                reasoningTokens?: number;
+                llmCallCount: number;
+                turnCount: number;
+                toolCallCount: number;
+            };
+            model?: string;
+            provider?: string;
+            costUsd?: null | number;
+            costState: "estimated" | "priced" | "unpriced";
+            currentActivity?: {
+                kind: "output-line" | "phase" | "tool";
+                text: string;
+                toolName?: string;
+                at: number;
+            };
+            capabilities: {
+                interruptible: boolean;
+                killable: boolean;
+                pausable: boolean;
+                resumable: boolean;
+                steerable: boolean;
+            };
+            sessionRef?: {
+                sessionId?: string;
+                agentId?: string;
+            };
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        truncated: boolean;
+        totalCount: number;
     };
     // (undocumented)
     "health.snapshot": ({
@@ -11660,6 +11861,45 @@ export interface OperatorMethodOutputMap {
         };
     };
     // (undocumented)
+    "sessions.detach": ({
+        session: {
+            id: string;
+            kind: string;
+            project?: string;
+            title: string;
+            status: "active" | "closed";
+            createdAt: number;
+            updatedAt: number;
+            lastMessageAt?: number;
+            closedAt?: number;
+            lastActivityAt: number;
+            messageCount: number;
+            retainedMessageCount?: number;
+            pendingInputCount: number;
+            routeIds: readonly string[];
+            surfaceKinds: readonly string[];
+            participants: readonly ({
+                surfaceKind: string;
+                surfaceId: string;
+                externalId?: string;
+                userId?: string;
+                displayName?: string;
+                routeId?: string;
+                lastSeenAt: number;
+            })[];
+            activeAgentId?: string;
+            lastAgentId?: string;
+            lastError?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        };
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "sessions.followUp": {
         session: null | {
             id: string;
@@ -12179,6 +12419,45 @@ export interface OperatorMethodOutputMap {
     } & {
         readonly [key: string]: unknown;
     });
+    // (undocumented)
+    "sessions.search": {
+        sessions: readonly ({
+            id: string;
+            kind: string;
+            project?: string;
+            title: string;
+            status: "active" | "closed";
+            createdAt: number;
+            updatedAt: number;
+            lastMessageAt?: number;
+            closedAt?: number;
+            lastActivityAt: number;
+            messageCount: number;
+            retainedMessageCount?: number;
+            pendingInputCount: number;
+            routeIds: readonly string[];
+            surfaceKinds: readonly string[];
+            participants: readonly ({
+                surfaceKind: string;
+                surfaceId: string;
+                externalId?: string;
+                userId?: string;
+                displayName?: string;
+                routeId?: string;
+                lastSeenAt: number;
+            })[];
+            activeAgentId?: string;
+            lastAgentId?: string;
+            lastError?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        })[];
+        nextCursor?: string;
+        hasMore: boolean;
+    };
     // (undocumented)
     "sessions.steer": {
         session: null | {

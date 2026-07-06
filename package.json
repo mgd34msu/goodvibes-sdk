@@ -50,6 +50,7 @@
     "check:browser": "bun scripts/browser-compat-check.ts",
     "check:metadata": "bun scripts/package-metadata-check.ts",
     "contracts:check": "bun scripts/check-contract-artifacts.ts",
+    "contracts:foundation-io:check": "bun scripts/check-foundation-io-types.ts --check",
     "dist:check": "bun scripts/check-dist-freshness.ts",
     "docs:check": "bun scripts/generate-api-docs.ts --check && bun scripts/docs-completeness-check.ts",
     "error:check": "bun scripts/error-contract-check.ts",
