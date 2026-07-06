@@ -70,7 +70,7 @@ type JsonBody = Record<string, unknown>;
 
 /**
  * DaemonServer — HTTP task server. Enabled by default via `daemon.enabled`
- * (loopback-bound); deprecated `danger.daemon` alias overrides via resolveDaemonEnabled.
+ * (loopback-bound), resolved via resolveDaemonEnabled.
  * All routes require Bearer token auth (set via enable()).
  * POST /task    — submit a task; returns agentId.
  * GET  /task/:id — returns agent status.
@@ -281,7 +281,7 @@ export class DaemonServer {
    */
   async start(): Promise<void> {
     if (!this.enabled) {
-      logger.info('Daemon mode is disabled (daemon.enabled=false). It is on by default; the danger.daemon alias can also force it off.');
+      logger.info('Daemon mode is disabled (daemon.enabled=false). It is on by default.');
       return;
     }
     if (this.authToken === null) {

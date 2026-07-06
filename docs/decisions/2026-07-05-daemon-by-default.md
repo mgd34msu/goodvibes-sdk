@@ -2,7 +2,7 @@
 
 Date: 2026-07-05
 Scope: One-Platform Wave 2 spine — daemon-by-default ruling + honest config rename
-Status: accepted
+Status: accepted; **the Wave-6 removal (item 5) executed 2026-07-06 — see "Wave 6: removal executed" below**
 
 ## Context
 
@@ -81,10 +81,54 @@ unreachable out of the box, and the key's very name told users the honest postur
 - An adopt-or-start probe now runs at TUI boot for default users; its cost is measured
   against the startup budget and kept off the first-paint path (see the TUI-side report).
 
-## Tests
+## Tests (as of the original 2026-07-05 ruling, superseded — see below)
 
 `test/daemon-enabled-resolution.test.ts` (resolver precedence: default-on, off-switch,
 alias-false-wins, alias-true-wins, unset-defers, fail-safe; plus schema/DEFAULT_CONFIG
 default-on and a legacy-off-stays-off round-trip through a real `ConfigManager`) and two
 `test/bootstrap-services.test.ts` cases (embedded daemon starts by default when the alias
 is unset; `danger.daemon:false` forces it off despite the default-on new key).
+
+## Wave 6: removal executed (2026-07-06)
+
+Item 5 above ("removal scheduled Wave 6") is done, as W6-R1 in
+`.goodvibes/audit/2026-07-06-wave6-briefs.json`. What changed from the plan above:
+
+- **`danger.daemon` is gone**: removed from `schema-domain-core.ts` (`coreTailConfigSettings`),
+  from the `ConfigKey`/`ConfigValue` unions in `schema-types.ts`, and from the `danger`
+  object's type shape. `resolveDaemonEnabled`'s alias branch (`config/index.ts`) is deleted;
+  its signature is unchanged, so all 7 existing callers compiled without edits.
+- **The silent-flip hazard (Alternative B, rejected above for the same reason) is closed by
+  a config migration, not by the alias.** `platform/config/migrations.ts` exports
+  `migrateDangerDaemonAlias`, applied in `ConfigManager.load()` for both the global and
+  project settings files, BEFORE the raw JSON is deep-merged with defaults:
+  - an explicit on-disk `danger.daemon: false` is rewritten onto `daemon.enabled: false`
+    (the legacy off-switch is preserved — the same guarantee Alternative B would have
+    broken) and the alias key is stripped from the merged shape;
+  - an explicit `danger.daemon: true` is stripped with no rewrite (already the default);
+  - absent/non-boolean is a no-op.
+  The migration is a pure function over the raw parsed object and is idempotent by
+  construction (an already-migrated object has no `danger.daemon` key left to act on).
+  It runs at every `load()` rather than rewriting the file on disk — no unexpected write
+  during construction; the honest resolution holds indefinitely regardless of whether the
+  bytes on disk are literally rewritten (they naturally drop the deprecated key the next
+  time anything calls `.save()`).
+- **Raw readers migrated in the same change** (not left for later — they stop typechecking
+  the moment the union drops the key): TUI `snapshot.ts`, `surface-command.ts`,
+  `remote-runtime-setup.ts`, `onboarding-wizard-apply.ts`; agent `settings-modal.ts` +
+  `settings-modal-types.ts` (the override-note machinery, now dead and removed) +
+  `agent-settings-policy.ts` (`EXTERNAL_HOST_SETTING_KEYS`).
+- **The 7 helper callers were untouched**, per the plan: `resolveDaemonEnabled`'s signature
+  did not change.
+
+## Tests (post-removal)
+
+`test/daemon-enabled-resolution.test.ts` (resolver: default-on, off-switch, unset;
+`danger.daemon` confirmed absent from `CONFIG_SCHEMA`/`CONFIG_KEYS`; a legacy
+`danger.daemon:false`/`:true` on disk resolves correctly through a real `ConfigManager`),
+`test/config-migrations.test.ts` (the migration as a pure function — rewrite, no-rewrite,
+no-op, and idempotency across repeated application; plus the same cases wired through
+`ConfigManager.load`, including a `reload()` round-trip), and the two updated
+`test/bootstrap-services.test.ts` cases (`daemon.enabled:true` runs the daemon;
+`daemon.enabled:false` leaves it off — no `danger.daemon` reader anywhere in the file
+data now).

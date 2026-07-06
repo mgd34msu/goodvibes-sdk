@@ -10,6 +10,7 @@ import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { toRecord } from '../utils/record-coerce.js';
+import { migrateDangerDaemonAlias } from './migrations.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {
@@ -358,8 +359,9 @@ export class ConfigManager {
       try {
         const raw = readFileSync(this.configPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const migrated = this.applyDangerDaemonMigration(parsed, this.configPath);
 
-        this.config = sanitizeConfigShape(deepMerge(cloneDefaultConfig(), parsed) as GoodVibesConfig);
+        this.config = sanitizeConfigShape(deepMerge(cloneDefaultConfig(), migrated) as GoodVibesConfig);
       } catch (err) {
         throw new ConfigError(`Global config load failed for ${this.configPath}: ${summarizeError(err)}`);
       }
@@ -370,11 +372,31 @@ export class ConfigManager {
       try {
         const raw = readFileSync(this.projectConfigPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
-        this.config = sanitizeConfigShape(deepMerge(this.config, parsed) as GoodVibesConfig);
+        const migrated = this.applyDangerDaemonMigration(parsed, this.projectConfigPath);
+        this.config = sanitizeConfigShape(deepMerge(this.config, migrated) as GoodVibesConfig);
       } catch (err) {
         throw new ConfigError(`Project config load failed for ${this.projectConfigPath}: ${summarizeError(err)}`);
       }
     }
+  }
+
+  /**
+   * Removal-of-`danger.daemon` migration (Wave 6): rewrite an explicit legacy
+   * `danger.daemon = false` onto `daemon.enabled = false` before the raw JSON
+   * is merged with defaults, so the removed alias's two-year off-switch is
+   * honored rather than silently flipped on. Reports honestly via the logger
+   * when it actually rewrites a value; a no-op migration (alias absent, or
+   * `= true`) stays silent. See migrations.ts for the full contract.
+   */
+  private applyDangerDaemonMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
+    const result = migrateDangerDaemonAlias(parsed);
+    if (result.rewroteDaemonEnabledFalse) {
+      logger.info(
+        `Migrated deprecated 'danger.daemon: false' to 'daemon.enabled: false' (${sourcePath}). ` +
+        `The legacy off-switch is preserved; 'danger.daemon' is no longer read.`,
+      );
+    }
+    return result.config;
   }
 
   /**

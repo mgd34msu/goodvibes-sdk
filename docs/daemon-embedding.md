@@ -67,8 +67,9 @@ The SDK does not replace your server framework. You still own:
 ## Connect-or-start daemon startup
 
 Full-surface hosts such as the TUI call `startHostServices` to start SDK-owned
-local services. When `danger.daemon` is
-enabled, the SDK now treats daemon startup as a connect-or-start decision:
+local services. When `daemon.enabled` is
+true (the default; resolved via `resolveDaemonEnabled`), the SDK treats daemon
+startup as a connect-or-start decision:
 
 - If the configured `controlPlane.host` and `controlPlane.port` are free, the
   SDK starts an embedded daemon and returns `daemonStatus.mode: "embedded"`.

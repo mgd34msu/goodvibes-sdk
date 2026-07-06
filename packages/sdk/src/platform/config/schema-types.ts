@@ -445,7 +445,6 @@ export interface GoodVibesConfig {
   network: NetworkConfig;
   daemon: { enabled: boolean; embedInProcess: boolean };     // default: enabled true — run the local session daemon (loopback only); embedInProcess false — daemon runs as a detached process, not inside this surface
   danger: {
-    daemon?: boolean;               // DEPRECATED alias for daemon.enabled; undefined when unset (removal Wave 6)
     httpListener: boolean;          // default: false — enable HTTP webhook listener
   };
   tools: {
@@ -574,7 +573,6 @@ export type ConfigKey =
   | 'release.channel'
   | 'daemon.enabled'
   | 'daemon.embedInProcess'
-  | 'danger.daemon'
   | 'danger.httpListener'
   | 'tools.llmEnabled'
   | 'tools.llmProvider'
@@ -855,7 +853,6 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'release.channel' ? 'stable' | 'preview' :
   K extends 'daemon.enabled' ? boolean :
   K extends 'daemon.embedInProcess' ? boolean :
-  K extends 'danger.daemon' ? boolean | undefined :
   K extends 'danger.httpListener' ? boolean :
   K extends 'tools.llmEnabled' ? boolean :
   K extends 'tools.llmProvider' ? string :

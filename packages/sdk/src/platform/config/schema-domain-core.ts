@@ -100,10 +100,6 @@ export const coreConfigDefaults = {
     embedInProcess: false,
   },
   danger: {
-    // `danger.daemon` is a deprecated alias for `daemon.enabled` (removal scheduled
-    // Wave 6). No default is emitted here so an absent value reads as `undefined`,
-    // which lets resolveDaemonEnabled() distinguish "user never set the alias" from
-    // an explicit `danger.daemon = false`. See schema entry below for precedence.
     httpListener: false,
   },
   tools: {
@@ -603,18 +599,6 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     default: false,
     description:
       'NOT RECOMMENDED. When true, and no daemon is already running, host the daemon INSIDE this surface process instead of spawning it as a detached background process. In-process embedding couples the daemon lifetime to this one surface: exiting the surface kills the daemon and every other surface sharing it (single point of failure). Default false — the surface spawns a detached, reboot-independent daemon (install it as a system service via POST /api/service/install on the daemon HTTP API).',
-  },
-  {
-    key: 'danger.daemon',
-    // Deprecated alias for `daemon.enabled`. Kept for back-compat: reads are honored
-    // and, when explicitly set, take PRECEDENCE over `daemon.enabled` (a user who
-    // wrote `danger.daemon = false` stays off). Default is intentionally omitted
-    // (undefined) so resolveDaemonEnabled() can tell "unset" from "explicit false".
-    // Removal scheduled for Wave 6 — migrate to `daemon.enabled`.
-    type: 'boolean',
-    default: undefined,
-    description:
-      'DEPRECATED alias for daemon.enabled (removal scheduled Wave 6). When set, overrides daemon.enabled; unset defers to daemon.enabled (default on).',
   },
   {
     key: 'danger.httpListener',

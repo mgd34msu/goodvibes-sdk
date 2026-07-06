@@ -12,6 +12,8 @@ export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, Permission
 export { DEFAULT_CONFIG, CONFIG_KEYS, CONFIG_SCHEMA, isValidConfigKey } from './schema.js';
 export type { PersistedFlagState } from './schema-types.js';
 export { ConfigError } from '../types/errors.js';
+export { migrateDangerDaemonAlias } from './migrations.js';
+export type { DangerDaemonMigrationResult } from './migrations.js';
 
 import { readFileSync } from 'fs';
 import { ConfigManager } from './manager.js';
@@ -35,31 +37,27 @@ export function isAutoApproveEnabled(configManager: Pick<ConfigManager, 'get'>):
 
 /**
  * Minimal reader shape for {@link resolveDaemonEnabled}. Any object exposing a
- * `get(key)` that returns the two relevant config values satisfies it, so both
+ * `get(key)` that returns the relevant config value satisfies it, so both
  * the full {@link ConfigManager} and the narrow `HostServicesConfig` used by
  * bootstrap-services qualify without a circular import.
  */
 export interface DaemonEnabledReader {
-  get(key: 'daemon.enabled' | 'danger.daemon'): boolean | string | number | undefined;
+  get(key: 'daemon.enabled'): boolean | string | number | undefined;
 }
 
 /**
- * Resolve whether the local session daemon should run, honoring the deprecated
- * `danger.daemon` alias.
+ * Resolve whether the local session daemon should run.
  *
- * Precedence (documented contract, removal of the alias scheduled Wave 6):
- *   1. If `danger.daemon` is explicitly set (a boolean), it WINS — a user who
- *      wrote `danger.daemon = false` stays off, and `= true` stays on. The alias
- *      has no default, so a boolean here means the user set it on purpose.
- *   2. Otherwise `daemon.enabled` governs (default `true` — daemon on by default,
- *      loopback-bound).
+ * `daemon.enabled` governs (default `true` — daemon on by default,
+ * loopback-bound). The deprecated `danger.daemon` alias that used to
+ * override this was removed in Wave 6 (its explicit-`false` off-switch is
+ * preserved for existing users by a one-time config migration onto
+ * `daemon.enabled`, applied at {@link ConfigManager.load} — see migrations.ts).
  *
  * This lives in the shared SDK config module (not TUI-local) so the standalone
  * daemon CLI and the TUI's adopt-or-start path resolve the flag identically.
  */
 export function resolveDaemonEnabled(config: DaemonEnabledReader): boolean {
-  const alias = config.get('danger.daemon');
-  if (typeof alias === 'boolean') return alias;
   const enabled = config.get('daemon.enabled');
   return typeof enabled === 'boolean' ? enabled : true;
 }
