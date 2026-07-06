@@ -77,6 +77,14 @@ export const runtimeConfigDefaults = {
       enabled: true,
       pathPrefix: '/v1',
     },
+    webui: {
+      serve: false,
+      bundleDir: '',
+    },
+    cors: {
+      enabled: false,
+      allowedOrigins: '',
+    },
     tls: {
       mode: 'off',
       certFile: '',
@@ -240,6 +248,30 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     default: '/v1',
     description: 'Path prefix for the daemon OpenAI-compatible routes',
     validate: (v) => typeof v === 'string' && v.startsWith('/') && !v.includes('..'),
+  },
+  {
+    key: 'controlPlane.webui.serve',
+    type: 'boolean',
+    default: false,
+    description: 'Serve a built web UI bundle same-origin from the daemon (opt-in; loopback default unchanged). The bundle is public and the app token-authenticates its own API calls.',
+  },
+  {
+    key: 'controlPlane.webui.bundleDir',
+    type: 'string',
+    default: '',
+    description: 'Directory holding the built web UI bundle (index.html + assets) served when controlPlane.webui.serve is true. Empty disables serving.',
+  },
+  {
+    key: 'controlPlane.cors.enabled',
+    type: 'boolean',
+    default: false,
+    description: 'Answer OPTIONS preflight and emit Access-Control-Allow-* headers for allowlisted origins (opt-in; off by default). Never wildcards; credentials are allowlist-gated.',
+  },
+  {
+    key: 'controlPlane.cors.allowedOrigins',
+    type: 'string',
+    default: '',
+    description: 'Comma-separated explicit allowlist of browser origins permitted to make cross-origin requests when controlPlane.cors.enabled is true (e.g. http://localhost:5173). Empty refuses every cross-origin request.',
   },
   {
     key: 'controlPlane.tls.mode',

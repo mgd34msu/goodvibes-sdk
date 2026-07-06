@@ -19,6 +19,34 @@ const sdk = createBrowserKnowledgeSdk({
 });
 ```
 
+## Deployment topology: same-origin vs cross-origin
+
+The daemon can reach a browser two ways. Both are opt-in and off by default; the
+daemon stays loopback-only until you enable one.
+
+**Same-origin bundle serving (recommended).** Set `controlPlane.webui.serve` on and
+point `controlPlane.webui.bundleDir` at the built web UI directory (`index.html` +
+`assets/`). The daemon then serves the bundle at `/` from its own origin, so the
+browser's same-origin policy is a non-issue — bundle and API share one origin. Static
+assets carry correct content types and caching (hashed `assets/*` immutable, the shell
+`no-cache`), and unknown navigation routes fall back to `index.html` (SPA). Any
+`/api/*` path keeps precedence and is never served as a file. The bundle is public; the
+app still token-authenticates every API call.
+
+For cross-machine reach, front the single daemon origin with `tailscale serve` over
+HTTPS: bundle + API arrive same-origin on the Tailscale hostname with zero CORS. This
+is the supported remote path.
+
+**Cross-origin (dev / separate host).** When the UI is served from a different origin —
+the Vite dev server on `http://localhost:5173`, or a deliberately separate static host
+— set `controlPlane.cors.enabled` on and list the exact browser origins in
+`controlPlane.cors.allowedOrigins` (comma-separated). The daemon then answers OPTIONS
+preflight and emits `Access-Control-Allow-*` only for those origins — never a wildcard,
+credentials allowlist-gated, `Authorization` allowed so the bearer-token flow works.
+A non-allowlisted origin is refused honestly (403 preflight, no allow-origin header).
+CORS controls only which origin may read a response; it does not change any route's auth
+or admin scoping.
+
 ## Recommended model
 
 For a browser-based web UI:

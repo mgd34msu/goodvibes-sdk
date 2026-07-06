@@ -88,6 +88,12 @@ import {
   parseDaemonJsonText,
   parseOptionalDaemonJsonBody,
 } from './router-request-body.js';
+import {
+  applyCorsHeaders,
+  handleCorsPreflight,
+  resolveWebuiServingPosture,
+  serveWebuiBundle,
+} from './webui-serving.js';
 
 interface DaemonHttpRouterContext {
   readonly configManager: ConfigManager;
@@ -220,33 +226,50 @@ export class DaemonHttpRouter {
     return correlationCtx.run(
       { requestId: req.headers.get('x-request-id') ?? crypto.randomUUID() },
       async () => {
-        // Pre-auth routes: no auth check (login, remote-peer handshake, webhooks, control-plane web UI).
-        const preAuth = await this.dispatchPreAuthRoutes(req);
-        if (preAuth) return preAuth;
-
-        if (!this.context.checkAuth(req)) {
-          return jsonErrorResponse(
-            new AppError('Authentication required', 'AUTH_REQUIRED', false, {
-              category: 'authentication',
-              source: 'runtime',
-              guidance: 'Authenticate with the operator shared token or an authenticated user session before calling daemon APIs.',
-            }),
-            { status: 401 },
-          );
+        // Opt-in cross-origin + bundle-serving posture (both default off → no CORS,
+        // no bundle, daemon behaves exactly as before). CORS preflight is answered
+        // pre-auth (a browser OPTIONS carries no credentials; only allowlisted
+        // origins are granted, never a wildcard).
+        const serving = resolveWebuiServingPosture(this.context.configManager);
+        if (serving.cors.enabled && req.method === 'OPTIONS') {
+          return applyCorsHeaders(req, handleCorsPreflight(req, serving), serving);
         }
-
-        const apiResponse = await this.dispatchApiRoutes(req);
-        if (apiResponse) return apiResponse;
-        const url = new URL(req.url);
-        return jsonErrorResponse(
-          new AppError(`Route not found: ${url.pathname}`, 'NOT_FOUND', false, {
-            category: 'not_found',
-            source: 'runtime',
-            guidance: 'Check the daemon API path and version. New SDK-facing routes are published under /api/v1.',
-          }),
-          { status: 404 },
-        );
+        // Same-origin bundle serving is pre-auth: the built app is public and
+        // token-authenticates its own API calls; reserved API paths return null
+        // here (API precedence) and flow to the normal auth-gated dispatch below.
+        const asset = serving.serveBundle ? await serveWebuiBundle(req, serving) : null;
+        const response = asset ?? await this.dispatchAuthedRequest(req);
+        return serving.cors.enabled ? applyCorsHeaders(req, response, serving) : response;
       },
+    );
+  }
+
+  private async dispatchAuthedRequest(req: Request): Promise<Response> {
+    // Pre-auth routes: no auth check (login, remote-peer handshake, webhooks, control-plane web UI).
+    const preAuth = await this.dispatchPreAuthRoutes(req);
+    if (preAuth) return preAuth;
+
+    if (!this.context.checkAuth(req)) {
+      return jsonErrorResponse(
+        new AppError('Authentication required', 'AUTH_REQUIRED', false, {
+          category: 'authentication',
+          source: 'runtime',
+          guidance: 'Authenticate with the operator shared token or an authenticated user session before calling daemon APIs.',
+        }),
+        { status: 401 },
+      );
+    }
+
+    const apiResponse = await this.dispatchApiRoutes(req);
+    if (apiResponse) return apiResponse;
+    const url = new URL(req.url);
+    return jsonErrorResponse(
+      new AppError(`Route not found: ${url.pathname}`, 'NOT_FOUND', false, {
+        category: 'not_found',
+        source: 'runtime',
+        guidance: 'Check the daemon API path and version. New SDK-facing routes are published under /api/v1.',
+      }),
+      { status: 404 },
     );
   }
 
