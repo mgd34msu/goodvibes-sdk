@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+### Added
+- **Browser push (Web Push) subscriptions** — a new `push.*` operator verb group
+  through the full catalog pipeline so a browser/PWA client can receive
+  approvals and completions as notifications: `push.vapid.get` (serve the public
+  VAPID key), `push.subscriptions.create` (register a device), `.list`,
+  `.delete` (unsubscribe — delete means delete), and `.verify` (send a live test
+  push). The daemon generates one P-256 VAPID keypair on first use and stores it
+  through the SecretsManager exactly like any credential — the private key never
+  enters the config, is never logged, and is never returned by any read verb;
+  only the public key is served. Delivery encrypts each message with RFC 8291 /
+  RFC 8188 (`aes128gcm`) using Node's built-in crypto (no new dependency) and
+  posts it to the subscription endpoint with the `TTL`, `Urgency`, and VAPID
+  `Authorization` headers. A real event source is wired: an approval that needs a
+  decision fans out to every registered device. Honest degrade throughout — no
+  subscriptions means an empty receipt list (never a faked send), and an
+  endpoint that reports `404/410 gone` is pruned with a `pruned` receipt.
+
 ## [1.0.0] - 2026-07-06
 
 First stable release. `1.0.0` stabilizes the public operator/peer contract, the
