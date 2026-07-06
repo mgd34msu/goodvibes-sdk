@@ -152,3 +152,98 @@ describe('get and delete honesty', () => {
     expect(await second.json()).toEqual({ id: record.id, deleted: false });
   });
 });
+
+describe('full-detach catalog over the wire (list / semantic / update / links / export-import)', () => {
+  test('list returns the canonical records as a plain array (empty filter = getAll)', async () => {
+    const record = await addRecord({ cls: 'pattern', summary: 'listable wire pattern', review: { confidence: 70 } });
+    const res = await fetch(`${daemon.url}/api/memory/records/list`, { method: 'POST', headers: auth(), body: JSON.stringify({}) });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { records: Array<{ id: string }> };
+    expect(Array.isArray(body.records)).toBe(true);
+    expect(body.records.some((r) => r.id === record.id)).toBe(true);
+    // Same set the daemon's own canonical store sees — not a detached copy.
+    expect(daemon.memory.search({}).some((r) => r.id === record.id)).toBe(true);
+  });
+
+  test('search-semantic returns scored results and degrades to a lexical ranking (never a silent empty)', async () => {
+    const record = await addRecord({ cls: 'fact', summary: 'semantic scored probe fact', review: { confidence: 75 } });
+    const res = await fetch(`${daemon.url}/api/memory/records/search-semantic`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ query: 'semantic scored probe' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { results: Array<{ record: { id: string }; similarity: number; score: number }> };
+    expect(Array.isArray(body.results)).toBe(true);
+    expect(body.results.some((entry) => entry.record.id === record.id)).toBe(true);
+  });
+
+  test('update edits content fields (scope promotion) and 404s an unknown id', async () => {
+    const record = await addRecord({ cls: 'decision', summary: 'promotable wire decision', tags: ['old'] });
+    const res = await fetch(`${daemon.url}/api/memory/records/${record.id}/update`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ scope: 'team', summary: 'promoted wire decision', tags: ['new'] }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { record: { scope: string; summary: string; tags: string[] } };
+    expect(body.record.scope).toBe('team');
+    expect(body.record.summary).toBe('promoted wire decision');
+    expect(body.record.tags).toEqual(['new']);
+    // Reflected in the canonical store.
+    expect(daemon.memory.get(record.id)?.scope).toBe('team');
+
+    const missing = await fetch(`${daemon.url}/api/memory/records/mem_nope/update`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ summary: 'x' }),
+    });
+    expect(missing.status).toBe(404);
+  });
+
+  test('link + linksFor relate two records; link to an unknown target 404s', async () => {
+    const from = await addRecord({ cls: 'incident', summary: 'wire link source' });
+    const to = await addRecord({ cls: 'decision', summary: 'wire link target' });
+
+    const linked = await fetch(`${daemon.url}/api/memory/records/${from.id}/links`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ toId: to.id, relation: 'resolved-by' }),
+    });
+    expect(linked.status).toBe(201);
+    const linkBody = await linked.json() as { link: { fromId: string; toId: string; relation: string } };
+    expect(linkBody.link).toMatchObject({ fromId: from.id, toId: to.id, relation: 'resolved-by' });
+
+    const list = await fetch(`${daemon.url}/api/memory/records/${from.id}/links`, { headers: auth() });
+    expect(list.status).toBe(200);
+    const listBody = await list.json() as { links: Array<{ toId: string }> };
+    expect(listBody.links.some((l) => l.toId === to.id)).toBe(true);
+
+    const badTarget = await fetch(`${daemon.url}/api/memory/records/${from.id}/links`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ toId: 'mem_nope', relation: 'x' }),
+    });
+    expect(badTarget.status).toBe(404);
+
+    const missingSource = await fetch(`${daemon.url}/api/memory/records/mem_nope/links`, { headers: auth() });
+    expect(missingSource.status).toBe(404);
+  });
+
+  test('export then import round-trips id-keyed (no overwrite, no loss)', async () => {
+    const record = await addRecord({ cls: 'runbook', summary: 'exportable wire runbook', review: { confidence: 80 } });
+
+    const exported = await fetch(`${daemon.url}/api/memory/records/export`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ query: 'exportable wire runbook' }),
+    });
+    expect(exported.status).toBe(200);
+    const exportBody = await exported.json() as { bundle: { records: Array<{ id: string }>; schemaVersion: string } };
+    expect(exportBody.bundle.schemaVersion).toBe('v1');
+    expect(exportBody.bundle.records.some((r) => r.id === record.id)).toBe(true);
+
+    // Re-importing the same bundle skips the already-present id — idempotent, no loss.
+    const imported = await fetch(`${daemon.url}/api/memory/records/import`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ bundle: exportBody.bundle }),
+    });
+    expect(imported.status).toBe(200);
+    const importBody = await imported.json() as { result: { importedRecords: number; skippedRecords: number } };
+    expect(importBody.result.skippedRecords).toBeGreaterThanOrEqual(1);
+    expect(importBody.result.importedRecords).toBe(0);
+
+    // A malformed import (no records array) is rejected 400, not silently accepted.
+    const bad = await fetch(`${daemon.url}/api/memory/records/import`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ bundle: { schemaVersion: 'v1' } }),
+    });
+    expect(bad.status).toBe(400);
+  });
+});

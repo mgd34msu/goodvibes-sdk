@@ -191,6 +191,14 @@ export interface DaemonMemoryRouteHandlers {
   getMemoryRecord(id: string): MaybeResponse;
   postMemoryRecordReview(id: string, req: Request): MaybeResponse;
   deleteMemoryRecord(id: string): MaybeResponse;
+  // Full-detach catalog (1.2.0): list, semantic search, edit, links, export/import.
+  postMemoryRecordList(req: Request): MaybeResponse;
+  postMemoryRecordSearchSemantic(req: Request): MaybeResponse;
+  postMemoryRecordUpdate(id: string, req: Request): MaybeResponse;
+  getMemoryRecordLinks(id: string): MaybeResponse;
+  postMemoryRecordLink(id: string, req: Request): MaybeResponse;
+  postMemoryRecordExport(req: Request): MaybeResponse;
+  postMemoryRecordImport(req: Request): MaybeResponse;
 }
 
 /** Route handlers for local auth administration: users, passwords, sessions, and bootstrap file management. */

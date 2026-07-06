@@ -12,10 +12,13 @@
 import { jsonErrorResponse } from './error-response.js';
 import { isJsonRecord, readOptionalStringField, readStringArrayField, type JsonRecord } from './route-helpers.js';
 import type {
+  MemoryBundleInput,
+  MemoryLinkInput,
   MemoryProvenanceLinkInput,
   MemoryRecordAddInput,
   MemoryRecordReviewInput,
   MemoryRecordSearchFilterInput,
+  MemoryRecordUpdateInput,
 } from './integration-route-types.js';
 
 function readOptionalNumberField(body: JsonRecord, key: string): number | undefined {
@@ -85,11 +88,9 @@ export function parseMemoryRecordAddBody(body: JsonRecord): MemoryRecordAddInput
   };
 }
 
-/** Parse POST /api/memory/records/search — every field optional; unknowns ignored. */
-export function parseMemoryRecordSearchBody(
-  body: JsonRecord,
-): { readonly filter: MemoryRecordSearchFilterInput; readonly recall: boolean } {
-  const filter: MemoryRecordSearchFilterInput = {
+/** Parse a memory search filter — every field optional; unknowns ignored. Shared by search/list/searchSemantic/export. */
+export function parseMemoryRecordFilterBody(body: JsonRecord): MemoryRecordSearchFilterInput {
+  return {
     ...(readOptionalStringField(body, 'scope') ? { scope: readOptionalStringField(body, 'scope') } : {}),
     ...(readOptionalStringField(body, 'cls') ? { cls: readOptionalStringField(body, 'cls') } : {}),
     ...(readStringArrayField(body, 'tags') ? { tags: readStringArrayField(body, 'tags') } : {}),
@@ -102,7 +103,59 @@ export function parseMemoryRecordSearchBody(
     ...(readOptionalBooleanField(body, 'staleOnly') !== undefined ? { staleOnly: readOptionalBooleanField(body, 'staleOnly') } : {}),
     ...(readOptionalNumberField(body, 'limit') !== undefined ? { limit: readOptionalNumberField(body, 'limit') } : {}),
   };
-  return { filter, recall: readOptionalBooleanField(body, 'recall') === true };
+}
+
+/** Parse POST /api/memory/records/search — every field optional; unknowns ignored. */
+export function parseMemoryRecordSearchBody(
+  body: JsonRecord,
+): { readonly filter: MemoryRecordSearchFilterInput; readonly recall: boolean } {
+  return { filter: parseMemoryRecordFilterBody(body), recall: readOptionalBooleanField(body, 'recall') === true };
+}
+
+/**
+ * Parse POST /api/memory/records/:id/update — editable fields (scope/summary/detail/tags).
+ * All optional; the store leaves unset fields unchanged. NOT a review update (that is
+ * the /review route) — this edits content/scope, e.g. promoting a record project→team.
+ */
+export function parseMemoryRecordUpdateBody(body: JsonRecord): MemoryRecordUpdateInput {
+  const scope = readOptionalStringField(body, 'scope');
+  const summary = readOptionalStringField(body, 'summary');
+  const detail = body.detail === null ? '' : readOptionalStringField(body, 'detail');
+  const tags = readStringArrayField(body, 'tags');
+  return {
+    ...(scope ? { scope } : {}),
+    ...(summary ? { summary } : {}),
+    ...(detail !== undefined ? { detail } : {}),
+    ...(tags ? { tags } : {}),
+  };
+}
+
+/** Parse POST /api/memory/records/:id/links — toId and relation are required (fromId is the path id). */
+export function parseMemoryLinkBody(body: JsonRecord): MemoryLinkInput | Response {
+  const toId = readOptionalStringField(body, 'toId');
+  const relation = readOptionalStringField(body, 'relation');
+  if (!toId) return jsonErrorResponse({ error: 'Missing toId', code: 'INVALID_REQUEST' }, { status: 400 });
+  if (!relation) return jsonErrorResponse({ error: 'Missing relation', code: 'INVALID_REQUEST' }, { status: 400 });
+  return { toId, relation };
+}
+
+/**
+ * Parse POST /api/memory/records/import — a { bundle } envelope holding a MemoryBundle.
+ * Records/links are passed through loosely; the store re-normalizes scope/reviewState/
+ * confidence per record and skips ids it already holds (no-loss id-keyed union).
+ */
+export function parseMemoryBundleImportBody(body: JsonRecord): MemoryBundleInput | Response {
+  const bundle = body.bundle;
+  if (!isJsonRecord(bundle)) {
+    return jsonErrorResponse({ error: 'Missing bundle', code: 'INVALID_REQUEST' }, { status: 400 });
+  }
+  if (!Array.isArray(bundle.records)) {
+    return jsonErrorResponse({ error: 'bundle.records must be an array', code: 'INVALID_REQUEST' }, { status: 400 });
+  }
+  if (bundle.links !== undefined && !Array.isArray(bundle.links)) {
+    return jsonErrorResponse({ error: 'bundle.links must be an array', code: 'INVALID_REQUEST' }, { status: 400 });
+  }
+  return { bundle: bundle as unknown as MemoryBundleInput['bundle'] };
 }
 
 /** Parse POST /api/memory/records/:id/review — all review fields optional; id comes from the path. */

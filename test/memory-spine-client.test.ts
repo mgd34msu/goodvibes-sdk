@@ -2,10 +2,10 @@ import { describe, expect, test } from 'bun:test';
 import {
   MemorySpineClient,
   createLocalMemoryAccess,
-  type MemoryAccess,
+  type MemoryTransport,
   type LocalMemoryStore,
 } from '../packages/sdk/src/platform/runtime/memory-spine/index.js';
-import type { MemoryRecord } from '../packages/sdk/src/platform/state/index.js';
+import type { MemoryBundle, MemoryImportResult, MemoryLink, MemoryRecord, MemorySemanticSearchResult, MemoryVectorStats, MemoryDoctorReport } from '../packages/sdk/src/platform/state/index.js';
 import type { HonestMemorySearchResult } from '../packages/sdk/src/platform/state/index.js';
 
 /**
@@ -33,6 +33,11 @@ function honest(records: MemoryRecord[]): HonestMemorySearchResult {
   };
 }
 
+const emptyBundle: MemoryBundle = { schemaVersion: 'v1', exportedAt: 0, scope: 'all', recordCount: 0, linkCount: 0, records: [], links: [] };
+const emptyImport: MemoryImportResult = { importedRecords: 0, skippedRecords: 0, importedLinks: 0 };
+const emptyStats = { backend: 'sqlite-vec', enabled: false, available: false, path: '', dimensions: 0, indexedRecords: 0, embeddingProviderId: 'x', embeddingProviderLabel: 'x' } as MemoryVectorStats;
+const emptyDoctor = { vector: emptyStats, embeddings: {} as MemoryDoctorReport['embeddings'], checkedAt: 0 } as MemoryDoctorReport;
+
 /** A local store spy that records every call so a test can prove it was NOT touched. */
 function spyLocalStore(): { store: LocalMemoryStore; calls: string[] } {
   const calls: string[] = [];
@@ -42,19 +47,51 @@ function spyLocalStore(): { store: LocalMemoryStore; calls: string[] } {
     get: (id) => { calls.push(`get:${id}`); return record('local'); },
     review: (id) => { calls.push(`review:${id}`); return record('local'); },
     delete: (id) => { calls.push(`delete:${id}`); return true; },
+    search: () => { calls.push('list'); return [record('local-list')]; },
+    searchSemantic: () => { calls.push('searchSemantic'); return []; },
+    update: (id) => { calls.push(`update:${id}`); return record('local'); },
+    link: (fromId, toId) => { calls.push(`link:${fromId}->${toId}`); return null; },
+    linksFor: (id) => { calls.push(`linksFor:${id}`); return []; },
+    reviewQueue: () => { calls.push('reviewQueue'); return []; },
+    exportBundle: () => { calls.push('exportBundle'); return emptyBundle; },
+    importBundle: () => { calls.push('importBundle'); return emptyImport; },
+    vectorStats: () => { calls.push('vectorStats'); return emptyStats; },
+    doctor: () => { calls.push('doctor'); return emptyDoctor; },
   };
   return { store, calls };
 }
 
-/** A wire transport spy. */
-function spyTransport(): { transport: MemoryAccess; calls: string[] } {
+/** A wire transport spy exposing the five CORE verbs only (an older/pinned adapter). */
+function spyTransport(): { transport: MemoryTransport; calls: string[] } {
   const calls: string[] = [];
-  const transport: MemoryAccess = {
+  const transport: MemoryTransport = {
     add: (opts) => { calls.push(`add:${opts.summary}`); return Promise.resolve(record(`wire-${opts.summary}`)); },
     honestSearch: () => { calls.push('search'); return Promise.resolve(honest([record('wire-hit')])); },
     get: (id) => { calls.push(`get:${id}`); return Promise.resolve(record('wire')); },
     updateReview: (id) => { calls.push(`review:${id}`); return Promise.resolve(record('wire')); },
     delete: (id) => { calls.push(`delete:${id}`); return Promise.resolve(true); },
+  };
+  return { transport, calls };
+}
+
+/** A wire transport spy exposing the FULL catalog (a current daemon). */
+function spyFullTransport(): { transport: MemoryTransport; calls: string[] } {
+  const base = spyTransport();
+  const calls = base.calls;
+  const link: MemoryLink = { fromId: 'a', toId: 'b', relation: 'r', createdAt: 0 };
+  const semantic: MemorySemanticSearchResult = { record: record('wire-sem'), distance: 0, similarity: 1, score: 100 };
+  const transport: MemoryTransport = {
+    ...base.transport,
+    list: () => { calls.push('list'); return Promise.resolve([record('wire-list')]); },
+    searchSemantic: () => { calls.push('searchSemantic'); return Promise.resolve([semantic]); },
+    update: (id) => { calls.push(`update:${id}`); return Promise.resolve(record('wire')); },
+    link: (fromId, toId) => { calls.push(`link:${fromId}->${toId}`); return Promise.resolve(link); },
+    linksFor: (id) => { calls.push(`linksFor:${id}`); return Promise.resolve([link]); },
+    reviewQueue: () => { calls.push('reviewQueue'); return Promise.resolve([record('wire-queue')]); },
+    exportBundle: () => { calls.push('exportBundle'); return Promise.resolve(emptyBundle); },
+    importBundle: () => { calls.push('importBundle'); return Promise.resolve(emptyImport); },
+    vectorStats: () => { calls.push('vectorStats'); return Promise.resolve(emptyStats); },
+    doctor: () => { calls.push('doctor'); return Promise.resolve(emptyDoctor); },
   };
   return { transport, calls };
 }
@@ -120,5 +157,108 @@ describe('memory-spine — client-of-adopted-daemon mode', () => {
     await client.add({ cls: 'fact', summary: 'back-offline' });
     expect(local.calls).toEqual(['add:back-offline']);
     expect(wire.calls).toEqual([]);
+  });
+});
+
+describe('memory-spine — extended catalog (full detach)', () => {
+  test('local mode routes every extended verb against the LOCAL store', async () => {
+    const { store, calls } = spyLocalStore();
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(store) });
+
+    await client.list({});
+    await client.searchSemantic({ query: 'x' });
+    await client.update('id1', { summary: 's' });
+    await client.link('a', 'b', 'rel');
+    await client.linksFor('a');
+    await client.reviewQueue(5);
+    await client.exportBundle({});
+    await client.importBundle(emptyBundle);
+    await client.vectorStats();
+    await client.doctor();
+
+    expect(calls).toEqual([
+      'list', 'searchSemantic', 'update:id1', 'link:a->b', 'linksFor:a',
+      'reviewQueue', 'exportBundle', 'importBundle', 'vectorStats', 'doctor',
+    ]);
+  });
+
+  test('client mode with a full transport routes every extended verb over the wire, never the local store', async () => {
+    const local = spyLocalStore();
+    const wire = spyFullTransport();
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(local.store), transport: wire.transport });
+
+    const list = await client.list({});
+    expect(list[0]!.summary).toBe('wire-list');
+    const sem = await client.searchSemantic({ query: 'x' });
+    expect(sem[0]!.record.summary).toBe('wire-sem');
+    await client.update('id1', { summary: 's' });
+    await client.link('a', 'b', 'rel');
+    await client.linksFor('a');
+    await client.reviewQueue(5);
+    await client.exportBundle({});
+    await client.importBundle(emptyBundle);
+    await client.vectorStats();
+    await client.doctor();
+
+    expect(wire.calls).toEqual([
+      'list', 'searchSemantic', 'update:id1', 'link:a->b', 'linksFor:a',
+      'reviewQueue', 'exportBundle', 'importBundle', 'vectorStats', 'doctor',
+    ]);
+    expect(local.calls).toEqual([]);
+  });
+
+  test('an extended verb the adopted daemon does NOT implement REJECTS honestly — it never reads the local file', async () => {
+    const local = spyLocalStore();
+    const wire = spyTransport(); // core-only transport (older daemon)
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(local.store), transport: wire.transport });
+
+    await expect(client.list({})).rejects.toThrow(/does not support the 'list' memory verb/);
+    await expect(client.searchSemantic({})).rejects.toThrow(/searchSemantic/);
+    await expect(client.exportBundle({})).rejects.toThrow(/exportBundle/);
+    // Crucially, the local store was NEVER reached — the single-writer invariant holds.
+    expect(local.calls).toEqual([]);
+  });
+});
+
+describe('memory-spine — sync-recall snapshot seam', () => {
+  test('before any refresh, the snapshot is empty and SAYS SO (never a silent empty)', () => {
+    const { store } = spyLocalStore();
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(store) });
+    const snap = client.recallSnapshot();
+    expect(snap.records).toEqual([]);
+    expect(snap.capturedAt).toBeNull();
+    expect(snap.stale).toBe(true);
+    expect(snap.note).toMatch(/not yet captured/);
+  });
+
+  test('an async refresh populates a snapshot a SYNC read returns, with an honest freshness note', async () => {
+    const local = spyLocalStore();
+    const wire = spyFullTransport();
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(local.store), transport: wire.transport });
+
+    const refreshed = await client.refreshRecallSnapshot({ query: 'x' });
+    expect(refreshed.records[0]!.summary).toBe('wire-hit');
+    expect(refreshed.mode).toBe('client');
+    expect(refreshed.note).toMatch(/over the wire from the adopted daemon/);
+
+    // A synchronous reader (the prompt builder) gets the cached result with no await.
+    const sync = client.recallSnapshot();
+    expect(sync.records[0]!.summary).toBe('wire-hit');
+    expect(sync.capturedAt).not.toBeNull();
+    // The refresh went over the wire (honestSearch on the transport), not the local store.
+    expect(wire.calls).toContain('search');
+    expect(local.calls).toEqual([]);
+  });
+
+  test('a snapshot older than the freshness window reports stale WITH a stated reason', async () => {
+    const { store } = spyLocalStore();
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(store), recallSnapshotStaleAfterMs: 10 });
+    const refreshed = await client.refreshRecallSnapshot({});
+    const capturedAt = refreshed.capturedAt!;
+    // Read far in the future: the same cached data, now honestly flagged stale.
+    const stale = client.recallSnapshot(capturedAt + 5_000);
+    expect(stale.stale).toBe(true);
+    expect(stale.note).toMatch(/STALE/);
+    expect(stale.ageMs).toBe(5_000);
   });
 });

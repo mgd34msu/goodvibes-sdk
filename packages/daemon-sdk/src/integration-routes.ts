@@ -9,9 +9,13 @@ import {
   readStringArrayField,
 } from './route-helpers.js';
 import {
+  parseMemoryBundleImportBody,
+  parseMemoryLinkBody,
   parseMemoryRecordAddBody,
+  parseMemoryRecordFilterBody,
   parseMemoryRecordReviewBody,
   parseMemoryRecordSearchBody,
+  parseMemoryRecordUpdateBody,
 } from './memory-record-body.js';
 
 const MAX_LOCAL_AUTH_ROLES = 32;
@@ -182,6 +186,64 @@ export function createDaemonIntegrationRouteHandlers(
     deleteMemoryRecord: (id) => {
       const deleted = context.memoryRegistry.delete(id);
       return Response.json({ id, deleted });
+    },
+    // Full-detach catalog (1.2.0). Reads serialize a bare array/entity; writes route
+    // through the single-writer registry exactly like add/review/delete above.
+    postMemoryRecordList: async (req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const filter = parseMemoryRecordFilterBody(body);
+      return Response.json({ records: context.memoryRegistry.search(filter) });
+    },
+    postMemoryRecordSearchSemantic: async (req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const filter = parseMemoryRecordFilterBody(body);
+      return Response.json({ results: context.memoryRegistry.searchSemantic(filter) });
+    },
+    postMemoryRecordUpdate: async (id, req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const patch = parseMemoryRecordUpdateBody(body);
+      const record = context.memoryRegistry.update(id, patch);
+      return record
+        ? Response.json({ record })
+        : jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+    },
+    getMemoryRecordLinks: (id) => {
+      if (context.memoryRegistry.get(id) === null) {
+        return jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+      }
+      return Response.json({ links: context.memoryRegistry.linksFor(id) });
+    },
+    postMemoryRecordLink: async (id, req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const input = parseMemoryLinkBody(body);
+      if (input instanceof Response) return input;
+      const link = await context.memoryRegistry.link(id, input.toId, input.relation);
+      // link() returns null when either endpoint id is unknown — an honest 404, not a
+      // 200 that pretends a link was made between records that do not both exist.
+      return link
+        ? Response.json({ link }, { status: 201 })
+        : jsonErrorResponse({ error: 'Unknown memory record (link source or target)', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+    },
+    postMemoryRecordExport: async (req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const filter = parseMemoryRecordFilterBody(body);
+      return Response.json({ bundle: context.memoryRegistry.exportBundle(filter) });
+    },
+    postMemoryRecordImport: async (req) => {
+      const body = await context.parseJsonBody(req);
+      if (body instanceof Response) return body;
+      const input = parseMemoryBundleImportBody(body);
+      if (input instanceof Response) return input;
+      try {
+        return Response.json({ result: await context.memoryRegistry.importBundle(input.bundle) });
+      } catch (error) {
+        return jsonErrorResponse(error, { status: 400 });
+      }
     },
     getLocalAuth: (req) => {
       const admin = context.requireAdmin(req);

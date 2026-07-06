@@ -165,7 +165,12 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // `update-review` (mutates ONLY a record's review signal —
     // reviewState/confidence/reviewer/staleReason — a narrower, honesty-load-
     // bearing operation than a generic `update` that would also touch content).
-    'add', 'update-review',
+    // `search-semantic` is the store's scored semantic-ranking read (returns
+    // distance/similarity/score), a distinct engine verb from the literal `search`
+    // (a CORE verb) it sits beside — the MemoryStore engine has always exposed
+    // searchSemantic separately, so the wire mirrors that name rather than folding
+    // it into a flag on `search` whose output shape differs.
+    'add', 'update-review', 'search-semantic',
   ],
   'push-delivery': [
     // Browser-push delivery action: `verify` sends a live test notification to

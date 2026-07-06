@@ -6,6 +6,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+### Added
+- **Memory over the wire is now complete, so a client surface fully detaches from
+  the store file.** The daemon's memory API gained the rest of the operations a
+  surface needs: list/browse records, scored semantic search, edit a record's
+  content or scope, read and create links between records, the review queue, and
+  bundle export/import. Combined with the operations that already existed
+  (add/search/get/review/delete), a surface adopted to a daemon now reaches ALL of
+  its memory over the wire and never opens the database file — closing the last
+  paths that still read a divergent local copy. Rebuilding the semantic index stays
+  a host/admin action (the daemon keeps its own index current and offers an admin
+  rebuild route) rather than a per-client operation, ruled explicitly. Semantic
+  search accepts the same filters as literal search, and a result ranked without a
+  vector match reports that honestly. Surfaces pinned to an older daemon that
+  predates one of the new operations get a clear stated error, never a silent
+  fall-back to the local file.
+- **A synchronous prompt builder can inject fresh memory without blocking on the
+  network.** Because per-turn recall reads memory over the wire (asynchronous) but
+  the prompt is assembled synchronously, the memory client keeps a freshness-stamped
+  snapshot: an async pre-turn refresh captures the recall-eligible records, and the
+  synchronous prompt build reads the cached snapshot with an honest note about how
+  old it is and where it came from. Before the first refresh the snapshot is empty
+  and says so; past its freshness window it is flagged stale with a stated reason —
+  never a silent empty that reads as "nothing was ever stored." See the decision
+  record at `docs/decisions/2026-07-06-memory-wire-full-detach.md`.
+
 ## [1.1.0] - 2026-07-06
 
 ### Added

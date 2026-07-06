@@ -246,8 +246,17 @@ async function dispatchOperatorRoutesInner(
   // Canonical-store record routes. Exact paths first, then id-templated regexes.
   if (pathname === '/api/memory/records' && method === 'POST') return handlers.postMemoryRecordAdd(req);
   if (pathname === '/api/memory/records/search' && method === 'POST') return handlers.postMemoryRecordSearch(req);
+  if (pathname === '/api/memory/records/list' && method === 'POST') return handlers.postMemoryRecordList(req);
+  if (pathname === '/api/memory/records/search-semantic' && method === 'POST') return handlers.postMemoryRecordSearchSemantic(req);
+  if (pathname === '/api/memory/records/export' && method === 'POST') return handlers.postMemoryRecordExport(req);
+  if (pathname === '/api/memory/records/import' && method === 'POST') return handlers.postMemoryRecordImport(req);
   const memoryRecordReviewMatch = pathname.match(/^\/api\/memory\/records\/([^/]+)\/review$/);
   if (memoryRecordReviewMatch && method === 'POST') return handlers.postMemoryRecordReview(safeDecodeURIComponent(memoryRecordReviewMatch[1]!), req);
+  const memoryRecordUpdateMatch = pathname.match(/^\/api\/memory\/records\/([^/]+)\/update$/);
+  if (memoryRecordUpdateMatch && method === 'POST') return handlers.postMemoryRecordUpdate(safeDecodeURIComponent(memoryRecordUpdateMatch[1]!), req);
+  const memoryRecordLinksMatch = pathname.match(/^\/api\/memory\/records\/([^/]+)\/links$/);
+  if (memoryRecordLinksMatch && method === 'GET') return handlers.getMemoryRecordLinks(safeDecodeURIComponent(memoryRecordLinksMatch[1]!));
+  if (memoryRecordLinksMatch && method === 'POST') return handlers.postMemoryRecordLink(safeDecodeURIComponent(memoryRecordLinksMatch[1]!), req);
   const memoryRecordMatch = pathname.match(/^\/api\/memory\/records\/([^/]+)$/);
   if (memoryRecordMatch && method === 'GET') return handlers.getMemoryRecord(safeDecodeURIComponent(memoryRecordMatch[1]!));
   if (memoryRecordMatch && method === 'DELETE') return handlers.deleteMemoryRecord(safeDecodeURIComponent(memoryRecordMatch[1]!));
