@@ -5,7 +5,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
   "product": {
     "id": "goodvibes",
     "surface": "operator",
-    "version": "1.3.1"
+    "version": "1.3.2"
   },
   "auth": {
     "modes": [
@@ -57144,6 +57144,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "error": {
                   "type": "string"
+                },
+                "platformLimitReason": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -57340,6 +57343,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "error": {
+                  "type": "string"
+                },
+                "platformLimitReason": {
                   "type": "string"
                 }
               },
@@ -59773,6 +59779,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "error": {
                   "type": "string"
+                },
+                "platformLimitReason": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -59852,6 +59861,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "error": {
+                  "type": "string"
+                },
+                "platformLimitReason": {
                   "type": "string"
                 }
               },

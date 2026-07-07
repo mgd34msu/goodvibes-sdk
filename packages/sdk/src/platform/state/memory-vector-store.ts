@@ -9,7 +9,7 @@ import {
   embedMemoryText,
   normalizeMemoryEmbeddingVector,
 } from './memory-embeddings.js';
-import { loadSqliteVecExtension } from './sqlite-vec-loader.js';
+import { loadSqliteVecExtension, SqliteVecPlatformUnsupportedError } from './sqlite-vec-loader.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -62,6 +62,14 @@ export interface MemoryVectorStats {
   embeddingProviderId: string;
   embeddingProviderLabel: string;
   error?: string | undefined;
+  /**
+   * Set when the vector index is unavailable because the RUNTIME PLATFORM
+   * cannot load SQLite extensions (a permanent capability limit — e.g. a
+   * macOS-compiled binary on Apple's system SQLite). Deliberately NOT the
+   * `error` field: a capability limit is not a fault, and fault monitors
+   * must not fire on it. Semantic search degrades to literal matching.
+   */
+  platformLimitReason?: string | undefined;
 }
 
 type VectorRow = {
@@ -118,6 +126,7 @@ export class SqliteVecMemoryIndex {
   private enabled = false;
   private available = false;
   private error: string | undefined;
+  private platformLimitReason: string | undefined;
   private static readonly rebuildBatchSize = 25;
 
   constructor(
@@ -141,8 +150,19 @@ export class SqliteVecMemoryIndex {
       this.close();
       this.available = false;
       this.enabled = false;
-      this.error = summarizeError(err);
-      logger.warn('Memory vector index unavailable', { backend: 'sqlite-vec', error: this.error });
+      if (err instanceof SqliteVecPlatformUnsupportedError) {
+        // A platform capability limit, not a fault: report it as a reason,
+        // never through the error field (fault monitors and release smokes
+        // treat `error` as a defect signal, and this is not one).
+        this.platformLimitReason = err.message;
+        logger.warn('Memory vector index unavailable on this platform — memory search uses literal matching', {
+          backend: 'sqlite-vec',
+          reason: err.message,
+        });
+      } else {
+        this.error = summarizeError(err);
+        logger.warn('Memory vector index unavailable', { backend: 'sqlite-vec', error: this.error });
+      }
     }
   }
 
@@ -157,7 +177,8 @@ export class SqliteVecMemoryIndex {
       indexedRecords: this.countIndexedRecords(),
       embeddingProviderId: provider?.id ?? this.embeddingRegistry.getDefaultProviderId(),
       embeddingProviderLabel: provider?.label ?? `Unregistered (${this.embeddingRegistry.getDefaultProviderId()})`,
-      ...(this.error ?? !provider
+      ...(this.platformLimitReason ? { platformLimitReason: this.platformLimitReason } : {}),
+      ...(this.error ?? (!provider && !this.platformLimitReason)
         ? { error: this.error ?? `Active memory embedding provider '${this.embeddingRegistry.getDefaultProviderId()}' is not registered.` }
         : {}),
     };

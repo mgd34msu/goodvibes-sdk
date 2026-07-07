@@ -58,7 +58,7 @@ import { dirname, join, relative, sep } from 'node:path';
 import { mkdirSync, statSync } from 'node:fs';
 import type { Database, SQLQueryBindings } from 'bun:sqlite';
 import { createRequire } from 'node:module';
-import { loadSqliteVecExtension } from './sqlite-vec-loader.js';
+import { loadSqliteVecExtension, SqliteVecPlatformUnsupportedError } from './sqlite-vec-loader.js';
 import {
   HASHED_MEMORY_EMBEDDING_PROVIDER,
   MemoryEmbeddingProviderRegistry,
@@ -237,6 +237,7 @@ export class CodeIndexStore {
   private db: Database | null = null;
   private available = false;
   private error: string | undefined;
+  private platformLimitReason: string | undefined;
   private building = false;
   private buildStartedAtMs: number | null = null;
   private buildPromise: Promise<CodeIndexBuildStats> | null = null;
@@ -281,8 +282,14 @@ export class CodeIndexStore {
     } catch (err) {
       this.close();
       this.available = false;
-      this.error = summarizeError(err);
-      logger.warn('Code index unavailable', { backend: 'sqlite-vec', error: this.error });
+      // Platform capability limit vs genuine fault (see sqlite-vec-loader.ts).
+      const limit = err instanceof SqliteVecPlatformUnsupportedError;
+      if (limit) this.platformLimitReason = (err as Error).message;
+      else this.error = summarizeError(err);
+      logger.warn(limit ? 'Code index unavailable on this platform' : 'Code index unavailable', {
+        backend: 'sqlite-vec',
+        ...(limit ? { reason: (err as Error).message } : { error: this.error }),
+      });
     }
   }
 

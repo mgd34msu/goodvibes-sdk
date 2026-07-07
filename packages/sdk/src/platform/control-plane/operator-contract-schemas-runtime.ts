@@ -686,6 +686,7 @@ export const MEMORY_VECTOR_STATS_SCHEMA = objectSchema({
   embeddingProviderId: STRING_SCHEMA,
   embeddingProviderLabel: STRING_SCHEMA,
   error: STRING_SCHEMA,
+  platformLimitReason: STRING_SCHEMA,
 }, ['backend', 'enabled', 'available', 'path', 'dimensions', 'indexedRecords', 'embeddingProviderId', 'embeddingProviderLabel'], { additionalProperties: true });
 
 export const MEMORY_DOCTOR_REPORT_SCHEMA = objectSchema({
