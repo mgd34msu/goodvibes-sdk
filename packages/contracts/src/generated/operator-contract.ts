@@ -42123,6 +42123,21 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "estimatedTokens": {
               "type": "number"
             },
+            "truncated": {
+              "type": "boolean"
+            },
+            "totalCandidates": {
+              "type": "number"
+            },
+            "droppedCount": {
+              "type": "number"
+            },
+            "droppedForBudget": {
+              "type": "number"
+            },
+            "budgetExhausted": {
+              "type": "boolean"
+            },
             "items": {
               "type": "array",
               "items": {
@@ -42215,6 +42230,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "strategy",
             "budgetLimit",
             "estimatedTokens",
+            "truncated",
+            "totalCandidates",
+            "droppedCount",
+            "droppedForBudget",
+            "budgetExhausted",
             "items"
           ],
           "additionalProperties": false
@@ -59031,6 +59051,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "totalBeforeRecallFilter": {
               "type": "number"
+            },
+            "recallFloor": {
+              "type": "number"
             }
           },
           "required": [
@@ -59042,7 +59065,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "recallFiltered",
             "excludedFlaggedCount",
             "excludedBelowFloorCount",
-            "totalBeforeRecallFilter"
+            "totalBeforeRecallFilter",
+            "recallFloor"
           ],
           "additionalProperties": false
         },

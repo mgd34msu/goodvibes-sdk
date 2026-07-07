@@ -42572,6 +42572,21 @@ Build a compact structured knowledge packet for a task and write scope.
     "estimatedTokens": {
       "type": "number"
     },
+    "truncated": {
+      "type": "boolean"
+    },
+    "totalCandidates": {
+      "type": "number"
+    },
+    "droppedCount": {
+      "type": "number"
+    },
+    "droppedForBudget": {
+      "type": "number"
+    },
+    "budgetExhausted": {
+      "type": "boolean"
+    },
     "items": {
       "type": "array",
       "items": {
@@ -42664,6 +42679,11 @@ Build a compact structured knowledge packet for a task and write scope.
     "strategy",
     "budgetLimit",
     "estimatedTokens",
+    "truncated",
+    "totalCandidates",
+    "droppedCount",
+    "droppedForBudget",
+    "budgetExhausted",
     "items"
   ],
   "additionalProperties": false
@@ -59719,6 +59739,9 @@ Search the canonical store, literal or semantic. When semantic is requested but 
     },
     "totalBeforeRecallFilter": {
       "type": "number"
+    },
+    "recallFloor": {
+      "type": "number"
     }
   },
   "required": [
@@ -59730,7 +59753,8 @@ Search the canonical store, literal or semantic. When semantic is requested but 
     "recallFiltered",
     "excludedFlaggedCount",
     "excludedBelowFloorCount",
-    "totalBeforeRecallFilter"
+    "totalBeforeRecallFilter",
+    "recallFloor"
   ],
   "additionalProperties": false
 }
