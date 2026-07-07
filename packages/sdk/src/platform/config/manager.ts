@@ -7,10 +7,18 @@ import { logger } from '../utils/logger.js';
 import type { HookDispatcher } from '../hooks/index.js';
 import type { HookEvent } from '../hooks/types.js';
 import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
-import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
+import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { toRecord } from '../utils/record-coerce.js';
 import { migrateDangerDaemonAlias } from './migrations.js';
+import {
+  SHARED_CONFIG_KEYS,
+  isSharedConfigKey,
+  persistSharedKey,
+  readDotPath,
+  readSharedTierFile,
+  removeSharedKey,
+} from './shared-config-tier.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {
@@ -31,11 +39,13 @@ export type ConfigOverrides = ConfigCliOverrides & (
     configDir: string;
     homeDir?: string | undefined;
     sharedConfigPath?: string | undefined;
+    sharedTierPath?: string | undefined;
   }
   | {
     homeDir: string;
     configDir?: string | undefined;
     sharedConfigPath?: string | undefined;
+    sharedTierPath?: string | undefined;
   }
 );
 
@@ -43,7 +53,22 @@ interface ConfigRoots {
   configDir?: string | undefined;
   homeDir?: string | undefined;
   sharedConfigPath?: string | undefined;
+  sharedTierPath?: string | undefined;
   surfaceRoot?: string | undefined;
+}
+
+/** The tier a resolved config value came from — inspectable via describeConfigKeySource. */
+export type ConfigKeyTier = 'shared' | 'project' | 'global' | 'default';
+
+/** Where a config key's live value resolves from, and whether it rides the shared tier. */
+export interface ConfigKeySource {
+  readonly key: ConfigKey;
+  readonly value: unknown;
+  readonly tier: ConfigKeyTier;
+  /** True when this key resolves from/writes to the surface-root-independent shared tier. */
+  readonly shareable: boolean;
+  /** The shared-tier settings file path, or null when no shared tier is configured. */
+  readonly sharedTierPath: string | null;
 }
 
 export interface ConfigSetOptions {
@@ -109,6 +134,10 @@ export class ConfigManager {
   private readonly projectConfigPath: string | null;
   private readonly workingDirectory: string | null;
   private readonly homeDirectory: string | null;
+  /** Surface-root-independent shared settings file (~/.goodvibes/shared/settings.json), or null. */
+  private readonly sharedTierPath: string | null;
+  /** Shared keys whose value the last load actually sourced from the shared tier file. */
+  private readonly sharedKeysPresent = new Set<ConfigKey>();
   private hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null;
   private readonly _listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
 
@@ -138,6 +167,15 @@ export class ConfigManager {
     if (ownedSharedConfigPath) {
       ensureSharedConfig(ownedSharedConfigPath);
     }
+
+    // The surface-root-INDEPENDENT shared tier for cross-surface keys (tts.*):
+    // an explicit override, else derived from homeDir as ~/.goodvibes/shared/
+    // settings.json. A configDir-only construction with no homeDir has no shared
+    // tier (legacy per-surface behavior preserved).
+    const sharedTierPath = requireAbsoluteOwnedPath(roots.sharedTierPath, 'sharedTierPath');
+    this.sharedTierPath = sharedTierPath ?? (
+      this.homeDirectory ? resolveSharedDirectory(this.homeDirectory, 'shared', 'settings.json') : null
+    );
 
     this.load();
 
@@ -236,12 +274,20 @@ export class ConfigManager {
     const { parent, field } = this.resolvePath(key);
     const previousValue = parent[field]!;
     parent[field] = value;
+    // Shared keys persist to the surface-root-independent shared tier so every
+    // surface sees the same value; everything else stays in the surface silo.
+    const useSharedTier = this.sharedTierPath !== null && isSharedConfigKey(key);
     try {
-      this.save();
+      if (useSharedTier) {
+        persistSharedKey(this.sharedTierPath!, key, value);
+      } else {
+        this.save();
+      }
     } catch (error) {
       parent[field] = previousValue;
       throw error;
     }
+    if (useSharedTier) this.sharedKeysPresent.add(key);
     this.notifyListeners(key, previousValue, value);
     this.emitConfigHook(key, previousValue, value);
   }
@@ -378,6 +424,71 @@ export class ConfigManager {
         throw new ConfigError(`Project config load failed for ${this.projectConfigPath}: ${summarizeError(err)}`);
       }
     }
+
+    // Overlay the surface-root-independent shared tier LAST (it wins over the
+    // surface silo) for the shared keys only — so every surface resolves the same
+    // voice, while a key absent from the shared file falls back to the local value.
+    this.loadSharedTier();
+  }
+
+  /**
+   * Overlay any shared-tier values for the shared keys onto the resolved config.
+   * A shared key absent from the shared file is left at its surface-local value
+   * (the fallback that keeps existing setups working). Records which keys were
+   * actually sourced from the shared tier so describeConfigKeySource is honest.
+   */
+  private loadSharedTier(): void {
+    this.sharedKeysPresent.clear();
+    if (!this.sharedTierPath) return;
+    let shared: Record<string, unknown>;
+    try {
+      shared = readSharedTierFile(this.sharedTierPath);
+    } catch (err) {
+      throw new ConfigError(`Shared config load failed for ${this.sharedTierPath}: ${summarizeError(err)}`);
+    }
+    for (const key of SHARED_CONFIG_KEYS) {
+      const found = readDotPath(shared, key);
+      if (!found.present) continue;
+      const { parent, field } = this.resolvePath(key);
+      parent[field] = found.value;
+      this.sharedKeysPresent.add(key);
+    }
+  }
+
+  /** The shared-tier settings file path, or null when no shared tier is configured. */
+  getSharedTierPath(): string | null {
+    return this.sharedTierPath;
+  }
+
+  /**
+   * Report which tier a key's live value resolves from (shared / project / global
+   * / default) and whether it rides the shared tier. Reads the on-disk layers on
+   * demand so the resolution order is inspectable, not just documented.
+   */
+  describeConfigKeySource(key: ConfigKey): ConfigKeySource {
+    const value = this.get(key);
+    const shareable = isSharedConfigKey(key);
+    if (shareable && this.sharedKeysPresent.has(key)) {
+      return { key, value, tier: 'shared', shareable, sharedTierPath: this.sharedTierPath };
+    }
+    if (this.projectConfigPath && this.fileHasKey(this.projectConfigPath, key)) {
+      return { key, value, tier: 'project', shareable, sharedTierPath: this.sharedTierPath };
+    }
+    if (this.fileHasKey(this.configPath, key)) {
+      return { key, value, tier: 'global', shareable, sharedTierPath: this.sharedTierPath };
+    }
+    return { key, value, tier: 'default', shareable, sharedTierPath: this.sharedTierPath };
+  }
+
+  /** True when the JSON settings file at `path` carries an explicit value for `key`. */
+  private fileHasKey(path: string, key: ConfigKey): boolean {
+    if (!existsSync(path)) return false;
+    try {
+      const parsed = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
+      return readDotPath(parsed, key).present;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -447,6 +558,16 @@ export class ConfigManager {
       livePath.parent[livePath.field] = structuredClone(defaultPath.parent[defaultPath.field]);
     }
     this.save();
+    // Reset removes the shared-tier OVERRIDE for any shared key, so the key falls
+    // back to its surface-local/default value — otherwise a stale shared value
+    // would re-overlay on the next load and defeat the reset.
+    if (this.sharedTierPath) {
+      const resetKeys = key === undefined ? SHARED_CONFIG_KEYS : (isSharedConfigKey(key) ? [key] : []);
+      for (const sharedKey of resetKeys) {
+        removeSharedKey(this.sharedTierPath, sharedKey);
+        this.sharedKeysPresent.delete(sharedKey);
+      }
+    }
   }
 }
 
