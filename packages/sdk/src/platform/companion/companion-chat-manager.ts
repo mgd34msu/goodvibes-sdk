@@ -796,6 +796,10 @@ export class CompanionChatManager {
     publish({ type: 'turn.started', sessionId, messageId: userMessageId, turnId, envelope: startEnvelope });
 
     let assistantContent = '';
+    // The tail not yet committed to the conversation history (completed tool
+    // rounds commit as they finish) — what a cancel hands to the model-facing
+    // history so later turns can reason about the interruption.
+    let uncommittedContent = '';
     const assistantMessageId = randomUUID();
 
     const finalizeCancelled = (): void => finalizeCancelledTurn({
@@ -804,6 +808,8 @@ export class CompanionChatManager {
       assistantMessageId,
       userMessageId,
       getAssistantContent: () => assistantContent,
+      getUncommittedContent: () => uncommittedContent,
+      commitPartialToHistory: (content) => { session.conversation.addAssistantMessage(content); },
       openToolCalls,
       wasCancelRequested: () => scope.activeTurn.cancelRequested,
       isShutdown: () => this.disposed,
@@ -831,7 +837,7 @@ export class CompanionChatManager {
           abortSignal,
         });
 
-        let roundAssistantContent = '';
+        uncommittedContent = '';
         const toolCalls: ToolCall[] = [];
 
         for await (const chunk of stream) {
@@ -840,7 +846,7 @@ export class CompanionChatManager {
           switch (chunk.type) {
             case 'text_delta': {
               const delta = chunk.delta ?? '';
-              roundAssistantContent += delta;
+              uncommittedContent += delta;
               assistantContent += delta;
               publish({ type: 'turn.delta', sessionId, turnId, delta });
               break;
@@ -885,12 +891,14 @@ export class CompanionChatManager {
         if (abortSignal.aborted) break;
 
         if (toolCalls.length === 0) {
-          session.conversation.addAssistantMessage(roundAssistantContent);
+          session.conversation.addAssistantMessage(uncommittedContent);
+          uncommittedContent = '';
           completed = true;
           break;
         }
 
-        session.conversation.addAssistantMessage(roundAssistantContent, { toolCalls });
+        session.conversation.addAssistantMessage(uncommittedContent, { toolCalls });
+        uncommittedContent = '';
 
         if (!this.toolRegistry) {
           completed = true;

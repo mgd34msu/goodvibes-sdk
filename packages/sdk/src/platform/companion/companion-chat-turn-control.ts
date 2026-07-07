@@ -120,6 +120,16 @@ export function createTurnAbortScope(turnId: string, sessionSignal: AbortSignal)
 // Cancel finalization
 // ---------------------------------------------------------------------------
 
+/**
+ * Appended (model-facing only) to an interrupted partial when it is committed
+ * to the conversation history, so the model can reason about the true chain
+ * of events on later turns — a user's follow-up often refers to what it was
+ * watching at the moment it hit stop. The transcript copy stays clean; the UI
+ * carries the marker as the deliveryState badge instead.
+ */
+export const TURN_INTERRUPTION_NOTE =
+  '\n\n[Interrupted: the user stopped this response here, before it was complete.]';
+
 /** Structural dependencies finalizeCancelledTurn needs from the manager. */
 export interface CancelFinalizeContext {
   readonly sessionId: string;
@@ -129,6 +139,14 @@ export interface CancelFinalizeContext {
   readonly userMessageId: string;
   /** Read at finalize time — the streamed partial accumulates in a mutable local. */
   readonly getAssistantContent: () => string;
+  /**
+   * The portion of the partial NOT yet committed to the conversation history
+   * (completed tool rounds commit as they finish; only the interrupted
+   * round's tail is uncommitted).
+   */
+  readonly getUncommittedContent: () => string;
+  /** Commit the interrupted tail (with its interruption note) to the model-facing history. */
+  readonly commitPartialToHistory: (content: string) => void;
   /** toolCallId -> toolName for every announced-but-unresolved tool call. */
   readonly openToolCalls: Map<string, string>;
   readonly wasCancelRequested: () => boolean;
@@ -145,9 +163,11 @@ export interface CancelFinalizeContext {
  * The single exit path for an aborted turn (user cancel, session close, or
  * shutdown). Closes dangling tool blocks, persists a non-empty partial with
  * an explicit `deliveryState: 'cancelled'` marker (never a silent loss, never
- * a partial masquerading as a finished reply), and publishes the terminal
- * `turn.cancelled` to every subscriber so a stop issued from one client
- * converges on all of them.
+ * a partial masquerading as a finished reply), commits the interrupted tail
+ * to the model-facing conversation history with an explicit interruption note
+ * (later turns must be able to reason about what the user saw and stopped),
+ * and publishes the terminal `turn.cancelled` to every subscriber so a stop
+ * issued from one client converges on all of them.
  */
 export function finalizeCancelledTurn(ctx: CancelFinalizeContext): void {
   const { sessionId, turnId } = ctx;
@@ -170,6 +190,10 @@ export function finalizeCancelledTurn(ctx: CancelFinalizeContext): void {
   ctx.openToolCalls.clear();
 
   const assistantContent = ctx.getAssistantContent();
+  const uncommitted = ctx.getUncommittedContent();
+  if (uncommitted.trim()) {
+    ctx.commitPartialToHistory(uncommitted + TURN_INTERRUPTION_NOTE);
+  }
   let persistedId: string | undefined;
   let envelope: ConversationMessageEnvelope | undefined;
   if (assistantContent.trim()) {
