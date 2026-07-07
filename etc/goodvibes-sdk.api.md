@@ -2057,6 +2057,9 @@ export type McpServerRole = 'general' | 'docs' | 'filesystem' | 'git' | 'databas
 export type McpTrustMode = 'constrained' | 'ask-on-risk' | 'allow-all' | 'blocked';
 
 // @public
+export const MEMORY_RECORD_NOT_FOUND_CODE = "MEMORY_RECORD_NOT_FOUND";
+
+// @public
 export function mergeClientInput<TInput>(fixed: Record<string, unknown>, input: TInput | undefined): Record<string, unknown>;
 
 // @public

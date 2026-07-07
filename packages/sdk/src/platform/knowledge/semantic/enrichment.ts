@@ -1,4 +1,8 @@
 import type { KnowledgeStore } from '../store.js';
+// Shared clamp: normalizes a 0-1 probability to 0-100 and a non-finite value to the
+// auto-accept default, so an LLM ignoring the prompt's 0-100 contract (below) does
+// not silently draft a high-confidence node. One definition, not a divergent copy.
+import { clampConfidence } from '../store-node-history.js';
 import { getKnowledgeSpaceId } from '../spaces.js';
 import { knowledgeSourceMatchesScope } from '../scope-records.js';
 import type {
@@ -117,7 +121,7 @@ async function extractSemanticsWithLlm(
       'You extract a durable semantic knowledge graph from source material.',
       'Return only JSON. Do not invent facts. Every fact must be grounded in the supplied source text.',
       'Capture capabilities, features, specifications, procedures, warnings, maintenance items, compatibility, configuration, and troubleshooting facts when present.',
-      'Prefer precise facts over broad summaries. Preserve numbers, model names, ports, version names, constraints, and useful procedures.',
+      'Prefer precise facts over broad summaries. Preserve numbers, model names, ports, version names, constraints, and useful procedures. Every `confidence` field is an INTEGER on a 0-100 scale (0 = none, 100 = certain) — never a 0-1 probability.',
     ].join(' '),
     prompt: JSON.stringify({
       source: {
@@ -945,10 +949,6 @@ function isRelation(value: KnowledgeSemanticRelationInput | null): value is Know
 
 function isGap(value: KnowledgeSemanticGapInput | null): value is KnowledgeSemanticGapInput {
   return Boolean(value);
-}
-
-function clampConfidence(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function titleFromSentence(sentence: string): string {

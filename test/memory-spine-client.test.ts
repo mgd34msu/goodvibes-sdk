@@ -2,9 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import {
   MemorySpineClient,
   createLocalMemoryAccess,
+  foldMemoryWireExtendedError,
   type MemoryTransport,
   type LocalMemoryStore,
 } from '../packages/sdk/src/platform/runtime/memory-spine/index.js';
+import { createTransportError } from '../packages/transport-http/src/http-core.ts';
 import type { MemoryBundle, MemoryImportResult, MemoryLink, MemoryRecord, MemorySemanticSearchResult, MemoryVectorStats, MemoryDoctorReport } from '../packages/sdk/src/platform/state/index.js';
 import type { HonestMemorySearchResult } from '../packages/sdk/src/platform/state/index.js';
 
@@ -207,15 +209,63 @@ describe('memory-spine — extended catalog (full detach)', () => {
     expect(local.calls).toEqual([]);
   });
 
-  test('an extended verb the adopted daemon does NOT implement REJECTS honestly — it never reads the local file', async () => {
+  test('COMPILE-TIME guard: a transport object that OMITS an extended verb rejects honestly — never the local file', async () => {
+    // A surface pinned to an adapter that predates the verb: the transport object
+    // literally has no `list`/`searchSemantic`/`exportBundle` function. The client's
+    // routeExtended catches the `call === undefined` case. (This is the secondary
+    // guard; the primary — a wired verb whose daemon 404s at runtime — is below.)
     const local = spyLocalStore();
-    const wire = spyTransport(); // core-only transport (older daemon)
+    const wire = spyTransport(); // core-only transport (older/pinned adapter)
     const client = new MemorySpineClient({ local: createLocalMemoryAccess(local.store), transport: wire.transport });
 
     await expect(client.list({})).rejects.toThrow(/does not support the 'list' memory verb/);
     await expect(client.searchSemantic({})).rejects.toThrow(/searchSemantic/);
     await expect(client.exportBundle({})).rejects.toThrow(/exportBundle/);
     // Crucially, the local store was NEVER reached — the single-writer invariant holds.
+    expect(local.calls).toEqual([]);
+  });
+
+  test('RUNTIME signal: a wired verb whose live older daemon 404s (route-not-found) REJECTS honestly, never nulls', async () => {
+    // This is what a LIVE older daemon actually produces (not a transport that omits
+    // the method): the transport IMPLEMENTS `update`, calls the route, and the daemon
+    // answers a route-not-found 404. The transport folds that through the shared
+    // discriminator and rejects with the canonical unavailable-verb message — it does
+    // NOT return null (which the CLI would mislabel as "record not found").
+    const local = spyLocalStore();
+    const routeNotFound = createTransportError(
+      404, 'http://daemon.test/api/memory/records/mem_x/update', 'POST',
+      { error: 'Route not found', code: 'NOT_FOUND', category: 'not_found', status: 404 },
+    );
+    const olderDaemonTransport: MemoryTransport = {
+      ...spyTransport().transport,
+      update: async (): Promise<MemoryRecord | null> => {
+        try { throw routeNotFound; } catch (error) { foldMemoryWireExtendedError('update', error); return null; }
+      },
+    };
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(local.store), transport: olderDaemonTransport });
+
+    await expect(client.update('mem_x', { summary: 's' })).rejects.toThrow(/does not support the 'update' memory verb/);
+    expect(local.calls).toEqual([]);
+  });
+
+  test('RUNTIME signal: a genuine record-missing 404 (current daemon) folds to null, never a false reject', async () => {
+    // The other side of the discriminator: the SAME bare 404 status, but the body
+    // carries the record-missing code, so the transport folds it to null — a real
+    // "no such record", correctly distinguished from the version-skew case above.
+    const local = spyLocalStore();
+    const recordMissing = createTransportError(
+      404, 'http://daemon.test/api/memory/records/mem_x/update', 'POST',
+      { error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND', category: 'not_found', status: 404 },
+    );
+    const currentDaemonTransport: MemoryTransport = {
+      ...spyTransport().transport,
+      update: async (): Promise<MemoryRecord | null> => {
+        try { throw recordMissing; } catch (error) { foldMemoryWireExtendedError('update', error); return null; }
+      },
+    };
+    const client = new MemorySpineClient({ local: createLocalMemoryAccess(local.store), transport: currentDaemonTransport });
+
+    expect(await client.update('mem_x', { summary: 's' })).toBeNull();
     expect(local.calls).toEqual([]);
   });
 });

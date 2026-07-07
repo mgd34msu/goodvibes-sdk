@@ -1,3 +1,4 @@
+import { MEMORY_RECORD_NOT_FOUND_CODE } from '@pellux/goodvibes-errors';
 import type { DaemonIntegrationRouteHandlers } from './context.js';
 import { jsonErrorResponse } from './error-response.js';
 import type { DaemonIntegrationRouteContext, IntegrationHelperServiceLike, RuntimeEventDomain } from './integration-route-types.js';
@@ -172,7 +173,7 @@ export function createDaemonIntegrationRouteHandlers(
       const record = context.memoryRegistry.get(id);
       return record
         ? Response.json({ record })
-        : jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown memory record', code: MEMORY_RECORD_NOT_FOUND_CODE }, { status: 404 });
     },
     postMemoryRecordReview: async (id, req) => {
       const body = await context.parseJsonBody(req);
@@ -181,7 +182,7 @@ export function createDaemonIntegrationRouteHandlers(
       const record = context.memoryRegistry.review(id, patch);
       return record
         ? Response.json({ record })
-        : jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown memory record', code: MEMORY_RECORD_NOT_FOUND_CODE }, { status: 404 });
     },
     deleteMemoryRecord: (id) => {
       const deleted = context.memoryRegistry.delete(id);
@@ -208,11 +209,11 @@ export function createDaemonIntegrationRouteHandlers(
       const record = context.memoryRegistry.update(id, patch);
       return record
         ? Response.json({ record })
-        : jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown memory record', code: MEMORY_RECORD_NOT_FOUND_CODE }, { status: 404 });
     },
     getMemoryRecordLinks: (id) => {
       if (context.memoryRegistry.get(id) === null) {
-        return jsonErrorResponse({ error: 'Unknown memory record', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+        return jsonErrorResponse({ error: 'Unknown memory record', code: MEMORY_RECORD_NOT_FOUND_CODE }, { status: 404 });
       }
       return Response.json({ links: context.memoryRegistry.linksFor(id) });
     },
@@ -226,7 +227,7 @@ export function createDaemonIntegrationRouteHandlers(
       // 200 that pretends a link was made between records that do not both exist.
       return link
         ? Response.json({ link }, { status: 201 })
-        : jsonErrorResponse({ error: 'Unknown memory record (link source or target)', code: 'MEMORY_RECORD_NOT_FOUND' }, { status: 404 });
+        : jsonErrorResponse({ error: 'Unknown memory record (link source or target)', code: MEMORY_RECORD_NOT_FOUND_CODE }, { status: 404 });
     },
     postMemoryRecordExport: async (req) => {
       const body = await context.parseJsonBody(req);

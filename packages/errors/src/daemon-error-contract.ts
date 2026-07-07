@@ -44,6 +44,24 @@ export type DaemonErrorSource =
   | 'acp'
   | 'unknown';
 
+/**
+ * The `code` a memory route sets on a 404 whose body means "the addressed RECORD
+ * does not exist" — the route ran, the store simply had no such id. This is the
+ * ONE 404 disposition a memory wire consumer may fold to `null` ("no such
+ * record").
+ *
+ * It exists to be distinguishable from a route-not-found 404: an older daemon
+ * that never registered an extended memory route answers the terminal 404 with
+ * `code: 'NOT_FOUND'` (see the daemon HTTP router's final fallthrough), NOT this
+ * code. That difference is the runtime signal the memory-spine wire discriminator
+ * keys on — a `MEMORY_RECORD_NOT_FOUND` 404 is a genuine record-miss (→ null),
+ * while ANY other 404 (route-not-found, or a bare legacy 404 with no code) means
+ * "this daemon does not serve this verb" and must reject honestly, never silently
+ * null. Emitted by daemon-sdk's memory record handlers; consumed by the
+ * memory-spine wire discriminator.
+ */
+export const MEMORY_RECORD_NOT_FOUND_CODE = 'MEMORY_RECORD_NOT_FOUND';
+
 export interface StructuredDaemonErrorBody {
   readonly error: string;
   readonly hint?: string | undefined;

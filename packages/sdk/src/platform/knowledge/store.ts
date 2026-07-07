@@ -462,7 +462,11 @@ export class KnowledgeStore {
     const nodeMetadata = nodeSpaceId
       ? ensureKnowledgeSpaceMetadata(mergedNodeMetadata, nodeSpaceId)
       : mergedNodeMetadata;
-    const confidence = Math.max(0, Math.min(100, input.confidence ?? existing?.confidence ?? 70));
+    // clampConfidence (not an inline min/max) so a non-finite confidence — NaN or
+    // Infinity slips past `??`, which only catches null/undefined — resolves to the
+    // auto-accept default instead of `NaN >= autoAcceptConfidence === false`
+    // silently holding a node as a draft forever.
+    const confidence = clampConfidence(input.confidence ?? existing?.confidence ?? 70);
     // Review gate: never silently active — stamp honest activation provenance. (Invariants 2 & 4.)
     const gated = resolveNodeActivation({ input, existing, confidence, metadata: nodeMetadata, now, autoAcceptConfidence: this.nodeAutoAcceptConfidence });
     const record: KnowledgeNodeRecord = {

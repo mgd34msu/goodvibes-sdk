@@ -78,6 +78,7 @@ import {
   type MemoryRecallSnapshot,
   type MemoryRecallRefreshOptions,
 } from './recall-snapshot.js';
+import { memoryVerbUnavailableError } from './wire-verb-availability.js';
 
 /** Patch shape accepted by an editable-field update (scope/summary/detail/tags). */
 export interface MemoryUpdatePatch {
@@ -373,6 +374,18 @@ export class MemorySpineClient implements MemoryAccess {
    * transport's verb if it implements it, otherwise an HONEST rejection stating the
    * adopted daemon does not support it (never a silent local-file read, which would
    * break the single-writer invariant and misreport which store answered).
+   *
+   * TWO honesty layers, both landing on the same {@link memoryVerbUnavailableError}
+   * message:
+   *  1. COMPILE-TIME omission (here): a transport object that literally does not
+   *     implement the verb (`call === undefined`) — a surface pinned to an adapter
+   *     that predates the verb. Rejects immediately.
+   *  2. RUNTIME signal (the transports): a transport that DOES implement the verb but
+   *     whose adopted daemon route answers a route-not-found 404 folds that 404
+   *     through `foldMemoryWireExtendedError` in its own catch and rejects with the
+   *     same message. That path — not this one — is what a live older daemon
+   *     actually produces; this branch alone never sees it, because a real transport
+   *     supplies a concrete function for every verb.
    */
   private routeExtended<T>(
     verb: keyof MemoryExtendedAccess,
@@ -382,12 +395,7 @@ export class MemorySpineClient implements MemoryAccess {
     if (this.transport === null) return local(this.local);
     const call = wire(this.transport);
     if (call === undefined) {
-      return Promise.reject(new Error(
-        `memory spine: the adopted daemon does not support the '${verb}' memory verb over the wire — `
-        + 'upgrade the daemon to a build that serves it, or run this surface offline (no daemon adopted). '
-        + 'A wire client will not read its own local store for this op, because that would break the '
-        + 'single-writer invariant and report a divergent local copy as if it were the canonical store.',
-      ));
+      return Promise.reject(memoryVerbUnavailableError(verb));
     }
     return call;
   }

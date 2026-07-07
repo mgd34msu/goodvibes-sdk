@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 import { KnowledgeService } from '../packages/sdk/src/platform/knowledge/service.js';
+import { KnowledgeSemanticService } from '../packages/sdk/src/platform/knowledge/semantic/service.js';
+import type { KnowledgeSemanticLlm } from '../packages/sdk/src/platform/knowledge/semantic/types.js';
 import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
 import { HomeGraphService } from '../packages/sdk/src/platform/knowledge/home-graph/service.js';
 import { isRepairedAnswerGap } from '../packages/sdk/src/platform/knowledge/semantic/answer-gaps.js';
@@ -63,6 +65,82 @@ describe('knowledge wiki honesty — revision history (Defect 1)', () => {
     const node = await store.upsertNode({ kind: 'topic', slug: 'stable', title: 'Stable', confidence: 90 });
     await store.upsertNode({ id: node.id, kind: 'topic', slug: 'stable', title: 'Stable', confidence: 90 });
     expect(store.listNodeRevisions(node.id).length).toBe(1);
+  });
+
+  test('a slug-only identity change records a revision listing slug — the prior slug is not lost (Finding 3)', async () => {
+    const store = createStore();
+    // Everything identical except the slug: an id-based upsert that renames the slug.
+    const created = await store.upsertNode({ kind: 'topic', slug: 'old-slug', title: 'Widget', summary: 'S', confidence: 90 });
+    await store.upsertNode({ id: created.id, kind: 'topic', slug: 'new-slug', title: 'Widget', summary: 'S', confidence: 90 });
+
+    const revisions = store.listNodeRevisions(created.id);
+    // Before the fix diffKnowledgeNodeFields never compared slug, so changedFields
+    // was [] → the early return recorded NO revision (length 1, the create alone),
+    // silently dropping the prior slug from history.
+    expect(revisions.length).toBe(2);
+    expect(revisions[1]!.changeKind).toBe('update');
+    expect(revisions[1]!.changedFields).toContain('slug');
+    expect(revisions[1]!.slug).toBe('new-slug');
+    expect(revisions.some((rev) => rev.slug === 'old-slug')).toBe(true);
+  });
+
+  test('a kind-only identity change records a revision listing kind (Finding 3)', async () => {
+    const store = createStore();
+    const created = await store.upsertNode({ kind: 'topic', slug: 'k', title: 'K', confidence: 90 });
+    await store.upsertNode({ id: created.id, kind: 'concept', slug: 'k', title: 'K', confidence: 90 });
+    const revisions = store.listNodeRevisions(created.id);
+    expect(revisions.length).toBe(2);
+    expect(revisions[1]!.changedFields).toContain('kind');
+  });
+});
+
+describe('knowledge wiki honesty — confidence scale + non-finite guard (Findings 4 & 5)', () => {
+  test('a non-finite (NaN) confidence resolves to the auto-accept default, never a silent draft (Finding 5)', async () => {
+    const store = createStore();
+    // NaN slips past `??` (which only catches null/undefined); before the fix the
+    // inline min/max left confidence = NaN and `NaN >= autoAccept` is false → draft.
+    const node = await store.upsertNode({ kind: 'topic', slug: 'nanconf', title: 'NaN conf', confidence: Number.NaN });
+    expect(Number.isFinite(node.confidence)).toBe(true);
+    expect(node.confidence).toBe(40); // DEFAULT_NODE_AUTO_ACCEPT_CONFIDENCE
+    expect(node.status).toBe('active');
+  });
+
+  test('an LLM that answers confidence as a 0-1 probability scales to 0-100, so a strong node is not held as a draft (Finding 4)', async () => {
+    const store = createStore();
+    const source = await store.upsertSource({
+      connectorId: 'manual', sourceType: 'manual', title: 'Widget manual',
+      canonicalUri: 'manual://widget', tags: ['manual'], status: 'indexed',
+    });
+    await store.upsertExtraction({
+      sourceId: source.id, extractorId: 'manual', format: 'text', sections: ['Features'],
+      structure: { searchText: 'The Widget supports HDMI, Bluetooth, and a rechargeable battery for portable use.' },
+    });
+
+    // A model that ignores the 0-100 contract and emits a 0-1 probability for a
+    // high-confidence entity.
+    const probabilityLlm: KnowledgeSemanticLlm = {
+      async completeJson(input: { readonly purpose: string }): Promise<unknown | null> {
+        if (input.purpose !== 'knowledge-semantic-enrichment') return null;
+        return {
+          summary: 'Widget capabilities.',
+          entities: [{ title: 'Widget', kind: 'device', aliases: [], summary: 'A portable widget.', confidence: 0.9 }],
+          facts: [],
+          relations: [],
+          gaps: [],
+        };
+      },
+      async completeText(): Promise<string | null> { return null; },
+    };
+    const semantic = new KnowledgeSemanticService(store, { llm: probabilityLlm });
+    const result = await semantic.enrichSource(source.id, { force: true });
+
+    expect(result?.extractor).toBe('llm');
+    const entity = result?.entities.find((node) => node.title === 'Widget');
+    expect(entity).toBeDefined();
+    // Before the fix: clampConfidence(round(0.9)) = 1 → below the auto-accept floor →
+    // draft. After: 0.9 is recognized as a probability and scaled to 90 → active.
+    expect(entity!.confidence).toBe(90);
+    expect(entity!.status).toBe('active');
   });
 });
 

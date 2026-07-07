@@ -34,8 +34,15 @@ export function writeKnowledgeNodeRow(sqlite: SQLiteStore, record: KnowledgeNode
 }
 
 export function clampConfidence(value: number): number {
+  // A non-finite value (NaN/Infinity — slips past a `??` guard, which only catches
+  // null/undefined) resolves to the auto-accept default rather than poisoning the
+  // gate with `NaN >= threshold === false` and silently drafting the node forever.
   if (!Number.isFinite(value)) return DEFAULT_NODE_AUTO_ACCEPT_CONFIDENCE;
-  return Math.max(0, Math.min(100, Math.round(value)));
+  // Confidence is a 0-100 score everywhere. A fractional value below 1 (e.g. 0.9) is
+  // almost certainly a 0-1 probability a producer/LLM emitted despite that contract —
+  // scale it up so 0.9 → 90 instead of Math.round truncating it to a draft-holding 1.
+  const scaled = value > 0 && value < 1 ? value * 100 : value;
+  return Math.max(0, Math.min(100, Math.round(scaled)));
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -232,6 +239,13 @@ function appendNodeRevision(
 
 function diffKnowledgeNodeFields(prev: KnowledgeNodeRecord, next: KnowledgeNodeRecord): string[] {
   const changed: string[] = [];
+  // Identity fields are tracked: an id-based upsert that changes ONLY the kind or
+  // slug (all other fields identical) is still a real content change and must
+  // record a revision — otherwise `changedFields` is empty, the early return in
+  // recordKnowledgeNodeRevisions fires, and the prior slug/kind is lost from
+  // history with no trace.
+  if (prev.kind !== next.kind) changed.push('kind');
+  if (prev.slug !== next.slug) changed.push('slug');
   if (prev.title !== next.title) changed.push('title');
   if ((prev.summary ?? '') !== (next.summary ?? '')) changed.push('summary');
   if (prev.status !== next.status) changed.push('status');

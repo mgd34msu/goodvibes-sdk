@@ -33,3 +33,10 @@ export {
   emptyRecallSnapshot,
   DEFAULT_RECALL_SNAPSHOT_STALE_AFTER_MS,
 } from './recall-snapshot.js';
+
+export {
+  classifyMemoryWireError,
+  memoryVerbUnavailableError,
+  foldMemoryWireExtendedError,
+  type MemoryWire404Disposition,
+} from './wire-verb-availability.js';
