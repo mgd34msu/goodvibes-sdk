@@ -41,6 +41,7 @@ import { LocalContextIngestionService } from './local-context-ingestion.js';
 import { getModelLimitsCachePath, ModelLimitsService } from './model-limits.js';
 import { getGitHubCopilotTokenCachePath } from './github-copilot.js';
 import { summarizeError } from '../utils/error-display.js';
+import { inferFallbackContextWindow } from './context-window-fallback.js';
 import {
   splitModelRegistryKey,
   stableStringify,
@@ -477,10 +478,52 @@ export class ProviderRegistry {
   getCurrentModel(): ModelDefinition {
     const registry = this.getModelRegistry();
     const def = findModelDefinition(this.currentModelRegistryKey, registry);
-    if (!def) {
-      throw new Error(`Current model '${this.currentModelRegistryKey}' not in registry.`);
+    if (def) return def;
+    const fallback = this.buildConfiguredModelFallback(this.currentModelRegistryKey);
+    if (fallback) return fallback;
+    throw new Error(`Current model '${this.currentModelRegistryKey}' not in registry.`);
+  }
+
+  /**
+   * Synthesize a minimal model definition for the configured registryKey when
+   * the catalog-backed registry hasn't materialized it yet — e.g. a fresh
+   * daemon home before the models.dev catalog fetch has completed (or while
+   * offline, where it never will). `buildModelRegistry()` only draws from
+   * custom/runtime/synthetic/catalog/discovered models, none of which are
+   * populated synchronously at construction time, so a stock default like
+   * 'openrouter:openrouter/free' can otherwise be unresolvable for the entire
+   * lifetime of a catalog-less boot.
+   *
+   * Deliberately narrow: only resolves when `providerId` is an actually
+   * registered provider AND that provider's own static `models` list already
+   * declares `resolvedModelId` (e.g. the builtin openrouter provider declares
+   * 'openrouter/free' in builtin-registry.ts). A genuinely unknown or
+   * misconfigured registryKey still falls through to the "not in registry"
+   * error below so callers keep an honest signal instead of a guess.
+   */
+  private buildConfiguredModelFallback(registryKey: string): ModelDefinition | null {
+    let providerId: string;
+    let resolvedModelId: string;
+    try {
+      ({ providerId, resolvedModelId } = splitModelRegistryKey(registryKey));
+    } catch {
+      return null;
     }
-    return def;
+    const provider = this.tryGet(providerId);
+    if (!provider || !provider.models.includes(resolvedModelId)) return null;
+    const isFree = resolvedModelId.endsWith(':free') || resolvedModelId.endsWith('-free') || resolvedModelId.endsWith('/free');
+    return {
+      id: resolvedModelId,
+      provider: providerId,
+      registryKey: `${providerId}:${resolvedModelId}`,
+      displayName: resolvedModelId,
+      description: `${resolvedModelId} — builtin provider default; model catalog has not hydrated yet.`,
+      capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+      contextWindow: inferFallbackContextWindow(providerId, resolvedModelId),
+      contextWindowProvenance: 'fallback',
+      selectable: true,
+      tier: isFree ? 'free' : 'standard',
+    };
   }
 
   /**

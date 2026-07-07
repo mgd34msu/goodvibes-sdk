@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
 import { ProviderNotFoundError } from '../packages/sdk/src/platform/providers/provider-not-found-error.js';
+import { getProviderUsageSnapshot } from '../packages/sdk/src/platform/providers/runtime-snapshot.js';
 import type { LLMProvider } from '../packages/sdk/src/platform/providers/interface.js';
 import {
   getCatalogCachePath,
@@ -23,9 +24,10 @@ import {
 // Test doubles
 // ---------------------------------------------------------------------------
 
-function makeProvider(name: string): LLMProvider {
+function makeProvider(name: string, models: readonly string[] = []): LLMProvider {
   return {
     name,
+    models: [...models],
     chat: async () => { throw new Error('not implemented'); },
     stream: async function* () { /* empty */ },
   } as unknown as LLMProvider;
@@ -315,5 +317,106 @@ describe('ProviderRegistry model catalog cache', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getCurrentModel() — fresh-home fallback for the well-known configured default
+// ---------------------------------------------------------------------------
+//
+// Root cause (D7b): buildModelRegistry() only draws from custom/runtime/
+// synthetic/catalog/discovered models. The catalog is populated exclusively
+// by an async models.dev fetch (initProviderCatalog/refreshProviderCatalog),
+// which is never awaited at construction time — so on a fresh daemon home
+// (no cache file yet) or while offline, getModelRegistry() is missing every
+// catalog-sourced entry, including the stock default 'openrouter:openrouter/
+// free', and getCurrentModel() throws for the entire lifetime of a catalog-
+// less boot. ProviderRegistry.buildConfiguredModelFallback() closes that gap
+// by synthesizing a minimal definition when the configured registryKey names
+// an actually-registered provider whose own static `models` list already
+// declares that id — narrow enough that a genuinely bad ref still throws.
+describe('ProviderRegistry.getCurrentModel() — fresh-home default fallback', () => {
+  test('the stock default resolves with no catalog cache and no initCatalog() call', () => {
+    const registry = makeRegistry();
+    const current = registry.getCurrentModel();
+    expect(current.registryKey).toBe('openrouter:openrouter/free');
+    expect(current.provider).toBe('openrouter');
+    expect(current.id).toBe('openrouter/free');
+    expect(current.tier).toBe('free');
+    expect(current.selectable).toBe(true);
+    expect(current.contextWindowProvenance).toBe('fallback');
+  });
+
+  test('a genuinely unknown provider in the configured ref still throws honestly', () => {
+    const registry = makeRegistry('/tmp/test-registry', { 'provider.model': 'ghost-provider:ghost-model' });
+    expect(() => registry.getCurrentModel()).toThrow(
+      "Current model 'ghost-provider:ghost-model' not in registry.",
+    );
+  });
+
+  test('a registered provider whose own model list omits the configured id still throws honestly', () => {
+    const registry = makeRegistry('/tmp/test-registry', { 'provider.model': 'openrouter:not-a-real-model' });
+    expect(() => registry.getCurrentModel()).toThrow(
+      "Current model 'openrouter:not-a-real-model' not in registry.",
+    );
+  });
+
+  test('once the catalog hydrates, the real catalog entry wins over the fallback', () => {
+    const root = mkdtempSync(join(tmpdir(), 'goodvibes-provider-registry-'));
+    try {
+      saveCatalogCache(
+        [{ ...makeCatalogModel('openrouter/free', 'openrouter'), tier: 'free', pricing: { input: 0, output: 0 }, contextWindow: 32_000 }],
+        getCatalogCachePath(root),
+        getCatalogTmpPath(root),
+      );
+      const registry = makeRegistry(root);
+      registry.initCatalog();
+      const current = registry.getCurrentModel();
+      expect(current.registryKey).toBe('openrouter:openrouter/free');
+      // Sourced from the catalog now, not the synthesized fallback.
+      expect(current.contextWindowProvenance).not.toBe('fallback');
+      expect(current.contextWindow).toBe(32_000);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getProviderUsageSnapshot() — defense in depth for GET /api/providers/:id/usage
+// ---------------------------------------------------------------------------
+//
+// getProviderUsageSnapshot() makes its own, separate getCurrentModel() call
+// after buildSnapshotForProvider() (which already tolerates an unresolved
+// current model). Before this fix that second call was unguarded, so a
+// configured model that still can't resolve — even after the fallback above —
+// turned this into an unhandled throw instead of an honest JSON payload.
+describe('getProviderUsageSnapshot() — honest degrade on an unresolvable current model', () => {
+  test('reports the resolved default cleanly for the provider that owns it', async () => {
+    const registry = makeRegistry();
+    // Swap the real builtin 'openrouter' (whose describeRuntime() needs full
+    // secrets/service-registry deps this test double doesn't provide) for a
+    // minimal stub that still declares 'openrouter/free' — register()
+    // overwrites by name, so buildConfiguredModelFallback still matches.
+    registry.register(makeProvider('openrouter', ['openrouter/free']));
+    const snapshot = await getProviderUsageSnapshot(registry, 'openrouter');
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.active).toBe(true);
+    expect(snapshot?.currentModelRegistryKey).toBe('openrouter:openrouter/free');
+  });
+
+  test('does not throw and omits currentModelRegistryKey when the configured ref is unresolvable', async () => {
+    const registry = makeRegistry('/tmp/test-registry', { 'provider.model': 'ghost-provider:ghost-model' });
+    registry.register(makeProvider('anthropic'));
+    const snapshot = await getProviderUsageSnapshot(registry, 'anthropic');
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.active).toBe(false);
+    expect(snapshot?.currentModelRegistryKey).toBeUndefined();
+  });
+
+  test('returns null for a provider that is not registered at all (route 404s honestly)', async () => {
+    const registry = makeRegistry();
+    const snapshot = await getProviderUsageSnapshot(registry, 'not-a-real-provider');
+    expect(snapshot).toBeNull();
   });
 });
