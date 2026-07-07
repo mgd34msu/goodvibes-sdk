@@ -217,6 +217,11 @@ export const KNOWLEDGE_GRAPHQL_SDL = `
     strategy: String!
     budgetLimit: Int!
     estimatedTokens: Int!
+    truncated: Boolean!
+    totalCandidates: Int!
+    droppedCount: Int!
+    droppedForBudget: Int!
+    budgetExhausted: Boolean!
     items: [KnowledgePacketItem!]!
   }
 

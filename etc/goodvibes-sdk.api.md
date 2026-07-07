@@ -9360,6 +9360,11 @@ export interface OperatorMethodOutputMap {
         strategy: string;
         budgetLimit: number;
         estimatedTokens: number;
+        truncated: boolean;
+        totalCandidates: number;
+        droppedCount: number;
+        droppedForBudget: number;
+        budgetExhausted: boolean;
         items: readonly (({
             kind: string;
             id: string;

@@ -290,14 +290,54 @@ describe('knowledge wiki honesty — packet truncation disclosure (Defect 9)', (
         canonicalUri: `manual://widget-${i}`, summary: 'widget calibration guide', tags: ['widget'], status: 'indexed',
       });
     }
-    const truncated = await service.buildPacket('widget', [], 2);
+    // A generous token budget so the ITEM CAP (not the budget) is what drops
+    // candidates — droppedForBudget must be 0 and budgetExhausted false.
+    const truncated = await service.buildPacket('widget', [], 2, { budgetLimit: 100_000 });
     expect(truncated.truncated).toBe(true);
     expect(truncated.droppedCount).toBeGreaterThan(0);
     expect(truncated.totalCandidates).toBeGreaterThan(truncated.items.length);
+    expect(truncated.totalCandidates).toBe(truncated.items.length + truncated.droppedCount);
+    expect(truncated.droppedForBudget).toBe(0);
+    expect(truncated.budgetExhausted).toBe(false);
 
     const complete = await service.buildPacket('widget', [], 50);
     expect(complete.truncated).toBe(false);
     expect(complete.droppedCount).toBe(0);
+    expect(complete.droppedForBudget).toBe(0);
+    expect(complete.budgetExhausted).toBe(false);
+  });
+
+  test('a packet whose token budget binds distinguishes budget-drops from rank-cap drops', async () => {
+    const { store, artifactStore } = createStores();
+    const service = new KnowledgeService(store, artifactStore, undefined, {});
+    for (let i = 0; i < 8; i += 1) {
+      await store.upsertSource({
+        connectorId: 'manual', sourceType: 'document', title: `Widget manual ${i}`,
+        canonicalUri: `manual://widget-${i}`,
+        summary: 'widget calibration guide with a summary long enough to consume token budget when several are combined',
+        tags: ['widget'], status: 'indexed',
+      });
+    }
+    // A high item limit but a tiny token budget: the budget is the binding
+    // constraint, so at least one candidate is dropped FOR BUDGET, and
+    // budgetExhausted is true. The first item always fits (never budget-dropped).
+    const packet = await service.buildPacket('widget', [], 50, { budgetLimit: 90 });
+    expect(packet.items.length).toBeGreaterThanOrEqual(1);
+    expect(packet.budgetExhausted).toBe(true);
+    expect(packet.droppedForBudget).toBeGreaterThan(0);
+    // droppedForBudget is a subset of the honest total droppedCount.
+    expect(packet.droppedCount).toBeGreaterThanOrEqual(packet.droppedForBudget);
+  });
+
+  test('the knowledge.packet wire schema exposes the truncation disclosure fields', async () => {
+    const { KNOWLEDGE_PACKET_SCHEMA } = await import(
+      '../packages/sdk/src/platform/control-plane/operator-contract-schemas-knowledge.js'
+    );
+    const schema = KNOWLEDGE_PACKET_SCHEMA as { properties?: Record<string, unknown>; required?: string[] };
+    for (const field of ['truncated', 'totalCandidates', 'droppedCount', 'droppedForBudget', 'budgetExhausted']) {
+      expect(field in (schema.properties ?? {})).toBe(true);
+      expect(schema.required ?? []).toContain(field);
+    }
   });
 });
 
