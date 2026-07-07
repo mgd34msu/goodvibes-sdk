@@ -2,6 +2,7 @@ import { logger } from '../utils/logger.js';
 import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/events/index.js';
 import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../tools/fetch/trust-tiers.js';
 import { instrumentedFetch, createTimeoutController } from '../utils/fetch-with-timeout.js';
+import { isNotifySuppressed } from '../utils/notify.js';
 
 // ---------------------------------------------------------------------------
 // WebhookNotifier
@@ -25,6 +26,14 @@ export class WebhookNotifier {
   private readonly maxConcurrent: number;
   private readonly maxBodyBytes: number;
   private readonly signingSecret?: string | Uint8Array | undefined;
+  /**
+   * Bypass test suppression for every delivery from this instance. Intended
+   * only for tests that specifically exercise the real HTTP delivery layer
+   * (e.g. the SSRF filter tests, which need a real `fetch` attempt to
+   * distinguish "blocked" from "not blocked"). Every other caller should
+   * leave this unset so `bun test` never fires a real webhook.
+   */
+  private readonly force: boolean;
 
   constructor(urls: string[] = [], options: WebhookNotifierOptions = {}) {
     this.urls = validateWebhookUrls(urls);
@@ -32,6 +41,7 @@ export class WebhookNotifier {
     this.maxConcurrent = normalizePositiveInteger(options.maxConcurrent, 8, 1, 32);
     this.maxBodyBytes = normalizePositiveInteger(options.maxBodyBytes, 64 * 1024, 1_024, 256 * 1024);
     this.signingSecret = normalizeSigningSecret(options.signingSecret);
+    this.force = options.force === true;
   }
 
   /**
@@ -193,6 +203,15 @@ export class WebhookNotifier {
       }
     }
 
+    // Real webhook delivery must never fire from an automated test run —
+    // suppressed the same way as desktop notifications (NODE_ENV==='test' or
+    // GOODVIBES_SUPPRESS_NOTIFY), with `force` as the sanctioned opt-back-in
+    // for tests that exercise this delivery layer itself.
+    if (isNotifySuppressed(this.force)) {
+      logger.debug('WebhookNotifier: delivery suppressed under test', { url });
+      throw new Error('WebhookNotifier: delivery suppressed under test (pass { force: true } to enable)');
+    }
+
     const signal = createTimeoutController(this.timeoutMs);
     try {
       const body = truncateUtf8(text, this.maxBodyBytes);
@@ -238,6 +257,13 @@ export interface WebhookNotifierOptions {
   maxConcurrent?: number | undefined;
   maxBodyBytes?: number | undefined;
   signingSecret?: string | Uint8Array | undefined;
+  /**
+   * Bypass test suppression for every delivery from this instance. Only
+   * tests that exercise the real HTTP delivery layer itself should set this
+   * — everything else should be left unset so `bun test` never sends a real
+   * webhook request.
+   */
+  force?: boolean | undefined;
 }
 
 export interface WebhookNotifierDeliveryResult {
