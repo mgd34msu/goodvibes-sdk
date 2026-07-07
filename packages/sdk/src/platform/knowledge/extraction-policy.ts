@@ -1,5 +1,21 @@
 import type { KnowledgeExtractionRecord } from './types.js';
 
+/**
+ * The current extractor generation. Stamped onto every extraction's metadata at
+ * write time (`extractorVersion`). Bump this when the extraction pipeline improves
+ * so that the retained raw-artifact lake is re-processed: an extraction produced by
+ * an older generation is treated as stale-by-version and re-extracted from its
+ * stored artifact, even when its prior text was non-empty. This is what turns the
+ * retained lake into a compounding asset. Extractions written before versioning
+ * carry no stamp and resolve to version 0, so they re-extract once.
+ */
+export const KNOWLEDGE_EXTRACTOR_VERSION = 1;
+
+export function readKnowledgeExtractorVersion(metadata: Record<string, unknown>): number {
+  const value = metadata.extractorVersion;
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
 export const KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS = 128 * 1024;
 
 export const KNOWLEDGE_MIN_BINARY_SAMPLE_CHARS = 120;
@@ -16,8 +32,14 @@ const LIMITED_EXTRACTION_MARKERS = [
   'has no specialized in-core extractor',
 ];
 
-export function knowledgeExtractionNeedsRefresh(extraction: KnowledgeExtractionRecord | null): boolean {
+export function knowledgeExtractionNeedsRefresh(
+  extraction: KnowledgeExtractionRecord | null,
+  currentExtractorVersion: number = KNOWLEDGE_EXTRACTOR_VERSION,
+): boolean {
   if (!extraction) return true;
+  // Improved-extractor gate: re-extract a stored capture when it was produced by
+  // an older extractor generation, even if its prior text was usable.
+  if (readKnowledgeExtractorVersion(extraction.metadata) < currentExtractorVersion) return true;
   const searchText = readKnowledgeSearchText(extraction.structure) ?? readKnowledgeSearchText(extraction.metadata);
   if (searchText) return false;
   if (

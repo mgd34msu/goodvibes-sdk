@@ -23,7 +23,9 @@ export function buildKnowledgeSemanticGraphIndex(
   const scope = { knowledgeSpaceId: spaceId };
   const rawSources = store.listSourcesInSpace(spaceId).filter((source) => source.status !== 'stale');
   const sourceMap = new Map(rawSources.map((source) => [source.id, source]));
-  const rawNodes = store.listNodesInSpace(spaceId).filter((node) => node.status !== 'stale');
+  // Only active nodes are answerable: stale (superseded/forgotten) and draft
+  // (pending review) content must not surface in semantic answers. (Defects 2 & 4.)
+  const rawNodes = store.listNodesInSpace(spaceId).filter((node) => node.status === 'active');
   const edgeCandidates = store.listEdges().filter(isActiveKnowledgeEdge);
   const rawNodeMap = new Map(rawNodes.map((node) => [node.id, node]));
   const lookup = { sources: sourceMap, nodes: rawNodeMap, edges: edgeCandidates };

@@ -20,9 +20,11 @@ import type {
   KnowledgeRefinementTaskRecord,
   KnowledgeRefinementTaskUpsertInput,
   KnowledgeNodeRecord,
+  KnowledgeNodeRevisionRecord,
   KnowledgeNodeUpsertInput,
   KnowledgeScheduleRecord,
   KnowledgeScheduleUpsertInput,
+  KnowledgeSemanticEnrichmentStateRecord,
   KnowledgeSourceRecord,
   KnowledgeSourceUpsertInput,
   KnowledgeStatus,
@@ -35,7 +37,26 @@ import {
   stableText,
   uniq,
 } from './store-schema.js';
-import { resolveKnowledgeDbPath, type KnowledgeStoreConfig } from './store-config.js';
+import {
+  DEFAULT_NODE_AUTO_ACCEPT_CONFIDENCE,
+  resolveKnowledgeDbPath,
+  type KnowledgeStoreConfig,
+} from './store-config.js';
+import { KNOWLEDGE_EXTRACTOR_VERSION } from './extraction-policy.js';
+import {
+  clampConfidence,
+  listKnowledgeNodeRevisions,
+  mergeKnowledgeNodes,
+  recordKnowledgeNodeRevisions,
+  resolveNodeActivation,
+  upsertKnowledgeSemanticEnrichmentState,
+  writeKnowledgeNodeRow,
+} from './store-node-history.js';
+import {
+  deleteKnowledgeNodeRecord,
+  deleteKnowledgeSourceRecord,
+  type KnowledgeRecordDeleteView,
+} from './store-record-delete.js';
 import { upsertKnowledgeRefinementTask } from './store-refinement.js';
 import {
   deleteKnowledgeSpaceRows,
@@ -106,9 +127,13 @@ export class KnowledgeStore {
   private readonly consolidationCandidates = new Map<string, KnowledgeConsolidationCandidateRecord>();
   private readonly consolidationReports = new Map<string, KnowledgeConsolidationReportRecord>();
   private readonly schedules = new Map<string, KnowledgeScheduleRecord>();
+  private readonly nodeRevisions = new Map<string, KnowledgeNodeRevisionRecord[]>();
+  private readonly semanticEnrichmentStates = new Map<string, KnowledgeSemanticEnrichmentStateRecord>();
+  private readonly nodeAutoAcceptConfidence: number;
 
   constructor(config: KnowledgeStoreConfig) {
     this.dbPath = resolveKnowledgeDbPath(config);
+    this.nodeAutoAcceptConfidence = clampConfidence(config.nodeAutoAcceptConfidence ?? DEFAULT_NODE_AUTO_ACCEPT_CONFIDENCE);
     this.sqlite = new SQLiteStore(this.dbPath);
     void this.init().catch((error: unknown) => {
       logger.error('[knowledge-store] initialization failed', {
@@ -372,41 +397,13 @@ export class KnowledgeStore {
 
   async deleteSource(id: string): Promise<boolean> {
     await this.init();
-    if (!this.sources.has(id)) return false;
-    for (const [edgeId, edge] of [...this.edges.entries()]) {
-      if ((edge.fromKind === 'source' && edge.fromId === id) || (edge.toKind === 'source' && edge.toId === id)) {
-        this.sqlite.run('DELETE FROM knowledge_edges WHERE id = ?', [edgeId]);
-        this.edges.delete(edgeId);
-      }
-    }
-    for (const [extractionId, extraction] of [...this.extractions.entries()]) {
-      if (extraction.sourceId === id) {
-        this.sqlite.run('DELETE FROM knowledge_extractions WHERE id = ?', [extractionId]);
-        this.extractions.delete(extractionId);
-      }
-    }
-    for (const [issueId, issue] of [...this.issues.entries()]) {
-      if (issue.sourceId === id) {
-        this.sqlite.run('DELETE FROM knowledge_issues WHERE id = ?', [issueId]);
-        this.issues.delete(issueId);
-      }
-    }
-    for (const [usageId, usage] of [...this.usageRecords.entries()]) {
-      if (usage.targetKind === 'source' && usage.targetId === id) {
-        this.sqlite.run('DELETE FROM knowledge_usage_records WHERE id = ?', [usageId]);
-        this.usageRecords.delete(usageId);
-      }
-    }
-    for (const [candidateId, candidate] of [...this.consolidationCandidates.entries()]) {
-      if (candidate.subjectKind === 'source' && candidate.subjectId === id) {
-        this.sqlite.run('DELETE FROM knowledge_consolidation_candidates WHERE id = ?', [candidateId]);
-        this.consolidationCandidates.delete(candidateId);
-      }
-    }
-    this.sqlite.run('DELETE FROM knowledge_sources WHERE id = ?', [id]);
-    this.sources.delete(id);
-    await this.sqlite.save();
-    return true;
+    const deleted = deleteKnowledgeSourceRecord(this.asRecordDeleteView(), id);
+    if (deleted) await this.sqlite.save();
+    return deleted;
+  }
+
+  private asRecordDeleteView(): KnowledgeRecordDeleteView {
+    return this as unknown as KnowledgeRecordDeleteView;
   }
 
   async replaceSourceRecord(record: KnowledgeSourceRecord): Promise<void> {
@@ -444,9 +441,9 @@ export class KnowledgeStore {
 
   async upsertNode(input: KnowledgeNodeUpsertInput): Promise<KnowledgeNodeRecord> {
     await this.init();
-    const existing = input.id
+    const existing = (input.id
       ? this.nodes.get(input.id)
-      : this.getNodeByKindAndSlug(input.kind, input.slug);
+      : this.getNodeByKindAndSlug(input.kind, input.slug)) ?? undefined;
     const now = nowMs();
     const _summary = stableText(input.summary);
     const _sourceId = stableText(input.sourceId);
@@ -465,6 +462,9 @@ export class KnowledgeStore {
     const nodeMetadata = nodeSpaceId
       ? ensureKnowledgeSpaceMetadata(mergedNodeMetadata, nodeSpaceId)
       : mergedNodeMetadata;
+    const confidence = Math.max(0, Math.min(100, input.confidence ?? existing?.confidence ?? 70));
+    // Review gate: never silently active — stamp honest activation provenance. (Invariants 2 & 4.)
+    const gated = resolveNodeActivation({ input, existing, confidence, metadata: nodeMetadata, now, autoAcceptConfidence: this.nodeAutoAcceptConfidence });
     const record: KnowledgeNodeRecord = {
       id: existing?.id ?? input.id ?? `node-${randomUUID().slice(0, 8)}`,
       kind: input.kind,
@@ -472,91 +472,59 @@ export class KnowledgeStore {
       title: input.title.trim(),
       ...(_summary !== null ? { summary: _summary } : existing?.summary ? { summary: existing.summary } : {}),
       aliases: uniq(input.aliases ?? existing?.aliases),
-      status: input.status ?? existing?.status ?? 'active',
-      confidence: Math.max(0, Math.min(100, input.confidence ?? existing?.confidence ?? 70)),
+      status: gated.status,
+      confidence,
       ...(_sourceId !== null ? { sourceId: _sourceId } : existing?.sourceId ? { sourceId: existing.sourceId } : {}),
-      metadata: nodeMetadata,
+      metadata: gated.metadata,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
-    this.sqlite.run(`
-      INSERT OR REPLACE INTO knowledge_nodes (
-        id, kind, slug, title, summary, aliases, status, confidence, source_id, metadata, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      record.id,
-      record.kind,
-      record.slug,
-      record.title,
-      record.summary ?? null,
-      JSON.stringify([...record.aliases]),
-      record.status,
-      record.confidence,
-      record.sourceId ?? null,
-      JSON.stringify(record.metadata),
-      record.createdAt,
-      record.updatedAt,
-    ]);
+    writeKnowledgeNodeRow(this.sqlite, record);
+    recordKnowledgeNodeRevisions(this.sqlite, this.nodeRevisions, record, existing, now); // preserve prior content (Invariant 8)
     this.nodes.set(record.id, record);
     await this.sqlite.save();
     return record;
   }
 
+  /** Read a node's append-only revision history, oldest first. (Invariant 8.) */
+  listNodeRevisions(nodeId: string): KnowledgeNodeRevisionRecord[] {
+    return listKnowledgeNodeRevisions(this.nodeRevisions, nodeId);
+  }
+
   async deleteNode(id: string): Promise<boolean> {
     await this.init();
-    if (!this.nodes.has(id)) return false;
-    for (const [edgeId, edge] of [...this.edges.entries()]) {
-      if ((edge.fromKind === 'node' && edge.fromId === id) || (edge.toKind === 'node' && edge.toId === id)) {
-        this.sqlite.run('DELETE FROM knowledge_edges WHERE id = ?', [edgeId]);
-        this.edges.delete(edgeId);
-      }
-    }
-    for (const [issueId, issue] of [...this.issues.entries()]) {
-      if (issue.nodeId === id) {
-        this.sqlite.run('DELETE FROM knowledge_issues WHERE id = ?', [issueId]);
-        this.issues.delete(issueId);
-      }
-    }
-    for (const [usageId, usage] of [...this.usageRecords.entries()]) {
-      if (usage.targetKind === 'node' && usage.targetId === id) {
-        this.sqlite.run('DELETE FROM knowledge_usage_records WHERE id = ?', [usageId]);
-        this.usageRecords.delete(usageId);
-      }
-    }
-    for (const [candidateId, candidate] of [...this.consolidationCandidates.entries()]) {
-      if (candidate.subjectKind === 'node' && candidate.subjectId === id) {
-        this.sqlite.run('DELETE FROM knowledge_consolidation_candidates WHERE id = ?', [candidateId]);
-        this.consolidationCandidates.delete(candidateId);
-      }
-    }
-    this.sqlite.run('DELETE FROM knowledge_nodes WHERE id = ?', [id]);
-    this.nodes.delete(id);
-    await this.sqlite.save();
-    return true;
+    const deleted = deleteKnowledgeNodeRecord(this.asRecordDeleteView(), id);
+    if (deleted) await this.sqlite.save();
+    return deleted;
   }
 
   async replaceNodeRecord(record: KnowledgeNodeRecord): Promise<void> {
     await this.init();
-    this.sqlite.run(`
-      INSERT OR REPLACE INTO knowledge_nodes (
-        id, kind, slug, title, summary, aliases, status, confidence, source_id, metadata, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      record.id,
-      record.kind,
-      record.slug,
-      record.title,
-      record.summary ?? null,
-      JSON.stringify([...record.aliases]),
-      record.status,
-      record.confidence,
-      record.sourceId ?? null,
-      JSON.stringify(record.metadata),
-      record.createdAt,
-      record.updatedAt,
-    ]);
+    writeKnowledgeNodeRow(this.sqlite, record);
     this.nodes.set(record.id, record);
     await this.sqlite.save();
+  }
+
+  /** Merge one node into another, re-pointing cross-reference edges. (Invariant 7.) */
+  async mergeNodes(loserId: string, winnerId: string): Promise<{ merged: boolean; repointedEdges: number }> {
+    await this.init();
+    return mergeKnowledgeNodes(this, loserId, winnerId);
+  }
+
+  getSemanticEnrichmentState(sourceId: string): KnowledgeSemanticEnrichmentStateRecord | null {
+    return this.semanticEnrichmentStates.get(sourceId) ?? null;
+  }
+
+  async upsertSemanticEnrichmentState(input: {
+    readonly sourceId: string;
+    readonly textHash?: string | undefined;
+    readonly enrichedAt?: number | undefined;
+    readonly metadata?: Record<string, unknown> | undefined;
+  }): Promise<KnowledgeSemanticEnrichmentStateRecord> {
+    await this.init();
+    const record = upsertKnowledgeSemanticEnrichmentState(this.sqlite, this.semanticEnrichmentStates, input);
+    await this.sqlite.save();
+    return record;
   }
 
   async upsertEdge(input: KnowledgeEdgeUpsertInput): Promise<KnowledgeEdgeRecord> {
@@ -758,6 +726,14 @@ export class KnowledgeStore {
     const mergedExtractionMetadata = {
       ...(existing?.metadata ?? {}),
       ...(input.metadata ?? {}),
+      // A freshly written extraction is produced by the current extractor
+      // generation, so it carries the current version (an explicit input version
+      // wins, e.g. import re-materialization). An advancing version then
+      // re-extracts only genuinely older stored captures (Defect 8) without
+      // looping on the extractions it just rewrote.
+      extractorVersion: typeof input.metadata?.extractorVersion === 'number'
+        ? input.metadata.extractorVersion
+        : KNOWLEDGE_EXTRACTOR_VERSION,
     };
     const extractionSource = this.sources.get(input.sourceId);
     const extractionMetadata = getExplicitKnowledgeSpaceId({ metadata: mergedExtractionMetadata }) || !extractionSource
@@ -1066,6 +1042,14 @@ export class KnowledgeStore {
     for (const record of snapshot.consolidationReports) this.consolidationReports.set(record.id, record);
     this.schedules.clear();
     for (const record of snapshot.schedules) this.schedules.set(record.id, record);
+    this.nodeRevisions.clear();
+    for (const record of snapshot.nodeRevisions) {
+      const list = this.nodeRevisions.get(record.nodeId) ?? [];
+      list.push(record);
+      this.nodeRevisions.set(record.nodeId, list.sort((a, b) => a.revision - b.revision));
+    }
+    this.semanticEnrichmentStates.clear();
+    for (const record of snapshot.semanticEnrichmentStates) this.semanticEnrichmentStates.set(record.sourceId, record);
     this.ready = true;
   }
 }

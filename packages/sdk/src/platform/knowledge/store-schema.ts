@@ -16,6 +16,9 @@ import type {
   KnowledgeExtractionFormat,
   KnowledgeIssueSeverity,
   KnowledgeJobStatus,
+  KnowledgeNodeRevisionRecord,
+  KnowledgeNodeRevisionChangeKind,
+  KnowledgeSemanticEnrichmentStateRecord,
   KnowledgeRefinementTaskPriority,
   KnowledgeRefinementTaskRecord,
   KnowledgeRefinementTaskState,
@@ -285,6 +288,39 @@ export function createSchema(db: { run(sql: string): void }): void {
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_knowledge_schedules_job_id ON knowledge_schedules(job_id)`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS knowledge_node_revisions (
+      id TEXT PRIMARY KEY,
+      node_id TEXT NOT NULL,
+      revision INTEGER NOT NULL,
+      change_kind TEXT NOT NULL,
+      changed_fields TEXT NOT NULL DEFAULT '[]',
+      kind TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT,
+      aliases TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL,
+      confidence INTEGER NOT NULL,
+      source_id TEXT,
+      metadata TEXT NOT NULL DEFAULT '{}',
+      node_created_at INTEGER NOT NULL,
+      node_updated_at INTEGER NOT NULL,
+      recorded_at INTEGER NOT NULL
+    )
+  `);
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_knowledge_node_revisions_unique ON knowledge_node_revisions(node_id, revision)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_knowledge_node_revisions_node ON knowledge_node_revisions(node_id)`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS knowledge_semantic_enrichment_state (
+      source_id TEXT PRIMARY KEY,
+      text_hash TEXT,
+      enriched_at INTEGER,
+      metadata TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
 }
 
 export function getKnowledgeSchemaStatements(): readonly string[] {
@@ -528,6 +564,41 @@ export function mapReportRow(columns: string[], values: unknown[]): KnowledgeCon
     summary: String(row.summary),
     highlights: parseJsonValue<string[]>(row.highlights, []),
     metrics: parseJsonValue<Record<string, number>>(row.metrics, {}),
+    metadata: parseJsonValue<Record<string, unknown>>(row.metadata, {}),
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export function mapNodeRevisionRow(columns: string[], values: unknown[]): KnowledgeNodeRevisionRecord {
+  const row = rowObject(columns, values);
+  return {
+    id: String(row.id),
+    nodeId: String(row.node_id),
+    revision: Number(row.revision),
+    changeKind: String(row.change_kind) as KnowledgeNodeRevisionChangeKind,
+    changedFields: parseJsonValue<string[]>(row.changed_fields, []),
+    kind: String(row.kind) as KnowledgeNodeRecord['kind'],
+    slug: String(row.slug),
+    title: String(row.title),
+    ...(stableText(row.summary as string | undefined) ? { summary: String(row.summary) } : {}),
+    aliases: parseJsonValue<string[]>(row.aliases, []),
+    status: String(row.status) as KnowledgeNodeStatus,
+    confidence: Number(row.confidence),
+    ...(stableText(row.source_id as string | undefined) ? { sourceId: String(row.source_id) } : {}),
+    metadata: parseJsonValue<Record<string, unknown>>(row.metadata, {}),
+    nodeCreatedAt: Number(row.node_created_at),
+    nodeUpdatedAt: Number(row.node_updated_at),
+    recordedAt: Number(row.recorded_at),
+  };
+}
+
+export function mapSemanticEnrichmentStateRow(columns: string[], values: unknown[]): KnowledgeSemanticEnrichmentStateRecord {
+  const row = rowObject(columns, values);
+  return {
+    sourceId: String(row.source_id),
+    ...(stableText(row.text_hash as string | undefined) ? { textHash: String(row.text_hash) } : {}),
+    ...(typeof row.enriched_at === 'number' ? { enrichedAt: Number(row.enriched_at) } : {}),
     metadata: parseJsonValue<Record<string, unknown>>(row.metadata, {}),
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),

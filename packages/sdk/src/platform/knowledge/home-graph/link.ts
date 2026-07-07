@@ -1,6 +1,7 @@
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
-import type { KnowledgeNodeRecord, KnowledgeNodeUpsertInput, KnowledgeSourceRecord } from '../types.js';
+import type { KnowledgeEdgeRecord, KnowledgeNodeRecord, KnowledgeNodeUpsertInput, KnowledgeSourceRecord } from '../types.js';
 import type { KnowledgeStore } from '../store.js';
+import { isActiveKnowledgeEdge } from '../projection-utils.js';
 import {
   belongsToSpace,
   buildHomeGraphMetadata,
@@ -8,7 +9,13 @@ import {
   nodeKindForHomeGraphObject,
   targetToReference,
 } from './helpers.js';
-import type { HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult } from './types.js';
+import type { HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphUnlinkResult } from './types.js';
+
+type ResolvedLinkTarget = {
+  readonly kind: 'source' | 'node';
+  readonly id: string;
+  readonly record: KnowledgeSourceRecord | KnowledgeNodeRecord | null;
+};
 
 export async function linkHomeGraphKnowledge(
   store: KnowledgeStore,
@@ -34,16 +41,79 @@ export async function linkHomeGraphKnowledge(
 export async function unlinkHomeGraphKnowledge(
   store: KnowledgeStore,
   input: HomeGraphLinkInput & { readonly spaceId: string; readonly installationId: string },
-): Promise<HomeGraphLinkResult> {
-  const linked = await linkHomeGraphKnowledge(store, {
-    ...input,
-    metadata: {
-      ...(input.metadata ?? {}),
-      linkStatus: 'unlinked',
-      unlinkedAt: Date.now(),
-    },
-  });
-  return { ...linked, edge: linked.edge };
+): Promise<HomeGraphUnlinkResult> {
+  const from = resolveLinkSource(store, input.spaceId, input);
+  const target = resolveExistingHomeGraphTarget(store, input.spaceId, input.target);
+  const relation = input.relation ?? input.target.relation ?? 'source_for';
+  // Never-linked target: nothing to reverse, and we materialize no phantom records.
+  if (!target) {
+    return { ok: true, spaceId: input.spaceId, reversed: false, target: null };
+  }
+  const edge = findHomeGraphLinkEdge(store, from, target, relation);
+  if (!edge) {
+    return { ok: true, spaceId: input.spaceId, reversed: false, target: target.record };
+  }
+  await store.deleteEdge(edge.id);
+  let removedNodeId: string | undefined;
+  if (
+    target.kind === 'node'
+    && target.record
+    && wasLinkCreatedNode(target.record as KnowledgeNodeRecord)
+    && !hasOtherActiveEdges(store, target.id, edge.id)
+  ) {
+    await store.deleteNode(target.id);
+    removedNodeId = target.id;
+  }
+  return {
+    ok: true,
+    spaceId: input.spaceId,
+    reversed: true,
+    removedEdgeId: edge.id,
+    ...(removedNodeId ? { removedNodeId } : {}),
+    target: target.record,
+  };
+}
+
+function resolveExistingHomeGraphTarget(
+  store: KnowledgeStore,
+  spaceId: string,
+  target: HomeGraphKnowledgeTarget,
+): ResolvedLinkTarget | null {
+  const ref = targetToReference(target);
+  if (ref.kind === 'source') {
+    const source = store.getSource(ref.id);
+    return source && belongsToSpace(source, spaceId) ? { kind: 'source', id: source.id, record: source } : null;
+  }
+  const existing = store.getNode(ref.id);
+  if (existing && belongsToSpace(existing, spaceId)) return { kind: 'node', id: existing.id, record: existing };
+  const kind = ref.nodeKind ?? nodeKindForHomeGraphObject(target.kind as never);
+  const deterministic = store.getNode(homeGraphNodeId(spaceId, kind, ref.id));
+  return deterministic && belongsToSpace(deterministic, spaceId)
+    ? { kind: 'node', id: deterministic.id, record: deterministic }
+    : null;
+}
+
+function findHomeGraphLinkEdge(
+  store: KnowledgeStore,
+  from: { readonly kind: 'source' | 'node'; readonly id: string },
+  target: ResolvedLinkTarget,
+  relation: string,
+): KnowledgeEdgeRecord | undefined {
+  return store.edgesFor(from.kind, from.id).find((edge) => (
+    edge.fromKind === from.kind
+    && edge.fromId === from.id
+    && edge.toKind === target.kind
+    && edge.toId === target.id
+    && edge.relation === relation
+  ));
+}
+
+function wasLinkCreatedNode(node: KnowledgeNodeRecord): boolean {
+  return node.metadata.linkCreated === true;
+}
+
+function hasOtherActiveEdges(store: KnowledgeStore, nodeId: string, excludeEdgeId: string): boolean {
+  return store.edgesFor('node', nodeId).some((edge) => edge.id !== excludeEdgeId && isActiveKnowledgeEdge(edge));
 }
 
 function resolveLinkSource(
@@ -119,6 +189,9 @@ async function ensureHomeGraphLinkTarget(
     confidence: 60,
     metadata: buildHomeGraphMetadata(spaceId, installationId, {
       homeAssistant: { installationId, objectKind: kind, objectId: target.id },
+      // Marks a node the link itself materialized, so unlink can cleanly remove it
+      // (and only it) on reversal.
+      linkCreated: true,
     }),
   };
   const node = await store.upsertNode(nodeInput);

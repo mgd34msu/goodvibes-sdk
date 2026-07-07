@@ -142,14 +142,29 @@ export async function persistAnswerGaps(
   return nodes;
 }
 
+/**
+ * A gap counts as repaired only when there is REAL evidence: the repair pipeline
+ * marked it `repaired` AND it carries a concrete signal — one or more promoted
+ * facts, or one or more accepted new sources. A node merely going `stale`
+ * (superseded) or being marked `not_applicable` (deemed non-repairable) is NOT
+ * repair evidence; those gaps stay open honestly instead of being auto-resolved
+ * with an invented reason. (Invariant 4 / honesty.)
+ */
 export function isRepairedAnswerGap(node: KnowledgeNodeRecord): boolean {
-  const repairStatus = readString(node.metadata.repairStatus);
-  return node.status === 'stale'
-    || repairStatus === 'not_applicable'
-    || (repairStatus === 'repaired' && typeof node.metadata.promotedFactCount === 'number' && node.metadata.promotedFactCount > 0);
+  if (readString(node.metadata.repairStatus) !== 'repaired') return false;
+  const promotedFactCount = typeof node.metadata.promotedFactCount === 'number' ? node.metadata.promotedFactCount : 0;
+  const acceptedSourceIds = readStringArray(node.metadata.acceptedSourceIds);
+  return promotedFactCount > 0 || acceptedSourceIds.length > 0;
 }
 
 async function resolveAnswerGapIssues(store: KnowledgeStore, spaceId: string, nodeId: string): Promise<void> {
+  const node = store.getNode(nodeId);
+  const promotedFactCount = typeof node?.metadata.promotedFactCount === 'number' ? node.metadata.promotedFactCount : 0;
+  const acceptedSourceIds = readStringArray(node?.metadata.acceptedSourceIds);
+  const evidence: string[] = [];
+  if (promotedFactCount > 0) evidence.push(`${promotedFactCount} promoted fact${promotedFactCount === 1 ? '' : 's'}`);
+  if (acceptedSourceIds.length > 0) evidence.push(`${acceptedSourceIds.length} accepted source${acceptedSourceIds.length === 1 ? '' : 's'}`);
+  const reason = `Answer gap resolved from repair evidence: ${evidence.join(', ')}.`;
   for (const issue of store.listIssues(Number.MAX_SAFE_INTEGER).filter((entry) => entry.nodeId === nodeId && entry.status === 'open')) {
     await store.upsertIssue({
       id: issue.id,
@@ -162,9 +177,11 @@ async function resolveAnswerGapIssues(store: KnowledgeStore, spaceId: string, no
       metadata: semanticMetadata(spaceId, {
         ...issue.metadata,
         resolution: {
-          reason: 'Answer gap already has accepted repair evidence.',
-          resolvedBy: 'knowledge-answer',
+          reason,
+          resolvedBy: 'knowledge-answer-repair',
           resolvedAt: Date.now(),
+          ...(promotedFactCount > 0 ? { promotedFactCount } : {}),
+          ...(acceptedSourceIds.length > 0 ? { acceptedSourceIds } : {}),
         },
       }),
     });

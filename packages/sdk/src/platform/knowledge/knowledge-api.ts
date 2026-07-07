@@ -37,6 +37,7 @@ type SourceQueryInput = Parameters<KnowledgeService['querySources']>[0];
 type NodeQueryInput = Parameters<KnowledgeService['queryNodes']>[0];
 type IssueQueryInput = Parameters<KnowledgeService['queryIssues']>[0];
 type IssueReviewInput = Parameters<KnowledgeService['reviewIssue']>[0];
+type NodeReviewInput = Parameters<KnowledgeService['reviewNode']>[0];
 type NeighborInput = Parameters<KnowledgeService['getNeighbors']>[2];
 type RecordUsageInput = Parameters<KnowledgeService['recordUsage']>[0];
 type IngestUrlInput = Parameters<KnowledgeService['ingestUrl']>[0];
@@ -153,11 +154,16 @@ export interface KnowledgeApi {
   readonly sources: {
     list(limit?: number): ReturnType<KnowledgeService['listSources']>;
     query(input?: SourceQueryInput): ReturnType<KnowledgeService['querySources']>;
+    delete(id: string): ReturnType<KnowledgeService['deleteSource']>;
   };
   readonly graph: {
     nodes: {
       list(limit?: number): ReturnType<KnowledgeService['listNodes']>;
       query(input?: NodeQueryInput): ReturnType<KnowledgeService['queryNodes']>;
+      history(id: string): ReturnType<KnowledgeService['listNodeRevisions']>;
+      delete(id: string): ReturnType<KnowledgeService['deleteNode']>;
+      merge(loserId: string, winnerId: string): ReturnType<KnowledgeService['mergeNodes']>;
+      review(input: NodeReviewInput): ReturnType<KnowledgeService['reviewNode']>;
     };
     issues: {
       list(limit?: number): ReturnType<KnowledgeService['listIssues']>;
@@ -349,11 +355,16 @@ export function createKnowledgeApi(
     sources: Object.freeze({
       list: (limit = 100) => knowledgeService.listSources(limit),
       query: (input = {}) => knowledgeService.querySources(input),
+      delete: (id: string) => knowledgeService.deleteSource(id),
     }),
     graph: Object.freeze({
       nodes: Object.freeze({
         list: (limit = 100) => knowledgeService.listNodes(limit),
         query: (input = {}) => knowledgeService.queryNodes(input),
+        history: (id: string) => knowledgeService.listNodeRevisions(id),
+        delete: (id: string) => knowledgeService.deleteNode(id),
+        merge: (loserId: string, winnerId: string) => knowledgeService.mergeNodes(loserId, winnerId),
+        review: (input: NodeReviewInput) => knowledgeService.reviewNode(input),
       }),
       issues: Object.freeze({
         list: (limit = 100) => knowledgeService.listIssues(limit),

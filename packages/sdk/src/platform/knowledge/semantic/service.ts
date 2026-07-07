@@ -529,7 +529,7 @@ function sourceCanUseLlmUpgrade(store: KnowledgeStore, source: KnowledgeSourceRe
   const extraction = store.getExtractionBySourceId(source.id);
   const text = sourceSemanticText(source, extraction);
   if (text.length < 40) return false;
-  const existingSemantic = readRecord(source.metadata.semanticEnrichment);
+  const existingSemantic = readRecord(store.getSemanticEnrichmentState(source.id)?.metadata);
   return existingSemantic.textHash !== sourceSemanticHash(source, extraction)
     || readString(existingSemantic.extractor) !== 'llm';
 }
