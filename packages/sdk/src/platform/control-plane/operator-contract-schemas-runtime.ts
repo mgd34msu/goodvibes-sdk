@@ -735,7 +735,8 @@ export const MEMORY_RECORD_SEARCH_OUTPUT_SCHEMA = objectSchema({
   excludedFlaggedCount: NUMBER_SCHEMA,
   excludedBelowFloorCount: NUMBER_SCHEMA,
   totalBeforeRecallFilter: NUMBER_SCHEMA,
-}, ['records', 'mode', 'requestedSemantic', 'indexUnavailableReason', 'caveat', 'recallFiltered', 'excludedFlaggedCount', 'excludedBelowFloorCount', 'totalBeforeRecallFilter']);
+  recallFloor: NUMBER_SCHEMA,
+}, ['records', 'mode', 'requestedSemantic', 'indexUnavailableReason', 'caveat', 'recallFiltered', 'excludedFlaggedCount', 'excludedBelowFloorCount', 'totalBeforeRecallFilter', 'recallFloor']);
 
 export const MEMORY_RECORD_DELETE_OUTPUT_SCHEMA = objectSchema({
   id: STRING_SCHEMA,

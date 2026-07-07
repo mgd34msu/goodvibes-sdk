@@ -31,7 +31,7 @@ function honest(records: MemoryRecord[]): HonestMemorySearchResult {
   return {
     records, mode: 'literal', requestedSemantic: false, indexUnavailableReason: null,
     caveat: null, recallFiltered: false, excludedFlaggedCount: 0, excludedBelowFloorCount: 0,
-    totalBeforeRecallFilter: records.length,
+    totalBeforeRecallFilter: records.length, recallFloor: 60,
   };
 }
 
@@ -308,7 +308,12 @@ describe('memory-spine — sync-recall snapshot seam', () => {
     // Read far in the future: the same cached data, now honestly flagged stale.
     const stale = client.recallSnapshot(capturedAt + 5_000);
     expect(stale.stale).toBe(true);
-    expect(stale.note).toMatch(/STALE/);
+    // Canonical freshness vocabulary: lowercase, hedged "may be stale", humanized
+    // seconds — never uppercase "STALE" or raw milliseconds.
+    expect(stale.note).toMatch(/may be stale/);
+    expect(stale.note).toMatch(/5s ago/);
+    expect(stale.note).not.toMatch(/STALE/);
+    expect(stale.note).not.toMatch(/\d+ms ago/);
     expect(stale.ageMs).toBe(5_000);
   });
 });
