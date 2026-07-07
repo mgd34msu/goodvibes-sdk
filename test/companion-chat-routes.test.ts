@@ -631,3 +631,81 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
     expect(res!.status).toBe(404);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Turn control routes: turns/cancel + messages/steer
+// ---------------------------------------------------------------------------
+
+describe('companion-chat-routes: turn cancel + steer', () => {
+  function makeTurnControlManager(): CompanionChatManager {
+    return new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: makeEventPublisher(),
+      gcIntervalMs: 999_999,
+    });
+  }
+
+  test('POST /turns/cancel with no turn in flight returns the benign 404 NO_ACTIVE_TURN', async () => {
+    const manager = makeTurnControlManager();
+    const context = makeContext(manager);
+    const session = manager.createSession({ provider: 'p', model: 'm' });
+    const res = await dispatchCompanionChatRoutes(
+      new Request(`http://d/api/companion/chat/sessions/${session.id}/turns/cancel`, { method: 'POST' }),
+      context,
+    );
+    expect(res?.status).toBe(404);
+    const body = (await res!.json()) as { code: string };
+    expect(body.code).toBe('NO_ACTIVE_TURN');
+  });
+
+  test('POST /turns/cancel on an unknown session returns 404 SESSION_NOT_FOUND', async () => {
+    const manager = makeTurnControlManager();
+    const context = makeContext(manager);
+    const res = await dispatchCompanionChatRoutes(
+      new Request('http://d/api/companion/chat/sessions/nope/turns/cancel', { method: 'POST' }),
+      context,
+    );
+    expect(res?.status).toBe(404);
+    const body = (await res!.json()) as { code: string };
+    expect(body.code).toBe('SESSION_NOT_FOUND');
+  });
+
+  test('POST /messages/steer with no active turn sends normally (202, steered)', async () => {
+    const manager = makeTurnControlManager();
+    const context = makeContext(manager);
+    const session = manager.createSession({ provider: 'p', model: 'm' });
+    const res = await dispatchCompanionChatRoutes(
+      new Request(`http://d/api/companion/chat/sessions/${session.id}/messages/steer`, {
+        method: 'POST',
+        body: JSON.stringify({ body: 'urgent question' }),
+        headers: { 'content-type': 'application/json' },
+      }),
+      context,
+    );
+    expect(res?.status).toBe(202);
+    const body = (await res!.json()) as { steered: boolean; messageId: string; cancelledTurnId?: string };
+    expect(body.steered).toBe(true);
+    expect(body.messageId).not.toBe('');
+    expect(body.cancelledTurnId).toBeUndefined();
+    await settleEvents();
+    const messages = manager.getMessages(session.id);
+    expect(messages.some((m) => m.role === 'user' && m.content === 'urgent question')).toBe(true);
+  });
+
+  test('POST /messages/steer with an empty payload returns 400 INVALID_INPUT', async () => {
+    const manager = makeTurnControlManager();
+    const context = makeContext(manager);
+    const session = manager.createSession({ provider: 'p', model: 'm' });
+    const res = await dispatchCompanionChatRoutes(
+      new Request(`http://d/api/companion/chat/sessions/${session.id}/messages/steer`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: { 'content-type': 'application/json' },
+      }),
+      context,
+    );
+    expect(res?.status).toBe(400);
+    const body = (await res!.json()) as { code: string };
+    expect(body.code).toBe('INVALID_INPUT');
+  });
+});

@@ -30,10 +30,17 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 1120,
     justification: 'knowledge store consolidated surface, pre-split, shrink-only',
   },
-  // companion-chat-manager.ts ~1.07k — companion chat lifecycle manager, pre-split, shrink-only
+  // companion-chat-manager.ts 1204 — companion chat lifecycle manager, pre-split,
+  // shrink-only. Re-justified 2026-07-07 (+137 over the original 1067) for the
+  // server-side turn-control verbs: turns.cancel, queue-when-busy sends, and
+  // messages.steer. The policy went to companion-chat-turn-control.ts (abort
+  // scope, cancel finalization, reply-wait, queue types — ~290 lines); what
+  // remains here is manager-owned state and wiring (per-session queue + active
+  // turn slot, the start funnel, the steer/cancel public methods) that a
+  // further split would scatter without shrinking the real surface.
   'packages/sdk/src/platform/companion/companion-chat-manager.ts': {
-    ceiling: 1067,
-    justification: 'companion chat lifecycle manager, pre-split, shrink-only',
+    ceiling: 1204,
+    justification: 'companion chat lifecycle manager, pre-split, shrink-only; re-justified +137 for the turn-control verbs (cancel/queue/steer) after extracting their policy to companion-chat-turn-control.ts',
   },
   // code-index-store.ts 806 — the sqlite-vec platform-limit classification (capability
   // limit reported as reason, not error) added 6 lines over the cap; shrink-only.

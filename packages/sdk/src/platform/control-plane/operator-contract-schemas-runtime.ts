@@ -160,6 +160,13 @@ export const COMPANION_CHAT_MESSAGE_SCHEMA = objectSchema({
   content: STRING_SCHEMA,
   attachments: arraySchema(COMPANION_CHAT_ATTACHMENT_SCHEMA),
   createdAt: NUMBER_SCHEMA,
+  // Delivery honesty marker: 'cancelled' = an assistant partial whose turn
+  // was stopped mid-generation; 'queued' = a user message whose turn has not
+  // started yet. Absent = normally delivered.
+  deliveryState: enumSchema(['cancelled', 'queued']),
+  // On assistant messages: the user message this reply answers (the
+  // transcript is append-ordered, so pairing needs an explicit link).
+  inReplyTo: STRING_SCHEMA,
 }, ['id', 'sessionId', 'role', 'content', 'attachments', 'createdAt']);
 
 export const COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA = objectSchema({

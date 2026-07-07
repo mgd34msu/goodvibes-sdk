@@ -73,6 +73,26 @@ export interface CompanionChatMessage {
    * forward lineage link in addition to the `supersededAt` marker on the old one.
    */
   readonly revisionOf?: string | undefined;
+  /**
+   * Delivery honesty marker; absent = a normally delivered message.
+   * - `'cancelled'` (assistant): the turn was stopped mid-generation
+   *   (companion.chat.turns.cancel, a session close, or daemon shutdown) —
+   *   the content is the honest partial that existed when the stop landed.
+   *   Clients must badge this so a partial never masquerades as a finished
+   *   answer.
+   * - `'queued'` (user): the message is in the transcript but its LLM turn
+   *   has not started yet (posted while another turn was running). Cleared
+   *   when its turn starts; a session closed first leaves the marker as the
+   *   honest record that the message was never answered.
+   */
+  readonly deliveryState?: 'cancelled' | 'queued' | undefined;
+  /**
+   * On an assistant message: the id of the user message this reply answers.
+   * The transcript is append-ordered, so with queued sends a reply can land
+   * AFTER a later user message — this link lets clients pair prompt and
+   * reply honestly regardless of position.
+   */
+  readonly inReplyTo?: string | undefined;
 }
 
 export interface CompanionChatSession {
@@ -191,6 +211,41 @@ export interface EditCompanionChatMessageOutput {
   readonly turnStarted: boolean;
 }
 
+export interface CancelCompanionChatTurnInput {
+  /**
+   * Optional guard: when provided and it is NOT the currently active turn,
+   * the cancel is refused (409 TURN_MISMATCH) instead of cancelling a newer
+   * turn a stale stop click raced against. Omitted, THE active turn for the
+   * session is cancelled — required for stops issued before the client has
+   * received `turn.started` (which is what delivers the turn id).
+   */
+  readonly turnId?: string | undefined;
+}
+
+export interface SteerCompanionChatMessageOutput {
+  readonly sessionId: string;
+  readonly messageId: string;
+  readonly steered: true;
+  /** The turn that was cancelled to make way, when one was running. */
+  readonly cancelledTurnId?: string | undefined;
+  readonly turnStarted: boolean;
+}
+
+export interface CancelCompanionChatTurnOutput {
+  readonly sessionId: string;
+  readonly turnId: string;
+  readonly cancelled: true;
+  /** True when this turn had already been cancelled — repeat cancels are idempotent. */
+  readonly alreadyCancelled?: boolean | undefined;
+  /**
+   * True when the non-empty partial reply was persisted by the time this
+   * response was written. When the provider is slow to release the aborted
+   * stream this can be false here while the terminal `turn.cancelled` event
+   * (the authoritative signal) still reports the persisted partial.
+   */
+  readonly partialPersisted: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // SSE event payloads emitted on the companion-chat event stream
 // ---------------------------------------------------------------------------
@@ -246,10 +301,40 @@ export interface CompanionChatTurnErrorEvent {
   readonly error: string;
 }
 
+/** Who stopped a cancelled turn. */
+export type CompanionChatTurnStoppedBy = 'user' | 'session-closed' | 'shutdown';
+
+/**
+ * Terminal event for a cancelled turn. Emitted to EVERY subscriber of the
+ * session's event stream — this is what makes a stop issued from one client
+ * converge on all others (a phone that stops a turn ends the spinner on the
+ * desktop too). Exactly one terminal event ends a turn: `turn.completed`,
+ * `turn.error`, or this. Any `turn.tool_call` without a matching
+ * `turn.tool_result` is closed with a synthetic error result BEFORE this event
+ * is published, so no client is left rendering a wedged tool block.
+ */
+export interface CompanionChatTurnCancelledEvent {
+  readonly type: 'turn.cancelled';
+  readonly sessionId: string;
+  readonly turnId: string;
+  readonly stoppedBy: CompanionChatTurnStoppedBy;
+  /** True when a non-empty partial reply was persisted to the transcript. */
+  readonly partialPersisted: boolean;
+  /** Present only when a partial was persisted. */
+  readonly assistantMessageId?: string | undefined;
+  /**
+   * Present only when a partial was persisted — same envelope shape and keys
+   * as `turn.completed`, so clients render the partial through the exact code
+   * path that renders a completed reply.
+   */
+  readonly envelope?: ConversationMessageEnvelope | undefined;
+}
+
 export type CompanionChatTurnEvent =
   | CompanionChatTurnStartedEvent
   | CompanionChatTurnDeltaEvent
   | CompanionChatTurnToolCallEvent
   | CompanionChatTurnToolResultEvent
   | CompanionChatTurnCompletedEvent
-  | CompanionChatTurnErrorEvent;
+  | CompanionChatTurnErrorEvent
+  | CompanionChatTurnCancelledEvent;
