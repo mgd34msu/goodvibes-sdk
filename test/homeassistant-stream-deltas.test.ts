@@ -78,6 +78,52 @@ function buildStreamingRoutes(
   } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
 }
 
+function makeRoutesForCancel(hooks: {
+  cancelTurn: (sessionId: string) => Promise<{ sessionId: string; turnId: string; cancelled: true; partialPersisted: boolean }>;
+  closeSession: (sessionId: string) => null;
+}): HomeAssistantConversationRoutes {
+  const chatManager = {
+    init: async () => undefined,
+    getSession: (id: string) => ({ id, status: 'active', title: 'HA chat', updatedAt: Date.now() }),
+    createSession: () => ({ id: 'unused', status: 'active', title: 'unused', updatedAt: Date.now() }),
+    updateSession: (id: string) => ({ id, status: 'active', updatedAt: Date.now() }),
+    postMessageAndWaitForReply: async () => ({ messageId: 'unused' }),
+    postMessage: async () => 'unused',
+    cancelTurn: hooks.cancelTurn,
+    closeSession: hooks.closeSession,
+  };
+  return new HomeAssistantConversationRoutes({
+    configManager: {
+      get(key: string): unknown {
+        return ({
+          'surfaces.homeassistant.enabled': true,
+          'surfaces.homeassistant.defaultConversationId': 'goodvibes',
+          'surfaces.homeassistant.remoteSessionTtlMs': 20 * 60_000,
+        } as Record<string, unknown>)[key];
+      },
+    },
+    routeBindings: {
+      start: async () => undefined,
+      upsertBinding: async (input: Partial<AutomationRouteBinding>) => ({
+        id: 'route-ha-cancel',
+        kind: 'channel',
+        surfaceKind: 'homeassistant',
+        surfaceId: String(input.surfaceId),
+        externalId: String(input.externalId),
+        channelId: String(input.channelId),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        lastSeenAt: Date.now(),
+        metadata: input.metadata ?? {},
+      } as AutomationRouteBinding),
+      patchBinding: async () => null,
+    },
+    chatManager,
+    parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
+    resolveDefaultProviderModel: () => ({ provider: 'openai', model: 'gpt-5.5' }),
+  } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
+}
+
 describe('Home Assistant conversation stream deltas', () => {
   test('emits incremental delta frames as the model streams, then one terminal final frame', async () => {
     const routes = buildStreamingRoutes(async (sessionId, _content, _clientId, options) => {
@@ -161,5 +207,53 @@ describe('Home Assistant conversation stream deltas', () => {
     } finally {
       manager.dispose();
     }
+  });
+});
+
+describe('conversation cancel keeps the session (turns.cancel, not close)', () => {
+  test('cancel stops the turn, the session stays open, and nothing-running is a success', async () => {
+    const cancelCalls: string[] = [];
+    const closeCalls: string[] = [];
+    const routes = makeRoutesForCancel({
+      cancelTurn: async (sessionId: string) => {
+        cancelCalls.push(sessionId);
+        return { sessionId, turnId: 't1', cancelled: true as const, partialPersisted: true };
+      },
+      closeSession: (sessionId: string) => {
+        closeCalls.push(sessionId);
+        return null;
+      },
+    });
+
+    const res = await routes.handle(new Request('http://daemon.local/api/homeassistant/conversation/cancel', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'ha-live-session' }),
+    }));
+    expect(res?.status).toBe(200);
+    const body = (await res!.json()) as { ok: boolean; status: string };
+    expect(body.ok).toBe(true);
+    expect(body.status).toBe('cancelled');
+    // The precise verb ran; the session-closing hammer did NOT.
+    expect(cancelCalls).toEqual(['ha-live-session']);
+    expect(closeCalls).toEqual([]);
+  });
+
+  test('cancel with no turn in flight is still ok:true (the stop intent is already true)', async () => {
+    const routes = makeRoutesForCancel({
+      cancelTurn: async () => {
+        throw Object.assign(new Error('No turn is in flight'), { code: 'NO_ACTIVE_TURN', status: 404 });
+      },
+      closeSession: () => null,
+    });
+    const res = await routes.handle(new Request('http://daemon.local/api/homeassistant/conversation/cancel', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'ha-live-session' }),
+    }));
+    expect(res?.status).toBe(200);
+    const body = (await res!.json()) as { ok: boolean; status: string };
+    expect(body.ok).toBe(true);
+    expect(body.status).toBe('cancelled');
   });
 });
