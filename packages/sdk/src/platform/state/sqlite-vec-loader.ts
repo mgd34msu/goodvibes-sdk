@@ -60,7 +60,7 @@ function isExtensionLoadingRefusal(err: unknown): boolean {
   // Apple's SQLite refuses with an authorization message; a build with
   // SQLITE_OMIT_LOAD_EXTENSION names the capability. A missing file surfaces
   // as ENOENT/dlopen-no-such-file and must stay a loud defect.
-  return /not authorized|omit.*load.*extension|extension loading is disabled/i.test(message);
+  return /not authorized|omit.*load.*extension|extension loading is disabled|does not support dynamic extension loading/i.test(message);
 }
 
 /**
