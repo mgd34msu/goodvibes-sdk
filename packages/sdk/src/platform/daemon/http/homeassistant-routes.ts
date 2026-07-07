@@ -3,6 +3,7 @@ import type { AutomationRouteBinding } from '../../automation/routes.js';
 import { HOME_ASSISTANT_SURFACE } from '../../channels/builtin/homeassistant.js';
 import type { RouteBindingManager } from '../../channels/index.js';
 import type { CompanionChatManager } from '../../companion/companion-chat-manager.js';
+import type { CompanionChatTurnEvent } from '../../companion/companion-chat-types.js';
 import type { ConfigManager } from '../../config/manager.js';
 import {
   postHomeAssistantChatMessage,
@@ -123,7 +124,10 @@ export class HomeAssistantConversationRoutes {
     };
   }
 
-  private async submitConversation(body: JsonRecord): Promise<HomeAssistantSubmitResult> {
+  private async submitConversation(
+    body: JsonRecord,
+    onTurnEvent?: ((event: CompanionChatTurnEvent) => void) | undefined,
+  ): Promise<HomeAssistantSubmitResult> {
     if (!Boolean(this.context.configManager.get('surfaces.homeassistant.enabled'))) {
       return {
         ok: false,
@@ -171,6 +175,7 @@ export class HomeAssistantConversationRoutes {
           wait: input.wait,
           timeoutMs: input.waitTimeoutMs,
           clientId: `homeassistant:${input.surfaceId}:${input.conversationId}`,
+          ...(onTurnEvent ? { onTurnEvent } : {}),
         },
       );
     } catch (error) {
@@ -233,17 +238,41 @@ export class HomeAssistantConversationRoutes {
 
   private streamConversation(body: JsonRecord): Response {
     const encoder = new TextEncoder();
+    const conversationId = readString(body.conversationId ?? body.conversation_id);
+    const messageId = readString(body.messageId ?? body.message_id);
     const stream = new ReadableStream<Uint8Array>({
       start: async (controller) => {
+        let closed = false;
         const send = (event: string, data: unknown): void => {
+          if (closed) return;
           controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
         };
+        // Bridge the platform's per-turn streaming events into incremental SSE
+        // `delta` frames as the model produces text. The terminal `final`/`error`
+        // frame contract below is unchanged, so older consumers that ignore
+        // `delta` events still see exactly one terminal frame.
+        let accumulated = '';
+        const onTurnEvent = (event: CompanionChatTurnEvent): void => {
+          if (event.type === 'turn.delta' && event.delta) {
+            accumulated += event.delta;
+            send('delta', {
+              ok: true,
+              delta: event.delta,
+              text: accumulated,
+              turnId: event.turnId,
+              ...(conversationId ? { conversationId } : {}),
+              ...(messageId ? { messageId } : {}),
+            });
+          }
+        };
         try {
-          const result = await this.submitConversation({ ...body, wait: true });
+          const result = await this.submitConversation({ ...body, wait: true }, onTurnEvent);
           send(result.status === 'completed' ? 'final' : 'error', result);
+          closed = true;
           controller.close();
         } catch (error) {
           send('error', { ok: false, error: error instanceof Error ? error.message : String(error) });
+          closed = true;
           controller.close();
         }
       },

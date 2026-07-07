@@ -201,13 +201,8 @@ export interface CompanionChatManagerConfig {
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
   /** Optional artifact store used to resolve and inline chat attachments. */
   readonly artifactStore?: CompanionChatArtifactStore | null | undefined;
-  /**
-   * Directory under which session JSON files are persisted.
-   * Default: `<homeDirectory>/.goodvibes/companion-chat/sessions/` when
-   * `homeDirectory` is provided, else the OS home. Prefer passing this (or
-   * `homeDirectory`) explicitly so an isolated-home daemon never touches the
-   * real `~/.goodvibes`.
-   */
+  /** Directory for session JSON files. Default `<homeDirectory>/.goodvibes/companion-chat/sessions/`
+   * (else OS home). Prefer passing this (or `homeDirectory`) so an isolated-home daemon stays in. */
   readonly sessionsDir?: string | undefined;
   /** Injected home dir; when `sessionsDir` is omitted, the persistence root is
    * derived from THIS home (not the OS home) so an isolated-home daemon stays in. */
@@ -225,10 +220,7 @@ export interface CompanionChatManagerConfig {
   /** Age (ms past closedAt) at which a CLOSED session's persisted file is PERMANENTLY
    * deleted. Closed sessions are HISTORY: default `undefined` = retain indefinitely. */
   readonly closedSessionRetentionMs?: number | undefined;
-  /**
-   * Pass `false` to disable disk persistence entirely (useful in tests).
-   * Default: true
-   */
+  /** Pass `false` to disable disk persistence entirely (useful in tests). Default: true */
   readonly persist?: boolean | undefined;
   /** Rate-limiting options. Defaults: 30 msgs/min per client, 10/min per session. */
   readonly rateLimiter?: CompanionChatRateLimiterOptions | false | undefined;
@@ -557,6 +549,8 @@ export class CompanionChatManager {
     options: {
       readonly timeoutMs?: number | undefined;
       readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+      /** In-process tap for this turn's incremental events; independent of the gateway SSE fan-out. */
+      readonly onTurnEvent?: ((event: CompanionChatTurnEvent) => void) | undefined;
     } = {},
   ): Promise<CompanionChatReplyResult> {
     let messageId = '';
@@ -569,6 +563,7 @@ export class CompanionChatManager {
       void this._postMessageInternal(sessionId, content, clientId, {
         pendingReply: { resolve, timeout },
         attachments: options.attachments,
+        ...(options.onTurnEvent ? { onTurnEvent: options.onTurnEvent } : {}),
       })
         .then((id) => { messageId = id; })
         .catch((error: unknown) => {
@@ -590,6 +585,7 @@ export class CompanionChatManager {
       readonly pendingReply?: PendingReply | undefined;
       readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
       readonly metadata?: Record<string, unknown> | undefined;
+      readonly onTurnEvent?: ((event: CompanionChatTurnEvent) => void) | undefined;
     } = {},
   ): Promise<string> {
     const session = this.sessions.get(sessionId);
@@ -635,7 +631,7 @@ export class CompanionChatManager {
       this.pendingReplies.set(messageId, options.pendingReply);
     }
 
-    void this._runTurn(session, messageId).catch((error: unknown) => {
+    void this._runTurn(session, messageId, options.onTurnEvent).catch((error: unknown) => {
       logger.warn('[companion-chat] turn execution failed', {
         sessionId,
         messageId,
@@ -662,7 +658,7 @@ export class CompanionChatManager {
   // Turn execution
   // ---------------------------------------------------------------------------
 
-  private async _runTurn(session: InternalSession, userMessageId: string): Promise<void> {
+  private async _runTurn(session: InternalSession, userMessageId: string, onTurnEvent?: (event: CompanionChatTurnEvent) => void): Promise<void> {
     const turnId = randomUUID();
     const sessionId = session.meta.id;
     const abortSignal = session.abortController.signal;
@@ -673,6 +669,8 @@ export class CompanionChatManager {
         event,
         session.subscriberClientId ? { clientId: session.subscriberClientId } : undefined,
       );
+      // In-process tap (e.g. the HA SSE route); a throwing listener must not break the turn.
+      try { onTurnEvent?.(event); } catch { /* isolate listener */ }
     };
 
     // Build user-message envelope for turn.started
