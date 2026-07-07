@@ -2,7 +2,7 @@ import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { RouteBindingManager } from '../channels/index.js';
 import { HOME_ASSISTANT_SURFACE } from '../channels/builtin/homeassistant.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
-import type { CompanionChatSession } from '../companion/companion-chat-types.js';
+import type { CompanionChatSession, CompanionChatTurnEvent } from '../companion/companion-chat-types.js';
 import type { ConfigManager } from '../config/manager.js';
 
 export const HOME_ASSISTANT_DEFAULT_REMOTE_SESSION_TTL_MS = 20 * 60_000;
@@ -62,7 +62,14 @@ export interface HomeAssistantChatRuntime {
 export async function postHomeAssistantChatMessage(
   runtime: HomeAssistantChatRuntime,
   input: HomeAssistantChatInput,
-  options: { readonly wait?: boolean; readonly timeoutMs?: number | undefined; readonly clientId?: string } = {},
+  options: {
+    readonly wait?: boolean;
+    readonly timeoutMs?: number | undefined;
+    readonly clientId?: string;
+    /** In-process tap for the turn's incremental events, forwarded to the chat
+     * manager so a caller (the SSE route) can stream deltas while awaiting the reply. */
+    readonly onTurnEvent?: ((event: CompanionChatTurnEvent) => void) | undefined;
+  } = {},
 ): Promise<HomeAssistantChatPostResult> {
   const resolution = await resolveHomeAssistantChatSession(runtime, input);
   const clientId = options.clientId ?? `homeassistant:${input.surfaceId}:${input.conversationId}`;
@@ -74,7 +81,7 @@ export async function postHomeAssistantChatMessage(
     resolution.session.id,
     formatHomeAssistantUserMessage(input),
     clientId,
-    { timeoutMs: options.timeoutMs },
+    { timeoutMs: options.timeoutMs, ...(options.onTurnEvent ? { onTurnEvent: options.onTurnEvent } : {}) },
   );
   return {
     ...resolution,
