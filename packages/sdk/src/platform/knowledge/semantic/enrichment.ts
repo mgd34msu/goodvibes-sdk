@@ -18,7 +18,6 @@ import type {
 } from './types.js';
 import {
   MAX_SEMANTIC_SOURCE_CHARS,
-  applySourceMetadata,
   clampText,
   normalizeWhitespace,
   readRecord,
@@ -68,7 +67,7 @@ export async function enrichKnowledgeSource(
   const extraction = context.store.getExtractionBySourceId(source.id);
   const text = sourceSemanticText(source, extraction);
   const textHash = sourceSemanticHash(source, extraction);
-  const existingSemantic = readRecord(source.metadata.semanticEnrichment);
+  const existingSemantic = readRecord(context.store.getSemanticEnrichmentState(source.id)?.metadata);
   const currentExtractor = readString(existingSemantic.extractor);
   const shouldUpgradeDeterministic = Boolean(context.llm && existingSemantic.textHash === textHash && currentExtractor !== 'llm');
   if (!knowledgeSourceMatchesScope(source, { includeAllSpaces: true })) {
@@ -702,13 +701,14 @@ async function markSourceSemanticState(
   textHash: string,
   details: Record<string, unknown>,
 ): Promise<void> {
-  await store.upsertSource(applySourceMetadata(source, {
-    semanticEnrichment: {
-      textHash,
-      enrichedAt: Date.now(),
-      ...details,
-    },
-  }));
+  // Derived bookkeeping in its own record, not the append-only source row. (Invariant 1.)
+  const enrichedAt = Date.now();
+  await store.upsertSemanticEnrichmentState({
+    sourceId: source.id,
+    textHash,
+    enrichedAt,
+    metadata: { textHash, enrichedAt, ...details },
+  });
 }
 
 async function linkSourceToNode(

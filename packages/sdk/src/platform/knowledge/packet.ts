@@ -54,7 +54,7 @@ export function searchKnowledge(
   const taskTokens = tokenize(query);
   if (taskTokens.length === 0) return [];
   const scopeLookup = knowledgeScopeLookup(context);
-  const sourceResults = context.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => knowledgeSourceMatchesScope(source, scope)).map((source) => {
+  const sourceResults = context.store.listSources(Number.MAX_SAFE_INTEGER).filter((source) => source.status !== 'stale' && knowledgeSourceMatchesScope(source, scope)).map((source) => {
     const extraction = context.store.getExtractionBySourceId(source.id);
     const haystack = [
       source.title ?? '',
@@ -77,7 +77,10 @@ export function searchKnowledge(
       source,
     };
   });
-  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => knowledgeNodeMatchesScope(node, scope, scopeLookup)).map((node) => {
+  // Serve only active nodes: stale (forgotten/superseded) and draft (pending
+  // review) nodes are not current knowledge, so search must not present them as
+  // hits — the same honesty bar `ask`/semantic already apply. (Defects 2 & 4.)
+  const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => node.status === 'active' && knowledgeNodeMatchesScope(node, scope, scopeLookup)).map((node) => {
     const haystack = [
       node.title,
       node.summary ?? '',
@@ -248,6 +251,7 @@ function buildKnowledgePacketFromCurrentState(
     candidates.push({ score: item.score, item });
   }
 
+  const totalCandidates = candidates.length;
   const items: KnowledgePacketItem[] = [];
   let estimatedTokens = 0;
   for (const candidate of candidates
@@ -258,6 +262,8 @@ function buildKnowledgePacketFromCurrentState(
     items.push(candidate.item);
     estimatedTokens += candidate.item.estimatedTokens;
   }
+  // Honest truncation disclosure — a partial packet must never read as complete.
+  const droppedCount = Math.max(0, totalCandidates - items.length);
   const packet: KnowledgePacket = {
     task,
     writeScope: [...writeScope],
@@ -266,6 +272,9 @@ function buildKnowledgePacketFromCurrentState(
     strategy: 'graph-ranked extraction-aware packet',
     budgetLimit,
     estimatedTokens,
+    truncated: droppedCount > 0,
+    totalCandidates,
+    droppedCount,
     items,
   };
   for (const item of items) {

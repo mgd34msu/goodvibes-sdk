@@ -5,10 +5,12 @@ import {
   mapExtractionRow,
   mapIssueRow,
   mapJobRunRow,
+  mapNodeRevisionRow,
   mapNodeRow,
   mapRefinementTaskRow,
   mapReportRow,
   mapScheduleRow,
+  mapSemanticEnrichmentStateRow,
   mapSourceRow,
   mapUsageRow,
 } from './store-schema.js';
@@ -20,8 +22,10 @@ import type {
   KnowledgeIssueRecord,
   KnowledgeJobRunRecord,
   KnowledgeNodeRecord,
+  KnowledgeNodeRevisionRecord,
   KnowledgeRefinementTaskRecord,
   KnowledgeScheduleRecord,
+  KnowledgeSemanticEnrichmentStateRecord,
   KnowledgeSourceRecord,
   KnowledgeUsageRecord,
 } from './types.js';
@@ -38,6 +42,8 @@ export interface KnowledgeStoreSnapshot {
   readonly consolidationCandidates: KnowledgeConsolidationCandidateRecord[];
   readonly consolidationReports: KnowledgeConsolidationReportRecord[];
   readonly schedules: KnowledgeScheduleRecord[];
+  readonly nodeRevisions: KnowledgeNodeRevisionRecord[];
+  readonly semanticEnrichmentStates: KnowledgeSemanticEnrichmentStateRecord[];
 }
 
 function loadRows<T>(sqlite: SQLiteStore, sql: string, mapRow: (columns: string[], values: unknown[]) => T): T[] {
@@ -59,5 +65,7 @@ export function loadKnowledgeStoreSnapshot(sqlite: SQLiteStore): KnowledgeStoreS
     consolidationCandidates: loadRows(sqlite, 'SELECT * FROM knowledge_consolidation_candidates', mapCandidateRow),
     consolidationReports: loadRows(sqlite, 'SELECT * FROM knowledge_consolidation_reports', mapReportRow),
     schedules: loadRows(sqlite, 'SELECT * FROM knowledge_schedules', mapScheduleRow),
+    nodeRevisions: loadRows(sqlite, 'SELECT * FROM knowledge_node_revisions ORDER BY node_id, revision', mapNodeRevisionRow),
+    semanticEnrichmentStates: loadRows(sqlite, 'SELECT * FROM knowledge_semantic_enrichment_state', mapSemanticEnrichmentStateRow),
   };
 }

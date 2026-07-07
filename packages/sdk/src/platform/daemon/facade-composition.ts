@@ -67,6 +67,7 @@ function ensureAgentKnowledgeService(runtimeServices: RuntimeServices): RuntimeS
   const store = new KnowledgeStore({
     configManager: runtimeServices.configManager,
     dbFileName: GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
+    family: 'agent',
   });
   const semanticLlm = createProviderBackedKnowledgeSemanticLlm(runtimeServices.providerRegistry, {
     timeoutMs: 20_000,

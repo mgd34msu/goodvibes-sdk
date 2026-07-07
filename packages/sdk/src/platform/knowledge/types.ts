@@ -163,6 +163,14 @@ export interface KnowledgeNodeRecord {
   readonly updatedAt: number;
 }
 
+export type {
+  KnowledgeNodeRevisionChangeKind,
+  KnowledgeNodeRevisionRecord,
+  KnowledgeNodeReviewState,
+  KnowledgeNodeReviewProvenance,
+  KnowledgeSemanticEnrichmentStateRecord,
+} from './knowledge-history-types.js';
+
 export interface KnowledgeEdgeRecord {
   readonly id: string;
   readonly fromKind: KnowledgeReferenceKind;
@@ -548,6 +556,14 @@ export interface KnowledgePacket {
   readonly budgetLimit: number;
   readonly estimatedTokens: number;
   readonly items: readonly KnowledgePacketItem[];
+  /**
+   * Honest truncation disclosure — mirrors the home-graph packet's `truncated`
+   * flag. `true` when candidates were dropped by the item limit or token budget,
+   * so a partial packet is never indistinguishable from a complete one.
+   */
+  readonly truncated: boolean;
+  readonly totalCandidates: number;
+  readonly droppedCount: number;
 }
 
 export interface KnowledgeItemView {

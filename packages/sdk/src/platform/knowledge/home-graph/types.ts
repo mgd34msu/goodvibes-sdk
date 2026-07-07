@@ -260,6 +260,22 @@ export interface HomeGraphLinkResult {
   readonly target: KnowledgeNodeRecord | KnowledgeSourceRecord | null;
 }
 
+/**
+ * Result of an unlink. Unlink is a real reversal: it removes the link edge (and,
+ * if the prior link materialized the target node and nothing else references it,
+ * that node too). Unlinking a never-linked target is an honest no-op — it creates
+ * no phantom records. `reversed` is true only when an active link was actually
+ * removed.
+ */
+export interface HomeGraphUnlinkResult {
+  readonly ok: true;
+  readonly spaceId: string;
+  readonly reversed: boolean;
+  readonly removedEdgeId?: string | undefined;
+  readonly removedNodeId?: string | undefined;
+  readonly target: KnowledgeNodeRecord | KnowledgeSourceRecord | null;
+}
+
 export interface HomeGraphAskInput extends HomeGraphSpaceInput {
   readonly query: string;
   readonly limit?: number | undefined;

@@ -12,6 +12,14 @@ import { renderKnowledgeMap, type KnowledgeMapRenderOptions } from './map.js';
 import { KnowledgeProjectionService } from './projections.js';
 import { KnowledgeSemanticService } from './semantic/index.js';
 import { KnowledgeStore } from './store.js';
+import {
+  reviewKnowledgeNodeRecord,
+  queryKnowledgeIssues,
+  queryKnowledgeNodes,
+  type KnowledgeIssueQueryInput,
+  type KnowledgeNodeQueryInput,
+  type KnowledgeNodeReviewDecisionInput,
+} from './service-node-admin.js';
 import { ingestBrowserKnowledge } from './browser-history/index.js';
 import type { BrowserKnowledgeIngestOptions, BrowserKnowledgeProfile } from './browser-history/index.js';
 import type {
@@ -31,6 +39,7 @@ import type {
   KnowledgeItemView,
   KnowledgeMapResult,
   KnowledgeNodeRecord,
+  KnowledgeNodeRevisionRecord,
   KnowledgePacket,
   KnowledgePacketDetail,
   KnowledgeProjectionBundle,
@@ -302,69 +311,41 @@ export class KnowledgeService {
     return this.queryNodes({ limit }).items;
   }
 
-  queryNodes(input: {
-    readonly limit?: number | undefined;
-    readonly offset?: number | undefined;
-    readonly knowledgeSpaceId?: string | undefined;
-    readonly includeAllSpaces?: boolean | undefined;
-    readonly kind?: string | undefined;
-    readonly status?: string | undefined;
-    readonly query?: string | undefined;
-  } = {}): { total: number; items: KnowledgeNodeRecord[] } {
-    const limit = Math.max(1, input.limit ?? 100);
-    const offset = Math.max(0, input.offset ?? 0);
-    const queryTokens = tokenize(input.query ?? '');
-    const scopeLookup = this.getScopeLookup();
-    const items = this.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => {
-      if (!knowledgeNodeMatchesScope(node, input, scopeLookup)) return false;
-      if (input.kind && node.kind !== input.kind) return false;
-      if (input.status && node.status !== input.status) return false;
-      if (queryTokens.length === 0) return true;
-      const haystack = [
-        node.title,
-        node.summary ?? '',
-        node.aliases.join(' '),
-        JSON.stringify(node.metadata),
-      ].join(' ').toLowerCase();
-      return queryTokens.every((token) => haystack.includes(token));
-    });
-    return {
-      total: items.length,
-      items: items.slice(offset, offset + limit),
-    };
+  /** The append-only revision history of a node, oldest first. (Defect 1.) */
+  listNodeRevisions(nodeId: string): KnowledgeNodeRevisionRecord[] {
+    return this.store.listNodeRevisions(nodeId);
+  }
+
+  /** Honest hard delete of a single node — removes the row and its history. (Defect 6.) */
+  async deleteNode(id: string): Promise<{ deleted: boolean }> {
+    return { deleted: await this.store.deleteNode(id) };
+  }
+
+  /** Honest hard delete of a single source and its derived records. (Defect 6.) */
+  async deleteSource(id: string): Promise<{ deleted: boolean }> {
+    return { deleted: await this.store.deleteSource(id) };
+  }
+
+  /** Merge one node into another, re-pointing cross-reference edges. (Defect 5.) */
+  async mergeNodes(loserId: string, winnerId: string): Promise<{ merged: boolean; repointedEdges: number }> {
+    return this.store.mergeNodes(loserId, winnerId);
+  }
+
+  /** Accept/reject a pending node — the decide step that governs activation. (Defect 2.) */
+  async reviewNode(input: KnowledgeNodeReviewDecisionInput): Promise<{ ok: boolean; node?: KnowledgeNodeRecord | undefined }> {
+    return reviewKnowledgeNodeRecord(this.store, input);
+  }
+
+  queryNodes(input: KnowledgeNodeQueryInput = {}): { total: number; items: KnowledgeNodeRecord[] } {
+    return queryKnowledgeNodes(this.store, this.getScopeLookup(), input);
   }
 
   listIssues(limit = 100): KnowledgeIssueRecord[] {
     return this.queryIssues({ limit }).items;
   }
 
-  queryIssues(input: {
-    readonly limit?: number | undefined;
-    readonly offset?: number | undefined;
-    readonly knowledgeSpaceId?: string | undefined;
-    readonly includeAllSpaces?: boolean | undefined;
-    readonly severity?: string | undefined;
-    readonly status?: string | undefined;
-    readonly code?: string | undefined;
-    readonly query?: string | undefined;
-  } = {}): { total: number; items: KnowledgeIssueRecord[] } {
-    const limit = Math.max(1, input.limit ?? 100);
-    const offset = Math.max(0, input.offset ?? 0);
-    const queryTokens = tokenize(input.query ?? '');
-    const scopeLookup = this.getScopeLookup();
-    const items = this.store.listIssues(Number.MAX_SAFE_INTEGER).filter((issue) => {
-      if (!knowledgeIssueMatchesScope(issue, input, scopeLookup)) return false;
-      if (input.severity && issue.severity !== input.severity) return false;
-      if (input.status && issue.status !== input.status) return false;
-      if (input.code && issue.code !== input.code) return false;
-      if (queryTokens.length === 0) return true;
-      const haystack = [issue.message, issue.code, JSON.stringify(issue.metadata)].join(' ').toLowerCase();
-      return queryTokens.every((token) => haystack.includes(token));
-    });
-    return {
-      total: items.length,
-      items: items.slice(offset, offset + limit),
-    };
+  queryIssues(input: KnowledgeIssueQueryInput = {}): { total: number; items: KnowledgeIssueRecord[] } {
+    return queryKnowledgeIssues(this.store, this.getScopeLookup(), input);
   }
 
   async reviewIssue(input: KnowledgeIssueReviewInput): Promise<KnowledgeIssueReviewResult> {

@@ -72,7 +72,7 @@ import { autoLinkExistingHomeGraphSources, extractHomeGraphArtifact } from './ex
 import type {
   HomeGraphAskInput, HomeGraphAskResult, HomeGraphDevicePassportResult, HomeGraphExport,
   HomeGraphIngestArtifactInput, HomeGraphIngestNoteInput, HomeGraphIngestResult, HomeGraphIngestUrlInput,
-  HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult,
+  HomeGraphKnowledgeTarget, HomeGraphLinkInput, HomeGraphLinkResult, HomeGraphUnlinkResult,
   HomeGraphMapInput, HomeGraphMapResult, HomeGraphProjectionInput, HomeGraphProjectionResult,
   HomeGraphPageListResult, HomeGraphReindexInput, HomeGraphReindexResult, HomeGraphResetInput, HomeGraphResetResult, HomeGraphReviewInput, HomeGraphSpaceInput,
   HomeGraphSnapshotInput, HomeGraphStatus, HomeGraphSyncResult,
@@ -206,7 +206,7 @@ export class HomeGraphService {
     return linkHomeGraphKnowledge(this.store, { ...input, spaceId, installationId });
   }
 
-  async unlinkKnowledge(input: HomeGraphLinkInput): Promise<HomeGraphLinkResult> {
+  async unlinkKnowledge(input: HomeGraphLinkInput): Promise<HomeGraphUnlinkResult> {
     await this.store.init();
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
     return unlinkHomeGraphKnowledge(this.store, { ...input, spaceId, installationId });

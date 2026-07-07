@@ -483,18 +483,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       return record.id;
     },
   });
-  const knowledgeStore = new KnowledgeStore({
-    configManager,
-    dbFileName: REGULAR_KNOWLEDGE_DB_FILE,
-  });
-  const agentKnowledgeStore = new KnowledgeStore({
-    configManager,
-    dbFileName: GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
-  });
-  const homeGraphKnowledgeStore = new KnowledgeStore({
-    configManager,
-    dbFileName: HOME_GRAPH_KNOWLEDGE_DB_FILE,
-  });
+  const knowledgeStore = new KnowledgeStore({ configManager, dbFileName: REGULAR_KNOWLEDGE_DB_FILE, family: 'wiki' });
+  const agentKnowledgeStore = new KnowledgeStore({ configManager, dbFileName: GOODVIBES_AGENT_KNOWLEDGE_DB_FILE, family: 'agent' });
+  const homeGraphKnowledgeStore = new KnowledgeStore({ configManager, dbFileName: HOME_GRAPH_KNOWLEDGE_DB_FILE, family: 'home-graph' });
   const knowledgeSemanticLlm = createProviderBackedKnowledgeSemanticLlm(providerRegistry, {
     timeoutMs: 20_000,
     maxConcurrent: 1,
