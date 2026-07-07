@@ -9,7 +9,7 @@ export type {
   DaemonErrorSource,
   StructuredDaemonErrorBody,
 } from './daemon-error-contract.js';
-export { DaemonErrorCategory } from './daemon-error-contract.js';
+export { DaemonErrorCategory, MEMORY_RECORD_NOT_FOUND_CODE } from './daemon-error-contract.js';
 // Re-exported unchanged from error-codes.ts (split out to stay under the file's
 // 800-line cap — see that file's header comment).
 export { SDKErrorCodes, isErrorCode, isKnownErrorCode, type SDKErrorCode };

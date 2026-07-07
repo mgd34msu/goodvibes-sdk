@@ -19,6 +19,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { bootDaemon, type BootedDaemon } from '../packages/sdk/src/platform/daemon/boot.ts';
+import { classifyMemoryWireError } from '../packages/sdk/src/platform/runtime/memory-spine/index.ts';
 
 const TOKEN = 'memory-wire-token';
 let home: string;
@@ -245,5 +246,37 @@ describe('full-detach catalog over the wire (list / semantic / update / links / 
       method: 'POST', headers: auth(), body: JSON.stringify({ bundle: { schemaVersion: 'v1' } }),
     });
     expect(bad.status).toBe(400);
+  });
+});
+
+describe('version-skew wire honesty — the two 404s carry distinguishable codes on a REAL daemon', () => {
+  // Grounds the memory-spine wire discriminator against the actual daemon wire: a
+  // record-scoped extended verb against a MISSING record and an UNKNOWN route (the
+  // shape an older daemon that never registered the route produces) are BOTH HTTP
+  // 404, but carry different body codes — and the discriminator keys on that code,
+  // never on the bare status.
+  test('a record-missing update 404 carries MEMORY_RECORD_NOT_FOUND → discriminator says record-missing', async () => {
+    const res = await fetch(`${daemon.url}/api/memory/records/mem_absent_id/update`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({ summary: 'x' }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json() as { code?: string };
+    expect(body.code).toBe('MEMORY_RECORD_NOT_FOUND');
+    // The error a transport throws from this response classifies as a genuine miss.
+    expect(classifyMemoryWireError({ status: res.status, body })).toBe('record-missing');
+  });
+
+  test('an unknown route 404 (older-daemon shape) carries a NON-record code → discriminator says method-unavailable', async () => {
+    // A route the daemon never registered — exactly what a pre-1.2.0 daemon does with
+    // an extended memory verb. The terminal 404 carries the router's route-not-found
+    // code, NOT the record-missing code.
+    const res = await fetch(`${daemon.url}/api/memory/records/mem_x/this-verb-was-never-wired`, {
+      method: 'POST', headers: auth(), body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json() as { code?: string };
+    expect(body.code).not.toBe('MEMORY_RECORD_NOT_FOUND');
+    // Same bare 404 status as a record-miss, but the discriminator rejects honestly.
+    expect(classifyMemoryWireError({ status: res.status, body })).toBe('method-unavailable');
   });
 });
