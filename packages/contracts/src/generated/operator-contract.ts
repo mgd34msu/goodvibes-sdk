@@ -22069,6 +22069,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "createdAt": {
                     "type": "number"
+                  },
+                  "deliveryState": {
+                    "type": "string",
+                    "enum": [
+                      "cancelled",
+                      "queued"
+                    ]
+                  },
+                  "inReplyTo": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -22141,6 +22151,99 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "sessionId",
             "regeneratedFrom",
             "supersededMessageIds",
+            "turnStarted"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.messages.steer",
+        "title": "Steer Companion Chat (Interrupt And Send)",
+        "description": "Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: \"cancelled\"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message's turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: \"queued\"`, answered in order) — steer is the explicit jump-the-line verb.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/companion/chat/sessions/{sessionId}/messages/steer"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "attachments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "artifactId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "artifactId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "messageId": {
+              "type": "string"
+            },
+            "steered": {
+              "type": "boolean"
+            },
+            "cancelledTurnId": {
+              "type": "string"
+            },
+            "turnStarted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "messageId",
+            "steered",
             "turnStarted"
           ],
           "additionalProperties": false
@@ -22613,6 +22716,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "createdAt": {
                     "type": "number"
+                  },
+                  "deliveryState": {
+                    "type": "string",
+                    "enum": [
+                      "cancelled",
+                      "queued"
+                    ]
+                  },
+                  "inReplyTo": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -22916,6 +23029,68 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "session"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "companion.chat.turns.cancel",
+        "title": "Cancel Companion Chat Turn",
+        "description": "Stop the in-flight turn for a companion chat session — a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: \"cancelled\"` marker (an honest partial, never disguised as a complete reply; the uncommitted partial is NOT added to the LLM conversation history), and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.",
+        "category": "companion",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/companion/chat/sessions/{sessionId}/turns/cancel"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "turnId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "turnId": {
+              "type": "string"
+            },
+            "cancelled": {
+              "type": "boolean"
+            },
+            "alreadyCancelled": {
+              "type": "boolean"
+            },
+            "partialPersisted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "turnId",
+            "cancelled",
+            "partialPersisted"
           ],
           "additionalProperties": false
         },
@@ -81379,10 +81554,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 327,
-      "typedInputs": 327,
+      "methods": 329,
+      "typedInputs": 329,
       "genericInputs": 0,
-      "typedOutputs": 327,
+      "typedOutputs": 329,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -81391,8 +81566,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 31
     },
     "validationCoverage": {
-      "methods": 327,
-      "validated": 325,
+      "methods": 329,
+      "validated": 327,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

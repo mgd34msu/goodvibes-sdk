@@ -9,7 +9,7 @@ export type SharedSessionConversationRouteOutput = { messageId: string; routedTo
 export type CompanionChatSessionStatus = "active" | "closed";
 export type CompanionChatMessageRole = "assistant" | "user";
 export type CompanionChatSession = { id: string; kind: "companion-chat"; title: string; model: null | string; provider: null | string; systemPrompt: null | string; status: CompanionChatSessionStatus; createdAt: number; updatedAt: number; closedAt: null | number; messageCount: number; };
-export type CompanionChatMessage = { id: string; sessionId: string; role: CompanionChatMessageRole; content: string; createdAt: number; };
+export type CompanionChatMessage = { id: string; sessionId: string; role: CompanionChatMessageRole; content: string; createdAt: number; deliveryState?: "cancelled" | "queued"; inReplyTo?: string; };
 export type CompanionChatSessionsListTotals = { sessions: number; active: number; closed: number; };
 export type KnowledgeSpaceScopeInput = { knowledgeSpaceId?: string; includeAllSpaces?: boolean; };
 
@@ -73,12 +73,14 @@ export interface OperatorMethodInputMap {
   "companion.chat.events.stream": { sessionId: string; };
   "companion.chat.messages.create": ({ sessionId: string; body?: string; content?: string; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "companion.chat.messages.list": { sessionId: string; };
+  "companion.chat.messages.steer": ({ sessionId: string; body?: string; content?: string; attachments?: readonly ({ artifactId: string; label?: string; metadata?: {  }; })[]; metadata?: {  }; } & { readonly [key: string]: unknown });
   "companion.chat.sessions.close": { sessionId: string; };
   "companion.chat.sessions.create": ({ title?: string; provider?: string; model?: string; systemPrompt?: string; } & { readonly [key: string]: unknown });
   "companion.chat.sessions.delete": { sessionId: string; };
   "companion.chat.sessions.get": { sessionId: string; };
   "companion.chat.sessions.list": { includeClosed?: boolean; limit?: number; };
   "companion.chat.sessions.update": ({ sessionId: string; title?: string; provider?: string; model?: string; systemPrompt?: null | string; } & { readonly [key: string]: unknown });
+  "companion.chat.turns.cancel": ({ sessionId: string; turnId?: string; } & { readonly [key: string]: unknown });
   "config.get": {  };
   "config.set": ({ key: string; } & { readonly [key: string]: unknown });
   "continuity.snapshot": {  };
@@ -306,12 +308,14 @@ export interface OperatorMethodOutputMap {
   "companion.chat.events.stream": {  };
   "companion.chat.messages.create": { messageId: string; };
   "companion.chat.messages.list": { sessionId: string; messages: readonly CompanionChatMessage[]; };
+  "companion.chat.messages.steer": { sessionId: string; messageId: string; steered: boolean; cancelledTurnId?: string; turnStarted: boolean; };
   "companion.chat.sessions.close": { sessionId: string; status: string; };
   "companion.chat.sessions.create": { sessionId: string; createdAt: number; session: CompanionChatSession; };
   "companion.chat.sessions.delete": { sessionId: string; deleted: boolean; };
   "companion.chat.sessions.get": { session: CompanionChatSession; messages: readonly CompanionChatMessage[]; };
   "companion.chat.sessions.list": { sessions: readonly CompanionChatSession[]; totals: CompanionChatSessionsListTotals; };
   "companion.chat.sessions.update": { session: CompanionChatSession; };
+  "companion.chat.turns.cancel": { sessionId: string; turnId: string; cancelled: boolean; alreadyCancelled?: boolean; partialPersisted: boolean; };
   "config.get": ({ danger?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); controlPlane?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); web?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); network?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); service?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); providers?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); ui?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); channels?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); watchers?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); memory?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "config.set": ({ success: boolean; key: string; value?: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string; } & { readonly [key: string]: unknown });
   "continuity.snapshot": { sessionId: string; status: string; recoveryState: string; lastSessionPointer: null | string; recoveryFilePresent: boolean; recoveryFile: null | { title: string; timestamp: number; sessionId: string; returnContext?: { activityLabel: string; statusLabel: string; lastUserPrompt?: string; lastAssistantReply?: string; pendingApprovals: number; toolCallCount: number; toolResultCount: number; assistantTurnCount: number; userTurnCount: number; lastRole?: string; activeTasks?: number; blockedTasks?: number; remoteContracts?: number; remoteRunners?: readonly string[]; worktreeCount?: number; worktreePaths?: readonly string[]; openPanels?: readonly string[]; lines: readonly string[]; assistedNarrative?: string; }; }; };

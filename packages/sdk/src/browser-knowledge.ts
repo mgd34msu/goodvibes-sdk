@@ -82,6 +82,8 @@ export const KNOWLEDGE_BROWSER_ROUTES = {
   'companion.chat.sessions.get': { method: 'GET', path: '/api/companion/chat/sessions/{sessionId}' },
   'companion.chat.sessions.list': { method: 'GET', path: '/api/companion/chat/sessions' },
   'companion.chat.sessions.update': { method: 'PATCH', path: '/api/companion/chat/sessions/{sessionId}' },
+  'companion.chat.messages.steer': { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages/steer' },
+  'companion.chat.turns.cancel': { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/turns/cancel' },
 } as const satisfies Partial<Record<OperatorTypedMethodId, BrowserScopedRouteDefinition>>;
 
 export const KNOWLEDGE_BROWSER_DOMAINS = [
@@ -122,6 +124,27 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
         input: Omit<OperatorMethodInput<'companion.chat.messages.create'>, 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.messages.create'>>;
       list(sessionId: string): Promise<OperatorMethodOutput<'companion.chat.messages.list'>>;
+      /**
+       * Interrupt-and-send: cancels the in-flight turn (honest partial +
+       * terminal turn.cancelled to every subscriber) and runs this message
+       * immediately. Feature-detect with isMethodUnavailableError and fall
+       * back to an ordinary create on older daemons.
+       */
+      steer(
+        sessionId: string,
+        input: Omit<OperatorMethodInput<'companion.chat.messages.steer'>, 'sessionId'>,
+      ): Promise<OperatorMethodOutput<'companion.chat.messages.steer'>>;
+    };
+    readonly turns: {
+      /**
+       * Server-side stop for the in-flight turn. The terminal `turn.cancelled`
+       * event on the session stream is the authoritative convergence signal;
+       * treat 404 NO_ACTIVE_TURN as benign (the turn finished first).
+       */
+      cancel(
+        sessionId: string,
+        input?: Omit<OperatorMethodInput<'companion.chat.turns.cancel'>, 'sessionId'>,
+      ): Promise<OperatorMethodOutput<'companion.chat.turns.cancel'>>;
     };
     readonly events: {
       stream(
@@ -192,6 +215,10 @@ export function createBrowserKnowledgeSdkFromRoutes(
       messages: {
         create: (id, input) => invoke('companion.chat.messages.create', { sessionId: id, ...input }),
         list: (id) => invoke('companion.chat.messages.list', { sessionId: id }),
+        steer: (id, input) => invoke('companion.chat.messages.steer', { sessionId: id, ...input }),
+      },
+      turns: {
+        cancel: (id, input) => invoke('companion.chat.turns.cancel', { sessionId: id, ...(input ?? {}) }),
       },
       events: {
         stream: (id, handlers, options) =>

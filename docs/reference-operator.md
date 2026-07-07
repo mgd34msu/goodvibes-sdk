@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `327`
+- Methods: `329`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -22180,6 +22180,16 @@ Return the message list for a companion-chat session.
           },
           "createdAt": {
             "type": "number"
+          },
+          "deliveryState": {
+            "type": "string",
+            "enum": [
+              "cancelled",
+              "queued"
+            ]
+          },
+          "inReplyTo": {
+            "type": "string"
           }
         },
         "required": [
@@ -22256,6 +22266,103 @@ Regenerate an assistant response. Optional `messageId` targets a specific assist
     "sessionId",
     "regeneratedFrom",
     "supersededMessageIds",
+    "turnStarted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.messages.steer`
+
+Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: "cancelled"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message's turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: "queued"`, answered in order) — steer is the explicit jump-the-line verb.
+
+- Title: `Steer Companion Chat (Interrupt And Send)`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/companion/chat/sessions/{sessionId}/messages/steer`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifactId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "artifactId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    },
+    "steered": {
+      "type": "boolean"
+    },
+    "cancelledTurnId": {
+      "type": "string"
+    },
+    "turnStarted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "messageId",
+    "steered",
     "turnStarted"
   ],
   "additionalProperties": false
@@ -22744,6 +22851,16 @@ Return a companion-chat session record together with its full message history.
           },
           "createdAt": {
             "type": "number"
+          },
+          "deliveryState": {
+            "type": "string",
+            "enum": [
+              "cancelled",
+              "queued"
+            ]
+          },
+          "inReplyTo": {
+            "type": "string"
           }
         },
         "required": [
@@ -23055,6 +23172,72 @@ Update companion-chat session metadata, including session-local `provider` and `
   },
   "required": [
     "session"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `companion.chat.turns.cancel`
+
+Stop the in-flight turn for a companion chat session — a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: "cancelled"` marker (an honest partial, never disguised as a complete reply; the uncommitted partial is NOT added to the LLM conversation history), and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.
+
+- Title: `Cancel Companion Chat Turn`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/companion/chat/sessions/{sessionId}/turns/cancel`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "turnId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "turnId": {
+      "type": "string"
+    },
+    "cancelled": {
+      "type": "boolean"
+    },
+    "alreadyCancelled": {
+      "type": "boolean"
+    },
+    "partialPersisted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "turnId",
+    "cancelled",
+    "partialPersisted"
   ],
   "additionalProperties": false
 }

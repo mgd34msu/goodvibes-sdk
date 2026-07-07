@@ -11,6 +11,8 @@
  *   DELETE /api/companion/chat/sessions/:sessionId         (hard delete — record permanently removed)
  *   POST   /api/companion/chat/sessions/:sessionId/messages
  *   GET    /api/companion/chat/sessions/:sessionId/messages
+ *   POST   /api/companion/chat/sessions/:sessionId/turns/cancel (stop the in-flight turn)
+ *   POST   /api/companion/chat/sessions/:sessionId/messages/steer (interrupt + send now)
  *   GET    /api/companion/chat/sessions/:sessionId/events  (SSE)
  *
  * All routes require the existing daemon bearer-token auth (enforced by the
@@ -20,6 +22,7 @@
 
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import type {
+  CancelCompanionChatTurnInput,
   CompanionChatMessageAttachmentInput,
   CreateCompanionChatSessionInput,
   EditCompanionChatMessageInput,
@@ -100,6 +103,16 @@ export async function dispatchCompanionChatRoutes(
   // POST /api/companion/chat/sessions/:sessionId/messages/edit    (edit + branch)
   if (sub === 'messages/edit' && req.method === 'POST') {
     return handleEditMessage(req, sessionId, context);
+  }
+
+  // POST /api/companion/chat/sessions/:sessionId/turns/cancel
+  if (sub === 'turns/cancel' && req.method === 'POST') {
+    return handleCancelTurn(req, sessionId, context);
+  }
+
+  // POST /api/companion/chat/sessions/:sessionId/messages/steer
+  if (sub === 'messages/steer' && req.method === 'POST') {
+    return handleSteerMessage(req, sessionId, context);
   }
 
   // GET /api/companion/chat/sessions/:sessionId/events
@@ -563,6 +576,75 @@ async function handleGetMessages(
   }
   const messages = context.chatManager.getMessages(sessionId);
   return Response.json({ sessionId, messages });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/companion/chat/sessions/:sessionId/turns/cancel
+// ---------------------------------------------------------------------------
+
+/**
+ * Stop the in-flight turn for a session. Optional `turnId` in the body guards
+ * against cancelling a newer turn a stale stop click raced against
+ * (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN;
+ * repeat cancels are idempotent successes. The terminal `turn.cancelled` SSE
+ * event (emitted to every subscriber) is the authoritative convergence signal.
+ */
+async function handleCancelTurn(
+  req: Request,
+  sessionId: string,
+  context: CompanionChatRouteContext,
+): Promise<Response> {
+  const bodyOrResponse = await context.parseOptionalJsonBody(req);
+  if (bodyOrResponse instanceof Response) return bodyOrResponse;
+  const body = (bodyOrResponse ?? {}) as Record<string, unknown>;
+  const input: CancelCompanionChatTurnInput = {
+    turnId: typeof body['turnId'] === 'string' && body['turnId'].trim() ? body['turnId'].trim() : undefined,
+  };
+  try {
+    return Response.json(await context.chatManager.cancelTurn(sessionId, input));
+  } catch (err: unknown) {
+    return respondWithManagerError(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/companion/chat/sessions/:sessionId/messages/steer
+// ---------------------------------------------------------------------------
+
+/**
+ * Steer: send a message that runs immediately, interrupting the in-flight
+ * turn (cancelled through the same finalization path as an explicit stop —
+ * honest partial + terminal turn.cancelled). Accepts the same payload as the
+ * message-post route (`body`/`content`, `attachments`, `metadata`).
+ */
+async function handleSteerMessage(
+  req: Request,
+  sessionId: string,
+  context: CompanionChatRouteContext,
+): Promise<Response> {
+  const bodyOrResponse = await context.parseJsonBody(req);
+  if (bodyOrResponse instanceof Response) return bodyOrResponse;
+  const body = bodyOrResponse as Record<string, unknown>;
+  const rawContent = readCompanionChatMessageBody(body);
+  const attachments = readCompanionChatAttachments(body);
+  if (attachments instanceof Response) return attachments;
+  if (!rawContent.trim() && attachments.length === 0) {
+    return Response.json(
+      { error: 'content, body, or attachments are required', code: 'INVALID_INPUT' },
+      { status: 400 },
+    );
+  }
+  try {
+    const result = await context.chatManager.steerMessage(sessionId, rawContent, '', {
+      attachments,
+      metadata: typeof body['metadata'] === 'object' && body['metadata'] !== null
+        ? (body['metadata'] as Record<string, unknown>)
+        : undefined,
+    });
+    return Response.json(result, { status: 202 });
+  } catch (err: unknown) {
+    return respondWithManagerError(err);
+  }
 }
 
 // ---------------------------------------------------------------------------

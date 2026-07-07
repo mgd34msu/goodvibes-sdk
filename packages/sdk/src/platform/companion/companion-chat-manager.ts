@@ -25,10 +25,14 @@ import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { ConversationManager } from '../core/conversation.js';
 import type { ProviderMessage } from '../providers/interface.js';
 import type {
+  CancelCompanionChatTurnInput,
+  CancelCompanionChatTurnOutput,
+  SteerCompanionChatMessageOutput,
   CompanionChatMessageAttachmentInput,
   CompanionChatMessage,
   CompanionChatSession,
   CompanionChatTurnEvent,
+  CompanionChatTurnStoppedBy,
   ConversationMessageEnvelope,
   CreateCompanionChatSessionInput,
   EditCompanionChatMessageInput,
@@ -71,35 +75,26 @@ import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
 
 // ---------------------------------------------------------------------------
-// Minimal provider types (subset of the real ProviderRegistry interface)
+// Turn control (per-turn abort scope, cancel finalization, pending queue) —
+// see companion-chat-turn-control.ts; provider stream types moved with it.
 // ---------------------------------------------------------------------------
 
-export type CompanionProviderMessage = ProviderMessage;
-
-export interface CompanionProviderChunk {
-  readonly type: 'text_delta' | 'tool_call' | 'tool_result' | 'done' | 'error';
-  readonly delta?: string | undefined;
-  readonly toolCallId?: string | undefined;
-  readonly toolName?: string | undefined;
-  readonly toolInput?: unknown | undefined;
-  readonly result?: unknown | undefined;
-  readonly isError?: boolean | undefined;
-  readonly error?: string | undefined;
-}
-
-export interface CompanionLLMProvider {
-  /** Stream a single-turn conversation. Yields chunks. */
-  chatStream(
-    messages: CompanionProviderMessage[],
-    options: {
-      readonly systemPrompt?: string | null | undefined;
-      readonly model?: string | null | undefined;
-      readonly provider?: string | null | undefined;
-      readonly tools?: readonly ToolDefinition[] | undefined;
-      readonly abortSignal?: AbortSignal | undefined;
-    },
-  ): AsyncIterable<CompanionProviderChunk>;
-}
+export type {
+  CompanionLLMProvider,
+  CompanionProviderChunk,
+  CompanionProviderMessage,
+} from './companion-chat-turn-control.js';
+import {
+  awaitCompanionReply,
+  cancelActiveTurn,
+  createTurnAbortScope,
+  finalizeCancelledTurn,
+} from './companion-chat-turn-control.js';
+import type {
+  ActiveCompanionTurn,
+  CompanionLLMProvider,
+  QueuedCompanionTurn,
+} from './companion-chat-turn-control.js';
 
 type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;
@@ -150,6 +145,10 @@ interface InternalSession {
   conversation: ConversationManager;
   messages: CompanionChatMessage[];
   readonly abortController: AbortController;
+  /** The in-flight turn, when one is running (see ActiveCompanionTurn). */
+  activeTurn?: ActiveCompanionTurn | null;
+  /** User messages whose turns have not started yet (queue-when-busy + steer-to-front). */
+  pendingTurns?: QueuedCompanionTurn[];
   lastActivityAt: number;
   // The SSE client ID for this session (set when a subscriber connects)
   subscriberClientId: string | null;
@@ -253,6 +252,8 @@ export class CompanionChatManager {
   /** Tracks whether the async init() has completed. */
   private initCompleted = false;
   private readonly pendingReplies = new Map<string, PendingReply>();
+  /** True once dispose() ran — lets a cancelled turn report stoppedBy 'shutdown' honestly. */
+  private disposed = false;
   /**
    * Serializes persistence writes per session to prevent write-after-write
    * races where two concurrent saves could result in an older snapshot
@@ -485,6 +486,19 @@ export class CompanionChatManager {
   }
 
   /**
+   * Cancel the in-flight turn (`companion.chat.turns.cancel`) — a per-turn
+   * stop that never touches the session controller. Refusal semantics and the
+   * bounded finalization wait live in companion-chat-turn-control.ts.
+   */
+  async cancelTurn(sessionId: string, input: CancelCompanionChatTurnInput = {}): Promise<CancelCompanionChatTurnOutput> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
+    }
+    return cancelActiveTurn(sessionId, session.activeTurn ?? null, input);
+  }
+
+  /**
    * Permanently delete a session (see CHANGELOG 1.0.0: `delete` is now a genuine removal,
    * distinct from `closeSession` above). Aborts any in-flight turn, removes
    * the on-disk record file, and drops the in-memory entry — reusing
@@ -553,28 +567,15 @@ export class CompanionChatManager {
       readonly onTurnEvent?: ((event: CompanionChatTurnEvent) => void) | undefined;
     } = {},
   ): Promise<CompanionChatReplyResult> {
-    let messageId = '';
-    const result = new Promise<CompanionChatReplyResult>((resolve) => {
-      const timeout = setTimeout(() => {
-        if (messageId) this.pendingReplies.delete(messageId);
-        resolve({ messageId, error: 'Timed out waiting for companion chat reply' });
-      }, options.timeoutMs ?? 120_000);
-      timeout.unref?.();
-      void this._postMessageInternal(sessionId, content, clientId, {
-        pendingReply: { resolve, timeout },
+    return awaitCompanionReply(
+      options.timeoutMs ?? 120_000,
+      (pendingReply) => this._postMessageInternal(sessionId, content, clientId, {
+        pendingReply,
         attachments: options.attachments,
         ...(options.onTurnEvent ? { onTurnEvent: options.onTurnEvent } : {}),
-      })
-        .then((id) => { messageId = id; })
-        .catch((error: unknown) => {
-          clearTimeout(timeout);
-          resolve({
-            messageId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
-    });
-    return result;
+      }),
+      (messageId) => this.pendingReplies.delete(messageId),
+    );
   }
 
   private async _postMessageInternal(
@@ -586,6 +587,8 @@ export class CompanionChatManager {
       readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
       readonly metadata?: Record<string, unknown> | undefined;
       readonly onTurnEvent?: ((event: CompanionChatTurnEvent) => void) | undefined;
+      /** Steer: jump the pending queue (the caller cancels the active turn). */
+      readonly steer?: boolean | undefined;
     } = {},
   ): Promise<string> {
     const session = this.sessions.get(sessionId);
@@ -607,6 +610,11 @@ export class CompanionChatManager {
     const messageId = randomUUID();
     const now = Date.now();
 
+    // A send that lands while another turn is running QUEUES (visible in the
+    // transcript immediately, marked 'queued', answered after the current
+    // turn) — it must never start a concurrent turn against the same
+    // conversation. A steer jumps the queue instead (see steerMessage).
+    const queuedBehindActiveTurn = session.activeTurn != null && options.steer !== true;
     const userMsg: CompanionChatMessage = {
       id: messageId,
       sessionId,
@@ -615,10 +623,16 @@ export class CompanionChatManager {
       attachments,
       ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
       createdAt: now,
+      ...(queuedBehindActiveTurn ? { deliveryState: 'queued' as const } : {}),
     };
 
+    // Provider-ready content is built at post time but committed to the
+    // conversation only when the turn STARTS — committing now would leak a
+    // queued message into the active turn's later tool rounds, which re-read
+    // the conversation every round.
+    const providerContent = await buildProviderUserContent(content, attachments, this.artifactStore);
+
     session.messages.push(userMsg);
-    session.conversation.addUserMessage(await buildProviderUserContent(content, attachments, this.artifactStore));
     session.lastActivityAt = now;
     this._updateMeta(session, {
       messageCount: session.messages.length,
@@ -631,18 +645,21 @@ export class CompanionChatManager {
       this.pendingReplies.set(messageId, options.pendingReply);
     }
 
-    void this._runTurn(session, messageId, options.onTurnEvent).catch((error: unknown) => {
-      logger.warn('[companion-chat] turn execution failed', {
-        sessionId,
-        messageId,
-        error: summarizeError(error),
-      });
-    });
+    const entry: QueuedCompanionTurn = {
+      userMessageId: messageId,
+      providerContent,
+      ...(options.onTurnEvent ? { onTurnEvent: options.onTurnEvent } : {}),
+    };
+    const queue = (session.pendingTurns ??= []);
+    if (options.steer === true) queue.unshift(entry);
+    else queue.push(entry);
+    this._startNextTurn(session);
 
     return messageId;
   }
 
   dispose(): void {
+    this.disposed = true;
     if (this.gcTimer) {
       clearInterval(this.gcTimer);
       this.gcTimer = null;
@@ -654,16 +671,108 @@ export class CompanionChatManager {
     this.sessions.clear();
   }
 
+  /**
+   * Steer: send a message that runs IMMEDIATELY, cancelling the in-flight
+   * turn if one is running (`companion.chat.messages.steer`). The message
+   * jumps to the FRONT of the pending queue, then the active turn is
+   * cancelled through the same finalization path as an explicit stop (honest
+   * partial persisted, terminal `turn.cancelled` to every subscriber), and
+   * the drain starts the steer's turn. With no turn running this is an
+   * ordinary send. Queued messages keep their places behind the steer.
+   */
+  async steerMessage(
+    sessionId: string,
+    content: string,
+    clientId = '',
+    options: {
+      readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+      readonly metadata?: Record<string, unknown> | undefined;
+    } = {},
+  ): Promise<SteerCompanionChatMessageOutput> {
+    const activeBefore = this.sessions.get(sessionId)?.activeTurn ?? null;
+    const messageId = await this._postMessageInternal(sessionId, content, clientId, {
+      attachments: options.attachments,
+      metadata: options.metadata,
+      steer: true,
+    });
+    let cancelledTurnId: string | undefined;
+    if (activeBefore) {
+      try {
+        const result = await this.cancelTurn(sessionId, { turnId: activeBefore.turnId });
+        cancelledTurnId = result.turnId;
+      } catch (err: unknown) {
+        // Benign races: the turn finished naturally (NO_ACTIVE_TURN), or the
+        // slot already belongs to a newer turn — possibly this very steer
+        // (TURN_MISMATCH). The turnId guard is what makes this safe: a steer
+        // must never cancel its own turn or an unrelated newer one.
+        const code = (err as { code?: string }).code;
+        if (code !== 'NO_ACTIVE_TURN' && code !== 'TURN_MISMATCH') throw err;
+      }
+    }
+    const session = this.sessions.get(sessionId);
+    if (session) this._startNextTurn(session);
+    return {
+      sessionId,
+      messageId,
+      steered: true,
+      ...(cancelledTurnId !== undefined ? { cancelledTurnId } : {}),
+      turnStarted: true,
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Turn execution
   // ---------------------------------------------------------------------------
 
+  /**
+   * The single turn-start funnel: runs the next pending turn iff no turn is
+   * active and the session is open. Every turn exit drains through here, so
+   * queued sends and steers can never race into concurrent turns.
+   */
+  private _startNextTurn(session: InternalSession): void {
+    if (session.activeTurn || session.meta.status === 'closed') return;
+    const next = session.pendingTurns?.shift();
+    if (!next) return;
+    const idx = session.messages.findIndex((m) => m.id === next.userMessageId);
+    const queuedMsg = idx >= 0 ? session.messages[idx] : undefined;
+    if (queuedMsg?.deliveryState === 'queued') {
+      const { deliveryState: _cleared, ...delivered } = queuedMsg;
+      session.messages[idx] = delivered;
+      this._persist(session.meta.id);
+    }
+    // Deferred from post time (see _postMessageInternal).
+    session.conversation.addUserMessage(next.providerContent);
+    void this._runTurn(session, next.userMessageId, next.onTurnEvent).catch((error: unknown) => {
+      logger.warn('[companion-chat] turn execution failed', {
+        sessionId: session.meta.id,
+        messageId: next.userMessageId,
+        error: summarizeError(error),
+      });
+    });
+  }
+
   private async _runTurn(session: InternalSession, userMessageId: string, onTurnEvent?: (event: CompanionChatTurnEvent) => void): Promise<void> {
     const turnId = randomUUID();
     const sessionId = session.meta.id;
-    const abortSignal = session.abortController.signal;
+
+    // Per-turn abort scope chained under the session controller — see
+    // companion-chat-turn-control.ts for why the session controller must
+    // never be aborted for a single-turn stop.
+    const scope = createTurnAbortScope(turnId, session.abortController.signal);
+    const abortSignal = scope.abortSignal;
+    session.activeTurn = scope.activeTurn;
+
+    // Track announced-but-unresolved tool calls so a cancelled turn can close
+    // them (every turn.tool_call gets a turn.tool_result before the terminal
+    // event — no client is ever left rendering a wedged tool block).
+    const openToolCalls = new Map<string, string>();
 
     const publish = (event: CompanionChatTurnEvent): void => {
+      if (event.type === 'turn.tool_call' && event.toolCallId) {
+        openToolCalls.set(event.toolCallId, event.toolName);
+      } else if (event.type === 'turn.tool_result' && event.toolCallId) {
+        openToolCalls.delete(event.toolCallId);
+      }
       this.eventPublisher.publishEvent(
         `companion-chat.${event.type}`,
         event,
@@ -688,6 +797,26 @@ export class CompanionChatManager {
 
     let assistantContent = '';
     const assistantMessageId = randomUUID();
+
+    const finalizeCancelled = (): void => finalizeCancelledTurn({
+      sessionId,
+      turnId,
+      assistantMessageId,
+      userMessageId,
+      getAssistantContent: () => assistantContent,
+      openToolCalls,
+      wasCancelRequested: () => scope.activeTurn.cancelRequested,
+      isShutdown: () => this.disposed,
+      publish,
+      persistPartial: (message) => {
+        session.messages.push(message);
+        session.lastActivityAt = message.createdAt;
+        this._updateMeta(session, { messageCount: session.messages.length, updatedAt: message.createdAt });
+        this._persist(sessionId);
+      },
+      resolveReply: (extra) => this.resolvePendingReply(userMessageId, { messageId: userMessageId, ...extra, error: 'Turn cancelled' }),
+      settle: scope.settle,
+    });
 
     try {
       const toolDefinitions = this.toolRegistry?.getToolDefinitions() ?? [];
@@ -792,12 +921,12 @@ export class CompanionChatManager {
         }
       }
 
-      // A detected abort (session closed/disposed/GC'd) where the provider ended
-      // its stream gracefully instead of throwing must be treated as a cancellation,
-      // not recorded as a successful partial reply. Mirror the catch-block's aborted
-      // handling and short-circuit before push/persist/turn.completed.
+      // A detected abort (user cancel, session close, or shutdown) where the
+      // provider ended its stream gracefully instead of throwing: finalize as
+      // a cancellation — persist the honest partial and emit the terminal
+      // turn.cancelled — never record it as a successful complete reply.
       if (abortSignal.aborted) {
-        this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: 'Turn cancelled' });
+        finalizeCancelled();
         return;
       }
 
@@ -809,6 +938,7 @@ export class CompanionChatManager {
         content: assistantContent,
         attachments: [],
         createdAt: now,
+        inReplyTo: userMessageId,
       };
       session.messages.push(assistantMsg);
       session.lastActivityAt = now;
@@ -833,8 +963,18 @@ export class CompanionChatManager {
         publish({ type: 'turn.error', sessionId, turnId, error: errorMessage });
         this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: errorMessage });
       } else {
-        this.resolvePendingReply(userMessageId, { messageId: userMessageId, error: 'Turn cancelled' });
+        finalizeCancelled();
       }
+    } finally {
+      // Release the active-turn slot only if this turn still owns it (a newer
+      // concurrent turn may have taken it), detach the session-abort chain,
+      // and settle for any exit path that did not run finalizeCancelled
+      // (resolve is idempotent — a second call is a no-op).
+      if (session.activeTurn === scope.activeTurn) session.activeTurn = null;
+      scope.detach();
+      scope.settle({ partialPersisted: false });
+      // Drain: a queued send (or a steer that jumped the queue) starts now.
+      this._startNextTurn(session);
     }
   }
 

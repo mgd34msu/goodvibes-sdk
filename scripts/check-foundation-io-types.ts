@@ -162,6 +162,9 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'sessions.delete', ...descriptorSchemas('sessions.delete') },
   { methodId: 'companion.chat.sessions.close', ...descriptorSchemas('companion.chat.sessions.close') },
   { methodId: 'companion.chat.sessions.delete', ...descriptorSchemas('companion.chat.sessions.delete') },
+  // Server-side turn stop + steer (SDK 1.4.0):
+  { methodId: 'companion.chat.turns.cancel', ...descriptorSchemas('companion.chat.turns.cancel') },
+  { methodId: 'companion.chat.messages.steer', ...descriptorSchemas('companion.chat.messages.steer') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');
