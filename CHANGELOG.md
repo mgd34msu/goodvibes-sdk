@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-07-06
+
+### Fixed
+- Test-run suppression no longer silences the terminal bell — it silences only
+  desktop notifications and webhooks. The 1.3.0 guard made `notifyCompletion()`
+  return early under `NODE_ENV=test` / `GOODVIBES_SUPPRESS_NOTIFY`, which also
+  suppressed the in-process terminal bell (a single `\x07` byte to the current
+  process's own stdout) that host surfaces rely on as product behaviour. The
+  bell now always fires for turns over 5s; only the real `notify-send`/`osascript`
+  desktop spawn and real webhook HTTP delivery remain suppressed under test.
+
 ## [1.3.0] - 2026-07-06
 
 ### Added
