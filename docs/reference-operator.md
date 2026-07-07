@@ -57792,6 +57792,9 @@ Return sqlite-vec and memory embedding-provider diagnostics.
         },
         "error": {
           "type": "string"
+        },
+        "platformLimitReason": {
+          "type": "string"
         }
       },
       "required": [
@@ -57992,6 +57995,9 @@ Set the active default memory embedding provider.
           "type": "string"
         },
         "error": {
+          "type": "string"
+        },
+        "platformLimitReason": {
           "type": "string"
         }
       },
@@ -60481,6 +60487,9 @@ Rebuild the sqlite-vec vector index.
         },
         "error": {
           "type": "string"
+        },
+        "platformLimitReason": {
+          "type": "string"
         }
       },
       "required": [
@@ -60564,6 +60573,9 @@ Return the current sqlite-vec vector-store posture.
           "type": "string"
         },
         "error": {
+          "type": "string"
+        },
+        "platformLimitReason": {
           "type": "string"
         }
       },
