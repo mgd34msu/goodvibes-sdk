@@ -2,14 +2,19 @@
  *
  * Desktop-notification test-isolation guard.
  *
- * notifyCompletion() shells out to notify-send/osascript and writes a
- * terminal bell byte. Under an automated test run this must never actually
- * fire — otherwise every `bun test` invocation spams whoever's desktop the
- * tests happen to execute on. Verifies:
- * - Suppressed by default under NODE_ENV=test (bun test's own default).
- * - Suppressed when GOODVIBES_SUPPRESS_NOTIFY is set, regardless of NODE_ENV.
- * - The `{ force: true }` opt-in bypasses suppression (for tests that
- *   exercise this shell-out layer itself).
+ * notifyCompletion() writes an in-process terminal bell byte AND shells out to
+ * notify-send/osascript. Under an automated test run the real desktop shell-out
+ * must never fire — otherwise every `bun test` invocation spams whoever's
+ * desktop the tests happen to execute on. The terminal bell, by contrast, is a
+ * single \x07 byte written to this process's own stdout with no external side
+ * effect, and is asserted product behaviour by host surfaces (e.g. the TUI), so
+ * it is emitted even under suppression. Verifies:
+ * - Desktop shell-out suppressed by default under NODE_ENV=test (bun test's own
+ *   default), while the terminal bell still writes.
+ * - Desktop shell-out suppressed when GOODVIBES_SUPPRESS_NOTIFY is set,
+ *   regardless of NODE_ENV, while the terminal bell still writes.
+ * - The `{ force: true }` opt-in bypasses suppression and reaches the shell-out
+ *   layer (for tests that exercise it directly).
  * - Normal runtime (NODE_ENV unset/production, no override) is unaffected —
  *   the real code path still fires.
  */
@@ -111,17 +116,26 @@ describe('notifyCompletion suppression', () => {
     writeSpy.mockRestore();
   });
 
-  test('default test run: no bell, no desktop-notification shell-out', () => {
+  test('default test run: terminal bell still writes, desktop-notification shell-out suppressed', () => {
     process.env['NODE_ENV'] = 'test';
     notifyCompletion('GoodVibes', 'turn completed in 65s · session test-ses', 65_000);
-    expect(writeSpy).not.toHaveBeenCalled();
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+    expect(writeSpy).toHaveBeenCalledWith('\x07');
     expect(spawnSpy).not.toHaveBeenCalled();
   });
 
-  test('GOODVIBES_SUPPRESS_NOTIFY override suppresses even outside NODE_ENV=test', () => {
+  test('GOODVIBES_SUPPRESS_NOTIFY override: terminal bell still writes, desktop shell-out suppressed', () => {
     process.env['NODE_ENV'] = 'production';
     process.env['GOODVIBES_SUPPRESS_NOTIFY'] = '1';
     notifyCompletion('GoodVibes', 'agent agent-12 failed: boom', 65_000);
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+    expect(writeSpy).toHaveBeenCalledWith('\x07');
+    expect(spawnSpy).not.toHaveBeenCalled();
+  });
+
+  test('suppressed run, short duration: no bell (below the 5s threshold), no shell-out', () => {
+    process.env['NODE_ENV'] = 'test';
+    notifyCompletion('GoodVibes', 'quick turn', 4_000);
     expect(writeSpy).not.toHaveBeenCalled();
     expect(spawnSpy).not.toHaveBeenCalled();
   });

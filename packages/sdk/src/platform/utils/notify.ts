@@ -28,9 +28,14 @@ export interface NotifyOptions {
 }
 
 /**
- * True when this call must be a no-op: real desktop notifications (and the
- * terminal bell) must never fire from an automated test run and spam
- * whoever's desktop the tests happen to execute on.
+ * True when this call must not reach an external side effect: real desktop
+ * notifications (notify-send/osascript) and real webhook HTTP deliveries must
+ * never fire from an automated test run and spam whoever's desktop or endpoint
+ * the tests happen to execute on.
+ *
+ * Note this governs only the external shell-out/HTTP layer. The in-process
+ * terminal bell (a single \x07 byte written to this process's own stdout) has
+ * no external side effect and is NOT gated by this — see {@link notifyCompletion}.
  *
  * Suppressed when either:
  *   - `NODE_ENV === 'test'` (set automatically by `bun test`), or
@@ -80,21 +85,29 @@ function spawnNotification(command: string[]): void {
 }
 
 export function notifyCompletion(title: string, message: string, durationMs: number, options?: NotifyOptions): void {
-  if (isNotifySuppressed(options?.force)) {
-    logger.debug('Completion notification suppressed under test', { title, durationMs });
-    return;
-  }
-
   // Terminal bell for responses > 5s.
   // Surface-specific: this writes directly to stdout and is only meaningful
   // in a terminal context. Host surfaces that manage their own output stream
   // should inject this behaviour via a callback rather than calling it here.
+  //
+  // The bell is an in-process byte write with no external side effect, so it
+  // is emitted even under test suppression — only the real desktop-notification
+  // spawn below is suppressed. (This is the notify-guard scope fix: silencing a
+  // test run must not silence the terminal bell, which several host surfaces
+  // assert as product behaviour.)
   if (durationMs > 5000) {
     process.stdout.write('\x07');
   }
 
-  // Desktop notification for responses > 30s
+  // Desktop notification for responses > 30s. Real notify-send/osascript
+  // spawns must never fire from an automated test run — suppressed under
+  // NODE_ENV=test / GOODVIBES_SUPPRESS_NOTIFY, with `force` as the opt-back-in
+  // for tests that exercise this shell-out layer itself.
   if (durationMs > 30000) {
+    if (isNotifySuppressed(options?.force)) {
+      logger.debug('Completion desktop notification suppressed under test', { title, durationMs });
+      return;
+    }
     if (process.platform === 'linux') {
       spawnNotification(['notify-send', title, message]);
     } else if (process.platform === 'darwin') {
