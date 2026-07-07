@@ -318,3 +318,50 @@ describe('C6: session close mid-turn', () => {
     expect(cancelled.payload['stoppedBy']).toBe('session-closed');
   });
 });
+
+// ---------------------------------------------------------------------------
+// C7: the interrupted partial is visible to the model on later turns
+// ---------------------------------------------------------------------------
+
+describe('C7: partial-in-history', () => {
+  test('the next turn sees the interrupted partial plus the interruption note', async () => {
+    const events: CapturedEvent[] = [];
+    const gate = makeGate();
+    const seenByModel: string[][] = [];
+    let turnCount = 0;
+    const provider: CompanionLLMProvider = {
+      async *chatStream(messages) {
+        seenByModel.push(messages.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))));
+        turnCount += 1;
+        if (turnCount === 1) {
+          yield { type: 'text_delta', delta: 'the answer is being computed and' } satisfies CompanionProviderChunk;
+          await gate.wait;
+        }
+        yield { type: 'text_delta', delta: 'second reply' } satisfies CompanionProviderChunk;
+        yield { type: 'done' } satisfies CompanionProviderChunk;
+      },
+    };
+    const manager = makeManager(provider, events);
+    const session = manager.createSession({ provider: 'p', model: 'm' });
+
+    await manager.postMessage(session.id, 'long question');
+    await waitForEvent(events, 'companion-chat.turn.delta');
+    const cancelPromise = manager.cancelTurn(session.id);
+    gate.open();
+    await cancelPromise;
+    await waitForEvent(events, 'companion-chat.turn.cancelled');
+
+    await manager.postMessage(session.id, 'hello???');
+    await waitForEvent(events, 'companion-chat.turn.completed');
+
+    // The second turn's provider messages include the interrupted partial AND
+    // an explicit interruption marker — the model can reason about the true
+    // chain of events ("hello???" refers to the visible interruption).
+    const secondTurnMessages = seenByModel[1]!;
+    const joined = secondTurnMessages.join('\n');
+    expect(joined).toContain('the answer is being computed and');
+    expect(joined).toContain('[Interrupted: the user stopped this response here, before it was complete.]');
+    // And the follow-up question comes after it.
+    expect(joined.indexOf('hello???')).toBeGreaterThan(joined.indexOf('[Interrupted:'));
+  });
+});
