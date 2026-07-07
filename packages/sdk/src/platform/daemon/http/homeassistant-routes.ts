@@ -91,7 +91,7 @@ export class HomeAssistantConversationRoutes {
     if (url.pathname === '/api/homeassistant/conversation/cancel' && req.method === 'POST') {
       const body = await this.context.parseJsonBody(req);
       if (body instanceof Response) return body;
-      return this.cancelConversation(body);
+      return await this.cancelConversation(body);
     }
 
     return null;
@@ -287,7 +287,15 @@ export class HomeAssistantConversationRoutes {
     });
   }
 
-  private cancelConversation(body: JsonRecord): Response {
+  /**
+   * Cancel the in-flight turn for a Home Assistant conversation — the session
+   * STAYS OPEN so the next utterance keeps its conversation context. (Before
+   * the turns.cancel verb existed this closed the whole session: the only
+   * available hammer, and the next message silently started a fresh session
+   * with no memory of the exchange.) "Nothing running" is a success — the
+   * user's intent (stop) is already true. The response contract is unchanged.
+   */
+  private async cancelConversation(body: JsonRecord): Promise<Response> {
     const indexed = readString(body.messageId ?? body.message_id)
       ? this.messageIndex.get(readString(body.messageId ?? body.message_id)!)
       : undefined;
@@ -295,10 +303,21 @@ export class HomeAssistantConversationRoutes {
     if (!sessionId) {
       return Response.json({ ok: false, error: 'sessionId or known messageId is required.' }, { status: 400 });
     }
-    const session = this.context.chatManager.closeSession(sessionId);
-    return session
-      ? Response.json({ ok: true, sessionId, status: 'cancelled' })
-      : Response.json({ ok: false, sessionId, error: 'Unknown Home Assistant chat session.' }, { status: 404 });
+    if (!this.context.chatManager.getSession(sessionId)) {
+      return Response.json({ ok: false, sessionId, error: 'Unknown Home Assistant chat session.' }, { status: 404 });
+    }
+    try {
+      await this.context.chatManager.cancelTurn(sessionId);
+    } catch (error: unknown) {
+      const code = (error as { code?: string }).code;
+      if (code !== 'NO_ACTIVE_TURN') {
+        return Response.json(
+          { ok: false, sessionId, error: error instanceof Error ? error.message : String(error) },
+          { status: 500 },
+        );
+      }
+    }
+    return Response.json({ ok: true, sessionId, status: 'cancelled' });
   }
 
   private parseInput(body: JsonRecord): ParsedHomeAssistantInput {
