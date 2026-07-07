@@ -2,6 +2,11 @@ import type { KnowledgeSemanticService } from '../semantic/index.js';
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeRefinementTaskRecord } from '../types.js';
 import { resolveReadableHomeGraphSpace } from './space-selection.js';
+import {
+  runHomeGraphIssueTriage,
+  type HomeGraphTriageOptions,
+  type HomeGraphTriageResult,
+} from './triage.js';
 import type { HomeGraphSpaceInput } from './types.js';
 
 export async function listHomeGraphRefinementTasks(input: HomeGraphSpaceInput & {
@@ -44,10 +49,42 @@ export async function runHomeGraphRefinement(input: HomeGraphSpaceInput & {
   readonly limit?: number | undefined;
   readonly maxRunMs?: number | undefined;
   readonly force?: boolean | undefined;
-}) {
+  /**
+   * Run the LLM issue-triage pass over open device-quality issues. `true` uses
+   * defaults; an object customizes thresholds/limits/rules. Omitted → unchanged
+   * gap-refinement behavior for existing callers.
+   */
+  readonly triage?: HomeGraphTriageOptions | boolean | undefined;
+  /** Skip the gap self-improvement pass (e.g. a triage-only run). */
+  readonly skipGapRefinement?: boolean | undefined;
+}): Promise<{
+  readonly ok: boolean;
+  readonly spaceId: string;
+  readonly error?: string | undefined;
+  readonly result?: Awaited<ReturnType<KnowledgeSemanticService['selfImprove']>> | undefined;
+  readonly triage?: HomeGraphTriageResult | undefined;
+}> {
   await input.store.init();
   const { spaceId } = resolveReadableHomeGraphSpace(input.store, input);
-  if (!input.semanticService) return { ok: false, spaceId, error: 'Semantic refinement is not configured.' };
+
+  const triageRequested = input.triage !== undefined && input.triage !== false;
+  const triage = triageRequested
+    ? await runHomeGraphIssueTriage({
+        store: input.store,
+        ...(input.semanticService ? { semanticService: input.semanticService } : {}),
+        ...(input.installationId ? { installationId: input.installationId } : {}),
+        ...(input.knowledgeSpaceId ? { knowledgeSpaceId: input.knowledgeSpaceId } : {}),
+        options: typeof input.triage === 'object' ? input.triage : {},
+      })
+    : undefined;
+
+  if (input.skipGapRefinement === true) {
+    return { ok: true, spaceId, ...(triage ? { triage } : {}) };
+  }
+
+  if (!input.semanticService) {
+    return { ok: false, spaceId, error: 'Semantic refinement is not configured.', ...(triage ? { triage } : {}) };
+  }
   const result = await input.semanticService.selfImprove({
     knowledgeSpaceId: spaceId,
     gapIds: input.gapIds,
@@ -57,7 +94,7 @@ export async function runHomeGraphRefinement(input: HomeGraphSpaceInput & {
     force: input.force,
     reason: 'manual',
   });
-  return { ok: true, spaceId, result };
+  return { ok: true, spaceId, result, ...(triage ? { triage } : {}) };
 }
 
 export async function cancelHomeGraphRefinementTask(input: HomeGraphSpaceInput & {

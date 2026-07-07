@@ -54,6 +54,7 @@ import {
   listHomeGraphRefinementTasks,
   runHomeGraphRefinement,
 } from './refinement.js';
+import type { HomeGraphTriageOptions } from './triage.js';
 import { isUnusableHomeGraphExtractionText } from './extraction-quality.js';
 import {
   readHomeGraphSearchState,
@@ -398,6 +399,8 @@ export class HomeGraphService {
     readonly limit?: number | undefined;
     readonly maxRunMs?: number | undefined;
     readonly force?: boolean | undefined;
+    readonly triage?: HomeGraphTriageOptions | boolean | undefined;
+    readonly skipGapRefinement?: boolean | undefined;
   } = {}) {
     return runHomeGraphRefinement({ ...input, store: this.store, semanticService: this.options.semanticService });
   }
