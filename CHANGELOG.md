@@ -6,6 +6,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-07
+
+### Added
+
+- **Server-side turn stop** (`companion.chat.turns.cancel`): a chat client's
+  Stop button can now actually stop the daemon, not just its own rendering.
+  The turn's provider stream is aborted through a per-turn controller (a stop
+  never poisons the session's later turns), any non-empty partial reply is
+  persisted honestly (`deliveryState: "cancelled"`, linked to its prompt via
+  `inReplyTo`), announced-but-unresolved tool calls are closed with a
+  synthetic error result, and the terminal `turn.cancelled` event reaches
+  every subscriber of the session stream — a stop issued from one client
+  converges on all others. Honest machine-readable refusals: 404
+  `NO_ACTIVE_TURN` (benign — the turn finished first), 409 `TURN_MISMATCH`
+  (a stale stop must not kill a newer turn); repeat cancels are idempotent.
+- **Queue-when-busy sends**: a message posted while another turn is running
+  now QUEUES — visible in the transcript immediately with
+  `deliveryState: "queued"`, answered in order when the current turn ends —
+  instead of racing a concurrent turn against the same conversation history
+  (the previous behavior, which could garble a session's context).
+- **Steer** (`companion.chat.messages.steer`): interrupt-and-send-now. The
+  message jumps to the front of the pending queue and the active turn is
+  cancelled through the same finalization path as an explicit stop, then the
+  steered message's turn runs. Queued messages keep their places behind it.
+- Assistant messages carry `inReplyTo` (the user message a reply answers):
+  transcripts are append-ordered, so with queueing, position stops being a
+  reliable pairing signal.
+- The interrupted partial (plus an explicit model-facing interruption note)
+  is committed to the conversation history, so later turns can reason about
+  what the user saw and stopped — which is usually exactly what a follow-up
+  or steer refers to.
+
+### Fixed
+
+- Closing a session (or daemon shutdown) mid-turn now finalizes the turn
+  through the same cancellation path — honest partial persisted, terminal
+  `turn.cancelled` emitted — instead of silently discarding the streamed
+  content and leaving subscribers without a terminal event.
+- The Home Assistant conversation cancel route stops the in-flight turn and
+  keeps the session open (it previously closed the whole session — the only
+  available hammer — so the next utterance silently lost its conversation
+  context).
+
 ## [1.3.3] - 2026-07-07
 
 ### Fixed
