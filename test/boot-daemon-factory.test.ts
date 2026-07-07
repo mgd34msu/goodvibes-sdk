@@ -114,10 +114,13 @@ describe('R2 — isolated home', () => {
 
 describe('D6 — operator provider/account snapshots serve JSON, never 500 HTML', () => {
   // Regression: under bootDaemon's fresh isolated home the pricing catalog has
-  // not hydrated, so the configured default model ('openrouter:openrouter/free')
-  // has no materialized registry definition and getCurrentModel() throws. The
-  // read-only snapshot builders must tolerate that and still answer with JSON
-  // instead of letting the exception fall through to Bun's 500 SPA-fallback HTML.
+  // not hydrated yet. The configured default model ('openrouter:openrouter/free')
+  // now resolves anyway via ProviderRegistry.buildConfiguredModelFallback(), a
+  // synchronous fallback for well-known builtin-provider models, so 'openrouter'
+  // correctly shows active:true even before any network catalog fetch completes.
+  // The read-only snapshot builders must still tolerate a *genuinely* unresolvable
+  // current model (any other provider) and answer with JSON — never let an
+  // exception fall through to Bun's 500 SPA-fallback HTML.
   for (const path of ['/api/accounts', '/api/providers']) {
     test(`GET ${path} returns 200 application/json (not 500, not HTML)`, async () => {
       const res = await fetch(`${daemon.url}${path}`, { headers: auth() });
@@ -127,12 +130,48 @@ describe('D6 — operator provider/account snapshots serve JSON, never 500 HTML'
       expect(contentType).not.toContain('text/html');
       const body = await res.json() as { providers: unknown[] };
       expect(Array.isArray(body.providers)).toBe(true);
-      // With no active/resolvable current model, no provider claims active:true.
-      for (const provider of body.providers as Array<{ active?: unknown }>) {
-        expect(provider.active).toBe(false);
+      // Only the resolved default's own provider (openrouter) claims active:true.
+      for (const provider of body.providers as Array<{ providerId?: unknown; active?: unknown }>) {
+        expect(provider.active).toBe(provider.providerId === 'openrouter');
       }
     });
   }
+});
+
+describe('D7b — provider usage snapshot resolves the configured default on a fresh home', () => {
+  // Regression: GET /api/providers/:id/usage independently re-resolves the
+  // current model (getProviderUsageSnapshot's own getCurrentModel() call,
+  // separate from the one buildSnapshotForProvider already tolerates). Before
+  // the registry fallback, this threw an unhandled error under a fresh,
+  // catalog-less home; assert it now returns cleanly for every provider and
+  // reports the resolved key only for the provider that actually owns it.
+  test('GET /api/providers/openrouter/usage resolves the default cleanly', async () => {
+    const res = await fetch(`${daemon.url}/api/providers/openrouter/usage`, { headers: auth() });
+    expect(res.status).toBe(200);
+    const contentType = res.headers.get('content-type') ?? '';
+    expect(contentType).toContain('application/json');
+    const body = await res.json() as { providerId: string; active: boolean; currentModelRegistryKey?: string };
+    expect(body.providerId).toBe('openrouter');
+    expect(body.active).toBe(true);
+    expect(body.currentModelRegistryKey).toBe('openrouter:openrouter/free');
+  });
+
+  test('GET /api/providers/anthropic/usage returns cleanly with no current-model claim', async () => {
+    const res = await fetch(`${daemon.url}/api/providers/anthropic/usage`, { headers: auth() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { providerId: string; active: boolean; currentModelRegistryKey?: string };
+    expect(body.providerId).toBe('anthropic');
+    expect(body.active).toBe(false);
+    expect(body.currentModelRegistryKey).toBeUndefined();
+  });
+
+  test('GET /api/providers/not-a-real-provider/usage is an honest 404, not a 500', async () => {
+    const res = await fetch(`${daemon.url}/api/providers/not-a-real-provider/usage`, { headers: auth() });
+    expect(res.status).toBe(404);
+    const contentType = res.headers.get('content-type') ?? '';
+    expect(contentType).toContain('application/json');
+    expect(contentType).not.toContain('text/html');
+  });
 });
 
 describe('m7 — companion SSE requires auth', () => {

@@ -125,7 +125,18 @@ export async function getProviderUsageSnapshot(
 ): Promise<ProviderUsageSnapshot | null> {
   const snapshot = await buildSnapshotForProvider(providerRegistry, providerId);
   if (!snapshot) return null;
-  const currentModel = providerRegistry.getCurrentModel();
+  // Defense in depth alongside the same tolerance in buildSnapshotForProvider
+  // above: even with the registry now resolving well-known defaults (see
+  // ProviderRegistry.buildConfiguredModelFallback), a manually-configured or
+  // otherwise still-unresolvable registryKey must not turn this second,
+  // independent getCurrentModel() call into an unhandled throw. Degrade to
+  // "no current model" instead of a 500.
+  let currentModel: ModelDefinition | null;
+  try {
+    currentModel = providerRegistry.getCurrentModel();
+  } catch {
+    currentModel = null;
+  }
   const usage = snapshot.runtime.usage ?? {
     streaming: true,
     toolCalling: true,
@@ -134,7 +145,7 @@ export async function getProviderUsageSnapshot(
   return {
     providerId,
     active: snapshot.active,
-    ...(currentModel.provider === providerId ? { currentModelRegistryKey: currentModel.registryKey } : {}),
+    ...(currentModel?.provider === providerId ? { currentModelRegistryKey: currentModel.registryKey } : {}),
     pricingSource: snapshot.models.some((model) => model.pricing) ? 'catalog' : (usage.cost?.source ?? 'none'),
     models: snapshot.models,
     usage,
