@@ -6,7 +6,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-06
+
 ### Added
+- **The knowledge wiki is now honest and compounding — no more silent
+  overwrites, and only real evidence resolves an answer gap.** Every
+  content-changing node upsert now preserves the prior content in an
+  append-only revision history and records what changed, exposed through a read
+  path (`listNodeRevisions` / `graph.nodes.history`); a slug- or kind-only
+  identity change records a revision instead of dropping the prior identity.
+  Activation is gated by a configurable auto-accept confidence threshold and
+  always carries honest `reviewProvenance` (auto-accepted / reviewed /
+  pending-review / pre-gate / explicit): below-threshold nodes are held as
+  drafts and are not served until a `reviewNode` decision accepts them, while
+  existing active nodes stay active (pre-gate). Search and the semantic index
+  serve only active nodes, so a draft or a stale record can no longer surface as
+  an answer. An answer gap resolves only from real repair evidence — a promoted
+  fact or an accepted source, with a truthful reason — otherwise it stays open.
+  Extractions now carry an `extractorVersion` stamped at the single
+  `upsertExtraction` choke point, so advancing `KNOWLEDGE_EXTRACTOR_VERSION`
+  re-processes older captures through the existing recompile job. See the
+  decision record at `docs/decisions/2026-07-07-knowledge-wiki-honesty.md`.
+- **The daemon now runs a model-routed, confidence-gated issue-triage loop over
+  the Home Graph, and its data stays walled off from the general knowledge
+  store.** The existing `homeGraph.refinement.run` verb gained `triage` and
+  `skipGapRefinement` inputs: the loop lists open triageable device-quality
+  issues in the resolved Home Assistant space, joins each with its node and Home
+  Assistant metadata, asks the configured semantic model to classify each as
+  reject or review, auto-applies rejects at or above a confidence threshold
+  (default 85, reusing the gap-repair precedent), and records every decision
+  with honest provenance. A per-issue decision cache (a fingerprint plus the
+  decision) lives on the issue metadata, so a re-run never re-spends a model
+  call on an unchanged open issue, and an issue-code-to-rule framework replaces
+  the two previously hardcoded codes. The loop operates only on the home-graph
+  store and the single resolved Home Assistant space; a proof test seeds a
+  non-Home-Assistant space with the same issue code and asserts, byte for byte,
+  that a triage run leaves it untouched — the home-graph, wiki, and agent
+  knowledge functions share code but never share data, separate stores by
+  construction. See the decision record at
+  `docs/decisions/2026-07-07-home-graph-issue-triage.md`.
 - **One voice across every surface: the voice settings now live in a shared,
   surface-independent place.** The text-to-speech settings (`tts.provider`,
   `tts.voice`, `tts.speed`, `tts.llmProvider`, `tts.llmModel`) read from and write
@@ -30,8 +68,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   against.** The honest search envelope carries `recallFloor`, so a surface can
   state "below the N% recall floor" from the result instead of hardcoding the number
   and silently drifting if the floor is retuned.
+- **Home Assistant conversations now stream incrementally instead of arriving all
+  at once.** The `conversation/stream` route used to emit a single terminal SSE
+  frame after the whole turn finished; it now bridges the chat manager's existing
+  per-turn events into the stream and emits incremental delta frames — each
+  carrying the new chunk and the running accumulation — as the model produces
+  text. The terminal-frame contract is unchanged: exactly one final/error frame
+  is still emitted last, so older consumers that ignore delta frames are
+  unaffected. A throwing listener cannot break the turn.
 
 ### Fixed
+- **A newer client against an older daemon that does not serve a memory
+  operation now says so plainly, instead of reporting an existing record as "not
+  found."** The wire client distinguishes the two kinds of 404 by response code:
+  a record-missing 404 carries the shared `MEMORY_RECORD_NOT_FOUND` code and
+  folds to `null`, while any other 404 — a route-not-found from an older daemon,
+  or a bare legacy 404 with no code — is treated as method-unavailable and
+  rejects honestly with the one canonical unavailable-verb message, never a
+  silent `null`. This closes the version-skew path the memory-over-the-wire
+  feature advertises. A shared `classifyMemoryWireError` discriminator is the
+  single classifier the transports reuse. See the decision record at
+  `docs/decisions/2026-07-06-memory-wire-full-detach.md`.
 - **The memory recall-snapshot note now matches the established freshness
   vocabulary.** A stale snapshot reads "may be stale … 45s ago" (lowercase, hedged,
   whole seconds) rather than "STALE … 45000ms ago", matching the wording used
@@ -39,6 +96,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   was captured: an unfiltered browse capture is described as "in the browse set
   (unfiltered — recall floor not applied)" rather than mislabeled "recall-eligible",
   which only a recall-filtered capture earns.
+- **A fresh daemon home's default model now resolves without waiting on the
+  network.** The default `openrouter:openrouter/free` model only appeared in the
+  registry once the models.dev pricing catalog had loaded over the network, so
+  on a brand-new daemon home (or offline) `getCurrentModel()` threw and crashed
+  `GET /api/providers/{id}/usage`. The provider registry now recognizes the
+  well-known default directly — if the configured model belongs to a registered
+  provider that already lists it, the registry synthesizes a minimal entry on
+  the spot instead of waiting for the catalog — and the usage-snapshot builder
+  degrades an unresolvable current model to an honest response rather than an
+  unhandled exception. A genuinely wrong model reference still fails the same way
+  as before, so this does not paper over real misconfiguration.
+- **Test runs no longer fire real desktop notifications or webhook requests.**
+  `notifyCompletion()` and the webhook notifier used to shell out to
+  `notify-send` / `osascript` and post real webhook HTTP requests with fixture
+  text under `bun test`. Both now no-op when `NODE_ENV==='test'` or
+  `GOODVIBES_SUPPRESS_NOTIFY` is set, with a `force` opt-in for the tests that
+  specifically exercise the delivery layer itself.
 
 ## [1.2.0] - 2026-07-06
 
