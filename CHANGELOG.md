@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-07-07
+
+### Fixed
+
+- A platform that cannot load SQLite extensions at all (macOS system SQLite in
+  a compiled binary) is now reported as an honest capability limit
+  (`platformLimitReason` on the vector stats) instead of an error: the daemon
+  boots cleanly, semantic memory search falls back to literal matching with the
+  reason stated, and fault monitors and release smoke checks no longer fire on
+  a condition that is not a fault. A genuinely missing extension file (a real
+  packaging defect) still reports loudly as an error.
+
 ## [1.3.1] - 2026-07-06
 
 ### Fixed

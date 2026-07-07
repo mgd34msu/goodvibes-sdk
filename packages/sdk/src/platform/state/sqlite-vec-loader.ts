@@ -33,14 +33,55 @@ export function resolveSqliteVecPath(): string {
 }
 
 /**
+ * Thrown when the RUNTIME PLATFORM cannot load SQLite extensions at all —
+ * most commonly a macOS-compiled binary, where bun:sqlite links Apple's
+ * system SQLite, which ships with extension loading disabled. This is a
+ * permanent capability limit of the platform, not a defect in the build:
+ * callers should degrade to their documented no-vector mode with the
+ * `reason` surfaced, rather than reporting an error. A missing extension
+ * FILE (a genuine packaging defect) deliberately does NOT map to this class.
+ */
+export class SqliteVecPlatformUnsupportedError extends Error {
+  readonly platformLimit = true;
+
+  constructor(cause: string) {
+    super(
+      "this platform's SQLite does not allow loading extensions"
+      + ' (macOS system SQLite); the semantic vector index is unavailable'
+      + ` and memory search uses literal matching. Underlying refusal: ${cause}`,
+    );
+    this.name = 'SqliteVecPlatformUnsupportedError';
+  }
+}
+
+/** True when a loadExtension throw is the platform capability refusal, not a packaging defect. */
+function isExtensionLoadingRefusal(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  // Apple's SQLite refuses with an authorization message; a build with
+  // SQLITE_OMIT_LOAD_EXTENSION names the capability. A missing file surfaces
+  // as ENOENT/dlopen-no-such-file and must stay a loud defect.
+  return /not authorized|omit.*load.*extension|extension loading is disabled/i.test(message);
+}
+
+/**
  * Loads the sqlite-vec extension into a Bun SQLite database.
  * Handles both bundled-binary and development execution contexts.
+ *
+ * Throws SqliteVecPlatformUnsupportedError when the platform itself refuses
+ * extension loading (see the class doc); rethrows everything else untouched.
  */
 export function loadSqliteVecExtension(db: Database): void {
   const bundledPath = resolveSqliteVecPath();
-  if (bundledPath) {
-    db.loadExtension(bundledPath);
-  } else {
-    loadSqliteVec(db);
+  try {
+    if (bundledPath) {
+      db.loadExtension(bundledPath);
+    } else {
+      loadSqliteVec(db);
+    }
+  } catch (err) {
+    if (isExtensionLoadingRefusal(err)) {
+      throw new SqliteVecPlatformUnsupportedError(err instanceof Error ? err.message : String(err));
+    }
+    throw err;
   }
 }
