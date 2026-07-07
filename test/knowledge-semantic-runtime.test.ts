@@ -65,8 +65,12 @@ describe('semantic knowledge/wiki enrichment: runtime bounds', () => {
     const result = await semantic.reindex({ knowledgeSpaceId: spaceId, limit: 10 });
 
     expect(result.scanned).toBe(1);
+    // Enrichment bookkeeping lives in its own derived record now, not on the
+    // append-only source row. (Defect 10.)
     expect(store.getSource(generated.id)?.metadata.semanticEnrichment).toBeUndefined();
-    expect(store.getSource(source.id)?.metadata.semanticEnrichment).toBeDefined();
+    expect(store.getSemanticEnrichmentState(generated.id)).toBeNull();
+    expect(store.getSemanticEnrichmentState(source.id)).not.toBeNull();
+    expect(store.getSource(source.id)?.metadata.semanticEnrichment).toBeUndefined();
   });
 
   test('scheduled self-improvement repairs intrinsic device gaps without waiting for Ask', async () => {

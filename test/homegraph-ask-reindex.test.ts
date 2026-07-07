@@ -51,8 +51,11 @@ describe('Home Graph ask, source repair, and reindex', () => {
     expect(ask.answer.linkedObjects.map((node) => node.title)).toContain('Front Door Sensor');
     expect(passport.markdown).toContain('Front Door Sensor');
     expect(passport.artifact.mimeType).toBe('text/markdown');
-    expect(unlinked.edge.metadata.linkStatus).toBe('unlinked');
-    expect(browse.edges.some((edge) => edge.id === unlinked.edge.id)).toBe(false);
+    // Unlink is a real reversal now: the link edge is removed, not soft-flagged.
+    expect(unlinked.reversed).toBe(true);
+    expect(unlinked.removedEdgeId).toBeDefined();
+    expect(browse.edges.some((edge) => edge.id === unlinked.removedEdgeId)).toBe(false);
+    expect(browse.edges.some((edge) => edge.relation === 'has_manual')).toBe(false);
   });
 
   test('asks large manual-backed graphs through bounded searchable extraction text', async () => {
