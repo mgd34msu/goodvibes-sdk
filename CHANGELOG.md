@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-07-07
+
+### Fixed
+
+- The platform-capability classification now recognizes the exact refusal
+  message Apple's system SQLite emits ("does not support dynamic extension
+  loading"), so macOS compiled binaries report the honest capability limit
+  as intended by 1.3.2.
+
 ## [1.3.2] - 2026-07-07
 
 ### Fixed
