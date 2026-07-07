@@ -6,6 +6,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+### Added
+- **One voice across every surface: the voice settings now live in a shared,
+  surface-independent place.** The text-to-speech settings (`tts.provider`,
+  `tts.voice`, `tts.speed`, `tts.llmProvider`, `tts.llmModel`) read from and write
+  to one neutral file, `~/.goodvibes/shared/settings.json`, instead of each
+  surface's own settings folder. So a voice chosen in one place — terminal,
+  desktop, or the agent — is the voice every surface uses, rather than each keeping
+  its own. A surface that has never set a shared voice keeps using its local
+  setting, so existing setups are unchanged; a shared value simply wins once one is
+  set. `ConfigManager.describeConfigKeySource(key)` reports which layer a value came
+  from (shared / project / global / default), so the resolution order is
+  inspectable, not just documented. See the decision record at
+  `docs/decisions/2026-07-06-shared-voice-config-tier.md`.
+- **The knowledge packet now discloses when it was cut short, on the wire.** The
+  `knowledge.packet` result carries `truncated`, `totalCandidates`, `droppedCount`,
+  `droppedForBudget`, and `budgetExhausted`, so a preview of a capped packet can no
+  longer read as the complete matched set. `droppedForBudget` / `budgetExhausted`
+  separate candidates the token budget actually forced out from those left off by
+  the item-count cap, so "N omitted to fit the budget" is only ever said when the
+  budget was truly the limit.
+- **A memory search result reports the recall confidence floor it was judged
+  against.** The honest search envelope carries `recallFloor`, so a surface can
+  state "below the N% recall floor" from the result instead of hardcoding the number
+  and silently drifting if the floor is retuned.
+
+### Fixed
+- **The memory recall-snapshot note now matches the established freshness
+  vocabulary.** A stale snapshot reads "may be stale … 45s ago" (lowercase, hedged,
+  whole seconds) rather than "STALE … 45000ms ago", matching the wording used
+  elsewhere. The note also labels its record count honestly against how the snapshot
+  was captured: an unfiltered browse capture is described as "in the browse set
+  (unfiltered — recall floor not applied)" rather than mislabeled "recall-eligible",
+  which only a recall-filtered capture earns.
+
 ## [1.2.0] - 2026-07-06
 
 ### Added
