@@ -147,6 +147,13 @@ export interface HonestMemorySearchResult {
   readonly excludedBelowFloorCount: number;
   /** Result count BEFORE any recall-injection filtering — so a caller can tell "index empty" from "everything filtered out". */
   readonly totalBeforeRecallFilter: number;
+  /**
+   * The store's configured recall confidence floor (MIN_PROMPT_MEMORY_CONFIDENCE)
+   * this result was judged against — carried on the wire so a surface can state
+   * the floor in a label ("below the N% recall floor") without hardcoding it and
+   * silently drifting if the store's floor is retuned.
+   */
+  readonly recallFloor: number;
 }
 
 /**
@@ -200,6 +207,7 @@ export function runHonestMemorySearch(
       excludedFlaggedCount: 0,
       excludedBelowFloorCount: 0,
       totalBeforeRecallFilter,
+      recallFloor: MIN_PROMPT_MEMORY_CONFIDENCE,
     };
   }
 
@@ -227,5 +235,6 @@ export function runHonestMemorySearch(
     excludedFlaggedCount,
     excludedBelowFloorCount,
     totalBeforeRecallFilter,
+    recallFloor: MIN_PROMPT_MEMORY_CONFIDENCE,
   };
 }

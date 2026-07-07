@@ -99,9 +99,22 @@ export function buildRecallSnapshot(
   const ageMs = Math.max(0, now - capturedAt);
   const stale = ageMs > staleAfterMs;
   const source = mode === 'client' ? 'over the wire from the adopted daemon' : 'from the local store';
+  // Humanized age, matching the TUI's established freshness vocabulary
+  // (session-picker-modal.ts: "may be stale, last synced Ns ago"): lowercase, a
+  // hedged "may be stale", and whole seconds — never raw milliseconds a reader
+  // cannot comfortably read.
+  const ageSeconds = Math.max(0, Math.round(ageMs / 1000));
+  const staleAfterSeconds = Math.max(0, Math.round(staleAfterMs / 1000));
   const freshness = stale
-    ? `STALE — captured ${ageMs}ms ago (older than the ${staleAfterMs}ms freshness window); a refresh is due`
-    : `captured ${ageMs}ms ago`;
+    ? `may be stale — captured ${ageSeconds}s ago (older than the ${staleAfterSeconds}s freshness window); a refresh is due`
+    : `captured ${ageSeconds}s ago`;
+  // Honest count clause: the snapshot's own recall flag decides what its count
+  // means. Only a recall-filtered capture (flagged + sub-floor records dropped)
+  // holds a "recall-eligible" count; an unfiltered browse capture holds the raw
+  // browse-set count and must NOT be labeled recall-eligible.
+  const countClause = search.recallFiltered
+    ? `${search.records.length} record(s) recall-eligible`
+    : `${search.records.length} record(s) in the browse set (unfiltered — recall floor not applied)`;
   const degraded = search.indexUnavailableReason
     ? ` Recall degraded to a literal scan: ${search.indexUnavailableReason}.`
     : '';
@@ -113,7 +126,7 @@ export function buildRecallSnapshot(
     ageMs,
     stale,
     mode,
-    note: `memory recall snapshot ${source}, ${freshness}; ${search.records.length} record(s) recall-eligible.`
+    note: `memory recall snapshot ${source}, ${freshness}; ${countClause}.`
       + degraded + caveat,
   };
 }
