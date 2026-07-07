@@ -254,16 +254,30 @@ function buildKnowledgePacketFromCurrentState(
   const totalCandidates = candidates.length;
   const items: KnowledgePacketItem[] = [];
   let estimatedTokens = 0;
+  // Count candidates skipped SPECIFICALLY because adding them would exceed the
+  // token budget, separately from those never reached because the item cap
+  // (limit) bound first. Conflating the two lets a generous-budget rank-cap drop
+  // read as "omitted to fit the budget" — see the honesty breakdown below.
+  let droppedForBudget = 0;
   for (const candidate of candidates
     .sort((a, b) => b.score - a.score || a.item.id.localeCompare(b.item.id))
     .slice(0, Math.max(1, limit * 4))) {
     if (items.length >= Math.max(1, limit)) break;
-    if (estimatedTokens + candidate.item.estimatedTokens > budgetLimit && items.length > 0) continue;
+    if (estimatedTokens + candidate.item.estimatedTokens > budgetLimit && items.length > 0) {
+      droppedForBudget += 1;
+      continue;
+    }
     items.push(candidate.item);
     estimatedTokens += candidate.item.estimatedTokens;
   }
   // Honest truncation disclosure — a partial packet must never read as complete.
+  // `droppedCount` is the honest TOTAL dropped; `droppedForBudget` is the subset
+  // the token budget actually forced out (so a surface can say "N omitted to fit
+  // the budget" truthfully), and `budgetExhausted` states whether the budget was
+  // the binding constraint at all — the rest of `droppedCount` is the rank/item
+  // cap, not the budget.
   const droppedCount = Math.max(0, totalCandidates - items.length);
+  const budgetExhausted = droppedForBudget > 0;
   const packet: KnowledgePacket = {
     task,
     writeScope: [...writeScope],
@@ -275,6 +289,8 @@ function buildKnowledgePacketFromCurrentState(
     truncated: droppedCount > 0,
     totalCandidates,
     droppedCount,
+    droppedForBudget,
+    budgetExhausted,
     items,
   };
   for (const item of items) {

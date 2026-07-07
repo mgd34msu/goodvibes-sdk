@@ -563,7 +563,16 @@ export interface KnowledgePacket {
    */
   readonly truncated: boolean;
   readonly totalCandidates: number;
+  /** Total candidates dropped (rank/item cap AND token budget combined). */
   readonly droppedCount: number;
+  /**
+   * The subset of `droppedCount` the token budget specifically forced out (as
+   * opposed to the rank/item cap). Lets a surface say "N omitted to fit the
+   * budget" truthfully instead of conflating cap-drops with budget-drops.
+   */
+  readonly droppedForBudget: number;
+  /** True when the token budget was a binding constraint (droppedForBudget > 0). */
+  readonly budgetExhausted: boolean;
 }
 
 export interface KnowledgeItemView {

@@ -560,8 +560,13 @@ export const KNOWLEDGE_PACKET_SCHEMA = objectSchema({
   strategy: STRING_SCHEMA,
   budgetLimit: NUMBER_SCHEMA,
   estimatedTokens: NUMBER_SCHEMA,
+  truncated: BOOLEAN_SCHEMA,
+  totalCandidates: NUMBER_SCHEMA,
+  droppedCount: NUMBER_SCHEMA,
+  droppedForBudget: NUMBER_SCHEMA,
+  budgetExhausted: BOOLEAN_SCHEMA,
   items: arraySchema(KNOWLEDGE_PACKET_ITEM_SCHEMA),
-}, ['task', 'writeScope', 'generatedAt', 'detail', 'strategy', 'budgetLimit', 'estimatedTokens', 'items']);
+}, ['task', 'writeScope', 'generatedAt', 'detail', 'strategy', 'budgetLimit', 'estimatedTokens', 'truncated', 'totalCandidates', 'droppedCount', 'droppedForBudget', 'budgetExhausted', 'items']);
 
 const KNOWLEDGE_USAGE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
