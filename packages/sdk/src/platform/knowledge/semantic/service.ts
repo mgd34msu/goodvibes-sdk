@@ -40,6 +40,16 @@ export class KnowledgeSemanticService {
     private options: KnowledgeSemanticServiceOptions = {},
   ) {}
 
+  /**
+   * The configured semantic LLM, or null when unconfigured. Home Graph issue
+   * triage prompts through this the same way `enrichment.ts`/`answer-llm.ts` do
+   * inside this service; exposing it lets the Home Graph refinement loop share the
+   * one model route without re-plumbing a provider registry.
+   */
+  get llm(): KnowledgeSemanticLlm | null {
+    return this.options.llm ?? null;
+  }
+
   setGapRepairer(gapRepairer: KnowledgeSemanticGapRepairer | null | undefined): void {
     this.options = {
       ...this.options,

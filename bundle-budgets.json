@@ -305,8 +305,8 @@
     "rationale": "public facade; measured 31 B gzip @ commit 4e5a5e2; headroom max(ceil(31*1.2)=38, 31+50=81) → 81 (+50 B floor dominates by 43 B)"
   },
   "./platform/knowledge/home-graph": {
-    "gzip_bytes": 192,
-    "rationale": "public facade; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) → 192 (+50 B floor dominates by 21 B)"
+    "gzip_bytes": 411,
+    "rationale": "public facade; grew when the LLM issue-triage loop (triage.ts, reached via HomeGraphService.runRefinement) joined the reachable surface; measured 342 B gzip after adding Home Graph device-issue triage; headroom max(ceil(342*1.2)=411, 342+50=392) → 411 (1.2x dominates)"
   },
   "./platform/mcp": {
     "gzip_bytes": 218,
