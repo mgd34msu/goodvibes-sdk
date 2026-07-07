@@ -7,7 +7,8 @@
  */
 
 export { ConfigManager } from './manager.js';
-export type { DeepReadonly } from './manager.js';
+export type { DeepReadonly, ConfigKeyTier, ConfigKeySource } from './manager.js';
+export { SHARED_CONFIG_KEYS, isSharedConfigKey } from './shared-config-tier.js';
 export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, PermissionMode, PermissionAction, PermissionsToolConfig, NotificationsConfig } from './schema.js';
 export { DEFAULT_CONFIG, CONFIG_KEYS, CONFIG_SCHEMA, isValidConfigKey } from './schema.js';
 export type { PersistedFlagState } from './schema-types.js';
