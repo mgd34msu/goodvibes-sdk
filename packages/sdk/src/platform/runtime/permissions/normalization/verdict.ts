@@ -13,20 +13,36 @@
 import type { CommandClassification } from './types.js';
 import type { ShellNode, CommandNode } from './ast.js';
 import { collectCommandNodes, describeNode } from './ast.js';
-import { classifySegment } from './classifier.js';
+import { classifySegment, catastrophicReason } from './classifier.js';
 import type { CommandSegment } from './types.js';
 
 /**
- * Default set of classifications permitted for exec commands.
+ * Conservative set of classifications for callers that gate by class
+ * WITHOUT a permission layer in front of them (e.g. policy tooling,
+ * standalone analysis). Destructive and escalation are excluded.
  *
- * Destructive and escalation are excluded; they require explicit user approval.
- * Network commands are allowed because connectivity restrictions are handled
- * by network-scope rules in the evaluator, not at the exec layer.
+ * The exec tool does NOT use this set: by the time a command executes, the
+ * permission layer (user settings, prompts, session approvals) has already
+ * approved the call, so the exec layer passes ALL_COMMAND_CLASSES and keeps
+ * only the unconditional catastrophic block.
  */
 export const DEFAULT_ALLOWED_CLASSES: ReadonlySet<CommandClassification> = new Set([
   'read',
   'write',
   'network',
+]);
+
+/**
+ * Every command classification. Passed by callers whose class-level risk
+ * decisions are owned by the permission layer (allow/prompt/deny settings),
+ * leaving only catastrophic and obfuscation checks at this layer.
+ */
+export const ALL_COMMAND_CLASSES: ReadonlySet<CommandClassification> = new Set([
+  'read',
+  'write',
+  'network',
+  'destructive',
+  'escalation',
 ]);
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -194,20 +210,21 @@ type PolicyPredicate = (node: CommandNode, classification: CommandClassification
  * First match wins (denial takes precedence).
  */
 const DEFAULT_POLICIES: PolicyPredicate[] = [
-  // Deny destructive commands unconditionally
-  (_, cls) =>
-    cls === 'destructive'
-      ? `segment classified as destructive — denied by policy`
-      : null,
-  // Deny escalation commands unconditionally
-  (_, cls) =>
-    cls === 'escalation'
-      ? `segment classified as escalation — denied by policy`
-      : null,
-  // Deny network commands by default (can be overridden by caller)
-  // NOTE: the exec integration layer overrides this based on feature flags
-  // so this policy only fires when no override is provided.
-  (_node, _cls) => null,
+  // Catastrophic commands (root deletion, raw disk destruction, fork bombs)
+  // are blocked unconditionally. Everything else — including destructive- and
+  // escalation-CLASS commands like kill/rm/docker/sudo — is gated by the
+  // allowedClasses check below, so the caller (ultimately the user's
+  // permission settings) decides.
+  (node, _cls) => {
+    const reason = catastrophicReason({
+      raw: node.raw,
+      tokens: node.tokens,
+      command: node.command,
+      args: node.args,
+      flags: node.flags,
+    });
+    return reason === null ? null : `unconditionally blocked destructive command — ${reason}`;
+  },
 ];
 
 /**

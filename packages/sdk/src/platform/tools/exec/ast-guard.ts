@@ -17,6 +17,7 @@
 import { parseCommandAST } from '../../runtime/permissions/normalization/parser.js';
 import { evaluateCommandAST, DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
 import { normalizeCommand } from '../../runtime/permissions/normalization/index.js';
+import { catastrophicReason } from '../../runtime/permissions/normalization/classifier.js';
 import type { CompoundVerdict } from '../../runtime/permissions/normalization/verdict.js';
 import type { CommandClassification } from '../../runtime/permissions/normalization/types.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
@@ -58,23 +59,44 @@ export interface ASTGuardResult {
 /**
  * Evaluates a command using the baseline flat segmentation pipeline.
  *
- * Returns `allowed: true` for non-destructive, non-escalation commands.
- * This matches the baseline exec safety path used when AST normalization is off.
+ * Catastrophic segments (root deletion, raw disk destruction, fork bombs —
+ * see catastrophicReason in the classifier; that list is frozen) are denied
+ * unconditionally. Everything else is gated by `allowedClasses`: the caller
+ * decides which classification tiers pass, so class-level risk stays with
+ * the permission layer rather than a second config-blind gate here.
  *
- * @param command - The raw shell command string.
+ * @param command        - The raw shell command string.
+ * @param allowedClasses - Classification tiers the caller permits.
  * @returns ASTGuardResult with AST mode disabled.
  */
-function baselineGuard(command: string): ASTGuardResult {
+function baselineGuard(
+  command: string,
+  allowedClasses: ReadonlySet<CommandClassification>,
+): ASTGuardResult {
   const normalized = normalizeCommand(command);
-  const cls = normalized.highestClassification;
 
-  if (cls === 'destructive' || cls === 'escalation') {
+  for (const seg of normalized.segments) {
+    const reason = catastrophicReason(seg);
+    if (reason !== null) {
+      return {
+        allowed: false,
+        denialMessage:
+          `Command denied (safety block): "${command}"\n` +
+          `Unconditionally blocked destructive command — ${reason}.\n` +
+          `This block is not affected by permission settings.`,
+        astModeActive: false,
+      };
+    }
+  }
+
+  const cls = normalized.highestClassification;
+  if (!allowedClasses.has(cls)) {
     return {
       allowed: false,
       denialMessage:
-        `Command denied (baseline mode): "${command}"\n` +
+        `Command denied (command-class policy): "${command}"\n` +
         `Classification: ${cls}\n` +
-        `Highest-risk operation in compound command is classified as ${cls}.`,
+        `Classification "${cls}" is not in the caller's allowed set [${[...allowedClasses].join(', ')}].`,
       astModeActive: false,
     };
   }
@@ -126,8 +148,10 @@ function astGuard(
  * is enabled, otherwise falls back to the baseline segmentation path.
  *
  * @param command        - The raw shell command string to evaluate.
- * @param allowedClasses - Override for the default allowed classification set.
- *                         Only used in AST mode.
+ * @param allowedClasses - Classification tiers the caller permits (honored in
+ *                         both AST and baseline modes). Callers fronted by the
+ *                         permission layer pass ALL_COMMAND_CLASSES so class
+ *                         risk is decided by user settings, not this guard.
  * @returns ASTGuardResult with allow/deny decision and optional denial message.
  *
  * @example
@@ -144,7 +168,7 @@ export async function guardExecCommand(
   if (isASTNormalizationEnabled(flagManager)) {
     return astGuard(command, allowedClasses);
   }
-  return baselineGuard(command);
+  return baselineGuard(command, allowedClasses);
 }
 
 /**

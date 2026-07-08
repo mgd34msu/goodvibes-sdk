@@ -105,8 +105,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // runtime.ts (tools/exec) ~0.92k — exec tool runtime, pre-split, shrink-only
   'packages/sdk/src/platform/tools/exec/runtime.ts': {
-    ceiling: 916,
-    justification: 'exec tool runtime, pre-split, shrink-only',
+    ceiling: 919,
+    justification: 'exec tool runtime, pre-split, shrink-only; +3 lines document the guard authority split (permission layer owns class risk, tool layer only the frozen catastrophic block)',
   },
   // manager.ts (tools/agent) ~0.87k — agent tool manager, pre-split, shrink-only
   'packages/sdk/src/platform/tools/agent/manager.ts': {

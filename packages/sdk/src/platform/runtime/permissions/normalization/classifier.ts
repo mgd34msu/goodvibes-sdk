@@ -164,6 +164,67 @@ const DANGEROUS_PATTERNS: DangerousPattern[] = [
   },
 ];
 
+// ── Catastrophic command detection ─────────────────────────────────────────────
+
+/**
+ * Returns a denial reason when the segment is catastrophic — an operation so
+ * irreversible (root filesystem deletion, raw disk destruction, fork bomb)
+ * that it is blocked unconditionally, regardless of permission settings.
+ *
+ * This is deliberately a MUCH narrower net than the 'destructive'
+ * classification: ordinary destructive-class commands (kill, rm on project
+ * paths, truncate) are risk-classified and left to the permission layer,
+ * where user settings and prompts decide. Catastrophic commands have no
+ * legitimate agent use and no configuration surface.
+ *
+ * @param seg - The command segment to check.
+ * @returns A human-readable reason if catastrophic, or null.
+ */
+export function catastrophicReason(seg: CommandSegment): string | null {
+  const { command, args, flags, raw } = seg;
+  // The segmenter routes path-like and key=value tokens to `tokens` rather
+  // than `args`, so operands are collected from both.
+  const operands = [
+    ...args,
+    ...seg.tokens
+      .filter((t) => t.type !== 'command' && t.type !== 'flag')
+      .map((t) => t.value),
+  ];
+
+  if (command === 'rm') {
+    if (flags.includes('--no-preserve-root')) {
+      return 'rm --no-preserve-root: destructive root filesystem deletion';
+    }
+    const recursive = flags.some((f) => f.includes('r') || f === '--recursive');
+    const force = flags.some((f) => f.includes('f') || f === '--force');
+    if (recursive && force && operands.some((a) => a === '/' || a === '/*')) {
+      return 'rm -rf /: destructive root filesystem deletion';
+    }
+  }
+
+  if (command === 'dd' && operands.some((a) => a.startsWith('of=/dev/'))) {
+    return 'dd writing to a raw device: destructive disk overwrite';
+  }
+
+  if (command.startsWith('mkfs') || command === 'wipefs') {
+    return `${command}: destructive filesystem/device wipe`;
+  }
+
+  if (command === 'shred' && operands.some((a) => a.startsWith('/dev/'))) {
+    return 'shred on a raw device: destructive disk overwrite';
+  }
+
+  if (raw.includes(':(){') || raw.includes(':|:&')) {
+    return 'fork bomb: destructive resource exhaustion';
+  }
+
+  if (/>\s*\/dev\/(sd|hd|nvme|vd|mmcblk)/.test(raw)) {
+    return 'redirect to a raw disk device: destructive disk overwrite';
+  }
+
+  return null;
+}
+
 // ── Classification priority ────────────────────────────────────────────────────
 
 /** Ordered priority: index 0 = highest risk. */
