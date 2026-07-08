@@ -99,7 +99,7 @@ import {
   createWorkflowServices,
   type WorkflowServices,
 } from '../tools/workflow/index.js';
-import { createProcessRegistry, type ProcessRegistry } from './fleet/index.js';
+import { createProcessRegistry, withFleetArchive, type ArchivableProcessRegistry } from './fleet/index.js';
 import { createOrchestrationEngine, type OrchestrationEngine } from '../orchestration/index.js';
 
 export interface RuntimeServicesOptions {
@@ -239,7 +239,7 @@ export interface RuntimeServices {
    * runtime (tests, embedders) should call processRegistry.dispose()
    * themselves; when a RuntimeServices-wide dispose seam lands, wire this in.
    */
-  readonly processRegistry: ProcessRegistry;
+  readonly processRegistry: ArchivableProcessRegistry;
   readonly modeManager: ModeManager;
   readonly fileUndoManager: FileUndoManager;
   readonly workspaceCheckpointManager: WorkspaceCheckpointManager;
@@ -699,7 +699,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Live process registry — narrow structural deps only, constructed
   // after every source manager exists. See the RuntimeServices interface
   // comment for the dispose story (no RuntimeServices-wide shutdown seam yet).
-  const processRegistry = createProcessRegistry({
+  // Archive-aware: finished agent/swarm subtrees can be moved out of the
+  // live fleet view into a session-scoped archive (see fleet/archive.ts).
+  const processRegistry = withFleetArchive(createProcessRegistry({
     agentManager,
     wrfcController,
     orchestrationEngine,
@@ -715,7 +717,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
     priceUsage,
     codeIndexService: codeIndexStore,
-  });
+  }));
 
   registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths }); // see routes/register-gateway-verb-groups.ts
   return {

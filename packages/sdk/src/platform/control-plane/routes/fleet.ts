@@ -32,6 +32,7 @@ import type {
   ProcessRegistry,
   ProcessState,
 } from '../../runtime/fleet/types.js';
+import type { FleetArchiveView } from '../../runtime/fleet/archive.js';
 import { paginateItems } from '@pellux/goodvibes-daemon-sdk';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
@@ -180,22 +181,67 @@ export function createFleetListHandler(registry: FleetQueryOnlyRegistry): Gatewa
   };
 }
 
+/** Registry surface for the archive verbs — optional so a runtime without the archive layer degrades honestly. */
+export type FleetArchiveCapableRegistry = FleetQueryOnlyRegistry & Partial<FleetArchiveView>;
+
+function requireArchive<K extends keyof FleetArchiveView>(
+  registry: FleetArchiveCapableRegistry,
+  method: K,
+): FleetArchiveView[K] {
+  const fn = registry[method];
+  if (!fn) {
+    throw new GatewayVerbError('This runtime has no fleet archive layer.', 'UNSUPPORTED', 501);
+  }
+  return fn as FleetArchiveView[K];
+}
+
+export function createFleetArchiveHandler(registry: FleetArchiveCapableRegistry): GatewayMethodHandler {
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const id = typeof params.id === 'string' ? params.id.trim() : '';
+    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400);
+    return requireArchive(registry, 'archive')(id);
+  };
+}
+
+export function createFleetUnarchiveHandler(registry: FleetArchiveCapableRegistry): GatewayMethodHandler {
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const id = typeof params.id === 'string' ? params.id.trim() : '';
+    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400);
+    return { restored: requireArchive(registry, 'unarchive')(id) };
+  };
+}
+
+export function createFleetArchiveFinishedHandler(registry: FleetArchiveCapableRegistry): GatewayMethodHandler {
+  return () => ({ archivedCount: requireArchive(registry, 'archiveFinished')() });
+}
+
+export function createFleetArchivedListHandler(registry: FleetArchiveCapableRegistry): GatewayMethodHandler {
+  return () => {
+    const snapshot = requireArchive(registry, 'listArchived')();
+    return { capturedAt: snapshot.capturedAt, nodes: snapshot.nodes };
+  };
+}
+
 /**
- * Attach the `fleet.snapshot` / `fleet.list` handlers to the descriptors
+ * Attach the `fleet.*` handlers to the descriptors
  * already registered (without a handler) from
- * ../method-catalog-control-core.ts's static builtin array. Call once, at
+ * ../method-catalog-fleet.ts's static builtin array. Call once, at
  * RuntimeServices construction time, after `processRegistry` exists.
  * A missing descriptor (contract/registration drift) is a silent no-op
  * rather than a throw — construction must never fail because a wire verb
  * failed to register; the operator-contract gates catch a real drift.
  */
-export function registerFleetGatewayMethods(catalog: GatewayMethodCatalog, registry: FleetQueryOnlyRegistry): void {
-  const snapshotDescriptor = catalog.get('fleet.snapshot');
-  if (snapshotDescriptor) {
-    catalog.register(snapshotDescriptor, createFleetSnapshotHandler(registry), { replace: true });
-  }
-  const listDescriptor = catalog.get('fleet.list');
-  if (listDescriptor) {
-    catalog.register(listDescriptor, createFleetListHandler(registry), { replace: true });
-  }
+export function registerFleetGatewayMethods(catalog: GatewayMethodCatalog, registry: FleetArchiveCapableRegistry): void {
+  const attach = (id: string, handler: GatewayMethodHandler): void => {
+    const descriptor = catalog.get(id);
+    if (descriptor) catalog.register(descriptor, handler, { replace: true });
+  };
+  attach('fleet.snapshot', createFleetSnapshotHandler(registry));
+  attach('fleet.list', createFleetListHandler(registry));
+  attach('fleet.archive', createFleetArchiveHandler(registry));
+  attach('fleet.unarchive', createFleetUnarchiveHandler(registry));
+  attach('fleet.archiveFinished', createFleetArchiveFinishedHandler(registry));
+  attach('fleet.archived.list', createFleetArchivedListHandler(registry));
 }

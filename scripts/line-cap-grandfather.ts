@@ -55,8 +55,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
-    ceiling: 1078,
-    justification: 'core orchestrator monolith, pre-split, shrink-only; +15 for model-context-warning plumbing (pending-warning field, turn-loop note callback, preflight/post-turn dep wiring)',
+    ceiling: 1084,
+    justification: 'core orchestrator monolith, pre-split, shrink-only; +15 for model-context-warning plumbing (pending-warning field, turn-loop note callback, preflight/post-turn dep wiring); +6 for replay deliver-once acknowledgment after injection',
   },
   // enrichment.ts ~1.00k — semantic enrichment pipeline, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/semantic/enrichment.ts': {
@@ -95,8 +95,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator-runner.ts ~0.97k — agent orchestrator runner, pre-split, shrink-only
   'packages/sdk/src/platform/agents/orchestrator-runner.ts': {
-    ceiling: 967,
-    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts)',
+    ceiling: 973,
+    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections',
   },
   // service.ts (knowledge) ~0.92k — knowledge service facade, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/service.ts': {
@@ -167,6 +167,11 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   'packages/sdk/src/platform/runtime/fleet/registry.ts': {
     ceiling: 806,
     justification: 'runtime fleet registry, pre-split, shrink-only',
+  },
+  // registry.ts (providers) ~0.82k — provider registry, split candidate
+  'packages/sdk/src/platform/providers/registry.ts': {
+    ceiling: 822,
+    justification: 'provider registry crossed the cap with the context-window knowledge surface (user override + observed-limit delegates to ContextWindowOverrideStore, which owns the logic); model-listing vs provider-lifecycle split is the natural next cut',
   },
   // session-broker.ts (control-plane) ~0.88k — control-plane session broker, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/session-broker.ts': {

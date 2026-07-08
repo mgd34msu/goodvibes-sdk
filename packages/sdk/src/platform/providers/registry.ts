@@ -553,9 +553,9 @@ export class ProviderRegistry {
   }
 
   /**
-   * Clear a user-configured context window, returning the model to its
-   * automatic window (catalog / provider API / family fallback).
-   * Returns true when an override existed.
+   * Clear the user-configured context window AND any learned provider limit,
+   * returning the model to fully automatic resolution (catalog / provider
+   * API / family fallback). Returns true when anything was cleared.
    */
   clearModelContextCap(registryKey: string): boolean {
     const existed = this.contextWindowOverrideStore().clear(registryKey);
@@ -566,6 +566,29 @@ export class ProviderRegistry {
   /** The user-configured context window for a model, or null when automatic. */
   getModelContextCap(registryKey: string): number | null {
     return this.contextWindowOverrideStore().get(registryKey);
+  }
+
+  /** The learned provider context ceiling for a model, or null when none observed. */
+  getObservedContextWindow(registryKey: string): number | null {
+    return this.contextWindowOverrideStore().getObserved(registryKey);
+  }
+
+  /**
+   * A provider rejected a request of ~`rejectedAtTokens` as too long — learn
+   * that ceiling so window math, compaction thresholds, and meters use the
+   * endpoint's REAL limit instead of an over-stated catalog value.
+   */
+  recordContextWindowRejection(registryKey: string, rejectedAtTokens: number): void {
+    this.contextWindowOverrideStore().recordRejection(registryKey, rejectedAtTokens);
+    this._invalidateModelRegistry();
+  }
+
+  /** A request with real billed input succeeded — raise a too-pessimistic learned ceiling. */
+  reconcileObservedContextWindow(registryKey: string, successfulInputTokens: number): void {
+    const before = this.contextWindowOverrideStore().getObserved(registryKey);
+    if (before === null || successfulInputTokens <= before) return;
+    this.contextWindowOverrideStore().reconcileSuccess(registryKey, successfulInputTokens);
+    this._invalidateModelRegistry();
   }
 
   /** Switch to a different model. Requires the model registryKey (`provider:modelId`). */
