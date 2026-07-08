@@ -6,11 +6,38 @@ export const ANTHROPIC_STOP_REASON_MAP: Readonly<Record<string, ChatStopReason>>
   max_tokens: 'max_tokens',
   tool_use: 'tool_call',
   stop_sequence: 'stop_sequence',
+  model_context_window_exceeded: 'context_overflow',
 };
 
 export function mapAnthropicStopReason(raw: string | null | undefined): ChatStopReason {
   if (!raw) return 'unknown';
   return ANTHROPIC_STOP_REASON_MAP[raw] ?? 'unknown';
+}
+
+/**
+ * Raw provider stop-reason strings that mean "the model's context window filled
+ * up while generating this response". Covers providers whose raw value passes
+ * through unmapped (openai-compatible local servers vary in spelling).
+ */
+export const CONTEXT_OVERFLOW_RAW_STOP_REASONS: ReadonlySet<string> = new Set([
+  'model_context_window_exceeded',
+  'context_length_exceeded',
+  'context_window_exceeded',
+]);
+
+/**
+ * True when a chat response carries a context-window warning from the model or
+ * provider — either the normalized 'context_overflow' stop reason or a raw
+ * provider value naming context exhaustion. Consumers treat this as an
+ * immediate compaction trigger: the provider's own report is authoritative and
+ * overrides local token estimates.
+ */
+export function isContextOverflowSignal(
+  stopReason: ChatStopReason,
+  providerStopReason?: string | undefined,
+): boolean {
+  if (stopReason === 'context_overflow') return true;
+  return providerStopReason !== undefined && CONTEXT_OVERFLOW_RAW_STOP_REASONS.has(providerStopReason);
 }
 
 /** Maps OpenAI finish_reason values to the canonical ChatStopReason vocab. */

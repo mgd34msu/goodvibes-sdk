@@ -6,6 +6,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-08
+
+### Added
+
+- **A compaction warning from the model triggers immediate auto-compaction,
+  regardless of estimated context usage.** When a provider response reports
+  that the model's context window filled up (Anthropic stop reason
+  `model_context_window_exceeded`, or raw values like
+  `context_length_exceeded` from openai-compatible servers), the orchestrator
+  now compacts at the next opportunity — before the next chat call in a tool
+  loop, or in post-turn maintenance — even when the local token estimate is
+  below the configured threshold and even when the percentage threshold is
+  disabled. The provider's own report is authoritative over local estimates,
+  matching how the reactive strategy already treats prompt-too-long errors.
+  Agent runs get the same behavior (structural compaction immediately after
+  the warning response). Ops `OPS_CONTEXT_WARNING` events and compact hooks
+  carry the new reason `model-warning`.
+- New normalized stop reason `context_overflow` in `ChatStopReason`, plus
+  `isContextOverflowSignal` and `CONTEXT_OVERFLOW_RAW_STOP_REASONS` exports
+  from the providers module.
+- **Persisted per-model context-window overrides.** `ProviderRegistry.setModelContextCap`
+  now works for any model (cloud, catalog, custom, or discovered — previously
+  local models only), and the override persists under the control-plane config
+  dir (`context-window-overrides.json`), surviving restarts and applying to
+  every consumer of the same home. New `clearModelContextCap` returns a model
+  to its automatic window; new `getModelContextCap` reads the override.
+  Overrides apply with provenance `configured_cap`, which remains
+  authoritative in `getContextWindowForModel`. New exports:
+  `MAX_CONTEXT_WINDOW_OVERRIDE`, `isValidContextWindowOverride`.
+
 ## [1.4.1] - 2026-07-07
 
 ### Fixed

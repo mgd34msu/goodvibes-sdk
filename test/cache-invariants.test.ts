@@ -10,7 +10,10 @@
  * I2(d) _syncScheduled coalesces burst of rememberEvent calls into 1 dispatch per tick
  * I2(e) getMessagesForLLM reference identity — same ref on cache hit, fresh ref after mutation
  */
-import { describe, expect, test, beforeEach, mock } from 'bun:test';
+import { describe, expect, test, afterAll, beforeEach, mock } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ConversationManager } from '../packages/sdk/src/platform/core/conversation.js';
 import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/gateway.js';
 
@@ -22,17 +25,27 @@ import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/
 import { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
 import { ProviderCapabilityRegistry } from '../packages/sdk/src/platform/providers/capabilities.js';
 
+// Each registry gets its own persistence root: setModelContextCap persists
+// context-window overrides under the control-plane config dir, so a shared
+// fixed root would leak state between tests and across runs.
+const registryRoots: string[] = [];
+afterAll(() => {
+  for (const root of registryRoots) rmSync(root, { recursive: true, force: true });
+});
+
 function makeMinimalRegistry(): ProviderRegistry {
   const noop = () => {};
   const noopPromise = async () => ({});
   const capabilityRegistry = new ProviderCapabilityRegistry();
+  const root = mkdtempSync(join(tmpdir(), 'gv-cache-invariants-'));
+  registryRoots.push(root);
 
   const stub = {
     // ConfigManager
     configManager: {
       get: () => null,
       getCategory: () => ({}),
-      getControlPlaneConfigDir: () => '/tmp/gv-test',
+      getControlPlaneConfigDir: () => root,
     },
     // SubscriptionManager
     subscriptionManager: {

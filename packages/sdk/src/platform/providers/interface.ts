@@ -244,6 +244,7 @@ export type ChatStopReason =
   | 'tool_call'        // Model requested tool invocation (was 'tool_use')
   | 'stop_sequence'    // Matched an explicit stop sequence
   | 'content_filter'   // Provider content filter triggered
+  | 'context_overflow' // Provider reports the model's context window filled up
   | 'error'            // Generation aborted due to error
   | 'unknown';         // Default for unmapped provider values
 

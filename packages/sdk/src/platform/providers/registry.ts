@@ -42,6 +42,7 @@ import { getModelLimitsCachePath, ModelLimitsService } from './model-limits.js';
 import { getGitHubCopilotTokenCachePath } from './github-copilot.js';
 import { summarizeError } from '../utils/error-display.js';
 import { inferFallbackContextWindow } from './context-window-fallback.js';
+import { ContextWindowOverrideStore, getContextWindowOverridesPath } from './context-window-overrides.js';
 import {
   splitModelRegistryKey,
   stableStringify,
@@ -100,6 +101,8 @@ export class ProviderRegistry {
   private syntheticCanonicalModels: CanonicalModel[] = [];
   private _cachedModelRegistry: ModelDefinition[] | null = null;
   private _modelRegistryRevision = 0;
+  /** Persisted per-model context-window overrides; lazy-constructed (needs persistence root). */
+  private _contextWindowOverrideStore: ContextWindowOverrideStore | null = null;
 
   constructor(options: ProviderRegistryOptions) {
     this.configManager = options.configManager;
@@ -197,8 +200,15 @@ export class ProviderRegistry {
       catalogModels: this.getCatalogBuiltins(),
       discoveredModels: this.discoveredModels,
       suppressedCatalogRegistryKeys: this.getSuppressedCatalogModelRegistryKeys(),
-    });
+    }).map((model) => this.contextWindowOverrideStore().apply(model));
     return this._cachedModelRegistry;
+  }
+
+  private contextWindowOverrideStore(): ContextWindowOverrideStore {
+    this._contextWindowOverrideStore ??= new ContextWindowOverrideStore(
+      getContextWindowOverridesPath(this.getPersistenceRoot()),
+    );
+    return this._contextWindowOverrideStore;
   }
 
   /** Register a provider. Overwrites any existing entry with the same name. */
@@ -512,7 +522,7 @@ export class ProviderRegistry {
     const provider = this.tryGet(providerId);
     if (!provider || !provider.models.includes(resolvedModelId)) return null;
     const isFree = resolvedModelId.endsWith(':free') || resolvedModelId.endsWith('-free') || resolvedModelId.endsWith('/free');
-    return {
+    return this.contextWindowOverrideStore().apply({
       id: resolvedModelId,
       provider: providerId,
       registryKey: `${providerId}:${resolvedModelId}`,
@@ -523,41 +533,39 @@ export class ProviderRegistry {
       contextWindowProvenance: 'fallback',
       selectable: true,
       tier: isFree ? 'free' : 'standard',
-    };
+    });
   }
 
   /**
-   * Override the context window cap for a custom or discovered (local) model.
-   * Mutates the live model entry in customModels or discoveredModels so the change
-   * is reflected immediately without requiring a full provider reload.
-   *
-   * @param registryKey - The model's registryKey (`provider:id`).
-   * @param cap         - New context window value in tokens.
-   * @remarks Context cap is session-only. Not persisted to config — lost on restart.
+   * Set a user-configured context window (tokens) for any model — custom,
+   * discovered, or catalog. Applied as a 'configured_cap' overlay and
+   * persisted to the control-plane config dir, so it survives restarts and
+   * reaches every consumer of the same home. Keys for models not yet
+   * registered are allowed — discovered models pick the override up when
+   * they materialize.
    */
   setModelContextCap(registryKey: string, cap: number): void {
-    // Try customModels first, then discoveredModels
-    const customIdx = this.customModels.findIndex((m) => m.registryKey === registryKey);
-    if (customIdx >= 0) {
-      this.customModels[customIdx] = {
-        ...this.customModels[customIdx]!,
-        contextWindow: cap,
-        contextWindowProvenance: 'configured_cap',
-      };
-      this._invalidateModelRegistry();
+    if (!this.contextWindowOverrideStore().set(registryKey, cap)) {
+      logger.warn('[registry] setModelContextCap: rejecting invalid cap', { registryKey, cap });
       return;
     }
-    const discoveredIdx = this.discoveredModels.findIndex((m) => m.registryKey === registryKey);
-    if (discoveredIdx >= 0) {
-      this.discoveredModels[discoveredIdx] = {
-        ...this.discoveredModels[discoveredIdx]!,
-        contextWindow: cap,
-        contextWindowProvenance: 'configured_cap',
-      };
-      this._invalidateModelRegistry();
-      return;
-    }
-    logger.warn('[registry] setModelContextCap: model not found', { registryKey });
+    this._invalidateModelRegistry();
+  }
+
+  /**
+   * Clear a user-configured context window, returning the model to its
+   * automatic window (catalog / provider API / family fallback).
+   * Returns true when an override existed.
+   */
+  clearModelContextCap(registryKey: string): boolean {
+    const existed = this.contextWindowOverrideStore().clear(registryKey);
+    if (existed) this._invalidateModelRegistry();
+    return existed;
+  }
+
+  /** The user-configured context window for a model, or null when automatic. */
+  getModelContextCap(registryKey: string): number | null {
+    return this.contextWindowOverrideStore().get(registryKey);
   }
 
   /** Switch to a different model. Requires the model registryKey (`provider:modelId`). */
