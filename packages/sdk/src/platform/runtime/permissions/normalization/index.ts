@@ -28,10 +28,10 @@ export type {
 export { tokenize } from './tokenizer.js';
 export { segment } from './segmenter.js';
 export { canonicalize } from './canonicalizer.js';
-export { classifySegment, classifyCommand, higherPriority } from './classifier.js';
+export { classifySegment, classifyCommand, higherPriority, catastrophicReason } from './classifier.js';
 export { collectCommandNodes, describeNode } from './ast.js';
 export { parseAST, parseCommandAST } from './parser.js';
-export { evaluateSegmentNode, evaluateCommandAST, buildDenialExplanation, DEFAULT_ALLOWED_CLASSES } from './verdict.js';
+export { evaluateSegmentNode, evaluateCommandAST, buildDenialExplanation, DEFAULT_ALLOWED_CLASSES, ALL_COMMAND_CLASSES } from './verdict.js';
 
 import { tokenize } from './tokenizer.js';
 import { segment } from './segmenter.js';

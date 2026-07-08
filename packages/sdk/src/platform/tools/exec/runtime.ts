@@ -9,7 +9,7 @@ import { ProcessManager } from '../shared/process-manager.js';
 import { guardExecCommand, formatDenialResponse } from './ast-guard.js';
 import { executeFileOperations } from './file-ops.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
-import { DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
+import { ALL_COMMAND_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
 import { mapWithConcurrency, sleep } from '../../utils/concurrency.js';
 import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
 
@@ -240,7 +240,10 @@ async function runCommand(
   globalTimeout: number,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
-  const guardResult = await guardExecCommand(cmdStr, DEFAULT_ALLOWED_CLASSES, featureFlags);
+  // Class risk (kill/rm/docker/sudo…) is the permission layer's decision and
+  // was already approved before this runtime runs — never re-deny by class.
+  // ALL_COMMAND_CLASSES leaves only the frozen catastrophic block active.
+  const guardResult = await guardExecCommand(cmdStr, ALL_COMMAND_CLASSES, featureFlags);
   if (!guardResult.allowed) {
     const denial = formatDenialResponse(guardResult, cmdStr);
     return {

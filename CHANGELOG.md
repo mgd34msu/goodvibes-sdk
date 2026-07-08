@@ -6,6 +6,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-07-07
+
+### Fixed
+
+- **Permission settings are now the authority for command-class risk in the
+  exec tool.** The exec guard previously hard-denied every command it
+  classified as destructive (`kill`, `killall`, `pkill`, `rm`, `truncate`) or
+  escalation (`docker`, `kubectl`, `sudo`, `helm`, …) with
+  `Command denied (baseline mode)` — unconditionally, ignoring the user's
+  permission configuration entirely, and re-denying commands the permission
+  layer had already approved (including explicit prompt approvals). A session
+  with exec allowed could not kill a process or run `docker ps`. Class-level
+  risk decisions now belong exclusively to the permission layer (mode
+  `allow-all`, per-tool `allow`/`prompt`/`deny`, prompts, session approvals);
+  the exec layer no longer gates by class in either baseline or AST mode.
+- The only remaining unconditional exec-layer denial is a small, frozen
+  catastrophic list (`catastrophicReason` in the command classifier): root
+  filesystem deletion (`rm -rf /`, `rm --no-preserve-root`), raw disk
+  destruction (`dd of=/dev/…`, `mkfs*`, `wipefs`, `shred /dev/…`, redirects
+  onto raw disk devices), and fork bombs. Its denial message states the
+  pattern that fired and that permission settings do not affect it. This list
+  does not grow without an explicit owner decision.
+- `guardExecCommand` now honors its `allowedClasses` parameter in baseline
+  mode (previously it was consulted only in AST mode). New exports:
+  `ALL_COMMAND_CLASSES` and `catastrophicReason` from the command
+  normalization module.
+
 ## [1.4.0] - 2026-07-07
 
 ### Added
