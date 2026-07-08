@@ -39,11 +39,11 @@ function generateId(): string {
  * After the grace period, if unacknowledged, they are replayed as
  * system messages in the conversation.
  *
- * Replay strategy:
- * - After 1 turn grace: replay once as system message
- * - After 2nd replay: replay with emphasis
- * - After 3rd replay: mark as dropped, log warning
- * - Max 3 replays per event
+ * Delivery semantics: the caller acknowledges an event as soon as its
+ * formatted message is injected into the conversation (see the orchestrator's
+ * turn-completion hook) — injection IS delivery, so each event reaches the
+ * model exactly once. maxReplays remains as a backstop for callers that
+ * defer acknowledgment; events exceeding it are dropped with a log line.
  */
 export class EventReplayQueue {
   private queue: QueuedEvent[] = [];

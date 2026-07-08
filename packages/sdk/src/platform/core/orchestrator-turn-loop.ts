@@ -4,7 +4,7 @@ import { ConsecutiveErrorBreaker } from './circuit-breaker.js';
 import type { CacheHitTracker } from '../providers/cache-strategy.js';
 import type { ConfigManager } from '../config/manager.js';
 import { estimateConversationTokens, estimateTokens } from './context-compaction.js';
-import { ProviderError, isNonTransientProviderFailure } from '../types/errors.js';
+import { ProviderError, isContextSizeExceededError, isNonTransientProviderFailure } from '../types/errors.js';
 import { formatProviderError } from '../utils/error-display.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { ToolRegistry } from '../tools/registry.js';
@@ -77,7 +77,7 @@ export interface OrchestratorTurnLoopContext {
   readonly runtimeBus: RuntimeEventBus | null;
   readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
   readonly configManager: Pick<ConfigManager, 'get'>;
-  readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel' | 'getTokenLimitsForModel' | 'getContextWindowForModel'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel' | 'getTokenLimitsForModel' | 'getContextWindowForModel' | 'recordContextWindowRejection' | 'reconcileObservedContextWindow'>;
   readonly favoritesStore?: Pick<FavoritesStore, 'recordUsage'> | undefined;
   readonly cacheHitTracker: Pick<CacheHitTracker, 'getMetrics'>;
   readonly helperModel: HelperModel;
@@ -169,6 +169,9 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
   const streamEnabled = context.configManager.get('display.stream') as boolean;
 
   let continueLoop = true;
+  // One compact-and-retry per runTurn() when the provider rejects a request
+  // as exceeding the context window; a second rejection surfaces as an error.
+  let contextOverflowRetried = false;
   const circuitBreaker = new ConsecutiveErrorBreaker();
   // True only for the FIRST LLM call this executeOrchestratorTurnLoop()
   // invocation makes (see the per-iteration gate below for why this is the main loop's
@@ -423,6 +426,27 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       if (streamSessionStarted && context.runtimeBus) {
         emitStreamEnd(context.runtimeBus, context.emitterContext(context.turnId), { turnId: context.turnId });
       }
+      if (isContextSizeExceededError(chatErr) && !contextOverflowRetried) {
+        // The provider rejected the request as exceeding the model's context
+        // window (e.g. openai-codex 'context_length_exceeded'). This is the
+        // authoritative signal that the effective window is smaller than the
+        // catalog claims: learn the rejected size as the model's practical
+        // ceiling, then compact immediately and retry the request once —
+        // never tell the user to run /compact by hand.
+        contextOverflowRetried = true;
+        const rejectedAtTokens = estimateConversationTokens(context.conversation.getMessagesForLLM());
+        context.providerRegistry.recordContextWindowRejection(model.registryKey, rejectedAtTokens);
+        context.noteModelContextWindowWarning({
+          provider: model.provider,
+          model: model.id,
+          providerStopReason: 'context_length_exceeded (provider error)',
+        });
+        context.conversation.addSystemMessage(
+          `${model.displayName} rejected the request as exceeding its context window (~${rejectedAtTokens.toLocaleString()} tokens sent). Learned this as the model's practical limit. Auto-compacting and retrying...`,
+        );
+        context.requestRender();
+        continue;
+      }
       if (chatErr instanceof ProviderError && chatErr.statusCode === 429 && model.provider === 'synthetic' && model.tier !== 'free') {
         context.conversation.addSystemMessage(
           `All providers for ${model.displayName} are currently exhausted.\n`
@@ -510,11 +534,14 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     }
 
     context.setLastRequestInputTokens(response.usage.inputTokens);
-    context.setLastInputTokens(
-      response.usage.inputTokens
+    const realInputTokens = response.usage.inputTokens
       + (response.usage.cacheReadTokens ?? 0)
-      + (response.usage.cacheWriteTokens ?? 0),
-    );
+      + (response.usage.cacheWriteTokens ?? 0);
+    context.setLastInputTokens(realInputTokens);
+    // A successful request whose real billed input exceeds a learned context
+    // ceiling proves that ceiling too pessimistic (estimates overshoot) —
+    // raise it to what the provider demonstrably accepted.
+    context.providerRegistry.reconcileObservedContextWindow(model.registryKey, realInputTokens);
 
     if (context.runtimeBus) {
       emitLlmResponseReceived(context.runtimeBus, context.emitterContext(context.turnId), {

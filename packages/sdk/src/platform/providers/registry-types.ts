@@ -21,7 +21,7 @@ export interface TokenLimits {
 }
 
 /** Provenance of a resolved context window value. */
-export type ContextWindowProvenance = 'provider_api' | 'configured_cap' | 'fallback';
+export type ContextWindowProvenance = 'provider_api' | 'configured_cap' | 'observed_limit' | 'fallback';
 
 /** Describes a selectable model and its capabilities. */
 export interface ModelDefinition {

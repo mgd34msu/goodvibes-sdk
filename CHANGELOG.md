@@ -6,6 +6,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-08
+
+### Added
+
+- **Reactive compact-and-retry in the main session.** When a provider rejects
+  a request as exceeding the context window (e.g. openai-codex
+  `context_length_exceeded`), the main turn loop now compacts immediately and
+  retries the request once — previously it printed "Run /compact" and failed
+  the turn. A second rejection in the same turn still surfaces as an error.
+- **Learned (observed) context ceilings.** That same rejection teaches the
+  registry the endpoint's REAL limit: the rejected request's size is recorded
+  per model (persisted alongside user overrides in
+  `context-window-overrides.json`) and applied with new provenance
+  `observed_limit` whenever it is smaller than the catalog window — so
+  compaction thresholds, meters, and the model picker stop trusting
+  over-stated catalog values (a catalog can claim 1M where the subscriber
+  endpoint enforces ~250k). Self-correcting in both directions: smaller
+  rejections lower it, successful requests with larger real billed input
+  raise it. New registry APIs: `getObservedContextWindow`,
+  `recordContextWindowRejection`, `reconcileObservedContextWindow`;
+  `clearModelContextCap` now clears the learned limit too. Agent runs record
+  rejections the same way.
+- **Fleet archive.** `withFleetArchive(processRegistry)` (applied to the
+  runtime's registry) moves FINISHED process subtrees out of the live fleet
+  view into a session-scoped archive: `archive(id)` / `unarchive(id)` /
+  `archiveFinished()` / `listArchived()` / `archivedCount()`. Only
+  all-terminal subtrees can be archived — a finished member of a running
+  swarm stays visible. Archived nodes remain fully inspectable. New
+  control-plane verbs for remote surfaces (webui): `fleet.archive`,
+  `fleet.unarchive`, `fleet.archiveFinished`, `fleet.archived.list`.
+
+### Fixed
+
+- **Agent-completion replay messages no longer repeat.** The event replay
+  queue's acknowledgment hooks were never called, so every tracked event
+  (agent completed/failed, WRFC state changes) was re-injected into the
+  conversation three times with escalating `[Replay][URGENT]` tags long
+  after the agent finished. Injection now acknowledges the event — each
+  event reaches the conversation exactly once, one turn after it fires.
+
 ## [1.5.0] - 2026-07-08
 
 ### Added

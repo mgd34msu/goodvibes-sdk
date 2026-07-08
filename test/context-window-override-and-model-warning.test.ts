@@ -379,3 +379,129 @@ describe('model-issued compaction warning — post-turn maintenance', () => {
     expect(stub.compactCalls).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 3. Learned (observed) context ceilings from provider rejections
+// ---------------------------------------------------------------------------
+
+import { writeFileSync } from 'node:fs';
+import { isContextSizeExceededError } from '../packages/sdk/src/platform/types/errors.js';
+import { loadContextWindowOverrides } from '../packages/sdk/src/platform/providers/context-window-overrides.js';
+
+describe('isContextSizeExceededError — real provider messages', () => {
+  test('matches the exact openai-codex rejection from the bench incident', () => {
+    const err = new Error(
+      'OpenAI Codex API error: context_length_exceeded: Your input exceeds the context window of this model. Please adjust your input and try again. (phase=stream)',
+    );
+    expect(isContextSizeExceededError(err)).toBe(true);
+  });
+});
+
+describe('observed context ceilings', () => {
+  test('a rejection lowers the effective window with observed_limit provenance', () => {
+    withTempRoot((root) => {
+      const registry = makeRegistry(root);
+      registry.registerDiscoveredProviders([DISCOVERED_SERVER]); // window 8192
+      registry.recordContextWindowRejection('ollama:qwen3-local', 4000);
+
+      const model = registry.listModels().find((m) => m.registryKey === 'ollama:qwen3-local');
+      expect(model?.contextWindow).toBe(4000);
+      expect(model?.contextWindowProvenance).toBe('observed_limit');
+      expect(registry.getContextWindowForModel(model!)).toBe(4000);
+      expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBe(4000);
+    });
+  });
+
+  test('an observed ceiling LARGER than the automatic window is not applied', () => {
+    withTempRoot((root) => {
+      const registry = makeRegistry(root);
+      registry.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 50_000);
+
+      const model = registry.listModels().find((m) => m.registryKey === 'ollama:qwen3-local');
+      expect(model?.contextWindow).toBe(8192);
+      expect(model?.contextWindowProvenance).toBe('provider_api');
+    });
+  });
+
+  test('a second, smaller rejection lowers the ceiling; a larger one teaches nothing', () => {
+    withTempRoot((root) => {
+      const registry = makeRegistry(root);
+      registry.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 5000);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 6000); // larger — ignored
+      expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBe(5000);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 3000); // smaller — learned
+      expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBe(3000);
+    });
+  });
+
+  test('a successful request above the ceiling raises it (estimates overshoot)', () => {
+    withTempRoot((root) => {
+      const registry = makeRegistry(root);
+      registry.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 4000);
+      registry.reconcileObservedContextWindow('ollama:qwen3-local', 4800);
+      expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBe(4800);
+      // A success below the ceiling changes nothing.
+      registry.reconcileObservedContextWindow('ollama:qwen3-local', 100);
+      expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBe(4800);
+      // No ceiling recorded -> reconcile is a no-op, never invents one.
+      registry.reconcileObservedContextWindow('ollama:other-model', 9999);
+      expect(registry.getObservedContextWindow('ollama:other-model')).toBeNull();
+    });
+  });
+
+  test('a user override wins over an observed ceiling', () => {
+    withTempRoot((root) => {
+      const registry = makeRegistry(root);
+      registry.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 4000);
+      registry.setModelContextCap('ollama:qwen3-local', 6000);
+
+      const model = registry.listModels().find((m) => m.registryKey === 'ollama:qwen3-local');
+      expect(model?.contextWindow).toBe(6000);
+      expect(model?.contextWindowProvenance).toBe('configured_cap');
+    });
+  });
+
+  test('clearModelContextCap clears the observed ceiling too and persists that', () => {
+    withTempRoot((root) => {
+      const registry = makeRegistry(root);
+      registry.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 4000);
+      expect(registry.clearModelContextCap('ollama:qwen3-local')).toBe(true);
+      expect(registry.getObservedContextWindow('ollama:qwen3-local')).toBeNull();
+
+      const rebooted = makeRegistry(root);
+      rebooted.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      const model = rebooted.listModels().find((m) => m.registryKey === 'ollama:qwen3-local');
+      expect(model?.contextWindow).toBe(8192);
+      expect(model?.contextWindowProvenance).toBe('provider_api');
+    });
+  });
+
+  test('observed ceilings persist across a registry restart', () => {
+    withTempRoot((root) => {
+      const registry = makeRegistry(root);
+      registry.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      registry.recordContextWindowRejection('ollama:qwen3-local', 4000);
+
+      const rebooted = makeRegistry(root);
+      rebooted.registerDiscoveredProviders([DISCOVERED_SERVER]);
+      const model = rebooted.listModels().find((m) => m.registryKey === 'ollama:qwen3-local');
+      expect(model?.contextWindow).toBe(4000);
+      expect(model?.contextWindowProvenance).toBe('observed_limit');
+    });
+  });
+
+  test('v1 overrides files load cleanly (overrides kept, no observed section)', () => {
+    withTempRoot((root) => {
+      const path = getContextWindowOverridesPath(root);
+      writeFileSync(path, JSON.stringify({ version: 1, overrides: { 'a:b': 1234 } }), 'utf-8');
+      const state = loadContextWindowOverrides(path);
+      expect(state.overrides.get('a:b')).toBe(1234);
+      expect(state.observed.size).toBe(0);
+    });
+  });
+});

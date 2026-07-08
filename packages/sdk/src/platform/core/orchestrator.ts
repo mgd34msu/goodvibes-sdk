@@ -890,8 +890,11 @@ export class Orchestrator {
     }
 
     // ── Event replay queue ────────────────────────────────────────────────
-    // Signal turn completion; if any tracked events went unacknowledged,
-    // inject them as system messages so the model sees them next turn.
+    // Inject unacknowledged events as system messages, then acknowledge them:
+    // injection IS delivery, so each event reaches the conversation exactly
+    // once (previously nothing ever acknowledged, so every event re-injected
+    // maxReplays times with escalating [URGENT] tags — noise turns after the
+    // agent had already finished).
     const eventsToReplay = this.replayQueue.onTurnComplete();
     if (eventsToReplay.length > 0) {
       const messages = this.replayQueue.formatReplays(eventsToReplay);
@@ -901,6 +904,9 @@ export class Orchestrator {
         } else {
           this.conversation.addSystemMessage(msg);
         }
+      }
+      for (const event of eventsToReplay) {
+        this.replayQueue.acknowledge(event.id);
       }
       this.requestRender();
     }

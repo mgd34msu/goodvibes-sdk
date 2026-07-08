@@ -123,6 +123,29 @@ export const FLEET_LIST_OUTPUT_SCHEMA = objectSchema({
   capturedAt: NUMBER_SCHEMA,
 }, ['items', 'hasMore', 'capturedAt']);
 
+export const FLEET_ARCHIVE_INPUT_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+}, ['id']);
+
+export const FLEET_ARCHIVE_OUTPUT_SCHEMA = objectSchema({
+  archived: BOOLEAN_SCHEMA,
+  count: NUMBER_SCHEMA,
+  reason: STRING_SCHEMA,
+}, ['archived', 'count']);
+
+export const FLEET_UNARCHIVE_OUTPUT_SCHEMA = objectSchema({
+  restored: NUMBER_SCHEMA,
+}, ['restored']);
+
+export const FLEET_ARCHIVE_FINISHED_OUTPUT_SCHEMA = objectSchema({
+  archivedCount: NUMBER_SCHEMA,
+}, ['archivedCount']);
+
+export const FLEET_ARCHIVED_LIST_OUTPUT_SCHEMA = objectSchema({
+  capturedAt: NUMBER_SCHEMA,
+  nodes: arraySchema(PROCESS_NODE_SCHEMA),
+}, ['capturedAt', 'nodes']);
+
 const CHECKPOINT_KIND_SCHEMA = enumSchema(['turn', 'agent-run', 'manual']);
 const RETENTION_CLASS_SCHEMA = enumSchema(['short', 'standard', 'forensic']);
 

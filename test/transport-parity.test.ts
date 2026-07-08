@@ -79,6 +79,14 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // over the wire.
   'fleet.snapshot': 'http-only',
   'fleet.list': 'http-only',
+  // fleet archive verbs: same in-process story as fleet.snapshot/fleet.list —
+  // the TUI drives the archive through its direct ArchivableProcessRegistry
+  // reference (withFleetArchive, runtime/fleet/archive.ts); the wire verbs
+  // exist for remote consumers (webui archive view).
+  'fleet.archive': 'http-only',
+  'fleet.unarchive': 'http-only',
+  'fleet.archiveFinished': 'http-only',
+  'fleet.archived.list': 'http-only',
 };
 
 interface ParityViolation { readonly id: string; readonly reason: string }

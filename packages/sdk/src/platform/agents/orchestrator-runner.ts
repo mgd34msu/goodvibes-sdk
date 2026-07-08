@@ -128,7 +128,7 @@ export interface AgentOrchestratorRunContext {
   readonly archetypeLoader?: { loadArchetype(template: string): { systemPrompt?: string | undefined } | null | undefined } | undefined;
   readonly getFullRegistry: () => ToolRegistry;
   readonly buildScopedRegistry: (allowedNames: string[], fullRegistry: ToolRegistry) => ToolRegistry;
-  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'recordContextWindowRejection'>;
   readonly providerOptimizer?: Pick<ProviderOptimizer, 'recordFallbackTransition'> | undefined;
   readonly resolveProviderForRecord: (
     providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels'>,
@@ -756,6 +756,12 @@ export async function runAgentTask(
               (context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true)
             ) {
               contextRetried = true;
+              // Learn the endpoint's real ceiling from the rejection so every
+              // consumer's window math stops trusting an over-stated catalog.
+              context.providerRegistry.recordContextWindowRejection(
+                `${activeRoute.provider.name}:${activeRoute.modelId}`,
+                estimateConversationTokens(conversation.getMessagesForLLM()),
+              );
               logger.warn(
                 `[AgentOrchestrator] context-window awareness: context size exceeded on turn ${turn} - emergency compaction and retry`,
                 { agentId: record.id, error: chatErr instanceof Error ? chatErr.message : String(chatErr) },
