@@ -8,6 +8,7 @@ import {
   mapOllamaStopReason,
   mapCodexStopReason,
   mapLmStudioStopReason,
+  isContextOverflowSignal,
 } from '../packages/sdk/src/platform/providers/stop-reason-maps.js';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,34 @@ describe('Anthropic stop reason mapper', () => {
   });
   it('returns unknown for empty string', () => {
     expect(mapAnthropicStopReason('')).toBe<ChatStopReason>('unknown');
+  });
+  it('maps model_context_window_exceeded → context_overflow', () => {
+    expect(mapAnthropicStopReason('model_context_window_exceeded')).toBe<ChatStopReason>('context_overflow');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — context-overflow warning signal
+// ---------------------------------------------------------------------------
+
+describe('isContextOverflowSignal', () => {
+  it('true for the normalized context_overflow stop reason', () => {
+    expect(isContextOverflowSignal('context_overflow')).toBe(true);
+  });
+  it('true for raw model_context_window_exceeded even when normalized is unknown', () => {
+    expect(isContextOverflowSignal('unknown', 'model_context_window_exceeded')).toBe(true);
+  });
+  it('true for raw context_length_exceeded (openai-compatible servers)', () => {
+    expect(isContextOverflowSignal('unknown', 'context_length_exceeded')).toBe(true);
+  });
+  it('false for completed with an ordinary raw reason', () => {
+    expect(isContextOverflowSignal('completed', 'end_turn')).toBe(false);
+  });
+  it('false for max_tokens — output cap is not a context warning', () => {
+    expect(isContextOverflowSignal('max_tokens', 'max_tokens')).toBe(false);
+  });
+  it('false when no raw reason is provided and normalized is not overflow', () => {
+    expect(isContextOverflowSignal('unknown')).toBe(false);
   });
 });
 

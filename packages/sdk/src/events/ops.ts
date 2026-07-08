@@ -28,7 +28,7 @@ export type OpsEvent =
       thresholdTokens?: number | undefined;
       remainingTokens?: number | undefined;
       safetyBufferTokens?: number | undefined;
-      reason?: 'threshold' | 'safety-buffer' | undefined;
+      reason?: 'threshold' | 'safety-buffer' | 'model-warning' | undefined;
     }
   /** Cache hit-rate and token metrics snapshot. */
   | {

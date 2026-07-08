@@ -1,5 +1,46 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
+import type { ChatResponse } from '../providers/interface.js';
+import { isContextOverflowSignal } from '../providers/stop-reason-maps.js';
+import { compactSmallWindow } from '../core/context-compaction.js';
+import type { ProviderMessage } from '../providers/interface.js';
+import { logger } from '../utils/logger.js';
+
+/**
+ * Compact an agent conversation when the model/provider itself reported
+ * context exhaustion on a successful response (see isContextOverflowSignal).
+ * The provider's report is authoritative over local estimates, so this runs
+ * immediately — the same structural compaction as the runner's
+ * prompt-too-long emergency path — before any further chat call.
+ * Returns true when compaction ran.
+ */
+export function maybeCompactAfterModelContextWarning(opts: {
+  response: Pick<ChatResponse, 'stopReason' | 'providerStopReason'>;
+  conversation: {
+    getMessagesForLLM(): ProviderMessage[];
+    replaceMessagesForLLM(messages: ProviderMessage[]): void;
+  };
+  record: { id: string; progress?: string | undefined };
+  turn: number;
+  contextWindowAwarenessEnabled: boolean;
+  emitProgress: (progress: string) => void;
+}): boolean {
+  const { response, conversation, record, turn } = opts;
+  if (!opts.contextWindowAwarenessEnabled) return false;
+  if (!isContextOverflowSignal(response.stopReason, response.providerStopReason)) return false;
+  logger.warn(
+    `[AgentOrchestrator] model reported context window exhaustion on turn ${turn} - compacting immediately`,
+    { agentId: record.id, providerStopReason: response.providerStopReason },
+  );
+  record.progress = `Turn ${turn} · Model reported full context, compacting…`;
+  opts.emitProgress(record.progress);
+  const messages = conversation.getMessagesForLLM();
+  conversation.replaceMessagesForLLM(
+    compactSmallWindow(messages, Math.max(5, Math.floor(messages.length / 3))),
+  );
+  return true;
+}
+
 /**
  * Summarize tool call arguments into a brief display string for progress labels.
  * Extracts the most informative single string arg (path, cmd, etc.) and

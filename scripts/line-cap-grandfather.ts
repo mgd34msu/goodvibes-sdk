@@ -53,10 +53,10 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 1079,
     justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries)',
   },
-  // orchestrator.ts ~1.06k — core orchestrator monolith, pre-split, shrink-only
+  // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
-    ceiling: 1063,
-    justification: 'core orchestrator monolith, pre-split, shrink-only',
+    ceiling: 1078,
+    justification: 'core orchestrator monolith, pre-split, shrink-only; +15 for model-context-warning plumbing (pending-warning field, turn-loop note callback, preflight/post-turn dep wiring)',
   },
   // enrichment.ts ~1.00k — semantic enrichment pipeline, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/semantic/enrichment.ts': {
@@ -93,10 +93,10 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 960,
     justification: 'OTLP protobuf wire encoding, pre-split, shrink-only',
   },
-  // orchestrator-runner.ts ~0.96k — agent orchestrator runner, pre-split, shrink-only
+  // orchestrator-runner.ts ~0.97k — agent orchestrator runner, pre-split, shrink-only
   'packages/sdk/src/platform/agents/orchestrator-runner.ts': {
-    ceiling: 958,
-    justification: 'agent orchestrator runner, pre-split, shrink-only',
+    ceiling: 967,
+    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts)',
   },
   // service.ts (knowledge) ~0.92k — knowledge service facade, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/service.ts': {

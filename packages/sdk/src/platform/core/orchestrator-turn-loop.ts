@@ -10,6 +10,7 @@ import type { ProviderRegistry } from '../providers/registry.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { ToolCall, ToolResult } from '../types/tools.js';
 import type { ContentPart, LLMProvider, StreamDelta } from '../providers/interface.js';
+import { isContextOverflowSignal } from '../providers/stop-reason-maps.js';
 import type { HookEvent, HookResult } from '../hooks/types.js';
 import {
   emitOpsCacheMetrics,
@@ -108,6 +109,17 @@ export interface OrchestratorTurnLoopContext {
   readonly setLastRequestInputTokens: (value: number) => void;
   readonly setLastInputTokens: (value: number) => void;
   readonly markTurnFailed: () => void;
+  /**
+   * The model/provider reported its context window filled (see
+   * isContextOverflowSignal). The orchestrator must compact at the next
+   * opportunity regardless of locally estimated usage — the provider's own
+   * report is authoritative over the estimate.
+   */
+  readonly noteModelContextWindowWarning: (details: {
+    provider: string;
+    model: string;
+    providerStopReason?: string | undefined;
+  }) => void;
   readonly usage: {
     input: number;
     output: number;
@@ -543,6 +555,14 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
 
     const reasoningForMsg = reasoningAccumulated || undefined;
     const reasoningSummaryForMsg = response.reasoningSummary || undefined;
+
+    if (isContextOverflowSignal(response.stopReason, response.providerStopReason)) {
+      context.noteModelContextWindowWarning({
+        provider: model.provider,
+        model: model.id,
+        providerStopReason: response.providerStopReason,
+      });
+    }
 
     if (response.stopReason === 'tool_call' && response.toolCalls.length === 0) {
       emitMalformedToolUseWarning({

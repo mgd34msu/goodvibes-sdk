@@ -184,6 +184,13 @@ export class Orchestrator {
   private lastWarningBracket = 0;
   /** Whether auto-compaction is currently in progress (prevents re-entry). */
   private isCompacting = false;
+  /**
+   * Pending context-window warning reported by the model/provider itself
+   * (stop reason, see isContextOverflowSignal). While set, the next preflight
+   * or post-turn maintenance pass compacts immediately regardless of locally
+   * estimated usage; cleared when that compaction starts.
+   */
+  private modelContextWarning: import('./orchestrator-context-runtime.js').ModelContextWarning | null = null;
 
   /** Session ID for runtime and hook events. */
   private readonly sessionId: string;
@@ -743,6 +750,10 @@ export class Orchestrator {
       setLastRequestInputTokens: (value) => { this.lastRequestInputTokens = value; },
       setLastInputTokens: (value) => { this.lastInputTokens = value; },
       markTurnFailed: () => { this._turnFailed = true; },
+      noteModelContextWindowWarning: (details) => {
+        this.modelContextWarning = details;
+        logger.warn('Orchestrator: model reported context window exhaustion - forcing compaction at next opportunity', details);
+      },
       usage: this.usage,
       memoryRegistry: this.coreServices.memoryRegistry,
       isPassiveKnowledgeInjectionEnabled: () => this.isPassiveKnowledgeInjectionEnabled(),
@@ -781,6 +792,8 @@ export class Orchestrator {
       setIsCompacting: (value) => { this.setCompacting(value); },
       lastWarningBracket: this.lastWarningBracket,
       setLastWarningBracket: (value) => { this.lastWarningBracket = value; },
+      modelContextWarning: this.modelContextWarning,
+      clearModelContextWarning: () => { this.modelContextWarning = null; },
     }, turnId, this.lastInputTokens);
   }
 
@@ -929,6 +942,8 @@ export class Orchestrator {
       emitterContext: (id) => createEmitterContext(this.sessionId, id),
       isCompacting: this.isCompacting,
       setIsCompacting: (value) => { this.setCompacting(value); },
+      modelContextWarning: this.modelContextWarning,
+      clearModelContextWarning: () => { this.modelContextWarning = null; },
     }, turnId, model);
   }
 

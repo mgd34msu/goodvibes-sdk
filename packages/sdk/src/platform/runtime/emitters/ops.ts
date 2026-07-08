@@ -21,7 +21,7 @@ export function emitOpsContextWarning(
     thresholdTokens?: number | undefined;
     remainingTokens?: number | undefined;
     safetyBufferTokens?: number | undefined;
-    reason?: 'threshold' | 'safety-buffer' | undefined;
+    reason?: 'threshold' | 'safety-buffer' | 'model-warning' | undefined;
   }
 ): void {
   bus.emit('ops', createEventEnvelope('OPS_CONTEXT_WARNING', {

@@ -27,7 +27,7 @@ import type { ProcessManager } from '../tools/shared/process-manager.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitCommunicationConsumed } from '../runtime/emitters/index.js';
-import { summarizeToolArgs } from './orchestrator-utils.js';
+import { maybeCompactAfterModelContextWarning, summarizeToolArgs } from './orchestrator-utils.js';
 import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt } from './orchestrator-prompts.js';
 import {
   buildPerTurnKnowledgeInjection,
@@ -865,6 +865,15 @@ export async function runAgentTask(
         turnCount: (record.usage?.turnCount ?? 0) + 1,
         reasoningSummaryCount: (record.usage?.reasoningSummaryCount ?? 0) + (response.reasoningSummary ? 1 : 0),
       };
+
+      maybeCompactAfterModelContextWarning({
+        response, conversation, record, turn,
+        contextWindowAwarenessEnabled: context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true,
+        emitProgress: (progress) => {
+          context.emitAgentProgress(record.id, progress);
+          context.emitOrchestrationProgress(record, progress);
+        },
+      });
 
       if (response.toolCalls.length > 0) {
         conversation.addAssistantMessage(response.content, { toolCalls: response.toolCalls, usage: response.usage });
