@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `329`
+- Methods: `333`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -26790,6 +26790,349 @@ Send a composed email via the configured SMTP account. Irreversible external sen
 
 ### fleet
 
+#### `fleet.archive`
+
+Move one FINISHED process subtree (root id + all descendants, every node terminal) out of the live fleet view into the session archive. Honest refusal (archived:false + reason) for an unknown id or a subtree with live members. Archived nodes stay inspectable via fleet.archived.list.
+
+- Title: `Archive Finished Fleet Subtree`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "archived": {
+      "type": "boolean"
+    },
+    "count": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "archived",
+    "count"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.archived.list`
+
+Return the session-archived process nodes (same node shape as fleet.snapshot; still live-derived from the source managers, so usage/cost stay current).
+
+- Title: `List Archived Fleet Processes`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "capturedAt": {
+      "type": "number"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "wrfc-chain",
+              "wrfc-subtask",
+              "workflow",
+              "trigger",
+              "schedule",
+              "watcher",
+              "background-process",
+              "workstream",
+              "phase",
+              "work-item",
+              "code-index"
+            ]
+          },
+          "parentId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "task": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "thinking",
+              "executing-tool",
+              "awaiting-approval",
+              "streaming",
+              "stalled",
+              "retrying",
+              "done",
+              "failed",
+              "killed",
+              "interrupted",
+              "idle",
+              "queued",
+              "paused"
+            ]
+          },
+          "startedAt": {
+            "type": "number"
+          },
+          "completedAt": {
+            "type": "number"
+          },
+          "elapsedMs": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputTokens": {
+                "type": "number"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "cacheReadTokens": {
+                "type": "number"
+              },
+              "cacheWriteTokens": {
+                "type": "number"
+              },
+              "reasoningTokens": {
+                "type": "number"
+              },
+              "llmCallCount": {
+                "type": "number"
+              },
+              "turnCount": {
+                "type": "number"
+              },
+              "toolCallCount": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "inputTokens",
+              "outputTokens",
+              "cacheReadTokens",
+              "cacheWriteTokens",
+              "llmCallCount",
+              "turnCount",
+              "toolCallCount"
+            ],
+            "additionalProperties": false
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "costState": {
+            "type": "string",
+            "enum": [
+              "priced",
+              "unpriced",
+              "estimated"
+            ]
+          },
+          "currentActivity": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "tool",
+                  "output-line",
+                  "phase"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "at": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "text",
+              "at"
+            ],
+            "additionalProperties": false
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "interruptible": {
+                "type": "boolean"
+              },
+              "killable": {
+                "type": "boolean"
+              },
+              "pausable": {
+                "type": "boolean"
+              },
+              "resumable": {
+                "type": "boolean"
+              },
+              "steerable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "interruptible",
+              "killable",
+              "pausable",
+              "resumable",
+              "steerable"
+            ],
+            "additionalProperties": false
+          },
+          "sessionRef": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "agentId": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "state",
+          "elapsedMs",
+          "costState",
+          "capabilities"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "capturedAt",
+    "nodes"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.archiveFinished`
+
+Archive every root subtree whose nodes are all terminal (done/failed/killed/interrupted). A finished member of a still-running swarm stays with its parent. Returns the number of nodes archived.
+
+- Title: `Archive All Finished Fleet Subtrees`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "archivedCount": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "archivedCount"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `fleet.list`
 
 Paginated, filtered (kinds/states) query over the live process registry. Cursor pagination returns disjoint pages that union to the full matching set at query time.
@@ -27313,6 +27656,54 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
     "nodes",
     "truncated",
     "totalCount"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.unarchive`
+
+Return an archived subtree to the live fleet view. Returns the number of nodes restored (0 when nothing under the id was archived).
+
+- Title: `Restore Archived Fleet Subtree`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "restored": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "restored"
   ],
   "additionalProperties": false
 }
