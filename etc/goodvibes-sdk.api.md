@@ -1237,7 +1237,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "1.6.0";
+    readonly productVersion: "1.6.1";
     readonly operatorMethodCount: 333;
     readonly operatorEventCount: 31;
     readonly peerEndpointCount: 6;
@@ -3211,6 +3211,14 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "deliveries.list": {};
     // (undocumented)
+    "fleet.archive": {
+        id: string;
+    };
+    // (undocumented)
+    "fleet.archived.list": {};
+    // (undocumented)
+    "fleet.archiveFinished": {};
+    // (undocumented)
     "fleet.list": {
         kinds?: readonly string[];
         states?: readonly string[];
@@ -3219,6 +3227,10 @@ export interface OperatorMethodInputMap {
     };
     // (undocumented)
     "fleet.snapshot": {};
+    // (undocumented)
+    "fleet.unarchive": {
+        id: string;
+    };
     // (undocumented)
     "health.snapshot": {};
     // (undocumented)
@@ -8354,6 +8366,64 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
+    "fleet.archive": {
+        archived: boolean;
+        count: number;
+        reason?: string;
+    };
+    // (undocumented)
+    "fleet.archived.list": {
+        capturedAt: number;
+        nodes: readonly (({
+            id: string;
+            kind: "agent" | "background-process" | "code-index" | "phase" | "schedule" | "trigger" | "watcher" | "work-item" | "workflow" | "workstream" | "wrfc-chain" | "wrfc-subtask";
+            parentId?: string;
+            label: string;
+            task?: string;
+            state: "awaiting-approval" | "done" | "executing-tool" | "failed" | "idle" | "interrupted" | "killed" | "paused" | "queued" | "retrying" | "stalled" | "streaming" | "thinking";
+            startedAt?: number;
+            completedAt?: number;
+            elapsedMs: number;
+            usage?: {
+                inputTokens: number;
+                outputTokens: number;
+                cacheReadTokens: number;
+                cacheWriteTokens: number;
+                reasoningTokens?: number;
+                llmCallCount: number;
+                turnCount: number;
+                toolCallCount: number;
+            };
+            model?: string;
+            provider?: string;
+            costUsd?: null | number;
+            costState: "estimated" | "priced" | "unpriced";
+            currentActivity?: {
+                kind: "output-line" | "phase" | "tool";
+                text: string;
+                toolName?: string;
+                at: number;
+            };
+            capabilities: {
+                interruptible: boolean;
+                killable: boolean;
+                pausable: boolean;
+                resumable: boolean;
+                steerable: boolean;
+            };
+            sessionRef?: {
+                sessionId?: string;
+                agentId?: string;
+            };
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    };
+    // (undocumented)
+    "fleet.archiveFinished": {
+        archivedCount: number;
+    };
+    // (undocumented)
     "fleet.list": {
         items: readonly (({
             id: string;
@@ -8452,6 +8522,10 @@ export interface OperatorMethodOutputMap {
         }))[];
         truncated: boolean;
         totalCount: number;
+    };
+    // (undocumented)
+    "fleet.unarchive": {
+        restored: number;
     };
     // (undocumented)
     "health.snapshot": ({
