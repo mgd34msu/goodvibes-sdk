@@ -180,6 +180,15 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // core verbs (push.subscriptions.create/list/delete, push.vapid.get).
     'verify',
   ],
+  'fleet-archive': [
+    // Session-scoped fleet archive transitions (runtime/fleet/archive.ts):
+    // moving a FINISHED process subtree out of the live fleet view and back.
+    // Not generic record CRUD — archive/unarchive gate on all-terminal
+    // subtrees and never delete anything; archiveFinished is the bulk form
+    // over every fully-finished root. The archived-collection read uses the
+    // core verb (fleet.archived.list).
+    'archive', 'unarchive', 'archiveFinished',
+  ],
   'process-control': [
     // OS/service process lifecycle verbs (distinct domain from
     // enable/disable, which toggle a *record's* activation state) plus
