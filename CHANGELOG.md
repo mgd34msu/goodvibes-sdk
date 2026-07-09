@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-07-09
+
+### Fixed
+
+- The fleet archive verbs (`fleet.archive`, `fleet.unarchive`,
+  `fleet.archiveFinished`, `fleet.archived.list`) now carry real
+  `OperatorMethodInputMap`/`OperatorMethodOutputMap` entries in the contracts
+  package, so remote clients (webui) get typed inputs/outputs instead of the
+  `unknown` fallback. The hand-authored-IO-types drift gate
+  (`check-foundation-io-types.ts`) covers them.
+
 ## [1.6.0] - 2026-07-08
 
 ### Added

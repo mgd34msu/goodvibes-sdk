@@ -57,9 +57,14 @@ import {
   CHECKPOINTS_LIST_OUTPUT_SCHEMA,
   CHECKPOINTS_RESTORE_INPUT_SCHEMA,
   CHECKPOINTS_RESTORE_OUTPUT_SCHEMA,
+  FLEET_ARCHIVE_FINISHED_OUTPUT_SCHEMA,
+  FLEET_ARCHIVE_INPUT_SCHEMA,
+  FLEET_ARCHIVE_OUTPUT_SCHEMA,
+  FLEET_ARCHIVED_LIST_OUTPUT_SCHEMA,
   FLEET_LIST_INPUT_SCHEMA,
   FLEET_LIST_OUTPUT_SCHEMA,
   FLEET_SNAPSHOT_OUTPUT_SCHEMA,
+  FLEET_UNARCHIVE_OUTPUT_SCHEMA,
   SESSIONS_SEARCH_INPUT_SCHEMA,
   SESSIONS_SEARCH_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-fleet.ts';
@@ -151,6 +156,11 @@ function renderType(schema: Record<string, unknown>): string {
 const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record<string, unknown>; readonly output: Record<string, unknown> }> = [
   { methodId: 'fleet.snapshot', input: EMPTY_OBJECT_SCHEMA, output: FLEET_SNAPSHOT_OUTPUT_SCHEMA },
   { methodId: 'fleet.list', input: FLEET_LIST_INPUT_SCHEMA, output: FLEET_LIST_OUTPUT_SCHEMA },
+  // Fleet archive verbs (SDK 1.6.x):
+  { methodId: 'fleet.archive', input: FLEET_ARCHIVE_INPUT_SCHEMA, output: FLEET_ARCHIVE_OUTPUT_SCHEMA },
+  { methodId: 'fleet.unarchive', input: FLEET_ARCHIVE_INPUT_SCHEMA, output: FLEET_UNARCHIVE_OUTPUT_SCHEMA },
+  { methodId: 'fleet.archiveFinished', input: EMPTY_OBJECT_SCHEMA, output: FLEET_ARCHIVE_FINISHED_OUTPUT_SCHEMA },
+  { methodId: 'fleet.archived.list', input: EMPTY_OBJECT_SCHEMA, output: FLEET_ARCHIVED_LIST_OUTPUT_SCHEMA },
   { methodId: 'checkpoints.list', input: CHECKPOINTS_LIST_INPUT_SCHEMA, output: CHECKPOINTS_LIST_OUTPUT_SCHEMA },
   { methodId: 'checkpoints.create', input: CHECKPOINTS_CREATE_INPUT_SCHEMA, output: CHECKPOINTS_CREATE_OUTPUT_SCHEMA },
   { methodId: 'checkpoints.diff', input: CHECKPOINTS_DIFF_INPUT_SCHEMA, output: CHECKPOINTS_DIFF_OUTPUT_SCHEMA },
