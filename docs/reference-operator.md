@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `362`
+- Methods: `363`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -21439,6 +21439,73 @@ Resolve a typed channel target for outbound delivery or routing.
   "required": [
     "surface",
     "target"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.test.send`
+
+Send a real test message through a configured channel surface and report the actual delivery outcome. delivered:true means the daemon's delivery router accepted and sent it (with the surface's responseId when it returns one); a failed send is delivered:false with the real error (unconfigured/unsupported surface, provider/transport error) — never a fabricated success. Provide address to target a specific recipient/channel, or omit it to use the surface's configured default.
+
+- Title: `Send Channel Test Message`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "surface": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "surface"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "surface": {
+      "type": "string"
+    },
+    "delivered": {
+      "type": "boolean"
+    },
+    "responseId": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "surface",
+    "delivered"
   ],
   "additionalProperties": false
 }

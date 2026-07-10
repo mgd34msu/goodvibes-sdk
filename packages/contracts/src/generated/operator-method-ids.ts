@@ -71,6 +71,7 @@ export const OPERATOR_METHOD_IDS = [
   "channels.setup.get",
   "channels.status",
   "channels.targets.resolve",
+  "channels.test.send",
   "channels.tools.invoke",
   "channels.tools.list",
   "channels.tools.surface.list",

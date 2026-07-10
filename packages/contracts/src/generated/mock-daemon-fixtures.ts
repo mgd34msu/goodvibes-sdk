@@ -3696,6 +3696,18 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "channels.test.send": {
+    "methodId": "channels.test.send",
+    "http": null,
+    "status": 200,
+    "body": {
+      "surface": "sample",
+      "delivered": false,
+      "responseId": "sample",
+      "address": "sample",
+      "error": "sample"
+    }
+  },
   "channels.tools.invoke": {
     "methodId": "channels.tools.invoke",
     "http": {

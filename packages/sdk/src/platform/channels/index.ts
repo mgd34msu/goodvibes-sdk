@@ -59,6 +59,11 @@ export type { ChannelPlugin } from './plugin-registry.js';
 export { ChannelPluginRegistry } from './plugin-registry.js';
 export { ChannelPolicyManager } from './policy-manager.js';
 export { BuiltinChannelRuntime } from './builtin-runtime.js';
+// The authoritative per-channel credential/setup declaration. Exported so
+// consumers (command surfaces, setup UIs) read the one source of truth instead
+// of duplicating each surface's field/secret-target schema.
+export { getBuiltinSetupSchema } from './builtin/setup-schema.js';
+export { CHANNEL_SETUP_VERSION } from './builtin/shared.js';
 export { ChannelReplyPipeline, normalizeChannelRenderEventFromRuntime } from './reply-pipeline.js';
 export { ChannelProviderRuntimeManager } from './provider-runtime.js';
 export type { ProviderRuntimeActionResult, ProviderRuntimeStatus, ProviderRuntimeSurface } from './provider-runtime.js';

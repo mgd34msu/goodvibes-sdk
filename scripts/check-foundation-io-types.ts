@@ -100,6 +100,10 @@ import {
   PRINCIPALS_UPDATE_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-principals.ts';
 import {
+  CHANNEL_TEST_SEND_INPUT_SCHEMA,
+  CHANNEL_TEST_SEND_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-channels.ts';
+import {
   CHANNEL_PROFILES_DELETE_INPUT_SCHEMA,
   CHANNEL_PROFILES_DELETE_OUTPUT_SCHEMA,
   CHANNEL_PROFILES_GET_INPUT_SCHEMA,
@@ -256,6 +260,8 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'principals.update', input: PRINCIPALS_UPDATE_INPUT_SCHEMA, output: PRINCIPALS_UPDATE_OUTPUT_SCHEMA },
   { methodId: 'principals.delete', input: PRINCIPALS_DELETE_INPUT_SCHEMA, output: PRINCIPALS_DELETE_OUTPUT_SCHEMA },
   { methodId: 'principals.resolve', input: PRINCIPALS_RESOLVE_INPUT_SCHEMA, output: PRINCIPALS_RESOLVE_OUTPUT_SCHEMA },
+  // Live per-channel test-message probe:
+  { methodId: 'channels.test.send', input: CHANNEL_TEST_SEND_INPUT_SCHEMA, output: CHANNEL_TEST_SEND_OUTPUT_SCHEMA },
   // Per-channel profile bindings (model/permission defaults for originated sessions):
   { methodId: 'channels.profiles.list', input: CHANNEL_PROFILES_LIST_INPUT_SCHEMA, output: CHANNEL_PROFILES_LIST_OUTPUT_SCHEMA },
   { methodId: 'channels.profiles.get', input: CHANNEL_PROFILES_GET_INPUT_SCHEMA, output: CHANNEL_PROFILES_GET_OUTPUT_SCHEMA },

@@ -5,6 +5,9 @@ import {
   builtinGatewayChannelMethodDescriptors,
 } from './method-catalog-channels.js';
 import {
+  builtinGatewayChannelTestMethodDescriptors,
+} from './method-catalog-channels-test.js';
+import {
   builtinGatewayControlMethodDescriptors,
 } from './method-catalog-control.js';
 import {
@@ -83,6 +86,7 @@ const BUILTIN_GATEWAY_EVENTS: readonly GatewayEventDescriptor[] = builtinGateway
 const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayControlMethodDescriptors,
   ...builtinGatewayChannelMethodDescriptors,
+  ...builtinGatewayChannelTestMethodDescriptors,
   ...builtinGatewayEmailMethodDescriptors,
   ...builtinGatewayCalendarMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,

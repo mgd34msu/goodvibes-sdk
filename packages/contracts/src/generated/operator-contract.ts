@@ -21382,6 +21382,64 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "channels.test.send",
+        "title": "Send Channel Test Message",
+        "description": "Send a real test message through a configured channel surface and report the actual delivery outcome. delivered:true means the daemon's delivery router accepted and sent it (with the surface's responseId when it returns one); a failed send is delivered:false with the real error (unconfigured/unsupported surface, provider/transport error) — never a fabricated success. Provide address to target a specific recipient/channel, or omit it to use the surface's configured default.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:channels"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "surface": {
+              "type": "string"
+            },
+            "address": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "surface": {
+              "type": "string"
+            },
+            "delivered": {
+              "type": "boolean"
+            },
+            "responseId": {
+              "type": "string"
+            },
+            "address": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface",
+            "delivered"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "channels.tools.invoke",
         "title": "Run Channel Tool",
         "description": "Run a channel-owned operator tool.",
@@ -84868,10 +84926,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 362,
-      "typedInputs": 362,
+      "methods": 363,
+      "typedInputs": 363,
       "genericInputs": 0,
-      "typedOutputs": 362,
+      "typedOutputs": 363,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -84880,8 +84938,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 362,
-      "validated": 360,
+      "methods": 363,
+      "validated": 361,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
