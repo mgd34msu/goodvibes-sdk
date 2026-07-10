@@ -6,6 +6,7 @@
 
 // Facade
 export { CodeIntelligence, pathToUri, uriToPath } from './facade.js';
+export type { ParseResult, SyntaxDiagnostic } from './facade.js';
 
 // Config
 export {

@@ -12,6 +12,7 @@ import type { ToolLLM } from '../config/tool-llm.js';
 import { ReadTool } from './read/index.js';
 import { createWriteTool } from './write/index.js';
 import { createEditTool } from './edit/index.js';
+import { TypeScriptSyntaxDiagnosticsProvider } from './shared/post-edit-diagnostics.js';
 import { createFindTool } from './find/index.js';
 import { createExecTool } from './exec/index.js';
 import { createAnalyzeTool } from './analyze/index.js';
@@ -188,6 +189,12 @@ export function registerAllTools(
     changeTracker?: SessionChangeTracker | undefined;
     /** Project memory registry — when present, `state mode=memory set` mirrors writes into retrievable records. */
     memoryRegistry?: import('../state/index.js').MemoryRegistry | undefined;
+    /**
+     * Post-edit diagnostics provider for write/edit tool results. Defaults to
+     * the in-process tree-sitter syntax provider; pass null to disable, or a
+     * custom provider to override.
+     */
+    diagnosticsProvider?: import('./shared/post-edit-diagnostics.js').DiagnosticsProvider | null | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -249,6 +256,11 @@ export function registerAllTools(
     configManager: deps.configManager,
   }));
   registerTool(new ReadTool(projectIndex, fileCache));
+  // One post-edit diagnostics provider shared by write and edit. Default: the
+  // in-process tree-sitter syntax provider (no process spawn). `null` disables.
+  const diagnosticsProvider = deps.diagnosticsProvider === null
+    ? undefined
+    : deps.diagnosticsProvider ?? new TypeScriptSyntaxDiagnosticsProvider();
   registerTool(createWriteTool({
     projectRoot: workingDirectory,
     fileCache,
@@ -257,12 +269,14 @@ export function registerAllTools(
     configManager: deps.configManager,
     toolLLM: deps.toolLLM,
     changeTracker: deps?.changeTracker,
+    diagnosticsProvider,
   }));
   registerTool(createEditTool(fileCache, {
     fileUndoManager,
     configManager: deps.configManager,
     toolLLM: deps.toolLLM,
     changeTracker: deps?.changeTracker,
+    diagnosticsProvider,
   }));
   registerTool(createFindTool(workingDirectory, deps.featureFlags));
   registerTool(createExecTool(processManager, {

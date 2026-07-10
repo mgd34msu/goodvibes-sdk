@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Post-edit diagnostics in tool results.** After a successful, non-dry-run
+  file write or edit, the tool result now carries cheap, in-process diagnostics
+  for the touched file so the model sees a broken edit immediately instead of on
+  a later build. The first (and only bundled) provider is tree-sitter-backed
+  SYNTAX diagnostics for TypeScript/JavaScript — in-process, no process spawn, no
+  type checking — and it only runs when a TS/JS project context (tsconfig.json /
+  jsconfig.json) is detectable; otherwise it appends nothing (honest absence, not
+  a fabricated "no errors"). The write tool attaches a structured `diagnostics`
+  array to its JSON output; the edit tool appends a compact text block (its output
+  already carries text suffixes). A `DiagnosticsProvider` interface is the seam a
+  host can later implement with a full type-checking provider. Config key
+  `diagnostics.postEdit` (`'on'` default | `'off'`) — default on because the
+  bundled provider is cheap and never spawns a process.
 - **Background agents respect the session permission mode.** A background /
   subagent's tool calls now run through the same permission layer as the
   foreground turn loop instead of executing ungated. Each call the agent runner

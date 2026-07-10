@@ -13,10 +13,48 @@ import { pathToFileURL, fileURLToPath } from 'url';
 import { loadLanguageConfigs } from './config.js';
 import { TreeSitterService } from './tree-sitter/service.js';
 
-import type { Tree, Language } from 'web-tree-sitter';
+import type { Tree, Language, Node } from 'web-tree-sitter';
 
 /** Result of parsing a file with tree-sitter. */
 export interface ParseResult { tree: Tree; language: Language; lang: string; }
+
+/** A syntax-level diagnostic derived from the tree-sitter parse (no type checking). */
+export interface SyntaxDiagnostic {
+  /** 1-based line. */
+  readonly line: number;
+  /** 0-based column. */
+  readonly column: number;
+  readonly message: string;
+}
+
+/**
+ * Walk a parse tree and collect the minimal set of syntax-error sites (ERROR
+ * and MISSING nodes), capped. Descends only into subtrees that contain an
+ * error, and does not descend past an error node (its whole subtree is noise).
+ */
+function collectSyntaxErrors(tree: Tree, cap = 20): SyntaxDiagnostic[] {
+  const root = tree.rootNode;
+  if (!root.hasError) return [];
+  const out: SyntaxDiagnostic[] = [];
+  const stack: Node[] = [root];
+  while (stack.length > 0 && out.length < cap) {
+    const node = stack.pop()!;
+    if (node.isError || node.isMissing) {
+      const where = { line: node.startPosition.row + 1, column: node.startPosition.column };
+      const message = node.isMissing
+        ? `Missing '${node.type}'`
+        : `Unexpected syntax near '${(node.text ?? '').trim().slice(0, 40) || node.type}'`;
+      out.push({ ...where, message });
+      continue; // do not descend into an error subtree
+    }
+    if (!node.hasError) continue;
+    for (let i = node.childCount - 1; i >= 0; i--) {
+      const child = node.child(i);
+      if (child) stack.push(child);
+    }
+  }
+  return out;
+}
 import { LspService } from './lsp/service.js';
 import { detectLanguage } from './tree-sitter/languages.js';
 import { extractSymbols, extractOutline, findEnclosingScope } from './tree-sitter/queries.js';
@@ -185,6 +223,23 @@ export class CodeIntelligence {
       return extractOutline(parsed.tree, parsed.language, parsed.lang);
     } catch (err) {
       logger.warn('CodeIntelligence.getOutline error', { filePath, error: summarizeError(err) });
+      return [];
+    }
+  }
+
+  /**
+   * Parse a file and return syntax-level diagnostics (ERROR / MISSING nodes)
+   * from the tree-sitter parse. In-process and cheap — this does NOT type-check
+   * and never spawns a language server. Returns [] when no grammar is loaded for
+   * the language or the parse is clean.
+   */
+  async getSyntaxDiagnostics(filePath: string, content: string): Promise<SyntaxDiagnostic[]> {
+    try {
+      const parsed = await this._parseFile(filePath, content);
+      if (!parsed) return [];
+      return collectSyntaxErrors(parsed.tree);
+    } catch (err) {
+      logger.warn('CodeIntelligence.getSyntaxDiagnostics error', { filePath, error: summarizeError(err) });
       return [];
     }
   }
