@@ -26,6 +26,15 @@ export {
   ATTRIBUTED_PRINCIPAL_ID_KEY,
   ATTRIBUTED_PRINCIPAL_NAME_KEY,
   ATTRIBUTED_PRINCIPAL_KNOWN_KEY,
+  CHANNEL_PROFILE_MODEL_KEY,
+  CHANNEL_PROFILE_PROVIDER_KEY,
+  CHANNEL_PROFILE_PERMISSION_MODE_KEY,
   type InboundSender,
   type InboundIntakeEnrichment,
 } from './intake.js';
+export {
+  installInboundIntakeEnrichment,
+  enrichInboundSubmitMetadata,
+  type InboundIntakeBroker,
+  type InboundIntakeEnrichmentDeps,
+} from './install-inbound-intake.js';

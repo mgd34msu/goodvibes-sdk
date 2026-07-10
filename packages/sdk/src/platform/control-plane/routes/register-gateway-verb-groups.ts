@@ -19,7 +19,12 @@ import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
 import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
-import { ChannelProfileRegistry, ChannelProfileStore } from '../../channel-profiles/index.js';
+import {
+  ChannelProfileRegistry,
+  ChannelProfileStore,
+  installInboundIntakeEnrichment,
+  type InboundIntakeBroker,
+} from '../../channel-profiles/index.js';
 import { registerCheckinGatewayMethods } from './checkin.js';
 import {
   CheckinService,
@@ -141,6 +146,14 @@ export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
     | undefined;
   /** A read-only session lister for the check-in briefing (the full SharedSessionBroker satisfies it). */
   readonly sessionLister?: { listSessions(limit?: number): readonly CheckinSessionView[] } | undefined;
+  /**
+   * The shared session broker's transport intake entry point. When present, the
+   * inbound-intake enrichment (principal attribution + channel-profile
+   * application) is installed on it so every channel-originated session is
+   * enriched at submitMessage; absent → no enrichment is installed (graceful
+   * degrade for embeds that wire no channel intake).
+   */
+  readonly sessionIntake?: InboundIntakeBroker | undefined;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -184,6 +197,19 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new ChannelProfileStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-profiles.json')),
   );
   registerChannelProfilesGatewayMethods(catalog, channelProfileRegistry);
+
+  // Wire the inbound-intake enrichment onto the transport intake chokepoint: from
+  // here on, every channel-originated session is attributed to its sending
+  // principal (via the registry just above) and inherits its channel's bound
+  // profile — no per-adapter call needed. Uses the same two registries the
+  // principals.*/channels.profiles.* verbs manage, so the mappings an operator
+  // sets are exactly the mappings intake honors.
+  if (deps.sessionIntake) {
+    installInboundIntakeEnrichment(deps.sessionIntake, {
+      principals: principalRegistry,
+      channelProfiles: channelProfileRegistry,
+    });
+  }
 
   // CI-watch: the per-job status tool + standing subscriptions. The gh-CLI
   // source and the watch store are always available; the completion notifier
