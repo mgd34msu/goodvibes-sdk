@@ -22,6 +22,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   no preview round-trip is required. `checkpoints.restore`'s output gained
   `refused`/`refusal` and its `result` is now nullable.
 
+### Changed
+
+- **Typed-IO coverage ratchet.** A new `contracts:check` gate
+  (`scripts/check-foundation-io-coverage.ts`) freezes the number of operator
+  methods that lack typed `OperatorMethodInputMap`/`OperatorMethodOutputMap`
+  entries (currently 97 of 334) at a checked-in baseline and fails if it grows,
+  printing the missing method ids. New methods must ship with typed IO. This is
+  a growth freeze, not a burndown of the existing 97.
+
 ## [1.6.1] - 2026-07-09
 
 ### Fixed
