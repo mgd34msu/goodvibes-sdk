@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **SDK Embedding API 1.0 — a documented, stability-marked entry point
+  (`@pellux/goodvibes-sdk/embed`) for embedding a GoodVibes session in another
+  application.** `createEmbeddedSession({ workspace, homeDirectory,
+  requestPermission })` boots an in-process daemon for the workspace and returns
+  an `EmbeddedSession` exposing the minimal stable contract: the runtime event
+  bus to receive typed events, a `submit()` seam to send input, the approval
+  broker with an injected permission callback bridged onto it, and an idempotent
+  `stop()`. The surface is a curation of existing runtime machinery — it invents
+  no new engine — and is FROZEN at 1.0, pinned by a dedicated api-extractor
+  report (`etc/goodvibes-sdk-embed.api.md`) wired into `api:check` so an
+  accidental breaking change to the embed surface fails the gate. The daemon
+  facade now exposes its runtime bus and session broker (`eventBus` / `sessions`)
+  so an in-process embedder can subscribe and submit without going over the wire.
 - **A capability-bundle plugin format with SHA-256-pinned distribution and a
   governed marketplace index.** A bundle manifest declares exactly which
   capabilities a plugin needs — the security capabilities it uses plus the tools
