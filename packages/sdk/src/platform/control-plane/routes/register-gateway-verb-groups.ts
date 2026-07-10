@@ -16,6 +16,8 @@ import type { GatewayMethodCatalog } from '../method-catalog.js';
 import { registerW3S2GatewayMethods, type W3S2GatewayDeps } from './register-w3-s2.js';
 import { registerPushGatewayMethods } from './push.js';
 import { registerSkillsGatewayMethods } from './skills.js';
+import { registerPrincipalsGatewayMethods } from './principals.js';
+import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
@@ -92,6 +94,15 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new FileSystemSkillStore(deps.shellPaths.resolveUserPath('skills')),
   );
   registerSkillsGatewayMethods(catalog, skillService);
+
+  // The cross-channel principal identity registry over a JSON snapshot under the
+  // daemon's own control-plane state directory. Constructed here (from the
+  // shellPaths this registrar already receives) rather than threaded through the
+  // runtime-services composition root, exactly like the skill/push groups.
+  const principalRegistry = new PrincipalRegistry(
+    new PrincipalStore(deps.shellPaths.resolveUserPath('control-plane', 'principals.json')),
+  );
+  registerPrincipalsGatewayMethods(catalog, principalRegistry);
 
   // Session-scoped permission mode (get/set) + context-usage exposure on the
   // wire, over the daemon's own config + runtime store (its live local

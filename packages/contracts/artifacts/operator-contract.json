@@ -60730,6 +60730,783 @@
         "invokable": true
       },
       {
+        "id": "principals.create",
+        "title": "Create Principal",
+        "description": "Create a named principal from a name, kind, and optional channel identities. Fails with a conflict when any identity is already mapped to a different principal.",
+        "category": "principals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:principals"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/principals"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "user",
+                "bot",
+                "service",
+                "token"
+              ]
+            },
+            "identities": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "name",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "principal": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "bot",
+                    "service",
+                    "token"
+                  ]
+                },
+                "identities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "channel",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "identities",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "principal"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "principals.delete",
+        "title": "Delete Principal",
+        "description": "Permanently delete a principal. Returns { deleted: false } when no principal with that id existed — an honest boolean, never a 200 that pretends a phantom principal was removed.",
+        "category": "principals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:principals"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/principals/{principalId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "principalId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "principalId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "principalId": {
+              "type": "string"
+            },
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "principalId",
+            "deleted"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "principals.get",
+        "title": "Get Principal",
+        "description": "Return one principal by id. Returns 404 when no principal with that id exists.",
+        "category": "principals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:principals"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/principals/{principalId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "principalId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "principalId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "principal": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "bot",
+                    "service",
+                    "token"
+                  ]
+                },
+                "identities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "channel",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "identities",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "principal"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "principals.list",
+        "title": "List Principals",
+        "description": "Return every named principal in the registry with its channel identities.",
+        "category": "principals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:principals"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/principals"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "principals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "bot",
+                      "service",
+                      "token"
+                    ]
+                  },
+                  "identities": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "channel": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "channel",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "identities",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "principals"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "principals.resolve",
+        "title": "Resolve Sender Identity",
+        "description": "Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false — the registry never guesses.",
+        "category": "principals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:principals"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/principals/resolve"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "channel": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "channel",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "principal": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "bot",
+                    "service",
+                    "token"
+                  ]
+                },
+                "identities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "channel",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "identities",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            },
+            "known": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "principal",
+            "known"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "principals.update",
+        "title": "Update Principal",
+        "description": "Update a principal's name, kind, identities, and/or metadata. Absent fields are left unchanged; supplying identities replaces the set. Fails with a conflict when an identity is already mapped to a different principal.",
+        "category": "principals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:principals"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/principals/{principalId}/update"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "principalId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "user",
+                "bot",
+                "service",
+                "token"
+              ]
+            },
+            "identities": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "principalId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "principal": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "bot",
+                    "service",
+                    "token"
+                  ]
+                },
+                "identities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "channel",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "identities",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "principal"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "providers.get",
         "title": "Provider Snapshot",
         "description": "Return runtime metadata for a single provider.",
@@ -82815,10 +83592,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 342,
-      "typedInputs": 342,
+      "methods": 348,
+      "typedInputs": 348,
       "genericInputs": 0,
-      "typedOutputs": 342,
+      "typedOutputs": 348,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -82827,8 +83604,8 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 342,
-      "validated": 340,
+      "methods": 348,
+      "validated": 346,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
