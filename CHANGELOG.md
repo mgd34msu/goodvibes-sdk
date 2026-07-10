@@ -27,6 +27,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   parity: `workspaces.registrations.list` / `.add` / `.remove` and
   `workspaces.resolve`. The checkpoint manager's registered-workspace consumers
   adopt it in their own rounds.
+- **The sandbox policy surface is now reachable from public subpaths.**
+  `decideSandboxedExec`, `detectSandboxAvailability`, and `probeSandboxHost`
+  existed but were not exported from any public subpath, so a consumer could not
+  wire its approval flow to the sandbox policy. They ship now through
+  `@pellux/goodvibes-sdk/platform/runtime/permissions/sandbox-policy`
+  (`decideSandboxedExec` + its decision/input types) and
+  `@pellux/goodvibes-sdk/platform/tools/exec/sandbox` (the runner:
+  `detectSandboxAvailability`, `probeSandboxHost`, `buildBwrapArgv`, the
+  plan-resolution helpers, and their types) — the exact paths the exec-sandbox
+  entry below names, now real, each with its own bundle budget.
 - **A per-command exec sandbox (bubblewrap) to shrink the approval tail.** When
   bubblewrap (`bwrap`) is available on a Linux host, exec tool calls can run
   inside a per-command OS boundary — the workspace bound read-write, the rest of

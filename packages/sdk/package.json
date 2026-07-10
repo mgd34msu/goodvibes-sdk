@@ -356,6 +356,10 @@
       "types": "./dist/platform/runtime/sandbox.d.ts",
       "import": "./dist/platform/runtime/sandbox.js"
     },
+    "./platform/runtime/permissions/sandbox-policy": {
+      "types": "./dist/platform/runtime/permissions/sandbox-policy.d.ts",
+      "import": "./dist/platform/runtime/permissions/sandbox-policy.js"
+    },
     "./platform/runtime/memory-spine": {
       "types": "./dist/platform/runtime/memory-spine/index.d.ts",
       "import": "./dist/platform/runtime/memory-spine/index.js"
@@ -415,6 +419,10 @@
     "./platform/tools": {
       "types": "./dist/platform/tools/index.d.ts",
       "import": "./dist/platform/tools/index.js"
+    },
+    "./platform/tools/exec/sandbox": {
+      "types": "./dist/platform/tools/exec/sandbox.d.ts",
+      "import": "./dist/platform/tools/exec/sandbox.js"
     },
     "./platform/types": {
       "types": "./dist/platform/types/index.d.ts",

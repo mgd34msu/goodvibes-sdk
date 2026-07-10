@@ -98,6 +98,7 @@ Runtime-heavy surfaces:
 - `@pellux/goodvibes-sdk/platform/providers`
 - `@pellux/goodvibes-sdk/platform/rewind`
 - `@pellux/goodvibes-sdk/platform/runtime/observability`
+- `@pellux/goodvibes-sdk/platform/runtime/permissions/sandbox-policy`
 - `@pellux/goodvibes-sdk/platform/runtime/sandbox`
 - `@pellux/goodvibes-sdk/platform/runtime/settings`
 - `@pellux/goodvibes-sdk/platform/runtime/state`
@@ -110,6 +111,7 @@ Runtime-heavy surfaces:
 - `@pellux/goodvibes-sdk/platform/state`
 - `@pellux/goodvibes-sdk/platform/templates`
 - `@pellux/goodvibes-sdk/platform/tools`
+- `@pellux/goodvibes-sdk/platform/tools/exec/sandbox`
 - `@pellux/goodvibes-sdk/platform/types`
 - `@pellux/goodvibes-sdk/platform/utils`
 - `@pellux/goodvibes-sdk/platform/voice`

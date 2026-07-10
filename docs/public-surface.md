@@ -266,6 +266,7 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/rewind` | Unified message-anchored rewind service (`UnifiedRewindService`) over the existing workspace-checkpoint / conversation / file-undo stores, plus its ports and plan/receipt IO types, so a consumer can construct it and thread the workspace + conversation ports | beta |
 | `platform/runtime` | Curated runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, and UI as namespaces | beta |
 | `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
+| `platform/runtime/permissions/sandbox-policy` | The sandbox-aware exec permission input: `decideSandboxedExec` (turns a base "ask" into an "allow" for a command that runs entirely inside the boundary with no host-access need, or into a named-escalation ask) plus its `SandboxPolicyDecision`/`Effect`/`Input` types, so a consumer can wire its approval flow to the sandbox policy | beta |
 | `platform/runtime/sandbox` | Sandbox host status, presets, reviews, and session registry helpers | beta |
 | `platform/runtime/settings` | Managed settings and control-plane settings bundle helpers | beta |
 | `platform/runtime/state` | Runtime state primitives | beta |
@@ -277,6 +278,7 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/state` | Project index, mode, file cache, undo, and KV state | beta |
 | `platform/templates` | Template manager | beta |
 | `platform/tools` | Tool registry, exec, fetch, read, write, edit, agent | beta |
+| `platform/tools/exec/sandbox` | The per-command exec sandbox runner: `detectSandboxAvailability` (host-probe → honest availability), `probeSandboxHost` (the real host probe), `buildBwrapArgv`, `resolveExecSandboxPlan`/`resolveRuntimeSandboxPlan`, `attachSandboxMeta`, and their types, so a consumer can detect the boundary and probe the host when wiring approval flows to the sandbox | beta |
 | `platform/types` | Shared platform type contracts | beta |
 | `platform/utils` | Shared platform utilities | beta |
 | `platform/voice` | Voice provider registry, provider-agnostic TTS/STT/realtime voice types, and streaming TTS primitives | beta |
