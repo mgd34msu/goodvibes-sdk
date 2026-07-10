@@ -410,8 +410,8 @@
     "rationale": "canonical skill service: Markdown+frontmatter model, progressive-disclosure parse, and CRUD over an injectable store (filesystem + in-memory); measured 560 B gzip @ initial landing; headroom max(ceil(560*1.2)=672, 560+50=610) -> 672 (1.2x dominates)"
   },
   "./platform/state": {
-    "gzip_bytes": 930,
-    "rationale": "measured 775 B gzip @ v1.0.0 release verification after the W6-REL lazy bun:sqlite fix (code-index-store + memory-vector-store now resolve the Database ctor via createRequire to keep the Bun-only `bun:` specifier off the Node static import graph); headroom max(ceil(775*1.2)=930, 775+50=825) -> 930 (1.2x dominates)"
+    "gzip_bytes": 1179,
+    "rationale": "measured 982 B gzip @ the memory-file-projection + temporal-validity landing, v1.6.1 line (with the hoisted memory consolidation/usage policy: new memory-file-projection, memory-temporal, memory-consolidation, memory-usage-detection/stats exports on the state barrel); headroom max(ceil(982*1.2)=1179, 982+50=1032) -> 1179 (1.2x dominates)"
   },
   "./platform/templates": {
     "gzip_bytes": 100,

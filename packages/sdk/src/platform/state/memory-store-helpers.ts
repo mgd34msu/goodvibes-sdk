@@ -35,6 +35,8 @@ export function createSchema(db: { run(sql: string): void; exec(sql: string, par
   ensureColumn(db, 'memory_records', 'reviewed_at INTEGER', 'reviewed_at');
   ensureColumn(db, 'memory_records', 'reviewed_by TEXT', 'reviewed_by');
   ensureColumn(db, 'memory_records', 'stale_reason TEXT', 'stale_reason');
+  ensureColumn(db, 'memory_records', 'valid_from INTEGER', 'valid_from');
+  ensureColumn(db, 'memory_records', 'valid_until INTEGER', 'valid_until');
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_memory_cls ON memory_records(cls)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_memory_scope ON memory_records(scope)`);
@@ -84,6 +86,8 @@ export function rowToRecord(columns: string[], values: unknown[]): MemoryRecord 
     ...(typeof row.stale_reason === 'string' && row.stale_reason.trim() ? { staleReason: row.stale_reason.trim() } : {}),
     createdAt,
     updatedAt,
+    ...(row.valid_from !== null && row.valid_from !== undefined ? { validFrom: requireMemoryTimestamp(row.valid_from, 'valid_from') } : {}),
+    ...(row.valid_until !== null && row.valid_until !== undefined ? { validUntil: requireMemoryTimestamp(row.valid_until, 'valid_until') } : {}),
   };
 }
 

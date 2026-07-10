@@ -12,6 +12,7 @@ import type {
   MemoryRegistry,
   MemorySemanticSearchResult,
 } from './memory-store.js';
+import { isMemoryTemporallyActive } from './memory-store.js';
 
 export interface KnowledgeInjection {
   readonly id: string;
@@ -171,7 +172,11 @@ export function selectKnowledgeForTaskScored(
     recordsById.set(entry.record.id, entry.record);
   }
 
+  // A record OUTSIDE its temporal validity window (pending or expired) is never
+  // injected — mirrors the recall contract so both injection paths agree.
+  const injectionNow = Date.now();
   return [...recordsById.values()]
+    .filter((record) => isMemoryTemporallyActive(record, injectionNow))
     .filter((record) => record.confidence >= 55)
     .map((record) => {
       const semantic = semanticById.get(record.id);
