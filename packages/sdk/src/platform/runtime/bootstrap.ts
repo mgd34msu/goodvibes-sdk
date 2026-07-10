@@ -11,6 +11,7 @@ export type {
 } from './bootstrap-background.js';
 export {
   loadRuntimeSystemPrompt,
+  loadRuntimeSystemPromptWithSources,
   restoreRuntimeModel,
   synchronizeConfiguredServices,
 } from './bootstrap-helpers.js';
