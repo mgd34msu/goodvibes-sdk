@@ -15,6 +15,7 @@
  */
 
 import { parseCommandAST } from '../../runtime/permissions/normalization/parser.js';
+import { collectCommandNodes } from '../../runtime/permissions/normalization/ast.js';
 import { evaluateCommandAST, DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
 import { normalizeCommand } from '../../runtime/permissions/normalization/index.js';
 import { catastrophicReason } from '../../runtime/permissions/normalization/classifier.js';
@@ -121,6 +122,17 @@ function astGuard(
   allowedClasses: ReadonlySet<CommandClassification>,
 ): ASTGuardResult {
   const ast = parseCommandAST(command);
+
+  // Parser failure → fall back to the baseline matcher. The parser records a
+  // parseError on any command node it could not structure; when present, the
+  // AST is unreliable, so we defer to the baseline flat-segmentation path
+  // rather than trust a degraded tree. This is never a hard error and never a
+  // blanket allow — baselineGuard applies the same frozen catastrophic block
+  // and class gating the non-AST path always has.
+  if (collectCommandNodes(ast).some((node) => node.parseError !== undefined)) {
+    return baselineGuard(command, allowedClasses);
+  }
+
   const verdict = evaluateCommandAST(command, ast, allowedClasses);
 
   if (!verdict.allowed) {
@@ -166,7 +178,15 @@ export async function guardExecCommand(
   flagManager?: FlagManagerLike | null,
 ): Promise<ASTGuardResult> {
   if (isASTNormalizationEnabled(flagManager)) {
-    return astGuard(command, allowedClasses);
+    try {
+      return astGuard(command, allowedClasses);
+    } catch {
+      // Any unexpected fault in the AST path (parser, verdict, or evaluation)
+      // falls back to the baseline matcher rather than surfacing a hard error
+      // or defaulting to allow. The baseline path still enforces the frozen
+      // catastrophic block and the caller's class gating.
+      return baselineGuard(command, allowedClasses);
+    }
   }
   return baselineGuard(command, allowedClasses);
 }
