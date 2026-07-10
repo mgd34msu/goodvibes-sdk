@@ -180,6 +180,16 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // core verbs (push.subscriptions.create/list/delete, push.vapid.get).
     'verify',
   ],
+  'checkpoint-restore-safety': [
+    // Server-side confirmation preview for the destructive checkpoints.restore:
+    // checkpoints.restorePreview computes what a restore would change and mints
+    // a short-lived, single-use confirmToken authorizing the matching restore.
+    // Read-only (no workspace rewrite) — a distinct verb from `restore` so the
+    // preview can hold read scope while restore keeps write scope. Not a generic
+    // CRUD/lifecycle word: it is a safety-gate operation specific to the
+    // whole-workspace rewind surface.
+    'restorePreview',
+  ],
   'fleet-archive': [
     // Session-scoped fleet archive transitions (runtime/fleet/archive.ts):
     // moving a FINISHED process subtree out of the live fleet view and back.

@@ -93,6 +93,25 @@ interface CheckpointsRestoreResponse extends WireError {
     readonly safetyCheckpointId: string | null;
     readonly restoredFiles: string[];
     readonly removedFiles: string[];
+  } | null;
+  readonly refused: boolean;
+  readonly refusal: {
+    readonly reason: string;
+    readonly confirmField: string;
+    readonly previewMethod: string;
+    readonly options: string[];
+  } | null;
+}
+
+interface CheckpointsRestorePreviewResponse extends WireError {
+  readonly token: string;
+  readonly expiresAt: number;
+  readonly preview: {
+    readonly checkpointId: string;
+    readonly label: string;
+    readonly affectedPathCount: number;
+    readonly affectedPathSample: string[];
+    readonly stat: string;
   };
 }
 
@@ -294,24 +313,96 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
     expect(status).toBe(400);
   });
 
-  test('checkpoints.restore of an unknown id is an honest 404, not a silent no-op', async () => {
-    const { status, json } = await invokeVerb('checkpoints.restore', { body: { id: 'wcp_does_not_exist' } });
+  test('checkpoints.restore of an unknown id, once confirmed, is an honest 404, not a silent no-op', async () => {
+    // confirm:true clears the confirmation gate so the 404 (not the refusal) surfaces.
+    const { status, json } = await invokeVerb('checkpoints.restore', { body: { id: 'wcp_does_not_exist', confirm: true } });
     expect(status).toBe(404);
     expect(typeof json.error).toBe('string');
     expect(json.code).toBe('NOT_FOUND');
   });
 
-  test('checkpoints.restore of a real id executes without a server-side confirm gate', async () => {
+  test('checkpoints.restore WITHOUT confirmation returns a structured refusal (200), not an error and not a restore', async () => {
     touchWorkspaceFile();
-    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'restore target', paths: [] } });
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'refusal target', paths: [] } });
+    expect(created.status).toBe(200);
+    const checkpointId: string = created.json.checkpoint.id;
+
+    const refused = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false } });
+    // Honest, actionable, NON-destructive: a 200 body, not a thrown error.
+    expect(refused.status).toBe(200);
+    expect(refused.json.refused).toBe(true);
+    expect(refused.json.result).toBeNull();
+    expect(refused.json.refusal).not.toBeNull();
+    expect(refused.json.refusal!.confirmField).toBe('confirm');
+    expect(refused.json.refusal!.previewMethod).toBe('checkpoints.restorePreview');
+    // Both acknowledgment paths are named in the refusal.
+    expect(refused.json.refusal!.options.some((o) => o.includes('confirm:true'))).toBe(true);
+    expect(refused.json.refusal!.options.some((o) => o.includes('checkpoints.restorePreview'))).toBe(true);
+  });
+
+  test('checkpoints.restore with confirm:true executes the restore (existing callers add exactly this one field)', async () => {
+    touchWorkspaceFile();
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'confirm target', paths: [] } });
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
     const checkpointId: string = created.json.checkpoint.id;
 
-    const restored = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false } });
+    const restored = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false, confirm: true } });
     expect(restored.status).toBe(200);
-    expect(restored.json.result.checkpointId).toBe(checkpointId);
-    expect(restored.json.result.safetyCheckpointId).toBeNull();
+    expect(restored.json.refused).toBe(false);
+    expect(restored.json.refusal).toBeNull();
+    expect(restored.json.result).not.toBeNull();
+    expect(restored.json.result!.checkpointId).toBe(checkpointId);
+    expect(restored.json.result!.safetyCheckpointId).toBeNull();
+  });
+
+  test('checkpoints.restorePreview mints a token that authorizes the matching restore exactly once', async () => {
+    touchWorkspaceFile();
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'preview target', paths: [] } });
+    expect(created.status).toBe(200);
+    const checkpointId: string = created.json.checkpoint.id;
+
+    // Preview is read-only and returns a token + a preview of what would change.
+    const preview = await invokeVerb<CheckpointsRestorePreviewResponse>('checkpoints.restorePreview', { body: { id: checkpointId } });
+    expect(preview.status).toBe(200);
+    expect(typeof preview.json.token).toBe('string');
+    expect(preview.json.token.length).toBeGreaterThan(0);
+    expect(typeof preview.json.expiresAt).toBe('number');
+    expect(preview.json.preview.checkpointId).toBe(checkpointId);
+    expect(preview.json.preview.label).toBe('preview target');
+    expect(typeof preview.json.preview.affectedPathCount).toBe('number');
+    expect(Array.isArray(preview.json.preview.affectedPathSample)).toBe(true);
+
+    const token = preview.json.token;
+
+    // The token authorizes the restore of this checkpoint.
+    const restored = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false, confirmToken: token } });
+    expect(restored.status).toBe(200);
+    expect(restored.json.refused).toBe(false);
+    expect(restored.json.result!.checkpointId).toBe(checkpointId);
+
+    // Single-use: the same token cannot be replayed.
+    const replay = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false, confirmToken: token } });
+    expect(replay.status).toBe(400);
+    expect(typeof replay.json.error).toBe('string');
+    expect(replay.json.code).toBe('INVALID_ARGUMENT');
+  });
+
+  test('checkpoints.restorePreview of an unknown id is an honest 404 (no token minted)', async () => {
+    const { status, json } = await invokeVerb('checkpoints.restorePreview', { body: { id: 'wcp_does_not_exist' } });
+    expect(status).toBe(404);
+    expect(json.code).toBe('NOT_FOUND');
+  });
+
+  test('checkpoints.restore rejects a bogus confirmToken with an honest 400 naming the remedy', async () => {
+    touchWorkspaceFile();
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'bogus token target', paths: [] } });
+    const checkpointId: string = created.json.checkpoint.id;
+
+    const { status, json } = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, confirmToken: 'not-a-real-token' } });
+    expect(status).toBe(400);
+    expect(json.code).toBe('INVALID_ARGUMENT');
+    expect(json.error).toContain('checkpoints.restorePreview');
   });
 });
 

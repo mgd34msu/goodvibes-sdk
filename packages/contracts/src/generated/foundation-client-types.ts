@@ -69,7 +69,8 @@ export interface OperatorMethodInputMap {
   "checkpoints.create": { kind: "agent-run" | "manual" | "turn"; label?: string; retentionClass?: "forensic" | "short" | "standard"; turnId?: string; agentId?: string; paths?: readonly string[]; };
   "checkpoints.diff": { a: string; b?: string; };
   "checkpoints.list": { kind?: "agent-run" | "manual" | "turn"; since?: number; limit?: number; };
-  "checkpoints.restore": { id: string; paths?: readonly string[]; safetyCheckpoint?: boolean; };
+  "checkpoints.restore": { id: string; paths?: readonly string[]; safetyCheckpoint?: boolean; confirm?: boolean; confirmToken?: string; };
+  "checkpoints.restorePreview": { id: string; paths?: readonly string[]; };
   "companion.chat.events.stream": { sessionId: string; };
   "companion.chat.messages.create": ({ sessionId: string; body?: string; content?: string; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "companion.chat.messages.list": { sessionId: string; };
@@ -308,7 +309,8 @@ export interface OperatorMethodOutputMap {
   "checkpoints.create": { checkpoint: null | { id: string; kind: "agent-run" | "manual" | "turn"; label: string; createdAt: number; parentId: null | string; turnId?: string; agentId?: string; retentionClass: "forensic" | "short" | "standard"; commit: string; sizeBytes: number; }; noop: boolean; };
   "checkpoints.diff": { diff: { from: string; to: string; files: readonly string[]; unifiedDiff: string; stat: string; }; };
   "checkpoints.list": { checkpoints: readonly ({ id: string; kind: "agent-run" | "manual" | "turn"; label: string; createdAt: number; parentId: null | string; turnId?: string; agentId?: string; retentionClass: "forensic" | "short" | "standard"; commit: string; sizeBytes: number; })[]; };
-  "checkpoints.restore": { result: { checkpointId: string; safetyCheckpointId: null | string; restoredFiles: readonly string[]; removedFiles: readonly string[]; }; };
+  "checkpoints.restore": { result: null | { checkpointId: string; safetyCheckpointId: null | string; restoredFiles: readonly string[]; removedFiles: readonly string[]; }; refused: boolean; refusal: null | { reason: string; confirmField: string; previewMethod: string; options: readonly string[]; }; };
+  "checkpoints.restorePreview": { token: string; expiresAt: number; preview: { checkpointId: string; label: string; affectedPathCount: number; affectedPathSample: readonly string[]; stat: string; }; };
   "companion.chat.events.stream": {  };
   "companion.chat.messages.create": { messageId: string; };
   "companion.chat.messages.list": { sessionId: string; messages: readonly CompanionChatMessage[]; };
