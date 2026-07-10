@@ -186,8 +186,10 @@ export type AgentUsage = {
     cacheWriteTokens?: number | undefined;
 };
 
+// Warning: (ae-forgotten-export) The symbol "FleetEvent" needs to be exported by the entry point index.d.ts
+//
 // @public
-export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | GoodVibesUIEvent | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent;
+export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | GoodVibesUIEvent | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent | FleetEvent;
 
 // @public
 export function applyPerMethodPolicy(base: ResolvedHttpRetryPolicy, methodId: string): ResolvedHttpRetryPolicy;
@@ -1109,6 +1111,7 @@ export type DomainEventMap = {
     surfaces: SurfaceEvent;
     knowledge: KnowledgeEvent;
     workspace: WorkspaceEvent;
+    fleet: FleetEvent;
 };
 
 // @public (undocumented)
@@ -1239,7 +1242,7 @@ export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
     readonly productVersion: "1.6.1";
     readonly operatorMethodCount: 334;
-    readonly operatorEventCount: 31;
+    readonly operatorEventCount: 32;
     readonly peerEndpointCount: 6;
 };
 
@@ -15538,7 +15541,7 @@ export type RouteSurfaceKind = (typeof ROUTE_SURFACE_KINDS)[number];
 export type RouteTargetKind = (typeof ROUTE_TARGET_KINDS)[number];
 
 // @public (undocumented)
-export const RUNTIME_EVENT_DOMAINS: readonly ["session", "turn", "providers", "tools", "tasks", "agents", "workflows", "orchestration", "communication", "planner", "permissions", "plugins", "mcp", "transport", "compaction", "ui", "ops", "forensics", "security", "automation", "routes", "control-plane", "deliveries", "watchers", "surfaces", "knowledge", "workspace"];
+export const RUNTIME_EVENT_DOMAINS: readonly ["session", "turn", "providers", "tools", "tasks", "agents", "workflows", "orchestration", "communication", "planner", "permissions", "plugins", "mcp", "transport", "compaction", "ui", "ops", "forensics", "security", "automation", "routes", "control-plane", "deliveries", "watchers", "surfaces", "knowledge", "workspace", "fleet"];
 
 // @public (undocumented)
 export type RuntimeDomainEventPayload<TDomain extends RuntimeEventTypedDomain, TEventType extends RuntimeDomainEventType<TDomain>> = RuntimeDomainEventPayloadMap[TDomain][TEventType];

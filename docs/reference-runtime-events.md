@@ -210,6 +210,39 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 }
 ```
 
+### `fleet`
+
+- `runtime.fleet` -> `fleet`
+
+#### `runtime.fleet` payload schema
+
+```json
+{
+  "type": "object",
+  "additionalProperties": {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      },
+      {
+        "type": "boolean"
+      },
+      {
+        "type": "null"
+      },
+      {},
+      {
+        "type": "array",
+        "items": {}
+      }
+    ]
+  }
+}
+```
+
 ### `forensics`
 
 - `runtime.forensics` -> `forensics`

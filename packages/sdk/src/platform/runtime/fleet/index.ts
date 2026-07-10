@@ -28,6 +28,8 @@ export {
   STEER_TTL_MS,
 } from './registry.js';
 export { withFleetArchive } from './archive.js';
+export { attachFleetEmitBridge } from './emit-bridge.js';
+export type { FleetEmitBridgeDeps } from './emit-bridge.js';
 export type { ArchivableProcessRegistry, FleetArchiveResult, FleetArchiveView } from './archive.js';
 export { chainNodeId, subtaskNodeId, workItemNodeId } from './adapters/agent.js';
 export { scheduleNodeId } from './adapters/schedule.js';

@@ -57,6 +57,7 @@ export { WATCHER_SOURCE_KINDS } from '../../../events/watchers.js';
 export type { SurfaceEvent, SurfaceEventType, SurfaceKind } from '../../../events/surfaces.js';
 export { SURFACE_KINDS } from '../../../events/surfaces.js';
 export type { KnowledgeEvent, KnowledgeEventType } from '../../../events/knowledge.js';
+export type { FleetEvent, FleetEventType, FleetNodeKind, FleetNodeState, FleetAttentionReason } from '../../../events/fleet.js';
 
 /** Listener callback receiving a fully-formed envelope. */
 export type EnvelopeListener<T extends AnyRuntimeEvent = AnyRuntimeEvent> = (

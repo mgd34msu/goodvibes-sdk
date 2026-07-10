@@ -26,6 +26,7 @@ export const RUNTIME_EVENT_DOMAINS = [
   "surfaces",
   "knowledge",
   "workspace",
+  "fleet",
 ] as const;
 export type RuntimeEventDomain = typeof RUNTIME_EVENT_DOMAINS[number];
 
