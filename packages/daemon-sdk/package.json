@@ -97,6 +97,10 @@
       "types": "./dist/relay-server.d.ts",
       "import": "./dist/relay-server.js"
     },
+    "./relay-registration": {
+      "types": "./dist/relay-registration.d.ts",
+      "import": "./dist/relay-registration.js"
+    },
     "./relay-server-entry": {
       "types": "./dist/relay-server-entry.d.ts",
       "import": "./dist/relay-server-entry.js"

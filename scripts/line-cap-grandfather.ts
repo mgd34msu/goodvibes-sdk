@@ -48,10 +48,16 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 806,
     justification: 'code index store, pre-split, shrink-only; +6 for the sqlite-vec platform-capability-limit classification (platformLimitReason field + branch)',
   },
+  // schema-domain-runtime.ts ~0.83k — runtime config defaults + per-key setting
+  // definitions; crossed 800 with the relay.* reachability keys.
+  'packages/sdk/src/platform/config/schema-domain-runtime.ts': {
+    ceiling: 830,
+    justification: 'runtime config defaults + setting definitions; +30 for the relay.* reachability config (the relay defaults object plus the four relay.enabled/url/rendezvousId/label ConfigSettingDefinition entries)',
+  },
   // schema-types.ts ~1.07k — config schema type surface, pre-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1123,
-    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries); +17 for the atRest config section backing on-disk transcript-journal + execution-ledger secret redaction and age/size retention (AtRestConfig interface + doc, the GoodVibesConfig member, and the three atRest.* keys in the ConfigKey union and ConfigValue mapped type); +8 for the per-command exec sandbox config: a 3-line explanatory comment plus the sandbox.enabled/egressAllowlist/workspaceWritable interface members and sandbox.enabled in the ConfigKey union and ConfigValue mapped type (the two arrays are read via getCategory)',
+    ceiling: 1150,
+    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries); +17 for the atRest config section backing on-disk transcript-journal + execution-ledger secret redaction and age/size retention (AtRestConfig interface + doc, the GoodVibesConfig member, and the three atRest.* keys in the ConfigKey union and ConfigValue mapped type); +8 for the per-command exec sandbox config: a 3-line explanatory comment plus the sandbox.enabled/egressAllowlist/workspaceWritable interface members and sandbox.enabled in the ConfigKey union and ConfigValue mapped type (the two arrays are read via getCategory); +27 for the relay.* reachability config (RelayConfig interface + doc, the GoodVibesConfig member, and the four relay.enabled/url/rendezvousId/label keys in the ConfigKey union and ConfigValue mapped type)',
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
@@ -150,8 +156,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // facade.ts (daemon) ~0.83k — daemon facade, pre-split, shrink-only
   'packages/sdk/src/platform/daemon/facade.ts': {
-    ceiling: 835,
-    justification: 'daemon facade, pre-split, shrink-only; +9 for the approvals broker accessor (embedder/test seam) + doc',
+    ceiling: 853,
+    justification: 'daemon facade, pre-split, shrink-only; +9 for the approvals broker accessor (embedder/test seam) + doc; +18 for the outbound relay reachability boot seam (start/stop lifecycle wiring + surface accessor; the heavy composition lives in ../relay/daemon-wiring.ts)',
   },
   // gateway.ts (control-plane) ~0.83k — control-plane gateway, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/gateway.ts': {

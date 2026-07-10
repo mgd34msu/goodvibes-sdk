@@ -158,6 +158,12 @@ export const runtimeConfigDefaults = {
       allowPrivateHosts: false,
     },
   },
+  relay: {
+    enabled: false,
+    url: '',
+    rendezvousId: '',
+    label: '',
+  },
   worktree: {
     setup: {
       commands: [] as string[],
@@ -525,6 +531,30 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description: 'Allow explicit admin-approved remote fetches from private, localhost, or metadata hosts for artifacts and ingest flows',
+  },
+  {
+    key: 'relay.enabled',
+    type: 'boolean',
+    default: false,
+    description: 'Connect the daemon OUTBOUND to a zero-knowledge relay for reachability from outside the LAN (also gated by the relay-connect feature flag)',
+  },
+  {
+    key: 'relay.url',
+    type: 'string',
+    default: '',
+    description: 'Relay URL to dial (wss://…); empty disables the outbound relay connection',
+  },
+  {
+    key: 'relay.rendezvousId',
+    type: 'string',
+    default: '',
+    description: 'Stable unguessable rendezvous id the daemon registers under; generated on first enable when empty',
+  },
+  {
+    key: 'relay.label',
+    type: 'string',
+    default: '',
+    description: 'Human-facing daemon label carried in relay pairing payloads',
   },
   {
     key: 'runtime.companionChatLimiter.perSessionLimit',

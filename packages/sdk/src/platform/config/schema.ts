@@ -33,6 +33,7 @@ export const DEFAULT_CONFIG = {
   watchers: runtimeConfigDefaults.watchers,
   service: runtimeConfigDefaults.service,
   network: runtimeConfigDefaults.network,
+  relay: runtimeConfigDefaults.relay,
   runtime: runtimeConfigDefaults.runtime,
   telemetry: runtimeConfigDefaults.telemetry,
   atRest: atRestConfigDefaults.atRest,
