@@ -73,6 +73,39 @@ export {
 } from './vibe-projection.js';
 export type { VibeProjectionOptions, VibeImportOptions } from './vibe-projection.js';
 export {
+  DEFAULT_MEMORY_CONSOLIDATION_CONFIG,
+  resolveMemoryConsolidationConfig,
+} from './memory-consolidation-config.js';
+export type {
+  ResolvedMemoryConsolidationConfig,
+  MemoryConsolidationConfigSource,
+} from './memory-consolidation-config.js';
+export { runMemoryConsolidation } from './memory-consolidation.js';
+export type {
+  MemoryConsolidationRegistry,
+  MemoryConsolidationInput,
+  MemoryConsolidationTrigger,
+  MemoryConsolidationUsageSignal,
+  MemoryConsolidationUsageLookup,
+  MemoryConsolidationMergeEntry,
+  MemoryConsolidationArchiveEntry,
+  MemoryConsolidationDecayEntry,
+  MemoryConsolidationProposal,
+  MemoryConsolidationRunReceipt,
+} from './memory-consolidation.js';
+export { detectReferencedMemoryIds } from './memory-usage-detection.js';
+export type {
+  MemoryReferenceTier,
+  MemoryReferenceInput,
+  MemoryReferenceResult,
+} from './memory-usage-detection.js';
+export { MemoryUsageStatsStore, MEMORY_USAGE_SIGNAL_NOTE } from './memory-usage-stats.js';
+export type {
+  MemoryUsageEntry,
+  MemoryUsageTopEntry,
+  MemoryUsageSummary,
+} from './memory-usage-stats.js';
+export {
   MEMORY_VECTOR_DIMS,
   embedMemoryText,
   resolveMemoryVectorDbPath,
