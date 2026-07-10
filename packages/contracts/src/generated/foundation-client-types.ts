@@ -79,6 +79,11 @@ export interface OperatorMethodInputMap {
   "checkpoints.list": { kind?: "agent-run" | "manual" | "turn"; since?: number; limit?: number; };
   "checkpoints.restore": { id: string; paths?: readonly string[]; safetyCheckpoint?: boolean; confirm?: boolean; confirmToken?: string; };
   "checkpoints.restorePreview": { id: string; paths?: readonly string[]; };
+  "ci.status": { repo: string; ref?: string; prNumber?: number; };
+  "ci.watches.create": { repo: string; ref?: string; prNumber?: number; deliveryChannel: string; triggerFixSession?: boolean; };
+  "ci.watches.delete": { watchId: string; };
+  "ci.watches.list": {  };
+  "ci.watches.run": { watchId: string; };
   "companion.chat.events.stream": { sessionId: string; };
   "companion.chat.messages.create": ({ sessionId: string; body?: string; content?: string; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "companion.chat.messages.list": { sessionId: string; };
@@ -341,6 +346,11 @@ export interface OperatorMethodOutputMap {
   "checkpoints.list": { checkpoints: readonly ({ id: string; kind: "agent-run" | "manual" | "turn"; label: string; createdAt: number; parentId: null | string; turnId?: string; agentId?: string; retentionClass: "forensic" | "short" | "standard"; commit: string; sizeBytes: number; })[]; };
   "checkpoints.restore": { result: null | { checkpointId: string; safetyCheckpointId: null | string; restoredFiles: readonly string[]; removedFiles: readonly string[]; }; refused: boolean; refusal: null | { reason: string; confirmField: string; previewMethod: string; options: readonly string[]; }; };
   "checkpoints.restorePreview": { token: string; expiresAt: number; preview: { checkpointId: string; label: string; affectedPathCount: number; affectedPathSample: readonly string[]; stat: string; }; };
+  "ci.status": { report: { repo: string; ref?: string; prNumber?: number; overall: "failed" | "passed" | "pending" | "unknown"; jobs: readonly ({ name: string; status: "completed" | "in_progress" | "queued"; conclusion: null | string; continueOnError?: boolean; url?: string; })[]; violations: readonly string[]; checkedAt: number; }; };
+  "ci.watches.create": { watch: { id: string; repo: string; ref?: string; prNumber?: number; deliveryChannel: string; triggerFixSession: boolean; lastOverall?: "failed" | "passed" | "pending" | "unknown"; createdAt: number; updatedAt: number; }; };
+  "ci.watches.delete": { watchId: string; deleted: boolean; };
+  "ci.watches.list": { watches: readonly ({ id: string; repo: string; ref?: string; prNumber?: number; deliveryChannel: string; triggerFixSession: boolean; lastOverall?: "failed" | "passed" | "pending" | "unknown"; createdAt: number; updatedAt: number; })[]; };
+  "ci.watches.run": { report: { repo: string; ref?: string; prNumber?: number; overall: "failed" | "passed" | "pending" | "unknown"; jobs: readonly ({ name: string; status: "completed" | "in_progress" | "queued"; conclusion: null | string; continueOnError?: boolean; url?: string; })[]; violations: readonly string[]; checkedAt: number; }; notified: boolean; notificationId?: string; fixSessionTriggered: boolean; fixSessionId?: string; };
   "companion.chat.events.stream": {  };
   "companion.chat.messages.create": { messageId: string; };
   "companion.chat.messages.list": { sessionId: string; messages: readonly CompanionChatMessage[]; };

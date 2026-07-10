@@ -32,6 +32,50 @@ import type { ProviderRegistry } from '../../providers/registry.js';
 import type { AutomationManager } from '../../automation/index.js';
 import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
+import { registerCiGatewayMethods } from './ci.js';
+import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief } from '../../ci-watch/index.js';
+
+/** Parse a 'surfaceKind' or 'surfaceKind:address' channel string into a delivery target. */
+function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
+  const separator = channel.indexOf(':');
+  const surfaceKind = (separator === -1 ? channel : channel.slice(0, separator)).trim();
+  const address = separator === -1 ? '' : channel.slice(separator + 1).trim();
+  return {
+    kind: 'surface',
+    surfaceKind: surfaceKind as ChannelDeliveryTarget['surfaceKind'],
+    ...(address ? { address } : {}),
+  };
+}
+
+/** Start a one-shot fix-session (an isolated automation job) pre-briefed with the failing CI jobs. */
+async function startCiFixSession(
+  automation: Pick<AutomationManager, 'createJob'>,
+  brief: FixSessionBrief,
+): Promise<string | undefined> {
+  const target = brief.prNumber !== undefined ? `PR #${brief.prNumber}` : (brief.ref ?? 'the default branch');
+  const prompt = [
+    `CI failed for ${brief.repo} (${target}).`,
+    `Failing jobs: ${brief.failingJobs.join(', ') || 'unknown'}.`,
+    '',
+    brief.logs,
+    '',
+    'Investigate the failing CI jobs and fix them.',
+  ].join('\n');
+  try {
+    const job = await automation.createJob({
+      name: `Fix CI: ${brief.repo}`,
+      prompt,
+      schedule: { kind: 'at', at: Date.now() },
+      target: { kind: 'isolated', createIfMissing: true },
+      enabled: true,
+      deleteAfterRun: true,
+    });
+    return job.id;
+  } catch {
+    // Automation subsystem disabled — the fix-session cannot start this round.
+    return undefined;
+  }
+}
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
@@ -140,6 +184,33 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new ChannelProfileStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-profiles.json')),
   );
   registerChannelProfilesGatewayMethods(catalog, channelProfileRegistry);
+
+  // CI-watch: the per-job status tool + standing subscriptions. The gh-CLI
+  // source and the watch store are always available; the completion notifier
+  // binds to the channel delivery router when present, and the opt-in fix-session
+  // starts a one-shot isolated automation job when the automation manager is
+  // present (absent → the trigger is recorded honestly but no session starts).
+  const ciWatchService = new CiWatchService({
+    source: createGhCliCiSource(),
+    store: new CiWatchStore(deps.shellPaths.resolveUserPath('control-plane', 'ci-watches.json')),
+    ...(deps.channelDeliveryRouter
+      ? {
+        notifier: async (channel: string, title: string, body: string): Promise<string | undefined> =>
+          deps.channelDeliveryRouter!.deliver({
+            target: parseChannelDeliveryTarget(channel),
+            body,
+            title,
+            jobId: 'ci-watch',
+            runId: `ci-${Date.now()}`,
+            includeLinks: false,
+          }),
+      }
+      : {}),
+    ...(deps.automationManager
+      ? { fixSessionStarter: (brief) => startCiFixSession(deps.automationManager!, brief) }
+      : {}),
+  });
+  registerCiGatewayMethods(catalog, ciWatchService);
 
   // Proactive check-in (the "heartbeat initiative"): a briefing→judgment→
   // conditional-delivery loop that rides the automation scheduler as a
