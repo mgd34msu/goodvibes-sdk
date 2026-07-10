@@ -91,8 +91,13 @@ function evaluateModeLayer(
       };
 
     case 'plan':
-      // Plan mode blocks write, network, and destructive
-      if (classification === 'write' || classification === 'network' || classification === 'destructive') {
+      // Plan mode blocks every mutating/exec/delegate class; only reads pass.
+      if (
+        classification === 'write' ||
+        classification === 'network' ||
+        classification === 'destructive' ||
+        classification === 'escalation'
+      ) {
         return {
           deny: true,
           allow: false,
@@ -102,6 +107,27 @@ function evaluateModeLayer(
             check: 'mode-plan-constraint',
             matched: true,
             detail: `plan mode denies ${classification} tool "${toolName}"`,
+          },
+        };
+      }
+      break;
+
+    case 'accept-edits':
+      // Accept-edits auto-approves only genuine file write/edit tools by name.
+      // exec classifies as 'write' here too, so gate on WRITE_TOOLS membership
+      // rather than classification — exec, network, and escalation then impose
+      // no mode-level constraint and fall through to the policy/default layers
+      // so they are still gated.
+      if (WRITE_TOOLS.has(toolName)) {
+        return {
+          deny: false,
+          allow: true,
+          reason: 'MODE_ALLOW_ACCEPT_EDITS',
+          step: {
+            layer: 'mode',
+            check: 'mode-accept-edits-constraint',
+            matched: true,
+            detail: `accept-edits mode auto-approves write tool "${toolName}"`,
           },
         };
       }

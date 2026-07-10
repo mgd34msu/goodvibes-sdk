@@ -11,7 +11,8 @@
  * The active permission mode controlling how the evaluator applies its layers.
  *
  * - `default`              — Standard prompt mode; reads auto-approved.
- * - `plan`                 — Planning mode; write/execute/network blocked.
+ * - `plan`                 — Planning mode; write/execute/network/escalation blocked.
+ * - `accept-edits`         — File write/edit auto-approved; exec/network/escalation still gated.
  * - `allow-all`            — All tools auto-approved (⚠ use with caution).
  * - `custom`               — Per-rule policy applies exclusively.
  * - `background-restricted`— Agent/delegate tools blocked; exec restricted.
@@ -20,6 +21,7 @@
 export type PermissionMode =
   | 'default'
   | 'plan'
+  | 'accept-edits'
   | 'allow-all'
   | 'custom'
   | 'background-restricted'
@@ -83,8 +85,10 @@ export type DecisionReason =
   | 'SAFETY_DENY_GUARDRAIL'
   // Mode — allow-all mode active
   | 'MODE_ALLOW_ALL'
-  // Mode — plan mode blocks write/network/destructive
+  // Mode — plan mode blocks write/network/destructive/escalation
   | 'MODE_DENY_PLAN'
+  // Mode — accept-edits mode auto-approves file write/edit tools
+  | 'MODE_ALLOW_ACCEPT_EDITS'
   // Mode — background-restricted mode blocks agent/delegate
   | 'MODE_DENY_BACKGROUND'
   // Mode — remote-restricted mode blocks network tools

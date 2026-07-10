@@ -15,7 +15,9 @@ import type {
 import type { PermissionCategory } from '../../../../permissions/manager.js';
 import { now, uniq, updateDomainMetadata, isTerminalLifecycleState, computeActiveIds } from './shared.js';
 
-function permissionMachineStateForEvent(event: PermissionEvent): PermissionDecisionMachineState {
+function permissionMachineStateForEvent(
+  event: Exclude<PermissionEvent, { type: 'PERMISSION_MODE_CHANGED' }>,
+): PermissionDecisionMachineState {
   switch (event.type) {
     case 'PERMISSION_REQUESTED':
       return 'collect_rules';
@@ -78,6 +80,10 @@ export function updatePermissionState(
 ): PermissionDomainState {
   const base = updateDomainMetadata(domain, event.type);
   switch (event.type) {
+    case 'PERMISSION_MODE_CHANGED':
+      // Session-level mode switch, not part of the per-call decision machine:
+      // record the new mode and leave the decision state untouched.
+      return { ...base, mode: event.mode as PermissionDomainState['mode'] };
     case 'PERMISSION_REQUESTED':
       return { ...base, awaitingDecision: true, decisionMachineState: permissionMachineStateForEvent(event), totalChecks: domain.totalChecks + 1 };
     case 'RULES_COLLECTED':

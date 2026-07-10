@@ -285,8 +285,12 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     key: 'permissions.mode',
     type: 'enum',
     default: 'prompt',
-    description: 'Permission approval mode: prompt (default), allow-all, or custom',
-    enumValues: ['prompt', 'allow-all', 'custom'],
+    description:
+      'Session permission mode. prompt (default/"normal"): auto-approve reads, ask for the rest. '
+      + 'plan: read-only tools allowed, every mutating/exec tool is refused with a structured plan-mode denial. '
+      + 'accept-edits: file write/edit tools auto-approve, exec and other risky classes still ask. '
+      + 'allow-all ("auto"): every tool auto-approved. custom: per-tool config actions apply.',
+    enumValues: ['prompt', 'allow-all', 'custom', 'plan', 'accept-edits'],
   },
   {
     key: 'permissions.tools.read',

@@ -20,6 +20,10 @@ export type PermissionDecisionReasonCode =
   | 'safety_guardrail'
   | 'mode_allow_all'
   | 'mode_denied'
+  // Mode — plan mode refused a mutating/exec tool (structured plan-mode denial)
+  | 'plan_mode'
+  // Mode — accept-edits mode auto-approved a file write/edit tool
+  | 'mode_accept_edits'
   | 'session_cached_allow'
   | 'session_cached_deny'
   | 'user_approved'

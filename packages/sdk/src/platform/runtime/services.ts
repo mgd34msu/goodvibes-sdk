@@ -89,6 +89,7 @@ import { createShellPathService, type ShellPathService } from './shell-paths.js'
 import type { FeatureFlagManager } from './feature-flags/index.js';
 import { createFeatureFlagManager } from './feature-flags/index.js';
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
+import { bindPermissionModeChangeEvent } from '../permissions/mode-change-emitter.js';
 import { requireSurfaceRoot } from './surface-root.js';
 import {
   createNoopKeybindingsManager,
@@ -361,12 +362,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeStore: options.runtimeStore,
     runtimeBus: options.runtimeBus,
   });
-  const agentMessageBus = new AgentMessageBus();
-  agentMessageBus.setRuntimeBus(options.runtimeBus);
+  const agentMessageBus = new AgentMessageBus(); agentMessageBus.setRuntimeBus(options.runtimeBus);
   const archetypeLoader = new ArchetypeLoader(join(workingDirectory, '.goodvibes', 'agents'));
-  const agentOrchestrator = new AgentOrchestrator({
-    messageBus: agentMessageBus,
-  });
+  const agentOrchestrator = new AgentOrchestrator({ messageBus: agentMessageBus });
   agentOrchestrator.setRuntimeBus(options.runtimeBus);
   const agentManager = new AgentManager({
     archetypeLoader,
@@ -590,6 +588,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     false,
   );
   bindProviderOptimizerFeatureFlag(featureFlags, providerOptimizer);
+  // Poll-free runtime event for permission-mode changes so surfaces can render a live mode pill.
+  bindPermissionModeChangeEvent(configManager, options.runtimeBus, 'runtime');
   const sessionMemoryStore = new SessionMemoryStore();
   const sessionLineageTracker = new SessionLineageTracker();
   const sessionChangeTracker = new SessionChangeTracker();

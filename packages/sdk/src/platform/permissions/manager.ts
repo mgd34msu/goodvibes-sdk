@@ -1,5 +1,5 @@
 import { getConfigSnapshot, isAutoApproveEnabled } from '../config/index.js';
-import type { PermissionAction, PermissionsToolConfig } from '../config/schema.js';
+import type { PermissionAction, PermissionsToolConfig, PermissionMode } from '../config/schema.js';
 import type { PermissionRequestHandler } from './prompt.js';
 import { analyzePermissionRequest } from './analysis.js';
 import type { PolicyRuntimeState } from '../runtime/permissions/policy-runtime.js';
@@ -153,9 +153,33 @@ export class PermissionManager {
     const permsConfig = this.configReader.getSnapshot().permissions;
     const mode = permsConfig?.mode ?? 'prompt';
 
-    // 2. allow-all mode: auto-approve everything
+    // 2. allow-all mode ("auto"): auto-approve everything
     if (mode === 'allow-all') {
       return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'runtime_mode', 'mode_allow_all', analysis));
+    }
+
+    // 2a. plan mode: read-only tools allowed; every mutating/exec/delegate tool
+    // is refused with a structured plan-mode denial (reasonCode 'plan_mode'),
+    // which the tool-runtime turns into a ToolDenial with reason 'plan-mode'
+    // that steers the model toward presenting a plan.
+    if (mode === 'plan') {
+      if (category === 'read') {
+        return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'runtime_mode', 'mode_allow_all', analysis));
+      }
+      return this.emitAndReturn(callId, toolName, category, this.result(false, false, 'runtime_mode', 'plan_mode', analysis));
+    }
+
+    // 2b. accept-edits mode: file write/edit tools auto-approve; reads
+    // auto-approve; exec and every other risky class fall through to the
+    // prompt/cache path so they still ask.
+    if (mode === 'accept-edits') {
+      if (category === 'read') {
+        return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'runtime_mode', 'mode_allow_all', analysis));
+      }
+      if (category === 'write') {
+        return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'runtime_mode', 'mode_accept_edits', analysis));
+      }
+      // execute / delegate: fall through to session cache + prompt below.
     }
 
     if (this.featureFlags?.isEnabled('permissions-policy-engine') === true) {
@@ -230,6 +254,15 @@ export class PermissionManager {
     ));
   }
 
+  /**
+   * getMode — Returns the active session permission mode from config.
+   * Surfaces (mode pill) and the orchestrator's standing plan-mode instruction
+   * read this to reflect the current mode. Defaults to 'prompt' ("normal").
+   */
+  getMode(): PermissionMode {
+    return this.configReader.getSnapshot().permissions?.mode ?? 'prompt';
+  }
+
   /** Returns the permission category for a tool name. Unknown tools default to 'delegate'. */
   getCategory(toolName: string, args: Record<string, unknown> = {}): PermissionCategory {
     if (toolName === 'inspect' && args.mode === 'scaffold' && args.dryRun === false) {
@@ -278,7 +311,12 @@ export class PermissionManager {
   ): LayeredPermissionDecision {
     const rules = this.policyRuntimeState.getRegistry().getCurrent()?.rules ?? [];
     const evaluator = new LayeredPolicyEvaluator({
-      mode: mode === 'allow-all' ? 'allow-all' : mode === 'custom' ? 'custom' : 'default',
+      mode:
+        mode === 'allow-all' ? 'allow-all'
+        : mode === 'custom' ? 'custom'
+        : mode === 'plan' ? 'plan'
+        : mode === 'accept-edits' ? 'accept-edits'
+        : 'default',
       projectRoot: this.configReader.getWorkingDirectory() ?? undefined,
       rules,
       defaultEffect: 'deny',
