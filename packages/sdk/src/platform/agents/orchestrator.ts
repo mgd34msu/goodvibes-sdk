@@ -99,6 +99,15 @@ type AgentOrchestratorToolDeps = {
   readonly overflowHandler?: import('../tools/shared/overflow.js').OverflowHandler | undefined;
   readonly sandboxSessionRegistry: import('../runtime/sandbox/session-registry.js').SandboxSessionRegistry;
   readonly workflowServices: ReturnType<typeof import('../tools/workflow/index.js').createWorkflowServices>;
+  /**
+   * Permission gate applied to this orchestrator's background/subagent tool
+   * calls (see AgentOrchestratorRunContext.permissionManager). Optional — when
+   * omitted, background runs are ungated exactly as before background
+   * permission enforcement existed.
+   */
+  readonly permissionManager?:
+    | Pick<import('../permissions/manager.js').PermissionManager, 'checkDetailed' | 'check' | 'getBackgroundAgentsMode'>
+    | undefined;
 };
 
 /**
@@ -569,6 +578,7 @@ export class AgentOrchestrator {
       archetypeLoader: this.toolDeps?.archetypeLoader,
       providerOptimizer: this.toolDeps?.providerOptimizer,
       providerRegistry: this.toolDeps!.providerRegistry!,
+      ...(this.toolDeps?.permissionManager ? { permissionManager: this.toolDeps.permissionManager } : {}),
       getFullRegistry: () => this.getFullRegistry(cwd),
       buildScopedRegistry: (allowedNames, fullRegistry) => this.buildScopedRegistry(allowedNames, fullRegistry),
       resolveProviderForRecord: (providerRegistry, record, currentModel) =>

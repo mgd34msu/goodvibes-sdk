@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Background agents respect the session permission mode.** A background /
+  subagent's tool calls now run through the same permission layer as the
+  foreground turn loop instead of executing ungated. Each call the agent runner
+  makes is brokered through the configured session mode (`permissions.mode`):
+  `allow-all` changes nothing (zero new friction for autonomous runs);
+  `prompt`/`custom` ask via the same approval broker the foreground uses — so a
+  background ask surfaces through the existing blocked-on-user machinery, now
+  carrying the subagent's attribution (agent id + template) on the
+  `PermissionPromptRequest`; `plan` and `accept-edits` apply their matrices; and a
+  refusal returns the structured `ToolDenial` on the failed `ToolResult` so the
+  subagent continues and reports honestly. A new escape-hatch config key
+  `permissions.backgroundAgents` (`'inherit'` default | `'allow-all'`) lets a user
+  deliberately exempt background agents from the gate.
 - **Fleet lifecycle events + attention state (poll-free fleet).** The live
   process registry now surfaces changes as events instead of poll-only snapshots.
   (1) A new `fleet` runtime-event domain carries per-node lifecycle deltas —

@@ -4,6 +4,17 @@
 
 export type PermissionMode = 'prompt' | 'allow-all' | 'custom' | 'plan' | 'accept-edits';
 export type PermissionAction = 'allow' | 'prompt' | 'deny';
+/**
+ * How background/subagent tool execution consults the permission layer.
+ * - 'inherit' (default): background tool calls run through the SAME session
+ *   permission mode as the foreground turn loop — allow-all changes nothing,
+ *   prompt/plan/accept-edits/custom apply their matrices, and any ask brokers
+ *   through the same blocked-on-user machinery with subagent attribution.
+ * - 'allow-all': background agents are deliberately exempt — their tool calls
+ *   auto-approve regardless of the session mode (the escape hatch for fully
+ *   autonomous runs that never want a background ask).
+ */
+export type BackgroundAgentsMode = 'inherit' | 'allow-all';
 export type LineNumberMode = 'all' | 'code' | 'off';
 
 /** Persisted feature flag override state stored in config file. */
@@ -406,6 +417,7 @@ export interface GoodVibesConfig {
   permissions: {
     mode: PermissionMode;       // default: 'prompt'
     tools: PermissionsToolConfig;
+    backgroundAgents: BackgroundAgentsMode; // default: 'inherit'
   };
   orchestration: {
     recursionEnabled: boolean;  // default: false — allow recursive agent spawning under bounded policy
@@ -535,6 +547,7 @@ export type ConfigKey =
   | 'storage.secretPolicy'
   | 'storage.artifacts.maxBytes'
   | 'permissions.mode'
+  | 'permissions.backgroundAgents'
   | 'permissions.tools.read'
   | 'permissions.tools.write'
   | 'permissions.tools.edit'
@@ -819,6 +832,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'storage.secretPolicy' ? 'plaintext_allowed' | 'preferred_secure' | 'require_secure' :
   K extends 'storage.artifacts.maxBytes' ? number :
   K extends 'permissions.mode' ? PermissionMode :
+  K extends 'permissions.backgroundAgents' ? BackgroundAgentsMode :
   K extends 'permissions.tools.read' ? PermissionAction :
   K extends 'permissions.tools.write' ? PermissionAction :
   K extends 'permissions.tools.edit' ? PermissionAction :

@@ -1,6 +1,6 @@
 import { getConfigSnapshot, isAutoApproveEnabled } from '../config/index.js';
-import type { PermissionAction, PermissionsToolConfig, PermissionMode } from '../config/schema.js';
-import type { PermissionRequestHandler } from './prompt.js';
+import type { PermissionAction, PermissionsToolConfig, PermissionMode, BackgroundAgentsMode } from '../config/schema.js';
+import type { PermissionAttribution, PermissionRequestHandler } from './prompt.js';
 import { analyzePermissionRequest } from './analysis.js';
 import type { PolicyRuntimeState } from '../runtime/permissions/policy-runtime.js';
 import { LayeredPolicyEvaluator } from '../runtime/permissions/evaluator.js';
@@ -124,12 +124,17 @@ export class PermissionManager {
    * check - Returns a Promise that resolves to true (approved) or false (denied).
    * Blocks orchestrator until the user responds when a prompt is needed.
    */
-  async check(toolName: string, args: Record<string, unknown>): Promise<boolean> {
-    const result = await this.checkDetailed(toolName, args);
+  async check(toolName: string, args: Record<string, unknown>, attribution?: PermissionAttribution): Promise<boolean> {
+    const result = await this.checkDetailed(toolName, args, attribution);
     return result.approved;
   }
 
-  async checkDetailed(toolName: string, args: Record<string, unknown>): Promise<PermissionCheckResult> {
+  /**
+   * @param attribution When present, rides on the brokered ask so a surface can
+   * render which background agent is asking. Only reaches the ask path
+   * (prompt/session-cache-miss); auto-approve/deny short-circuits ignore it.
+   */
+  async checkDetailed(toolName: string, args: Record<string, unknown>, attribution?: PermissionAttribution): Promise<PermissionCheckResult> {
     // 1. Auto-approve when --no-worries-just-vibes is active
     const category = this.getCategory(toolName, args);
     const analysis = analyzePermissionRequest(toolName, args, category);
@@ -230,6 +235,7 @@ export class PermissionManager {
         category,
         analysis,
         workingDirectory: this.configReader.getWorkingDirectory() ?? undefined,
+        ...(attribution ? { attribution } : {}),
       });
     } catch (error) {
       void this.fireHook('Fail:permission:request', 'Fail', 'permission', 'request', {
@@ -261,6 +267,16 @@ export class PermissionManager {
    */
   getMode(): PermissionMode {
     return this.configReader.getSnapshot().permissions?.mode ?? 'prompt';
+  }
+
+  /**
+   * getBackgroundAgentsMode — how background/subagent tool calls consult this
+   * manager. 'inherit' (default): apply the session mode exactly like foreground.
+   * 'allow-all': background agents are exempt (auto-approve). Read by the agent
+   * runner before it gates a background tool call.
+   */
+  getBackgroundAgentsMode(): BackgroundAgentsMode {
+    return this.configReader.getSnapshot().permissions?.backgroundAgents ?? 'inherit';
   }
 
   /** Returns the permission category for a tool name. Unknown tools default to 'delegate'. */

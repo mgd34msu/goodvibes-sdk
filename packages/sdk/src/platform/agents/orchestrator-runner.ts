@@ -41,6 +41,7 @@ import type { ArchetypeLoader } from './archetypes.js';
 import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
+import { gateBackgroundToolCall, type BackgroundPermissionManager } from './background-permission-gate.js';
 
 const MAX_TURNS = 50; // hard cap per agent run to prevent unbounded loops
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000]; // exponential back-off on transient network errors
@@ -126,6 +127,12 @@ export interface AgentOrchestratorRunContext {
   readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
   readonly archetypeLoader?: { loadArchetype(template: string): { systemPrompt?: string | undefined } | null | undefined } | undefined;
+  /**
+   * Permission gate for this run's background/subagent tool calls (see
+   * gateBackgroundToolCall in background-permission-gate.ts). Undefined leaves
+   * the run ungated (e.g. isolated tests that wire no manager).
+   */
+  readonly permissionManager?: BackgroundPermissionManager | undefined;
   readonly getFullRegistry: () => ToolRegistry;
   readonly buildScopedRegistry: (allowedNames: string[], fullRegistry: ToolRegistry) => ToolRegistry;
   readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'recordContextWindowRejection'>;
@@ -306,43 +313,45 @@ async function executeToolCalls(
     }
 
     const callSig = `${call.name}::${JSON.stringify(call.arguments)}`;
-    try {
-      const signal = context.getCancellationSignal?.(record.id);
-      const result = await toolRegistry.execute(call.id, call.name, call.arguments, signal ? { signal } : undefined);
-      results.push({ ...result, callId: call.id });
-      // Stage B: schedule a debounced reindex of any touched file(s). Never awaited.
-      try {
-        context.onToolExecuted?.(call.name, call.arguments as Record<string, unknown>, result.success !== false);
-      } catch (hookErr) {
-        logger.warn('onToolExecuted hook error', { tool: call.name, error: summarizeError(hookErr) });
-      }
+    // Push a result AND log the matching session record, so the denied /
+    // executed / threw branches below stay uniform.
+    const recordResult = (result: ToolResult, argsJson: string): void => {
+      results.push(result);
       session.appendMessage({
         type: 'tool_execution',
         turn,
         toolName: call.name,
         toolCallId: call.id,
         success: result.success !== false,
-        args: JSON.stringify(call.arguments).slice(0, 500),
+        args: argsJson.slice(0, 500),
         resultPreview: (result.output ?? result.error ?? '').slice(0, 500),
         timestamp: new Date().toISOString(),
       });
+    };
+    try {
+      // Background permission gate: consult the session permission mode exactly
+      // like the foreground turn loop (denials return a structured ToolDenial).
+      const permissionOutcome = await gateBackgroundToolCall(context, record, call.name, call.arguments as Record<string, unknown>);
+      if (!permissionOutcome.approved) {
+        recordResult(
+          { callId: call.id, success: false, error: permissionOutcome.error, denial: permissionOutcome.denial },
+          JSON.stringify(call.arguments),
+        );
+      } else {
+        const effectiveArgs = permissionOutcome.modifiedArgs ?? (call.arguments as Record<string, unknown>);
+        const signal = context.getCancellationSignal?.(record.id);
+        const result = await toolRegistry.execute(call.id, call.name, effectiveArgs, signal ? { signal } : undefined);
+        // Stage B: schedule a debounced reindex of any touched file(s). Never awaited.
+        try {
+          context.onToolExecuted?.(call.name, effectiveArgs, result.success !== false);
+        } catch (hookErr) {
+          logger.warn('onToolExecuted hook error', { tool: call.name, error: summarizeError(hookErr) });
+        }
+        recordResult({ ...result, callId: call.id }, JSON.stringify(effectiveArgs));
+      }
     } catch (err) {
       const toolErr = summarizeError(err);
-      results.push({
-        callId: call.id,
-        success: false,
-        error: toolErr,
-      });
-      session.appendMessage({
-        type: 'tool_execution',
-        turn,
-        toolName: call.name,
-        toolCallId: call.id,
-        success: false,
-        args: JSON.stringify(call.arguments).slice(0, 500),
-        resultPreview: toolErr.slice(0, 500),
-        timestamp: new Date().toISOString(),
-      });
+      recordResult({ callId: call.id, success: false, error: toolErr }, JSON.stringify(call.arguments));
     }
 
     callHistory.push(callSig);
