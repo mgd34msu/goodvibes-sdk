@@ -381,6 +381,10 @@
     "gzip_bytes": 270,
     "rationale": "new public package export budget; measured 220 B gzip @ v0.33.0 release verification; headroom max(ceil(220*1.2)=264, 220+50=270) -> 270 (+50 B floor dominates)"
   },
+  "./platform/runtime/permissions/sandbox-policy": {
+    "gzip_bytes": 2106,
+    "rationale": "sandbox-aware exec permission input (decideSandboxedExec + SandboxPolicyDecision/Effect/Input types) exposed so consumers can wire approval flows to the sandbox policy; measured 1755 B gzip @ commit 01b2cf4c; headroom max(ceil(1755*1.2)=2106, 1755+50=1805) -> 2106 (1.2x dominates); dominated by the command-normalization import decideSandboxedExec reasons over"
+  },
   "./platform/runtime/settings": {
     "gzip_bytes": 125,
     "rationale": "new public package export budget; measured 75 B gzip @ v0.33.0 release verification; headroom max(ceil(75*1.2)=90, 75+50=125) -> 125 (+50 B floor dominates)"
@@ -424,6 +428,10 @@
   "./platform/tools": {
     "gzip_bytes": 3435,
     "rationale": "tool registry surface; re-measured 2862 B gzip after the per-command exec sandbox landed (sandbox.ts runner reachable from runtime.ts via the plan/metadata helpers, plus detectSandboxAvailability/probeSandboxHost used to wire the sandbox in registerAllTools); headroom max(ceil(2862*1.2)=3435, 2862+50=2912) → 3435 (1.2x dominates); dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B), ToolRegistry type imports (~300 B)"
+  },
+  "./platform/tools/exec/sandbox": {
+    "gzip_bytes": 4294,
+    "rationale": "per-command exec sandbox runner (detectSandboxAvailability, probeSandboxHost, buildBwrapArgv, resolveExecSandboxPlan/resolveRuntimeSandboxPlan, attachSandboxMeta + their types) exposed so consumers can detect availability and probe the host when wiring approval flows to the sandbox; measured 3578 B gzip @ commit 01b2cf4c; headroom max(ceil(3578*1.2)=4294, 3578+50=3628) -> 4294 (1.2x dominates); dominated by the bwrap-argv construction + plan-resolution logic and the command-normalization import"
   },
   "./platform/types": {
     "gzip_bytes": 225,
