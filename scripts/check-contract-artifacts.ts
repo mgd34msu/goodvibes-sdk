@@ -16,3 +16,8 @@ await import('./refresh-contract-artifacts.ts');
 // mandatory consistency check). Run that check here so `contracts:check`
 // stays the one gate that catches drift in either generated surface.
 await import('./check-foundation-io-types.ts');
+
+// The typed-IO coverage ratchet: check-foundation-io-types.ts above proves the
+// hand-authored entries don't DRIFT from their schemas; this proves the set of
+// methods with NO typed IO doesn't GROW. Same gate (`contracts:check`).
+await import('./check-foundation-io-coverage.ts');
