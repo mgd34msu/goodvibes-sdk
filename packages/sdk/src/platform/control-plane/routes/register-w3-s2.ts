@@ -14,7 +14,7 @@
  * is constructed last of the three, so the call site is right after it).
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
-import { registerFleetGatewayMethods, type FleetQueryOnlyRegistry } from './fleet.js';
+import { registerFleetGatewayMethods, type FleetQueryOnlyRegistry, type FleetAttemptsController } from './fleet.js';
 import { registerCheckpointGatewayMethods, type CheckpointsGatewayManager, type CheckpointsEventSink } from './checkpoints.js';
 import { registerSessionSearchGatewayMethod, type SessionSearchBroker } from './session-search.js';
 import { createEventEnvelope } from '../../runtime/events/index.js';
@@ -32,10 +32,17 @@ export interface W3S2GatewayDeps {
    * source in register-gateway-verb-groups).
    */
   readonly runtimeBus?: Pick<RuntimeEventBus, 'emit'> | undefined;
+  /**
+   * Optional best-of-N controller (the orchestration engine's held-merge
+   * methods). When present, the fleet.attempts.* verbs are registered; absent →
+   * they stay cataloged-but-unhandled (graceful degrade for embeds with no
+   * orchestration engine).
+   */
+  readonly attemptsController?: FleetAttemptsController | undefined;
 }
 
 export function registerW3S2GatewayMethods(catalog: GatewayMethodCatalog, deps: W3S2GatewayDeps): void {
-  registerFleetGatewayMethods(catalog, deps.processRegistry);
+  registerFleetGatewayMethods(catalog, deps.processRegistry, deps.attemptsController);
   const bus = deps.runtimeBus;
   const checkpointsEmit: CheckpointsEventSink | undefined = bus
     ? (event: WorkspaceEvent, sessionId: string): void => {

@@ -102,6 +102,14 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'fleet.unarchive': 'http-only',
   'fleet.archiveFinished': 'http-only',
   'fleet.archived.list': 'http-only',
+  // fleet.attempts.* (best-of-N held-merge): same in-process story as the other
+  // fleet.* verbs — the TUI drives best-of-N through its direct orchestration
+  // engine reference (listHeldMergeGroups / pickAttemptWinner / proposeAttemptWinner),
+  // not through operator-client; the wire verbs exist for remote consumers
+  // (a webui diff-review cockpit).
+  'fleet.attempts.list': 'http-only',
+  'fleet.attempts.pick': 'http-only',
+  'fleet.attempts.judge': 'http-only',
 };
 
 interface ParityViolation { readonly id: string; readonly reason: string }

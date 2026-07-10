@@ -213,6 +213,15 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // whole-workspace rewind surface.
     'restorePreview',
   ],
+  'best-of-n-attempts': [
+    // Best-of-N sibling attempts on the fleet surface (fleet.attempts.pick /
+    // fleet.attempts.judge; fleet.attempts.list uses the core `list`). `pick`
+    // accepts one attempt as the winner (merging it, cleaning the losers);
+    // `judge` runs a model to PROPOSE a winner with reasons (clearly model
+    // judgment, never an auto-pick unless opted in). Not generic CRUD/lifecycle
+    // words — a best-of-N resolution surface over held-merge candidate groups.
+    'pick', 'judge',
+  ],
   'fleet-archive': [
     // Session-scoped fleet archive transitions (runtime/fleet/archive.ts):
     // moving a FINISHED process subtree out of the live fleet view and back.

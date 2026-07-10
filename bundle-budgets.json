@@ -334,8 +334,8 @@
     "rationale": "public facade; measured 633 B gzip @ commit c0e5910; headroom max(ceil(633*1.2)=760, 633+50=683) → 760 (1.2x dominates by 77 B)"
   },
   "./platform/orchestration": {
-    "gzip_bytes": 521,
-    "rationale": "new public entrypoint (orchestration engine, 0.38.0 Wave 4); measured 434 B gzip @ v0.38.0; headroom max(ceil(434*1.2)=521, 434+50=484) → 521 (1.2x dominates by 37 B)"
+    "gzip_bytes": 650,
+    "rationale": "orchestration engine + best-of-N attempts (coordinator, provider-backed judge, held-merge types); measured 541 B gzip; headroom max(ceil(541*1.2)=650, 541+50=591) → 650 (1.2x dominates by 59 B)"
   },
   "./platform/pairing": {
     "gzip_bytes": 238,

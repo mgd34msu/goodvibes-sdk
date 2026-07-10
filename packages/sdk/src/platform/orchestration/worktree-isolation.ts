@@ -88,6 +88,12 @@ export interface WorktreeIsolationManager {
   cleanupTerminated(workstream: Workstream, item: WorkItem): Promise<void>;
   /** Synchronous orphan scan — see the module doc. Call once, right after registering an imported workstream, before start()/tick(). */
   reconcileOrphans(workstream: Workstream): void;
+  /**
+   * The diff an item's worktree branch introduced over base (best-of-N candidate
+   * diff). Returns null when the item has no live worktree instance (e.g. already
+   * cleaned, or never claimed). Never throws.
+   */
+  diffItem(item: WorkItem): Promise<{ files: string[]; unifiedDiff: string; stat: string } | null>;
 }
 
 /** Derives a short, filesystem/branch-safe fragment from an id: the suffix after the last '-' when it's plain alphanumerics, else a stable short hash of the whole id (caller-supplied WorkItemSpec.id can be arbitrary text). */
@@ -312,5 +318,11 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
     }
   }
 
-  return { ensureWorktree, enqueueIntegration, cleanupTerminated, reconcileOrphans };
+  async function diffItem(item: WorkItem): Promise<{ files: string[]; unifiedDiff: string; stat: string } | null> {
+    const instance = instances.get(item.id);
+    if (!instance) return null;
+    return instance.diff();
+  }
+
+  return { ensureWorktree, enqueueIntegration, cleanupTerminated, reconcileOrphans, diffItem };
 }

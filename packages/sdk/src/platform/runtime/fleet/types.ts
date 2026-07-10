@@ -180,8 +180,24 @@ export interface ProcessNode {
    */
   readonly needsAttention?: ProcessAttention | undefined;
   readonly sessionRef?: ProcessSessionRef | undefined;
+  /**
+   * Best-of-N grouping — present only on a work-item node that is one sibling
+   * attempt of a group (see attempts.ts). Lets the fleet surface render the N
+   * siblings as one group and know which are candidates for a winner pick.
+   * Absent on every ordinary (single-attempt) node.
+   */
+  readonly attemptGroup?: ProcessAttemptGroup | undefined;
   /** Opaque source record (AgentRecord, WrfcChain, …) for drill-downs. */
   readonly raw?: unknown;
+}
+
+/** A work-item node's best-of-N sibling grouping, surfaced on the wire. */
+export interface ProcessAttemptGroup {
+  readonly groupId: string;
+  readonly index: number;
+  readonly total: number;
+  /** True while this sibling is a held (passed, parked) candidate awaiting the winner pick. */
+  readonly held: boolean;
 }
 
 /** A point-in-time capture of the whole fleet. */

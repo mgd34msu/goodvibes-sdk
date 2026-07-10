@@ -142,6 +142,13 @@ function workItemState(item: WorkItem): ProcessState {
       return 'stalled';
     case 'in-phase':
       return 'executing-tool';
+    case 'held-merge':
+      // A best-of-N attempt that PASSED and is parked awaiting the winner pick
+      // (see attempts.ts). 'paused' reads as "done its work, held, not
+      // progressing on its own" — distinct from 'done' (a merged/terminal item)
+      // and from 'queued'/'stalled' (still trying to advance). A human (or the
+      // judge auto-accept) resolves it via fleet.attempts.pick.
+      return 'paused';
   }
 }
 
@@ -275,6 +282,16 @@ export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: st
       steerable: activeAgentId !== undefined && opts.steerable,
     },
     sessionRef: activeAgentId ? { agentId: activeAgentId } : undefined,
+    // Best-of-N sibling grouping (attempts.ts) — surfaced so the fleet renders the
+    // N siblings as one group and marks which are held candidates for a pick.
+    attemptGroup: item.attemptGroupId
+      ? {
+          groupId: item.attemptGroupId,
+          index: item.attemptIndex ?? 0,
+          total: item.attemptTotal ?? 1,
+          held: item.state === 'held-merge',
+        }
+      : undefined,
     raw: { item, workstreamId },
   };
 }

@@ -13,7 +13,7 @@
  * registry (registry.ts ProcessRegistryDeps.priceUsage), so budget checks and
  * fleet cost totals can never double-count against each other.
  */
-import type { Workstream } from './types.js';
+import type { WorkItem, Workstream } from './types.js';
 
 export interface BudgetCheck {
   readonly allowed: boolean;
@@ -37,8 +37,18 @@ function totalCostUsd(workstream: Workstream): number | null {
   return sawPriced ? total : null;
 }
 
-/** Refuses a NEW claim once the workstream's running total has reached its ceiling. Never mid-item. */
-export function checkBudget(workstream: Workstream): BudgetCheck {
+/**
+ * Refuses a NEW claim once the workstream's running total has reached its
+ * ceiling. Never mid-item. When `item` is supplied and carries its own
+ * `itemBudget`, that per-item ceiling is checked too (against the item's own
+ * usage) — a best-of-N attempt, or any opted-in item, can be bounded
+ * independently of the workstream (see WorkItem.itemBudget). The stricter of the
+ * two refuses.
+ */
+export function checkBudget(workstream: Workstream, item?: WorkItem): BudgetCheck {
+  const itemCheck = item?.itemBudget ? checkItemBudget(item) : { allowed: true as const };
+  if (!itemCheck.allowed) return itemCheck;
+
   const budget = workstream.budget;
   if (!budget) return { allowed: true };
 
@@ -56,5 +66,21 @@ export function checkBudget(workstream: Workstream): BudgetCheck {
     }
   }
 
+  return { allowed: true };
+}
+
+/** Per-item ceiling check against the item's own accumulated usage (never mid-item). */
+function checkItemBudget(item: WorkItem): BudgetCheck {
+  const budget = item.itemBudget;
+  if (!budget) return { allowed: true };
+  if (budget.maxTokens !== undefined) {
+    const tokens = item.usage.inputTokens + item.usage.outputTokens;
+    if (tokens >= budget.maxTokens) {
+      return { allowed: false, reason: `item token usage (${tokens}) has reached its ${budget.maxTokens}-token ceiling` };
+    }
+  }
+  if (budget.maxCostUsd !== undefined && item.usage.costUsd !== null && item.usage.costUsd >= budget.maxCostUsd) {
+    return { allowed: false, reason: `item cost ($${item.usage.costUsd.toFixed(4)}) has reached its $${budget.maxCostUsd} ceiling` };
+  }
   return { allowed: true };
 }

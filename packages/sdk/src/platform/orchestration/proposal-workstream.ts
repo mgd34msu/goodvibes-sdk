@@ -28,6 +28,12 @@
  *    'blocked-dependency' state and applyDependencyGates).
  *  - Workstream-level provenance records where the plan came from
  *    (decomposedBy, proposalId, strategy, agent cost/elapsed).
+ *  - Best-of-N (attempts.ts): a proposal item's `attempts`/`autoAcceptWinner`
+ *    carry through to the engine work-item spec. Previously the plan format
+ *    constrained best-of-N OUT (every item was single-attempt); the engine now
+ *    supports it, so the planner may propose it and a consumer's plan format may
+ *    re-enable the field. A best-of-N item is a LEAF (no deps in or out) and is
+ *    only expanded under `worktree` isolation — see WorkItemSpec.attempts.
  *
  * ASSERT-AT-ASSEMBLY (BIG-3 item 2): even though `assemblePlanProposal` already
  * rejects dangling dependencies and cycles, this function re-checks both and
@@ -120,6 +126,11 @@ export function fromPlanProposal(
     // title (buildPhaseTask, phase-runner.ts).
     task: wi.brief,
     ...(wi.dependsOn.length > 0 ? { dependsOn: [...wi.dependsOn] } : {}),
+    // Best-of-N carries through to the engine, which expands an attempts:N item
+    // into N sibling attempts and holds the merge for a winner pick (attempts.ts).
+    // Only honored under worktree isolation; a leaf item by construction.
+    ...(wi.attempts !== undefined ? { attempts: wi.attempts } : {}),
+    ...(wi.autoAcceptWinner !== undefined ? { autoAcceptWinner: wi.autoAcceptWinner } : {}),
   }));
 
   const provenance: WorkstreamProvenance = {

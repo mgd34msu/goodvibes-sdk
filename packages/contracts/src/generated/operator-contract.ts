@@ -28956,6 +28956,408 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "fleet.attempts.judge",
+        "title": "Propose a Best-of-N Winner (Model Judgment)",
+        "description": "Run the optional judge model over a best-of-N group's candidates and PROPOSE a winner, with reasons. The output is explicitly model judgment (scoredBy:\"model\") — it never auto-picks unless the source item opted into auto-accept; a human still confirms via fleet.attempts.pick. An engine with no judge configured returns an honest 501.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "groupId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "groupId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "proposedWinnerItemId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "model": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scoredBy": {
+              "type": "string",
+              "enum": [
+                "model"
+              ]
+            }
+          },
+          "required": [
+            "proposedWinnerItemId",
+            "reasons",
+            "model",
+            "scoredBy"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "fleet.attempts.list",
+        "title": "List Best-of-N Held-Merge Groups",
+        "description": "Return the best-of-N attempt groups whose siblings ran in isolated worktrees and are HELD for a winner pick instead of auto-merging (optionally filtered to one workstream). Each group lists its candidates with their per-attempt diff, usage, and outcome, plus any prior judge proposal. Read-only.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workstreamId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "groupId": {
+                    "type": "string"
+                  },
+                  "workstreamId": {
+                    "type": "string"
+                  },
+                  "sourceTitle": {
+                    "type": "string"
+                  },
+                  "ready": {
+                    "type": "boolean"
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "itemId": {
+                          "type": "string"
+                        },
+                        "attemptIndex": {
+                          "type": "number"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "held-merge",
+                            "failed"
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "worktreePath": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "branch": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "usage": {
+                          "type": "object",
+                          "properties": {
+                            "inputTokens": {
+                              "type": "number"
+                            },
+                            "outputTokens": {
+                              "type": "number"
+                            },
+                            "cacheReadTokens": {
+                              "type": "number"
+                            },
+                            "cacheWriteTokens": {
+                              "type": "number"
+                            },
+                            "reasoningTokens": {
+                              "type": "number"
+                            },
+                            "llmCallCount": {
+                              "type": "number"
+                            },
+                            "turnCount": {
+                              "type": "number"
+                            },
+                            "toolCallCount": {
+                              "type": "number"
+                            },
+                            "costUsd": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "costState": {
+                              "type": "string",
+                              "enum": [
+                                "priced",
+                                "unpriced",
+                                "estimated"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "inputTokens",
+                            "outputTokens",
+                            "cacheReadTokens",
+                            "cacheWriteTokens",
+                            "llmCallCount",
+                            "turnCount",
+                            "toolCallCount",
+                            "costUsd",
+                            "costState"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "failureReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "diff": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "files": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "unifiedDiff": {
+                                  "type": "string"
+                                },
+                                "stat": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "files",
+                                "unifiedDiff",
+                                "stat"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "itemId",
+                        "attemptIndex",
+                        "state",
+                        "title",
+                        "worktreePath",
+                        "branch",
+                        "usage",
+                        "failureReason",
+                        "diff"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "autoAccept": {
+                    "type": "boolean"
+                  },
+                  "judgment": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "proposedWinnerItemId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "scoredBy": {
+                            "type": "string",
+                            "enum": [
+                              "model"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "proposedWinnerItemId",
+                          "reasons",
+                          "model",
+                          "scoredBy"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "groupId",
+                  "workstreamId",
+                  "sourceTitle",
+                  "ready",
+                  "candidates",
+                  "autoAccept",
+                  "judgment"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "groups"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "fleet.attempts.pick",
+        "title": "Pick a Best-of-N Winner",
+        "description": "Accept one attempt as the winner of its best-of-N group: its worktree branch is merged through the existing sequential integration lane and every losing sibling's worktree is cleaned. The winner must be a held (passed) candidate of a group whose siblings are all terminal — an unknown/not-ready group or an invalid winner is an honest 409, never a partial merge.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "groupId": {
+              "type": "string"
+            },
+            "winnerItemId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "groupId",
+            "winnerItemId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "groupId": {
+              "type": "string"
+            },
+            "winnerItemId": {
+              "type": "string"
+            },
+            "loserItemIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "auto": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "groupId",
+            "winnerItemId",
+            "loserItemIds",
+            "auto"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
         "id": "fleet.list",
         "title": "List Fleet Processes",
         "description": "Paginated, filtered (kinds/states) query over the live process registry. Cursor pagination returns disjoint pages that union to the full matching set at query time.",
@@ -86311,10 +86713,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 371,
-      "typedInputs": 371,
+      "methods": 374,
+      "typedInputs": 374,
       "genericInputs": 0,
-      "typedOutputs": 371,
+      "typedOutputs": 374,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -86323,8 +86725,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 371,
-      "validated": 369,
+      "methods": 374,
+      "validated": 372,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
