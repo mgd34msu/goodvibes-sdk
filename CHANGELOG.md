@@ -8,6 +8,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **An agent-side ACP adapter: GoodVibes is now drivable from ACP-capable
+  editors (Zed and others) over stdio.** `serveAcpAgent` /
+  `GoodVibesAcpAgent` (exported from `@pellux/goodvibes-sdk/platform/acp`, run
+  via `bun scripts/acp-agent.ts`) implement the Agent Client Protocol's agent
+  interface on top of the new embedding API: `session/new` boots an embedded
+  GoodVibes session against the editor's cwd, `session/prompt` submits text and
+  streams runtime turn/tool events back as `agent_message_chunk` /
+  `tool_call` / `tool_call_update` notifications, permission asks bridge to
+  ACP `session/request_permission` (allow once / allow always / reject), and
+  terminal turn events map to honest stop reasons (`end_turn`, `cancelled`,
+  `max_tokens` for context overflow, `max_turn_requests` for the tool-loop
+  circuit breaker, `refusal` otherwise). Unsupported protocol features are
+  reported honestly as `capability: false` — `loadSession`, image/audio/
+  embedded-context prompts, and client-supplied MCP servers — never stubbed;
+  cancellation is best-effort (queued input cancelled via the broker, prompt
+  resolves `cancelled`; an in-flight provider call is not aborted).
 - **The operator contract published as a real OpenAPI 3.1 document, generated
   with a drift gate.** `bun run openapi:generate` derives
   `operator-openapi.json` from the committed operator contract: all 378

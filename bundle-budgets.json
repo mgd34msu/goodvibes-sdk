@@ -206,8 +206,8 @@
     "rationale": "peer SDK client re-export entry; measured 64 B gzip @ commit 4e5a5e2; headroom max(ceil(64*1.2)=77, 64+50=114) → 114 (+50 B floor dominates by 37 B)"
   },
   "./platform/acp": {
-    "gzip_bytes": 156,
-    "rationale": "new public package export budget; measured 106 B gzip @ v0.33.0 release verification; headroom max(ceil(106*1.2)=128, 106+50=156) -> 156 (+50 B floor dominates)"
+    "gzip_bytes": 214,
+    "rationale": "+58 B for the agent-side ACP adapter exports (GoodVibesAcpAgent/serveAcpAgent barrel re-export); measured 164 B gzip; headroom max(ceil(164*1.2)=197, 164+50=214) -> 214 (+50 B floor dominates)"
   },
   "./platform/adapters": {
     "gzip_bytes": 465,

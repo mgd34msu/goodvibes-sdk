@@ -6,3 +6,12 @@ export type {
 } from './protocol.js';
 export { AcpConnection } from './connection.js';
 export { AcpManager, getDefaultAcpAgentCommand } from './manager.js';
+export {
+  GoodVibesAcpAgent,
+  serveAcpAgent,
+  promptText,
+  mapStopReason,
+  mapPermissionOutcome,
+  type AcpAgentOptions,
+  type EmbeddedSessionFactory,
+} from './agent.js';
