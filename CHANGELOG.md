@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+### Added
+
+- **Server-side confirmation for `checkpoints.restore`.** The daemon now refuses
+  an unconfirmed restore instead of executing it immediately. A caller supplies
+  either `confirm: true` (explicit acknowledgment) or a `confirmToken` from the
+  new `checkpoints.restorePreview` verb. `restorePreview` is read-only: it
+  returns a preview of what a restore would change (checkpoint label, affected-
+  path count + sample, diffstat) plus a short-lived (~2 min), single-use token
+  that authorizes the matching restore. An unconfirmed `checkpoints.restore`
+  returns a structured, non-destructive refusal body (`result: null,
+  refused: true, refusal: {...}` naming both options) — a 200, not an error.
+  MIGRATION: existing callers that already gate restore behind their own UI
+  confirm add exactly one field, `confirm: true`, to their restore invocation;
+  no preview round-trip is required. `checkpoints.restore`'s output gained
+  `refused`/`refusal` and its `result` is now nullable.
+
 ## [1.6.1] - 2026-07-09
 
 ### Fixed

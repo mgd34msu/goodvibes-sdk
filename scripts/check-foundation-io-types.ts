@@ -57,6 +57,8 @@ import {
   CHECKPOINTS_LIST_OUTPUT_SCHEMA,
   CHECKPOINTS_RESTORE_INPUT_SCHEMA,
   CHECKPOINTS_RESTORE_OUTPUT_SCHEMA,
+  CHECKPOINTS_RESTORE_PREVIEW_INPUT_SCHEMA,
+  CHECKPOINTS_RESTORE_PREVIEW_OUTPUT_SCHEMA,
   FLEET_ARCHIVE_FINISHED_OUTPUT_SCHEMA,
   FLEET_ARCHIVE_INPUT_SCHEMA,
   FLEET_ARCHIVE_OUTPUT_SCHEMA,
@@ -165,6 +167,7 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'checkpoints.create', input: CHECKPOINTS_CREATE_INPUT_SCHEMA, output: CHECKPOINTS_CREATE_OUTPUT_SCHEMA },
   { methodId: 'checkpoints.diff', input: CHECKPOINTS_DIFF_INPUT_SCHEMA, output: CHECKPOINTS_DIFF_OUTPUT_SCHEMA },
   { methodId: 'checkpoints.restore', input: CHECKPOINTS_RESTORE_INPUT_SCHEMA, output: CHECKPOINTS_RESTORE_OUTPUT_SCHEMA },
+  { methodId: 'checkpoints.restorePreview', input: CHECKPOINTS_RESTORE_PREVIEW_INPUT_SCHEMA, output: CHECKPOINTS_RESTORE_PREVIEW_OUTPUT_SCHEMA },
   { methodId: 'sessions.search', input: SESSIONS_SEARCH_INPUT_SCHEMA, output: SESSIONS_SEARCH_OUTPUT_SCHEMA },
   { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
   // Delete-honesty verbs (landed after this check's first cut; covered

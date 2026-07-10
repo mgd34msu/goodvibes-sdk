@@ -210,15 +210,52 @@ export const CHECKPOINT_RESTORE_RESULT_SCHEMA = objectSchema({
   removedFiles: STRING_LIST_SCHEMA,
 }, ['checkpointId', 'safetyCheckpointId', 'restoredFiles', 'removedFiles']);
 
+/**
+ * The structured, non-error body returned when `checkpoints.restore` is called
+ * WITHOUT confirmation (`result` is null, `refused` is true). It names both
+ * acknowledgment paths so a caller can act without guessing — this is an
+ * honest "here is how to proceed", not a failure.
+ */
+export const CHECKPOINT_RESTORE_REFUSAL_SCHEMA = objectSchema({
+  reason: STRING_SCHEMA,
+  confirmField: STRING_SCHEMA,
+  previewMethod: STRING_SCHEMA,
+  options: STRING_LIST_SCHEMA,
+}, ['reason', 'confirmField', 'previewMethod', 'options']);
+
 export const CHECKPOINTS_RESTORE_INPUT_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   paths: STRING_LIST_SCHEMA,
   safetyCheckpoint: BOOLEAN_SCHEMA,
+  confirm: BOOLEAN_SCHEMA,
+  confirmToken: STRING_SCHEMA,
 }, ['id']);
 
 export const CHECKPOINTS_RESTORE_OUTPUT_SCHEMA = objectSchema({
-  result: CHECKPOINT_RESTORE_RESULT_SCHEMA,
-}, ['result']);
+  result: nullableSchema(CHECKPOINT_RESTORE_RESULT_SCHEMA),
+  refused: BOOLEAN_SCHEMA,
+  refusal: nullableSchema(CHECKPOINT_RESTORE_REFUSAL_SCHEMA),
+}, ['result', 'refused', 'refusal']);
+
+/** What a restore of a given checkpoint would change, computed from the manager's own diff. */
+export const CHECKPOINT_RESTORE_PREVIEW_SCHEMA = objectSchema({
+  checkpointId: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+  affectedPathCount: NUMBER_SCHEMA,
+  affectedPathSample: STRING_LIST_SCHEMA,
+  stat: STRING_SCHEMA,
+}, ['checkpointId', 'label', 'affectedPathCount', 'affectedPathSample', 'stat']);
+
+export const CHECKPOINTS_RESTORE_PREVIEW_INPUT_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  paths: STRING_LIST_SCHEMA,
+}, ['id']);
+
+export const CHECKPOINTS_RESTORE_PREVIEW_OUTPUT_SCHEMA = objectSchema({
+  token: STRING_SCHEMA,
+  expiresAt: NUMBER_SCHEMA,
+  preview: CHECKPOINT_RESTORE_PREVIEW_SCHEMA,
+}, ['token', 'expiresAt', 'preview']);
 
 export const SESSIONS_SEARCH_INPUT_SCHEMA = objectSchema({
   query: STRING_SCHEMA,

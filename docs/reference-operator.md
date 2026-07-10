@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `333`
+- Methods: `334`
 - Events: `31`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -21726,7 +21726,7 @@ Return workspace checkpoints (whole-workspace filesystem snapshots), newest firs
 
 #### `checkpoints.restore`
 
-DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Executes immediately with NO server-side confirmation — the calling surface (TUI/webui) owns the confirm UX before invoking this verb. An unknown/gc'd checkpoint id is an honest 404, not a silent no-op.
+DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.restorePreview. An unconfirmed call returns a structured refusal (result:null, refused:true, refusal naming both options) — not an error. An unknown/gc'd checkpoint id (once confirmed) is an honest 404, not a silent no-op.
 
 - Title: `Restore Workspace Checkpoint`
 - Source: `builtin`
@@ -21755,6 +21755,12 @@ DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-ba
     },
     "safetyCheckpoint": {
       "type": "boolean"
+    },
+    "confirm": {
+      "type": "boolean"
+    },
+    "confirmToken": {
+      "type": "string"
     }
   },
   "required": [
@@ -21771,45 +21777,181 @@ DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-ba
   "type": "object",
   "properties": {
     "result": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "checkpointId": {
+              "type": "string"
+            },
+            "safetyCheckpointId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "restoredFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "removedFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "checkpointId",
+            "safetyCheckpointId",
+            "restoredFiles",
+            "removedFiles"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "refused": {
+      "type": "boolean"
+    },
+    "refusal": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "confirmField": {
+              "type": "string"
+            },
+            "previewMethod": {
+              "type": "string"
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "reason",
+            "confirmField",
+            "previewMethod",
+            "options"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "result",
+    "refused",
+    "refusal"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkpoints.restorePreview`
+
+Read-only: preview what a checkpoints.restore of this checkpoint would change (label, affected-path count + sample, diffstat) and mint a short-lived (~2 min), single-use confirmToken that authorizes the matching restore. No workspace mutation. An unknown/gc'd checkpoint id is an honest 404.
+
+- Title: `Preview Workspace Checkpoint Restore`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:checkpoints`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "number"
+    },
+    "preview": {
       "type": "object",
       "properties": {
         "checkpointId": {
           "type": "string"
         },
-        "safetyCheckpointId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "label": {
+          "type": "string"
         },
-        "restoredFiles": {
+        "affectedPathCount": {
+          "type": "number"
+        },
+        "affectedPathSample": {
           "type": "array",
           "items": {
             "type": "string"
           }
         },
-        "removedFiles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "stat": {
+          "type": "string"
         }
       },
       "required": [
         "checkpointId",
-        "safetyCheckpointId",
-        "restoredFiles",
-        "removedFiles"
+        "label",
+        "affectedPathCount",
+        "affectedPathSample",
+        "stat"
       ],
       "additionalProperties": false
     }
   },
   "required": [
-    "result"
+    "token",
+    "expiresAt",
+    "preview"
   ],
   "additionalProperties": false
 }

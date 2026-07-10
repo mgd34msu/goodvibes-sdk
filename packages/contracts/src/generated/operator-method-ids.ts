@@ -74,6 +74,7 @@ export const OPERATOR_METHOD_IDS = [
   "checkpoints.diff",
   "checkpoints.list",
   "checkpoints.restore",
+  "checkpoints.restorePreview",
   "companion.chat.events.stream",
   "companion.chat.messages.create",
   "companion.chat.messages.edit",
