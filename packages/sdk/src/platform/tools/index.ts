@@ -16,6 +16,7 @@ import { TypeScriptSyntaxDiagnosticsProvider } from './shared/post-edit-diagnost
 import { createRepoMapTool } from './repo-map/index.js';
 import { createFindTool } from './find/index.js';
 import { createExecTool } from './exec/index.js';
+import type { CredentialEnvScrubConfig } from './exec/credential-env.js';
 import { createAnalyzeTool } from './analyze/index.js';
 import { InspectTool } from './inspect/index.js';
 import { createAgentTool } from './agent/index.js';
@@ -197,6 +198,15 @@ export function registerAllTools(
      * custom provider to override.
      */
     diagnosticsProvider?: import('./shared/post-edit-diagnostics.js').DiagnosticsProvider | null | undefined;
+    /**
+     * Credential-bearing env-var scrub applied to every spawned exec command's
+     * environment. Threaded straight into createExecTool so a consumer can wire
+     * its `permissions.exec.*` config (master switch + allowlist) at the
+     * composition root instead of the scrub always resolving to its built-in
+     * default. Omitted → scrub enabled with the default allowlist (see
+     * resolveCredentialEnvScrub).
+     */
+    credentialEnvScrub?: CredentialEnvScrubConfig | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -286,6 +296,7 @@ export function registerAllTools(
     featureFlags: deps.featureFlags,
     overflowHandler: deps.overflowHandler,
     defaultWorkingDirectory: workingDirectory,
+    ...(deps.credentialEnvScrub ? { credentialEnvScrub: deps.credentialEnvScrub } : {}),
   }));
   registerTool(createAnalyzeTool(deps.toolLLM, deps.featureFlags, workingDirectory));
   registerTool(new InspectTool(deps.featureFlags, workingDirectory));

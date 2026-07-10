@@ -61715,7 +61715,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "memory.records.update",
         "title": "Update Memory Record",
-        "description": "Edit a record's content fields (scope, summary, detail, tags) in the canonical store. This is distinct from the review update: it changes the record itself — e.g. moving scope project→team promotes a record to the shared surface. Returns 404 when no record with that id exists.",
+        "description": "Edit a record's content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself — e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.",
         "category": "memory",
         "source": "builtin",
         "access": "authenticated",
@@ -61755,6 +61755,26 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "items": {
                 "type": "string"
               }
+            },
+            "validFrom": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "validUntil": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [

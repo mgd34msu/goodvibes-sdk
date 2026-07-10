@@ -80,12 +80,23 @@ import {
 } from './recall-snapshot.js';
 import { memoryVerbUnavailableError } from './wire-verb-availability.js';
 
-/** Patch shape accepted by an editable-field update (scope/summary/detail/tags). */
+/**
+ * Patch shape accepted by an editable-field update
+ * (scope/summary/detail/tags + the temporal validity window).
+ *
+ * For validFrom/validUntil the three states are distinct and all reachable over
+ * the wire: omitted (`undefined`) leaves the bound unchanged, a number sets it,
+ * and `null` clears it. This is what lets a memory-projection proposal that
+ * changes ONLY the temporal window be applied — without these fields the patch
+ * carried no window and such a proposal could not round-trip.
+ */
 export interface MemoryUpdatePatch {
   readonly scope?: MemoryScope | undefined;
   readonly summary?: string | undefined;
   readonly detail?: string | undefined;
   readonly tags?: string[] | undefined;
+  readonly validFrom?: number | null | undefined;
+  readonly validUntil?: number | null | undefined;
 }
 
 /**
