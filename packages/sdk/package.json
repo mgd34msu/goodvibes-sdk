@@ -64,6 +64,10 @@
       "types": "./dist/daemon.d.ts",
       "import": "./dist/daemon.js"
     },
+    "./embed": {
+      "types": "./dist/embed.d.ts",
+      "import": "./dist/embed.js"
+    },
     "./errors": {
       "types": "./dist/errors.d.ts",
       "import": "./dist/errors.js"

@@ -276,6 +276,12 @@ export class DaemonServer {
   /** The daemon's canonical single-writer memory registry — the SAME store the HTTP memory routes serve. Exposed so embedders and boot-factory proof tests can read back a wire write as a direct canonical-store read. */
   get memory(): RuntimeServices['memoryRegistry'] { return this.runtimeServices.memoryRegistry; }
 
+  /** The daemon's runtime event bus — the SAME bus every service emits on. Exposed so an in-process embedder (see the `/embed` subpath) can subscribe to typed runtime events without going over the wire. */
+  get eventBus(): RuntimeEventBus { return this.runtimeBus; }
+
+  /** The daemon's shared session broker — the SAME broker the HTTP session routes drive. Exposed so an in-process embedder can submit input to a session directly. */
+  get sessions(): SharedSessionBroker { return this.sessionBroker; }
+
   /**
    * Start the daemon. Refuses to start if not explicitly enabled.
    */
@@ -457,13 +463,6 @@ export class DaemonServer {
     }
   }
 
-  /**
-   * Stop the daemon server.
-   *
-   * Services are stopped in reverse start order. Each service stop is raced
-   * against a 10-second timeout so a hung service cannot block the full
-   * shutdown sequence.
-   */
   /**
    * Wait for any in-progress config-driven restart to settle.
    * Callers that change config mid-flight and need to know when the server

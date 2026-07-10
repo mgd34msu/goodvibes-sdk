@@ -377,6 +377,10 @@
     "gzip_bytes": 1265,
     "rationale": "public runtime seam; replaced 5 export* wildcards with 84 named re-exports across diagnostics/eval/forensics/idempotency/perf sections (per surface NIT-01); measured 1054 B gzip @ commit 32e7909; headroom max(ceil(1054*1.2)=1265, 1054+50=1104) → 1265 (1.2x dominates by 161 B); budget bumped from 692 to 1265 to accommodate the named-export expansion"
   },
+  "./embed": {
+    "gzip_bytes": 1152,
+    "rationale": "SDK Embedding API 1.0 entrypoint (embed-session facade + curated re-exports of bootDaemon/permission/event-bus surface); measured 960 B gzip; headroom max(ceil(960*1.2)=1152, 960+50=1010) -> 1152 (1.2x dominates)"
+  },
   "./platform/runtime/ecosystem": {
     "gzip_bytes": 398,
     "rationale": "new public entrypoint (curated catalog + capability-bundle distribution + governed marketplace index); measured 331 B gzip; headroom max(ceil(331*1.2)=398, 331+50=381) -> 398 (1.2x dominates by 17 B)"
