@@ -29,6 +29,18 @@ export type {
   HostServicesHandle,
   HostServiceStatus,
 } from './bootstrap-services.js';
+export {
+  classifyDaemonProbe,
+  decideDaemonAdoption,
+} from './daemon-adoption-policy.js';
+export type {
+  DaemonIdentityProbeResult,
+  DaemonProbeClassification,
+  DaemonProbeClassificationInput,
+  DaemonAdoptionAction,
+  DaemonAdoptionDecision,
+  DaemonAdoptionPolicyInput,
+} from './daemon-adoption-policy.js';
 export { registerBootstrapHookBridge } from './bootstrap-hook-bridge.js';
 export type { HookBridgeRegistrationOptions } from './bootstrap-hook-bridge.js';
 export { createDeferredStartupCoordinator } from './deferred-startup.js';
