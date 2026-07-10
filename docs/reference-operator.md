@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `374`
+- Methods: `378`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -86133,6 +86133,301 @@ Execute a provider-backed web search and return normalized ranked results.
     "verbosity",
     "results",
     "metadata"
+  ],
+  "additionalProperties": false
+}
+```
+
+### workspaces
+
+#### `workspaces.registrations.add`
+
+Register a workspace root so the whole subtree beneath it is covered. Refuses an absurdly broad root (the home directory, the filesystem root, or the daemon state directory) with a 400 — coverage flows down the entire subtree, so a root that broad would sweep far more than a project. Idempotent: re-registering the same normalized root returns alreadyRegistered:true. Registering a root clears any remembered decline recorded at exactly that root.
+
+- Title: `Register a Workspace`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/workspaces/registrations`
+- Scopes: `write:workspaces`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "root": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "root"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "registeredAt": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "root",
+        "registeredAt"
+      ],
+      "additionalProperties": false
+    },
+    "alreadyRegistered": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "workspace",
+    "alreadyRegistered"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `workspaces.registrations.list`
+
+Return every registered workspace root (coverage flows down each root's subtree) and every remembered subtree-scoped decline. Read-only.
+
+- Title: `List Registered Workspaces`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/workspaces/registrations`
+- Scopes: `read:workspaces`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "workspaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "root": {
+            "type": "string"
+          },
+          "registeredAt": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "root",
+          "registeredAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "declines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "root": {
+            "type": "string"
+          },
+          "declinedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "root",
+          "declinedAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "workspaces",
+    "declines"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `workspaces.registrations.remove`
+
+Remove a registered workspace root. Returns { removed: false } when no root with that normalized path was registered — an honest boolean, never a 200 that pretends a phantom root was removed.
+
+- Title: `Unregister a Workspace`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/workspaces/registrations`
+- Scopes: `write:workspaces`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "root": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "root"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "root": {
+      "type": "string"
+    },
+    "removed": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "root",
+    "removed"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `workspaces.resolve`
+
+Resolve a path against the registry: covered (by which nearest registered root), declined (at which root), or unknown. Coverage flows DOWN a registered root's subtree and is inherited through the git worktree→main-repo link — a linked worktree outside any registered root still resolves to the main repo's registration. When mainWorktreeRoot is omitted the daemon probes the link itself. Read-only.
+
+- Title: `Resolve Workspace Coverage`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/workspaces/resolve`
+- Scopes: `read:workspaces`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "mainWorktreeRoot": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "covered",
+        "declined",
+        "unknown"
+      ]
+    },
+    "coveredBy": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "declinedRoot": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "viaWorktreeLink": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "status",
+    "coveredBy",
+    "declinedRoot",
+    "viaWorktreeLink",
+    "reason"
   ],
   "additionalProperties": false
 }

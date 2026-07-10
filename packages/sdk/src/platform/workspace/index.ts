@@ -1,5 +1,6 @@
 export * from './daemon-home.js';
 export * from './workspace-swap-manager.js';
+export * from './registration/index.js';
 export {
   WorkspaceCheckpointManager,
   type CreateCheckpointOptions,

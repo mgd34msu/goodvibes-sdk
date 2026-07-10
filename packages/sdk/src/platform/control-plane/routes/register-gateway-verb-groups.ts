@@ -47,7 +47,10 @@ import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
 import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief } from '../../ci-watch/index.js';
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
+import { dirname } from 'node:path';
 import { registerRewindGatewayMethods } from './rewind.js';
+import { registerWorkspacesGatewayMethods } from './workspaces.js';
+import { WorkspaceRegistrationStore } from '../../workspace/registration/index.js';
 import { UnifiedRewindService } from '../../rewind/index.js';
 import type { RewindConversationPort } from '../../rewind/index.js';
 import { createEventEnvelope } from '../../runtime/events/index.js';
@@ -208,6 +211,20 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new FileSystemSkillStore(deps.shellPaths.resolveUserPath('skills')),
   );
   registerSkillsGatewayMethods(catalog, skillService);
+
+  // The shared registered-workspace registry: which project roots the operator
+  // has opted into (coverage flows down each root's subtree, inherited through
+  // the git worktree→main-repo link), over a JSON snapshot under the daemon's
+  // control-plane state directory. The daemon state dir is resolveUserPath()
+  // itself (~/.goodvibes); the home directory is its parent — both are refused
+  // as absurdly broad roots by the same root-guard checkpointing uses.
+  const daemonStateDir = deps.shellPaths.resolveUserPath();
+  const workspaceRegistrationStore = new WorkspaceRegistrationStore({
+    path: deps.shellPaths.resolveUserPath('control-plane', 'workspace-registrations.json'),
+    homeDir: dirname(daemonStateDir),
+    daemonStateDir,
+  });
+  registerWorkspacesGatewayMethods(catalog, workspaceRegistrationStore);
 
   // The cross-channel principal identity registry over a JSON snapshot under the
   // daemon's own control-plane state directory. Constructed here (from the

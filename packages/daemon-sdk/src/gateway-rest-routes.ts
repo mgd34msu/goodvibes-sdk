@@ -83,6 +83,11 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/channels/profiles', 'channels.profiles.set'),
   route('GET', '/api/channels/profiles/{surfaceKind}', 'channels.profiles.get'),
   route('DELETE', '/api/channels/profiles/{surfaceKind}', 'channels.profiles.delete'),
+  // workspaces.* (registered-workspace registry)
+  route('GET', '/api/workspaces/registrations', 'workspaces.registrations.list'),
+  route('POST', '/api/workspaces/registrations', 'workspaces.registrations.add'),
+  route('DELETE', '/api/workspaces/registrations', 'workspaces.registrations.remove'),
+  route('POST', '/api/workspaces/resolve', 'workspaces.resolve'),
   // sessions.permissionMode.* + sessions.contextUsage.get
   route('GET', '/api/sessions/{sessionId}/permission-mode', 'sessions.permissionMode.get'),
   route('POST', '/api/sessions/{sessionId}/permission-mode', 'sessions.permissionMode.set'),
