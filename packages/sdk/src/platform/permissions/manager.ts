@@ -5,6 +5,10 @@ import { analyzePermissionRequest } from './analysis.js';
 import type { PolicyRuntimeState } from '../runtime/permissions/policy-runtime.js';
 import { LayeredPolicyEvaluator } from '../runtime/permissions/evaluator.js';
 import type { PermissionDecision as LayeredPermissionDecision } from '../runtime/permissions/types.js';
+import {
+  SHIPPED_CREDENTIAL_READ_RULES,
+  matchesShippedCredentialReadPath,
+} from './credential-read-defaults.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 import type { HookDispatcher } from '../hooks/index.js';
 import type { HookCategory, HookEventPath, HookPhase } from '../hooks/types.js';
@@ -179,7 +183,7 @@ export class PermissionManager {
     // auto-approve; exec and every other risky class fall through to the
     // prompt/cache path so they still ask.
     if (mode === 'accept-edits') {
-      if (category === 'read') {
+      if (category === 'read' && !this.isGatedCredentialRead(category, args)) {
         return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'runtime_mode', 'mode_allow_all', analysis));
       }
       if (category === 'write') {
@@ -209,8 +213,12 @@ export class PermissionManager {
         // Fall through to cache + prompt
       }
     } else {
-      // 4. prompt mode: auto-approve read operations
-      if (category === 'read') return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'config_policy', 'config_allow', analysis));
+      // 4. prompt mode: auto-approve read operations — EXCEPT reads of a
+      // well-known credential store, which fall through to the ask/prompt path
+      // (a shipped default the user can override by approving once).
+      if (category === 'read' && !this.isGatedCredentialRead(category, args)) {
+        return this.emitAndReturn(callId, toolName, category, this.result(true, false, 'config_policy', 'config_allow', analysis));
+      }
     }
 
     // 5. Check session approval cache
@@ -321,12 +329,42 @@ export class PermissionManager {
     };
   }
 
+  /**
+   * A read whose path names a well-known credential store, which the shipped
+   * default protects: it must not be SILENTLY auto-allowed. Returns false for
+   * non-read categories and for paths that do not match a credential store. A
+   * user can still override by approving (session cache), switching to allow-all,
+   * or adding a user allow-rule.
+   */
+  private isGatedCredentialRead(
+    category: PermissionCategory,
+    args: Record<string, unknown>,
+  ): boolean {
+    if (category !== 'read') return false;
+    const rawPath =
+      typeof args['path'] === 'string' ? args['path']
+      : typeof args['file_path'] === 'string' ? args['file_path']
+      : typeof args['file'] === 'string' ? args['file']
+      : typeof args['target'] === 'string' ? args['target']
+      : null;
+    if (rawPath === null) return false;
+    return matchesShippedCredentialReadPath(rawPath, {
+      projectRoot: this.configReader.getWorkingDirectory() ?? undefined,
+    }).matched;
+  }
+
   private evaluateRuntimePolicy(
     toolName: string,
     args: Record<string, unknown>,
     mode: PermissionConfigSnapshot['permissions']['mode'],
   ): LayeredPermissionDecision {
-    const rules = this.policyRuntimeState.getRegistry().getCurrent()?.rules ?? [];
+    // Shipped managed credential-read deny rules are appended AFTER the
+    // registry's rules. User-origin rules are evaluated before managed rules by
+    // the evaluator, so a user allow-rule still wins over these defaults.
+    const rules = [
+      ...(this.policyRuntimeState.getRegistry().getCurrent()?.rules ?? []),
+      ...SHIPPED_CREDENTIAL_READ_RULES,
+    ];
     const evaluator = new LayeredPolicyEvaluator({
       mode:
         mode === 'allow-all' ? 'allow-all'

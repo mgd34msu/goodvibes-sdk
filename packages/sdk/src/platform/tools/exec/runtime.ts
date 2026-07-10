@@ -12,6 +12,12 @@ import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { ALL_COMMAND_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
 import { mapWithConcurrency, sleep } from '../../utils/concurrency.js';
 import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
+import {
+  resolveCredentialEnvScrub,
+  scrubCredentialEnv,
+  type CredentialEnvScrubConfig,
+  type ResolvedCredentialEnvScrub,
+} from './credential-env.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const PROGRESS_AUTO_THRESHOLD_MS = 30_000;
@@ -222,8 +228,9 @@ async function spawnBackground(
   cmd: string,
   cwd: string | undefined,
   env: Record<string, string> | undefined,
+  scrub: ResolvedCredentialEnvScrub,
 ): Promise<ExecCommandResult> {
-  return processManager.spawn(cmd, cwd, env);
+  return processManager.spawn(cmd, cwd, env, { credentialEnvScrub: scrub });
 }
 
 function handleBgSpecialCommand(processManager: ProcessManager, cmd: string): ExecCommandResult | null {
@@ -238,6 +245,7 @@ async function runCommand(
   cmdInput: ExecCommandInput,
   workingDirectory: string,
   globalTimeout: number,
+  scrub: ResolvedCredentialEnvScrub,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   // Class risk (kill/rm/docker/sudo…) is the permission layer's decision and
@@ -260,7 +268,15 @@ async function runCommand(
   checkDangerous(cmdStr);
   const cwd = resolveCwd(cmdInput.cwd, workingDirectory);
   const timeoutMs = cmdInput.timeout_ms ?? globalTimeout;
-  const mergedEnv = { ...buildCleanEnv(), ...cmdInput.env };
+  // Scrub credential-bearing vars out of the inherited base env, then layer the
+  // model-supplied per-command env on top (an explicit per-command opt-in that a
+  // withheld var is legitimately wanted). withheld_env reports only names the
+  // command did NOT re-provide, by name only — never values.
+  const scrubbed = scrubCredentialEnv(buildCleanEnv(), scrub);
+  const mergedEnv = { ...scrubbed.env, ...cmdInput.env };
+  const withheldEnv = scrubbed.withheld.filter((name) => !(cmdInput.env && name in cmdInput.env));
+  const attachWithheld = (result: ExecCommandResult): ExecCommandResult =>
+    withheldEnv.length > 0 ? { ...result, withheld_env: withheldEnv } : result;
   const startTime = Date.now();
 
   // Cooperative cancellation is wired for the foreground and
@@ -270,12 +286,12 @@ async function runCommand(
   // — the timeout kill-timer they already have still
   // applies, just not an external AbortSignal.
   if (cmdInput.until) {
-    return runUntil(processManager, overflowHandler, cmdStr, cmdInput, cwd, mergedEnv, timeoutMs, startTime);
+    return attachWithheld(await runUntil(processManager, overflowHandler, cmdStr, cmdInput, cwd, mergedEnv, timeoutMs, startTime));
   }
 
   const useProgress = cmdInput.progress === true || timeoutMs > PROGRESS_AUTO_THRESHOLD_MS;
   if (useProgress) {
-    return runCommandWithProgress(processManager, overflowHandler, cmdStr, cmdInput, workingDirectory, cwd, mergedEnv, timeoutMs, startTime, signal);
+    return attachWithheld(await runCommandWithProgress(processManager, overflowHandler, cmdStr, cmdInput, workingDirectory, cwd, mergedEnv, timeoutMs, startTime, signal));
   }
 
   const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
@@ -338,9 +354,9 @@ async function runCommand(
       // Bounded drain: the child is already killed; never block past a short
       // grace window on streams an orphaned grandchild may keep open.
       await drainAfterStop(procPromise, POST_STOP_DRAIN_GRACE_MS);
-      return timedOut
+      return attachWithheld(timedOut
         ? buildTimedOutResult(cmdStr, cwd, Date.now() - startTime)
-        : buildCancelledResult(cmdStr, cwd, Date.now() - startTime);
+        : buildCancelledResult(cmdStr, cwd, Date.now() - startTime));
     }
 
     const [stdoutRaw, stderrRaw, exitCode] = procResult!;
@@ -359,7 +375,7 @@ async function runCommand(
       ...(stdoutResult.truncated && { stdout_truncated: true }),
       ...(stderrResult.truncated && { stderr_truncated: true }),
     };
-    return applyExpectations(result, cmdInput.expect, exitCode);
+    return attachWithheld(applyExpectations(result, cmdInput.expect, exitCode));
   } catch (err) {
     clearTimeout(killTimer);
     if (signal) signal.removeEventListener('abort', onAbort);
@@ -666,10 +682,11 @@ async function runWithRetry(
   cmdInput: ExecCommandInput,
   workingDirectory: string,
   globalTimeout: number,
+  scrub: ResolvedCredentialEnvScrub,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   if (!cmdInput.retry) {
-    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
+    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
   }
 
   const maxRetries = Math.min(cmdInput.retry.max ?? 3, 10);
@@ -680,7 +697,7 @@ async function runWithRetry(
   let lastResult: ExecCommandResult | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
+    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
     if (lastResult.success) {
       return { ...lastResult, retries: attempt };
     }
@@ -707,6 +724,7 @@ async function executeResolvedCommand(
   cmdInput: ExecCommandInput,
   workingDirectory: string,
   globalTimeout: number,
+  scrub: ResolvedCredentialEnvScrub,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   const bgSpecial = handleBgSpecialCommand(processManager, cmdStr);
@@ -715,9 +733,9 @@ async function executeResolvedCommand(
     // Background processes intentionally outlive this tool call — cancelling
     // the caller's item/agent must not kill a process the user asked to
     // detach, so `signal` is deliberately not threaded here.
-    return spawnBackground(processManager, cmdStr, resolveCwd(cmdInput.cwd, workingDirectory), cmdInput.env);
+    return spawnBackground(processManager, cmdStr, resolveCwd(cmdInput.cwd, workingDirectory), cmdInput.env, scrub);
   }
-  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
+  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
 }
 
 async function executeResolvedCommands(
@@ -729,6 +747,7 @@ async function executeResolvedCommands(
   workingDirectory: string,
   globalTimeout: number,
   failFast: boolean,
+  scrub: ResolvedCredentialEnvScrub,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult[]> {
   if (parallel) {
@@ -736,7 +755,7 @@ async function executeResolvedCommands(
       resolvedCmds,
       MAX_PARALLEL_EXEC_COMMANDS,
       ({ cmdStr, cmdInput }) =>
-        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal),
+        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal),
     );
   }
 
@@ -748,7 +767,7 @@ async function executeResolvedCommands(
       continue;
     }
 
-    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, signal);
+    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
     results.push(result);
     if (failFast && !result.success) {
       stopped = true;
@@ -781,6 +800,7 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         ...(result.process_id && { process_id: result.process_id, pid: result.pid }),
         ...(result.progress_file && { progress_file: result.progress_file }),
         ...(result.warnings && { warnings: result.warnings }),
+        ...(result.withheld_env && result.withheld_env.length > 0 && { withheld_env: result.withheld_env }),
       };
     }
     case 'verbose':
@@ -802,6 +822,7 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         ...(result.retries !== undefined && { retries: result.retries }),
         ...(result.progress_file && { progress_file: result.progress_file }),
         ...(result.warnings && { warnings: result.warnings }),
+        ...(result.withheld_env && result.withheld_env.length > 0 && { withheld_env: result.withheld_env }),
       };
   }
 }
@@ -821,6 +842,13 @@ export function createExecTool(
      * already approved it.
      */
     readonly defaultWorkingDirectory?: string | undefined;
+    /**
+     * Credential-bearing env-var scrub applied to every spawned command's
+     * environment. Enabled by default (see resolveCredentialEnvScrub). Consumers
+     * wire their `permissions.exec.*` config through here; the withheld names are
+     * reported on each ExecCommandResult (`withheld_env`) by name only.
+     */
+    readonly credentialEnvScrub?: CredentialEnvScrubConfig | undefined;
   } = {},
 ): Tool {
   if (!options.overflowHandler) {
@@ -828,6 +856,7 @@ export function createExecTool(
   }
   const overflowHandler = options.overflowHandler;
   const featureFlags = options.featureFlags ?? null;
+  const credentialEnvScrub = resolveCredentialEnvScrub(options.credentialEnvScrub);
 
   return {
     definition: {
@@ -887,6 +916,7 @@ export function createExecTool(
           workingDirectory,
           globalTimeout,
           failFast,
+          credentialEnvScrub,
           opts?.signal,
         );
         const formatted = results.map((r) => formatResult(r, verbosity));

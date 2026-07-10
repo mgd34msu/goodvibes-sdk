@@ -1,4 +1,5 @@
 export * from './analysis.js';
+export * from './credential-read-defaults.js';
 export * from './manager.js';
 export * from './prompt.js';
 export * from './types.js';
