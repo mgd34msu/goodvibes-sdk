@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **The operator contract published as a real OpenAPI 3.1 document, generated
+  with a drift gate.** `bun run openapi:generate` derives
+  `operator-openapi.json` from the committed operator contract: all 378
+  cataloged methods appear — REST-bound methods as path operations with their
+  real JSON Schemas embedded (OpenAPI 3.1 takes full JSON Schema unmodified),
+  invoke-only methods listed on the generic invoke endpoint — plus the
+  contract's bearer/session-cookie auth schemes. The 97 methods lacking typed
+  SDK client IO are marked honestly (`x-typed-client-io: false`, counted in
+  `x-untyped-client-io-count`, mirrored in the `x-operator-methods` index),
+  never omitted; schema-less request/response bodies say so
+  (`x-schema-coverage: schema-less`) instead of receiving invented schemas.
+  Fetchable as `@pellux/goodvibes-contracts/operator-openapi.json` /
+  `@pellux/goodvibes-sdk/contracts/operator-openapi.json` and committed at
+  `docs/operator-openapi.json` (byte-identical copies from one generator).
+  Drift in either copy reddens `contracts:check` — the generated-artifact idiom.
 - **SDK Embedding API 1.0 — a documented, stability-marked entry point
   (`@pellux/goodvibes-sdk/embed`) for embedding a GoodVibes session in another
   application.** `createEmbeddedSession({ workspace, homeDirectory,

@@ -79,6 +79,7 @@
       "import": "./dist/zod-schemas/session.js"
     },
     "./operator-contract.json": "./artifacts/operator-contract.json",
+    "./operator-openapi.json": "./artifacts/operator-openapi.json",
     "./peer-contract.json": "./artifacts/peer-contract.json",
     "./package.json": "./package.json"
   },

@@ -21,3 +21,10 @@ await import('./check-foundation-io-types.ts');
 // hand-authored entries don't DRIFT from their schemas; this proves the set of
 // methods with NO typed IO doesn't GROW. Same gate (`contracts:check`).
 await import('./check-foundation-io-coverage.ts');
+
+// The published OpenAPI 3.1 operator contract is generated from the committed
+// operator-contract.json (plus the typed-client-IO ratchet inputs, so the
+// untyped methods stay honestly marked). Same gate, same idiom: drift in
+// packages/contracts/artifacts/operator-openapi.json or
+// docs/operator-openapi.json reddens `contracts:check`.
+await import('./generate-openapi-contract.ts');
