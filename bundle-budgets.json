@@ -234,8 +234,8 @@
     "rationale": "new public package export budget; measured 50 B gzip @ v0.33.0 release verification; headroom max(ceil(50*1.2)=60, 50+50=100) -> 100 (+50 B floor dominates)"
   },
   "./platform/channels": {
-    "gzip_bytes": 309,
-    "rationale": "new public package export budget; measured 257 B gzip @ v0.33.0 release verification; headroom max(ceil(257*1.2)=309, 257+50=307) -> 309 (1.2x dominates)"
+    "gzip_bytes": 524,
+    "rationale": "grew when getBuiltinSetupSchema + CHANNEL_SETUP_VERSION were exported through this entry (the authoritative per-channel setup declaration, so consumers stop duplicating it), pulling builtin/setup-schema.ts into the entry; measured 436 B gzip @ channel-setup-exports commit; headroom max(ceil(436*1.2)=524, 436+50=486) -> 524 (1.2x dominates)"
   },
   "./platform/cloudflare": {
     "gzip_bytes": 217,

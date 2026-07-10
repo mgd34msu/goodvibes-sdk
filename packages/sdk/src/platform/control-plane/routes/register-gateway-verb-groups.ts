@@ -19,6 +19,7 @@ import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
 import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
+import { registerChannelTestGatewayMethods } from './channel-test.js';
 import {
   ChannelProfileRegistry,
   ChannelProfileStore,
@@ -237,6 +238,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       : {}),
   });
   registerCiGatewayMethods(catalog, ciWatchService);
+
+  // channels.test.send — live per-channel test-message probe over the daemon's
+  // delivery router. Registered only when the router is wired; absent, the verb
+  // stays cataloged-but-unhandled rather than a facade that pretends to deliver.
+  if (deps.channelDeliveryRouter) {
+    registerChannelTestGatewayMethods(catalog, deps.channelDeliveryRouter);
+  }
 
   // Proactive check-in (the "heartbeat initiative"): a briefing→judgment→
   // conditional-delivery loop that rides the automation scheduler as a
