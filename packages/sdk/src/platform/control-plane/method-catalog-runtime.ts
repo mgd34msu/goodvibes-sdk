@@ -56,6 +56,8 @@ import {
   SECURITY_SETTINGS_REPORT_SCHEMA,
   SETTINGS_SNAPSHOT_SCHEMA,
   WORKTREE_SNAPSHOT_SCHEMA,
+  WORKTREE_SETUP_RUN_INPUT_SCHEMA,
+  WORKTREE_SETUP_RUN_OUTPUT_SCHEMA,
 } from './operator-contract-schemas.js';
 
 const MCP_SCOPE_SCHEMA = enumSchema(['project', 'global']);
@@ -440,6 +442,21 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     http: { method: 'GET', path: '/api/worktrees' },
     inputSchema: EMPTY_OBJECT_SCHEMA,
     outputSchema: WORKTREE_SNAPSHOT_SCHEMA,
+  }),
+  // Re-run cold-start setup on a live worktree (install deps, run codegen, carry
+  // over untracked files) and record the honest outcome onto its worktree
+  // record. The rerun affordance for a worktree whose setup failed or that was
+  // created before setup was configured. ws-only invoke (no REST binding); the
+  // daemon owns the setup lifecycle. Handler: routes/worktree-setup.ts.
+  methodDescriptor({
+    id: 'worktrees.setup.run',
+    title: 'Re-run Worktree Setup',
+    description: 'Re-run cold-start setup (configured commands + untracked-file carry-over) on a live worktree by path, recording the honest outcome onto the worktree record. Returns the setup result: state skipped (nothing configured), succeeded, or failed with the failing step and error. A failed setup is a visible worktree state, never silent.',
+    category: 'worktrees',
+    scopes: ['write:worktrees'],
+    transport: ['ws'],
+    inputSchema: WORKTREE_SETUP_RUN_INPUT_SCHEMA,
+    outputSchema: WORKTREE_SETUP_RUN_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'intelligence.snapshot',

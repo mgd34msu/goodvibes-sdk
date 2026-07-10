@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { GitService } from '../../git/service.js';
 import { resolveScopedDirectory } from '../surface-root.js';
+import type { WorktreeSetupResult } from './setup.js';
 
 export type ManagedWorktreeState = 'active' | 'paused' | 'kept' | 'discard' | 'pending-cleanup';
 export type ManagedWorktreeKind = 'agent' | 'orchestrator' | 'manual';
@@ -14,6 +15,13 @@ export interface ManagedWorktreeMeta {
   readonly sessionId?: string | undefined;
   readonly taskId?: string | undefined;
   readonly updatedAt: number;
+  /**
+   * Cold-start setup outcome for this worktree, when setup ran (on creation or
+   * a re-run). Persisted so a failed setup is a VISIBLE worktree/fleet-node
+   * state, never silent — surfaces read it straight off the worktree record
+   * (worktrees.snapshot). Absent when no setup has ever run for this worktree.
+   */
+  readonly setup?: WorktreeSetupResult | undefined;
 }
 
 interface WorktreeStore {
@@ -190,6 +198,7 @@ export class WorktreeRegistry {
         ...(meta?.ownerId ?? classified.ownerId ? { ownerId: meta?.ownerId ?? classified.ownerId } : {}),
         ...(meta?.sessionId ? { sessionId: meta.sessionId } : {}),
         ...(meta?.taskId ? { taskId: meta.taskId } : {}),
+        ...(meta?.setup ? { setup: meta.setup } : {}),
         updatedAt: meta?.updatedAt ?? Date.now(),
       };
     });
@@ -202,6 +211,7 @@ export class WorktreeRegistry {
         ...(record.ownerId ? { ownerId: record.ownerId } : {}),
         ...(record.sessionId ? { sessionId: record.sessionId } : {}),
         ...(record.taskId ? { taskId: record.taskId } : {}),
+        ...(record.setup ? { setup: record.setup } : {}),
         updatedAt: record.updatedAt,
       };
     }
@@ -224,6 +234,7 @@ export class WorktreeRegistry {
       ...(existing?.ownerId ?? classified.ownerId ? { ownerId: existing?.ownerId ?? classified.ownerId } : {}),
       ...(target.sessionId ? { sessionId: target.sessionId } : {}),
       ...(target.taskId ? { taskId: target.taskId } : {}),
+      ...(existing?.setup ? { setup: existing.setup } : {}),
       updatedAt: Date.now(),
     };
     writeStore(store, getStorePath(this.workingDirectory, this.surfaceRoot));
@@ -241,6 +252,31 @@ export class WorktreeRegistry {
       ...(existing?.ownerId ?? classified.ownerId ? { ownerId: existing?.ownerId ?? classified.ownerId } : {}),
       ...(existing?.sessionId ? { sessionId: existing.sessionId } : {}),
       ...(existing?.taskId ? { taskId: existing.taskId } : {}),
+      ...(existing?.setup ? { setup: existing.setup } : {}),
+      updatedAt: Date.now(),
+    };
+    writeStore(store, getStorePath(this.workingDirectory, this.surfaceRoot));
+  }
+
+  /**
+   * Record a cold-start setup outcome onto a worktree's record (on creation or
+   * a re-run), so a failed setup is a visible, queryable worktree/fleet-node
+   * state rather than a lost log. Upserts the record if setup ran before the
+   * worktree was otherwise registered.
+   */
+  public recordSetup(path: string, setup: WorktreeSetupResult): void {
+    const store = readStore(getStorePath(this.workingDirectory, this.surfaceRoot));
+    const normalized = normalizePath(path, this.workingDirectory);
+    const existing = store.records[normalized];
+    const classified = classifyWorktreePath(normalized, this.workingDirectory);
+    store.records[normalized] = {
+      path: normalized,
+      kind: existing?.kind ?? classified.kind,
+      state: existing?.state ?? 'active',
+      ...(existing?.ownerId ?? classified.ownerId ? { ownerId: existing?.ownerId ?? classified.ownerId } : {}),
+      ...(existing?.sessionId ? { sessionId: existing.sessionId } : {}),
+      ...(existing?.taskId ? { taskId: existing.taskId } : {}),
+      setup,
       updatedAt: Date.now(),
     };
     writeStore(store, getStorePath(this.workingDirectory, this.surfaceRoot));

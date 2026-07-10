@@ -47,6 +47,8 @@ import {
 } from './types.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
+import { WorktreeRegistry } from '../runtime/worktree/registry.js';
+import { runWorktreeSetup, resolveWorktreeSetupConfig } from '../runtime/worktree/setup.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -66,6 +68,15 @@ export interface OrchestrationEngineDeps {
   readonly persist?: boolean | undefined;
   /** Bounds how many KEPT (merge-conflict or dirty-after-fail/kill) worktrees a `worktree`-isolation workstream retains before oldest-first eviction. Default 20. Irrelevant to `shared`-isolation workstreams. */
   readonly keptWorktreeCap?: number | undefined;
+  /**
+   * Cold-start setup hook run once, right after each `worktree`-isolation item
+   * worktree is created (install deps, run codegen, carry over untracked
+   * files). Wired by the composition root (services.ts) to run the configured
+   * setup and record the honest outcome onto the worktree registry; a failing
+   * setup never fails worktree creation. Absent → no provisioning (today's
+   * broken-by-default behavior).
+   */
+  readonly runWorktreeSetup?: ((worktreePath: string) => Promise<void> | void) | undefined;
 }
 
 export interface CreateWorkstreamInput {
@@ -175,11 +186,26 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
   // isolation: 'worktree' — see createWorkstream/runItemPhase/failItem below).
   // Constructing this unconditionally is cheap: it does no I/O until a
   // worktree-mode workstream actually calls into it.
+  // Cold-start setup hook: use the injected override (tests), else self-wire a
+  // default that runs the configured per-project setup and records the honest
+  // outcome onto the worktree registry (the same store worktrees.snapshot reads,
+  // so a failed setup is a visible worktree state). A registry constructed on
+  // projectRoot with no surfaceRoot matches getWorktreeSnapshot's own reader.
+  const runWorktreeSetupHook =
+    deps.runWorktreeSetup ??
+    (async (worktreePath: string): Promise<void> => {
+      const registry = new WorktreeRegistry(deps.projectRoot);
+      const config = resolveWorktreeSetupConfig((key) => (deps.configManager.get as unknown as (k: string) => unknown)(key));
+      const result = await runWorktreeSetup(worktreePath, deps.projectRoot, config);
+      registry.recordSetup(worktreePath, result);
+    });
+
   const worktreeIsolation: WorktreeIsolationManager = createWorktreeIsolationManager({
     projectRoot: deps.projectRoot,
     emit,
     now,
     keptWorktreeCap: deps.keptWorktreeCap,
+    runSetup: runWorktreeSetupHook,
   });
 
   function getWorkstream(id: string): Workstream | null {

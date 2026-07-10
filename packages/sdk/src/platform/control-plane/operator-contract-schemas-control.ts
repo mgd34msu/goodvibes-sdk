@@ -199,6 +199,29 @@ export const CONTINUITY_SNAPSHOT_SCHEMA = objectSchema({
   recoveryFile: nullableSchema(RECOVERY_FILE_SCHEMA),
 }, ['sessionId', 'status', 'recoveryState', 'lastSessionPointer', 'recoveryFilePresent', 'recoveryFile']);
 
+const WORKTREE_SETUP_STEP_SCHEMA = objectSchema({
+  kind: enumSchema(['command', 'carry-over']),
+  label: STRING_SCHEMA,
+  ok: BOOLEAN_SCHEMA,
+  exitCode: NUMBER_SCHEMA,
+  output: STRING_SCHEMA,
+}, ['kind', 'label', 'ok', 'output']);
+
+/**
+ * The honest outcome of a worktree cold-start setup run (commands + untracked
+ * carry-over). `state:'skipped'` means nothing was configured to do;
+ * `state:'failed'` carries the failing step and `error`. Surfaced on the
+ * worktree record (worktrees.snapshot) and returned by worktrees.setup.run so a
+ * failed setup is a visible worktree state, never silent.
+ */
+export const WORKTREE_SETUP_RESULT_SCHEMA = objectSchema({
+  state: enumSchema(['skipped', 'succeeded', 'failed']),
+  startedAt: NUMBER_SCHEMA,
+  completedAt: NUMBER_SCHEMA,
+  steps: arraySchema(WORKTREE_SETUP_STEP_SCHEMA),
+  error: STRING_SCHEMA,
+}, ['state', 'startedAt', 'completedAt', 'steps']);
+
 const WORKTREE_META_SCHEMA = objectSchema({
   path: STRING_SCHEMA,
   kind: enumSchema(['agent', 'orchestrator', 'manual']),
@@ -206,8 +229,18 @@ const WORKTREE_META_SCHEMA = objectSchema({
   ownerId: STRING_SCHEMA,
   sessionId: STRING_SCHEMA,
   taskId: STRING_SCHEMA,
+  setup: WORKTREE_SETUP_RESULT_SCHEMA,
   updatedAt: NUMBER_SCHEMA,
 }, ['path', 'kind', 'state', 'updatedAt']);
+
+export const WORKTREE_SETUP_RUN_INPUT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+}, ['path']);
+
+export const WORKTREE_SETUP_RUN_OUTPUT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+  setup: WORKTREE_SETUP_RESULT_SCHEMA,
+}, ['path', 'setup']);
 
 const WORKTREE_SUMMARY_SCHEMA = objectSchema({
   total: NUMBER_SCHEMA,

@@ -83216,6 +83216,109 @@
         "invokable": true
       },
       {
+        "id": "worktrees.setup.run",
+        "title": "Re-run Worktree Setup",
+        "description": "Re-run cold-start setup (configured commands + untracked-file carry-over) on a live worktree by path, recording the honest outcome onto the worktree record. Returns the setup result: state skipped (nothing configured), succeeded, or failed with the failing step and error. A failed setup is a visible worktree state, never silent.",
+        "category": "worktrees",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:worktrees"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "setup": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "skipped",
+                    "succeeded",
+                    "failed"
+                  ]
+                },
+                "startedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "command",
+                          "carry-over"
+                        ]
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "ok": {
+                        "type": "boolean"
+                      },
+                      "exitCode": {
+                        "type": "number"
+                      },
+                      "output": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "label",
+                      "ok",
+                      "output"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "startedAt",
+                "completedAt",
+                "steps"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "path",
+            "setup"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "worktrees.snapshot",
         "title": "Worktrees Snapshot",
         "description": "Return the worktree integration snapshot.",
@@ -83327,6 +83430,69 @@
                   },
                   "taskId": {
                     "type": "string"
+                  },
+                  "setup": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "skipped",
+                          "succeeded",
+                          "failed"
+                        ]
+                      },
+                      "startedAt": {
+                        "type": "number"
+                      },
+                      "completedAt": {
+                        "type": "number"
+                      },
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "command",
+                                "carry-over"
+                              ]
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "ok": {
+                              "type": "boolean"
+                            },
+                            "exitCode": {
+                              "type": "number"
+                            },
+                            "output": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "label",
+                            "ok",
+                            "output"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "error": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "startedAt",
+                      "completedAt",
+                      "steps"
+                    ],
+                    "additionalProperties": false
                   },
                   "updatedAt": {
                     "type": "number"
@@ -84924,10 +85090,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 363,
-      "typedInputs": 363,
+      "methods": 364,
+      "typedInputs": 364,
       "genericInputs": 0,
-      "typedOutputs": 363,
+      "typedOutputs": 364,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -84936,8 +85102,8 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 363,
-      "validated": 361,
+      "methods": 364,
+      "validated": 362,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
