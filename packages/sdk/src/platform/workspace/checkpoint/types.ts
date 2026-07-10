@@ -57,6 +57,17 @@ export interface WorkspaceCheckpoint {
   readonly turnId?: string | undefined;
   /** Agent id, when kind === 'agent-run' (or when passed explicitly). */
   readonly agentId?: string | undefined;
+  /**
+   * Session id this checkpoint belongs to, when the snapshot path could
+   * resolve one (an explicit `create({ sessionId })`, or an automatic snapshot
+   * whose turn/agent resolved to a session via the manager's `resolveSessionId`
+   * hook). Absent when no session was in scope — never fabricated. This is the
+   * linkage that lets a remote surface ask "what changed in THIS session"
+   * (`sessions.changes.get`) and filter `list({ sessionId })`; it is also the
+   * join key a future unified message-anchored rewind will use to line
+   * workspace checkpoints up against conversation snapshots and file undo.
+   */
+  readonly sessionId?: string | undefined;
   /** Retention class controlling how long this checkpoint survives gc(). */
   readonly retentionClass: RetentionClass;
   /** Git commit hash (in the side repo's object store) this checkpoint points to. */
@@ -81,6 +92,33 @@ export interface CheckpointDiff {
   /** Unified diff text (`git diff`). */
   readonly unifiedDiff: string;
   /** `git diff --stat` text. */
+  readonly stat: string;
+}
+
+/**
+ * Result of `WorkspaceCheckpointManager.sessionChanges()` — the aggregate file
+ * changes a single session made, computed by diffing the state BEFORE the
+ * session's earliest checkpoint (its parent, or the empty tree when the
+ * session's first checkpoint was the first one ever taken) against the
+ * session's latest checkpoint. `checkpointCount === 0` (with an empty diff) is
+ * an honest "this session has no workspace checkpoints", not an error.
+ */
+export interface CheckpointSessionChanges {
+  /** The session id these changes belong to. */
+  readonly sessionId: string;
+  /** How many of this session's checkpoints the aggregate spans. */
+  readonly checkpointCount: number;
+  /** The session's checkpoint ids, oldest-first. */
+  readonly checkpointIds: string[];
+  /** The base the aggregate diff is taken from: the parent checkpoint id, or the literal 'EMPTY' when the session opened the store. */
+  readonly from: string;
+  /** The session's latest checkpoint id the aggregate diff is taken to, or the literal 'EMPTY' when the session has no checkpoints. */
+  readonly to: string;
+  /** Paths that differ across the session's aggregate change. */
+  readonly files: string[];
+  /** Unified diff text for the aggregate change. */
+  readonly unifiedDiff: string;
+  /** `git diff --stat` text for the aggregate change. */
   readonly stat: string;
 }
 

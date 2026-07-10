@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `361`
+- Methods: `362`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -22148,6 +22148,9 @@ Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an er
     "agentId": {
       "type": "string"
     },
+    "sessionId": {
+      "type": "string"
+    },
     "paths": {
       "type": "array",
       "items": {
@@ -22204,6 +22207,9 @@ Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an er
               "type": "string"
             },
             "agentId": {
+              "type": "string"
+            },
+            "sessionId": {
               "type": "string"
             },
             "retentionClass": {
@@ -22357,6 +22363,9 @@ Return workspace checkpoints (whole-workspace filesystem snapshots), newest firs
         "manual"
       ]
     },
+    "sessionId": {
+      "type": "string"
+    },
     "since": {
       "type": "number"
     },
@@ -22410,6 +22419,9 @@ Return workspace checkpoints (whole-workspace filesystem snapshots), newest firs
             "type": "string"
           },
           "agentId": {
+            "type": "string"
+          },
+          "sessionId": {
             "type": "string"
           },
           "retentionClass": {
@@ -71571,6 +71583,88 @@ Uninstall the GoodVibes platform service.
 ```
 
 ### sessions
+
+#### `sessions.changes.get`
+
+Return the aggregate workspace file changes a session made, joined over its sessionId-stamped checkpoints: the net diff (files, unified diff, --stat) from the state before the session's earliest checkpoint to its latest. A session with no stamped checkpoints returns checkpointCount:0 with an empty diff (from/to:"EMPTY") — an honest "nothing recorded", not an error.
+
+- Title: `Get Session Workspace Changes`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "checkpointCount": {
+      "type": "number"
+    },
+    "checkpointIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "from": {
+      "type": "string"
+    },
+    "to": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unifiedDiff": {
+      "type": "string"
+    },
+    "stat": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "checkpointCount",
+    "checkpointIds",
+    "from",
+    "to",
+    "files",
+    "unifiedDiff",
+    "stat"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `sessions.close`
 

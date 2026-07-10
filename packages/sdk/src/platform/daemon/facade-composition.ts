@@ -291,6 +291,18 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     }
     return null;
   });
+  // Stamp automatic workspace checkpoints with the owning session id, resolved
+  // the same way agent terminal events reconcile to a session (the broker's
+  // activeAgentId map). Returns undefined when the triggering agent maps to no
+  // shared session — the checkpoint is then left unstamped rather than guessed,
+  // and sessions.changes.get / list({sessionId}) honestly report nothing for it.
+  runtimeServices.workspaceCheckpointManager.setSessionResolver(({ agentId }) => {
+    if (!agentId) return undefined;
+    for (const s of runtimeServices.sessionBroker.listSessions(1000)) {
+      if (s.activeAgentId === agentId) return s.id;
+    }
+    return undefined;
+  });
   runtimeServices.routeBindings.attachRuntime({
     runtimeBus,
     runtimeStore,

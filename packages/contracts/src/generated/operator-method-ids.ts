@@ -301,6 +301,7 @@ export const OPERATOR_METHOD_IDS = [
   "services.status",
   "services.stop",
   "services.uninstall",
+  "sessions.changes.get",
   "sessions.close",
   "sessions.contextUsage.get",
   "sessions.create",

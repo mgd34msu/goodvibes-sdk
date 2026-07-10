@@ -66,6 +66,18 @@ interface WireCheckpoint {
   readonly id: string;
   readonly kind: string;
   readonly label: string;
+  readonly sessionId?: string;
+}
+
+interface SessionsChangesResponse extends WireError {
+  readonly sessionId: string;
+  readonly checkpointCount: number;
+  readonly checkpointIds: string[];
+  readonly from: string;
+  readonly to: string;
+  readonly files: string[];
+  readonly unifiedDiff: string;
+  readonly stat: string;
 }
 
 interface CheckpointsCreateResponse extends WireError {
@@ -403,6 +415,43 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
     expect(status).toBe(400);
     expect(json.code).toBe('INVALID_ARGUMENT');
     expect(json.error).toContain('checkpoints.restorePreview');
+  });
+
+  test('checkpoints.create stamps sessionId, checkpoints.list filters by it, and sessions.changes.get aggregates the session diff', async () => {
+    const sessionId = `w3s2-session-${Date.now()}`;
+    touchWorkspaceFile();
+    const first = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'session cp 1', sessionId } });
+    expect(first.status).toBe(200);
+    expect(first.json.checkpoint.sessionId).toBe(sessionId);
+    touchWorkspaceFile();
+    const second = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'session cp 2', sessionId } });
+    expect(second.json.noop).toBe(false);
+
+    const filtered = await invokeVerb<CheckpointsListResponse>('checkpoints.list', { body: { sessionId } });
+    expect(filtered.status).toBe(200);
+    expect(filtered.json.checkpoints.length).toBeGreaterThanOrEqual(2);
+    expect(filtered.json.checkpoints.every((c) => c.sessionId === sessionId)).toBe(true);
+
+    const changes = await invokeVerb<SessionsChangesResponse>('sessions.changes.get', { body: { sessionId } });
+    expect(changes.status).toBe(200);
+    expect(changes.json.sessionId).toBe(sessionId);
+    expect(changes.json.checkpointCount).toBeGreaterThanOrEqual(2);
+    expect(changes.json.to).toBe(second.json.checkpoint.id);
+    expect(Array.isArray(changes.json.files)).toBe(true);
+  });
+
+  test('sessions.changes.get for a session with no stamped checkpoints is an honest empty result', async () => {
+    const changes = await invokeVerb<SessionsChangesResponse>('sessions.changes.get', { body: { sessionId: 'w3s2-no-such-session' } });
+    expect(changes.status).toBe(200);
+    expect(changes.json.checkpointCount).toBe(0);
+    expect(changes.json.from).toBe('EMPTY');
+    expect(changes.json.to).toBe('EMPTY');
+    expect(changes.json.files).toEqual([]);
+  });
+
+  test('sessions.changes.get requires the sessionId field with an honest 400', async () => {
+    const { status } = await invokeVerb('sessions.changes.get', { body: {} });
+    expect(status).toBe(400);
   });
 });
 

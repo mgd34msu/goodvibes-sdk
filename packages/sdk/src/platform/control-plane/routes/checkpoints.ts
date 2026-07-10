@@ -146,17 +146,32 @@ function clampLimit(raw: unknown): number {
   return Math.min(Math.floor(n), CHECKPOINTS_LIST_MAX_LIMIT);
 }
 
-/** Structural deps — the read/write surface `checkpoints.*` needs. */
-export type CheckpointsGatewayManager = Pick<WorkspaceCheckpointManager, 'list' | 'create' | 'diff' | 'restore'>;
+/** Structural deps — the read/write surface `checkpoints.*` + `sessions.changes.get` needs. */
+export type CheckpointsGatewayManager = Pick<WorkspaceCheckpointManager, 'list' | 'create' | 'diff' | 'restore' | 'sessionChanges'>;
 
 export function createCheckpointsListHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
   return async (invocation) => {
     const params = readInvocationParams(invocation);
     const kind = validateCheckpointKind(params.kind, false);
+    const sessionId = optionalString(params.sessionId);
     const since = optionalNumber(params.since, 'since');
     const limit = clampLimit(params.limit);
-    const checkpoints = await manager.list({ kind, since, limit });
+    const checkpoints = await manager.list({ kind, sessionId, since, limit });
     return { checkpoints };
+  };
+}
+
+/**
+ * `sessions.changes.get` — the aggregate workspace file changes a session made,
+ * joined over its sessionId-stamped checkpoints (see
+ * WorkspaceCheckpointManager.sessionChanges). A session with no stamped
+ * checkpoints returns checkpointCount:0 with an empty diff, not an error.
+ */
+export function createSessionChangesHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const sessionId = requiredString(params.sessionId, 'sessionId');
+    return manager.sessionChanges(sessionId);
   };
 }
 
@@ -171,6 +186,7 @@ export function createCheckpointsCreateHandler(manager: CheckpointsGatewayManage
       retentionClass: validateRetentionClass(body.retentionClass),
       turnId: optionalString(body.turnId),
       agentId: optionalString(body.agentId),
+      sessionId: optionalString(body.sessionId),
       paths: optionalStringArray(body.paths),
     });
     // `create` returns null when the workspace tree is unchanged since the
@@ -297,4 +313,11 @@ export function registerCheckpointGatewayMethods(catalog: GatewayMethodCatalog, 
 
   const restoreDescriptor = catalog.get('checkpoints.restore');
   if (restoreDescriptor) catalog.register(restoreDescriptor, createCheckpointsRestoreHandler(manager, restoreTokens), { replace: true });
+
+  // sessions.changes.get is a session-category verb, but it is served over the
+  // same workspaceCheckpointManager as the checkpoints.* verbs (it joins the
+  // session's stamped checkpoints), so its handler is attached here alongside
+  // them rather than in a separate registration site.
+  const sessionChangesDescriptor = catalog.get('sessions.changes.get');
+  if (sessionChangesDescriptor) catalog.register(sessionChangesDescriptor, createSessionChangesHandler(manager), { replace: true });
 }

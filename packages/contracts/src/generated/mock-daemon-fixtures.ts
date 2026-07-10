@@ -3837,6 +3837,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "parentId": "sample",
         "turnId": "sample",
         "agentId": "sample",
+        "sessionId": "sample",
         "retentionClass": "short",
         "commit": "sample",
         "sizeBytes": 0
@@ -3874,6 +3875,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "parentId": "sample",
           "turnId": "sample",
           "agentId": "sample",
+          "sessionId": "sample",
           "retentionClass": "short",
           "commit": "sample",
           "sizeBytes": 0
@@ -13461,6 +13463,25 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           ]
         }
       }
+    }
+  },
+  "sessions.changes.get": {
+    "methodId": "sessions.changes.get",
+    "http": null,
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "checkpointCount": 0,
+      "checkpointIds": [
+        "sample"
+      ],
+      "from": "sample",
+      "to": "sample",
+      "files": [
+        "sample"
+      ],
+      "unifiedDiff": "sample",
+      "stat": "sample"
     }
   },
   "sessions.close": {
