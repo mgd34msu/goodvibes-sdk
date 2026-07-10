@@ -82,6 +82,11 @@ const PROCESS_SESSION_REF_SCHEMA = objectSchema({
   agentId: STRING_SCHEMA,
 }, []);
 
+const PROCESS_ATTENTION_SCHEMA = objectSchema({
+  reason: enumSchema(['approval', 'input']),
+  detail: STRING_SCHEMA,
+}, ['reason']);
+
 export const PROCESS_NODE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   kind: PROCESS_KIND_SCHEMA,
@@ -99,6 +104,7 @@ export const PROCESS_NODE_SCHEMA = objectSchema({
   costState: PROCESS_COST_STATE_SCHEMA,
   currentActivity: PROCESS_ACTIVITY_SCHEMA,
   capabilities: PROCESS_CAPABILITIES_SCHEMA,
+  needsAttention: PROCESS_ATTENTION_SCHEMA,
   sessionRef: PROCESS_SESSION_REF_SCHEMA,
 }, ['id', 'kind', 'label', 'state', 'elapsedMs', 'costState', 'capabilities'], { additionalProperties: true });
 

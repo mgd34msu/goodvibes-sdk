@@ -26935,6 +26935,25 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     ],
                     "additionalProperties": false
                   },
+                  "needsAttention": {
+                    "type": "object",
+                    "properties": {
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "approval",
+                          "input"
+                        ]
+                      },
+                      "detail": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "reason"
+                    ],
+                    "additionalProperties": false
+                  },
                   "sessionRef": {
                     "type": "object",
                     "properties": {
@@ -27221,6 +27240,25 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     ],
                     "additionalProperties": false
                   },
+                  "needsAttention": {
+                    "type": "object",
+                    "properties": {
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "approval",
+                          "input"
+                        ]
+                      },
+                      "detail": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "reason"
+                    ],
+                    "additionalProperties": false
+                  },
                   "sessionRef": {
                     "type": "object",
                     "properties": {
@@ -27466,6 +27504,25 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "pausable",
                       "resumable",
                       "steerable"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "needsAttention": {
+                    "type": "object",
+                    "properties": {
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "approval",
+                          "input"
+                        ]
+                      },
+                      "detail": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "reason"
                     ],
                     "additionalProperties": false
                   },

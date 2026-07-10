@@ -128,6 +128,32 @@ export interface ProcessSessionRef {
  */
 export type ProcessCostState = 'priced' | 'unpriced' | 'estimated';
 
+/**
+ * Why a node needs a human's attention.
+ * - 'approval' — a tool call on this node is blocked waiting for an
+ *   approve/deny decision (derived from a pending shared approval).
+ * - 'input'    — the node is otherwise blocked waiting for operator input.
+ */
+export type ProcessAttentionReason = 'approval' | 'input';
+
+/**
+ * Derived attention marker for a node that is blocked on a human.
+ *
+ * This is a DERIVED view over the same authoritative signals the coarse
+ * `state` is derived from (a pending shared approval) — it is recomputed on
+ * every `query()`/tick and never persisted. It mirrors the registry's own
+ * recorded contract: "the registry is a view, not a second source of truth"
+ * (CHANGELOG 0.38.0). `needsAttention` therefore adds NO new store state; it is
+ * a convenience projection of `state === 'awaiting-approval'` (and, when wired,
+ * session-input-waiting) that carries the reason so a surface can route
+ * attention without re-deriving it.
+ */
+export interface ProcessAttention {
+  readonly reason: ProcessAttentionReason;
+  /** Optional one-line human-facing detail (e.g. the tool awaiting approval). */
+  readonly detail?: string | undefined;
+}
+
 /** One normalized process in the fleet. Flat record; `parentId` expresses the tree. */
 export interface ProcessNode {
   readonly id: string;
@@ -147,6 +173,12 @@ export interface ProcessNode {
   readonly costState: ProcessCostState;
   readonly currentActivity?: ProcessActivity | undefined;
   readonly capabilities: ProcessCapabilities;
+  /**
+   * Derived attention marker — present only while this node is blocked on a
+   * human (approve/deny or input). Absent otherwise. Purely a projection of
+   * `state`; see {@link ProcessAttention}.
+   */
+  readonly needsAttention?: ProcessAttention | undefined;
   readonly sessionRef?: ProcessSessionRef | undefined;
   /** Opaque source record (AgentRecord, WrfcChain, …) for drill-downs. */
   readonly raw?: unknown;

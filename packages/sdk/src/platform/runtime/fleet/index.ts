@@ -11,6 +11,8 @@ export type {
   ProcessCapabilities,
   ProcessSessionRef,
   ProcessCostState,
+  ProcessAttention,
+  ProcessAttentionReason,
   ProcessNode,
   FleetSnapshot,
   FleetQueryFilter,
