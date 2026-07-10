@@ -2,7 +2,7 @@
  * Shared config schema types for goodvibes-sdk.
  */
 
-export type PermissionMode = 'prompt' | 'allow-all' | 'custom';
+export type PermissionMode = 'prompt' | 'allow-all' | 'custom' | 'plan' | 'accept-edits';
 export type PermissionAction = 'allow' | 'prompt' | 'deny';
 export type LineNumberMode = 'all' | 'code' | 'off';
 

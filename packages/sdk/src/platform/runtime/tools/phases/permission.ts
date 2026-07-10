@@ -6,6 +6,7 @@ import {
   emitPermissionRequested,
 } from '../../emitters/permissions.js';
 import type { PermissionCheckResult } from '../../../permissions/types.js';
+import { buildToolDenial, buildDenialErrorMessage } from '../../../permissions/denial.js';
 import { summarizeError } from '../../../utils/error-display.js';
 
 /**
@@ -29,13 +30,14 @@ function deniedPhaseResult(
   scope: string,
   start: number,
 ): PhaseResult {
+  const source = { reasonCode: reason, sourceLayer: scope };
   return {
     phase: 'permissioned',
     success: false,
     durationMs: performance.now() - start,
-    error: `Permission denied for tool '${toolName}' (reason: ${reason}, scope: ${scope}). This call was refused; continue without it and report that it was not run.`,
+    error: buildDenialErrorMessage(toolName, source),
     abort: true,
-    denial: { denied: true, reason, scope },
+    denial: buildToolDenial(source),
   };
 }
 

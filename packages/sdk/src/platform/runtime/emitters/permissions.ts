@@ -59,6 +59,15 @@ export function emitModeEvaluated(
   bus.emit('permissions', createEventEnvelope('MODE_EVALUATED', { type: 'MODE_EVALUATED', ...data }, ctx));
 }
 
+/** Emit PERMISSION_MODE_CHANGED when the session permission mode changes. */
+export function emitPermissionModeChanged(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { mode: string; previousMode: string }
+): void {
+  bus.emit('permissions', createEventEnvelope('PERMISSION_MODE_CHANGED', { type: 'PERMISSION_MODE_CHANGED', ...data }, ctx));
+}
+
 /** Emit SESSION_OVERRIDE_EVALUATED after session always-allow list is checked. */
 export function emitSessionOverrideEvaluated(
   bus: RuntimeEventBus,

@@ -3,6 +3,7 @@ import type { HookEvent, HookEventPath, HookResult } from '../hooks/types.js';
 import type { ToolCall, ToolResult } from '../types/tools.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { PermissionManager } from '../permissions/manager.js';
+import { buildToolDenial, buildDenialErrorMessage } from '../permissions/denial.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import {
   emitOrchestrationGraphCreated,
@@ -115,14 +116,14 @@ export async function executeToolCalls(
     if (!approved) {
       // Structured, call-scoped denial: the asking agent gets reason + scope on
       // the failed result (not just a bare string) and can continue honestly.
-      const err = new PermissionError(
-        `Permission denied for tool '${call.name}' (reason: ${checkResult.reasonCode}, scope: ${checkResult.sourceLayer}). This call was refused; continue without it and report that it was not run.`,
-      );
+      // Plan-mode refusals surface reason 'plan-mode' with plan-steering text.
+      const denialSource = { reasonCode: checkResult.reasonCode, sourceLayer: checkResult.sourceLayer };
+      const err = new PermissionError(buildDenialErrorMessage(call.name, denialSource));
       const deniedResult = {
         callId: call.id,
         success: false,
         error: err.message,
-        denial: { denied: true as const, reason: checkResult.reasonCode, scope: checkResult.sourceLayer },
+        denial: buildToolDenial(denialSource),
       };
       results.push(deniedResult);
       if (deps.runtimeBus) {

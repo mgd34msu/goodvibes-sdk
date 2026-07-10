@@ -9,6 +9,7 @@ import type { ContentPart } from '../providers/interface.js';
 import { notifyCompletion } from '../utils/notify.js';
 import { logger } from '../utils/logger.js';
 import type { PermissionManager } from '../permissions/manager.js';
+import { appendPlanModeInstruction } from '../permissions/plan-mode-instructions.js';
 import type { AcpManager } from '../acp/manager.js';
 import type { SubagentTask } from '../acp/protocol.js';
 import type { ExecutionPlan, PlanItem } from './execution-plan.js';
@@ -314,17 +315,16 @@ export class Orchestrator {
     this.scrollToEnd = scrollToEnd;
     this.toolRegistry = toolRegistry;
     this.permissionManager = permissionManager;
-    this.getSystemPrompt = getSystemPrompt;
+    // Plan-mode standing instruction rides on the system prompt (told every turn + re-injected through compaction).
+    this.getSystemPrompt = () => appendPlanModeInstruction(getSystemPrompt(), this.permissionManager.getMode?.());
     this.hookDispatcher = hookDispatcher;
     this.replayQueue = new EventReplayQueue();
     this.detachReplay = runtimeBus
       ? EventReplayQueue.attachToRuntimeBus(runtimeBus, this.replayQueue)
       : null;
-    this.flagManager = flagManager;
-    this.requestRender = requestRender ?? (() => {});
+    this.flagManager = flagManager; this.requestRender = requestRender ?? (() => {});
     this.runtimeBus = runtimeBus;
-    this.agentManager = services.agentManager;
-    this.wrfcController = services.wrfcController;
+    this.agentManager = services.agentManager; this.wrfcController = services.wrfcController;
     this.followUpRuntime = new OrchestratorFollowUpRuntime({
       conversation: this.conversation,
       getViewportHeight: () => this.getViewportHeight(),

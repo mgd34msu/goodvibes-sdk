@@ -10,6 +10,7 @@ import type { PermissionRiskLevel } from '../../../permissions/types.js';
 export type PermissionMode =
   | 'default'
   | 'plan'
+  | 'accept-edits'
   | 'allow-all'
   | 'custom'
   | 'background-restricted';
@@ -45,6 +46,8 @@ export type PermissionDecisionReason =
   | 'mode_allow_all'
   | 'mode_denied'
   | 'mode_plan_deny'
+  | 'plan_mode'
+  | 'mode_accept_edits'
   | 'mode_background_restricted'
   | 'session_cached_approval'
   | 'session_cached_denial'

@@ -31,6 +31,14 @@ export type PermissionEvent =
   | { type: 'SESSION_OVERRIDE_EVALUATED'; callId: string; tool: string; overrideApplied: boolean }
   /** Safety checks (path traversal, sandbox escapes, etc.) have been run. */
   | { type: 'SAFETY_CHECKED'; callId: string; tool: string; safe: boolean; warnings: string[] }
+  /**
+   * The session permission mode changed (e.g. normal → plan → accept-edits →
+   * auto). Emitted whenever the `permissions.mode` config value changes so
+   * surfaces can render a live mode pill without polling. `mode` and
+   * `previousMode` are the config mode values ('prompt' | 'allow-all' |
+   * 'custom' | 'plan' | 'accept-edits').
+   */
+  | { type: 'PERMISSION_MODE_CHANGED'; mode: string; previousMode: string }
   /** Final permission decision has been emitted. */
   | {
       type: 'DECISION_EMITTED';
