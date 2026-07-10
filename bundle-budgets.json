@@ -37,8 +37,8 @@
     "rationale": "Node-only contract re-export entry; measured 70 B gzip @ commit 4e5a5e2; headroom max(ceil(70*1.2)=84, 70+50=120) → 120 (+50 B floor dominates by 36 B)"
   },
   "./daemon": {
-    "gzip_bytes": 292,
-    "rationale": "daemon route handler re-export entry; measured 242 B gzip @ v1.0.0 release verification (Wave-6 daemon composition growth: session spine, shared-config tier, memory unification); headroom max(ceil(242*1.2)=291, 242+50=292) → 292 (+50 B floor dominates by 1 B)"
+    "gzip_bytes": 484,
+    "rationale": "daemon route handler re-export entry; measured 403 B gzip after adding the daemon-side relay surface (reachability control + WebAuthn step-up policy hook + LAN certificate minter re-exports for the zero-knowledge relay); headroom max(ceil(403*1.2)=484, 403+50=453) → 484"
   },
   "./errors": {
     "gzip_bytes": 112,

@@ -163,6 +163,7 @@ export const runtimeConfigDefaults = {
     url: '',
     rendezvousId: '',
     label: '',
+    requireStepUpForMutations: false,
   },
   worktree: {
     setup: {
@@ -555,6 +556,12 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description: 'Human-facing daemon label carried in relay pairing payloads',
+  },
+  {
+    key: 'relay.requireStepUpForMutations',
+    type: 'boolean',
+    default: false,
+    description: 'Require a recent WebAuthn step-up assertion on mutating operator calls arriving via relay (fails closed until a verifier is wired)',
   },
   {
     key: 'runtime.companionChatLimiter.perSessionLimit',
