@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `366`
+- Methods: `367`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -28457,6 +28457,226 @@ Send a composed email via the configured SMTP account. Irreversible external sen
   "required": [
     "messageId",
     "sentAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+### flags
+
+#### `flags.graduation.report`
+
+Return the feature-flag graduation report: every flag with its current default, graduation state (dark = default-off with no evidence, soaking = accumulating evidence, graduate-candidate = judged ready and awaiting a release decision, graduated = default flipped on, blocked = held off with a dated reason), and its validation evidence. Evidence is real-only: a flag with no instrumentation reports "no evidence collected", never a fabricated readiness; the permissions divergence simulation is the one wired instrumentation today. releaseBlockers lists every graduate-candidate flag — the release policy (bun run flags:graduation) fails while that list is non-empty, forcing each ready flag to flip on or record a dated blocker.
+
+- Title: `Feature Flag Graduation Report`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:config`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "generatedAt": {
+      "type": "number"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "flagId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "number"
+          },
+          "currentDefault": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "disabled",
+              "killed"
+            ]
+          },
+          "runtimeToggleable": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "dark",
+              "soaking",
+              "graduate-candidate",
+              "graduated",
+              "blocked"
+            ]
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "instrumentation": {
+                "type": "string",
+                "enum": [
+                  "divergence-simulation",
+                  "none"
+                ]
+              },
+              "divergence": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "divergenceRate": {
+                        "type": "number"
+                      },
+                      "totalEvaluations": {
+                        "type": "number"
+                      },
+                      "gateStatus": {
+                        "type": "string",
+                        "enum": [
+                          "allowed",
+                          "blocked",
+                          "no_data"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "divergenceRate",
+                      "totalEvaluations",
+                      "gateStatus"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "instrumentation",
+              "divergence",
+              "note"
+            ],
+            "additionalProperties": false
+          },
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "date"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "flagId",
+          "name",
+          "tier",
+          "currentDefault",
+          "runtimeToggleable",
+          "state",
+          "evidence",
+          "blocker",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "number"
+        },
+        "dark": {
+          "type": "number"
+        },
+        "soaking": {
+          "type": "number"
+        },
+        "graduateCandidate": {
+          "type": "number"
+        },
+        "graduated": {
+          "type": "number"
+        },
+        "blocked": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "total",
+        "dark",
+        "soaking",
+        "graduateCandidate",
+        "graduated",
+        "blocked"
+      ],
+      "additionalProperties": false
+    },
+    "releaseBlockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "generatedAt",
+    "entries",
+    "summary",
+    "releaseBlockers"
   ],
   "additionalProperties": false
 }

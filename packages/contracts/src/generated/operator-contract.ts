@@ -28144,6 +28144,215 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": false
       },
       {
+        "id": "flags.graduation.report",
+        "title": "Feature Flag Graduation Report",
+        "description": "Return the feature-flag graduation report: every flag with its current default, graduation state (dark = default-off with no evidence, soaking = accumulating evidence, graduate-candidate = judged ready and awaiting a release decision, graduated = default flipped on, blocked = held off with a dated reason), and its validation evidence. Evidence is real-only: a flag with no instrumentation reports \"no evidence collected\", never a fabricated readiness; the permissions divergence simulation is the one wired instrumentation today. releaseBlockers lists every graduate-candidate flag — the release policy (bun run flags:graduation) fails while that list is non-empty, forcing each ready flag to flip on or record a dated blocker.",
+        "category": "flags",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:config"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "generatedAt": {
+              "type": "number"
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flagId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "tier": {
+                    "type": "number"
+                  },
+                  "currentDefault": {
+                    "type": "string",
+                    "enum": [
+                      "enabled",
+                      "disabled",
+                      "killed"
+                    ]
+                  },
+                  "runtimeToggleable": {
+                    "type": "boolean"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "dark",
+                      "soaking",
+                      "graduate-candidate",
+                      "graduated",
+                      "blocked"
+                    ]
+                  },
+                  "evidence": {
+                    "type": "object",
+                    "properties": {
+                      "instrumentation": {
+                        "type": "string",
+                        "enum": [
+                          "divergence-simulation",
+                          "none"
+                        ]
+                      },
+                      "divergence": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "divergenceRate": {
+                                "type": "number"
+                              },
+                              "totalEvaluations": {
+                                "type": "number"
+                              },
+                              "gateStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "allowed",
+                                  "blocked",
+                                  "no_data"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "divergenceRate",
+                              "totalEvaluations",
+                              "gateStatus"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "instrumentation",
+                      "divergence",
+                      "note"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "blocker": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "reason": {
+                            "type": "string"
+                          },
+                          "date": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "reason",
+                          "date"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "flagId",
+                  "name",
+                  "tier",
+                  "currentDefault",
+                  "runtimeToggleable",
+                  "state",
+                  "evidence",
+                  "blocker",
+                  "note"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "number"
+                },
+                "dark": {
+                  "type": "number"
+                },
+                "soaking": {
+                  "type": "number"
+                },
+                "graduateCandidate": {
+                  "type": "number"
+                },
+                "graduated": {
+                  "type": "number"
+                },
+                "blocked": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "total",
+                "dark",
+                "soaking",
+                "graduateCandidate",
+                "graduated",
+                "blocked"
+              ],
+              "additionalProperties": false
+            },
+            "releaseBlockers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "generatedAt",
+            "entries",
+            "summary",
+            "releaseBlockers"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "fleet.archive",
         "title": "Archive Finished Fleet Subtree",
         "description": "Move one FINISHED process subtree (root id + all descendants, every node terminal) out of the live fleet view into the session archive. Honest refusal (archived:false + reason) for an unknown id or a subtree with live members. Archived nodes stay inspectable via fleet.archived.list.",
@@ -85376,10 +85585,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 366,
-      "typedInputs": 366,
+      "methods": 367,
+      "typedInputs": 367,
       "genericInputs": 0,
-      "typedOutputs": 366,
+      "typedOutputs": 367,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -85388,8 +85597,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 366,
-      "validated": 364,
+      "methods": 367,
+      "validated": 365,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

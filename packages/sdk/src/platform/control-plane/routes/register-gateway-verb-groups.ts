@@ -46,6 +46,7 @@ import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
 import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief } from '../../ci-watch/index.js';
+import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
 
 /** Parse a 'surfaceKind' or 'surfaceKind:address' channel string into a delivery target. */
 function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
@@ -379,6 +380,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   const costAttribution = new CostAttributionService({ resolvePricing });
   const quotaWindow = new QuotaWindowTracker();
   registerCostGatewayMethods(catalog, { costAttribution, quotaWindow });
+
+  // Feature-flag graduation report: a read-only view over the static flag
+  // registry + owner graduation annotations. Needs no runtime dependency (the
+  // registry is static module data), so it is always registered. No live
+  // evidence provider is threaded here yet — flags with instrumentation report
+  // "no evidence collected this run" rather than a fabricated readiness.
+  registerFlagsGraduationGatewayMethods(catalog);
 
   if (deps.runtimeBus) {
     deps.runtimeBus.onDomain('turn', (envelope) => {

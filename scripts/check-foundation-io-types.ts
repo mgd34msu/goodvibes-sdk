@@ -115,6 +115,10 @@ import {
   QUOTA_FANOUT_GET_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-telemetry.ts';
 import {
+  FLAGS_GRADUATION_REPORT_INPUT_SCHEMA,
+  FLAGS_GRADUATION_REPORT_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-flags.ts';
+import {
   CHANNEL_PROFILES_DELETE_INPUT_SCHEMA,
   CHANNEL_PROFILES_DELETE_OUTPUT_SCHEMA,
   CHANNEL_PROFILES_GET_INPUT_SCHEMA,
@@ -295,6 +299,8 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Cost attribution + quota-window pre-fan-out warning:
   { methodId: 'cost.attribution.get', input: COST_ATTRIBUTION_GET_INPUT_SCHEMA, output: COST_ATTRIBUTION_GET_OUTPUT_SCHEMA },
   { methodId: 'quota.fanout.get', input: QUOTA_FANOUT_GET_INPUT_SCHEMA, output: QUOTA_FANOUT_GET_OUTPUT_SCHEMA },
+  // Feature-flag graduation report (release policy):
+  { methodId: 'flags.graduation.report', input: FLAGS_GRADUATION_REPORT_INPUT_SCHEMA, output: FLAGS_GRADUATION_REPORT_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

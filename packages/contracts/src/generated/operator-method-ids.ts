@@ -125,6 +125,7 @@ export const OPERATOR_METHOD_IDS = [
   "email.inbox.list",
   "email.inbox.read",
   "email.send",
+  "flags.graduation.report",
   "fleet.archive",
   "fleet.archiveFinished",
   "fleet.archived.list",
