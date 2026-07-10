@@ -212,7 +212,7 @@ export class PhasedToolExecutor {
           );
         }
 
-        return this._fail(record, call, context, emitterCtx, phaseResult.error ?? 'Phase failed');
+        return this._fail(record, call, context, emitterCtx, phaseResult.error ?? 'Phase failed', phaseResult.denial);
       }
     }
 
@@ -294,6 +294,7 @@ export class PhasedToolExecutor {
     context: ToolRuntimeContext,
     emitterCtx: { sessionId: string; traceId: string; source: string },
     error: string,
+    denial?: import('../../types/tools.js').ToolDenial | undefined,
   ): ToolResult {
     record.currentPhase = 'failed';
     const durationMs = performance.now() - record.startedAt;
@@ -321,6 +322,7 @@ export class PhasedToolExecutor {
       callId: call.id,
       success: false,
       error,
+      ...(denial ? { denial } : {}),
     };
   }
 

@@ -33,6 +33,24 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
 }
 
+/**
+ * Structured denial detail for a tool call the permission layer blocked.
+ *
+ * Rides on the failed ToolResult so the ASKING agent receives machine-readable
+ * denial data scoped to that exact call — never a hung promise and never a bare
+ * throw — and can continue and report honestly instead of parsing an error
+ * string. `reason` is the permission layer's reason code (see
+ * PermissionDecisionReasonCode, e.g. 'user_denied' / 'config_deny') and `scope`
+ * is the layer that produced the decision (see PermissionDecisionSource, e.g.
+ * 'user_prompt' / 'config_policy'); both are kept as plain strings so this
+ * low-level type stays free of a permissions/ import.
+ */
+export interface ToolDenial {
+  readonly denied: true;
+  readonly reason: string;
+  readonly scope: string;
+}
+
 /** The outcome of executing a tool. */
 export interface ToolResult {
   callId: string;
@@ -41,6 +59,11 @@ export interface ToolResult {
   error?: string | undefined;
   /** Non-failing issues the caller should surface with the result. */
   warnings?: readonly string[] | undefined;
+  /**
+   * Present only when the call was refused by the permission layer. Structured,
+   * call-scoped denial data the asking agent can act on. See {@link ToolDenial}.
+   */
+  denial?: ToolDenial | undefined;
 }
 
 /**
