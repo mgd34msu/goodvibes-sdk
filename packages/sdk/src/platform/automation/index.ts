@@ -47,7 +47,8 @@ export type { AutomationDeliveryMode, AutomationDeliveryTarget, AutomationDelive
 export type { AutomationFailureAction, AutomationRetryStrategy, AutomationRetryPolicy, AutomationFailurePolicy, AutomationFailureRecord } from './failures.js';
 export type { AutomationSourceRecord, AutomationSourceSnapshot } from './sources.js';
 export type { AutomationRouteBinding, AutomationRouteResolution } from './routes.js';
-export type { AutomationJob } from './jobs.js';
+export type { AutomationJob, AutomationJobKind } from './jobs.js';
+export type { AutomationCheckinEvaluator, AutomationCheckinOutcome } from './checkin-execution.js';
 export type {
   AutomationRun,
   AutomationRunSummary,

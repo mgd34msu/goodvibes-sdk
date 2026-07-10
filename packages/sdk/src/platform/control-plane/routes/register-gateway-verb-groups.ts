@@ -20,6 +20,18 @@ import { registerPrincipalsGatewayMethods } from './principals.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
 import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
 import { ChannelProfileRegistry, ChannelProfileStore } from '../../channel-profiles/index.js';
+import { registerCheckinGatewayMethods } from './checkin.js';
+import {
+  CheckinService,
+  CheckinReceiptStore,
+  createProviderBackedCheckinJudge,
+  createRuntimeCheckinStateReader,
+  type CheckinSessionView,
+} from '../../checkin/index.js';
+import type { ProviderRegistry } from '../../providers/registry.js';
+import type { AutomationManager } from '../../automation/index.js';
+import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
+import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
@@ -72,6 +84,19 @@ export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
    * resolution the session-runtime verbs gate on (getState().session.id).
    */
   readonly runtimeStore: Pick<RuntimeStore, 'getState'>;
+  /**
+   * The following three are wired only by the full runtime-services composition
+   * root; when any is absent (e.g. the terminal-shell embed) the proactive
+   * check-in verb group is simply not registered — a graceful degrade, exactly
+   * like the runtimeBus-gated needs-input push source above.
+   */
+  readonly channelDeliveryRouter?: Pick<ChannelDeliveryRouter, 'deliver'> | undefined;
+  readonly providerRegistry?: ProviderRegistry | undefined;
+  readonly automationManager?:
+    | Pick<AutomationManager, 'listJobs' | 'createJob' | 'updateJob' | 'setEnabled' | 'attachCheckinEvaluator' | 'listRuns'>
+    | undefined;
+  /** A read-only session lister for the check-in briefing (the full SharedSessionBroker satisfies it). */
+  readonly sessionLister?: { listSessions(limit?: number): readonly CheckinSessionView[] } | undefined;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -115,6 +140,62 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new ChannelProfileStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-profiles.json')),
   );
   registerChannelProfilesGatewayMethods(catalog, channelProfileRegistry);
+
+  // Proactive check-in (the "heartbeat initiative"): a briefing→judgment→
+  // conditional-delivery loop that rides the automation scheduler as a
+  // kind:'checkin' job. Registered only when the full runtime wired the channel
+  // delivery router, provider registry, and automation manager (the pieces the
+  // loop genuinely needs); absent → the verbs stay cataloged-but-unhandled,
+  // never a facade that pretends to deliver.
+  if (deps.channelDeliveryRouter && deps.providerRegistry && deps.automationManager && deps.sessionLister) {
+    const channelDeliveryRouter = deps.channelDeliveryRouter;
+    const automation = deps.automationManager;
+    const sessionLister = deps.sessionLister;
+    // The checkin.* keys are string-keyed (they live in the config defaults tree,
+    // not the grandfathered ConfigKey union); adapt the daemon's ConfigManager to
+    // the check-in's string-keyed config surface.
+    const configManager = deps.configManager;
+    const checkinConfig = {
+      get: (key: string): unknown => (configManager.get as unknown as (k: string) => unknown)(key),
+      set: (key: string, value: string | boolean): void =>
+        (configManager.set as unknown as (k: string, v: string | boolean) => void)(key, value),
+    };
+    const checkinService = new CheckinService({
+      config: checkinConfig,
+      stateReader: createRuntimeCheckinStateReader({
+        listSessions: () => sessionLister.listSessions(500),
+        listRuns: () => automation.listRuns(),
+      }),
+      judge: createProviderBackedCheckinJudge(deps.providerRegistry),
+      deliverer: {
+        deliver: async (channel, message) => {
+          const separator = channel.indexOf(':');
+          const surfaceKind = (separator === -1 ? channel : channel.slice(0, separator)).trim();
+          const address = separator === -1 ? '' : channel.slice(separator + 1).trim();
+          const target: ChannelDeliveryTarget = {
+            kind: 'surface',
+            surfaceKind: surfaceKind as ChannelDeliveryTarget['surfaceKind'],
+            ...(address ? { address } : {}),
+          };
+          return channelDeliveryRouter.deliver({
+            target,
+            body: message,
+            title: 'Check-in',
+            jobId: 'checkin',
+            runId: `checkin-${Date.now()}`,
+            includeLinks: false,
+          });
+        },
+      },
+      receipts: new CheckinReceiptStore(deps.shellPaths.resolveUserPath('control-plane', 'checkin-receipts.json')),
+      automation,
+    });
+    registerCheckinGatewayMethods(catalog, checkinService);
+    void checkinService.attach().catch(() => {
+      // Automation may be disabled at construction; the schedule syncs on the
+      // next checkin.config.set once it is enabled. Never fail construction.
+    });
+  }
 
   // Session-scoped permission mode (get/set) + context-usage exposure on the
   // wire, over the daemon's own config + runtime store (its live local

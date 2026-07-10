@@ -18,6 +18,7 @@ import { getNextAutomationOccurrence } from './schedules.js';
 
 export interface CreateAutomationJobInput {
   readonly name: string;
+  readonly kind?: import('./jobs.js').AutomationJobKind | undefined;
   readonly prompt: string;
   readonly schedule: import('./schedules.js').AutomationScheduleDefinition;
   readonly description?: string | undefined;
@@ -45,6 +46,7 @@ export interface CreateAutomationJobInput {
 
 export interface UpdateAutomationJobInput {
   readonly name?: string | undefined;
+  readonly kind?: import('./jobs.js').AutomationJobKind | undefined;
   readonly prompt?: string | undefined;
   readonly schedule?: import('./schedules.js').AutomationScheduleDefinition | undefined;
   readonly description?: string | undefined;

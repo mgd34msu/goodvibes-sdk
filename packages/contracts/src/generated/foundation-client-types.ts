@@ -70,6 +70,10 @@ export interface OperatorMethodInputMap {
   "channels.tools.invoke": ({ accountId?: string; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); } & { readonly [key: string]: unknown });
   "channels.tools.list": {  };
   "channels.tools.surface.list": { surface: string; };
+  "checkin.config.get": {  };
+  "checkin.config.set": { enabled?: boolean; cadence?: string; deliveryChannel?: string; quietHours?: string; };
+  "checkin.receipts.list": { limit?: number; };
+  "checkin.run": {  };
   "checkpoints.create": { kind: "agent-run" | "manual" | "turn"; label?: string; retentionClass?: "forensic" | "short" | "standard"; turnId?: string; agentId?: string; paths?: readonly string[]; };
   "checkpoints.diff": { a: string; b?: string; };
   "checkpoints.list": { kind?: "agent-run" | "manual" | "turn"; since?: number; limit?: number; };
@@ -328,6 +332,10 @@ export interface OperatorMethodOutputMap {
   "channels.tools.invoke": { toolId: string; surface: string; result: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); };
   "channels.tools.list": { tools: readonly ({ id: string; surface: string; name: string; description: string; actionIds: readonly string[]; inputSchema?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); metadata: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); })[]; };
   "channels.tools.surface.list": { tools: readonly ({ id: string; surface: string; name: string; description: string; actionIds: readonly string[]; inputSchema?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); metadata: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); })[]; };
+  "checkin.config.get": { config: { enabled: boolean; cadence: string; deliveryChannel: string; quietHours: string; }; };
+  "checkin.config.set": { config: { enabled: boolean; cadence: string; deliveryChannel: string; quietHours: string; }; };
+  "checkin.receipts.list": { receipts: readonly ({ id: string; ranAt: number; trigger: "manual" | "scheduled"; outcome: "delivered" | "error" | "quiet" | "skipped-disabled" | "skipped-quiet-hours"; briefingSummary: string; decisionReason?: string; deliveredMessage?: string; deliveryChannel?: string; deliveryId?: string; error?: string; })[]; };
+  "checkin.run": { outcome: "delivered" | "error" | "quiet" | "skipped"; summary: string; deliveryId?: string; };
   "checkpoints.create": { checkpoint: null | { id: string; kind: "agent-run" | "manual" | "turn"; label: string; createdAt: number; parentId: null | string; turnId?: string; agentId?: string; retentionClass: "forensic" | "short" | "standard"; commit: string; sizeBytes: number; }; noop: boolean; };
   "checkpoints.diff": { diff: { from: string; to: string; files: readonly string[]; unifiedDiff: string; stat: string; }; };
   "checkpoints.list": { checkpoints: readonly ({ id: string; kind: "agent-run" | "manual" | "turn"; label: string; createdAt: number; parentId: null | string; turnId?: string; agentId?: string; retentionClass: "forensic" | "short" | "standard"; commit: string; sizeBytes: number; })[]; };
