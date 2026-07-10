@@ -183,6 +183,16 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // core verbs (push.subscriptions.create/list/delete, push.vapid.get).
     'verify',
   ],
+  'rewind-safety': [
+    // The unified message-anchored rewind (rewind.plan / rewind.apply): a
+    // terraform-style dry-run/apply pair over the platform's existing history
+    // stores. `plan` computes exactly what a rewind to a turn anchor would
+    // change and mints a single-use confirm token (read-only); `apply` consumes
+    // it to restore files and/or conversation, recording an undo point so the
+    // rewind is reversible. Not generic CRUD/lifecycle words — a safety-gated
+    // whole-session rewind surface, sibling to checkpoint-restore-safety.
+    'plan', 'apply',
+  ],
   'checkpoint-restore-safety': [
     // Server-side confirmation preview for the destructive checkpoints.restore:
     // checkpoints.restorePreview computes what a restore would change and mints

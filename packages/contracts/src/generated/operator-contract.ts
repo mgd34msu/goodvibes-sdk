@@ -68230,6 +68230,444 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "rewind.apply",
+        "title": "Apply a Unified Rewind",
+        "description": "Apply a unified rewind to a session turn anchor, restoring files and/or conversation. DESTRUCTIVE: requires confirmation — either the confirmToken minted by rewind.plan (single-use, ~2 min) or confirm:true. Called without either, it returns a non-error refusal (refused:true) naming rewind.plan, never a silent no-op; a bad token is a 400. Every apply records an undo point (the workspace restore takes a pre-restore safety checkpoint; the conversation store captures its pre-rewind snapshot) so the rewind is itself reversible, and returns a receipt whose `undo` block carries how to reverse it. Emits a REWIND_APPLIED receipt event.",
+        "category": "rewind",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "turnId": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "files",
+                "conversation",
+                "both"
+              ]
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "confirmToken": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "scope"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "receipt": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "files",
+                        "conversation",
+                        "both"
+                      ]
+                    },
+                    "appliedAt": {
+                      "type": "number"
+                    },
+                    "files": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "restored": {
+                              "type": "boolean"
+                            },
+                            "checkpointId": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "safetyCheckpointId": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "restoredFileCount": {
+                              "type": "number"
+                            },
+                            "removedFileCount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "restored",
+                            "checkpointId",
+                            "safetyCheckpointId",
+                            "restoredFileCount",
+                            "removedFileCount"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "conversation": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "rewound": {
+                              "type": "boolean"
+                            },
+                            "droppedMessages": {
+                              "type": "number"
+                            },
+                            "undoSnapshotId": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "rewound",
+                            "droppedMessages",
+                            "undoSnapshotId"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "undo": {
+                      "type": "object",
+                      "properties": {
+                        "files": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "restoreCheckpointId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "restoreCheckpointId"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "conversation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "undoSnapshotId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "undoSnapshotId"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "files",
+                        "conversation"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessionId",
+                    "turnId",
+                    "scope",
+                    "appliedAt",
+                    "files",
+                    "conversation",
+                    "undo",
+                    "warnings"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "refused": {
+              "type": "boolean"
+            },
+            "refusal": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reason": {
+                      "type": "string"
+                    },
+                    "confirmField": {
+                      "type": "string"
+                    },
+                    "planMethod": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reason",
+                    "confirmField",
+                    "planMethod",
+                    "options"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "receipt",
+            "refused",
+            "refusal"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "rewind.plan",
+        "title": "Preview a Unified Rewind",
+        "description": "Dry-run preview of a unified rewind to a session turn anchor: exactly what restoring files (the nearest workspace checkpoint), conversation (truncating session state to the anchor), or both would change, and a short-lived single-use confirm token authorizing the matching rewind.apply. Read-only — nothing is changed. A part with no store wired on this runtime is reported unavailable in a warning, never faked.",
+        "category": "rewind",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "turnId": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "files",
+                "conversation",
+                "both"
+              ]
+            }
+          },
+          "required": [
+            "sessionId",
+            "scope"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "turnId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "files",
+                "conversation",
+                "both"
+              ]
+            },
+            "token": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "number"
+            },
+            "files": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "checkpointId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "checkpointLabel": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "affectedFileCount": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "checkpointId",
+                    "checkpointLabel",
+                    "affectedFileCount"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "conversation": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "messagesToDrop": {
+                      "type": "number"
+                    },
+                    "messagesRemaining": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "messagesToDrop",
+                    "messagesRemaining"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "turnId",
+            "scope",
+            "token",
+            "expiresAt",
+            "files",
+            "conversation",
+            "warnings"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "routes.bindings.create",
         "title": "Create Route Binding",
         "description": "Create or upsert a route binding.",
@@ -85585,10 +86023,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 367,
-      "typedInputs": 367,
+      "methods": 369,
+      "typedInputs": 369,
       "genericInputs": 0,
-      "typedOutputs": 367,
+      "typedOutputs": 369,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -85597,8 +86035,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 367,
-      "validated": 365,
+      "methods": 369,
+      "validated": 367,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

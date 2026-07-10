@@ -47,6 +47,10 @@ import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
 import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief } from '../../ci-watch/index.js';
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
+import { registerRewindGatewayMethods } from './rewind.js';
+import { UnifiedRewindService } from '../../rewind/index.js';
+import { createEventEnvelope } from '../../runtime/events/index.js';
+import type { WorkspaceEvent } from '../../../events/workspace.js';
 
 /** Parse a 'surfaceKind' or 'surfaceKind:address' channel string into a delivery target. */
 function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
@@ -121,7 +125,7 @@ export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
    * counterpart to the approval source above). Absent → no needs-input pushes
    * (graceful degrade); every other verb group is unaffected.
    */
-  readonly runtimeBus?: Pick<RuntimeEventBus, 'onDomain'> | undefined;
+  readonly runtimeBus?: Pick<RuntimeEventBus, 'onDomain' | 'emit'> | undefined;
   /**
    * Optional: operator presence lookup. When present, a needs-input push is
    * suppressed while an operator surface is actively attached to that node's
@@ -387,6 +391,30 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // evidence provider is threaded here yet — flags with instrumentation report
   // "no evidence collected this run" rather than a fabricated readiness.
   registerFlagsGraduationGatewayMethods(catalog);
+
+  // Unified message-anchored rewind (rewind.plan / rewind.apply): one coordinator
+  // over the daemon's workspace-checkpoint store — files rewind reuses the same
+  // manager checkpoints.* uses (never a fourth history system), and the pre-restore
+  // safety checkpoint it already takes is the undo point that makes a rewind
+  // reversible. No daemon-side mutable conversation store is wired here, so the
+  // conversation part is honestly reported unavailable rather than faked. Receipt
+  // events fan out on the workspace domain when the runtime bus is present.
+  const rewindService = new UnifiedRewindService({
+    workspace: deps.workspaceCheckpointManager,
+    conversation: null,
+    ...(deps.runtimeBus
+      ? {
+        emit: (event: WorkspaceEvent, sessionId: string): void => {
+          const envelope = createEventEnvelope(event.type, event, { sessionId, source: 'rewind-service' });
+          deps.runtimeBus!.emit<'workspace'>(
+            'workspace',
+            envelope as import('../../runtime/events/index.js').RuntimeEventEnvelope<WorkspaceEvent['type'], WorkspaceEvent>,
+          );
+        },
+      }
+      : {}),
+  });
+  registerRewindGatewayMethods(catalog, rewindService);
 
   if (deps.runtimeBus) {
     deps.runtimeBus.onDomain('turn', (envelope) => {
