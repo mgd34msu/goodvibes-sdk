@@ -28,7 +28,33 @@ export type CompactionEvent =
   /** Quality score computed after a strategy run. */
   | { type: 'COMPACTION_QUALITY_SCORE'; sessionId: string; strategy: string; score: number; grade: string; compressionRatio: number; retentionScore: number; isLowQuality: boolean; description: string }
   /** Strategy switched automatically due to low quality score. */
-  | { type: 'COMPACTION_STRATEGY_SWITCH'; sessionId: string; fromStrategy: string; toStrategy: string; reason: string; score: number };
+  | { type: 'COMPACTION_STRATEGY_SWITCH'; sessionId: string; fromStrategy: string; toStrategy: string; reason: string; score: number }
+  /**
+   * Mandatory post-compaction receipt: emitted after every automatic (and the
+   * manual) compaction path so a compaction is never silent. Carries what was
+   * compacted, token/message counts before and after, the strategy, the quality
+   * score/grade the guard computed, whether the standing instruction chain was
+   * re-injected, and the outcome — `applied` (compacted context committed),
+   * `kept-original` (quality guard rejected it, conversation retained), or
+   * `failed` (compaction threw before producing a usable result).
+   */
+  | {
+      type: 'COMPACTION_RECEIPT';
+      sessionId: string;
+      trigger: 'auto' | 'manual';
+      strategy: string;
+      tokensBefore: number;
+      tokensAfter: number;
+      messagesBefore: number;
+      messagesAfter: number;
+      qualityScore: number;
+      qualityGrade: string;
+      lowQuality: boolean;
+      instructionsReinjected: boolean;
+      validationPassed: boolean;
+      outcome: 'applied' | 'kept-original' | 'failed';
+      detail?: string | undefined;
+    };
 
 /** All compaction event type literals as a union. */
 export type CompactionEventType = CompactionEvent['type'];

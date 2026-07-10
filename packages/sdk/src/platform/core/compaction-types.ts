@@ -156,6 +156,60 @@ export interface CompactionEvent {
   instructionsReinjected?: boolean | undefined;
 }
 
+/**
+ * Post-compaction receipt — the mandatory, visible record emitted after every
+ * automatic compaction path (and the manual one). Surfaces render it so a
+ * compaction is never silent: it names what happened, the token counts before
+ * and after, the strategy, the quality score/grade the guard computed, whether
+ * the standing instruction chain was re-injected, and the outcome — `applied`
+ * when the compacted context replaced the conversation, or `kept-original`
+ * when the quality guard rejected a bad compaction and the full conversation
+ * was retained instead.
+ */
+export interface CompactionReceipt {
+  /** Whether this compaction was automatic or manually requested. */
+  trigger: 'auto' | 'manual';
+  /** The compaction strategy that produced this result. */
+  strategy: string;
+  tokensBefore: number;
+  tokensAfter: number;
+  messagesBefore: number;
+  messagesAfter: number;
+  /** Composite quality score (0–1) from the compaction quality scorer. */
+  qualityScore: number;
+  /** Letter grade (A–F) derived from the quality score. */
+  qualityGrade: string;
+  /** Whether the quality scorer flagged the compaction as low quality. */
+  lowQuality: boolean;
+  /** Whether the standing instruction chain / active skill was re-injected. */
+  instructionsReinjected: boolean;
+  /** Whether post-compaction structural validation passed (no warnings). */
+  validationPassed: boolean;
+  /** IDs of the sections included in the compacted output. */
+  sectionsIncluded: string[];
+  /**
+   * Outcome: `applied` — the compacted context replaced the conversation;
+   * `kept-original` — the quality guard rejected the result and the full
+   * conversation was retained (honest fallback); `failed` — compaction threw
+   * before producing a usable result.
+   */
+  outcome: 'applied' | 'kept-original' | 'failed';
+  /** Human-readable failure detail when outcome is `kept-original` / `failed`. */
+  detail?: string | undefined;
+}
+
+/**
+ * Thrown by the compactor when the quality scorer rejects a compaction. Carries
+ * the `kept-original` receipt so the conversation is retained and the caller can
+ * surface the failure honestly (never a silent bad compaction).
+ */
+export class CompactionQualityError extends Error {
+  constructor(readonly receipt: CompactionReceipt) {
+    super(receipt.detail ?? 'Compaction rejected by quality guard; conversation retained.');
+    this.name = 'CompactionQualityError';
+  }
+}
+
 /** Result of a compaction operation. */
 export interface CompactionResult {
   /** The new compacted message list (single user message containing the handoff). */

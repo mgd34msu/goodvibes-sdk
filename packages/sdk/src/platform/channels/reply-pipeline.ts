@@ -375,6 +375,10 @@ export function normalizeChannelRenderEventFromRuntime(
         provider: payload.provider,
         model: `${payload.from} -> ${payload.to}`,
       })];
+    case 'COMPACTION_RECEIPT':
+      return [renderEvent(payload.outcome === 'applied' ? 'compaction' : 'error', 'progress', envelope, {
+        text: `compaction ${payload.outcome}: ${payload.tokensBefore}->${payload.tokensAfter} tokens, quality ${payload.qualityGrade}${payload.detail ? ` — ${payload.detail}` : ''}`,
+      })];
     case 'COMPACTION_CHECK':
     case 'COMPACTION_MICROCOMPACT':
     case 'COMPACTION_COLLAPSE':

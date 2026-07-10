@@ -159,3 +159,31 @@ export function emitCompactionFailed(
     createEventEnvelope('COMPACTION_FAILED', { type: 'COMPACTION_FAILED', ...data }, ctx),
   );
 }
+
+/** Emit the mandatory post-compaction receipt. Every automatic (and the manual)
+ * compaction path emits this so a compaction is never silent. */
+export function emitCompactionReceipt(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: {
+    sessionId: string;
+    trigger: 'auto' | 'manual';
+    strategy: string;
+    tokensBefore: number;
+    tokensAfter: number;
+    messagesBefore: number;
+    messagesAfter: number;
+    qualityScore: number;
+    qualityGrade: string;
+    lowQuality: boolean;
+    instructionsReinjected: boolean;
+    validationPassed: boolean;
+    outcome: 'applied' | 'kept-original' | 'failed';
+    detail?: string | undefined;
+  },
+): void {
+  bus.emit(
+    'compaction',
+    createEventEnvelope('COMPACTION_RECEIPT', { type: 'COMPACTION_RECEIPT', ...data }, ctx),
+  );
+}
