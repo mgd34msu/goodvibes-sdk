@@ -21,6 +21,17 @@ export const ATTRIBUTED_PRINCIPAL_ID_KEY = 'attributedPrincipalId';
 export const ATTRIBUTED_PRINCIPAL_NAME_KEY = 'attributedPrincipalName';
 export const ATTRIBUTED_PRINCIPAL_KNOWN_KEY = 'attributedPrincipalKnown';
 
+/**
+ * Stable session-metadata keys recording the channel profile applied at intake:
+ * the model/provider the originating channel binds and the permission posture.
+ * Recorded on the originated session so the profile it inherited is observable
+ * and the spawn path can pick the model/provider up from the session it belongs
+ * to (never overriding a value the caller set explicitly).
+ */
+export const CHANNEL_PROFILE_MODEL_KEY = 'channelProfileModel';
+export const CHANNEL_PROFILE_PROVIDER_KEY = 'channelProfileProvider';
+export const CHANNEL_PROFILE_PERMISSION_MODE_KEY = 'channelProfilePermissionMode';
+
 export interface InboundSender {
   /** The surface the message arrived on (e.g. 'slack') — used as the identity channel. */
   readonly surfaceKind: string;
