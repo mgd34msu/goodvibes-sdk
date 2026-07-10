@@ -46,6 +46,8 @@
     "any:check": "bun scripts/no-any-types.ts",
     "api:check": "bunx api-extractor run --local && git diff --quiet -- etc/goodvibes-sdk.api.md",
     "bundle:check": "bun scripts/bundle-budget.ts",
+    "bundle:init": "bun scripts/plugin-bundle.ts init",
+    "bundle:validate": "bun scripts/plugin-bundle.ts validate",
     "changelog:check": "bun scripts/check-changelog.ts",
     "check:browser": "bun scripts/browser-compat-check.ts",
     "check:metadata": "bun scripts/package-metadata-check.ts",

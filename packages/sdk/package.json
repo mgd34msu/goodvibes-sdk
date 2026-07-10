@@ -356,6 +356,10 @@
       "types": "./dist/platform/runtime/sandbox.d.ts",
       "import": "./dist/platform/runtime/sandbox.js"
     },
+    "./platform/runtime/ecosystem": {
+      "types": "./dist/platform/runtime/ecosystem/index.d.ts",
+      "import": "./dist/platform/runtime/ecosystem/index.js"
+    },
     "./platform/runtime/permissions/sandbox-policy": {
       "types": "./dist/platform/runtime/permissions/sandbox-policy.d.ts",
       "import": "./dist/platform/runtime/permissions/sandbox-policy.js"
