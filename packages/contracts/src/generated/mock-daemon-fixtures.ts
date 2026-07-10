@@ -5275,6 +5275,86 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "archivedCount": 0
     }
   },
+  "fleet.attempts.judge": {
+    "methodId": "fleet.attempts.judge",
+    "http": null,
+    "status": 200,
+    "body": {
+      "proposedWinnerItemId": "sample",
+      "reasons": [
+        "sample"
+      ],
+      "model": "sample",
+      "scoredBy": "model"
+    }
+  },
+  "fleet.attempts.list": {
+    "methodId": "fleet.attempts.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "groups": [
+        {
+          "groupId": "sample",
+          "workstreamId": "sample",
+          "sourceTitle": "sample",
+          "ready": false,
+          "candidates": [
+            {
+              "itemId": "sample",
+              "attemptIndex": 0,
+              "state": "held-merge",
+              "title": "sample",
+              "worktreePath": "sample",
+              "branch": "sample",
+              "usage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "reasoningTokens": 0,
+                "llmCallCount": 0,
+                "turnCount": 0,
+                "toolCallCount": 0,
+                "costUsd": 0,
+                "costState": "priced"
+              },
+              "failureReason": "sample",
+              "diff": {
+                "files": [
+                  "sample"
+                ],
+                "unifiedDiff": "sample",
+                "stat": "sample"
+              }
+            }
+          ],
+          "autoAccept": false,
+          "judgment": {
+            "proposedWinnerItemId": "sample",
+            "reasons": [
+              "sample"
+            ],
+            "model": "sample",
+            "scoredBy": "model"
+          }
+        }
+      ]
+    }
+  },
+  "fleet.attempts.pick": {
+    "methodId": "fleet.attempts.pick",
+    "http": null,
+    "status": 200,
+    "body": {
+      "groupId": "sample",
+      "winnerItemId": "sample",
+      "loserItemIds": [
+        "sample"
+      ],
+      "auto": false
+    }
+  },
   "fleet.list": {
     "methodId": "fleet.list",
     "http": null,

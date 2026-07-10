@@ -103,7 +103,17 @@ export type WorkItemState =
    * dependencies are all passed at its first claim they stay passed (passed is
    * terminal), so a mid-pipeline item is never re-gated.
    */
-  | 'blocked-dependency';
+  | 'blocked-dependency'
+  /**
+   * A best-of-N attempt sibling that has PASSED every phase but is parked
+   * pending the winner pick (see attempts.ts). Its worktree is KEPT (not merged,
+   * not removed) so its diff can be inspected as a candidate; the engine never
+   * auto-merges a best-of-N attempt. NON-TERMINAL on purpose — a workstream with
+   * a held sibling is not "done" until a winner is picked (fleet.attempts.pick),
+   * at which point the winner integrates and the losers are cleaned. Never in the
+   * claimable set (computeClaims excludes it), so it is never re-run.
+   */
+  | 'held-merge';
 
 /** Token/cost usage rolled up across every agent this work-item has ever spawned. */
 export interface WorkItemUsage {
@@ -241,6 +251,32 @@ export interface WorkItem {
    * 4). A kept worktree still lives at {@link worktreePath} for inspection.
    */
   worktreeKept?: boolean | undefined;
+  /**
+   * Best-of-N grouping (see attempts.ts). Set on every sibling attempt item the
+   * engine spawned from ONE work item declared with `attempts: N`. All siblings
+   * of the same source item share this id; the fleet surfaces it (ProcessNode.
+   * attemptGroup) so an operator sees the siblings as one group. Absent on an
+   * ordinary (single-attempt) item.
+   */
+  attemptGroupId?: string | undefined;
+  /** This attempt's index within its group, 0..N-1 (best-of-N only). */
+  attemptIndex?: number | undefined;
+  /** How many sibling attempts the group has (N), carried for display (best-of-N only). */
+  attemptTotal?: number | undefined;
+  /**
+   * When true, a judge proposal (fleet.attempts.judge) for this item's group may
+   * auto-pick the proposed winner instead of only PROPOSING it. Opt-in per the
+   * source item's spec; default (absent/false) means a human always picks.
+   */
+  autoAcceptWinner?: boolean | undefined;
+  /**
+   * Per-item budget ceiling (best-of-N attempts, or any item that opts in). When
+   * set, the engine refuses a NEW phase claim for THIS item once its own usage
+   * reaches the ceiling — independent of, and in addition to, the workstream
+   * ceiling. A budget hint, never a mid-run kill (same semantics as the
+   * workstream budget; see budget.ts).
+   */
+  itemBudget?: BudgetCeiling | undefined;
 }
 
 export interface WorkItemSpec {
@@ -255,7 +291,25 @@ export interface WorkItemSpec {
    * it (see the 'blocked-dependency' state doc).
    */
   readonly dependsOn?: readonly string[] | undefined;
+  /**
+   * Best-of-N: run this item as N sibling attempts in isolated worktrees (see
+   * attempts.ts), then HOLD the merge and expose the candidates instead of
+   * auto-merging. Omitted/1 ⇒ an ordinary single item (unchanged behavior).
+   * Values above {@link MAX_ATTEMPTS} are clamped. Only honored when the
+   * workstream is `worktree`-isolated — attempts need isolated trees to compare;
+   * under `shared` isolation the value is ignored (a single item runs).
+   * A best-of-N item is a LEAF: no other item may depend on it, and it declares
+   * no dependencies (the winner is chosen by pick, not by the dependency graph).
+   */
+  readonly attempts?: number | undefined;
+  /** Best-of-N: allow a judge proposal for this item's group to auto-pick the winner (opt-in; default: a human picks). */
+  readonly autoAcceptWinner?: boolean | undefined;
+  /** Optional per-item budget ceiling (see WorkItem.itemBudget). Falls out naturally for best-of-N attempts; harmless on any item. */
+  readonly budget?: BudgetCeiling | undefined;
 }
+
+/** Sensible cap on best-of-N sibling attempts per work item — enough to compare, bounded against runaway fan-out/cost. */
+export const MAX_ATTEMPTS = 5;
 
 /**
  * Where a workstream's item phases run their file changes.
@@ -429,6 +483,92 @@ export interface SerializedWorkItem extends Omit<WorkItem, 'visits'> {
 
 export const CURRENT_WORKSTREAM_SCHEMA_VERSION = 1;
 
+// ── Best-of-N held-merge candidates ─────────────────────────────────────────
+
+/** The diff a best-of-N candidate carries — computed from its worktree branch vs base (the existing worktree diff plumbing). */
+export interface AttemptCandidateDiff {
+  readonly files: readonly string[];
+  readonly unifiedDiff: string;
+  readonly stat: string;
+}
+
+/** One best-of-N attempt as the held-merge surface exposes it: its outcome, its usage, and its diff. */
+export interface AttemptCandidate {
+  readonly itemId: string;
+  readonly attemptIndex: number;
+  /** 'held-merge' (passed, parked, mergeable) or 'failed' (ran but did not pass). Only these two are ever candidates. */
+  readonly state: 'held-merge' | 'failed';
+  readonly title: string;
+  readonly worktreePath: string | null;
+  readonly branch: string | null;
+  readonly usage: WorkItemUsage;
+  readonly failureReason: string | null;
+  /** The candidate's diff, or null when its worktree could not be diffed (e.g. already cleaned). Only meaningful for 'held-merge'. */
+  readonly diff: AttemptCandidateDiff | null;
+}
+
+/**
+ * A model judge's verdict over a group's candidates. CLEARLY a model judgment,
+ * not ground truth: `scoredBy` is always 'model', and the engine PROPOSES this
+ * winner — it only auto-picks when the group's item opted into autoAcceptWinner.
+ */
+export interface AttemptJudgment {
+  readonly proposedWinnerItemId: string | null;
+  readonly reasons: readonly string[];
+  readonly model: string | null;
+  readonly scoredBy: 'model';
+}
+
+/** A best-of-N group in the held-merge state, exposing its candidates for a winner pick. */
+export interface HeldMergeGroup {
+  readonly groupId: string;
+  readonly workstreamId: string;
+  readonly sourceTitle: string;
+  /** True once every sibling is terminal (held-merge or failed) — a winner may be picked. */
+  readonly ready: boolean;
+  readonly candidates: readonly AttemptCandidate[];
+  /** Whether this group opted into judge auto-accept. */
+  readonly autoAccept: boolean;
+  /** The most recent judge proposal for this group, if judged; always PROPOSED, never a silent auto-pick unless autoAccept. */
+  readonly judgment: AttemptJudgment | null;
+}
+
+/** Result of picking a best-of-N winner: the winner integrates via the merge lane; losers' worktrees are cleaned. */
+export interface AttemptPickResult {
+  readonly groupId: string;
+  readonly winnerItemId: string;
+  readonly loserItemIds: readonly string[];
+  /** True when a judge proposal auto-picked (group opted in); false for an explicit operator pick. */
+  readonly auto: boolean;
+}
+
+// ── The injectable judge (a model call) ─────────────────────────────────────
+
+/** One candidate as handed to the judge model. */
+export interface AttemptJudgeCandidate {
+  readonly itemId: string;
+  readonly attemptIndex: number;
+  readonly state: 'held-merge' | 'failed';
+  readonly diff: AttemptCandidateDiff | null;
+  readonly usage: WorkItemUsage;
+}
+
+export interface AttemptJudgeInput {
+  readonly task: string;
+  readonly candidates: readonly AttemptJudgeCandidate[];
+}
+
+/** The judge's raw verdict; the engine wraps it into an AttemptJudgment (stamping scoredBy:'model'). */
+export interface AttemptJudgeVerdict {
+  /** The chosen candidate's item id, or null when the judge declines to choose. */
+  readonly winnerItemId: string | null;
+  readonly reasons: readonly string[];
+  readonly model?: string | undefined;
+}
+
+/** The injectable judge: a model call that scores candidates. Kept out of the engine so it stays provider-agnostic and testable. */
+export type AttemptJudge = (input: AttemptJudgeInput) => Promise<AttemptJudgeVerdict>;
+
 /** Discriminated events the engine emits over its own lifecycle (persistence, budget, fleet). */
 export type OrchestrationEvent =
   | { readonly type: 'phase-inserted'; readonly workstreamId: string; readonly phase: Phase }
@@ -499,6 +639,23 @@ export type OrchestrationEvent =
    * every other variant above) because it fires before any workstream is
    * necessarily even created. See dirty-guard.ts.
    */
-  | { readonly type: 'dirty-tree-at-launch'; readonly paths: readonly string[] };
+  | { readonly type: 'dirty-tree-at-launch'; readonly paths: readonly string[] }
+  /**
+   * Best-of-N lifecycle (attempts.ts). `item-attempts-spawned` fires once when a
+   * work item declared with attempts:N is expanded into N sibling items (naming
+   * their ids and the shared groupId). `item-attempt-held` fires when a sibling
+   * PASSES and is parked in held-merge (its worktree kept, not merged).
+   * `attempts-ready` fires once when every sibling in a group is terminal — a
+   * winner may now be picked. `attempt-judge-proposed` fires when the optional
+   * judge pass proposes a winner (always a PROPOSAL). `attempt-winner-picked`
+   * fires when a winner is accepted (its branch enters the merge lane; losers'
+   * worktrees are cleaned); `auto` distinguishes a judge auto-accept from an
+   * explicit operator pick.
+   */
+  | { readonly type: 'item-attempts-spawned'; readonly workstreamId: string; readonly groupId: string; readonly itemIds: readonly string[]; readonly attempts: number }
+  | { readonly type: 'item-attempt-held'; readonly workstreamId: string; readonly groupId: string; readonly itemId: string }
+  | { readonly type: 'attempts-ready'; readonly workstreamId: string; readonly groupId: string; readonly candidateItemIds: readonly string[] }
+  | { readonly type: 'attempt-judge-proposed'; readonly workstreamId: string; readonly groupId: string; readonly proposedWinnerItemId: string | null; readonly reasons: readonly string[] }
+  | { readonly type: 'attempt-winner-picked'; readonly workstreamId: string; readonly groupId: string; readonly winnerItemId: string; readonly loserItemIds: readonly string[]; readonly auto: boolean };
 
 export type OrchestrationEventListener = (event: OrchestrationEvent) => void;

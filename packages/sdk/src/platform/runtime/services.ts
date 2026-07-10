@@ -103,7 +103,7 @@ import {
   type WorkflowServices,
 } from '../tools/workflow/index.js';
 import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, type ArchivableProcessRegistry } from './fleet/index.js';
-import { createOrchestrationEngine, type OrchestrationEngine } from '../orchestration/index.js';
+import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
 
 export interface RuntimeServicesOptions {
   readonly runtimeBus: RuntimeEventBus;
@@ -720,7 +720,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
     runtimeBus: options.runtimeBus,
     projectRoot: workingDirectory,
-    priceUsage,
+    priceUsage, judgeAttempts: createProviderBackedAttemptJudge(providerRegistry), // best-of-N judge (fleet.attempts.judge); never auto-picks unless opted in
   });
 
   // Live process registry — narrow structural deps only, constructed
@@ -752,7 +752,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     const s = sessionBroker.getSession(sessionId);
     return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
   };
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,

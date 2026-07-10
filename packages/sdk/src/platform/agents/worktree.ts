@@ -473,6 +473,27 @@ export class IsolatedWorktree {
     return { status: 'conflict', files };
   }
 
+  /**
+   * The diff this item branch introduced over the base branch (base...branch —
+   * changes on the branch since it diverged). The existing diff plumbing behind
+   * a best-of-N candidate: returns the changed files, the unified diff text, and
+   * the diffstat. A read error degrades to an empty diff, never throws.
+   */
+  async diff(): Promise<{ files: string[]; unifiedDiff: string; stat: string }> {
+    const range = `${this.baseBranch}...${this.branch}`;
+    try {
+      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      const names = (await wgit.raw(['diff', '--name-only', range])).trim();
+      const files = names.length > 0 ? names.split('\n').filter(Boolean) : [];
+      const unifiedDiff = await wgit.raw(['diff', range]);
+      const stat = (await wgit.raw(['diff', '--stat', range])).trim();
+      return { files, unifiedDiff, stat };
+    } catch (error) {
+      logger.warn('IsolatedWorktree.diff: could not compute branch diff', { branch: this.branch, error: summarizeError(error) });
+      return { files: [], unifiedDiff: '', stat: '' };
+    }
+  }
+
   /** Remove the worktree directory and delete the item branch (post-merge, or a clean tree after fail/kill). */
   async remove(): Promise<void> {
     logger.debug('IsolatedWorktree.remove', { path: this.path, branch: this.branch });

@@ -337,6 +337,86 @@ export const CHECKPOINTS_REVERT_HUNK_OUTPUT_SCHEMA = objectSchema({
   refusal: nullableSchema(CHECKPOINTS_REVERT_HUNK_REFUSAL_SCHEMA),
 }, ['receipt', 'refused', 'refusal']);
 
+// ── Best-of-N held-merge (fleet.attempts.list / .pick / .judge) ─────────────
+// Sibling attempts that ran in isolated worktrees and are HELD for a winner
+// pick instead of auto-merging (see platform/orchestration/attempts.ts). All
+// ws-only invoke verbs.
+
+const ATTEMPT_CANDIDATE_DIFF_SCHEMA = objectSchema({
+  files: STRING_LIST_SCHEMA,
+  unifiedDiff: STRING_SCHEMA,
+  stat: STRING_SCHEMA,
+}, ['files', 'unifiedDiff', 'stat']);
+
+const ATTEMPT_USAGE_SCHEMA = objectSchema({
+  inputTokens: NUMBER_SCHEMA,
+  outputTokens: NUMBER_SCHEMA,
+  cacheReadTokens: NUMBER_SCHEMA,
+  cacheWriteTokens: NUMBER_SCHEMA,
+  reasoningTokens: NUMBER_SCHEMA,
+  llmCallCount: NUMBER_SCHEMA,
+  turnCount: NUMBER_SCHEMA,
+  toolCallCount: NUMBER_SCHEMA,
+  costUsd: nullableSchema(NUMBER_SCHEMA),
+  costState: enumSchema(['priced', 'unpriced', 'estimated']),
+}, ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'llmCallCount', 'turnCount', 'toolCallCount', 'costUsd', 'costState']);
+
+const ATTEMPT_CANDIDATE_SCHEMA = objectSchema({
+  itemId: STRING_SCHEMA,
+  attemptIndex: NUMBER_SCHEMA,
+  state: enumSchema(['held-merge', 'failed']),
+  title: STRING_SCHEMA,
+  worktreePath: nullableSchema(STRING_SCHEMA),
+  branch: nullableSchema(STRING_SCHEMA),
+  usage: ATTEMPT_USAGE_SCHEMA,
+  failureReason: nullableSchema(STRING_SCHEMA),
+  diff: nullableSchema(ATTEMPT_CANDIDATE_DIFF_SCHEMA),
+}, ['itemId', 'attemptIndex', 'state', 'title', 'worktreePath', 'branch', 'usage', 'failureReason', 'diff']);
+
+/** A model judge's verdict — CLEARLY a model judgment (scoredBy:'model'), always a PROPOSAL. */
+export const ATTEMPT_JUDGMENT_SCHEMA = objectSchema({
+  proposedWinnerItemId: nullableSchema(STRING_SCHEMA),
+  reasons: STRING_LIST_SCHEMA,
+  model: nullableSchema(STRING_SCHEMA),
+  scoredBy: enumSchema(['model']),
+}, ['proposedWinnerItemId', 'reasons', 'model', 'scoredBy']);
+
+const HELD_MERGE_GROUP_SCHEMA = objectSchema({
+  groupId: STRING_SCHEMA,
+  workstreamId: STRING_SCHEMA,
+  sourceTitle: STRING_SCHEMA,
+  ready: BOOLEAN_SCHEMA,
+  candidates: arraySchema(ATTEMPT_CANDIDATE_SCHEMA),
+  autoAccept: BOOLEAN_SCHEMA,
+  judgment: nullableSchema(ATTEMPT_JUDGMENT_SCHEMA),
+}, ['groupId', 'workstreamId', 'sourceTitle', 'ready', 'candidates', 'autoAccept', 'judgment']);
+
+export const FLEET_ATTEMPTS_LIST_INPUT_SCHEMA = objectSchema({
+  workstreamId: STRING_SCHEMA,
+}, []);
+
+export const FLEET_ATTEMPTS_LIST_OUTPUT_SCHEMA = objectSchema({
+  groups: arraySchema(HELD_MERGE_GROUP_SCHEMA),
+}, ['groups']);
+
+export const FLEET_ATTEMPTS_PICK_INPUT_SCHEMA = objectSchema({
+  groupId: STRING_SCHEMA,
+  winnerItemId: STRING_SCHEMA,
+}, ['groupId', 'winnerItemId']);
+
+export const FLEET_ATTEMPTS_PICK_OUTPUT_SCHEMA = objectSchema({
+  groupId: STRING_SCHEMA,
+  winnerItemId: STRING_SCHEMA,
+  loserItemIds: STRING_LIST_SCHEMA,
+  auto: BOOLEAN_SCHEMA,
+}, ['groupId', 'winnerItemId', 'loserItemIds', 'auto']);
+
+export const FLEET_ATTEMPTS_JUDGE_INPUT_SCHEMA = objectSchema({
+  groupId: STRING_SCHEMA,
+}, ['groupId']);
+
+export const FLEET_ATTEMPTS_JUDGE_OUTPUT_SCHEMA = ATTEMPT_JUDGMENT_SCHEMA;
+
 export const SESSIONS_SEARCH_INPUT_SCHEMA = objectSchema({
   query: STRING_SCHEMA,
   project: STRING_SCHEMA,

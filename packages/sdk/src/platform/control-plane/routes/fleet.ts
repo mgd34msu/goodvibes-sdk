@@ -33,6 +33,8 @@ import type {
   ProcessState,
 } from '../../runtime/fleet/types.js';
 import type { FleetArchiveView } from '../../runtime/fleet/archive.js';
+import type { AttemptJudgment, AttemptPickResult, HeldMergeGroup } from '../../orchestration/types.js';
+import { AttemptError } from '../../orchestration/attempts.js';
 import { paginateItems } from '@pellux/goodvibes-daemon-sdk';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
@@ -225,6 +227,64 @@ export function createFleetArchivedListHandler(registry: FleetArchiveCapableRegi
 }
 
 /**
+ * The best-of-N surface the fleet verbs need — the orchestration engine's held-
+ * merge methods. Optional at registration: a runtime with no orchestration
+ * engine simply doesn't register the fleet.attempts.* verbs (graceful degrade).
+ */
+export interface FleetAttemptsController {
+  listHeldMergeGroups(workstreamId?: string): Promise<HeldMergeGroup[]>;
+  pickAttemptWinner(groupId: string, winnerItemId: string): Promise<AttemptPickResult>;
+  proposeAttemptWinner(groupId: string): Promise<AttemptJudgment>;
+}
+
+/** Map an AttemptError to an honest wire status: a missing judge is 501, every other precondition miss is 409. */
+function attemptGatewayError(error: unknown): never {
+  if (error instanceof AttemptError) {
+    if (error.message.includes('no judge')) {
+      throw new GatewayVerbError(error.message, 'UNSUPPORTED', 501);
+    }
+    throw new GatewayVerbError(error.message, 'FAILED_PRECONDITION', 409);
+  }
+  throw error;
+}
+
+export function createFleetAttemptsListHandler(controller: FleetAttemptsController): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const workstreamId = typeof params.workstreamId === 'string' && params.workstreamId.length > 0 ? params.workstreamId : undefined;
+    return { groups: await controller.listHeldMergeGroups(workstreamId) };
+  };
+}
+
+export function createFleetAttemptsPickHandler(controller: FleetAttemptsController): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const groupId = typeof params.groupId === 'string' ? params.groupId.trim() : '';
+    const winnerItemId = typeof params.winnerItemId === 'string' ? params.winnerItemId.trim() : '';
+    if (!groupId) throw new GatewayVerbError('groupId is required', 'INVALID_ARGUMENT', 400);
+    if (!winnerItemId) throw new GatewayVerbError('winnerItemId is required', 'INVALID_ARGUMENT', 400);
+    try {
+      return await controller.pickAttemptWinner(groupId, winnerItemId);
+    } catch (error) {
+      return attemptGatewayError(error);
+    }
+  };
+}
+
+export function createFleetAttemptsJudgeHandler(controller: FleetAttemptsController): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const groupId = typeof params.groupId === 'string' ? params.groupId.trim() : '';
+    if (!groupId) throw new GatewayVerbError('groupId is required', 'INVALID_ARGUMENT', 400);
+    try {
+      return await controller.proposeAttemptWinner(groupId);
+    } catch (error) {
+      return attemptGatewayError(error);
+    }
+  };
+}
+
+/**
  * Attach the `fleet.*` handlers to the descriptors
  * already registered (without a handler) from
  * ../method-catalog-fleet.ts's static builtin array. Call once, at
@@ -233,7 +293,11 @@ export function createFleetArchivedListHandler(registry: FleetArchiveCapableRegi
  * rather than a throw — construction must never fail because a wire verb
  * failed to register; the operator-contract gates catch a real drift.
  */
-export function registerFleetGatewayMethods(catalog: GatewayMethodCatalog, registry: FleetArchiveCapableRegistry): void {
+export function registerFleetGatewayMethods(
+  catalog: GatewayMethodCatalog,
+  registry: FleetArchiveCapableRegistry,
+  attempts?: FleetAttemptsController,
+): void {
   const attach = (id: string, handler: GatewayMethodHandler): void => {
     const descriptor = catalog.get(id);
     if (descriptor) catalog.register(descriptor, handler, { replace: true });
@@ -244,4 +308,12 @@ export function registerFleetGatewayMethods(catalog: GatewayMethodCatalog, regis
   attach('fleet.unarchive', createFleetUnarchiveHandler(registry));
   attach('fleet.archiveFinished', createFleetArchiveFinishedHandler(registry));
   attach('fleet.archived.list', createFleetArchivedListHandler(registry));
+  // fleet.attempts.* (best-of-N held-merge) — registered only when an
+  // orchestration engine is wired; absent, the verbs stay cataloged-but-
+  // unhandled rather than a facade (graceful degrade, like the archive verbs).
+  if (attempts) {
+    attach('fleet.attempts.list', createFleetAttemptsListHandler(attempts));
+    attach('fleet.attempts.pick', createFleetAttemptsPickHandler(attempts));
+    attach('fleet.attempts.judge', createFleetAttemptsJudgeHandler(attempts));
+  }
 }

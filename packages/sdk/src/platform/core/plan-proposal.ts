@@ -53,6 +53,19 @@ export interface WorkItem {
   verification?: string[] | undefined;
   canRunConcurrently?: boolean | undefined;
   needsReview?: boolean | undefined;
+  /**
+   * Best-of-N: run this item as N sibling attempts in isolated worktrees and
+   * HOLD the merge for a winner pick instead of auto-merging (the orchestration
+   * engine's best-of-N — platform/orchestration/attempts.ts). Previously the
+   * plan format constrained this OUT (every item was single-attempt); the engine
+   * now supports it, so a planner may propose it. CONSTRAINT: a best-of-N item is
+   * a LEAF — it declares no dependencies and nothing depends on it (the winner is
+   * chosen by pick, not by the dependency graph). Omitted/1 ⇒ an ordinary single
+   * item. Only honored under `worktree` workstream isolation.
+   */
+  attempts?: number | undefined;
+  /** Best-of-N: allow a judge proposal to auto-pick this item's winner (opt-in; default: a human picks). */
+  autoAcceptWinner?: boolean | undefined;
 }
 
 export interface Phase {
@@ -133,6 +146,10 @@ export interface RawDecompositionWorkItem {
   verification?: string[] | undefined;
   canRunConcurrently?: boolean | undefined;
   needsReview?: boolean | undefined;
+  /** Best-of-N sibling attempts (see WorkItem.attempts). Omitted/1 ⇒ single item. */
+  attempts?: number | undefined;
+  /** Best-of-N: allow a judge proposal to auto-pick this item's winner (opt-in). */
+  autoAcceptWinner?: boolean | undefined;
 }
 
 export interface RawDecomposition {
@@ -274,6 +291,8 @@ export function assemblePlanProposal(
       ...(rawItem.verification ? { verification: rawItem.verification } : {}),
       ...(rawItem.canRunConcurrently !== undefined ? { canRunConcurrently: rawItem.canRunConcurrently } : {}),
       ...(rawItem.needsReview !== undefined ? { needsReview: rawItem.needsReview } : {}),
+      ...(rawItem.attempts !== undefined ? { attempts: rawItem.attempts } : {}),
+      ...(rawItem.autoAcceptWinner !== undefined ? { autoAcceptWinner: rawItem.autoAcceptWinner } : {}),
     } satisfies WorkItem;
   });
 

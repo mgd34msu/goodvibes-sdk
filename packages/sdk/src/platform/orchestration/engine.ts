@@ -19,6 +19,7 @@ import type { PhaseRunnerAgentManagerLike, WrfcWorktreeOps } from './phase-runne
 import { runPhase } from './phase-runner.js';
 import { snapshotDirtyTree, type DirtyLaunchSnapshot } from './dirty-guard.js';
 import { createWorktreeIsolationManager, type WorktreeIsolationManager } from './worktree-isolation.js';
+import { createAttemptsCoordinator, type AttemptsCoordinator } from './attempts.js';
 import {
   deserializeWorkstream as deserializeWorkstreamModel,
   deserializeWorkstreamSnapshot,
@@ -27,7 +28,8 @@ import {
   loadWorkstreamSnapshot,
   serializeWorkstreamSnapshot,
 } from './persistence.js';
-import { computeClaims, dependencyStatus, firstPhase, nextPhaseAfter, reviewPhaseBefore, sortedPhases } from './scheduler.js';
+import { computeClaims, firstPhase, nextPhaseAfter, reviewPhaseBefore, sortedPhases } from './scheduler.js';
+import { applyDependencyGates } from './dependency-gate.js';
 import {
   CURRENT_WORKSTREAM_SCHEMA_VERSION,
   emptyWorkItemUsage,
@@ -44,6 +46,10 @@ import {
   type Workstream,
   type WorkstreamIsolation,
   type WorkstreamProvenance,
+  type AttemptJudge,
+  type AttemptJudgment,
+  type AttemptPickResult,
+  type HeldMergeGroup,
 } from './types.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -77,6 +83,14 @@ export interface OrchestrationEngineDeps {
    * broken-by-default behavior).
    */
   readonly runWorktreeSetup?: ((worktreePath: string) => Promise<void> | void) | undefined;
+  /**
+   * Optional best-of-N judge: a model call that scores a group's candidates and
+   * PROPOSES a winner (fleet.attempts.judge). Absent → the judge verbs report no
+   * judge is configured and a winner must be picked explicitly. Never auto-picks
+   * unless the source item opted into autoAcceptWinner. Kept injectable so the
+   * engine stays provider-agnostic (services.ts wires the real provider call).
+   */
+  readonly judgeAttempts?: AttemptJudge | undefined;
 }
 
 export interface CreateWorkstreamInput {
@@ -128,6 +142,12 @@ export interface OrchestrationEngine {
    */
   retryItem(itemId: string): boolean;
   getPhaseResults(workstreamId: string): readonly PhaseResult[];
+  /** Best-of-N: the held-merge groups awaiting a winner pick, each with its candidates' diffs (optionally one workstream). */
+  listHeldMergeGroups(workstreamId?: string): Promise<HeldMergeGroup[]>;
+  /** Best-of-N: accept a winner — merge its worktree through the integration lane, clean the losers. Rejects (AttemptError) on unknown/not-ready group or an invalid winner. */
+  pickAttemptWinner(groupId: string, winnerItemId: string): Promise<AttemptPickResult>;
+  /** Best-of-N: run the optional judge over a group's candidates and PROPOSE a winner (never auto-picks). Rejects when no judge is configured. */
+  proposeAttemptWinner(groupId: string): Promise<AttemptJudgment>;
   serializeWorkstream(workstreamId: string): string | null;
   /** Import a serialized snapshot (a full WorkstreamSnapshot JSON string, see persistence.ts). Refuses to overwrite a non-terminal in-memory workstream unless force=true. */
   importWorkstream(snapshotJson: string, force?: boolean): boolean;
@@ -212,6 +232,20 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return workstreams.get(id) ?? null;
   }
 
+  // Best-of-N sibling attempts (see attempts.ts). The coordinator holds the group
+  // registry + pick/judge orchestration; the engine keeps only the thin hooks
+  // below. Its enqueueIntegration/cleanup/diff delegates reuse the same worktree
+  // lane the ordinary path uses, so a picked winner merges exactly like any other
+  // passed item and a loser is cleaned exactly like a failed one.
+  const attempts: AttemptsCoordinator = createAttemptsCoordinator({
+    emit,
+    getWorkstream,
+    enqueueIntegration: (workstream, item) => { void worktreeIsolation.enqueueIntegration(workstream, item); },
+    cleanupWorktree: (workstream, item) => worktreeIsolation.cleanupTerminated(workstream, item),
+    diffItem: (item) => worktreeIsolation.diffItem(item),
+    judge: deps.judgeAttempts,
+  });
+
   function listWorkstreams(): Workstream[] {
     return Array.from(workstreams.values());
   }
@@ -268,7 +302,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       createdAt: now(),
     };
     const first = firstPhase(workstream)?.id ?? null;
-    workstream.items = input.items.map((spec) => buildItem(spec, first));
+    // Expand any `attempts:N` item into N sibling attempts (worktree isolation
+    // only); every other item passes through unchanged (see attempts.ts).
+    workstream.items = attempts.expandItems(workstream.id, workstream.isolation, input.items, (spec) => buildItem(spec, first));
     workstreams.set(workstream.id, workstream);
     completedResults.set(workstream.id, []);
     return workstream;
@@ -342,6 +378,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
         });
       });
     }
+    // A failed best-of-N attempt still counts toward its group's readiness (a
+    // no-op for a non-attempt item — onItemFailedTerminal gates on attemptGroupId).
+    attempts.onItemFailedTerminal(workstream, item);
   }
 
   /**
@@ -483,7 +522,10 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       // blocked waiting on a merge that may itself await a sibling ahead of
       // it in the lane.
       if (forwardTarget === null && workstream.isolation === 'worktree') {
-        void worktreeIsolation.enqueueIntegration(workstream, item);
+        // Best-of-N attempt → HOLD (park as a candidate, do not auto-merge);
+        // an ordinary item → enqueue its integration. onItemPassedTerminal
+        // decides which and routes accordingly.
+        attempts.onItemPassedTerminal(workstream, item);
       }
       return;
     }
@@ -507,64 +549,6 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     );
   }
 
-  /**
-   * Dependency-gate pre-pass (BIG-3 item 2), run at the top of every tick
-   * BEFORE computeClaims. For each item still sitting at its FIRST phase in a
-   * pre-claim state (pending / awaiting-capacity / blocked-dependency) with
-   * declared dependencies, classify those dependencies and either release or
-   * refuse the item:
-   *   - every dependency 'passed' → RELEASE: if it was 'blocked-dependency',
-   *     restore it to 'pending' and clear blockedReason (emit
-   *     item-dependency-cleared) so computeClaims can pick it up this same tick.
-   *   - any dependency unmet → REFUSE: set 'blocked-dependency' with an honest
-   *     blockedReason ('waiting on: …' or 'dependency failed: …'), recomputed
-   *     every tick so it stays current as dependencies change; emit
-   *     item-blocked-dependency only on a NEW block (never once per idle tick).
-   *
-   * Only FIRST-phase items are gated. Once an item's dependencies are all
-   * passed at its first claim they stay passed (passed is terminal), so a
-   * mid-pipeline item (currentPhaseId past the first phase) is never re-gated.
-   * A retried item (engine.retryItem) is reset back to the first phase and is
-   * therefore re-gated here — which is exactly why a failed dependency's
-   * dependents recover only once the dependency is retried AND passes.
-   * A FAILED dependency keeps the dependent blocked (recoverable), never fails
-   * it — refuse-not-kill.
-   */
-  function applyDependencyGates(workstream: Workstream): void {
-    const first = firstPhase(workstream);
-    if (!first) return;
-    for (const item of workstream.items) {
-      if (item.dependsOn.length === 0) continue;
-      if (item.currentPhaseId !== first.id) continue; // only gate at entry (first phase)
-      if (item.state !== 'pending' && item.state !== 'awaiting-capacity' && item.state !== 'blocked-dependency') continue;
-      const status = dependencyStatus(workstream, item);
-      if (status.ready) {
-        if (item.state === 'blocked-dependency') {
-          item.state = 'pending';
-          item.blockedReason = undefined;
-          emit({ type: 'item-dependency-cleared', workstreamId: workstream.id, itemId: item.id });
-        }
-        continue;
-      }
-      const reason = status.failed.length > 0
-        ? `dependency failed: ${status.failed.join(', ')}`
-        : `waiting on: ${status.waiting.join(', ')}`;
-      const wasAlreadyBlocked = item.state === 'blocked-dependency';
-      item.state = 'blocked-dependency';
-      item.blockedReason = reason;
-      if (!wasAlreadyBlocked) {
-        emit({
-          type: 'item-blocked-dependency',
-          workstreamId: workstream.id,
-          itemId: item.id,
-          phaseId: item.currentPhaseId ?? '',
-          reason,
-          deps: [...item.dependsOn],
-        });
-      }
-    }
-  }
-
   function tick(workstreamId: string): void {
     if (disposed) return;
     const workstream = workstreams.get(workstreamId);
@@ -572,10 +556,10 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     // Dependency gate FIRST — release/refuse first-phase items by their
     // dependencies before computeClaims decides capacity (which never sees a
     // 'blocked-dependency' item, see scheduler.ts computeClaims).
-    applyDependencyGates(workstream);
+    applyDependencyGates(workstream, emit);
     const claims = computeClaims(workstream);
     for (const { item, phase } of claims) {
-      const budgetCheck = checkBudget(workstream);
+      const budgetCheck = checkBudget(workstream, item);
       if (!budgetCheck.allowed) {
         // Re-checked on every tick (computeClaims keeps 'blocked-budget'
         // items in the waiting set — see scheduler.ts) rather than a
@@ -733,6 +717,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     if (workstream.isolation === 'worktree') {
       worktreeIsolation.reconcileOrphans(workstream);
     }
+    // Rebuild the in-memory best-of-N group registry from the imported items so
+    // held-merge groups are pickable again after a resume (attempts.ts).
+    attempts.reconcileGroups(workstream);
     return true;
   }
 
@@ -771,6 +758,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     updateBudget,
     retryItem,
     getPhaseResults,
+    listHeldMergeGroups: (workstreamId) => attempts.listGroups(workstreamId),
+    pickAttemptWinner: (groupId, winnerItemId) => attempts.pickWinner(groupId, winnerItemId),
+    proposeAttemptWinner: (groupId) => attempts.proposeWinner(groupId),
     serializeWorkstream,
     importWorkstream,
     resumeWorkstream,
