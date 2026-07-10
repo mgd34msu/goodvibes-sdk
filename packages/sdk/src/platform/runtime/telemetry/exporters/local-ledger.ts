@@ -12,6 +12,12 @@ import { appendFileSync, statSync, renameSync, writeFileSync, readFileSync, exis
 import { logger } from '../../../utils/logger.js';
 import type { ReadableSpan, SpanExporter } from '../types.js';
 import { summarizeError } from '../../../utils/error-display.js';
+import {
+  type AtRestPolicy,
+  DEFAULT_AT_REST_POLICY,
+  redactAtRestLine,
+  enforceFileRetention,
+} from '../../at-rest-persistence.js';
 
 /** Configuration for LocalLedgerExporter. */
 export interface LocalLedgerConfig {
@@ -31,6 +37,12 @@ export interface LocalLedgerConfig {
    * Defaults to `<filePath>.ledger.jsonl`.
    */
   readonly ledgerFilePath?: string | undefined;
+  /**
+   * At-rest redaction + retention policy for the span and ledger files. When
+   * omitted, the honest default applies (redaction ON; retention generous but
+   * bounded). Wire from config via resolveAtRestPolicy(configManager.get).
+   */
+  readonly atRestPolicy?: AtRestPolicy | undefined;
 }
 
 /**
@@ -72,11 +84,13 @@ export class LocalLedgerExporter implements SpanExporter {
   private readonly filePath: string;
   private readonly maxFileSizeBytes: number;
   private readonly ledgerFilePath: string;
+  private readonly atRestPolicy: AtRestPolicy;
 
   constructor(config: LocalLedgerConfig) {
     this.filePath = config.filePath;
     this.maxFileSizeBytes = config.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE;
     this.ledgerFilePath = config.ledgerFilePath ?? `${config.filePath}.ledger.jsonl`;
+    this.atRestPolicy = config.atRestPolicy ?? DEFAULT_AT_REST_POLICY;
   }
 
   /**
@@ -112,12 +126,14 @@ export class LocalLedgerExporter implements SpanExporter {
       return;
     }
 
-    const payload = `${lines.join('\n')}\n`;
+    const emitLines = this.atRestPolicy.redact ? lines.map((line) => redactAtRestLine(line)) : lines;
+    const payload = `${emitLines.join('\n')}\n`;
 
     // All I/O in a microtask to keep the call non-blocking.
     await Promise.resolve().then(() => {
       try {
         this._rotateIfNeeded();
+        this._enforceRetention();
         appendFileSync(this.filePath, payload, 'utf8');
       } catch (err) {
         logger.warn('[local-ledger] export failed', {
@@ -148,7 +164,8 @@ export class LocalLedgerExporter implements SpanExporter {
    */
   recordEvent(entry: LedgerEntry): void {
     try {
-      const line = JSON.stringify(entry) + '\n';
+      const serialized = JSON.stringify(entry);
+      const line = (this.atRestPolicy.redact ? redactAtRestLine(serialized) : serialized) + '\n';
       appendFileSync(this.ledgerFilePath, line, 'utf8');
     } catch (err) {
       logger.warn('[local-ledger] ledger write failed', {
@@ -248,6 +265,30 @@ export class LocalLedgerExporter implements SpanExporter {
    * Rotate the log file if it exceeds the configured maximum size.
    * Renames the current file to `<filePath>.1` (overwrites any existing `.1`).
    */
+  /**
+   * Retention enforcement point (called on every export, alongside rotation).
+   * Applies the age + total-size caps across the span file, its rotated backup,
+   * and the ledger file, deleting oldest-first. The freshly-written active files
+   * carry the most recent mtime, so they are only ever reclaimed as a last
+   * resort under extreme size pressure — a rotated backup goes first.
+   */
+  private _enforceRetention(): void {
+    try {
+      const outcome = enforceFileRetention(
+        [this.filePath, `${this.filePath}.1`, this.ledgerFilePath],
+        this.atRestPolicy,
+      );
+      if (outcome.deletedFiles.length > 0) {
+        logger.debug('[local-ledger] retention reclaimed files', {
+          deleted: outcome.deletedFiles.length,
+          reclaimedBytes: outcome.reclaimedBytes,
+        });
+      }
+    } catch (err) {
+      logger.debug('[local-ledger] retention check failed', { error: summarizeError(err) });
+    }
+  }
+
   private _rotateIfNeeded(): void {
     try {
       const stat = statSync(this.filePath);

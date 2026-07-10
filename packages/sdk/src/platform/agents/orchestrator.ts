@@ -1,5 +1,7 @@
 import { ToolRegistry } from '../tools/registry.js';
 import type { ConfigManager } from '../config/manager.js';
+import type { ConfigKey } from '../config/schema-types.js';
+import { resolveAtRestPolicy } from '../runtime/at-rest-persistence.js';
 import type { ConversationMessageSnapshot } from '../core/conversation.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import { registerAllTools } from '../tools/index.js';
@@ -540,9 +542,16 @@ export class AgentOrchestrator {
    */
   private createRunContext(workingDirectory?: string): AgentOrchestratorRunContext {
     const cwd = workingDirectory ?? this.toolDeps?.workingDirectory ?? '';
+    const configManager = this.toolDeps?.configManager;
+    // Defensive getter: a config snapshot predating the atRest section must fall
+    // back to the honest default, never throw out of an agent run.
+    const atRestGet = configManager
+      ? (key: string): unknown => { try { return configManager.get(key as ConfigKey); } catch { return undefined; } }
+      : undefined;
     return {
       workingDirectory: cwd,
       surfaceRoot: this.toolDeps?.surfaceRoot ?? '',
+      atRestPolicy: resolveAtRestPolicy(atRestGet),
       runtimeBus: this.runtimeBus,
       featureFlagManager: this.featureFlagManager,
       emitterContext: (agentId) => this.emitterContext(agentId),
