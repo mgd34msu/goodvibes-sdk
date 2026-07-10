@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `356`
+- Methods: `361`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -22676,6 +22676,525 @@ Read-only: preview what a checkpoints.restore of this checkpoint would change (l
     "token",
     "expiresAt",
     "preview"
+  ],
+  "additionalProperties": false
+}
+```
+
+### ci
+
+#### `ci.status`
+
+Poll GitHub for a repo/ref/PR and return EVERY job with its conclusion. The overall verdict is derived from the per-job conclusions (never a rollup); continue-on-error jobs are surfaced as violations and force the verdict off "passed".
+
+- Title: `CI Per-Job Status`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/ci/status`
+- Scopes: `read:ci`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "repo": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "prNumber": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "repo"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "report": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "number"
+        },
+        "overall": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "pending",
+            "unknown"
+          ]
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "in_progress",
+                  "completed"
+                ]
+              },
+              "conclusion": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "continueOnError": {
+                "type": "boolean"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "status",
+              "conclusion"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "checkedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "repo",
+        "overall",
+        "jobs",
+        "violations",
+        "checkedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "report"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `ci.watches.create`
+
+Create a standing watch on a repo/ref or PR. On transition to a terminal verdict it notifies the delivery channel; set triggerFixSession to opt in to starting a fix-session pre-briefed with the failing jobs on failure.
+
+- Title: `Create CI Watch`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/ci/watches`
+- Scopes: `write:ci`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "repo": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "prNumber": {
+      "type": "number"
+    },
+    "deliveryChannel": {
+      "type": "string"
+    },
+    "triggerFixSession": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "repo",
+    "deliveryChannel"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "watch": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "number"
+        },
+        "deliveryChannel": {
+          "type": "string"
+        },
+        "triggerFixSession": {
+          "type": "boolean"
+        },
+        "lastOverall": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "pending",
+            "unknown"
+          ]
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "repo",
+        "deliveryChannel",
+        "triggerFixSession",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "watch"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `ci.watches.delete`
+
+Remove a standing CI watch. Returns { deleted: false } when no watch with that id existed.
+
+- Title: `Delete CI Watch`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/ci/watches/{watchId}`
+- Scopes: `write:ci`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "watchId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "watchId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "watchId": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "watchId",
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `ci.watches.list`
+
+Return every standing CI watch (repo/ref/PR, delivery channel, and whether a fix-session is opted in on failure).
+
+- Title: `List CI Watches`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/ci/watches`
+- Scopes: `read:ci`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "watches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "prNumber": {
+            "type": "number"
+          },
+          "deliveryChannel": {
+            "type": "string"
+          },
+          "triggerFixSession": {
+            "type": "boolean"
+          },
+          "lastOverall": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "pending",
+              "unknown"
+            ]
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "repo",
+          "deliveryChannel",
+          "triggerFixSession",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "watches"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `ci.watches.run`
+
+Poll a standing watch immediately: returns the per-job report, whether a completion notification fired, and whether an opted-in fix-session was triggered on failure.
+
+- Title: `Check CI Watch Now`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/ci/watches/{watchId}/run`
+- Scopes: `write:ci`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "watchId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "watchId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "report": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "number"
+        },
+        "overall": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "pending",
+            "unknown"
+          ]
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "in_progress",
+                  "completed"
+                ]
+              },
+              "conclusion": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "continueOnError": {
+                "type": "boolean"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "status",
+              "conclusion"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "checkedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "repo",
+        "overall",
+        "jobs",
+        "violations",
+        "checkedAt"
+      ],
+      "additionalProperties": false
+    },
+    "notified": {
+      "type": "boolean"
+    },
+    "notificationId": {
+      "type": "string"
+    },
+    "fixSessionTriggered": {
+      "type": "boolean"
+    },
+    "fixSessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "report",
+    "notified",
+    "fixSessionTriggered"
   ],
   "additionalProperties": false
 }

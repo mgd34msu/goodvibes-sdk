@@ -22541,6 +22541,504 @@
         "invokable": true
       },
       {
+        "id": "ci.status",
+        "title": "CI Per-Job Status",
+        "description": "Poll GitHub for a repo/ref/PR and return EVERY job with its conclusion. The overall verdict is derived from the per-job conclusions (never a rollup); continue-on-error jobs are surfaced as violations and force the verdict off \"passed\".",
+        "category": "ci",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:ci"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/ci/status"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "repo": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "prNumber": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "repo"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "report": {
+              "type": "object",
+              "properties": {
+                "repo": {
+                  "type": "string"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "prNumber": {
+                  "type": "number"
+                },
+                "overall": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "pending",
+                    "unknown"
+                  ]
+                },
+                "jobs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "queued",
+                          "in_progress",
+                          "completed"
+                        ]
+                      },
+                      "conclusion": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "continueOnError": {
+                        "type": "boolean"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "status",
+                      "conclusion"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "violations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "checkedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "repo",
+                "overall",
+                "jobs",
+                "violations",
+                "checkedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "report"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "ci.watches.create",
+        "title": "Create CI Watch",
+        "description": "Create a standing watch on a repo/ref or PR. On transition to a terminal verdict it notifies the delivery channel; set triggerFixSession to opt in to starting a fix-session pre-briefed with the failing jobs on failure.",
+        "category": "ci",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:ci"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/ci/watches"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "repo": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "prNumber": {
+              "type": "number"
+            },
+            "deliveryChannel": {
+              "type": "string"
+            },
+            "triggerFixSession": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "repo",
+            "deliveryChannel"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "watch": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "string"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "prNumber": {
+                  "type": "number"
+                },
+                "deliveryChannel": {
+                  "type": "string"
+                },
+                "triggerFixSession": {
+                  "type": "boolean"
+                },
+                "lastOverall": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "pending",
+                    "unknown"
+                  ]
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "repo",
+                "deliveryChannel",
+                "triggerFixSession",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "watch"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "ci.watches.delete",
+        "title": "Delete CI Watch",
+        "description": "Remove a standing CI watch. Returns { deleted: false } when no watch with that id existed.",
+        "category": "ci",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:ci"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/ci/watches/{watchId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "watchId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "watchId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "watchId": {
+              "type": "string"
+            },
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "watchId",
+            "deleted"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "ci.watches.list",
+        "title": "List CI Watches",
+        "description": "Return every standing CI watch (repo/ref/PR, delivery channel, and whether a fix-session is opted in on failure).",
+        "category": "ci",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:ci"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/ci/watches"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "watches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "prNumber": {
+                    "type": "number"
+                  },
+                  "deliveryChannel": {
+                    "type": "string"
+                  },
+                  "triggerFixSession": {
+                    "type": "boolean"
+                  },
+                  "lastOverall": {
+                    "type": "string",
+                    "enum": [
+                      "passed",
+                      "failed",
+                      "pending",
+                      "unknown"
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "repo",
+                  "deliveryChannel",
+                  "triggerFixSession",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "watches"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "ci.watches.run",
+        "title": "Check CI Watch Now",
+        "description": "Poll a standing watch immediately: returns the per-job report, whether a completion notification fired, and whether an opted-in fix-session was triggered on failure.",
+        "category": "ci",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:ci"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/ci/watches/{watchId}/run"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "watchId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "watchId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "report": {
+              "type": "object",
+              "properties": {
+                "repo": {
+                  "type": "string"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "prNumber": {
+                  "type": "number"
+                },
+                "overall": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "pending",
+                    "unknown"
+                  ]
+                },
+                "jobs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "queued",
+                          "in_progress",
+                          "completed"
+                        ]
+                      },
+                      "conclusion": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "continueOnError": {
+                        "type": "boolean"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "status",
+                      "conclusion"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "violations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "checkedAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "repo",
+                "overall",
+                "jobs",
+                "violations",
+                "checkedAt"
+              ],
+              "additionalProperties": false
+            },
+            "notified": {
+              "type": "boolean"
+            },
+            "notificationId": {
+              "type": "string"
+            },
+            "fixSessionTriggered": {
+              "type": "boolean"
+            },
+            "fixSessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "report",
+            "notified",
+            "fixSessionTriggered"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "companion.chat.events.stream",
         "title": "Stream Companion Chat Events",
         "description": "Server-Sent Events stream of turn and agent events scoped to a single companion-chat session.",
@@ -84283,10 +84781,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 356,
-      "typedInputs": 356,
+      "methods": 361,
+      "typedInputs": 361,
       "genericInputs": 0,
-      "typedOutputs": 356,
+      "typedOutputs": 361,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -84295,8 +84793,8 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 356,
-      "validated": 354,
+      "methods": 361,
+      "validated": 359,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

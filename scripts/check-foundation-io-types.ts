@@ -117,6 +117,18 @@ import {
   CHECKIN_RUN_INPUT_SCHEMA,
   CHECKIN_RUN_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-checkin.ts';
+import {
+  CI_STATUS_INPUT_SCHEMA,
+  CI_STATUS_OUTPUT_SCHEMA,
+  CI_WATCHES_CREATE_INPUT_SCHEMA,
+  CI_WATCHES_CREATE_OUTPUT_SCHEMA,
+  CI_WATCHES_DELETE_INPUT_SCHEMA,
+  CI_WATCHES_DELETE_OUTPUT_SCHEMA,
+  CI_WATCHES_LIST_INPUT_SCHEMA,
+  CI_WATCHES_LIST_OUTPUT_SCHEMA,
+  CI_WATCHES_RUN_INPUT_SCHEMA,
+  CI_WATCHES_RUN_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/method-catalog-ci.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
@@ -251,6 +263,12 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'checkin.config.set', input: CHECKIN_CONFIG_SET_INPUT_SCHEMA, output: CHECKIN_CONFIG_SET_OUTPUT_SCHEMA },
   { methodId: 'checkin.receipts.list', input: CHECKIN_RECEIPTS_LIST_INPUT_SCHEMA, output: CHECKIN_RECEIPTS_LIST_OUTPUT_SCHEMA },
   { methodId: 'checkin.run', input: CHECKIN_RUN_INPUT_SCHEMA, output: CHECKIN_RUN_OUTPUT_SCHEMA },
+  // CI-watch (per-job status tool + standing subscriptions):
+  { methodId: 'ci.status', input: CI_STATUS_INPUT_SCHEMA, output: CI_STATUS_OUTPUT_SCHEMA },
+  { methodId: 'ci.watches.list', input: CI_WATCHES_LIST_INPUT_SCHEMA, output: CI_WATCHES_LIST_OUTPUT_SCHEMA },
+  { methodId: 'ci.watches.create', input: CI_WATCHES_CREATE_INPUT_SCHEMA, output: CI_WATCHES_CREATE_OUTPUT_SCHEMA },
+  { methodId: 'ci.watches.delete', input: CI_WATCHES_DELETE_INPUT_SCHEMA, output: CI_WATCHES_DELETE_OUTPUT_SCHEMA },
+  { methodId: 'ci.watches.run', input: CI_WATCHES_RUN_INPUT_SCHEMA, output: CI_WATCHES_RUN_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');
