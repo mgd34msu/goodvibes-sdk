@@ -8,6 +8,12 @@
  */
 
 export { LayeredPolicyEvaluator } from './evaluator.js';
+export { decideSandboxedExec } from './sandbox-policy.js';
+export type {
+  SandboxPolicyDecision,
+  SandboxPolicyEffect,
+  SandboxPolicyInput,
+} from './sandbox-policy.js';
 export { DecisionLog } from './decision-log.js';
 export { runSafetyChecks } from './safety-checks.js';
 export { PermissionSimulator, SimulationEnforcementError } from './simulation.js';

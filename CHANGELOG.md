@@ -8,6 +8,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A per-command exec sandbox (bubblewrap) to shrink the approval tail.** When
+  bubblewrap (`bwrap`) is available on a Linux host, exec tool calls can run
+  inside a per-command OS boundary — the workspace bound read-write, the rest of
+  the filesystem read-only, `/tmp` isolated, `$HOME` optionally masked, and
+  network disabled by default — composed with (not replacing) the existing
+  credential-env scrub. Availability is detected honestly: no bwrap, or any
+  non-Linux host, reports unavailable with a stated reason and the exec path is
+  byte-for-byte unchanged; macOS is unavailable this release (no faked parity).
+  New `@pellux/goodvibes-sdk/platform/tools/exec/sandbox` provides the pure,
+  injectable runner (host probe → availability, bwrap-argv construction,
+  per-command plan) and `runtime/permissions/sandbox-policy` the sandbox-aware
+  permission input: a command that runs entirely inside the boundary with no
+  host-access need can auto-allow where prompt mode would ask, while commands
+  that need real host access surface as explicit escalation asks NAMING what
+  they want — "wants network", "wants host privilege escalation", "wants network
+  (package install)". Network is off by default with a per-command/per-workspace
+  egress allowlist that re-enables it as a named escalation; when bwrap cannot
+  guarantee network isolation on the host, the decision metadata says so
+  (`network: 'unknown'`) rather than claiming containment. Every sandboxed run's
+  result records `sandboxed`, `sandbox_boundary`, `sandbox_network`, and
+  `sandbox_escalations`. Config lands under `sandbox.*`: `sandbox.enabled`
+  (default OFF, gated by the new graduation-tracked `exec-sandbox` feature flag,
+  currently `dark`), `sandbox.egressAllowlist`, and `sandbox.workspaceWritable`.
+  The frozen catastrophic command block (rm -rf /, dd to a device, mkfs, fork
+  bomb …) stays an unconditional exec-time denial, in force identically inside
+  the boundary — the sandbox policy only ever relaxes an ask to an allow, never
+  a deny to an allow, and never inspects or expands that block.
+
 - **A unified message-anchored rewind service that joins the platform's three
   history systems.** New `@pellux/goodvibes-sdk/platform/rewind` is one
   coordinator — never a fourth history store — over the workspace checkpoint

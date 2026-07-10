@@ -69,6 +69,9 @@ export const coreConfigDefaults = {
     wallTimeoutMs: 120_000, // 60s starved reasoning models that think silently before emitting (live replay: planner hit the wall at Turn 3 and fell back)
   },
   sandbox: {
+    enabled: false,
+    egressAllowlist: [] as string[],
+    workspaceWritable: [] as string[],
     replIsolation: 'shared-vm',
     mcpIsolation: 'disabled',
     windowsMode: 'native-basic',
@@ -467,6 +470,13 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     default: 120_000,
     description: 'Wall-clock timeout (ms) for the planning-decomposition agent; exceeding it cancels the agent and falls back to the heuristic path',
     ...numRange(1_000, 600_000),
+  },
+  {
+    key: 'sandbox.enabled',
+    type: 'boolean',
+    default: false,
+    description:
+      'Master switch for the per-command exec sandbox (bubblewrap on Linux): the workspace is writable, the rest of the filesystem is read-only, /tmp is isolated, and network is disabled unless a command is on sandbox.egressAllowlist. Default OFF; gated by the graduation-tracked exec-sandbox feature flag and honestly reported unavailable when bubblewrap is not present.',
   },
   {
     key: 'sandbox.replIsolation',

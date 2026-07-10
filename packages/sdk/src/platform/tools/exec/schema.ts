@@ -326,6 +326,19 @@ export interface ExecCommandResult {
   progress_file?: string | undefined;
   /** Tool-level warnings for degraded command collection or side effects. */
   warnings?: string[] | undefined;
+  /**
+   * Whether this command ran inside the per-command OS sandbox boundary. Present
+   * only when the sandbox was active for the run, so a non-sandboxed exec stays
+   * quiet. False with a `sandbox_boundary` reason when the sandbox was requested
+   * but the host could not provide it (honest-unavailable, ran unsandboxed).
+   */
+  sandboxed?: boolean | undefined;
+  /** One-line summary of the boundary that was applied (or why there was none). */
+  sandbox_boundary?: string | undefined;
+  /** Network posture inside the boundary: disabled, enabled, or unconfirmed (unknown). */
+  sandbox_network?: 'disabled' | 'enabled' | 'unknown' | undefined;
+  /** Named host-access escalations granted to this sandboxed run (network, writable extras). */
+  sandbox_escalations?: string[] | undefined;
 }
 
 // BackgroundProcess is defined in shared/process-manager and re-exported here for consumers of this schema module.

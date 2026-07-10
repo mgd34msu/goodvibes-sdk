@@ -18,6 +18,11 @@ import {
   type CredentialEnvScrubConfig,
   type ResolvedCredentialEnvScrub,
 } from './credential-env.js';
+import {
+  attachSandboxMeta,
+  resolveRuntimeSandboxPlan,
+  type ExecSandboxRuntime,
+} from './sandbox.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const PROGRESS_AUTO_THRESHOLD_MS = 30_000;
@@ -246,11 +251,13 @@ async function runCommand(
   workingDirectory: string,
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
+  sandbox: ExecSandboxRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   // Class risk (kill/rm/docker/sudo…) is the permission layer's decision and
   // was already approved before this runtime runs — never re-deny by class.
-  // ALL_COMMAND_CLASSES leaves only the frozen catastrophic block active.
+  // ALL_COMMAND_CLASSES leaves only the frozen catastrophic block active — and
+  // it stays in force identically inside the sandbox boundary below.
   const guardResult = await guardExecCommand(cmdStr, ALL_COMMAND_CLASSES, featureFlags);
   if (!guardResult.allowed) {
     const denial = formatDenialResponse(guardResult, cmdStr);
@@ -268,6 +275,11 @@ async function runCommand(
   checkDangerous(cmdStr);
   const cwd = resolveCwd(cmdInput.cwd, workingDirectory);
   const timeoutMs = cmdInput.timeout_ms ?? globalTimeout;
+  // Per-command sandbox plan: when active, argvPrefix wraps the spawn in a bwrap
+  // boundary and the result carries honest sandboxed/boundary/network/escalation
+  // metadata; null or not-sandboxed leaves the argv (and result) untouched.
+  const sandboxPlan = resolveRuntimeSandboxPlan(sandbox, cmdStr, workingDirectory, cwd);
+  const sandboxArgv = sandboxPlan?.sandboxed ? sandboxPlan.argvPrefix : [];
   // Scrub credential-bearing vars out of the inherited base env, then layer the
   // model-supplied per-command env on top (an explicit per-command opt-in that a
   // withheld var is legitimately wanted). withheld_env reports only names the
@@ -275,8 +287,10 @@ async function runCommand(
   const scrubbed = scrubCredentialEnv(buildCleanEnv(), scrub);
   const mergedEnv = { ...scrubbed.env, ...cmdInput.env };
   const withheldEnv = scrubbed.withheld.filter((name) => !(cmdInput.env && name in cmdInput.env));
-  const attachWithheld = (result: ExecCommandResult): ExecCommandResult =>
-    withheldEnv.length > 0 ? { ...result, withheld_env: withheldEnv } : result;
+  const attachWithheld = (result: ExecCommandResult): ExecCommandResult => {
+    const withMeta = attachSandboxMeta(result, sandboxPlan);
+    return withheldEnv.length > 0 ? { ...withMeta, withheld_env: withheldEnv } : withMeta;
+  };
   const startTime = Date.now();
 
   // Cooperative cancellation is wired for the foreground and
@@ -286,15 +300,15 @@ async function runCommand(
   // — the timeout kill-timer they already have still
   // applies, just not an external AbortSignal.
   if (cmdInput.until) {
-    return attachWithheld(await runUntil(processManager, overflowHandler, cmdStr, cmdInput, cwd, mergedEnv, timeoutMs, startTime));
+    return attachWithheld(await runUntil(processManager, overflowHandler, cmdStr, cmdInput, cwd, mergedEnv, timeoutMs, startTime, sandboxArgv));
   }
 
   const useProgress = cmdInput.progress === true || timeoutMs > PROGRESS_AUTO_THRESHOLD_MS;
   if (useProgress) {
-    return attachWithheld(await runCommandWithProgress(processManager, overflowHandler, cmdStr, cmdInput, workingDirectory, cwd, mergedEnv, timeoutMs, startTime, signal));
+    return attachWithheld(await runCommandWithProgress(processManager, overflowHandler, cmdStr, cmdInput, workingDirectory, cwd, mergedEnv, timeoutMs, startTime, sandboxArgv, signal));
   }
 
-  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
+  const proc = Bun.spawn([...sandboxArgv, '/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
   let timedOut = false;
   let cancelled = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
@@ -393,10 +407,11 @@ async function runCommandWithProgress(
   mergedEnv: Record<string, string>,
   timeoutMs: number,
   startTime: number,
+  sandboxArgv: string[],
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   const progressFile = initProgressFile(cmdStr, workingDirectory);
-  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
+  const proc = Bun.spawn([...sandboxArgv, '/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env: mergedEnv, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
   let timedOut = false;
   let cancelled = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
@@ -533,12 +548,13 @@ async function runUntil(
   env: Record<string, string>,
   timeoutMs: number,
   startTime: number,
+  sandboxArgv: string[],
 ): Promise<ExecCommandResult> {
   const until = cmdInput.until!;
   const pattern = compileSafeRegExp(until.pattern, '', { operation: 'exec until pattern' });
   const untilTimeout = until.timeout_ms ?? timeoutMs;
   const killAfter = until.kill_after ?? false;
-  const proc = Bun.spawn(['/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
+  const proc = Bun.spawn([...sandboxArgv, '/bin/sh', '-c', cmdStr], { ...(cwd !== undefined ? { cwd } : {}), env, stdout: 'pipe', stderr: 'pipe' } as Parameters<typeof Bun.spawn>[1]);
 
   let stdoutBuf = '';
   let stderrBuf = '';
@@ -683,10 +699,11 @@ async function runWithRetry(
   workingDirectory: string,
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
+  sandbox: ExecSandboxRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   if (!cmdInput.retry) {
-    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
+    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
   }
 
   const maxRetries = Math.min(cmdInput.retry.max ?? 3, 10);
@@ -697,7 +714,7 @@ async function runWithRetry(
   let lastResult: ExecCommandResult | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
+    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
     if (lastResult.success) {
       return { ...lastResult, retries: attempt };
     }
@@ -725,6 +742,7 @@ async function executeResolvedCommand(
   workingDirectory: string,
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
+  sandbox: ExecSandboxRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   const bgSpecial = handleBgSpecialCommand(processManager, cmdStr);
@@ -732,10 +750,12 @@ async function executeResolvedCommand(
   if (cmdInput.background) {
     // Background processes intentionally outlive this tool call — cancelling
     // the caller's item/agent must not kill a process the user asked to
-    // detach, so `signal` is deliberately not threaded here.
+    // detach, so `signal` is deliberately not threaded here. They are also NOT
+    // sandboxed: a bwrap boundary is --die-with-parent, which would kill the
+    // detached process when this tool call ends, defeating the detach.
     return spawnBackground(processManager, cmdStr, resolveCwd(cmdInput.cwd, workingDirectory), cmdInput.env, scrub);
   }
-  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
+  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
 }
 
 async function executeResolvedCommands(
@@ -748,6 +768,7 @@ async function executeResolvedCommands(
   globalTimeout: number,
   failFast: boolean,
   scrub: ResolvedCredentialEnvScrub,
+  sandbox: ExecSandboxRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult[]> {
   if (parallel) {
@@ -755,7 +776,7 @@ async function executeResolvedCommands(
       resolvedCmds,
       MAX_PARALLEL_EXEC_COMMANDS,
       ({ cmdStr, cmdInput }) =>
-        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal),
+        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal),
     );
   }
 
@@ -767,7 +788,7 @@ async function executeResolvedCommands(
       continue;
     }
 
-    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, signal);
+    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
     results.push(result);
     if (failFast && !result.success) {
       stopped = true;
@@ -849,6 +870,13 @@ export function createExecTool(
      * reported on each ExecCommandResult (`withheld_env`) by name only.
      */
     readonly credentialEnvScrub?: CredentialEnvScrubConfig | undefined;
+    /**
+     * Per-command exec sandbox wiring. When present AND active (feature flag on,
+     * config enabled, host provides a boundary), each foreground command runs
+     * inside a bwrap boundary and its result carries sandbox metadata. Omitted or
+     * inactive → every command runs the unchanged non-sandboxed path.
+     */
+    readonly sandbox?: ExecSandboxRuntime | null | undefined;
   } = {},
 ): Tool {
   if (!options.overflowHandler) {
@@ -857,6 +885,7 @@ export function createExecTool(
   const overflowHandler = options.overflowHandler;
   const featureFlags = options.featureFlags ?? null;
   const credentialEnvScrub = resolveCredentialEnvScrub(options.credentialEnvScrub);
+  const sandbox = options.sandbox ?? null;
 
   return {
     definition: {
@@ -917,6 +946,7 @@ export function createExecTool(
           globalTimeout,
           failFast,
           credentialEnvScrub,
+          sandbox,
           opts?.signal,
         );
         const formatted = results.map((r) => formatResult(r, verbosity));
