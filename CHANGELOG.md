@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **The Home Assistant conversation turn can ground itself in the pre-registered
+  home graph.** The `/api/homeassistant/conversation` route now accepts an
+  optional grounding reference — a `knowledgeSpaceId` / `installationId` (nested
+  under `grounding`, or top-level, snake_case accepted). When present, the turn
+  consults the pre-registered home-graph knowledge space (`HomeGraphService.ask`)
+  for the user's actual question and folds the retrieved grounding — the graph's
+  own answer text plus its confidence — into the turn's system prompt, closing
+  the index-then-query loop the HA integration already opens by registering and
+  refreshing the graph. Best-effort and honest: an absent reference or reader
+  leaves the turn ungrounded, an empty answer adds nothing, and a graph failure
+  degrades to an ungrounded turn rather than breaking the conversation. The
+  grounding block tells the model to still verify live device/entity state
+  through Home Assistant tools before acting on prior home knowledge.
 - **Session-scoped permission mode and context usage on the operator wire.**
   Three new daemon gateway verbs let a remote surface (webui) read and write a
   session's permission mode and read its context-window pressure, instead of

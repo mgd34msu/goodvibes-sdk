@@ -10,7 +10,9 @@ import {
   readHomeAssistantRemoteSessionTtlMs,
   type HomeAssistantChatInput,
   type HomeAssistantChatPostResult,
+  type HomeGraphGroundingReader,
 } from '../homeassistant-chat.js';
+import type { HomeGraphSpaceInput } from '../../knowledge/home-graph/types.js';
 
 const DEFAULT_WAIT_TIMEOUT_MS = 120_000;
 const MAX_WAIT_TIMEOUT_MS = 10 * 60_000;
@@ -55,6 +57,8 @@ interface HomeAssistantRouteContext {
   readonly chatManager: CompanionChatManager;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
   readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
+  /** Optional home-graph reader so a turn can ground itself in its pre-registered space. */
+  readonly homeGraph?: HomeGraphGroundingReader | undefined;
 }
 
 interface ParsedHomeAssistantInput extends HomeAssistantChatInput {
@@ -169,6 +173,7 @@ export class HomeAssistantConversationRoutes {
           routeBindings: this.context.routeBindings,
           chatManager: this.context.chatManager,
           resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
+          ...(this.context.homeGraph ? { homeGraph: this.context.homeGraph } : {}),
         },
         input,
         {
@@ -338,6 +343,7 @@ export class HomeAssistantConversationRoutes {
     const channelId = readString(body.areaId ?? body.area_id)
       ?? readString(body.entityId ?? body.entity_id)
       ?? conversationId;
+    const grounding = this.parseGroundingReference(body);
     return {
       text: readString(body.body ?? body.message ?? body.text ?? body.prompt ?? body.task) ?? '',
       messageId: readString(body.messageId ?? body.message_id) ?? `ha-${randomUUID()}`,
@@ -352,10 +358,30 @@ export class HomeAssistantConversationRoutes {
       ...(modelId ? { modelId } : {}),
       ...(tools.length ? { tools } : {}),
       ...(haContext ? { context: haContext } : {}),
+      ...(grounding ? { grounding } : {}),
       publishEvent: body.publishEvent === true,
       wait: body.wait !== false,
       waitTimeoutMs: clampNumber(body.timeoutMs ?? body.waitTimeoutMs, DEFAULT_WAIT_TIMEOUT_MS, 1_000, MAX_WAIT_TIMEOUT_MS),
       remoteSessionTtlMs: this.readRemoteSessionTtlMs(body),
+    };
+  }
+
+  /**
+   * Read an optional grounding reference — the pre-registered home-graph
+   * knowledge space / Home Assistant installation this turn should consult.
+   * Accepts a nested `grounding` object or top-level `knowledgeSpaceId` /
+   * `installationId` (with snake_case variants); returns undefined when neither
+   * id is supplied, so an un-grounded turn stays un-grounded.
+   */
+  private parseGroundingReference(body: JsonRecord): HomeGraphSpaceInput | undefined {
+    const nested = readRecord(body.grounding);
+    const source = nested ?? body;
+    const knowledgeSpaceId = readString(source.knowledgeSpaceId ?? source.knowledge_space_id);
+    const installationId = readString(source.installationId ?? source.installation_id);
+    if (!knowledgeSpaceId && !installationId) return undefined;
+    return {
+      ...(installationId ? { installationId } : {}),
+      ...(knowledgeSpaceId ? { knowledgeSpaceId } : {}),
     };
   }
 
