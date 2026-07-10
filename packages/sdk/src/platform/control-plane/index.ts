@@ -104,3 +104,6 @@ export { registerW3S2GatewayMethods } from './routes/register-w3-s2.js';
 // browser-push group (see routes/register-gateway-verb-groups.ts).
 export { registerGatewayVerbGroups } from './routes/register-gateway-verb-groups.js';
 export type { GatewayVerbGroupDeps } from './routes/register-gateway-verb-groups.js';
+// skills.* CRUD verb registration over the canonical SkillService (see routes/skills.ts).
+export { registerSkillsGatewayMethods } from './routes/skills.js';
+export type { SkillsGatewayService } from './routes/skills.js';

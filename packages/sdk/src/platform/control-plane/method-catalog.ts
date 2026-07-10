@@ -36,6 +36,9 @@ import type {
 import {
   builtinGatewayRuntimeMethodDescriptors,
 } from './method-catalog-runtime.js';
+import {
+  builtinGatewaySkillsMethodDescriptors,
+} from './method-catalog-skills.js';
 import { GatewayVerbError } from './routes/gateway-verb-error.js';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 
@@ -75,6 +78,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayMediaMethodDescriptors,
   ...builtinGatewayAdminMethodDescriptors,
   ...builtinGatewayPushMethodDescriptors,
+  ...builtinGatewaySkillsMethodDescriptors,
 ];
 
 function normalizeDescriptor(descriptor: GatewayMethodDescriptor): GatewayMethodDescriptor {

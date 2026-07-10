@@ -56,6 +56,7 @@
       "control-plane",
       "deliveries",
       "domain-map",
+      "fleet",
       "forensics",
       "knowledge",
       "mcp",
@@ -261,8 +262,8 @@
     "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, and the W6-C1 daemon-served shared-config tier + admin-scoped credential-status read; measured 1149 B gzip @ v1.0.0 release verification; headroom max(ceil(1149*1.2)=1379, 1149+50=1199) → 1379 (1.2x dominates)"
   },
   "./platform/control-plane": {
-    "gzip_bytes": 663,
-    "rationale": "measured 552 B gzip @ v1.0.0 release verification (Wave-6 control-plane growth: W6-C4 method-unavailable code, delete-honesty + spine read verbs); headroom max(ceil(552*1.2)=663, 552+50=602) -> 663 (1.2x dominates)"
+    "gzip_bytes": 833,
+    "rationale": "measured 694 B gzip after the skills.* verb group joined the exported verb-group registrar (registerGatewayVerbGroups now transitively pulls in the canonical skill service + its store) and control-plane re-exports registerSkillsGatewayMethods; headroom max(ceil(694*1.2)=833, 694+50=744) -> 833 (1.2x dominates)"
   },
   "./platform/core": {
     "gzip_bytes": 342,
@@ -311,6 +312,10 @@
   "./platform/mcp": {
     "gzip_bytes": 218,
     "rationale": "public package export budget; measured 168 B gzip @ v0.34.0 (grew with the expanded operator method id surface from the channels/email/calendar contracts); headroom max(ceil(168*1.2)=202, 168+50=218) -> 218 (+50 B floor dominates)"
+  },
+  "./platform/mcp/server": {
+    "gzip_bytes": 632,
+    "rationale": "local-first MCP server that generates tools from the operator catalog plus the JSON-RPC 2.0 stdio protocol core; measured 526 B gzip @ initial landing; headroom max(ceil(526*1.2)=632, 526+50=576) -> 632 (1.2x dominates)"
   },
   "./platform/media": {
     "gzip_bytes": 209,
@@ -399,6 +404,10 @@
   "./platform/sessions": {
     "gzip_bytes": 138,
     "rationale": "new public package export budget; measured 88 B gzip @ v0.33.0 release verification; headroom max(ceil(88*1.2)=106, 88+50=138) -> 138 (+50 B floor dominates)"
+  },
+  "./platform/skills": {
+    "gzip_bytes": 672,
+    "rationale": "canonical skill service: Markdown+frontmatter model, progressive-disclosure parse, and CRUD over an injectable store (filesystem + in-memory); measured 560 B gzip @ initial landing; headroom max(ceil(560*1.2)=672, 560+50=610) -> 672 (1.2x dominates)"
   },
   "./platform/state": {
     "gzip_bytes": 930,

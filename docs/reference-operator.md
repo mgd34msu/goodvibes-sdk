@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `334`
+- Methods: `339`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -74973,6 +74973,504 @@ Return the settings integration snapshot.
       "additionalProperties": false
     }
   ]
+}
+```
+
+### skills
+
+#### `skills.create`
+
+Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists — use skills.update to change an existing one.
+
+- Title: `Create Skill`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/skills`
+- Scopes: `write:skills`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "body"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "skill": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "metadata",
+        "body"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "skill"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `skills.delete`
+
+Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed — an honest boolean, never a 200 that pretends a phantom skill was removed.
+
+- Title: `Delete Skill`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/skills/{name}`
+- Scopes: `write:skills`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "name",
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `skills.get`
+
+Return one skill in full, including its Markdown body. Returns 404 when no skill with that name exists.
+
+- Title: `Get Skill`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/skills/{name}`
+- Scopes: `read:skills`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "skill": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "metadata",
+        "body"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "skill"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `skills.list`
+
+Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here — call skills.get for the one skill you decide to open.
+
+- Title: `List Skills`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/skills`
+- Scopes: `read:skills`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          },
+          "updatedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "metadata"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "skills"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `skills.update`
+
+Update an existing skill's description, body, and/or frontmatter metadata. Absent fields are left unchanged. Returns 404 when no skill with that name exists.
+
+- Title: `Update Skill`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/skills/{name}/update`
+- Scopes: `write:skills`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "skill": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "metadata",
+        "body"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "skill"
+  ],
+  "additionalProperties": false
 }
 ```
 

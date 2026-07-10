@@ -74003,6 +74003,482 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "skills.create",
+        "title": "Create Skill",
+        "description": "Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists — use skills.update to change an existing one.",
+        "category": "skills",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:skills"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/skills"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "name",
+            "description",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "skill": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "description",
+                "metadata",
+                "body"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "skill"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "skills.delete",
+        "title": "Delete Skill",
+        "description": "Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed — an honest boolean, never a 200 that pretends a phantom skill was removed.",
+        "category": "skills",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:skills"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/skills/{name}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "name",
+            "deleted"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "skills.get",
+        "title": "Get Skill",
+        "description": "Return one skill in full, including its Markdown body. Returns 404 when no skill with that name exists.",
+        "category": "skills",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:skills"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/skills/{name}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "skill": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "description",
+                "metadata",
+                "body"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "skill"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "skills.list",
+        "title": "List Skills",
+        "description": "Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here — call skills.get for the one skill you decide to open.",
+        "category": "skills",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:skills"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/skills"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "description",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "skills"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "skills.update",
+        "title": "Update Skill",
+        "description": "Update an existing skill's description, body, and/or frontmatter metadata. Absent fields are left unchanged. Returns 404 when no skill with that name exists.",
+        "category": "skills",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:skills"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/skills/{name}/update"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "skill": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "description",
+                "metadata",
+                "body"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "skill"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "tasks.cancel",
         "title": "Cancel Runtime Task",
         "description": "Cancel an in-flight runtime task.",
@@ -82143,10 +82619,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 334,
-      "typedInputs": 334,
+      "methods": 339,
+      "typedInputs": 339,
       "genericInputs": 0,
-      "typedOutputs": 334,
+      "typedOutputs": 339,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -82155,8 +82631,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 334,
-      "validated": 332,
+      "methods": 339,
+      "validated": 337,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

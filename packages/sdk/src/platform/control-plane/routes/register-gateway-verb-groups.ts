@@ -15,6 +15,8 @@
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import { registerW3S2GatewayMethods, type W3S2GatewayDeps } from './register-w3-s2.js';
 import { registerPushGatewayMethods } from './push.js';
+import { registerSkillsGatewayMethods } from './skills.js';
+import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
 import {
   PushService,
   PushSubscriptionStore,
@@ -66,6 +68,15 @@ function toFleetNotice(event: FleetEvent): FleetNotice {
 
 export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: GatewayVerbGroupDeps): void {
   registerW3S2GatewayMethods(catalog, deps);
+
+  // The canonical skill service over a directory of Markdown documents under the
+  // daemon's own state directory. Constructed here (from the shellPaths this
+  // registrar already receives) rather than threaded through the runtime-services
+  // composition root, exactly like the push group below.
+  const skillService = new SkillService(
+    new FileSystemSkillStore(deps.shellPaths.resolveUserPath('skills')),
+  );
+  registerSkillsGatewayMethods(catalog, skillService);
 
   const pushService = new PushService({
     vapid: new VapidManager(deps.secretsManager, { subject: deps.vapidSubject }),

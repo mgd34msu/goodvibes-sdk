@@ -71,6 +71,18 @@ import {
   SESSIONS_SEARCH_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-fleet.ts';
 import { METADATA_SCHEMA } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-shared.ts';
+import {
+  SKILLS_CREATE_INPUT_SCHEMA,
+  SKILLS_CREATE_OUTPUT_SCHEMA,
+  SKILLS_DELETE_INPUT_SCHEMA,
+  SKILLS_DELETE_OUTPUT_SCHEMA,
+  SKILLS_GET_INPUT_SCHEMA,
+  SKILLS_GET_OUTPUT_SCHEMA,
+  SKILLS_LIST_INPUT_SCHEMA,
+  SKILLS_LIST_OUTPUT_SCHEMA,
+  SKILLS_UPDATE_INPUT_SCHEMA,
+  SKILLS_UPDATE_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/method-catalog-skills.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
@@ -178,6 +190,12 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Server-side turn stop + steer (SDK 1.4.0):
   { methodId: 'companion.chat.turns.cancel', ...descriptorSchemas('companion.chat.turns.cancel') },
   { methodId: 'companion.chat.messages.steer', ...descriptorSchemas('companion.chat.messages.steer') },
+  // Skills CRUD gateway verbs (canonical SkillService hoisted into the SDK):
+  { methodId: 'skills.list', input: SKILLS_LIST_INPUT_SCHEMA, output: SKILLS_LIST_OUTPUT_SCHEMA },
+  { methodId: 'skills.get', input: SKILLS_GET_INPUT_SCHEMA, output: SKILLS_GET_OUTPUT_SCHEMA },
+  { methodId: 'skills.create', input: SKILLS_CREATE_INPUT_SCHEMA, output: SKILLS_CREATE_OUTPUT_SCHEMA },
+  { methodId: 'skills.update', input: SKILLS_UPDATE_INPUT_SCHEMA, output: SKILLS_UPDATE_OUTPUT_SCHEMA },
+  { methodId: 'skills.delete', input: SKILLS_DELETE_INPUT_SCHEMA, output: SKILLS_DELETE_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

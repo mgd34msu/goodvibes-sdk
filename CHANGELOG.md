@@ -8,6 +8,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A local-first MCP (Model Context Protocol) server that exposes the operator
+  surface.** New `@pellux/goodvibes-sdk/platform/mcp/server` generates MCP tool
+  definitions from the operator catalog (every cataloged, invokable operator
+  method becomes one tool, its dotted method id mapped to an MCP-safe name and
+  its operator input schema carried over verbatim) rather than hand-writing
+  them, so the tools an external agent tool sees can never drift from the
+  daemon's contract. The session lifecycle methods — create, attach
+  (`sessions.get`), send a message (`sessions.messages.create`), read a
+  transcript (`sessions.messages.list`), and steer a live turn — are lifted to
+  the front as first-class tools. The server speaks JSON-RPC 2.0 over a
+  newline-delimited (stdio) transport with no external MCP dependency, and
+  dispatches every `tools/call` through an injected invoker, so the transport
+  that reaches the daemon is the consumer's choice. `createOperatorMcpServer({
+  contract, invoke })` builds a ready-to-serve server; `buildOperatorMcpTools`
+  exposes the generator on its own.
+- **The single canonical skill service, hoisted into the SDK.** New
+  `@pellux/goodvibes-sdk/platform/skills` owns one skill model (Markdown with
+  YAML-style frontmatter), one progressive-disclosure read path (a cheap index
+  line — name + description + metadata, no body — loaded for every skill, the
+  full body read only for the one skill invoked), and one CRUD surface over an
+  injectable store (a filesystem store of `<name>.md` documents and an in-memory
+  store ship in the box), so consumers stop each carrying their own drifting
+  copy. Exposed over the operator surface as five new daemon gateway verbs —
+  `skills.list`, `skills.get`, `skills.create`, `skills.update`, `skills.delete`
+  — with typed IO, honest absence (`skills.get`/`skills.update` 404 when the
+  skill does not exist; `skills.delete` returns `{ deleted: false }` rather than
+  pretending a phantom skill was removed), and a name-conflict 409 on create.
+  The verbs' handlers register together with their descriptors, so a skills verb
+  is never a cataloged-but-unhandled 501.
+
 - **`repo_map` tool — a model-invoked, token-budgeted repository map.** A new
   read-only tool the model CALLS (never passive always-on injection) to orient in
   an unfamiliar codebase: it returns a per-directory source-file count plus the
