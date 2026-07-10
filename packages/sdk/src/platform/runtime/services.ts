@@ -99,7 +99,7 @@ import {
   createWorkflowServices,
   type WorkflowServices,
 } from '../tools/workflow/index.js';
-import { createProcessRegistry, withFleetArchive, type ArchivableProcessRegistry } from './fleet/index.js';
+import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, type ArchivableProcessRegistry } from './fleet/index.js';
 import { createOrchestrationEngine, type OrchestrationEngine } from '../orchestration/index.js';
 
 export interface RuntimeServicesOptions {
@@ -718,6 +718,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     priceUsage,
     codeIndexService: codeIndexStore,
   }));
+
+  // Surface fleet lifecycle deltas (started/state-changed/finished/blocked-on-user/
+  // unblocked) onto the runtime bus `fleet` domain so operator surfaces update
+  // without polling fleet.snapshot. The gateway already fans this domain out to
+  // subscribed SSE/WS clients. The subscription lives for the registry's lifetime
+  // (no daemon-wide shutdown seam yet — mirrors the verb registrations below).
+  attachFleetEmitBridge({ registry: processRegistry, bus: options.runtimeBus });
 
   registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths }); // see routes/register-gateway-verb-groups.ts
   return {

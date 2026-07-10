@@ -57,3 +57,4 @@ export * from './deliveries.js';
 export * from './watchers.js';
 export * from './surfaces.js';
 export * from './knowledge.js';
+export * from './fleet.js';

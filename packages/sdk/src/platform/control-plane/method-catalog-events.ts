@@ -82,6 +82,7 @@ const RUNTIME_DOMAIN_DESCRIPTIONS = {
   surfaces: 'Surface registration and health events.',
   knowledge: 'Knowledge ingest, extraction, projection, packet, and job events.',
   workspace: 'Workspace swap lifecycle events (start, complete, refuse).',
+  fleet: 'Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked) — the poll-free counterpart to fleet.snapshot.',
 } satisfies Record<RuntimeEventDomain, string>;
 
 export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] = [

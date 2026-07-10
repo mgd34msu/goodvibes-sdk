@@ -80836,6 +80836,50 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
+        "id": "runtime.fleet",
+        "title": "fleet Domain Events",
+        "description": "Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked) — the poll-free counterpart to fleet.snapshot.",
+        "category": "runtime-domain",
+        "source": "builtin",
+        "transport": [
+          "sse",
+          "ws"
+        ],
+        "scopes": [
+          "read:events"
+        ],
+        "domains": [
+          "fleet"
+        ],
+        "wireEvents": [
+          "fleet"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {},
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      {
         "id": "runtime.forensics",
         "title": "forensics Domain Events",
         "description": "Forensics and incident trail events.",
@@ -82106,9 +82150,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "genericOutputs": 0
     },
     "eventCoverage": {
-      "events": 31,
-      "withDomains": 27,
-      "withWireEvents": 31
+      "events": 32,
+      "withDomains": 28,
+      "withWireEvents": 32
     },
     "validationCoverage": {
       "methods": 334,

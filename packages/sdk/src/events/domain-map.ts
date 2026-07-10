@@ -31,6 +31,7 @@ import type { WatcherEvent } from './watchers.js';
 import type { SurfaceEvent } from './surfaces.js';
 import type { KnowledgeEvent } from './knowledge.js';
 import type { WorkspaceEvent } from './workspace.js';
+import type { FleetEvent } from './fleet.js';
 
 /** Union of all runtime domain events. */
 export type AnyRuntimeEvent =
@@ -60,7 +61,8 @@ export type AnyRuntimeEvent =
   | WatcherEvent
   | SurfaceEvent
   | KnowledgeEvent
-  | WorkspaceEvent;
+  | WorkspaceEvent
+  | FleetEvent;
 
 /**
  * Utility type that maps an event type discriminant to its full event shape.
@@ -114,6 +116,7 @@ export type DomainEventMap = {
   surfaces: SurfaceEvent;
   knowledge: KnowledgeEvent;
   workspace: WorkspaceEvent;
+  fleet: FleetEvent;
 };
 
 /** Transport-layer runtime event record type. */

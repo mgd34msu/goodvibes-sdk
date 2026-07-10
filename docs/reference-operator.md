@@ -5,7 +5,7 @@ Generated from the synced GoodVibes operator contract artifact.
 ## Summary
 
 - Methods: `334`
-- Events: `31`
+- Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
 - Methods catalog path: `/api/control-plane/methods`
@@ -81866,6 +81866,46 @@ Delivery queue and outcome events.
 - Scopes: `read:events`
 - Domains: `deliveries`
 - Wire events: `deliveries`
+
+##### Payload schema
+
+```json
+{
+  "type": "object",
+  "additionalProperties": {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      },
+      {
+        "type": "boolean"
+      },
+      {
+        "type": "null"
+      },
+      {},
+      {
+        "type": "array",
+        "items": {}
+      }
+    ]
+  }
+}
+```
+
+#### `runtime.fleet`
+
+Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked) — the poll-free counterpart to fleet.snapshot.
+
+- Title: `fleet Domain Events`
+- Source: `builtin`
+- Transport: `sse`, `ws`
+- Scopes: `read:events`
+- Domains: `fleet`
+- Wire events: `fleet`
 
 ##### Payload schema
 
