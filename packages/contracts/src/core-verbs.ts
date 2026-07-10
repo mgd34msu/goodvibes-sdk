@@ -193,6 +193,16 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // whole-session rewind surface, sibling to checkpoint-restore-safety.
     'plan', 'apply',
   ],
+  'hunk-revert-safety': [
+    // Per-hunk reverse-apply on the live working tree (checkpoints.revertHunkPreview /
+    // checkpoints.revertHunk): the comment-on-hunk review surfaces hand back ONE
+    // unified-diff hunk and ask for exactly it to be undone. `revertHunkPreview`
+    // validates the hunk still reverse-applies cleanly and mints a single-use
+    // confirm token (read-only); `revertHunk` consumes it to snapshot-then-reverse-
+    // apply that one hunk, emitting a receipt. Not generic CRUD/lifecycle words —
+    // a safety-gated per-hunk workspace mutation, sibling to checkpoint-restore-safety.
+    'revertHunk', 'revertHunkPreview',
+  ],
   'checkpoint-restore-safety': [
     // Server-side confirmation preview for the destructive checkpoints.restore:
     // checkpoints.restorePreview computes what a restore would change and mints

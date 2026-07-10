@@ -3939,6 +3939,49 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "checkpoints.revertHunk": {
+    "methodId": "checkpoints.revertHunk",
+    "http": null,
+    "status": 200,
+    "body": {
+      "receipt": {
+        "reverted": false,
+        "path": "sample",
+        "hunkHeader": "sample",
+        "addedLinesRemoved": 0,
+        "removedLinesRestored": 0,
+        "safetyCheckpointId": "sample",
+        "undo": {
+          "restoreCheckpointId": "sample"
+        }
+      },
+      "refused": false,
+      "refusal": {
+        "reason": "sample",
+        "confirmField": "sample",
+        "previewMethod": "sample",
+        "options": [
+          "sample"
+        ]
+      }
+    }
+  },
+  "checkpoints.revertHunkPreview": {
+    "methodId": "checkpoints.revertHunkPreview",
+    "http": null,
+    "status": 200,
+    "body": {
+      "path": "sample",
+      "applies": false,
+      "conflict": "sample",
+      "hunkHeader": "sample",
+      "addedLinesRemoved": 0,
+      "removedLinesRestored": 0,
+      "matchedAtLine": 0,
+      "token": "sample",
+      "expiresAt": 0
+    }
+  },
   "ci.status": {
     "methodId": "ci.status",
     "http": {

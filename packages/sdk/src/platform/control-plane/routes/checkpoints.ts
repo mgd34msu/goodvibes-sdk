@@ -24,13 +24,30 @@
  * preview round-trip is forced on them. A webui that fires restore blind now
  * gets the actionable refusal instead of a silent git-backed workspace rewrite.
  */
+import { createHash } from 'node:crypto';
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';
 import type { WorkspaceCheckpointManager } from '../../workspace/checkpoint/manager.js';
 import type { CheckpointKind, RetentionClass } from '../../workspace/checkpoint/types.js';
+import { applyHunkRevert, HunkRevertConflictError, previewHunkRevert } from '../../workspace/hunk-revert.js';
+import type { WorkspaceEvent } from '../../../events/workspace.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 import { RestoreTokenStore } from './checkpoint-restore-tokens.js';
+
+/** Sink for the checkpoints.revertHunk receipt event (adapted onto the RuntimeEventBus by the registrar). */
+export type CheckpointsEventSink = (event: WorkspaceEvent, sessionId: string) => void;
+
+/** The two ways to authorize a hunk revert, named verbatim in the refusal body. */
+const REVERT_HUNK_CONFIRM_OPTIONS: readonly string[] = [
+  'Pass confirm:true to acknowledge the working-tree write and execute it immediately.',
+  'Call checkpoints.revertHunkPreview for this hunk, then pass the returned token as confirmToken.',
+];
+
+/** Fingerprint binding a revert confirm token to its exact (path, hunk) pair. */
+function revertHunkFingerprint(path: string, hunk: string): string {
+  return createHash('sha256').update(path).update('\0').update(hunk).digest('hex');
+}
 
 /** How many affected paths a restore preview lists inline before it is just a count. */
 const RESTORE_PREVIEW_PATH_SAMPLE_LIMIT = 20;
@@ -147,7 +164,7 @@ function clampLimit(raw: unknown): number {
 }
 
 /** Structural deps — the read/write surface `checkpoints.*` + `sessions.changes.get` needs. */
-export type CheckpointsGatewayManager = Pick<WorkspaceCheckpointManager, 'list' | 'create' | 'diff' | 'restore' | 'sessionChanges'>;
+export type CheckpointsGatewayManager = Pick<WorkspaceCheckpointManager, 'list' | 'create' | 'diff' | 'restore' | 'sessionChanges' | 'workspaceRoot'>;
 
 export function createCheckpointsListHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
   return async (invocation) => {
@@ -285,6 +302,101 @@ export function createCheckpointsRestoreHandler(
 }
 
 /**
+ * `checkpoints.revertHunkPreview` — read-only: does reverse-applying this one
+ * unified-diff hunk to its file apply cleanly right now? A stale/drifted hunk is
+ * `applies:false` with a human-readable `conflict` and a null token (honest, not
+ * an error); a clean hunk mints a single-use token bound to this exact (path,
+ * hunk) that the matching checkpoints.revertHunk consumes.
+ */
+export function createCheckpointsRevertHunkPreviewHandler(
+  manager: CheckpointsGatewayManager,
+  tokens: RestoreTokenStore,
+): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const path = requiredString(params.path, 'path');
+    const hunk = requiredString(params.hunk, 'hunk');
+    const preview = previewHunkRevert(manager.workspaceRoot, path, hunk);
+    if (!preview.applies) {
+      return { ...preview, token: null, expiresAt: null };
+    }
+    const { token, expiresAt } = tokens.issue(revertHunkFingerprint(path, hunk));
+    return { ...preview, token, expiresAt };
+  };
+}
+
+/**
+ * `checkpoints.revertHunk` — confirm-gated reverse-apply of ONE hunk to the live
+ * working tree, following the checkpoints.restore / rewind.apply confirm idiom:
+ * an unconfirmed call is a non-error refusal, a bad token is a 400, and a hunk
+ * that no longer applies cleanly is a 409 conflict (never a partial write). The
+ * apply snapshots the whole tree first (the undo point) and emits a HUNK_REVERTED
+ * receipt event when an event sink is wired.
+ */
+export function createCheckpointsRevertHunkHandler(
+  manager: CheckpointsGatewayManager,
+  tokens: RestoreTokenStore,
+  emit?: CheckpointsEventSink,
+): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const path = requiredString(params.path, 'path');
+    const hunk = requiredString(params.hunk, 'hunk');
+    const sessionId = optionalString(params.sessionId);
+    const confirm = optionalBoolean(params.confirm, 'confirm');
+    const confirmToken = optionalString(params.confirmToken);
+    const fingerprint = revertHunkFingerprint(path, hunk);
+
+    if (confirmToken !== undefined) {
+      if (!tokens.consume(confirmToken, fingerprint)) {
+        throw new GatewayVerbError(
+          'confirmToken is invalid, already used, expired, or was issued for a different hunk — call checkpoints.revertHunkPreview to obtain a fresh one.',
+          'INVALID_ARGUMENT',
+          400,
+        );
+      }
+    } else if (confirm !== true) {
+      return {
+        receipt: null,
+        refused: true,
+        refusal: {
+          reason: 'checkpoints.revertHunk mutates the working tree (reverse-applies a hunk) and requires confirmation before it will run.',
+          confirmField: 'confirm',
+          previewMethod: 'checkpoints.revertHunkPreview',
+          options: REVERT_HUNK_CONFIRM_OPTIONS,
+        },
+      };
+    }
+
+    let receipt;
+    try {
+      receipt = await applyHunkRevert(manager, path, hunk);
+    } catch (err) {
+      if (err instanceof HunkRevertConflictError) {
+        // The hunk went stale (the file changed since the diff was taken). Honest
+        // 409 — nothing was written, so the caller can re-diff and retry.
+        throw new GatewayVerbError(err.message, 'CONFLICT', 409);
+      }
+      throw err;
+    }
+    if (emit) {
+      emit(
+        {
+          type: 'HUNK_REVERTED',
+          path: receipt.path,
+          hunkHeader: receipt.hunkHeader,
+          sessionId: sessionId ?? null,
+          safetyCheckpointId: receipt.safetyCheckpointId,
+          undoAvailable: receipt.undo !== null,
+        },
+        sessionId ?? 'workspace',
+      );
+    }
+    return { receipt, refused: false, refusal: null };
+  };
+}
+
+/**
  * Attach the `checkpoints.*` handlers to the descriptors already registered
  * (without a handler) from ../method-catalog-control-core.ts's static
  * builtin array. Call once, at RuntimeServices construction time, after
@@ -292,10 +404,18 @@ export function createCheckpointsRestoreHandler(
  * no-op — see routes/fleet.ts's `registerFleetGatewayMethods` for the same
  * rationale.
  */
-export function registerCheckpointGatewayMethods(catalog: GatewayMethodCatalog, manager: CheckpointsGatewayManager): void {
+export function registerCheckpointGatewayMethods(
+  catalog: GatewayMethodCatalog,
+  manager: CheckpointsGatewayManager,
+  emit?: CheckpointsEventSink,
+): void {
   // One token store shared by the preview (mints) and restore (consumes)
   // handlers for this daemon's lifetime.
   const restoreTokens = new RestoreTokenStore();
+  // A separate store for the per-hunk revert preview/apply pair — its tokens bind
+  // to a (path, hunk) fingerprint, not a checkpoint id, so they never cross with
+  // the whole-checkpoint restore tokens above.
+  const revertHunkTokens = new RestoreTokenStore();
 
   const listDescriptor = catalog.get('checkpoints.list');
   if (listDescriptor) catalog.register(listDescriptor, createCheckpointsListHandler(manager), { replace: true });
@@ -313,6 +433,16 @@ export function registerCheckpointGatewayMethods(catalog: GatewayMethodCatalog, 
 
   const restoreDescriptor = catalog.get('checkpoints.restore');
   if (restoreDescriptor) catalog.register(restoreDescriptor, createCheckpointsRestoreHandler(manager, restoreTokens), { replace: true });
+
+  const revertHunkPreviewDescriptor = catalog.get('checkpoints.revertHunkPreview');
+  if (revertHunkPreviewDescriptor) {
+    catalog.register(revertHunkPreviewDescriptor, createCheckpointsRevertHunkPreviewHandler(manager, revertHunkTokens), { replace: true });
+  }
+
+  const revertHunkDescriptor = catalog.get('checkpoints.revertHunk');
+  if (revertHunkDescriptor) {
+    catalog.register(revertHunkDescriptor, createCheckpointsRevertHunkHandler(manager, revertHunkTokens, emit), { replace: true });
+  }
 
   // sessions.changes.get is a session-category verb, but it is served over the
   // same workspaceCheckpointManager as the checkpoints.* verbs (it joins the
