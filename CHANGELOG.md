@@ -8,6 +8,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A zero-knowledge, self-hostable relay so a daemon is reachable from outside
+  the LAN without the relay operator being able to read the traffic.** A daemon
+  connects OUTBOUND to the relay and registers under an unguessable rendezvous
+  id; a surface dials the same id; the relay pairs the two multiplexed pipes and
+  forwards OPAQUE bytes. Zero-knowledge is structural: an NK-style end-to-end
+  handshake (ECDH P-256 → HKDF-SHA-256 → AES-256-GCM, all Web Crypto, no new
+  dependency and nothing hand-rolled) runs INSIDE each pipe before any
+  application byte, so the relay only ever sees ciphertext plus connection
+  metadata. Daemon authentication is by static-key pinning from the pairing
+  payload — a curious or malicious relay that lacks the daemon's static private
+  key cannot derive the session keys and its forged handshake confirmation is
+  rejected. Ships the runtime-neutral protocol + crypto as
+  `@pellux/goodvibes-transport-core/relay` (handshake, `RelaySecureChannel`,
+  daemon identity (de)serialization, and the QR-encodable pairing-payload codec)
+  and the rendezvous server as `@pellux/goodvibes-daemon-sdk` `RelayHub` /
+  `createBunRelayServer`, deployable standalone on a VPS via the
+  `goodvibes-relay` bin. No accounts; per-instance caps (max daemons, pipes,
+  per-daemon pipes, message size) and per-address handshake rate limiting keep a
+  public instance from becoming a liability; a client dialing an unregistered id
+  gets an honest `daemon-offline` error.
 - **A shared registered-workspace registry the whole platform reads.** A
   daemon-side store of the project roots an operator has explicitly opted into,
   the platform-wide successor to the agent fork's local
