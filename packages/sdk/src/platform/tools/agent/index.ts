@@ -6,7 +6,7 @@ import { ArchetypeLoader } from '../../agents/archetypes.js';
 import { AgentMessageBus } from '../../agents/message-bus.js';
 import type { WrfcController } from '../../agents/wrfc-controller.js';
 import { AGENT_TEMPLATES, AgentManager, type AgentRecord } from './manager.js';
-import { evaluateOrchestrationSpawn } from '../../runtime/orchestration/spawn-policy.js';
+import { evaluateOrchestrationSpawn, ORCHESTRATION_CAP_KEYS } from '../../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { toRecord } from '../../utils/record-coerce.js';
 import { evaluateWrfcBatchPolicy } from './wrfc-batch-policy.js';
@@ -587,9 +587,13 @@ export function createAgentTool(config: {
           requestedDepth: 0,
         });
         if (!spawnDecision.allowed || spawnDecision.availableSlots === 0) {
+          const boundCap = spawnDecision.boundCap
+            ?? { key: ORCHESTRATION_CAP_KEYS.maxActiveAgents, value: spawnDecision.maxAgents };
           return {
             success: false,
-            error: spawnDecision.reason ?? `Agent limit reached (${currentCount}/${spawnDecision.maxAgents}). No capacity for batch-spawn.`,
+            error: spawnDecision.reason
+              ?? `agent capacity reached (${currentCount}/${spawnDecision.maxAgents}) — cap: ${boundCap.key}=${boundCap.value}. No capacity for batch-spawn.`,
+            output: JSON.stringify({ cap: boundCap }),
           };
         }
         const tasksToSpawn = input.tasks.slice(0, spawnDecision.availableSlots);
@@ -622,15 +626,23 @@ export function createAgentTool(config: {
           }
           results.push({ ...agentSpawnSummary(record), task: taskDef.task.slice(0, 80) });
         }
+        const batchOutput: Record<string, unknown> = {
+          agents: results,
+          count: results.length,
+          cohort: input.cohort,
+          skipped,
+          maxAgents: spawnDecision.maxAgents,
+        };
+        if (skipped > 0) {
+          // The active-agents cap bound: excess tasks were queued/refused. Name
+          // the cap and its value both here and in a human-readable note.
+          batchOutput.cap = { key: ORCHESTRATION_CAP_KEYS.maxActiveAgents, value: spawnDecision.maxAgents };
+          batchOutput.capMessage =
+            `queued ${skipped} task${skipped === 1 ? '' : 's'}: ${spawnDecision.maxAgents}/${spawnDecision.maxAgents} active — cap: ${ORCHESTRATION_CAP_KEYS.maxActiveAgents}=${spawnDecision.maxAgents}`;
+        }
         return {
           success: true,
-          output: JSON.stringify({
-            agents: results,
-            count: results.length,
-            cohort: input.cohort,
-            skipped,
-            maxAgents: spawnDecision.maxAgents,
-          }),
+          output: JSON.stringify(batchOutput),
         };
       }
 
