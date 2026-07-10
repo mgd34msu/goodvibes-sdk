@@ -176,6 +176,18 @@ export class RetentionPolicy {
   }
 
   /**
+   * Cheap in-memory check: does at least one registered record currently
+   * violate its class's age/count/size limits and thus need pruning?
+   *
+   * Runs the same candidate-collection pass as `prune()` but touches no I/O
+   * and mutates nothing — safe to call on a hot path (e.g. after every
+   * checkpoint create) to decide whether an actual `prune()` is worth running.
+   */
+  needsPrune(): boolean {
+    return this._collectCandidates().length > 0;
+  }
+
+  /**
    * Return current retention statistics per class.
    *
    * Useful for surfacing storage pressure in diagnostics panels.
