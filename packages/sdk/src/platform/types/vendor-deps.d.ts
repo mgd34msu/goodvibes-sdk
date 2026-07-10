@@ -18,8 +18,16 @@ declare module '@agentclientprotocol/sdk' {
   export type Client = any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export type Agent = any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  export type AgentSideConnection = any;
+  // AgentSideConnection is used as a constructor by the agent-side adapter
+  // (new AgentSideConnection(toAgent, stream)), so it must be a value (class).
+  // The two client-callback methods the adapter invokes are declared with
+  // real minimal shapes so the protocol mapping stays type-checked.
+  export class AgentSideConnection {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(toAgent: (conn: AgentSideConnection) => Agent, stream: any);
+    sessionUpdate(params: SessionNotification): Promise<void>;
+    requestPermission(params: RequestPermissionRequest): Promise<RequestPermissionResponse>;
+  }
   // ClientSideConnection is used as a constructor (new ClientSideConnection(...)),
   // so it must be a value (class), not just a type alias.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,6 +59,31 @@ declare module '@agentclientprotocol/sdk' {
   export type RequestPermissionResponse = any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export const ndJsonStream: any;
+
+  // ── Agent-side protocol shapes (consumed by platform/acp/agent.ts) ──────────
+  // Minimal but REAL types (not `any`) for the symbols the agent adapter maps
+  // against, mirroring @agentclientprotocol/sdk 0.21.0's generated schema.
+  export const PROTOCOL_VERSION: number;
+  export type StopReason = 'end_turn' | 'max_tokens' | 'max_turn_requests' | 'refusal' | 'cancelled';
+  export type ContentBlock =
+    | { type: 'text'; text: string }
+    | { type: 'image'; data: string; mimeType: string }
+    | { type: 'audio'; data: string; mimeType: string }
+    | { type: 'resource_link'; uri: string; name: string }
+    | { type: 'resource'; resource: Record<string, unknown> };
+  export type PermissionOptionKind = 'allow_once' | 'allow_always' | 'reject_once' | 'reject_always';
+  export interface PermissionOption {
+    optionId: string;
+    name: string;
+    kind: PermissionOptionKind;
+  }
+  export interface AuthenticateRequest {
+    methodId: string;
+  }
+  export type AuthenticateResponse = Record<string, unknown> | null;
+  export interface CancelNotification {
+    sessionId: string;
+  }
 }
 
 // Fuse.js — fuzzy-search library (used by registry-tool / knowledge search).
