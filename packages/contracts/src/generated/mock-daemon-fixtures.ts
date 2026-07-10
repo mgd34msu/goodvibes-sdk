@@ -12928,6 +12928,77 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "panels": 0
     }
   },
+  "rewind.apply": {
+    "methodId": "rewind.apply",
+    "http": null,
+    "status": 200,
+    "body": {
+      "receipt": {
+        "sessionId": "sample",
+        "turnId": "sample",
+        "scope": "files",
+        "appliedAt": 0,
+        "files": {
+          "restored": false,
+          "checkpointId": "sample",
+          "safetyCheckpointId": "sample",
+          "restoredFileCount": 0,
+          "removedFileCount": 0
+        },
+        "conversation": {
+          "rewound": false,
+          "droppedMessages": 0,
+          "undoSnapshotId": "sample"
+        },
+        "undo": {
+          "files": {
+            "restoreCheckpointId": "sample"
+          },
+          "conversation": {
+            "undoSnapshotId": "sample"
+          }
+        },
+        "warnings": [
+          "sample"
+        ]
+      },
+      "refused": false,
+      "refusal": {
+        "reason": "sample",
+        "confirmField": "sample",
+        "planMethod": "sample",
+        "options": [
+          "sample"
+        ]
+      }
+    }
+  },
+  "rewind.plan": {
+    "methodId": "rewind.plan",
+    "http": null,
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "turnId": "sample",
+      "scope": "files",
+      "token": "sample",
+      "expiresAt": 0,
+      "files": {
+        "available": false,
+        "checkpointId": "sample",
+        "checkpointLabel": "sample",
+        "affectedFileCount": 0
+      },
+      "conversation": {
+        "available": false,
+        "messagesToDrop": 0,
+        "messagesRemaining": 0
+      },
+      "warnings": [
+        "sample"
+      ]
+    }
+  },
   "routes.bindings.create": {
     "methodId": "routes.bindings.create",
     "http": {

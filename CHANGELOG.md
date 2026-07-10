@@ -8,6 +8,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A unified message-anchored rewind service that joins the platform's three
+  history systems.** New `@pellux/goodvibes-sdk/platform/rewind` is one
+  coordinator — never a fourth history store — over the workspace checkpoint
+  manager (git-backed, sessionId-stamped), the conversation store, and file
+  undo. Given a session turn anchor it can restore files (the nearest workspace
+  checkpoint), the conversation (truncate session state to the anchor), or both,
+  through injectable ports over those existing stores; a part with no store
+  wired on the runtime is honestly reported unavailable rather than faked. Two
+  ws-only operator verbs land with typed IO and register together with their
+  descriptors: `rewind.plan` is a read-only dry-run preview of exactly what
+  would change plus a single-use confirm token, and `rewind.apply` is
+  confirm-gated (the checkpoints.restore idiom — an unconfirmed call returns a
+  non-error refusal naming `rewind.plan`, a bad token is a 400, `confirm:true`
+  bypasses). Every apply records an undo point so the rewind is itself
+  reversible: the workspace restore reuses the pre-restore safety checkpoint it
+  already takes, and the conversation store its captured pre-rewind snapshot,
+  both surfaced in the receipt's `undo` block. Applies emit a `REWIND_APPLIED`
+  receipt event (and plans a `REWIND_PLANNED`) on the workspace domain so
+  surfaces can render them. The service and verbs land this round; consumer
+  `/rewind`, `/undo`, and `/redo` commands build on them later.
+
 - **Feature-flag graduation as a release policy.** The platform ships most
   feature flags default-off and flips them on only once validated, but nothing
   forced a per-release decision about the flags that had earned their way on.

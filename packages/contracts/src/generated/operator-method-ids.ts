@@ -292,6 +292,8 @@ export const OPERATOR_METHOD_IDS = [
   "remote.work.cancel",
   "remote.work.list",
   "review.snapshot",
+  "rewind.apply",
+  "rewind.plan",
   "routes.bindings.create",
   "routes.bindings.delete",
   "routes.bindings.list",

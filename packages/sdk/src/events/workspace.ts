@@ -47,6 +47,33 @@ export type WorkspaceEvent =
       code: 'INVALID_PATH' | 'REROOT_FAILED' | 'UNKNOWN';
       /** Human-readable reason. */
       reason: string;
+    }
+  /**
+   * A unified rewind was PREVIEWED (rewind.plan) — a surface can render that a
+   * rewind to this turn anchor is staged and awaiting confirmation. Read-only:
+   * nothing has changed yet.
+   */
+  | {
+      type: 'REWIND_PLANNED';
+      sessionId: string;
+      /** The turn boundary rewound to, or null for the session's most recent checkpoint. */
+      turnId: string | null;
+      scope: 'files' | 'conversation' | 'both';
+    }
+  /**
+   * A unified rewind was APPLIED (rewind.apply) — the receipt surfaces render.
+   * `undoAvailable` is true when the apply recorded an undo point (a pre-restore
+   * safety checkpoint and/or a captured conversation snapshot) so the rewind can
+   * be reversed.
+   */
+  | {
+      type: 'REWIND_APPLIED';
+      sessionId: string;
+      turnId: string | null;
+      scope: 'files' | 'conversation' | 'both';
+      filesRestored: boolean;
+      conversationRewound: boolean;
+      undoAvailable: boolean;
     };
 
 export type WorkspaceEventType = WorkspaceEvent['type'];
