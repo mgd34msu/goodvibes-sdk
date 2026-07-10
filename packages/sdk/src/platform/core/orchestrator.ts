@@ -794,6 +794,7 @@ export class Orchestrator {
       setLastWarningBracket: (value) => { this.lastWarningBracket = value; },
       modelContextWarning: this.modelContextWarning,
       clearModelContextWarning: () => { this.modelContextWarning = null; },
+      getSystemPrompt: this.getSystemPrompt,
     }, turnId, this.lastInputTokens);
   }
 
@@ -930,14 +931,12 @@ export class Orchestrator {
     turnId: string,
     model: ModelDefinition,
   ): Promise<'ok' | 'compacted' | 'error'> {
-    const configManager = requireConfigManager(this.coreServices);
-    const providerRegistry = requireProviderRegistry(this.coreServices);
     return checkContextWindowPreflight({
       conversation: this.conversation,
       requestRender: this.requestRender,
       hookDispatcher: this.hookDispatcher,
-      configManager,
-      providerRegistry,
+      configManager: requireConfigManager(this.coreServices),
+      providerRegistry: requireProviderRegistry(this.coreServices),
       sessionId: this.sessionId,
       agentManager: this.agentManager,
       wrfcController: this.wrfcController,
@@ -950,6 +949,7 @@ export class Orchestrator {
       setIsCompacting: (value) => { this.setCompacting(value); },
       modelContextWarning: this.modelContextWarning,
       clearModelContextWarning: () => { this.modelContextWarning = null; },
+      getSystemPrompt: this.getSystemPrompt,
     }, turnId, model);
   }
 

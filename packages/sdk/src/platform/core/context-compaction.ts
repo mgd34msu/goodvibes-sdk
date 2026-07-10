@@ -49,6 +49,8 @@ import {
   buildResolvedProblemsPrompt,
   buildPlanProgress,
   buildSessionLineage,
+  buildReinjectedInstructions,
+  stripReinjectedInstructions,
   extractText,
 } from './compaction-sections.js';
 import { isActiveAgent } from '../tools/agent/predicates.js';
@@ -431,11 +433,33 @@ async function runCompaction(
   // Handoff header (always present)
   sections.push(buildHandoffHeader());
 
+  // Re-inject the standing instruction chain + active skill frontmatter at the
+  // compaction boundary so compaction never silently strips them. Placed right
+  // after the handoff header, at the top of the compacted context.
+  const reinjectedSection = buildReinjectedInstructions(
+    ctx.instructionChain,
+    ctx.activeSkillFrontmatter,
+  );
+  if (reinjectedSection) sections.push(reinjectedSection);
+  const instructionsReinjected = reinjectedSection !== null;
+
+  // Strip any instruction block a PRIOR compaction re-injected out of the
+  // message history before deriving message-based sections, so the block is
+  // not summarized back in on top of the fresh copy above (no duplication
+  // across repeated compactions). String-content messages are the only ones
+  // that can carry a re-injected block (compaction output is a string).
+  const messages: ProviderMessage[] = ctx.messages.map((m) => {
+    if (typeof m.content === 'string' && m.content.includes('goodvibes:reinjected-instructions')) {
+      return { ...m, content: stripReinjectedInstructions(m.content) };
+    }
+    return m;
+  });
+
   // Current task
   const planTitle = ctx.activePlan?.title ?? null;
   const lastUserMsg = (() => {
-    for (let i = ctx.messages.length - 1; i >= 0; i--) {
-      const msg = ctx.messages[i];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
       if (msg?.role === 'user') {
         const text = extractText(msg.content);
         if (text.trim()) return text.trim();
@@ -469,14 +493,14 @@ async function runCompaction(
   // Prepare all LLM-assisted prompts
   // ---------------------------------------------------------------------------
   const gatheredMessages = gatherRecentConversation(
-    ctx.messages,
+    messages,
     config.recentConversationBudget,
   );
   const filterPrompt = gatheredMessages.length > 0
     ? buildConversationFilterPrompt(gatheredMessages)
     : '';
 
-  const toolMessages = ctx.messages.filter((m) => m.role === 'tool');
+  const toolMessages = messages.filter((m) => m.role === 'tool');
   const toolPrompt = toolMessages.length > 0
     ? buildToolResultsPrompt(toolMessages)
     : '';
@@ -485,7 +509,7 @@ async function runCompaction(
     ? buildOlderAgentSummaryPrompt(remainingChains)
     : '';
 
-  const allUserAssistant = ctx.messages.filter(
+  const allUserAssistant = messages.filter(
     (m) => m.role === 'user' || m.role === 'assistant',
   );
   const problemsPrompt = allUserAssistant.length > 0
@@ -578,8 +602,13 @@ async function runCompaction(
   // Assemble and validate
   // ---------------------------------------------------------------------------
   const compactedText = assembleSections(sections);
-  const totalTokens = sections.reduce((sum, s) => sum + s.tokens, 0);
-  const validationWarnings = validateCompaction(sections, ctx, totalTokens, config);
+  // The re-injected standing-instruction block is mandatory content, not
+  // summarized history, so it is excluded from the summary token-ceiling check
+  // (it must never be dropped to fit the budget).
+  const ceilingTokens = sections
+    .filter((s) => s.id !== 'reinjected-instructions')
+    .reduce((sum, s) => sum + s.tokens, 0);
+  const validationWarnings = validateCompaction(sections, ctx, ceilingTokens, config);
 
   if (validationWarnings.length > 0) {
     logger.warn('Context compaction: validation warnings', { warnings: validationWarnings });
@@ -605,6 +634,7 @@ async function runCompaction(
     trigger: ctx.trigger,
     sectionsIncluded: sections.map((s) => s.id),
     validationPassed: validationWarnings.length === 0,
+    instructionsReinjected,
   };
 
   compactionEvents.push(event);
@@ -620,6 +650,7 @@ async function runCompaction(
     tokensSaved: event.tokensBeforeEstimate - event.tokensAfterEstimate,
     sectionsIncluded: event.sectionsIncluded,
     validationWarnings: validationWarnings.length,
+    instructionsReinjected: event.instructionsReinjected,
   });
 
   return {
