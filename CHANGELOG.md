@@ -8,6 +8,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **`repo_map` tool — a model-invoked, token-budgeted repository map.** A new
+  read-only tool the model CALLS (never passive always-on injection) to orient in
+  an unfamiliar codebase: it returns a per-directory source-file count plus the
+  highest-centrality source files — ranked by how many other files import them
+  (import-graph centrality), with file size as a tie-break — and each key file's
+  top-level exported symbols. It takes `{ path?, budgetTokens? }` and caps output
+  to the token budget, omitting lower-ranked files once the budget is reached. It
+  reuses the SDK's existing `ImportGraph` plus a cheap export regex — no
+  tree-sitter, no LLM, no process spawn. Registered with the tool registry and
+  classified read-only so it auto-approves in prompt mode. As part of this, the
+  `ImportGraph` specifier resolver now maps a `.js`/`.jsx`/`.mjs`/`.cjs` import
+  specifier to its TypeScript sibling (`./core.js` → `core.ts`), so import edges
+  resolve in TS-ESM projects instead of silently dropping — which also sharpens
+  the edit tool's downstream import-graph warning.
 - **Post-edit diagnostics in tool results.** After a successful, non-dry-run
   file write or edit, the tool result now carries cheap, in-process diagnostics
   for the touched file so the model sees a broken edit immediately instead of on
