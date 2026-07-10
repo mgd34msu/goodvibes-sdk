@@ -29,6 +29,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, rmSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -45,7 +46,14 @@ import {
   type PruneResult,
   type PruneOptions,
 } from '../../runtime/retention/index.js';
-import { SideGitRunner, CHECKPOINT_REF_PREFIX, EMPTY_TREE_HASH } from './side-git.js';
+import { SideGitRunner, CHECKPOINT_REF_PREFIX, EMPTY_TREE_HASH, detectGitToplevel } from './side-git.js';
+import {
+  BROAD_ROOT_OVERRIDE,
+  DEFAULT_MAX_FIRST_SNAPSHOT_FILES,
+  broadRootReason,
+  broadRootRefusalMessage,
+  firstSnapshotTooLargeMessage,
+} from './root-guard.js';
 import type { WorkspaceCheckpoint, CheckpointKind, CheckpointDiff, RestoreResult } from './types.js';
 
 const ID_PREFIX = 'wcp';
@@ -165,6 +173,41 @@ export interface WorkspaceCheckpointManagerOptions {
   readonly retention?: Partial<RetentionConfig> | undefined;
   /** Clock override for deterministic tests. */
   readonly now?: (() => number) | undefined;
+  /**
+   * Prefer the enclosing git repository's top level over the raw
+   * `workspaceRoot` when the root is inside one. Defaults to `true`: keeps a
+   * daemon launched in a project subdirectory snapshotting the whole repo, and
+   * (with the broad-root guard) stops a `$HOME` cwd from becoming a checkpoint
+   * root. Set `false` to snapshot exactly `workspaceRoot`.
+   */
+  readonly preferGitRoot?: boolean | undefined;
+  /**
+   * Opt in to snapshotting a broad root (filesystem root, the user's home
+   * directory, or `~/.goodvibes`). Defaults to `false`: such roots are refused
+   * (no auto subscription, explicit `create()` throws) to avoid an unbounded
+   * store. Set only when a broad root is genuinely intended.
+   */
+  readonly allowBroadRoot?: boolean | undefined;
+  /**
+   * Opt in to a first snapshot whose full sweep exceeds
+   * `maxFirstSnapshotFiles`. Defaults to `false`: an oversized first sweep is
+   * refused with a message stating the count and this override.
+   */
+  readonly allowLargeFirstSnapshot?: boolean | undefined;
+  /** Ceiling for the first-ever snapshot's file sweep. Defaults to {@link DEFAULT_MAX_FIRST_SNAPSHOT_FILES}. */
+  readonly maxFirstSnapshotFiles?: number | undefined;
+  /**
+   * Run a retention sweep automatically (cheap threshold check, then a
+   * non-blocking `gc()` only when something is over-limit) after each
+   * successful `create()` and once at init. Defaults to `true`. Set `false` to
+   * drive retention purely via manual `gc()` (e.g. unit tests, or an embedder
+   * with its own schedule).
+   */
+  readonly autoRetention?: boolean | undefined;
+  /** Home-directory override (broad-root detection). Defaults to `os.homedir()`. */
+  readonly homeDir?: string | undefined;
+  /** Daemon state-directory override (broad-root detection). Defaults to `<homeDir>/.goodvibes`. */
+  readonly daemonStateDir?: string | undefined;
 }
 
 /**
@@ -173,14 +216,31 @@ export interface WorkspaceCheckpointManagerOptions {
  * lifecycle events.
  */
 export class WorkspaceCheckpointManager {
-  readonly workspaceRoot: string;
-  private readonly checkpointRootDir: string;
-  private readonly sideGit: SideGitRunner;
-  private readonly manifestStore: JsonFileStore<Manifest>;
-  private readonly retentionPolicy: RetentionPolicy;
+  // Resolved at init (git-root preference can move it off the raw option), so
+  // these are reassigned once by `buildForRoot` — not `readonly`.
+  // Assigned by `buildForRoot`, which the constructor always calls.
+  workspaceRoot!: string;
+  private checkpointRootDir!: string;
+  private sideGit!: SideGitRunner;
+  private manifestStore!: JsonFileStore<Manifest>;
+  private retentionPolicy!: RetentionPolicy;
   private readonly now: () => number;
   private readonly runtimeBus: RuntimeEventBus | undefined;
   private readonly unsubscribers: (() => void)[] = [];
+
+  // Root-guard configuration (see WorkspaceCheckpointManagerOptions).
+  private readonly rawWorkspaceRoot: string;
+  private readonly explicitCheckpointDir: string | undefined;
+  private readonly retentionOverride: Partial<RetentionConfig> | undefined;
+  private readonly preferGitRoot: boolean;
+  private readonly allowBroadRoot: boolean;
+  private readonly allowLargeFirstSnapshot: boolean;
+  private readonly maxFirstSnapshotFiles: number;
+  private readonly autoRetention: boolean;
+  private readonly homeDir: string;
+  private readonly daemonStateDir: string;
+  /** Non-null (the honest refusal message) when the resolved root was refused as too broad; drives both the skipped auto-subscription and rejected explicit `create()` calls. */
+  private rootRefusal: string | null = null;
 
   private checkpoints = new Map<string, WorkspaceCheckpoint>();
   private initialized = false;
@@ -225,17 +285,40 @@ export class WorkspaceCheckpointManager {
   }
 
   constructor(opts: WorkspaceCheckpointManagerOptions) {
-    this.workspaceRoot = opts.workspaceRoot;
-    this.checkpointRootDir = opts.checkpointDir ?? join(opts.workspaceRoot, '.goodvibes', 'checkpoints');
+    this.now = opts.now ?? Date.now;
+    this.runtimeBus = opts.runtimeBus;
+    this.rawWorkspaceRoot = opts.workspaceRoot;
+    this.explicitCheckpointDir = opts.checkpointDir;
+    this.retentionOverride = opts.retention;
+    this.preferGitRoot = opts.preferGitRoot ?? true;
+    this.allowBroadRoot = opts.allowBroadRoot ?? false;
+    this.allowLargeFirstSnapshot = opts.allowLargeFirstSnapshot ?? false;
+    this.maxFirstSnapshotFiles = opts.maxFirstSnapshotFiles ?? DEFAULT_MAX_FIRST_SNAPSHOT_FILES;
+    this.autoRetention = opts.autoRetention ?? true;
+    this.homeDir = opts.homeDir ?? homedir();
+    this.daemonStateDir = opts.daemonStateDir ?? join(this.homeDir, '.goodvibes');
+    // Build against the raw root first; init() may rebuild once the git-root
+    // preference resolves a different (enclosing-repo) root.
+    this.buildForRoot(opts.workspaceRoot);
+  }
+
+  /**
+   * (Re)construct every root-bound collaborator for `root`: storage dir, side
+   * git runner, manifest store, and retention policy (whose pruner closes over
+   * the side git runner, so it is rebuilt alongside it). Called from the
+   * constructor with the raw root, and again from init() if the git-root
+   * preference resolves a different root.
+   */
+  private buildForRoot(root: string): void {
+    this.workspaceRoot = root;
+    this.checkpointRootDir = this.explicitCheckpointDir ?? join(root, '.goodvibes', 'checkpoints');
     this.sideGit = new SideGitRunner({
-      workspaceRoot: opts.workspaceRoot,
+      workspaceRoot: root,
       gitDir: join(this.checkpointRootDir, 'git'),
     });
     this.manifestStore = new JsonFileStore<Manifest>(join(this.checkpointRootDir, 'index.json'));
-    this.now = opts.now ?? Date.now;
-    this.runtimeBus = opts.runtimeBus;
     this.retentionPolicy = new RetentionPolicy(
-      opts.retention,
+      this.retentionOverride,
       this.now,
       new WorkspaceCheckpointPruner(this.sideGit, (id) => this.checkpoints.delete(id)),
     );
@@ -256,6 +339,7 @@ export class WorkspaceCheckpointManager {
   }
 
   private async _init(): Promise<void> {
+    await this.resolveAndGuardRoot();
     await this.sideGit.init();
     const manifest = await this.manifestStore.load();
     this.checkpoints = new Map((manifest?.checkpoints ?? []).map((c) => [c.id, c]));
@@ -269,9 +353,59 @@ export class WorkspaceCheckpointManager {
       });
     }
     if (this.runtimeBus) {
-      this.subscribeToAutomaticSnapshots(this.runtimeBus);
+      if (this.rootRefusal) {
+        logger.warn('WorkspaceCheckpointManager: refusing automatic snapshot subscription for a broad root', {
+          root: this.workspaceRoot,
+          reason: this.rootRefusal,
+          override: BROAD_ROOT_OVERRIDE,
+        });
+      } else {
+        this.subscribeToAutomaticSnapshots(this.runtimeBus);
+      }
     }
     this.initialized = true;
+    // One retention sweep at init so a store that grew past its limits in a
+    // previous process shrinks on the next startup (non-blocking).
+    this.maybeRunRetention();
+  }
+
+  /**
+   * Resolve the effective root (preferring the enclosing git repo top level)
+   * and decide whether it is too broad to snapshot. When the git-root
+   * preference moves the root, every root-bound collaborator is rebuilt via
+   * `buildForRoot`. A refused root sets `rootRefusal` (logged with the
+   * override name in `_init`) so automatic subscription is skipped and explicit
+   * `create()` calls fail honestly; the `allowBroadRoot` override clears it.
+   */
+  private async resolveAndGuardRoot(): Promise<void> {
+    let resolved = this.rawWorkspaceRoot;
+    if (this.preferGitRoot) {
+      const toplevel = await detectGitToplevel(this.rawWorkspaceRoot);
+      if (toplevel) resolved = toplevel;
+    }
+    if (resolved !== this.workspaceRoot) {
+      this.buildForRoot(resolved);
+    }
+
+    const reason = broadRootReason(resolved, this.homeDir, this.daemonStateDir);
+    this.rootRefusal = reason && !this.allowBroadRoot ? broadRootRefusalMessage(resolved, reason) : null;
+  }
+
+  /** Cheap, non-blocking retention sweep: skips when auto-retention is off, the root was refused, or nothing is over-limit; else fires the lock-serialized `gc()` fire-and-forget (like the auto-snapshot path). */
+  private maybeRunRetention(): void {
+    if (!this.autoRetention || this.rootRefusal) return;
+    let due = false;
+    try {
+      due = this.retentionPolicy.needsPrune();
+    } catch {
+      due = false;
+    }
+    if (!due) return;
+    void this.gc().catch((err) => {
+      logger.warn('WorkspaceCheckpointManager: automatic retention sweep failed', {
+        error: summarizeError(err),
+      });
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -341,10 +475,16 @@ export class WorkspaceCheckpointManager {
    */
   async create(opts: CreateCheckpointOptions): Promise<WorkspaceCheckpoint | null> {
     await this.init();
-    return this.withLock(() => this.createInternal(opts));
+    if (this.rootRefusal) throw new Error(this.rootRefusal);
+    const checkpoint = await this.withLock(() => this.createInternal(opts));
+    // After a real (non-no-op) create, sweep retention if a limit is now
+    // crossed — outside the lock, non-blocking, so create() stays fast.
+    if (checkpoint) this.maybeRunRetention();
+    return checkpoint;
   }
 
   private async createInternal(opts: CreateCheckpointOptions): Promise<WorkspaceCheckpoint | null> {
+    await this.guardFirstSnapshotSize(opts);
     await this.sideGit.stageAll(opts.paths);
     const treeHash = await this.sideGit.writeTree();
 
@@ -585,6 +725,26 @@ export class WorkspaceCheckpointManager {
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
+
+  /**
+   * Before the FIRST-ever whole-workspace snapshot for this store, refuse if
+   * the sweep would capture more than `maxFirstSnapshotFiles` files — a cheap
+   * `ls-files`-style enumeration (no blobs written), not a full stage. This
+   * catches an over-broad root (e.g. a home directory) before it materializes
+   * a large object store, rather than proceeding silently. Only the first
+   * snapshot is checked (a store with existing checkpoints has already proven
+   * its root is sane), and only whole-workspace sweeps (a scoped `paths` create
+   * is bounded by construction). The `allowLargeFirstSnapshot` override skips it.
+   */
+  private async guardFirstSnapshotSize(opts: CreateCheckpointOptions): Promise<void> {
+    if (this.allowLargeFirstSnapshot) return;
+    if (this.checkpoints.size > 0) return;
+    if (opts.paths && opts.paths.length > 0) return;
+    const count = await this.sideGit.countFirstSnapshotFiles();
+    if (count > this.maxFirstSnapshotFiles) {
+      throw new Error(firstSnapshotTooLargeMessage(this.workspaceRoot, count, this.maxFirstSnapshotFiles));
+    }
+  }
 
   private mostRecentCheckpoint(): WorkspaceCheckpoint | null {
     let latest: WorkspaceCheckpoint | null = null;

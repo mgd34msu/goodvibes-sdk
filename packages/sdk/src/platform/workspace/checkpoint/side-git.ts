@@ -92,6 +92,32 @@ export interface SideGitRunnerOptions {
 }
 
 /**
+ * Resolve the top level of the git repository that ENCLOSES `dir`, or `null`
+ * when `dir` is not inside a git working tree.
+ *
+ * This runs a plain `git rev-parse --show-toplevel` with a sanitized
+ * environment that deliberately does NOT carry any GIT_DIR / GIT_WORK_TREE
+ * override, so it discovers the user's real repository (walking up from
+ * `dir`), never a side/checkpoint repo. Any failure — not a repo, git
+ * missing, permission error — is swallowed and reported as `null`, since the
+ * only caller uses this as a best-effort preference, not a hard requirement.
+ */
+export async function detectGitToplevel(dir: string): Promise<string | null> {
+  try {
+    // Strip any inherited GIT_DIR / GIT_WORK_TREE so discovery walks up from
+    // `dir` and finds the real enclosing repo, not a pre-set side repo.
+    const env = sanitizeGitEnv(process.env);
+    delete env.GIT_DIR;
+    delete env.GIT_WORK_TREE;
+    const git = simpleGit({ baseDir: dir }).env(env);
+    const out = (await git.raw(['rev-parse', '--show-toplevel'])).trim();
+    return out.length > 0 ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Thin runner around a `simple-git` instance permanently scoped (via `.env()`)
  * to an isolated GIT_DIR/GIT_WORK_TREE pair. Every method here is a small,
  * named wrapper around a raw git invocation — no hook emission, no shared
@@ -202,6 +228,23 @@ export class SideGitRunner {
   async stageAll(paths?: string[]): Promise<void> {
     const pathspecs = paths && paths.length > 0 ? paths : ['.'];
     await this.git.raw(['add', '-A', '--', ...pathspecs]);
+  }
+
+  /**
+   * Count how many files a full first-snapshot sweep (`git add -A -- .`) would
+   * capture, WITHOUT writing a single blob into the object store.
+   *
+   * Uses `git ls-files --others --exclude-standard` (untracked files, honoring
+   * every `.gitignore` including `.goodvibes/.gitignore`'s own `*` self-ignore).
+   * This is exact for the FIRST snapshot, when the side index is empty and so
+   * every file the sweep would stage is an "other" (untracked) file. Filenames
+   * are NUL-delimited (`-z`) so newlines in names never inflate the count.
+   */
+  async countFirstSnapshotFiles(): Promise<number> {
+    const out: string = await this.git.raw(['ls-files', '--others', '--exclude-standard', '-z']);
+    if (out.length === 0) return 0;
+    // Trailing NUL after the last entry — filter empties rather than off-by-one.
+    return out.split('\0').filter((entry: string) => entry.length > 0).length;
   }
 
   /** Write the currently-staged index out as a tree object, without committing. Returns the tree hash. */

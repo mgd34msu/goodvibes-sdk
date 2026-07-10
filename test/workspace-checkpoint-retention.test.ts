@@ -34,6 +34,9 @@ describe('WorkspaceCheckpointManager retention/gc', () => {
     const root = tempWorkspace('wcp-retention-');
     const manager = new WorkspaceCheckpointManager({
       workspaceRoot: root,
+      // Drive gc() manually here so this test isolates the pruning mechanics;
+      // the automatic post-create sweep is covered by its own test.
+      autoRetention: false,
       retention: { standard: { maxAgeMs: 24 * 60 * 60 * 1000, maxCount: 3, maxSizeBytes: 200 * 1024 * 1024 } },
     });
 
@@ -87,6 +90,7 @@ describe('WorkspaceCheckpointManager retention/gc', () => {
     const root = tempWorkspace('wcp-forensic-');
     const manager = new WorkspaceCheckpointManager({
       workspaceRoot: root,
+      autoRetention: false,
       retention: { standard: { maxAgeMs: 24 * 60 * 60 * 1000, maxCount: 2, maxSizeBytes: 200 * 1024 * 1024 } },
     });
 
@@ -109,6 +113,7 @@ describe('WorkspaceCheckpointManager retention/gc', () => {
     const root = tempWorkspace('wcp-namespace-');
     const manager = new WorkspaceCheckpointManager({
       workspaceRoot: root,
+      autoRetention: false,
       retention: { standard: { maxAgeMs: 24 * 60 * 60 * 1000, maxCount: 1, maxSizeBytes: 200 * 1024 * 1024 } },
     });
 
