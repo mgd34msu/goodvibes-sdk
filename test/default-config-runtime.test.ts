@@ -28,6 +28,44 @@ describe('DEFAULT_CONFIG runtime section', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Recently-added domains must each carry a DEFAULT_CONFIG entry, or every
+// resolvePath() through them throws "section '<domain>' does not exist".
+// Regression guard for the worktree gap (worktree.setup.* was read via
+// configManager.get but the domain was never registered) — and for the
+// already-registered checkin.* / atRest.* neighbors.
+// ---------------------------------------------------------------------------
+
+describe('DEFAULT_CONFIG registers every recently-added domain', () => {
+  for (const domain of ['worktree', 'checkin', 'atRest'] as const) {
+    test(`DEFAULT_CONFIG has a '${domain}' section`, () => {
+      expect(domain in DEFAULT_CONFIG).toBe(true);
+    });
+  }
+
+  test('worktree.setup carries empty-array defaults', () => {
+    const worktree = (DEFAULT_CONFIG as Record<string, unknown>)['worktree'] as Record<string, unknown>;
+    const setup = worktree['setup'] as Record<string, unknown>;
+    expect(Array.isArray(setup['commands'])).toBe(true);
+    expect(setup['commands']).toEqual([]);
+    expect(Array.isArray(setup['carryOverGlobs'])).toBe(true);
+    expect(setup['carryOverGlobs']).toEqual([]);
+  });
+
+  test("config.get('worktree.setup.commands') resolves the default instead of throwing", () => {
+    const configDir = join(tmpdir(), `gv-test-worktree-${Date.now()}-${crypto.randomUUID()}`);
+    mkdirSync(configDir, { recursive: true });
+    const manager = new ConfigManager({ configDir });
+    // worktree.setup.* is an array key (not a scalar ConfigKey), so it is read
+    // through the same object-path resolution the daemon uses via a cast.
+    const get = manager.get.bind(manager) as unknown as (k: string) => unknown;
+    expect(() => get('worktree.setup.commands')).not.toThrow();
+    expect(get('worktree.setup.commands')).toEqual([]);
+    expect(() => get('worktree.setup.carryOverGlobs')).not.toThrow();
+    expect(get('worktree.setup.carryOverGlobs')).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // ConfigManager: every runtime.* schema key resolves without throwing
 // ---------------------------------------------------------------------------
 
@@ -80,6 +118,26 @@ describe('ConfigManager resolves all CONFIG_SCHEMA keys without throwing', () =>
     for (const setting of CONFIG_SCHEMA) {
       try {
         manager.get(setting.key as Parameters<typeof manager.get>[0]);
+      } catch (e) {
+        errors.push(`${setting.key}: ${String(e)}`);
+      }
+    }
+    expect(errors).toHaveLength(0);
+  });
+
+  test('every schema key is set-safe: setting its own default value never throws', () => {
+    const configDir = join(tmpdir(), `gv-test-setallkeys-${Date.now()}-${crypto.randomUUID()}`);
+    mkdirSync(configDir, { recursive: true });
+    const manager = new ConfigManager({ configDir });
+
+    // A schema key whose top-level domain is absent from DEFAULT_CONFIG resolves
+    // fine on read of the default snapshot but throws at set() (resolvePath walks
+    // the live config). Writing each key's own default exercises the set path —
+    // validation, enum, and object-path resolution — without changing any value.
+    const errors: string[] = [];
+    for (const setting of CONFIG_SCHEMA) {
+      try {
+        manager.setDynamic(setting.key as Parameters<typeof manager.setDynamic>[0], setting.default);
       } catch (e) {
         errors.push(`${setting.key}: ${String(e)}`);
       }
