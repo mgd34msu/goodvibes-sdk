@@ -91,7 +91,23 @@ export interface MemoryRecord {
   createdAt: number;
   /** Last updated timestamp (epoch ms). */
   updatedAt: number;
+  /**
+   * Temporal validity window — start. Epoch ms. When set, the record is NOT
+   * injected before this time (it is "pending"). Undefined means valid from
+   * creation. Consulted at injection time; see memory-recall-contract.ts.
+   */
+  validFrom?: number | undefined;
+  /**
+   * Temporal validity window — end. Epoch ms. When set, the record stops being
+   * injected at/after this time (it is "expired") — but it is NOT deleted, and
+   * read/list surfaces label it expired rather than silently dropping it.
+   * Undefined means no expiry.
+   */
+  validUntil?: number | undefined;
 }
+
+export type { MemoryTemporalStatus } from './memory-temporal.js';
+export { memoryRecordTemporalStatus, isMemoryTemporallyActive } from './memory-temporal.js';
 
 export interface MemoryLink {
   /** ID of the source record. */
@@ -132,6 +148,10 @@ export interface MemoryAddOptions {
   detail?: string | undefined;
   tags?: string[] | undefined;
   provenance?: ProvenanceLink[] | undefined;
+  /** Temporal validity window start (epoch ms). Undefined = valid from creation. */
+  validFrom?: number | undefined;
+  /** Temporal validity window end (epoch ms). Undefined = no expiry. */
+  validUntil?: number | undefined;
   review?: {
     state?: MemoryReviewState | undefined;
     confidence?: number | undefined;
@@ -246,12 +266,14 @@ export class MemoryStore {
       staleReason: opts.review?.staleReason,
       createdAt: now,
       updatedAt: now,
+      validFrom: opts.validFrom,
+      validUntil: opts.validUntil,
     };
 
     this.sqlite.run(
       `INSERT INTO memory_records
-         (id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at, valid_from, valid_until)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         record.id,
         record.scope,
@@ -267,6 +289,8 @@ export class MemoryStore {
         record.staleReason ?? null,
         record.createdAt,
         record.updatedAt,
+        record.validFrom ?? null,
+        record.validUntil ?? null,
       ],
     );
 
@@ -281,7 +305,7 @@ export class MemoryStore {
     if (!this.ready) return null;
 
     const rows = this.sqlite.exec(
-      `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at
+      `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at, valid_from, valid_until
          FROM memory_records WHERE id = ? LIMIT 1`,
       [id],
     );
@@ -341,7 +365,7 @@ export class MemoryStore {
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const rows = this.sqlite.exec(
-      `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at
+      `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at, valid_from, valid_until
          FROM memory_records ${where}
          ORDER BY updated_at DESC, created_at DESC`,
       params,
@@ -468,8 +492,8 @@ export class MemoryStore {
       }
       this.sqlite.run(
         `INSERT INTO memory_records
-           (id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at, valid_from, valid_until)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           record.id,
           normalizeScope(record.scope),
@@ -485,6 +509,8 @@ export class MemoryStore {
           record.staleReason ?? null,
           record.createdAt,
           record.updatedAt,
+          record.validFrom ?? null,
+          record.validUntil ?? null,
         ],
       );
       importedRecords++;
@@ -566,8 +592,19 @@ export class MemoryStore {
     });
   }
 
-  /** Update mutable fields of an existing record. */
-  update(id: string, patch: { scope?: MemoryScope; summary?: string; detail?: string; tags?: string[] }): MemoryRecord | null {
+  /**
+   * Update mutable fields of an existing record. For the temporal window,
+   * `undefined` leaves the current bound unchanged while an explicit `null`
+   * clears it (so the projection round-trip can both set and remove a window).
+   */
+  update(id: string, patch: {
+    scope?: MemoryScope;
+    summary?: string;
+    detail?: string;
+    tags?: string[];
+    validFrom?: number | null;
+    validUntil?: number | null;
+  }): MemoryRecord | null {
     if (!this.ready) return null;
 
     const existing = this.get(id);
@@ -581,16 +618,18 @@ export class MemoryStore {
     const newSummary = patch.summary ?? existing.summary;
     const newDetail  = patch.detail  !== undefined ? patch.detail : existing.detail;
     const newTags    = patch.tags    ?? existing.tags;
+    const newValidFrom  = patch.validFrom  === undefined ? existing.validFrom  : (patch.validFrom  ?? undefined);
+    const newValidUntil = patch.validUntil === undefined ? existing.validUntil : (patch.validUntil ?? undefined);
 
     this.sqlite.run(
       `UPDATE memory_records
-         SET scope = ?, summary = ?, detail = ?, tags = ?, updated_at = ?
+         SET scope = ?, summary = ?, detail = ?, tags = ?, valid_from = ?, valid_until = ?, updated_at = ?
          WHERE id = ?`,
-      [newScope, newSummary, newDetail ?? null, JSON.stringify(newTags), now, id],
+      [newScope, newSummary, newDetail ?? null, JSON.stringify(newTags), newValidFrom ?? null, newValidUntil ?? null, now, id],
     );
 
     logger.info('MemoryStore: record updated', { id });
-    const updated = { ...existing, scope: newScope, summary: newSummary, detail: newDetail, tags: newTags, updatedAt: now };
+    const updated = { ...existing, scope: newScope, summary: newSummary, detail: newDetail, tags: newTags, validFrom: newValidFrom, validUntil: newValidUntil, updatedAt: now };
     this.vectorIndex?.upsert(updated);
     this.persist();
     return updated;
@@ -656,7 +695,7 @@ export class MemoryStore {
   rebuildVectorIndex(): MemoryVectorStats {
     if (!this.ready) return this.vectorStats();
     const rows = this.sqlite.exec(
-      `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at
+      `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at, valid_from, valid_until
          FROM memory_records
          ORDER BY updated_at DESC, created_at DESC`,
     );
@@ -671,7 +710,7 @@ export class MemoryStore {
       this.rebuildVectorIndexPromise = (async () => {
         try {
           const rows = this.sqlite.exec(
-            `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at
+            `SELECT id, scope, cls, summary, detail, tags, provenance, review_state, confidence, reviewed_at, reviewed_by, stale_reason, created_at, updated_at, valid_from, valid_until
                FROM memory_records
                ORDER BY updated_at DESC, created_at DESC`,
           );

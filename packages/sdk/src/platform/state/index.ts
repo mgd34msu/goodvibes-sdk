@@ -15,7 +15,7 @@ export { TelemetryDB } from './telemetry.js';
 export type { ToolCallRecord, TelemetryFilter, TelemetrySummary } from './telemetry.js';
 export { FileUndoManager } from './file-undo.js';
 export type { FileOperation } from './file-undo.js';
-export { MemoryStore } from './memory-store.js';
+export { MemoryStore, memoryRecordTemporalStatus, isMemoryTemporallyActive } from './memory-store.js';
 export { MemoryRegistry } from './memory-registry.js';
 export type {
   MemoryBundle,
@@ -29,6 +29,7 @@ export type {
   MemoryDoctorReport,
   MemoryScope,
   MemoryReviewState,
+  MemoryTemporalStatus,
   ProvenanceLink,
   ProvenanceLinkKind,
 } from './memory-store.js';
@@ -72,6 +73,24 @@ export {
   vibeBodyToConstraintOptions,
 } from './vibe-projection.js';
 export type { VibeProjectionOptions, VibeImportOptions } from './vibe-projection.js';
+export {
+  projectMemoryRecordToMarkdown,
+  projectMemoryToFiles,
+  parseProjectedMemoryFile,
+  readProjectedMemoryFiles,
+  diffProjectionToProposals,
+  applyMemoryProjectionProposals,
+} from './memory-file-projection.js';
+export type {
+  MemoryProjectionOptions,
+  MemoryProjectionGit,
+  MemoryProjectionFile,
+  MemoryProjectionWriteReport,
+  MemoryProjectionProposal,
+  MemoryProjectionProposalKind,
+  MemoryProjectionRegistry,
+  MemoryProjectionApplyReceipt,
+} from './memory-file-projection.js';
 export {
   DEFAULT_MEMORY_CONSOLIDATION_CONFIG,
   resolveMemoryConsolidationConfig,

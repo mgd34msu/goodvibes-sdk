@@ -25,6 +25,7 @@
  */
 
 import type { MemoryRecord, MemorySearchFilter, MemorySemanticSearchResult } from './memory-store.js';
+import { memoryRecordTemporalStatus } from './memory-store.js';
 import type { MemoryVectorStats } from './memory-vector-store.js';
 import { HASHED_MEMORY_EMBEDDING_PROVIDER } from './memory-embeddings.js';
 
@@ -54,12 +55,26 @@ function provenanceSummary(record: MemoryRecord): string {
  * confidence. Everything else is judged on its own stored confidence against
  * MIN_PROMPT_MEMORY_CONFIDENCE — the store's own baseline. Nothing is blanket-boosted.
  */
-export function describeMemoryPromptEligibility(record: MemoryRecord): MemoryPromptEligibility {
+export function describeMemoryPromptEligibility(record: MemoryRecord, now: number = Date.now()): MemoryPromptEligibility {
   const provenance = provenanceSummary(record);
   if (record.reviewState === 'stale' || record.reviewState === 'contradicted') {
     return {
       eligible: false,
       reason: `reviewState is ${record.reviewState} — flagged memory is never injected regardless of confidence (${provenance})`,
+    };
+  }
+  // Temporal validity window: a record outside [validFrom, validUntil) is not
+  // injected — but it is NOT deleted, and this reason is stated (expiry is
+  // visible, never silent). A 'pending' record has not started; an 'expired'
+  // one has ended.
+  const temporal = memoryRecordTemporalStatus(record, now);
+  if (temporal !== 'active') {
+    const when = temporal === 'expired'
+      ? `expired at validUntil ${new Date(record.validUntil ?? now).toISOString()}`
+      : `not yet valid until validFrom ${new Date(record.validFrom ?? now).toISOString()}`;
+    return {
+      eligible: false,
+      reason: `temporally ${temporal} — ${when}; outside its validity window a record is not injected (still stored) (${provenance})`,
     };
   }
   if (record.confidence < MIN_PROMPT_MEMORY_CONFIDENCE) {
@@ -74,8 +89,8 @@ export function describeMemoryPromptEligibility(record: MemoryRecord): MemoryPro
   };
 }
 
-export function isPromptActiveMemory(record: MemoryRecord): boolean {
-  return describeMemoryPromptEligibility(record).eligible;
+export function isPromptActiveMemory(record: MemoryRecord, now: number = Date.now()): boolean {
+  return describeMemoryPromptEligibility(record, now).eligible;
 }
 
 /**
@@ -145,6 +160,8 @@ export interface HonestMemorySearchResult {
   readonly recallFiltered: boolean;
   readonly excludedFlaggedCount: number;
   readonly excludedBelowFloorCount: number;
+  /** Records excluded because they fell OUTSIDE their temporal validity window (pending or expired). */
+  readonly excludedOutOfWindowCount: number;
   /** Result count BEFORE any recall-injection filtering — so a caller can tell "index empty" from "everything filtered out". */
   readonly totalBeforeRecallFilter: number;
   /**
@@ -206,21 +223,29 @@ export function runHonestMemorySearch(
       recallFiltered: false,
       excludedFlaggedCount: 0,
       excludedBelowFloorCount: 0,
+      excludedOutOfWindowCount: 0,
       totalBeforeRecallFilter,
       recallFloor: MIN_PROMPT_MEMORY_CONFIDENCE,
     };
   }
 
+  const now = Date.now();
   const kept: MemoryRecord[] = [];
   let excludedFlaggedCount = 0;
   let excludedBelowFloorCount = 0;
+  let excludedOutOfWindowCount = 0;
   for (const record of baseRecords) {
-    if (isPromptActiveMemory(record)) {
+    if (isPromptActiveMemory(record, now)) {
       kept.push(record);
       continue;
     }
+    // Order matches describeMemoryPromptEligibility: flagged first, then the
+    // temporal window, then the confidence floor — so each exclusion is counted
+    // under the reason it was actually excluded for.
     if (record.reviewState === 'stale' || record.reviewState === 'contradicted') {
       excludedFlaggedCount += 1;
+    } else if (memoryRecordTemporalStatus(record, now) !== 'active') {
+      excludedOutOfWindowCount += 1;
     } else {
       excludedBelowFloorCount += 1;
     }
@@ -234,6 +259,7 @@ export function runHonestMemorySearch(
     recallFiltered: true,
     excludedFlaggedCount,
     excludedBelowFloorCount,
+    excludedOutOfWindowCount,
     totalBeforeRecallFilter,
     recallFloor: MIN_PROMPT_MEMORY_CONFIDENCE,
   };

@@ -98,7 +98,7 @@ export class MemoryRegistry {
     return this.store.linksFor(id);
   }
 
-  update(id: string, patch: { scope?: MemoryScope; summary?: string; detail?: string; tags?: string[] }): MemoryRecord | null {
+  update(id: string, patch: { scope?: MemoryScope; summary?: string; detail?: string; tags?: string[]; validFrom?: number | null; validUntil?: number | null }): MemoryRecord | null {
     const record = this.store.update(id, patch);
     if (record) this.notify();
     return record;
