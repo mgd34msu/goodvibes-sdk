@@ -1,6 +1,6 @@
 import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { RouteBindingManager } from '../channels/index.js';
-import { HOME_ASSISTANT_SURFACE } from '../channels/builtin/homeassistant.js';
+import { HOME_ASSISTANT_SURFACE, HOME_STATE_PROVENANCE_CONTRACT } from '../channels/builtin/homeassistant.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import type { CompanionChatSession, CompanionChatTurnEvent } from '../companion/companion-chat-types.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -174,7 +174,7 @@ export function readHomeAssistantRemoteSessionTtlMs(
   );
 }
 
-function buildHomeAssistantSystemPrompt(input: HomeAssistantChatInput): string {
+export function buildHomeAssistantSystemPrompt(input: HomeAssistantChatInput): string {
   const contextLines = [
     `Conversation id: ${input.conversationId}`,
     `Surface id: ${input.surfaceId}`,
@@ -186,6 +186,7 @@ function buildHomeAssistantSystemPrompt(input: HomeAssistantChatInput): string {
     'You are GoodVibes responding inside Home Assistant.',
     'Answer as a normal assistant. Do not emit JSON summaries, WRFC summaries, agent reports, changelogs, or engineering-stage output.',
     'Use Home Assistant tools whenever the user asks about devices, entities, rooms, services, automations, templates, or current home state.',
+    HOME_STATE_PROVENANCE_CONTRACT,
     'For weather questions, first look for Home Assistant weather entities or other relevant sensors before saying live weather is unavailable.',
     'Ask a concise follow-up only when Home Assistant does not expose enough information to answer safely.',
     contextLines.length ? `Home Assistant context:\n${contextLines.join('\n')}` : '',
