@@ -15,17 +15,34 @@
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import { registerFleetGatewayMethods, type FleetQueryOnlyRegistry } from './fleet.js';
-import { registerCheckpointGatewayMethods, type CheckpointsGatewayManager } from './checkpoints.js';
+import { registerCheckpointGatewayMethods, type CheckpointsGatewayManager, type CheckpointsEventSink } from './checkpoints.js';
 import { registerSessionSearchGatewayMethod, type SessionSearchBroker } from './session-search.js';
+import { createEventEnvelope } from '../../runtime/events/index.js';
+import type { RuntimeEventBus, RuntimeEventEnvelope } from '../../runtime/events/index.js';
+import type { WorkspaceEvent } from '../../../events/workspace.js';
 
 export interface W3S2GatewayDeps {
   readonly processRegistry: FleetQueryOnlyRegistry;
   readonly workspaceCheckpointManager: CheckpointsGatewayManager;
   readonly sessionBroker: SessionSearchBroker;
+  /**
+   * Optional runtime event bus. When present, checkpoints.revertHunk's receipt
+   * (HUNK_REVERTED) fans out on the workspace domain; absent → the verb still
+   * works, it just emits no event (graceful degrade, like every runtimeBus-gated
+   * source in register-gateway-verb-groups).
+   */
+  readonly runtimeBus?: Pick<RuntimeEventBus, 'emit'> | undefined;
 }
 
 export function registerW3S2GatewayMethods(catalog: GatewayMethodCatalog, deps: W3S2GatewayDeps): void {
   registerFleetGatewayMethods(catalog, deps.processRegistry);
-  registerCheckpointGatewayMethods(catalog, deps.workspaceCheckpointManager);
+  const bus = deps.runtimeBus;
+  const checkpointsEmit: CheckpointsEventSink | undefined = bus
+    ? (event: WorkspaceEvent, sessionId: string): void => {
+      const envelope = createEventEnvelope(event.type, event, { sessionId, source: 'checkpoints-revert-hunk' });
+      bus.emit<'workspace'>('workspace', envelope as RuntimeEventEnvelope<WorkspaceEvent['type'], WorkspaceEvent>);
+    }
+    : undefined;
+  registerCheckpointGatewayMethods(catalog, deps.workspaceCheckpointManager, checkpointsEmit);
   registerSessionSearchGatewayMethod(catalog, deps.sessionBroker);
 }

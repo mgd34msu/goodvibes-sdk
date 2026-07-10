@@ -80,6 +80,8 @@ export interface OperatorMethodInputMap {
   "checkpoints.list": { kind?: "agent-run" | "manual" | "turn"; sessionId?: string; since?: number; limit?: number; };
   "checkpoints.restore": { id: string; paths?: readonly string[]; safetyCheckpoint?: boolean; confirm?: boolean; confirmToken?: string; };
   "checkpoints.restorePreview": { id: string; paths?: readonly string[]; };
+  "checkpoints.revertHunk": { path: string; hunk: string; sessionId?: string; confirm?: boolean; confirmToken?: string; };
+  "checkpoints.revertHunkPreview": { path: string; hunk: string; sessionId?: string; };
   "ci.status": { repo: string; ref?: string; prNumber?: number; };
   "ci.watches.create": { repo: string; ref?: string; prNumber?: number; deliveryChannel: string; triggerFixSession?: boolean; };
   "ci.watches.delete": { watchId: string; };
@@ -355,6 +357,8 @@ export interface OperatorMethodOutputMap {
   "checkpoints.list": { checkpoints: readonly ({ id: string; kind: "agent-run" | "manual" | "turn"; label: string; createdAt: number; parentId: null | string; turnId?: string; agentId?: string; sessionId?: string; retentionClass: "forensic" | "short" | "standard"; commit: string; sizeBytes: number; })[]; };
   "checkpoints.restore": { result: null | { checkpointId: string; safetyCheckpointId: null | string; restoredFiles: readonly string[]; removedFiles: readonly string[]; }; refused: boolean; refusal: null | { reason: string; confirmField: string; previewMethod: string; options: readonly string[]; }; };
   "checkpoints.restorePreview": { token: string; expiresAt: number; preview: { checkpointId: string; label: string; affectedPathCount: number; affectedPathSample: readonly string[]; stat: string; }; };
+  "checkpoints.revertHunk": { receipt: null | { reverted: boolean; path: string; hunkHeader: string; addedLinesRemoved: number; removedLinesRestored: number; safetyCheckpointId: null | string; undo: null | { restoreCheckpointId: string; }; }; refused: boolean; refusal: null | { reason: string; confirmField: string; previewMethod: string; options: readonly string[]; }; };
+  "checkpoints.revertHunkPreview": { path: string; applies: boolean; conflict: null | string; hunkHeader: null | string; addedLinesRemoved: number; removedLinesRestored: number; matchedAtLine: null | number; token: null | string; expiresAt: null | number; };
   "ci.status": { report: { repo: string; ref?: string; prNumber?: number; overall: "failed" | "passed" | "pending" | "unknown"; jobs: readonly ({ name: string; status: "completed" | "in_progress" | "queued"; conclusion: null | string; continueOnError?: boolean; url?: string; })[]; violations: readonly string[]; checkedAt: number; }; };
   "ci.watches.create": { watch: { id: string; repo: string; ref?: string; prNumber?: number; deliveryChannel: string; triggerFixSession: boolean; lastOverall?: "failed" | "passed" | "pending" | "unknown"; createdAt: number; updatedAt: number; }; };
   "ci.watches.delete": { watchId: string; deleted: boolean; };

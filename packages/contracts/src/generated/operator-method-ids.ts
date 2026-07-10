@@ -84,6 +84,8 @@ export const OPERATOR_METHOD_IDS = [
   "checkpoints.list",
   "checkpoints.restore",
   "checkpoints.restorePreview",
+  "checkpoints.revertHunk",
+  "checkpoints.revertHunkPreview",
   "ci.status",
   "ci.watches.create",
   "ci.watches.delete",

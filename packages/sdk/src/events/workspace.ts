@@ -74,6 +74,24 @@ export type WorkspaceEvent =
       filesRestored: boolean;
       conversationRewound: boolean;
       undoAvailable: boolean;
+    }
+  /**
+   * A single unified-diff hunk was reverse-applied to its file in the working
+   * tree (checkpoints.revertHunk) — the per-hunk counterpart to a whole-checkpoint
+   * restore. `undoAvailable` is true when a pre-revert whole-tree safety
+   * checkpoint was recorded (restore it to reverse the revert).
+   */
+  | {
+      type: 'HUNK_REVERTED';
+      /** The workspace-relative file path whose hunk was reverted. */
+      path: string;
+      /** The `@@ … @@` header of the reverted hunk. */
+      hunkHeader: string;
+      /** Session this revert was attributed to, when the caller supplied one; null otherwise. */
+      sessionId: string | null;
+      /** The pre-revert safety checkpoint id, or null when the tree already matched the latest checkpoint. */
+      safetyCheckpointId: string | null;
+      undoAvailable: boolean;
     };
 
 export type WorkspaceEventType = WorkspaceEvent['type'];

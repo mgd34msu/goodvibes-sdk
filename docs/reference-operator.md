@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `369`
+- Methods: `371`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -22755,6 +22755,291 @@ Read-only: preview what a checkpoints.restore of this checkpoint would change (l
     "token",
     "expiresAt",
     "preview"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkpoints.revertHunk`
+
+DESTRUCTIVE: reverse-apply ONE unified-diff hunk to its file in the live working tree, undoing exactly that hunk and nothing else. The hunk must still apply cleanly in reverse — a stale/drifted hunk is an honest 409 conflict, never a partial write. Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.revertHunkPreview. An unconfirmed call returns a structured refusal (receipt:null, refused:true, refusal naming both options) — not an error. Snapshots the whole tree (a manual checkpoint) before writing, so the revert is itself reversible; returns a receipt whose undo block carries that checkpoint id. Emits a HUNK_REVERTED receipt event.
+
+- Title: `Revert a Single Hunk`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:checkpoints`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "hunk": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "confirm": {
+      "type": "boolean"
+    },
+    "confirmToken": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "hunk"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receipt": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "reverted": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string"
+            },
+            "hunkHeader": {
+              "type": "string"
+            },
+            "addedLinesRemoved": {
+              "type": "number"
+            },
+            "removedLinesRestored": {
+              "type": "number"
+            },
+            "safetyCheckpointId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "undo": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "restoreCheckpointId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "restoreCheckpointId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "reverted",
+            "path",
+            "hunkHeader",
+            "addedLinesRemoved",
+            "removedLinesRestored",
+            "safetyCheckpointId",
+            "undo"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "refused": {
+      "type": "boolean"
+    },
+    "refusal": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "confirmField": {
+              "type": "string"
+            },
+            "previewMethod": {
+              "type": "string"
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "reason",
+            "confirmField",
+            "previewMethod",
+            "options"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "receipt",
+    "refused",
+    "refusal"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkpoints.revertHunkPreview`
+
+Read-only: check whether reverse-applying ONE unified-diff hunk (copied from a checkpoints.diff / sessions.changes.get diff) to its file in the live working tree would apply cleanly right now, and mint a short-lived (~2 min), single-use confirmToken authorizing the matching checkpoints.revertHunk. A stale/drifted hunk returns applies:false with a human-readable conflict and a null token — an honest "this hunk no longer applies", not an error. No workspace mutation.
+
+- Title: `Preview a Single-Hunk Revert`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:checkpoints`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "hunk": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "hunk"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "applies": {
+      "type": "boolean"
+    },
+    "conflict": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "hunkHeader": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "addedLinesRemoved": {
+      "type": "number"
+    },
+    "removedLinesRestored": {
+      "type": "number"
+    },
+    "matchedAtLine": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "token": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expiresAt": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "path",
+    "applies",
+    "conflict",
+    "hunkHeader",
+    "addedLinesRemoved",
+    "removedLinesRestored",
+    "matchedAtLine",
+    "token",
+    "expiresAt"
   ],
   "additionalProperties": false
 }

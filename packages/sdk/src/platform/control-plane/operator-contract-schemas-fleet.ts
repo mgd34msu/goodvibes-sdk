@@ -266,6 +266,77 @@ export const CHECKPOINTS_RESTORE_PREVIEW_OUTPUT_SCHEMA = objectSchema({
   preview: CHECKPOINT_RESTORE_PREVIEW_SCHEMA,
 }, ['token', 'expiresAt', 'preview']);
 
+// ── Per-hunk revert (checkpoints.revertHunkPreview / checkpoints.revertHunk) ──
+// A confirm-gated reverse-apply of ONE unified-diff hunk (copied out of a
+// checkpoints.diff / sessions.changes.get diff) against the live working tree.
+// The preview validates the hunk still reverse-applies cleanly and mints a
+// single-use token; the apply consumes it, snapshots, and writes. Both ws-only.
+
+export const CHECKPOINTS_REVERT_HUNK_PREVIEW_INPUT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+  hunk: STRING_SCHEMA,
+  sessionId: STRING_SCHEMA,
+}, ['path', 'hunk']);
+
+/**
+ * Whether reverting `hunk` in `path` would apply cleanly right now (read-only).
+ * `applies:false` with a human-readable `conflict` (and null token) is an honest
+ * "this hunk is stale", NOT an error. A token is minted only when `applies:true`.
+ */
+export const CHECKPOINTS_REVERT_HUNK_PREVIEW_OUTPUT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+  applies: BOOLEAN_SCHEMA,
+  conflict: nullableSchema(STRING_SCHEMA),
+  hunkHeader: nullableSchema(STRING_SCHEMA),
+  addedLinesRemoved: NUMBER_SCHEMA,
+  removedLinesRestored: NUMBER_SCHEMA,
+  matchedAtLine: nullableSchema(NUMBER_SCHEMA),
+  token: nullableSchema(STRING_SCHEMA),
+  expiresAt: nullableSchema(NUMBER_SCHEMA),
+}, ['path', 'applies', 'conflict', 'hunkHeader', 'addedLinesRemoved', 'removedLinesRestored', 'matchedAtLine', 'token', 'expiresAt']);
+
+export const CHECKPOINTS_REVERT_HUNK_INPUT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+  hunk: STRING_SCHEMA,
+  sessionId: STRING_SCHEMA,
+  confirm: BOOLEAN_SCHEMA,
+  confirmToken: STRING_SCHEMA,
+}, ['path', 'hunk']);
+
+/** The undo handle recorded before the revert: restore this checkpoint to reverse it. */
+export const CHECKPOINTS_REVERT_HUNK_UNDO_SCHEMA = objectSchema({
+  restoreCheckpointId: STRING_SCHEMA,
+}, ['restoreCheckpointId']);
+
+/** The receipt of a single applied hunk revert — reversible via `undo`. */
+export const CHECKPOINTS_REVERT_HUNK_RECEIPT_SCHEMA = objectSchema({
+  reverted: BOOLEAN_SCHEMA,
+  path: STRING_SCHEMA,
+  hunkHeader: STRING_SCHEMA,
+  addedLinesRemoved: NUMBER_SCHEMA,
+  removedLinesRestored: NUMBER_SCHEMA,
+  safetyCheckpointId: nullableSchema(STRING_SCHEMA),
+  undo: nullableSchema(CHECKPOINTS_REVERT_HUNK_UNDO_SCHEMA),
+}, ['reverted', 'path', 'hunkHeader', 'addedLinesRemoved', 'removedLinesRestored', 'safetyCheckpointId', 'undo']);
+
+/**
+ * The non-error body returned when checkpoints.revertHunk is called WITHOUT
+ * confirmation (`receipt` null, `refused` true), naming both acknowledgment
+ * paths — the same honest-refusal shape checkpoints.restore / rewind.apply use.
+ */
+export const CHECKPOINTS_REVERT_HUNK_REFUSAL_SCHEMA = objectSchema({
+  reason: STRING_SCHEMA,
+  confirmField: STRING_SCHEMA,
+  previewMethod: STRING_SCHEMA,
+  options: STRING_LIST_SCHEMA,
+}, ['reason', 'confirmField', 'previewMethod', 'options']);
+
+export const CHECKPOINTS_REVERT_HUNK_OUTPUT_SCHEMA = objectSchema({
+  receipt: nullableSchema(CHECKPOINTS_REVERT_HUNK_RECEIPT_SCHEMA),
+  refused: BOOLEAN_SCHEMA,
+  refusal: nullableSchema(CHECKPOINTS_REVERT_HUNK_REFUSAL_SCHEMA),
+}, ['receipt', 'refused', 'refusal']);
+
 export const SESSIONS_SEARCH_INPUT_SCHEMA = objectSchema({
   query: STRING_SCHEMA,
   project: STRING_SCHEMA,

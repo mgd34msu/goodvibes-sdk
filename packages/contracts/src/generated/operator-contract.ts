@@ -22613,6 +22613,274 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "checkpoints.revertHunk",
+        "title": "Revert a Single Hunk",
+        "description": "DESTRUCTIVE: reverse-apply ONE unified-diff hunk to its file in the live working tree, undoing exactly that hunk and nothing else. The hunk must still apply cleanly in reverse — a stale/drifted hunk is an honest 409 conflict, never a partial write. Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.revertHunkPreview. An unconfirmed call returns a structured refusal (receipt:null, refused:true, refusal naming both options) — not an error. Snapshots the whole tree (a manual checkpoint) before writing, so the revert is itself reversible; returns a receipt whose undo block carries that checkpoint id. Emits a HUNK_REVERTED receipt event.",
+        "category": "checkpoints",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "hunk": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
+            },
+            "confirmToken": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "hunk"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "receipt": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reverted": {
+                      "type": "boolean"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "hunkHeader": {
+                      "type": "string"
+                    },
+                    "addedLinesRemoved": {
+                      "type": "number"
+                    },
+                    "removedLinesRestored": {
+                      "type": "number"
+                    },
+                    "safetyCheckpointId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "undo": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "restoreCheckpointId": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "restoreCheckpointId"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "reverted",
+                    "path",
+                    "hunkHeader",
+                    "addedLinesRemoved",
+                    "removedLinesRestored",
+                    "safetyCheckpointId",
+                    "undo"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "refused": {
+              "type": "boolean"
+            },
+            "refusal": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reason": {
+                      "type": "string"
+                    },
+                    "confirmField": {
+                      "type": "string"
+                    },
+                    "previewMethod": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reason",
+                    "confirmField",
+                    "previewMethod",
+                    "options"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "receipt",
+            "refused",
+            "refusal"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "checkpoints.revertHunkPreview",
+        "title": "Preview a Single-Hunk Revert",
+        "description": "Read-only: check whether reverse-applying ONE unified-diff hunk (copied from a checkpoints.diff / sessions.changes.get diff) to its file in the live working tree would apply cleanly right now, and mint a short-lived (~2 min), single-use confirmToken authorizing the matching checkpoints.revertHunk. A stale/drifted hunk returns applies:false with a human-readable conflict and a null token — an honest \"this hunk no longer applies\", not an error. No workspace mutation.",
+        "category": "checkpoints",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:checkpoints"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "hunk": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "hunk"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "applies": {
+              "type": "boolean"
+            },
+            "conflict": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hunkHeader": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "addedLinesRemoved": {
+              "type": "number"
+            },
+            "removedLinesRestored": {
+              "type": "number"
+            },
+            "matchedAtLine": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "token": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expiresAt": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "path",
+            "applies",
+            "conflict",
+            "hunkHeader",
+            "addedLinesRemoved",
+            "removedLinesRestored",
+            "matchedAtLine",
+            "token",
+            "expiresAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "ci.status",
         "title": "CI Per-Job Status",
         "description": "Poll GitHub for a repo/ref/PR and return EVERY job with its conclusion. The overall verdict is derived from the per-job conclusions (never a rollup); continue-on-error jobs are surfaced as violations and force the verdict off \"passed\".",
@@ -86043,10 +86311,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 369,
-      "typedInputs": 369,
+      "methods": 371,
+      "typedInputs": 371,
       "genericInputs": 0,
-      "typedOutputs": 369,
+      "typedOutputs": 371,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -86055,8 +86323,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 369,
-      "validated": 367,
+      "methods": 371,
+      "validated": 369,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
