@@ -5115,6 +5115,49 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "sentAt": "sample"
     }
   },
+  "flags.graduation.report": {
+    "methodId": "flags.graduation.report",
+    "http": null,
+    "status": 200,
+    "body": {
+      "generatedAt": 0,
+      "entries": [
+        {
+          "flagId": "sample",
+          "name": "sample",
+          "tier": 0,
+          "currentDefault": "enabled",
+          "runtimeToggleable": false,
+          "state": "dark",
+          "evidence": {
+            "instrumentation": "divergence-simulation",
+            "divergence": {
+              "divergenceRate": 0,
+              "totalEvaluations": 0,
+              "gateStatus": "allowed"
+            },
+            "note": "sample"
+          },
+          "blocker": {
+            "reason": "sample",
+            "date": "sample"
+          },
+          "note": "sample"
+        }
+      ],
+      "summary": {
+        "total": 0,
+        "dark": 0,
+        "soaking": 0,
+        "graduateCandidate": 0,
+        "graduated": 0,
+        "blocked": 0
+      },
+      "releaseBlockers": [
+        "sample"
+      ]
+    }
+  },
   "fleet.archive": {
     "methodId": "fleet.archive",
     "http": null,

@@ -8,6 +8,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Feature-flag graduation as a release policy.** The platform ships most
+  feature flags default-off and flips them on only once validated, but nothing
+  forced a per-release decision about the flags that had earned their way on.
+  New `@pellux/goodvibes-sdk/platform/runtime/feature-flags` graduation
+  bookkeeping gives every flag an owner-facing graduation state — `dark`
+  (default-off, no evidence), `soaking` (accumulating evidence),
+  `graduate-candidate` (judged ready, awaiting a decision), `graduated`
+  (default flipped on), or `blocked` (held off with a dated reason) — plus a
+  validation-evidence bundle wired from the machinery that already exists (the
+  permissions divergence simulator); a flag with no instrumentation honestly
+  reports "no evidence collected" and is never given a fabricated readiness. A
+  new read-only operator verb `flags.graduation.report` (ws-only, typed IO,
+  registered with its handler) returns the report, and a release-time script
+  `bun run flags:graduation` — wired into `release:verify` — FAILS the release
+  when any flag sits in `graduate-candidate`, forcing each validated flag to
+  flip on or record a dated blocker every release. It is bookkeeping that
+  forces a decision, not a new simulation system.
+
 - **The Home Assistant conversation turn can ground itself in the pre-registered
   home graph.** The `/api/homeassistant/conversation` route now accepts an
   optional grounding reference — a `knowledgeSpaceId` / `installationId` (nested

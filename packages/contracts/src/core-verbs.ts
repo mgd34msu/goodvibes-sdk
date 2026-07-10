@@ -154,8 +154,11 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
   ],
   'reporting-and-diagnostics': [
     // Read-shaped diagnostic/reporting endpoints named for their specific
-    // report, not a generic "get"/"list".
-    'doctor', 'stats', 'capacity', 'settings', 'catalog', 'reject', 'review-queue',
+    // report, not a generic "get"/"list". `report` is the feature-flag
+    // graduation report (flags.graduation.report) — a whole-report read whose
+    // shape (per-flag state + evidence + release-blocker list) is a named
+    // report, not a generic get of one record.
+    'doctor', 'stats', 'capacity', 'settings', 'catalog', 'reject', 'review-queue', 'report',
   ],
   'memory-record-store': [
     // The daemon-owned canonical memory store mirrors the MemoryStore engine's
