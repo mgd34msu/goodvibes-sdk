@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `342`
+- Methods: `348`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -61501,6 +61501,808 @@ Request that a panel be opened in the current TUI session.
     "opened",
     "id",
     "pane"
+  ],
+  "additionalProperties": false
+}
+```
+
+### principals
+
+#### `principals.create`
+
+Create a named principal from a name, kind, and optional channel identities. Fails with a conflict when any identity is already mapped to a different principal.
+
+- Title: `Create Principal`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/principals`
+- Scopes: `write:principals`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "user",
+        "bot",
+        "service",
+        "token"
+      ]
+    },
+    "identities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel",
+          "value"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "name",
+    "kind"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "user",
+            "bot",
+            "service",
+            "token"
+          ]
+        },
+        "identities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "channel",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "identities",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "principal"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `principals.delete`
+
+Permanently delete a principal. Returns { deleted: false } when no principal with that id existed — an honest boolean, never a 200 that pretends a phantom principal was removed.
+
+- Title: `Delete Principal`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/principals/{principalId}`
+- Scopes: `write:principals`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "principalId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principalId": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "principalId",
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `principals.get`
+
+Return one principal by id. Returns 404 when no principal with that id exists.
+
+- Title: `Get Principal`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/principals/{principalId}`
+- Scopes: `read:principals`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "principalId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "user",
+            "bot",
+            "service",
+            "token"
+          ]
+        },
+        "identities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "channel",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "identities",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "principal"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `principals.list`
+
+Return every named principal in the registry with its channel identities.
+
+- Title: `List Principals`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/principals`
+- Scopes: `read:principals`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "bot",
+              "service",
+              "token"
+            ]
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "channel": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "channel",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "identities",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "principals"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `principals.resolve`
+
+Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false — the registry never guesses.
+
+- Title: `Resolve Sender Identity`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/principals/resolve`
+- Scopes: `read:principals`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "channel": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "channel",
+    "value"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "user",
+            "bot",
+            "service",
+            "token"
+          ]
+        },
+        "identities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "channel",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "identities",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "known": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "principal",
+    "known"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `principals.update`
+
+Update a principal's name, kind, identities, and/or metadata. Absent fields are left unchanged; supplying identities replaces the set. Fails with a conflict when an identity is already mapped to a different principal.
+
+- Title: `Update Principal`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/principals/{principalId}/update`
+- Scopes: `write:principals`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principalId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "user",
+        "bot",
+        "service",
+        "token"
+      ]
+    },
+    "identities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel",
+          "value"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "principalId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "principal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "user",
+            "bot",
+            "service",
+            "token"
+          ]
+        },
+        "identities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "channel",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "identities",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "principal"
   ],
   "additionalProperties": false
 }

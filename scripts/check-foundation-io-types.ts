@@ -83,6 +83,20 @@ import {
   SKILLS_UPDATE_INPUT_SCHEMA,
   SKILLS_UPDATE_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-skills.ts';
+import {
+  PRINCIPALS_CREATE_INPUT_SCHEMA,
+  PRINCIPALS_CREATE_OUTPUT_SCHEMA,
+  PRINCIPALS_DELETE_INPUT_SCHEMA,
+  PRINCIPALS_DELETE_OUTPUT_SCHEMA,
+  PRINCIPALS_GET_INPUT_SCHEMA,
+  PRINCIPALS_GET_OUTPUT_SCHEMA,
+  PRINCIPALS_LIST_INPUT_SCHEMA,
+  PRINCIPALS_LIST_OUTPUT_SCHEMA,
+  PRINCIPALS_RESOLVE_INPUT_SCHEMA,
+  PRINCIPALS_RESOLVE_OUTPUT_SCHEMA,
+  PRINCIPALS_UPDATE_INPUT_SCHEMA,
+  PRINCIPALS_UPDATE_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/method-catalog-principals.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
@@ -200,6 +214,13 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'skills.create', input: SKILLS_CREATE_INPUT_SCHEMA, output: SKILLS_CREATE_OUTPUT_SCHEMA },
   { methodId: 'skills.update', input: SKILLS_UPDATE_INPUT_SCHEMA, output: SKILLS_UPDATE_OUTPUT_SCHEMA },
   { methodId: 'skills.delete', input: SKILLS_DELETE_INPUT_SCHEMA, output: SKILLS_DELETE_OUTPUT_SCHEMA },
+  // Cross-channel principal identity registry (CRUD + resolve):
+  { methodId: 'principals.list', input: PRINCIPALS_LIST_INPUT_SCHEMA, output: PRINCIPALS_LIST_OUTPUT_SCHEMA },
+  { methodId: 'principals.get', input: PRINCIPALS_GET_INPUT_SCHEMA, output: PRINCIPALS_GET_OUTPUT_SCHEMA },
+  { methodId: 'principals.create', input: PRINCIPALS_CREATE_INPUT_SCHEMA, output: PRINCIPALS_CREATE_OUTPUT_SCHEMA },
+  { methodId: 'principals.update', input: PRINCIPALS_UPDATE_INPUT_SCHEMA, output: PRINCIPALS_UPDATE_OUTPUT_SCHEMA },
+  { methodId: 'principals.delete', input: PRINCIPALS_DELETE_INPUT_SCHEMA, output: PRINCIPALS_DELETE_OUTPUT_SCHEMA },
+  { methodId: 'principals.resolve', input: PRINCIPALS_RESOLVE_INPUT_SCHEMA, output: PRINCIPALS_RESOLVE_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');
