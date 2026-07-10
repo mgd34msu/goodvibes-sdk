@@ -197,8 +197,13 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     description:
       'Enables the Shell AST parser for compound command verdict evaluation. '
       + 'Produces per-segment verdicts (safe/unsafe) with user-facing denial '
-      + 'explanations. When disabled, uses the baseline flat segmentation mode.',
-    defaultState: 'disabled',
+      + 'explanations that are strictly more specific than the baseline. '
+      + 'Default-on: the AST path is safe to default because a parser failure '
+      + 'falls back automatically to the baseline flat segmentation matcher '
+      + '(never a hard error, never a blanket allow), and the frozen '
+      + 'catastrophic block is enforced identically in both modes. Disable at '
+      + 'runtime to force the baseline flat segmentation mode for every command.',
+    defaultState: 'enabled',
     tier: 8,
     runtimeToggleable: true,
   },

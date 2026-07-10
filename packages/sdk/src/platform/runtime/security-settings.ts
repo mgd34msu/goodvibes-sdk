@@ -189,17 +189,18 @@ const SECURITY_FEATURE_SETTINGS: readonly Omit<SecuritySettingReport, 'currentSt
     type: 'feature-flag',
     defaultState: FEATURE_FLAG_MAP.get('shell-ast-normalization')?.defaultState ?? 'disabled',
     securityRelevant: true,
-    summary: 'Controls AST-aware shell command normalization for exec permission review.',
+    summary: 'Controls AST-aware shell command normalization for exec permission review (default-on).',
     insecureWhen:
-      'When disabled, exec command review falls back to baseline flat segmentation and may provide less precise command verdicts.',
+      'When disabled, exec command review uses baseline flat segmentation for every command and may provide less precise command verdicts.',
     enablementEffect:
-      'When enabled, compound shell commands are decomposed into per-segment verdicts with more specific denial explanations.',
+      'When enabled (the default), compound shell commands are decomposed into per-segment verdicts with more specific denial explanations. A parser failure falls back automatically to the baseline flat-segmentation matcher — never a hard error and never a blanket allow — and the frozen catastrophic block is enforced identically in both modes.',
     enablementRequirements: [
-      'Enable the flag where bash-language-server/parser support is available.',
-      'Review interaction with host command allow/deny policy.',
+      'None to enable — this flag is on by default and remains runtime-toggleable.',
+      'Disable at runtime to force the baseline flat-segmentation matcher for every command.',
     ],
     operationalNotes: [
-      'Complex shell syntax can receive stricter or more granular verdicts when enabled.',
+      'Complex shell syntax can receive more granular per-segment verdicts when enabled.',
+      'Denial explanations come from the AST verdict when the parse succeeds; on parse failure the baseline matcher produces the denial instead.',
     ],
   },
 ];
