@@ -1,7 +1,7 @@
 import { resolveSecretInput } from '../../config/secret-refs.js';
 import type { SecretsManager } from '../../config/secrets.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
-import { HomeAssistantIntegration } from '../../integrations/homeassistant.js';
+import { HomeAssistantIntegration, type HomeAssistantStateRecord } from '../../integrations/homeassistant.js';
 import type {
   ChannelOperatorActionDescriptor,
   ChannelSurface,
@@ -12,6 +12,79 @@ import type { BuiltinChannelRuntimeDeps } from './shared.js';
 export const HOME_ASSISTANT_SURFACE = 'homeassistant' as const satisfies ChannelSurface;
 export const HOME_ASSISTANT_WEBHOOK_PATH = '/webhook/homeassistant';
 export const HOME_ASSISTANT_DEFAULT_EVENT_TYPE = 'goodvibes_message';
+
+/**
+ * The home-state honesty contract, stated at the model surface. An answer about
+ * home state cites the source entity and the time its state was observed, or it
+ * refuses plainly when the entity/state is absent — never a confident unsourced
+ * claim. This string is attached to the state-read tool descriptions and to every
+ * state-read result so the model always sees the contract next to the data.
+ */
+export const HOME_STATE_PROVENANCE_CONTRACT =
+  'Home-state honesty contract: when you answer a question about home state, cite the source '
+  + 'entity_id and the time its state was observed (last_changed/last_updated, observed at observedAt). '
+  + 'If an entity or its state is absent from the result, say so plainly (for example "I don\'t have '
+  + 'state for that entity") — never present an unsourced or guessed home-state value as fact.';
+
+/** Provenance fields that travel with every home-state answer. */
+export interface HomeStateProvenance {
+  readonly entity_id: string;
+  readonly state: string;
+  readonly last_changed: string | null;
+  readonly last_updated: string | null;
+  /** When the daemon observed this state (the snapshot/read time). */
+  readonly observed_at: string;
+}
+
+/**
+ * Shape a single entity-state read into a contract-carrying result. A present
+ * record yields its value plus explicit provenance; an absent entity yields an
+ * explicit not-present result (never silence and never a guess).
+ */
+export function buildHomeStateReadResult(
+  entityId: string,
+  record: HomeAssistantStateRecord | null,
+  observedAt: string,
+): Record<string, unknown> {
+  if (!record) {
+    return {
+      ok: false,
+      present: false,
+      entityId,
+      observedAt,
+      error: `I don't have state for ${entityId}.`,
+      contract: HOME_STATE_PROVENANCE_CONTRACT,
+    };
+  }
+  const provenance: HomeStateProvenance = {
+    entity_id: record.entity_id,
+    state: record.state,
+    last_changed: record.last_changed ?? null,
+    last_updated: record.last_updated ?? null,
+    observed_at: observedAt,
+  };
+  return {
+    ok: true,
+    present: true,
+    state: record,
+    provenance,
+    contract: HOME_STATE_PROVENANCE_CONTRACT,
+  };
+}
+
+/** Provenance summary attached per state in a list result. */
+export function homeStateProvenance(
+  record: HomeAssistantStateRecord,
+  observedAt: string,
+): HomeStateProvenance {
+  return {
+    entity_id: record.entity_id,
+    state: record.state,
+    last_changed: record.last_changed ?? null,
+    last_updated: record.last_updated ?? null,
+    observed_at: observedAt,
+  };
+}
 
 interface ConfigReader {
   get(key: string): unknown;
@@ -130,7 +203,7 @@ export function listHomeAssistantTools(): ChannelToolDescriptor[] {
   return [
     tool(surface, 'homeassistant:manifest', 'homeassistant_manifest', 'Return the Home Assistant integration manifest and daemon endpoint contract.', ['homeassistant-manifest']),
     tool(surface, 'homeassistant:status', 'homeassistant_status', 'Check Home Assistant API reachability and token posture.', ['homeassistant-status']),
-    tool(surface, 'homeassistant:states', 'homeassistant_states', 'List Home Assistant entity states.', ['homeassistant-list-states'], {
+    tool(surface, 'homeassistant:states', 'homeassistant_states', `List Home Assistant entity states. Each state carries its observation timestamps (last_changed/last_updated) and the result carries observedAt. ${HOME_STATE_PROVENANCE_CONTRACT}`, ['homeassistant-list-states'], {
       type: 'object',
       properties: {
         domain: { type: 'string' },
@@ -147,7 +220,7 @@ export function listHomeAssistantTools(): ChannelToolDescriptor[] {
       },
       additionalProperties: false,
     }),
-    tool(surface, 'homeassistant:state', 'homeassistant_state', 'Read one Home Assistant entity state.', ['homeassistant-get-state'], {
+    tool(surface, 'homeassistant:state', 'homeassistant_state', `Read one Home Assistant entity state. Returns the entity's state plus its provenance (entity_id, last_changed, last_updated, observedAt), or an explicit not-present result when the entity has no state. ${HOME_STATE_PROVENANCE_CONTRACT}`, ['homeassistant-get-state'], {
       type: 'object',
       properties: { entityId: { type: 'string' } },
       required: ['entityId'],
@@ -363,6 +436,7 @@ async function checkHomeAssistantStatus(deps: BuiltinChannelRuntimeDeps): Promis
 
 async function listHomeAssistantStates(deps: BuiltinChannelRuntimeDeps, input?: Record<string, unknown>): Promise<Record<string, unknown>> {
   const states = await (await createHomeAssistantClient(deps)).listStates();
+  const observedAt = new Date().toISOString();
   const domain = readString(input?.domain)?.replace(/\.$/, '');
   const query = readString(input?.query)?.toLowerCase();
   const limit = clampLimit(input?.limit, 100, 500);
@@ -372,15 +446,23 @@ async function listHomeAssistantStates(deps: BuiltinChannelRuntimeDeps, input?: 
     return state.entity_id.toLowerCase().includes(query)
       || state.state.toLowerCase().includes(query)
       || JSON.stringify(state.attributes ?? {}).toLowerCase().includes(query);
-  }).slice(0, limit);
-  return { ok: true, total: states.length, returned: filtered.length, states: filtered };
+  }).slice(0, limit).map((state) => ({ ...state, provenance: homeStateProvenance(state, observedAt) }));
+  return {
+    ok: true,
+    total: states.length,
+    returned: filtered.length,
+    observedAt,
+    states: filtered,
+    contract: HOME_STATE_PROVENANCE_CONTRACT,
+  };
 }
 
 async function getHomeAssistantState(deps: BuiltinChannelRuntimeDeps, input?: Record<string, unknown>): Promise<Record<string, unknown>> {
   const entityId = readString(input?.entityId ?? input?.entity_id);
   if (!entityId) return { ok: false, error: 'entityId is required.' };
+  const observedAt = new Date().toISOString();
   const state = await (await createHomeAssistantClient(deps)).getState(entityId);
-  return state ? { ok: true, state } : { ok: false, error: `No Home Assistant state found for ${entityId}.` };
+  return buildHomeStateReadResult(entityId, state, observedAt);
 }
 
 async function listHomeAssistantServices(deps: BuiltinChannelRuntimeDeps): Promise<Record<string, unknown>> {
