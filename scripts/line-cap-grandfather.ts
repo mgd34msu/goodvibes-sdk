@@ -50,8 +50,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // schema-types.ts ~1.07k — config schema type surface, pre-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1115,
-    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries); +17 for the atRest config section backing on-disk transcript-journal + execution-ledger secret redaction and age/size retention (AtRestConfig interface + doc, the GoodVibesConfig member, and the three atRest.* keys in the ConfigKey union and ConfigValue mapped type)',
+    ceiling: 1123,
+    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries); +17 for the atRest config section backing on-disk transcript-journal + execution-ledger secret redaction and age/size retention (AtRestConfig interface + doc, the GoodVibesConfig member, and the three atRest.* keys in the ConfigKey union and ConfigValue mapped type); +8 for the per-command exec sandbox config: a 3-line explanatory comment plus the sandbox.enabled/egressAllowlist/workspaceWritable interface members and sandbox.enabled in the ConfigKey union and ConfigValue mapped type (the two arrays are read via getCategory)',
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
@@ -105,8 +105,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // runtime.ts (tools/exec) ~0.92k — exec tool runtime, pre-split, shrink-only
   'packages/sdk/src/platform/tools/exec/runtime.ts': {
-    ceiling: 949,
-    justification: 'exec tool runtime, pre-split, shrink-only; +3 lines document the guard authority split (permission layer owns class risk, tool layer only the frozen catastrophic block); +30 for X: the credential-bearing env scrub — the scrub call + withheld-name computation + attach helper in runCommand and the scrub-config option/threading through the command dispatch chain (the scrub itself lives in credential-env.ts)',
+    ceiling: 979,
+    justification: 'exec tool runtime, pre-split, shrink-only; +3 lines document the guard authority split (permission layer owns class risk, tool layer only the frozen catastrophic block); +30 for X: the credential-bearing env scrub — the scrub call + withheld-name computation + attach helper in runCommand and the scrub-config option/threading through the command dispatch chain (the scrub itself lives in credential-env.ts); +30 for the per-command exec sandbox — threading the sandbox runtime context through the command dispatch chain (executeResolvedCommands/executeResolvedCommand/runWithRetry/runCommand), the per-command plan resolution + bwrap argv prefix at the three foreground Bun.spawn sites, and the sandbox metadata attach in runCommand (the sandbox runner + plan + metadata helpers live in sandbox.ts)',
   },
   // manager.ts (tools/agent) ~0.87k — agent tool manager, pre-split, shrink-only
   'packages/sdk/src/platform/tools/agent/manager.ts': {

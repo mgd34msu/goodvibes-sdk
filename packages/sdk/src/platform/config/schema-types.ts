@@ -444,6 +444,12 @@ export interface GoodVibesConfig {
     wallTimeoutMs: number;                  // default: 60000 — wall-clock timeout for the planning-decomposition agent
   };
   sandbox: {
+    // Per-command exec sandbox (bubblewrap). enabled is the operator switch, gated
+    // by the graduation-tracked `exec-sandbox` feature flag; egressAllowlist and
+    // workspaceWritable are arrays (accessed via getCategory('sandbox')), not scalar ConfigKeys.
+    enabled: boolean;
+    egressAllowlist: string[];
+    workspaceWritable: string[];
     replIsolation: 'shared-vm' | 'per-runtime-vm';
     mcpIsolation: 'disabled' | 'shared-vm' | 'hybrid' | 'per-server-vm';
     windowsMode: 'native-basic' | 'require-wsl';
@@ -584,6 +590,7 @@ export type ConfigKey =
   | 'planner.maxTurns'
   | 'planner.tokenCeiling'
   | 'planner.wallTimeoutMs'
+  | 'sandbox.enabled'
   | 'sandbox.replIsolation'
   | 'sandbox.mcpIsolation'
   | 'sandbox.windowsMode'
@@ -873,6 +880,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'planner.maxTurns' ? number :
   K extends 'planner.tokenCeiling' ? number :
   K extends 'planner.wallTimeoutMs' ? number :
+  K extends 'sandbox.enabled' ? boolean :
   K extends 'sandbox.replIsolation' ? 'shared-vm' | 'per-runtime-vm' :
   K extends 'sandbox.mcpIsolation' ? 'disabled' | 'shared-vm' | 'hybrid' | 'per-server-vm' :
   K extends 'sandbox.windowsMode' ? 'native-basic' | 'require-wsl' :

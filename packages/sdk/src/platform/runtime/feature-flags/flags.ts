@@ -534,6 +534,26 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     tier: 10,
     runtimeToggleable: true,
   },
+
+  // ── Execution Isolation ────────────────────────────────────────────────────
+  {
+    id: 'exec-sandbox',
+    name: 'Per-Command Exec Sandbox',
+    description:
+      'Enables the per-command OS-level exec boundary (bubblewrap on Linux): the workspace is '
+      + 'writable, the rest of the filesystem read-only, /tmp isolated, and network disabled unless '
+      + 'a command is on sandbox.egressAllowlist. When active, boundary-safe commands that would '
+      + 'otherwise prompt can auto-allow, and commands needing host access (network, host-privilege '
+      + 'escalation, package installs) surface as named escalation asks. The frozen catastrophic '
+      + 'command block stays in force identically inside the boundary. DEFAULT OFF: it graduates '
+      + 'through the flag-graduation machinery — dark until host-probe and policy evidence earn it a '
+      + 'soaking/candidate state. When bubblewrap is absent (or on non-Linux hosts) the feature '
+      + 'reports unavailable and the exec path is byte-for-byte unchanged. Also gated by the '
+      + 'sandbox.enabled config switch; disable either to revert to unsandboxed exec.',
+    defaultState: 'disabled',
+    tier: 11,
+    runtimeToggleable: true,
+  },
 ];
 
 /**

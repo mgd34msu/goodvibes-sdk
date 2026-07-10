@@ -17,6 +17,11 @@ import { createRepoMapTool } from './repo-map/index.js';
 import { createFindTool } from './find/index.js';
 import { createExecTool } from './exec/index.js';
 import type { CredentialEnvScrubConfig } from './exec/credential-env.js';
+import {
+  detectSandboxAvailability,
+  probeSandboxHost,
+  type ExecSandboxRuntime,
+} from './exec/sandbox.js';
 import { createAnalyzeTool } from './analyze/index.js';
 import { InspectTool } from './inspect/index.js';
 import { createAgentTool } from './agent/index.js';
@@ -108,6 +113,21 @@ export type { EditToolOptions } from './edit/index.js';
 export type { EditItem, EditInput } from './edit/types.js';
 export { createFindTool } from './find/index.js';
 export { createExecTool } from './exec/index.js';
+// The per-command exec sandbox is wired internally by registerAllTools from the
+// sandbox.* config + the exec-sandbox flag; only its types are re-exported here
+// (type re-exports are erased at runtime, so they carry no bundle cost) so a
+// consumer calling createExecTool directly can still name the option shape. The
+// runner functions stay importable from the exec/sandbox module.
+export type {
+  ExecSandboxConfig,
+  ExecSandboxRuntime,
+  ExecSandboxPlan,
+  SandboxAvailability,
+  SandboxHostProbe,
+  SandboxNetworkState,
+  BwrapArgvInput,
+  ResolveSandboxPlanInput,
+} from './exec/sandbox.js';
 export { formatDenialResponse, guardExecCommand } from './exec/ast-guard.js';
 export { createAnalyzeTool } from './analyze/index.js';
 export { InspectTool } from './inspect/index.js';
@@ -292,11 +312,29 @@ export function registerAllTools(
   }));
   registerTool(createFindTool(workingDirectory, deps.featureFlags));
   registerTool(createRepoMapTool({ projectRoot: workingDirectory }));
+  // Per-command exec sandbox: only probe the host (a bwrap spawn) when the
+  // graduation-gated flag AND the sandbox.enabled config switch are both on, so
+  // the default path stays zero-cost and byte-for-byte unchanged.
+  const sandboxCategory = deps.configManager.getCategory('sandbox');
+  const execSandbox: ExecSandboxRuntime | null =
+    (deps.featureFlags?.isEnabled('exec-sandbox') ?? false) && sandboxCategory.enabled
+      ? {
+          config: {
+            enabled: sandboxCategory.enabled,
+            egressAllowlist: sandboxCategory.egressAllowlist ?? [],
+            workspaceWritable: sandboxCategory.workspaceWritable ?? [],
+          },
+          availability: detectSandboxAvailability(probeSandboxHost()),
+          featureEnabled: true,
+          homeDir: deps.configManager.getHomeDirectory() ?? undefined,
+        }
+      : null;
   registerTool(createExecTool(processManager, {
     featureFlags: deps.featureFlags,
     overflowHandler: deps.overflowHandler,
     defaultWorkingDirectory: workingDirectory,
     ...(deps.credentialEnvScrub ? { credentialEnvScrub: deps.credentialEnvScrub } : {}),
+    ...(execSandbox ? { sandbox: execSandbox } : {}),
   }));
   registerTool(createAnalyzeTool(deps.toolLLM, deps.featureFlags, workingDirectory));
   registerTool(new InspectTool(deps.featureFlags, workingDirectory));

@@ -418,8 +418,8 @@
     "rationale": "new public package export budget; measured 50 B gzip @ v0.33.0 release verification; headroom max(ceil(50*1.2)=60, 50+50=100) -> 100 (+50 B floor dominates)"
   },
   "./platform/tools": {
-    "gzip_bytes": 2766,
-    "rationale": "tool registry surface; measured 2305 B gzip @ commit 4e5a5e2; headroom max(ceil(2305*1.2)=2766, 2305+50=2355) → 2766 (1.2x dominates by 411 B); dominated by registerAllTools (~1400 B), registerToolWithContractGate + tool registration logic (~600 B), ToolRegistry type imports (~300 B)"
+    "gzip_bytes": 3435,
+    "rationale": "tool registry surface; re-measured 2862 B gzip after the per-command exec sandbox landed (sandbox.ts runner reachable from runtime.ts via the plan/metadata helpers, plus detectSandboxAvailability/probeSandboxHost used to wire the sandbox in registerAllTools); headroom max(ceil(2862*1.2)=3435, 2862+50=2912) → 3435 (1.2x dominates); dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B), ToolRegistry type imports (~300 B)"
   },
   "./platform/types": {
     "gzip_bytes": 225,
