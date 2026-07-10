@@ -8,6 +8,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Fleet lifecycle events + attention state (poll-free fleet).** The live
+  process registry now surfaces changes as events instead of poll-only snapshots.
+  (1) A new `fleet` runtime-event domain carries per-node lifecycle deltas —
+  `FLEET_NODE_STARTED`, `FLEET_NODE_STATE_CHANGED`, `FLEET_NODE_FINISHED`,
+  `FLEET_NODE_BLOCKED_ON_USER`, `FLEET_NODE_UNBLOCKED` — emitted by a bridge that
+  diffs the registry's coalesced snapshots (seeds silently on first snapshot; never
+  infers finish from absence). The control-plane gateway already fans this domain
+  out to subscribed SSE/WebSocket clients, so surfaces can stop polling
+  `fleet.snapshot` with no gateway change. (2) A `ProcessNode` blocked on a human
+  (a pending shared approval) now carries a derived `needsAttention` marker with
+  its reason — a pure projection of state, recomputed each tick, never a second
+  store. (3) A new `needs-input` push category (typed `PushNotificationData`
+  payload) fires when a node blocks on the operator, carrying a session/node deep
+  link, and is suppressed when an operator surface is already attached to that
+  session (presence). Emit-side only; consumer surfaces adopt the stream separately.
+- **Structured tool-call denials.** A tool call refused by the permission layer
+  now returns a structured, call-scoped `ToolDenial` (`{ denied, reason, scope }`)
+  on the failed `ToolResult`, plus a self-explaining error string naming the reason
+  code and decision scope — never a hung promise or a bare "Permission denied"
+  line. Both the phased executor's permission phase and the main orchestrator
+  tool-runtime path populate it, so an asking agent (including a background
+  subagent) can continue and report honestly instead of guessing.
 - **Server-side confirmation for `checkpoints.restore`.** The daemon now refuses
   an unconfirmed restore instead of executing it immediately. A caller supplies
   either `confirm: true` (explicit acknowledgment) or a `confirmToken` from the
