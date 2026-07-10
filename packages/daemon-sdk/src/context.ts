@@ -87,6 +87,7 @@ export interface DaemonControlRouteHandlers {
   getGatewayMethod(methodId: string): MaybeResponse;
   invokeGatewayMethod(methodId: string, req: Request): MaybeResponse;
   createControlPlaneEventStream(req: Request): MaybeResponse;
+  invokeGatewayRestVerb(invocation: GatewayRestVerbInvocation): MaybeResponse;
 }
 
 /** Route handlers for telemetry endpoints: snapshots, events, errors, traces, metrics, and OTLP ingest. */
@@ -439,10 +440,32 @@ export interface DaemonRuntimeMetricsRouteHandlers {
  * The complete daemon API route handler interface. Implement this to satisfy
  * all routes dispatched by `dispatchDaemonApiRoutes`.
  */
+/** A gateway verb invocation chosen by REST path (see gateway-rest-routes.ts). */
+export interface GatewayRestVerbInvocation {
+  /** The cataloged gateway methodId the matched REST path maps to. */
+  readonly methodId: string;
+  /** The incoming request (carries auth, query string, and JSON body). */
+  readonly req: Request;
+  /** Path-template parameters extracted from the matched path (e.g. { name }). */
+  readonly params: Readonly<Record<string, string>>;
+}
+
+/**
+ * The single handler the gateway REST route table dispatches through. The
+ * daemon implements it by delegating to `invokeGatewayMethodCall(methodId, …)`
+ * after resolving the authenticated principal and folding `params` into the
+ * invocation query — REST parity with the methodId-invoke endpoint, no verb
+ * logic duplicated.
+ */
+export interface DaemonGatewayRestRouteHandlers {
+  invokeGatewayRestVerb(invocation: GatewayRestVerbInvocation): MaybeResponse;
+}
+
 export interface DaemonApiRouteHandlers
   extends DaemonRemoteDispatchRouteHandlers,
     DaemonOperatorRouteHandlers,
     DaemonAutomationRouteHandlers,
     DaemonSessionRouteHandlers,
     DaemonTaskRouteHandlers,
+    DaemonGatewayRestRouteHandlers,
     DaemonRuntimeRouteHandlers {}

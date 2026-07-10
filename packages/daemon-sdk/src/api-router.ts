@@ -1,4 +1,5 @@
 import { dispatchAutomationRoutes } from './automation.js';
+import { dispatchGatewayRestRoutes } from './gateway-rest-routes.js';
 import { dispatchOperatorRoutes } from './operator.js';
 import { dispatchRemoteRoutes } from './remote.js';
 import { dispatchSessionRoutes } from './sessions.js';
@@ -18,7 +19,7 @@ export type DaemonApiRouteExtension = (req: Request) => Promise<Response | null>
 /**
  * Dispatch an incoming HTTP request against the full daemon API route set.
  *
- * Routes are tried in order: remote → operator → automation → session → task → extensions.
+ * Routes are tried in order: gateway-rest → remote → operator → automation → session → task → extensions.
  * Returns the first non-null `Response`, or `null` if no route matched.
  *
  * @param req - The incoming HTTP request.
@@ -40,7 +41,14 @@ export async function dispatchDaemonApiRoutes(
   handlers: DaemonApiRouteHandlers,
   extensions?: readonly DaemonApiRouteExtension[],
 ): Promise<Response | null> {
-  let result = await dispatchRemoteRoutes(req, handlers);
+  // Gateway-hoisted verb families (skills.*, principals.*, checkin.*, ci.*,
+  // channels.profiles.*, sessions.permissionMode/contextUsage) that advertise a
+  // REST http binding are served here, ahead of the built-ins. Every one of
+  // their paths is otherwise unrouted, so trying this first shadows no existing
+  // route; unmatched paths return null and fall through unchanged.
+  let result = await dispatchGatewayRestRoutes(req, handlers);
+  if (result !== null) return result;
+  result = await dispatchRemoteRoutes(req, handlers);
   if (result !== null) return result;
   result = await dispatchOperatorRoutes(req, handlers);
   if (result !== null) return result;

@@ -1,4 +1,4 @@
-import type { DaemonControlRouteHandlers } from './context.js';
+import type { DaemonControlRouteHandlers, GatewayRestVerbInvocation } from './context.js';
 import { isRuntimeEventDomain, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse } from './error-response.js';
@@ -189,6 +189,46 @@ export function createDaemonControlRouteHandlers(
         methodId,
         query: payload.query,
         body: payload.body,
+        context: {
+          principalId: principal?.principalId,
+          principalKind: principal?.principalKind,
+          admin: principal?.admin,
+          scopes: principal?.scopes,
+          clientKind: 'web',
+        },
+      });
+      return Response.json(response.body, { status: response.status });
+    },
+    invokeGatewayRestVerb: async (invocation: GatewayRestVerbInvocation) => {
+      // REST parity for a handler-backed gateway verb reached by its advertised
+      // path (gateway-rest-routes.ts). Not a second implementation: resolve the
+      // principal, fold the path params into BOTH query and body (so query-reading
+      // GET/DELETE verbs and body-schema-validated POST verbs both see them), and
+      // delegate to the same invokeGatewayMethodCall the methodId-invoke endpoint
+      // above uses — identical access gate, identical in-process handler.
+      const { methodId, req, params } = invocation;
+      const descriptor = context.gatewayMethods.get(methodId);
+      const access = descriptor?.access ?? 'admin';
+      if (access === 'admin' || access === 'remote-peer') {
+        const admin = context.requireAdmin(req);
+        if (admin) return admin;
+      }
+      const principal = context.resolveAuthenticatedPrincipal(req);
+      if (access === 'authenticated' && !principal) {
+        return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const parsedBody = await context.parseOptionalJsonBody(req);
+      if (parsedBody instanceof Response) return parsedBody;
+      const bodyRecord = parsedBody && typeof parsedBody === 'object' && !Array.isArray(parsedBody)
+        ? parsedBody
+        : {};
+      const query: Record<string, unknown> = { ...params };
+      for (const [key, value] of new URL(req.url).searchParams) query[key] = value;
+      const response = await context.invokeGatewayMethodCall({
+        authToken: context.extractAuthToken(req),
+        methodId,
+        query,
+        body: { ...params, ...bodyRecord },
         context: {
           principalId: principal?.principalId,
           principalKind: principal?.principalKind,
