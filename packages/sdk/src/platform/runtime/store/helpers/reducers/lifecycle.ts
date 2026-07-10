@@ -68,6 +68,13 @@ export function updateSessionState(
       return { ...base, compactionState: 'failed', recoveryError: event.error };
     case 'COMPACTION_RESUME_REPAIR':
       return { ...base, wasRepaired: event.repaired, recoveryState: event.safeToResume ? 'ready' : domain.recoveryState };
+    case 'COMPACTION_RECEIPT':
+      // Mandatory receipt: mark the compaction boundary as done only when the
+      // compacted context was actually applied; a kept-original/failed receipt
+      // leaves the conversation (and compaction state) untouched.
+      return event.outcome === 'applied'
+        ? { ...base, compactionState: 'done', lastCompactedAt: now() }
+        : base;
     case 'COMPACTION_QUALITY_SCORE':
     case 'COMPACTION_STRATEGY_SWITCH':
       return base;

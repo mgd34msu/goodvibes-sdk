@@ -10,9 +10,34 @@ import type { AgentManager } from '../tools/agent/index.js';
 import type { WrfcController } from '../agents/wrfc-controller.js';
 import type { ExecutionPlanManager } from './execution-plan.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
-import { emitOpsContextWarning } from '../runtime/emitters/index.js';
+import { emitOpsContextWarning, emitCompactionReceipt } from '../runtime/emitters/index.js';
 import type { HookEvent, HookResult } from '../hooks/types.js';
+import type { CompactionReceipt } from './compaction-types.js';
+import { CompactionQualityError } from './compaction-types.js';
 import { summarizeError } from '../utils/error-display.js';
+
+type EmitterContextFactoryLike = { runtimeBus: RuntimeEventBus | null; emitterContext: EmitterContextFactory; sessionId: string };
+
+/** Emit the mandatory post-compaction receipt so a compaction is never silent. */
+function emitReceipt(deps: EmitterContextFactoryLike, turnId: string, receipt: CompactionReceipt): void {
+  if (!deps.runtimeBus) return;
+  emitCompactionReceipt(deps.runtimeBus, deps.emitterContext(turnId), { sessionId: deps.sessionId, ...receipt });
+}
+
+/** Build a `failed` receipt for a compaction that threw before producing a result. */
+function failedReceipt(trigger: 'auto' | 'manual', strategy: string, detail: string): CompactionReceipt {
+  return {
+    trigger, strategy, tokensBefore: 0, tokensAfter: 0, messagesBefore: 0, messagesAfter: 0,
+    qualityScore: 0, qualityGrade: 'F', lowQuality: true, instructionsReinjected: false,
+    validationPassed: false, sectionsIncluded: [], outcome: 'failed', detail,
+  };
+}
+
+/** Emit the receipt for a thrown compaction — the guard's kept-original receipt or a failed one. */
+function emitCompactionFailureReceipt(deps: EmitterContextFactoryLike, turnId: string, err: unknown, trigger: 'auto' | 'manual', strategy: string): void {
+  if (err instanceof CompactionQualityError) emitReceipt(deps, turnId, err.receipt);
+  else emitReceipt(deps, turnId, failedReceipt(trigger, strategy, summarizeError(err)));
+}
 
 type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;
@@ -228,7 +253,8 @@ export async function checkContextWindowPreflight(
         extractionModelId: model.registryKey,
         extractionProvider: model.provider,
       });
-      await deps.conversation.compact(deps.providerRegistry, model.registryKey, 'auto', model.provider, preflightCtx);
+      const preflightReceipt = await deps.conversation.compact(deps.providerRegistry, model.registryKey, 'auto', model.provider, preflightCtx);
+      if (preflightReceipt) emitReceipt(deps, turnId, preflightReceipt);
       deps.conversation.addSystemMessage('Context compacted. Retrying request...');
       if (deps.hookDispatcher) {
         deps.hookDispatcher.fire({
@@ -254,6 +280,7 @@ export async function checkContextWindowPreflight(
     } catch (compactErr) {
       const msg = compactErr instanceof Error ? compactErr.message : String(compactErr);
       logger.error('Orchestrator: pre-flight compact failed', { error: msg });
+      emitCompactionFailureReceipt(deps, turnId, compactErr, 'auto', 'structured');
       deps.conversation.addSystemMessage(`Auto-compact failed: ${msg}.`);
       if (deps.hookDispatcher) {
         deps.hookDispatcher.fire({
@@ -460,12 +487,24 @@ export async function handlePostTurnContextMaintenance(
           deps.conversation.replaceMessagesForLLM(compactedMsgs);
           deps.setIsCompacting(false);
           deps.setLastWarningBracket(0);
+          // Small-window keep-last-N is deterministic (not quality-scored); the
+          // receipt still fires so this path is never silent either.
+          emitReceipt(deps, turnId, {
+            trigger: 'auto', strategy: 'small-window',
+            tokensBefore: estimateConversationTokens(currentMsgs),
+            tokensAfter: estimateConversationTokens(compactedMsgs),
+            messagesBefore: currentMsgs.length, messagesAfter: compactedMsgs.length,
+            qualityScore: 1, qualityGrade: 'A', lowQuality: false,
+            instructionsReinjected: false, validationPassed: true,
+            sectionsIncluded: [], outcome: 'applied', detail: 'small window: kept last 10 messages',
+          });
           deps.conversation.addSystemMessage('Context auto-compacted (small window mode). Kept last 10 messages.');
           deps.requestRender();
         } catch (err: unknown) {
           deps.setIsCompacting(false);
           const msg = summarizeError(err);
           logger.error('Orchestrator: small-window auto-compact failed', { error: msg });
+          emitCompactionFailureReceipt(deps, turnId, err, 'auto', 'small-window');
           deps.conversation.addSystemMessage(`Auto-compact failed: ${msg}. Use /compact to retry manually.`);
           deps.requestRender();
         }
@@ -482,9 +521,10 @@ export async function handlePostTurnContextMaintenance(
           'auto',
           currentModel.provider,
           compactionCtx,
-        ).then(() => {
+        ).then((receipt) => {
           deps.setIsCompacting(false);
           deps.setLastWarningBracket(0);
+          if (receipt) emitReceipt(deps, turnId, receipt);
           deps.conversation.addSystemMessage('Context auto-compacted. Conversation history summarized to free context window.');
           deps.requestRender();
           logger.info('Orchestrator: auto-compact complete', {
@@ -523,6 +563,7 @@ export async function handlePostTurnContextMaintenance(
           deps.setIsCompacting(false);
           const msg = summarizeError(err);
           logger.error('Orchestrator: auto-compact failed', { error: msg });
+          emitCompactionFailureReceipt(deps, turnId, err, 'auto', 'structured');
           deps.conversation.addSystemMessage(`Auto-compact failed: ${msg}. Use /compact to retry manually.`);
           deps.requestRender();
           if (deps.hookDispatcher) {
@@ -552,6 +593,7 @@ export async function handlePostTurnContextMaintenance(
     } catch (compactErr: unknown) {
       deps.setIsCompacting(false);
       logger.error('Auto-compact failed', { error: String(compactErr) });
+      emitCompactionFailureReceipt(deps, turnId, compactErr, 'auto', 'structured');
       deps.conversation.addSystemMessage(`[Compact] Auto-compaction failed: ${String(compactErr)}`);
       deps.requestRender();
     }

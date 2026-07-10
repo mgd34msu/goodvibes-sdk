@@ -19,6 +19,10 @@ export interface UiSessionSnapshot {
   readonly messageCount: number;
   readonly estimatedContextTokens: number;
   readonly contextWindow: number;
+  /** Context usage as a 0–100 percentage (0 when the window is unknown). Cheap readable for a live context chip. */
+  readonly contextUsagePct: number;
+  /** Tokens remaining before the context window is full (0 when unknown/exhausted). */
+  readonly contextRemainingTokens: number;
   readonly turnState: TurnState;
   readonly streamToolPreview?: string | undefined;
   readonly contextWarningActive: boolean;
@@ -60,12 +64,16 @@ export function createCoreReadModels(runtimeServices: RuntimeServices): UiCoreRe
     },
     session: createStoreBackedReadModel(runtimeServices, () => {
       const state = runtimeStore.getState();
+      const usedTokens = state.conversation.estimatedContextTokens;
+      const window = state.model.tokenLimits.contextWindow;
       return {
         session: state.session,
         totalTurns: state.conversation.totalTurns,
         messageCount: state.conversation.messageCount,
-        estimatedContextTokens: state.conversation.estimatedContextTokens,
-        contextWindow: state.model.tokenLimits.contextWindow,
+        estimatedContextTokens: usedTokens,
+        contextWindow: window,
+        contextUsagePct: window > 0 ? Math.min(100, Math.round((usedTokens / window) * 100)) : 0,
+        contextRemainingTokens: window > 0 ? Math.max(0, window - usedTokens) : 0,
         turnState: state.conversation.turnState,
         streamToolPreview: state.conversation.stream.partialToolPreview,
         contextWarningActive:

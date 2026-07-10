@@ -2,6 +2,7 @@ import type { ProviderMessage, ContentPart } from '../providers/interface.js';
 import type { ToolCall, ToolResult } from '../types/tools.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { CompactionContext } from './context-compaction.js';
+import type { CompactionReceipt } from './compaction-types.js';
 import type { SessionMemoryStore } from './session-memory.js';
 import type { SessionLineageTracker } from './session-lineage.js';
 import { buildTranscriptEventIndex } from './transcript-events/index.js';
@@ -300,7 +301,7 @@ export class ConversationManager {
     trigger: 'auto' | 'manual' = 'manual',
     provider?: string,
     context?: CompactionContext,
-  ): Promise<void> {
+  ): Promise<CompactionReceipt | undefined> {
     return compactConversation(this, registry, modelId, trigger, provider, context);
   }
 
