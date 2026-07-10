@@ -31,6 +31,20 @@ function readOptionalBooleanField(body: JsonRecord, key: string): boolean | unde
   return typeof value === 'boolean' ? value : undefined;
 }
 
+/**
+ * Read a nullable-number field, preserving the three distinct states the store's
+ * temporal window needs: a finite number SETS the bound, an explicit `null`
+ * CLEARS it, and any other value (including absent) returns `undefined` so the
+ * bound is left UNCHANGED. Used only where null-to-clear is meaningful
+ * (validFrom/validUntil).
+ */
+function readNullableNumberField(body: JsonRecord, key: string): number | null | undefined {
+  if (!(key in body)) return undefined;
+  const value = body[key];
+  if (value === null) return null;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 /** Parse a provenance link array: each entry needs kind+ref; label is optional. Invalid entries are skipped. */
 function readProvenanceField(body: JsonRecord, max = 64): readonly MemoryProvenanceLinkInput[] | undefined {
   const value = body.provenance;
@@ -113,20 +127,29 @@ export function parseMemoryRecordSearchBody(
 }
 
 /**
- * Parse POST /api/memory/records/:id/update — editable fields (scope/summary/detail/tags).
- * All optional; the store leaves unset fields unchanged. NOT a review update (that is
- * the /review route) — this edits content/scope, e.g. promoting a record project→team.
+ * Parse POST /api/memory/records/:id/update — editable fields
+ * (scope/summary/detail/tags + the temporal validity window). All optional; the
+ * store leaves unset fields unchanged. NOT a review update (that is the /review
+ * route) — this edits content/scope, e.g. promoting a record project→team.
+ *
+ * validFrom/validUntil carry the store's three-state window semantics: a number
+ * sets the bound, an explicit `null` clears it, and an absent field leaves it
+ * unchanged — so a proposal that changes only the window round-trips.
  */
 export function parseMemoryRecordUpdateBody(body: JsonRecord): MemoryRecordUpdateInput {
   const scope = readOptionalStringField(body, 'scope');
   const summary = readOptionalStringField(body, 'summary');
   const detail = body.detail === null ? '' : readOptionalStringField(body, 'detail');
   const tags = readStringArrayField(body, 'tags');
+  const validFrom = readNullableNumberField(body, 'validFrom');
+  const validUntil = readNullableNumberField(body, 'validUntil');
   return {
     ...(scope ? { scope } : {}),
     ...(summary ? { summary } : {}),
     ...(detail !== undefined ? { detail } : {}),
     ...(tags ? { tags } : {}),
+    ...(validFrom !== undefined ? { validFrom } : {}),
+    ...(validUntil !== undefined ? { validUntil } : {}),
   };
 }
 

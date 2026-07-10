@@ -193,6 +193,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   printing the missing method ids. New methods must ship with typed IO. This is
   a growth freeze, not a burndown of the existing 97.
 
+### Fixed
+
+- **A memory update patch can now change only the temporal validity window.**
+  `MemoryUpdatePatch` (memory spine), `MemoryRecordUpdateInput` (daemon route
+  body), and the `memory.records.update` operator method now carry
+  `validFrom`/`validUntil`, threaded to the store's existing three-state window
+  semantics — a number sets the bound, an explicit `null` clears it, and an
+  omitted field leaves it unchanged. A memory-projection proposal that changes
+  only the window previously could not be applied (it reported failed-with-a-
+  reason because the patch shape carried no window); it now round-trips end to
+  end, wire included.
+
+- **The composition root can configure the exec credential-env scrub.**
+  `registerAllTools` gained a `credentialEnvScrub` dep that is threaded straight
+  into `createExecTool`, so a consumer can wire its `permissions.exec.*` config
+  (master switch + keep-allowlist) at the composition root instead of the scrub
+  always resolving to its built-in default. Omitted, behavior is unchanged
+  (scrub enabled with the default allowlist).
+
+- **The memory temporal helpers resist `.filter()` misuse.**
+  `isMemoryTemporallyActive` and `isPromptActiveMemory` took an optional `now`
+  as their second parameter, so passing one directly to `Array.prototype.filter`
+  bound the array INDEX to `now` — silently comparing every record's window
+  against a near-zero epoch and defeating expiry entirely. Both now carry a
+  `...never[]` tail (rejecting the stray argument at the type level) and a
+  runtime guard that throws a loud, explanatory `TypeError` when the array
+  argument is passed, instead of absorbing it. Wrap for iteration:
+  `records.filter((r) => isMemoryTemporallyActive(r))`.
+
+- **The `learning.consolidation.*` config keys are registered in the schema.**
+  The nine idle-time memory-consolidation keys were read off the raw user
+  `learning` block but had no schema/`DEFAULT_CONFIG` entry, so typed
+  `get`/`set` on `learning.*` threw "section 'learning' does not exist". A new
+  `learning` config domain (same idiom as the worktree domain) registers them
+  with defaults identical to the behavioral contract's
+  `DEFAULT_MEMORY_CONSOLIDATION_CONFIG` (a test guards against drift), leaving
+  the resolver's behavior unchanged.
+
 ## [1.6.1] - 2026-07-09
 
 ### Fixed

@@ -5,6 +5,8 @@
 import { describe, expect, test } from 'bun:test';
 import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.js';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import { DEFAULT_MEMORY_CONSOLIDATION_CONFIG } from '../packages/sdk/src/platform/state/memory-consolidation-config.js';
+import { resolveMemoryConsolidationConfig } from '../packages/sdk/src/platform/state/memory-consolidation-config.js';
 import { tmpdir } from 'os';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
@@ -36,7 +38,7 @@ describe('DEFAULT_CONFIG runtime section', () => {
 // ---------------------------------------------------------------------------
 
 describe('DEFAULT_CONFIG registers every recently-added domain', () => {
-  for (const domain of ['worktree', 'checkin', 'atRest'] as const) {
+  for (const domain of ['worktree', 'checkin', 'atRest', 'learning'] as const) {
     test(`DEFAULT_CONFIG has a '${domain}' section`, () => {
       expect(domain in DEFAULT_CONFIG).toBe(true);
     });
@@ -62,6 +64,30 @@ describe('DEFAULT_CONFIG registers every recently-added domain', () => {
     expect(get('worktree.setup.commands')).toEqual([]);
     expect(() => get('worktree.setup.carryOverGlobs')).not.toThrow();
     expect(get('worktree.setup.carryOverGlobs')).toEqual([]);
+  });
+
+  test('learning.consolidation schema defaults exactly equal DEFAULT_MEMORY_CONSOLIDATION_CONFIG (no drift)', () => {
+    const learning = (DEFAULT_CONFIG as Record<string, unknown>)['learning'] as Record<string, unknown>;
+    const consolidation = learning['consolidation'] as Record<string, unknown>;
+    // The config-surface mirror must never drift from the behavioral contract's
+    // fallback, or a user who sets nothing would resolve a different policy than
+    // one whose settings.json carries no learning block.
+    expect(consolidation).toEqual({ ...DEFAULT_MEMORY_CONSOLIDATION_CONFIG });
+  });
+
+  test("config.get/set('learning.consolidation.*') is safe and the resolver still returns the defaults", () => {
+    const configDir = join(tmpdir(), `gv-test-learning-${Date.now()}-${crypto.randomUUID()}`);
+    mkdirSync(configDir, { recursive: true });
+    const manager = new ConfigManager({ configDir });
+    const get = manager.get.bind(manager) as unknown as (k: string) => unknown;
+    // Before the domain was registered these threw "section 'learning' does not exist".
+    expect(() => get('learning.consolidation.enabled')).not.toThrow();
+    expect(get('learning.consolidation.enabled')).toBe(false);
+    expect(get('learning.consolidation.decayAgeDays')).toBe(45);
+    expect(() => manager.setDynamic('learning.consolidation.enabled' as Parameters<typeof manager.setDynamic>[0], true)).not.toThrow();
+    // Resolver behavior is unchanged: with a schema default present it reads the
+    // same values it previously fell back to.
+    expect(resolveMemoryConsolidationConfig(manager)).toEqual({ ...DEFAULT_MEMORY_CONSOLIDATION_CONFIG, enabled: true });
   });
 });
 

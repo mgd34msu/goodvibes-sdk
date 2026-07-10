@@ -26,6 +26,7 @@
 
 import type { MemoryRecord, MemorySearchFilter, MemorySemanticSearchResult } from './memory-store.js';
 import { memoryRecordTemporalStatus } from './memory-store.js';
+import { assertNoArrayIterationArgs } from './memory-temporal.js';
 import type { MemoryVectorStats } from './memory-vector-store.js';
 import { HASHED_MEMORY_EMBEDDING_PROVIDER } from './memory-embeddings.js';
 
@@ -89,7 +90,19 @@ export function describeMemoryPromptEligibility(record: MemoryRecord, now: numbe
   };
 }
 
-export function isPromptActiveMemory(record: MemoryRecord, now: number = Date.now()): boolean {
+/**
+ * Whether a record clears the recall floor AND is inside its temporal window at
+ * `now`. Like {@link isMemoryTemporallyActive}, the `...extraArgs: never[]` tail
+ * plus the runtime guard reject the `.filter(isPromptActiveMemory)` misuse that
+ * would otherwise bind the array index to `now` and silently defeat the temporal
+ * gate. Wrap for iteration: `records.filter((r) => isPromptActiveMemory(r))`.
+ */
+export function isPromptActiveMemory(
+  record: MemoryRecord,
+  now: number = Date.now(),
+  ...extraArgs: never[]
+): boolean {
+  assertNoArrayIterationArgs('isPromptActiveMemory', extraArgs);
   return describeMemoryPromptEligibility(record, now).eligible;
 }
 

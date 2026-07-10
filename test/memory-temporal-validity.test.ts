@@ -7,6 +7,7 @@ import {
   MemoryStore,
   describeMemoryPromptEligibility,
   isMemoryTemporallyActive,
+  isPromptActiveMemory,
   memoryRecordTemporalStatus,
   runHonestMemorySearch,
   selectKnowledgeForTaskScored,
@@ -48,6 +49,33 @@ describe('memoryRecordTemporalStatus', () => {
     expect(memoryRecordTemporalStatus(record({ validUntil: 4_000 }), NOW)).toBe('expired');
     expect(memoryRecordTemporalStatus(record({ validFrom: 1_000, validUntil: 9_000 }), NOW)).toBe('active');
     expect(isMemoryTemporallyActive(record({ validUntil: 4_000 }), NOW)).toBe(false);
+  });
+});
+
+describe('temporal helpers resist Array.filter misuse', () => {
+  // Regression: passing a helper directly to Array.prototype.filter binds the
+  // array INDEX (0, 1, 2 …) to `now`, so every expiry check silently compares
+  // against a near-zero epoch and expired records leak through. The helpers now
+  // reject the stray array argument loudly instead of absorbing it.
+  const records = [record({ validUntil: 4_000 }), record(), record({ validFrom: 9_000 })];
+
+  test('records.filter(isMemoryTemporallyActive) throws instead of silently defeating expiry', () => {
+    // Cast to the filter callback signature: TS also rejects the bad call via the
+    // never[] tail, so the cast is what lets us exercise the RUNTIME guard here.
+    const bad = isMemoryTemporallyActive as unknown as (r: MemoryRecord, i: number, a: MemoryRecord[]) => boolean;
+    expect(() => records.filter(bad)).toThrow(/filter\/map|extra argument/);
+  });
+
+  test('records.filter(isPromptActiveMemory) throws instead of silently defeating expiry', () => {
+    const bad = isPromptActiveMemory as unknown as (r: MemoryRecord, i: number, a: MemoryRecord[]) => boolean;
+    expect(() => records.filter(bad)).toThrow(/filter\/map|extra argument/);
+  });
+
+  test('the correct wrapped form still filters by the real window', () => {
+    const NOW = 5_000;
+    const active = records.filter((r) => isMemoryTemporallyActive(r, NOW));
+    // Only the no-window record is active at NOW: the first is expired, the last pending.
+    expect(active).toHaveLength(1);
   });
 });
 

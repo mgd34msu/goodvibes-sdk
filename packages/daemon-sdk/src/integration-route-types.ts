@@ -90,12 +90,19 @@ export interface MemoryRecordReviewInput {
   readonly staleReason?: string | undefined;
 }
 
-/** The editable-field update body (scope/summary/detail/tags) — NOT a review update. */
+/**
+ * The editable-field update body (scope/summary/detail/tags + the temporal
+ * validity window) — NOT a review update. For validFrom/validUntil, an omitted
+ * field leaves the bound unchanged, a number sets it, and `null` clears it, so a
+ * proposal that changes only the window can be applied.
+ */
 export interface MemoryRecordUpdateInput {
   readonly scope?: string | undefined;
   readonly summary?: string | undefined;
   readonly detail?: string | undefined;
   readonly tags?: readonly string[] | undefined;
+  readonly validFrom?: number | null | undefined;
+  readonly validUntil?: number | null | undefined;
 }
 
 /** The link-create body — the source id comes from the path, target + relation from the body. */
