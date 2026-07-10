@@ -41,6 +41,7 @@
     "gateway"
   ],
   "dependencies": {
+    "@pellux/goodvibes-contracts": "workspace:*",
     "@pellux/goodvibes-sdk": "workspace:*"
   },
   "publishConfig": {

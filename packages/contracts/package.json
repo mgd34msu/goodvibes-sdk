@@ -14,9 +14,17 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
+    },
     "./generated/foundation-client-types": {
       "types": "./dist/generated/foundation-client-types.d.ts",
       "import": "./dist/generated/foundation-client-types.js"
+    },
+    "./generated/mock-daemon-fixtures": {
+      "types": "./dist/generated/mock-daemon-fixtures.d.ts",
+      "import": "./dist/generated/mock-daemon-fixtures.js"
     },
     "./generated/foundation-metadata": {
       "types": "./dist/generated/foundation-metadata.d.ts",

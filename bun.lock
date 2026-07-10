@@ -128,6 +128,7 @@
       "name": "@pellux/goodvibes-terminal-shell",
       "version": "1.6.1",
       "dependencies": {
+        "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-sdk": "workspace:*",
       },
     },
