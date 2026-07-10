@@ -10,12 +10,14 @@
 import { describe, expect, test } from 'bun:test';
 import type { GatewayMethodInvocation } from '../packages/sdk/src/platform/control-plane/method-catalog-shared.js';
 import type { PermissionMode } from '../packages/sdk/src/platform/config/schema-types.js';
+import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
 import { GatewayVerbError } from '../packages/sdk/src/platform/control-plane/routes/gateway-verb-error.js';
 import {
   createSessionRuntimeControls,
   createSessionPermissionModeGetHandler,
   createSessionPermissionModeSetHandler,
   createSessionContextUsageGetHandler,
+  registerSessionRuntimeGatewayMethods,
   toOperatorPermissionMode,
   toConfigPermissionMode,
   type PermissionModeConfig,
@@ -146,5 +148,41 @@ describe('sessions.contextUsage.get', () => {
     };
     expect(out.contextUsagePct).toBe(0);
     expect(out.contextRemainingTokens).toBe(0);
+  });
+});
+
+// ── descriptor + handler register together (the 501 defect class) ────────────
+
+describe('session-runtime gateway registration', () => {
+  const IDS = ['sessions.permissionMode.get', 'sessions.permissionMode.set', 'sessions.contextUsage.get'];
+
+  function makeCatalog() {
+    const catalog = new GatewayMethodCatalog();
+    const controls = createSessionRuntimeControls({
+      config: makeConfig('prompt'),
+      store: makeStore('sess-1', 40_000, 100_000),
+    });
+    registerSessionRuntimeGatewayMethods(catalog, controls);
+    return catalog;
+  }
+
+  test('all three verbs are cataloged with handlers attached', () => {
+    const catalog = makeCatalog();
+    for (const id of IDS) {
+      expect(catalog.get(id)).not.toBeNull();
+      expect(catalog.hasHandler(id)).toBe(true);
+    }
+  });
+
+  test('the verbs round-trip through catalog.invoke', async () => {
+    const catalog = makeCatalog();
+    const ctx = { context: { admin: true } } as const;
+    const got = await catalog.invoke('sessions.permissionMode.get', { ...ctx, body: { sessionId: 'sess-1' } }) as { mode: string };
+    expect(got.mode).toBe('normal');
+    const set = await catalog.invoke('sessions.permissionMode.set', { ...ctx, body: { sessionId: 'sess-1', mode: 'auto' } }) as { mode: string; previousMode: string };
+    expect(set).toMatchObject({ mode: 'auto', previousMode: 'normal' });
+    const usage = await catalog.invoke('sessions.contextUsage.get', { ...ctx, body: { sessionId: 'sess-1' } }) as { contextUsagePct: number; estimated: boolean };
+    expect(usage.contextUsagePct).toBe(40);
+    expect(usage.estimated).toBe(true);
   });
 });
