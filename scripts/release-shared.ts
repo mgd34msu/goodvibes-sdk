@@ -18,6 +18,7 @@ export const packageDirs = [
   'packages/operator-sdk',
   'packages/peer-sdk',
   'packages/sdk',
+  'packages/terminal-shell',
 ];
 
 export const publicPackageDirs = packageDirs;
