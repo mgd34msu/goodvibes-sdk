@@ -16,6 +16,33 @@ import { emitCompactionReceipt } from '../packages/sdk/src/platform/runtime/emit
 import { createCoreReadModels } from '../packages/sdk/src/platform/runtime/ui-read-models-core.js';
 import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
 import type { ProviderMessage } from '../packages/sdk/src/platform/providers/interface.js';
+import type { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import type { RuntimeServices } from '../packages/sdk/src/platform/runtime/services.js';
+
+/**
+ * A minimal RuntimeEventBus whose emit() records (channel, payload) into the
+ * supplied sink — the repo's standard bus-fixture bridge (a typed factory,
+ * not an `any` suppression).
+ */
+function makeCapturingBus(sink: Array<{ channel: string; payload: unknown }>): RuntimeEventBus {
+  return {
+    emit(channel: string, env: { payload: unknown }) {
+      sink.push({ channel, payload: env.payload });
+    },
+  } as unknown as RuntimeEventBus;
+}
+
+/**
+ * A minimal RuntimeServices exposing only the runtimeStore/runtimeBus surface
+ * that createCoreReadModels reads. `state` is the runtime state getState()
+ * returns; the read model derives the session snapshot from it.
+ */
+function makeReadModelServices(state: unknown): RuntimeServices {
+  return {
+    runtimeStore: { getState: () => state, subscribe: () => () => {} },
+    runtimeBus: { on: () => () => {} },
+  } as unknown as RuntimeServices;
+}
 
 // Registry that never yields a provider — llmExtract catches and returns null,
 // so compaction assembles only deterministic rule-based sections (no live LLM).
@@ -110,10 +137,9 @@ describe('guarded compactConversation', () => {
 describe('compaction receipt event', () => {
   test('emitCompactionReceipt emits a COMPACTION_RECEIPT envelope on the compaction channel', () => {
     const emitted: Array<{ channel: string; payload: unknown }> = [];
-    const bus = { emit: (channel: string, env: { payload: unknown }) => emitted.push({ channel, payload: env.payload }) };
+    const bus = makeCapturingBus(emitted);
     emitCompactionReceipt(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      bus as any,
+      bus,
       { sessionId: 's', traceId: 't', source: 'orchestrator' },
       {
         sessionId: 's', trigger: 'auto', strategy: 'structured', tokensBefore: 9000, tokensAfter: 2000,
@@ -137,12 +163,7 @@ describe('context-usage readable', () => {
       model: { tokenLimits: { contextWindow: 100_000 } },
       permissions: { awaitingDecision: false, denialCount: 0 },
     };
-    const fakeServices = {
-      runtimeStore: { getState: () => state, subscribe: () => () => {} },
-      runtimeBus: { on: () => () => {} },
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const snap = createCoreReadModels(fakeServices as any).session.getSnapshot();
+    const snap = createCoreReadModels(makeReadModelServices(state)).session.getSnapshot();
     expect(snap.contextUsagePct).toBe(40);
     expect(snap.contextRemainingTokens).toBe(60_000);
     expect(snap.estimatedContextTokens).toBe(40_000);
@@ -155,9 +176,7 @@ describe('context-usage readable', () => {
       model: { tokenLimits: { contextWindow: 0 } },
       permissions: { awaitingDecision: false, denialCount: 0 },
     };
-    const fakeServices = { runtimeStore: { getState: () => state, subscribe: () => () => {} }, runtimeBus: { on: () => () => {} } };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const snap = createCoreReadModels(fakeServices as any).session.getSnapshot();
+    const snap = createCoreReadModels(makeReadModelServices(state)).session.getSnapshot();
     expect(snap.contextUsagePct).toBe(0);
     expect(snap.contextRemainingTokens).toBe(0);
   });
