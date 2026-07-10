@@ -34,6 +34,8 @@ import { fileURLToPath } from 'node:url';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.ts';
 import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.ts';
 import { PEER_CONTRACT } from '../packages/contracts/src/generated/peer-contract.ts';
+import { buildMockDaemonFixtureMap } from '../packages/contracts/src/testing/mock-daemon.ts';
+import type { OperatorContractManifest } from '../packages/contracts/src/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
@@ -46,6 +48,7 @@ const OPERATOR_METHOD_IDS_PATH = resolve(SDK_ROOT, 'packages/contracts/src/gener
 const PEER_TS_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/peer-contract.ts');
 const PEER_ENDPOINT_IDS_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/peer-endpoint-ids.ts');
 const FOUNDATION_METADATA_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/foundation-metadata.ts');
+const MOCK_DAEMON_FIXTURES_PATH = resolve(SDK_ROOT, 'packages/contracts/src/generated/mock-daemon-fixtures.ts');
 
 /**
  * Stringify that preserves shared DAG references (duplicates them in the
@@ -112,6 +115,24 @@ function renderPeerContractTs(contract: unknown): string {
   ].join('\n');
 }
 
+function renderMockDaemonFixturesTs(contract: OperatorContractManifest): string {
+  const json = safeStringify(buildMockDaemonFixtureMap(contract));
+  return [
+    `import type { MockDaemonFixtureMap } from '../testing/mock-daemon.js';`,
+    ``,
+    `/**`,
+    ` * GENERATED — do not edit. Regenerate with \`bun run refresh:contracts\`.`,
+    ` *`,
+    ` * A schema-valid sample response per cataloged operator method, generated`,
+    ` * from the contract's own output schemas (see testing/mock-daemon.ts). The`,
+    ` * webui Playwright mocks and Home Assistant test fixtures generate from this`,
+    ` * instead of hand-authoring a response per method.`,
+    ` */`,
+    `export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = ${json};`,
+    ``,
+  ].join('\n');
+}
+
 function renderMethodIdsTs(ids: readonly string[]): string {
   const sorted = [...ids].sort();
   const quoted = sorted.map((id) => `  "${id}",`).join('\n');
@@ -151,6 +172,7 @@ drifted = writeIfChanged(OPERATOR_TS_PATH, renderOperatorContractTs(operatorCont
 drifted = writeIfChanged(OPERATOR_METHOD_IDS_PATH, renderMethodIdsTs(operatorMethodIds)) || drifted;
 drifted = writeIfChanged(PEER_TS_PATH, renderPeerContractTs(PEER_CONTRACT)) || drifted;
 drifted = writeIfChanged(PEER_ENDPOINT_IDS_PATH, renderEndpointIdsTs(peerEndpointIds)) || drifted;
+drifted = writeIfChanged(MOCK_DAEMON_FIXTURES_PATH, renderMockDaemonFixturesTs(operatorContract)) || drifted;
 drifted = writeIfChanged(
   FOUNDATION_METADATA_PATH,
   `export const FOUNDATION_METADATA = ${JSON.stringify({
