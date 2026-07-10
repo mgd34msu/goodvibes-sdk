@@ -8,7 +8,7 @@ import type {
 } from './interface.js';
 import { applyAnthropicThinking } from './anthropic-stream.js';
 import { ProviderError } from '../types/errors.js';
-import { withRetry } from '../utils/retry.js';
+import { withRetry, type RetryConfig } from '../utils/retry.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import {
   toAnthropicTools,
@@ -51,6 +51,14 @@ export interface AnthropicCompatOptions {
   allowAnonymous?: boolean | undefined;
   anonymousConfigured?: boolean | undefined;
   anonymousDetail?: string | undefined;
+  /**
+   * Optional overrides for the transport-level retry backoff (maxRetries /
+   * initialDelayMs / maxDelayMs). Defaults to withRetry's DEFAULT_CONFIG when
+   * omitted. Exposed so operators can tune backoff and so tests can drive the
+   * retry path with a deterministic zero-delay clock instead of real wall-clock
+   * sleeps.
+   */
+  retryConfig?: Partial<RetryConfig> | undefined;
 }
 
 /**
@@ -79,6 +87,7 @@ export class AnthropicCompatProvider implements LLMProvider {
   private readonly allowAnonymous: boolean;
   private readonly anonymousConfigured: boolean;
   private readonly anonymousDetail?: string | undefined;
+  private readonly retryConfig?: Partial<RetryConfig> | undefined;
 
   constructor(opts: AnthropicCompatOptions) {
     this.name = opts.name;
@@ -96,6 +105,7 @@ export class AnthropicCompatProvider implements LLMProvider {
     this.allowAnonymous = opts.allowAnonymous ?? false;
     this.anonymousConfigured = opts.anonymousConfigured ?? false;
     this.anonymousDetail = opts.anonymousDetail;
+    this.retryConfig = opts.retryConfig;
   }
 
   isConfigured(): boolean {
@@ -196,7 +206,7 @@ export class AnthropicCompatProvider implements LLMProvider {
         stopReason: resolveCompletedStopReason(state.stopReason, text),
         ...withProviderStopReason(state.rawStopReason),
       };
-    }, undefined, onRetry), { provider: this.name, model: model ?? this.defaultModel })).result;
+    }, this.retryConfig, onRetry), { provider: this.name, model: model ?? this.defaultModel })).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

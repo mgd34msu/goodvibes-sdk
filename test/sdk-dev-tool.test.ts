@@ -76,9 +76,10 @@ describe('enumerateWorkspacePackages', () => {
         'goodvibes-transport-core',
         'goodvibes-transport-http',
         'goodvibes-transport-realtime',
+        'goodvibes-terminal-shell',
       ]),
     );
-    expect(names.length).toBe(9);
+    expect(names.length).toBe(10);
   });
 
   test('excludes private packages and packages without publishConfig.access:"public"', () => {

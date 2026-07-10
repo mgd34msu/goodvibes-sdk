@@ -42,6 +42,10 @@ describe('provider chat onRetry wiring', () => {
       apiKey: 'test-key',
       defaultModel: 'claude-test',
       models: ['claude-test'],
+      // Deterministic clock: zero the backoff so the retry fires immediately.
+      // maxRetries is left at DEFAULT_CONFIG (3), which the maxAttempts assertion
+      // below still depends on — only the wall-clock delay is removed.
+      retryConfig: { initialDelayMs: 0, maxDelayMs: 0 },
     });
 
     const retryCalls: Array<{ attempt: number; maxAttempts: number; delayMs: number; error: Error }> = [];

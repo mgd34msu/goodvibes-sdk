@@ -187,7 +187,7 @@ describe('S2c re-point — session mutators advertise control.session_update', (
     expect(undeclared).toEqual([]);
   });
 
-  test('every write:sessions method advertises control.session_update', () => {
+  test('every write:sessions method advertises the broadcast channel it drives', () => {
     const contract = buildOperatorContract(new GatewayMethodCatalog());
     const writeSessionMethods = contract.operator.methods.filter(
       (m) => m.id.startsWith('sessions.') && (m.scopes ?? []).includes('write:sessions'),
@@ -195,10 +195,37 @@ describe('S2c re-point — session mutators advertise control.session_update', (
     // Sanity: the merge really did fold in the write-side session surface (create,
     // register, close, reopen, messages.create, steer, followUp, inputs.cancel).
     expect(writeSessionMethods.length).toBeGreaterThanOrEqual(8);
+    // Every write:sessions method must advertise at least one event channel — a
+    // session mutator that broadcasts nothing is the silent-drift defect this gate
+    // exists to catch.
+    const advertisesNothing = writeSessionMethods
+      .filter((m) => (m.events ?? []).length === 0)
+      .map((m) => m.id);
+    expect(advertisesNothing).toEqual([]);
+    // The session-LIFECYCLE mutators drive the broker `session-update` broadcast and
+    // must advertise control.session_update. sessions.permissionMode.set is the one
+    // write:sessions mutator that drives a DIFFERENT channel: a permission-mode change
+    // flows through the runtime.permissions domain (PERMISSION_MODE_CHANGED via the
+    // config-change binding — see permissions/mode-change-emitter.ts), NOT a
+    // session-update broadcast, so it honestly advertises that channel instead.
+    // Forcing it to claim control.session_update would be the over-claim the read-only
+    // test just below guards against.
+    const RUNTIME_CHANNEL_MUTATORS: Readonly<Record<string, string>> = {
+      'sessions.permissionMode.set': 'runtime.permissions',
+    };
     const missing = writeSessionMethods
+      .filter((m) => !(m.id in RUNTIME_CHANNEL_MUTATORS))
       .filter((m) => !(m.events ?? []).includes('control.session_update'))
       .map((m) => m.id);
     expect(missing).toEqual([]);
+    // Each runtime-channel mutator advertises its real channel (referential
+    // integrity for the id is already enforced above), never session_update.
+    for (const [methodId, channel] of Object.entries(RUNTIME_CHANNEL_MUTATORS)) {
+      const method = writeSessionMethods.find((m) => m.id === methodId);
+      expect(method).toBeDefined();
+      expect(method!.events ?? []).toContain(channel);
+      expect(method!.events ?? []).not.toContain('control.session_update');
+    }
   });
 
   test('read-only session methods do NOT over-claim the mutation channel', () => {
