@@ -9,7 +9,48 @@ import type { ConfigManager } from '../config/manager.js';
 import type { SecretsManager } from '../config/secrets.js';
 import { isFeatureGateEnabled, type FeatureFlagReader } from '../runtime/feature-flags/index.js';
 import type { SerializedRelayIdentity } from '@pellux/goodvibes-transport-core/relay';
+import { isRelayTunneledRequest } from '@pellux/goodvibes-daemon-sdk';
 import { createRelayReachability, type RelayReachability } from './reachability.js';
+import {
+  STEP_UP_ASSERTION_HEADER,
+  evaluateStepUp,
+  isMutatingMethod,
+  type StepUpAssertionVerifier,
+} from './step-up-policy.js';
+
+/**
+ * Wrap a dispatch so mutating relay calls are gated by the WebAuthn step-up
+ * policy. When the requirement is off this returns the dispatch untouched (zero
+ * overhead). When on, it fails closed unless a wired verifier genuinely
+ * confirms a fresh assertion carried in the step-up header.
+ */
+function wrapDispatchWithStepUp(
+  dispatch: (req: Request) => Promise<Response | null>,
+  requireStepUp: boolean,
+  verifier: StepUpAssertionVerifier | undefined,
+): (req: Request) => Promise<Response | null> {
+  if (!requireStepUp) return dispatch;
+  return async (req) => {
+    const viaRelay = isRelayTunneledRequest(req);
+    const mutating = isMutatingMethod(req.method);
+    if (viaRelay && mutating) {
+      const assertion = req.headers.get(STEP_UP_ASSERTION_HEADER);
+      const verified = !verifier
+        ? null
+        : assertion
+          ? await verifier(assertion, { method: req.method, path: new URL(req.url).pathname })
+          : false;
+      const decision = evaluateStepUp({ viaRelay, mutating, requireStepUp: true, assertionVerified: verified });
+      if (!decision.allow) {
+        return new Response(JSON.stringify({ error: decision.code, message: decision.message }), {
+          status: 401,
+          headers: { 'content-type': 'application/json', 'www-authenticate': 'WebAuthn' },
+        });
+      }
+    }
+    return dispatch(req);
+  };
+}
 
 const IDENTITY_SECRET_KEY = 'relay.identity';
 
@@ -26,6 +67,7 @@ export function buildDaemonRelayReachability(
   featureFlags: FeatureFlagReader,
   dispatch: (req: Request) => Promise<Response | null>,
   logger: { info(m: string, f?: Record<string, unknown>): void; warn(m: string, f?: Record<string, unknown>): void },
+  verifyStepUp?: StepUpAssertionVerifier,
 ): RelayReachability {
   return createRelayReachability({
     config: {
@@ -44,7 +86,7 @@ export function buildDaemonRelayReachability(
         await secrets.set(IDENTITY_SECRET_KEY, JSON.stringify(identity));
       },
     },
-    dispatch,
+    dispatch: wrapDispatchWithStepUp(dispatch, configManager.get('relay.requireStepUpForMutations'), verifyStepUp),
     onRendezvousId: (rid) => configManager.set('relay.rendezvousId', rid),
     logger: {
       info: (m, f) => logger.info(`relay: ${m}`, f),

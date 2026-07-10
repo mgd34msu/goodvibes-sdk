@@ -406,6 +406,8 @@ export interface RelayConfig {
   rendezvousId: string;
   /** Human-facing daemon label carried in pairing payloads. */
   label: string;
+  /** Require a recent WebAuthn step-up assertion on mutating relay calls (fails closed until a verifier is wired). */
+  requireStepUpForMutations: boolean;
 }
 
 export interface GoodVibesConfig {
@@ -808,6 +810,7 @@ export type ConfigKey =
   | 'relay.url'
   | 'relay.rendezvousId'
   | 'relay.label'
+  | 'relay.requireStepUpForMutations'
   | 'runtime.companionChatLimiter.perSessionLimit'
   | 'runtime.eventBus.maxListeners'
   | 'telemetry.includeRawPrompts'
@@ -1102,6 +1105,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'relay.url' ? string :
   K extends 'relay.rendezvousId' ? string :
   K extends 'relay.label' ? string :
+  K extends 'relay.requireStepUpForMutations' ? boolean :
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   K extends 'runtime.eventBus.maxListeners' ? number :
   K extends 'telemetry.includeRawPrompts' ? boolean :

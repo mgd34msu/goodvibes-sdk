@@ -41,6 +41,15 @@ export interface RelayClientWebSocket {
 /** Header set on every relay-tunneled request so downstream can tell it apart. */
 export const RELAY_VIA_HEADER = 'x-goodvibes-via-relay';
 
+/**
+ * Whether a request arrived over the relay (vs the trusted LAN). Surfaces and
+ * policy hooks use this to show connections as "via relay" and to apply
+ * relay-specific controls such as WebAuthn step-up on mutating calls.
+ */
+export function isRelayTunneledRequest(req: Request): boolean {
+  return req.headers.get(RELAY_VIA_HEADER) === '1';
+}
+
 /** Lifecycle status of the daemon's relay registration. */
 export type RelayRegistrationStatus = 'idle' | 'connecting' | 'registered' | 'reconnecting' | 'stopped';
 

@@ -47,6 +47,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   a surface scans to connect. No new operator methods were added — reachability
   reuses the existing REST surface — so the contract ratchet holds at 97 with REST
   parity and Stage-B fixtures unchanged.
+- **Security posture around the relay path.** (a) A WebAuthn step-up policy hook:
+  when `relay.requireStepUpForMutations` is on, mutating operator calls arriving
+  via relay must carry a recent WebAuthn assertion (which methods are mutating
+  comes from the existing catalog read/write split). The SDK ships the policy and
+  verb metadata; actual assertion verification is a consumer-side ceremony wired
+  as an injected `StepUpAssertionVerifier`, and the policy FAILS CLOSED until one
+  is — it never fakes a pass. (b) `mintLanCertificate` mints a local CA + SAN leaf
+  certificate (via openssl, not hand-rolled ASN.1) for the daemon's LAN endpoints
+  so browsers stop warning on LAN access; it generates + stores + returns paths
+  that plug into `controlPlane.tls`, while trusting the CA on the OS is documented
+  as the user's step. (c) Relay connections are visibly distinct: every tunneled
+  request carries `x-goodvibes-via-relay` (`isRelayTunneledRequest`) and the
+  daemon exposes the relay registration status, so surfaces can show "via relay".
+  A new docs page (`docs/relay-zero-knowledge.md`) states the threat model
+  plainly — what the relay can and cannot see, and what a malicious relay could
+  do (connection metadata, traffic analysis, DoS).
 - **A shared registered-workspace registry the whole platform reads.** A
   daemon-side store of the project roots an operator has explicitly opted into,
   the platform-wide successor to the agent fork's local
