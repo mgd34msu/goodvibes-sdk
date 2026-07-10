@@ -38,6 +38,8 @@ export { scoreScenario, formatScorecard, DIMENSION_FLOOR } from './scorecard.js'
 
 export { BUILTIN_SUITES, ALL_SCENARIOS } from './suites.js';
 
+export { GATE_SUITES } from './gate-suites.js';
+
 export {
   captureBaseline,
   serialiseBaseline,
@@ -48,3 +50,24 @@ export {
 } from './baseline.js';
 
 export { formatSuiteResult, formatGateResult } from './format.js';
+
+export {
+  runTaskSuite,
+  discoverTasks,
+  loadTaskDefinition,
+  defaultShellVerifier,
+  formatTaskSuiteResult,
+} from './task-suite.js';
+export type {
+  TaskDefinition,
+  DiscoveredTask,
+  TaskExecutionContext,
+  TaskSessionOutcome,
+  TaskSessionExecutor,
+  TaskVerifyContext,
+  TaskVerifyResult,
+  TaskVerifier,
+  TaskResult,
+  TaskSuiteResult,
+  RunTaskSuiteOptions,
+} from './task-suite.js';

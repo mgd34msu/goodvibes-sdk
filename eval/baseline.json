@@ -1,0 +1,14 @@
+{
+  "label": "standing-gate",
+  "capturedAt": 1783717822908,
+  "suites": {
+    "standing-gate": {
+      "meanScore": 93.66666666666667,
+      "scenarioScores": {
+        "gate:clean-turn-holds-all-floors": 93,
+        "gate:recovery-success-holds-floor": 95,
+        "gate:cost-within-budget-holds-floor": 93
+      }
+    }
+  }
+}

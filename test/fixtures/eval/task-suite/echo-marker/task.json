@@ -1,0 +1,5 @@
+{
+  "id": "echo-marker",
+  "instruction": "Create a file named marker.txt in the working directory whose contents are exactly the word: done",
+  "verify": "verify.sh"
+}

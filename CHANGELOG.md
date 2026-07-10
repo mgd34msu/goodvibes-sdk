@@ -27,6 +27,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   parity: `workspaces.registrations.list` / `.add` / `.remove` and
   `workspaces.resolve`. The checkpoint manager's registered-workspace consumers
   adopt it in their own rounds.
+- **The eval harness is now a standing CI gate.** `bun run eval:gate` runs the
+  all-floors-passing `standing-gate` suite through the production eval paths
+  (EvalRunner → scoreScenario → the gate), compares each suite against the
+  checked-in baseline (`eval/baseline.json`), prints every scenario's PASS/FAIL
+  and score, and exits non-zero on ANY absolute-floor failure OR regression — no
+  silent green. It is wired into CI as a required `eval-gate` job (never
+  `continue-on-error`), which drift-checks the baseline first
+  (`bun run eval:baseline:check`) so a stale baseline fails loudly. Baselines
+  regenerate ONLY through the explicit `bun run eval:baseline`. A separate
+  `standing-gate` suite backs the gate because the branch-exercising
+  `BUILTIN_SUITES` deliberately include floor-failing fixtures and can never be
+  honestly green. Also adds a Terminal-Bench-style external task-suite adapter
+  (`runTaskSuite` and friends, exported from the eval module): it discovers a
+  directory of tasks (each a `task.json` + verification script), runs each
+  through an injected real-session executor, runs its verifier, and reports
+  pass/fail per task — the adapter contract plus a small bundled example suite,
+  not a benchmark import.
 - **The sandbox policy surface is now reachable from public subpaths.**
   `decideSandboxedExec`, `detectSandboxAvailability`, and `probeSandboxHost`
   existed but were not exported from any public subpath, so a consumer could not

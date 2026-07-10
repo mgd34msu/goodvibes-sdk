@@ -31,6 +31,28 @@ jobs:
       - name: Validate workspace
         run: bun run validate
 
+  # ---------------------------------------------------------------------------
+  # Standing eval gate. Runs the all-floors-passing standing-gate suite through
+  # the production eval paths and fails on ANY absolute-floor failure OR
+  # regression versus the checked-in baseline (eval/baseline.json), with
+  # per-scenario results printed. The baseline drift check runs first so a stale
+  # baseline (suites/scorer changed without a deliberate `bun run eval:baseline`)
+  # fails loudly rather than silently. A required job — never continue-on-error.
+  # ---------------------------------------------------------------------------
+  eval-gate:
+    name: Eval gate (floors + regression)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Baseline drift check
+        run: bun run eval:baseline:check
+      - name: Run eval gate
+        run: bun run eval:gate
+
   security-audit:
     name: Security audit
     runs-on: ubuntu-latest
