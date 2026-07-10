@@ -76,3 +76,11 @@ export {
   decodeRelayPairingString,
   type RelayPairingPayload,
 } from './pairing.js';
+
+export {
+  encodeTunnelFrame,
+  decodeTunnelFrame,
+  type TunnelHeader,
+  type TunnelRequestHeader,
+  type TunnelResponseHeader,
+} from './tunnel.js';

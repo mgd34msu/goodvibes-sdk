@@ -22,6 +22,10 @@
       "types": "./dist/runtime-events.d.ts",
       "import": "./dist/runtime-events.js"
     },
+    "./relay-transport": {
+      "types": "./dist/relay-transport.d.ts",
+      "import": "./dist/relay-transport.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

@@ -194,3 +194,11 @@ export type {
 } from './relay-server.js';
 export { createBunRelayServer } from './relay-server-entry.js';
 export type { BunRelayServerOptions } from './relay-server-entry.js';
+export { createRelayDaemonRegistration, RELAY_VIA_HEADER } from './relay-registration.js';
+export type {
+  RelayDaemonRegistration,
+  RelayDaemonRegistrationOptions,
+  RelayRegistrationStatus,
+  RelayRegistrationLogger,
+  RelayClientWebSocket,
+} from './relay-registration.js';

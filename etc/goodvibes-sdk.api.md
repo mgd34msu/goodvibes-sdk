@@ -4,6 +4,7 @@
 
 ```ts
 
+import { RelayPairingPayload } from '@pellux/goodvibes-transport-core/relay';
 import { z } from 'zod/v4';
 import type { ZodType } from 'zod/v4';
 
@@ -919,6 +920,9 @@ export function createPeerSdk(options: PeerSdkOptions): PeerSdk;
 
 // @public
 export function createReactNativeGoodVibesSdk(options: ReactNativeGoodVibesSdkOptions): ReactNativeGoodVibesSdk;
+
+// @public
+export function createRelayClient(options: RelayClientOptions): RelayClient;
 
 // @public (undocumented)
 export function createRemoteDomainEvents<TDomain extends string, TEvent extends EventLike = EventLike>(domains: readonly TDomain[], connect: DomainEventConnector<TDomain, TEvent>, options?: RemoteDomainEventsOptions<TDomain>): DomainEvents<TDomain, TEvent>;
@@ -16343,6 +16347,34 @@ export interface ReconnectAttemptInfo {
 
 // @public (undocumented)
 export function registeredEventTypes(): readonly string[];
+
+// @public
+export interface RelayClient {
+    close(): void;
+    connect(): Promise<void>;
+    readonly fetch: typeof fetch;
+    readonly ready: boolean;
+}
+
+// @public
+export interface RelayClientOptions {
+    readonly connectTimeoutMs?: number;
+    readonly pairing: RelayPairingPayload | string;
+    readonly requestTimeoutMs?: number;
+    readonly webSocketImpl?: (url: string) => RelayWebSocketLike;
+}
+
+// @public
+export interface RelayWebSocketLike {
+    // (undocumented)
+    addEventListener(type: 'open' | 'message' | 'close' | 'error', listener: (event: unknown) => void): void;
+    // (undocumented)
+    binaryType: string;
+    // (undocumented)
+    close(code?: number, reason?: string): void;
+    // (undocumented)
+    send(data: string | Uint8Array | ArrayBuffer): void;
+}
 
 // @public (undocumented)
 export interface RemoteDomainEventsOptions<TDomain extends string = string> {

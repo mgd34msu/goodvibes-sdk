@@ -390,6 +390,24 @@ export interface AtRestConfig {
   retentionMaxTotalMb: number;
 }
 
+/**
+ * Outbound relay reachability. When enabled, the daemon connects OUTBOUND to a
+ * self-hostable, zero-knowledge relay and registers under an unguessable
+ * rendezvous id so surfaces can reach it from outside the LAN. The relay never
+ * sees plaintext — an end-to-end channel terminates inside the daemon. DEFAULT
+ * OFF; it graduates through the flag-graduation machinery (the `relay-connect`
+ * feature flag) and is gated by both this `relay.enabled` switch and that flag.
+ */
+export interface RelayConfig {
+  enabled: boolean;
+  /** Relay URL to dial (wss://…). Empty disables the outbound connection. */
+  url: string;
+  /** Stable unguessable rendezvous id; generated on first enable when empty. */
+  rendezvousId: string;
+  /** Human-facing daemon label carried in pairing payloads. */
+  label: string;
+}
+
 export interface GoodVibesConfig {
   display: {
     stream: boolean;            // default: true
@@ -482,6 +500,7 @@ export interface GoodVibesConfig {
   watchers: WatchersConfig;
   service: ServiceConfig;
   network: NetworkConfig;
+  relay: RelayConfig;
   daemon: { enabled: boolean; embedInProcess: boolean };     // default: enabled true — run the local session daemon (loopback only); embedInProcess false — daemon runs as a detached process, not inside this surface
   danger: {
     httpListener: boolean;          // default: false — enable HTTP webhook listener
@@ -785,6 +804,10 @@ export type ConfigKey =
   | 'network.outboundTls.customCaDir'
   | 'network.outboundTls.allowInsecureLocalhost'
   | 'network.remoteFetch.allowPrivateHosts'
+  | 'relay.enabled'
+  | 'relay.url'
+  | 'relay.rendezvousId'
+  | 'relay.label'
   | 'runtime.companionChatLimiter.perSessionLimit'
   | 'runtime.eventBus.maxListeners'
   | 'telemetry.includeRawPrompts'
@@ -1075,6 +1098,10 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'network.outboundTls.customCaDir' ? string :
   K extends 'network.outboundTls.allowInsecureLocalhost' ? boolean :
   K extends 'network.remoteFetch.allowPrivateHosts' ? boolean :
+  K extends 'relay.enabled' ? boolean :
+  K extends 'relay.url' ? string :
+  K extends 'relay.rendezvousId' ? string :
+  K extends 'relay.label' ? string :
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   K extends 'runtime.eventBus.maxListeners' ? number :
   K extends 'telemetry.includeRawPrompts' ? boolean :

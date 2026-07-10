@@ -554,6 +554,23 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     tier: 11,
     runtimeToggleable: true,
   },
+  // ── Reachability ───────────────────────────────────────────────────────────
+  {
+    id: 'relay-connect',
+    name: 'Outbound Zero-Knowledge Relay',
+    description:
+      'Lets the daemon connect OUTBOUND to a self-hostable, zero-knowledge relay and register under '
+      + 'an unguessable rendezvous id so surfaces can reach it from outside the LAN. An end-to-end '
+      + 'channel (ECDH P-256 → HKDF → AES-256-GCM) terminates INSIDE the daemon before any application '
+      + 'byte, so the relay operator only ever sees ciphertext plus connection metadata; the daemon is '
+      + 'authenticated to surfaces by static-key pinning from the pairing payload. DEFAULT OFF: it '
+      + 'graduates through the flag-graduation machinery — dark until reachability soak evidence earns '
+      + 'it a soaking/candidate state. Also gated by the relay.enabled config switch and a configured '
+      + 'relay.url; disable either to keep the daemon LAN-only.',
+    defaultState: 'disabled',
+    tier: 11,
+    runtimeToggleable: true,
+  },
 ];
 
 /**

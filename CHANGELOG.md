@@ -28,6 +28,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   per-daemon pipes, message size) and per-address handshake rate limiting keep a
   public instance from becoming a liability; a client dialing an unregistered id
   gets an honest `daemon-offline` error.
+- **Daemon + client integration for the relay path — the existing typed client
+  works unchanged over the relay.** Because the operator protocol is
+  contract-driven REST-over-JSON, the relay tunnels whole HTTP request/response
+  pairs inside the E2E channel: the client half is a relay-backed `fetch`
+  (`createRelayClient` in `@pellux/goodvibes-transport-realtime`) you hand to the
+  SDK as `fetchImpl`, so `sdk.approvals.list()` and every other typed call just
+  works — the operator's auth token rides inside the tunnel, invisible to the
+  relay. The daemon half (`createRelayDaemonRegistration` in
+  `@pellux/goodvibes-daemon-sdk`) dials the relay OUTBOUND with reconnect/backoff,
+  terminates the E2E channel INSIDE the daemon, and replays tunneled requests
+  through the daemon's own route dispatcher (tagged with an `x-goodvibes-via-relay`
+  header). New `relay.*` daemon config (`relay.enabled` default OFF, `relay.url`,
+  `relay.rendezvousId`, `relay.label`) and a graduating `relay-connect` feature
+  flag (default OFF) triple-gate it; the daemon facade starts an outbound
+  registration at boot only when config + flag + url all agree. The daemon mints
+  a QR-encodable pairing payload (rendezvous id + pinned public key + relay url)
+  a surface scans to connect. No new operator methods were added — reachability
+  reuses the existing REST surface — so the contract ratchet holds at 97 with REST
+  parity and Stage-B fixtures unchanged.
 - **A shared registered-workspace registry the whole platform reads.** A
   daemon-side store of the project roots an operator has explicitly opted into,
   the platform-wide successor to the agent fork's local

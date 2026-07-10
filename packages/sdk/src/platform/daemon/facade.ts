@@ -49,6 +49,8 @@ import {
 } from '../runtime/network/index.js';
 import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
 import { isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
+import { buildDaemonRelayReachability } from '../relay/daemon-wiring.js';
+import type { RelayReachability } from '../relay/reachability.js';
 import {
   readAutomationReasoningEffort,
   readAutomationWakeMode,
@@ -124,6 +126,7 @@ export class DaemonServer {
   private readonly httpRouter: DaemonHttpRouter;
   private replyPoller: ReturnType<typeof setInterval> | null = null;
   private readonly companionChatManager: CompanionChatManager;
+  private relayReachability: RelayReachability | null = null;
   private agentTaskAdapter: import('../runtime/tasks/adapters/agent-adapter.js').AgentTaskAdapter | null = null;
   private agentTaskAdapterUnsub: (() => void) | null = null;
   private tlsState: ResolvedInboundTlsContext | null = null;
@@ -409,6 +412,13 @@ export class DaemonServer {
       this.controlPlaneGateway.setServerState({ enabled: true, host: this.host, port: this.port });
       this._attachControlPlaneConfigWatcher();
       this.transportEventsHelper.emitTransportConnected();
+      // Outbound relay reachability (default OFF; gated by relay.enabled + the
+      // relay-connect flag + a configured relay.url). Non-blocking so a relay
+      // hiccup never blocks daemon startup.
+      this.relayReachability = buildDaemonRelayReachability(this.configManager, this.runtimeServices.secretsManager, this.runtimeServices.featureFlags, (req) => this.handleRequest(req), logger);
+      void this.relayReachability.start().catch((error: unknown) =>
+        logger.warn('DaemonServer: relay reachability failed to start', { error: summarizeError(error) }),
+      );
       logger.info('DaemonServer started', {
         port: this.port,
         host: this.host,
@@ -434,6 +444,8 @@ export class DaemonServer {
       }
       this.approvalBrokerUnsubscribe?.();
       this.approvalBrokerUnsubscribe = null;
+      this.relayReachability?.stop();
+      this.relayReachability = null;
       if (this.server !== null) {
         this.server.stop(true);
         this.server = null;
@@ -481,6 +493,8 @@ export class DaemonServer {
     this.pendingSurfaceReplies.clear();
     this.approvalBrokerUnsubscribe?.();
     this.approvalBrokerUnsubscribe = null;
+    this.relayReachability?.stop();
+    this.relayReachability = null;
     this.httpRouter.dispose();
     this.companionChatManager.dispose();
 
@@ -676,6 +690,11 @@ export class DaemonServer {
 
   private async handleRequest(req: Request): Promise<Response> {
     return await this.httpRouter.handleRequest(req);
+  }
+
+  /** The relay reachability controller (null until start). Exposed for surfaces. */
+  getRelayReachability(): RelayReachability | null {
+    return this.relayReachability;
   }
 
   private async dispatchApiRoutes(req: Request): Promise<Response | null> {
