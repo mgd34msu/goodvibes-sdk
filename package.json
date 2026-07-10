@@ -62,6 +62,8 @@
     "eval:baseline:check": "bun scripts/eval-baseline.ts --check",
     "flags:graduation": "bun scripts/flags-graduation.ts",
     "line:check": "bun scripts/check-line-cap.ts",
+    "openapi:generate": "bun scripts/generate-openapi-contract.ts",
+    "openapi:check": "bun scripts/generate-openapi-contract.ts --check",
     "pack:check": "bun scripts/pack-check.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "platform-console:check": "bun scripts/no-platform-console.ts",

@@ -59,6 +59,7 @@
       "import": "./dist/contracts-node.js"
     },
     "./contracts/operator-contract.json": "./dist/contracts/artifacts/operator-contract.json",
+    "./contracts/operator-openapi.json": "./dist/contracts/artifacts/operator-openapi.json",
     "./contracts/peer-contract.json": "./dist/contracts/artifacts/peer-contract.json",
     "./daemon": {
       "types": "./dist/daemon.d.ts",
