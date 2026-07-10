@@ -69,6 +69,12 @@ export interface PhaseResult {
    * Surfaced in phase metadata for operator diagnostics.
    */
   spillBackend?: import('../../tools/shared/overflow.js').SpillBackendType | undefined;
+  /**
+   * When the permission phase aborts the pipeline, this carries the structured
+   * denial so the executor can thread it onto the failed ToolResult the asking
+   * agent sees. See {@link import('../../types/tools.js').ToolDenial}.
+   */
+  denial?: import('../../types/tools.js').ToolDenial | undefined;
 }
 
 /**

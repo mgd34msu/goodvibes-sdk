@@ -113,11 +113,16 @@ export async function executeToolCalls(
       });
     }
     if (!approved) {
-      const err = new PermissionError(`Permission denied for tool '${call.name}'`);
+      // Structured, call-scoped denial: the asking agent gets reason + scope on
+      // the failed result (not just a bare string) and can continue honestly.
+      const err = new PermissionError(
+        `Permission denied for tool '${call.name}' (reason: ${checkResult.reasonCode}, scope: ${checkResult.sourceLayer}). This call was refused; continue without it and report that it was not run.`,
+      );
       const deniedResult = {
         callId: call.id,
         success: false,
         error: err.message,
+        denial: { denied: true as const, reason: checkResult.reasonCode, scope: checkResult.sourceLayer },
       };
       results.push(deniedResult);
       if (deps.runtimeBus) {

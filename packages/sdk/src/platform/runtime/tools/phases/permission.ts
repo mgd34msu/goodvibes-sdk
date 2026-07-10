@@ -17,6 +17,28 @@ import { summarizeError } from '../../../utils/error-display.js';
  * The resolved args used here account for any input updates from the
  * prehook phase (stored as `_updatedArgs` on the record).
  */
+/**
+ * Build the aborting permission-denied phase result, carrying structured,
+ * call-scoped denial data (reason + scope) AND a self-explaining error string so
+ * the asking agent can continue and report honestly rather than parse a bare
+ * "Permission denied" line.
+ */
+function deniedPhaseResult(
+  toolName: string,
+  reason: string,
+  scope: string,
+  start: number,
+): PhaseResult {
+  return {
+    phase: 'permissioned',
+    success: false,
+    durationMs: performance.now() - start,
+    error: `Permission denied for tool '${toolName}' (reason: ${reason}, scope: ${scope}). This call was refused; continue without it and report that it was not run.`,
+    abort: true,
+    denial: { denied: true, reason, scope },
+  };
+}
+
 export async function permissionPhase(
   call: ToolCall,
   _tool: Tool,
@@ -94,24 +116,12 @@ export async function permissionPhase(
       });
 
       if (!analysis.approved) {
-        return {
-          phase: 'permissioned',
-          success: false,
-          durationMs: performance.now() - start,
-          error: `Permission denied for tool '${call.name}'`,
-          abort: true,
-        };
+        return deniedPhaseResult(call.name, analysis.reasonCode, analysis.sourceLayer, start);
       }
     } else {
       const analysis = await resolvePermissionResult();
       if (!analysis.approved) {
-        return {
-          phase: 'permissioned',
-          success: false,
-          durationMs: performance.now() - start,
-          error: `Permission denied for tool '${call.name}'`,
-          abort: true,
-        };
+        return deniedPhaseResult(call.name, analysis.reasonCode, analysis.sourceLayer, start);
       }
     }
 
