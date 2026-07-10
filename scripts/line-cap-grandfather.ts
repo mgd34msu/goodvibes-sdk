@@ -50,8 +50,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // schema-types.ts ~1.07k — config schema type surface, pre-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1098,
-    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries)',
+    ceiling: 1115,
+    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries); +17 for the atRest config section backing on-disk transcript-journal + execution-ledger secret redaction and age/size retention (AtRestConfig interface + doc, the GoodVibesConfig member, and the three atRest.* keys in the ConfigKey union and ConfigValue mapped type)',
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
@@ -95,8 +95,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator-runner.ts ~0.97k — agent orchestrator runner, pre-split, shrink-only
   'packages/sdk/src/platform/agents/orchestrator-runner.ts': {
-    ceiling: 982,
-    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts)',
+    ceiling: 984,
+    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts); +2 for the run context\'s at-rest journal redaction/retention policy field, threaded into the AgentSession construction (policy resolution + logic live in runtime/at-rest-persistence.ts)',
   },
   // service.ts (knowledge) ~0.92k — knowledge service facade, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/service.ts': {

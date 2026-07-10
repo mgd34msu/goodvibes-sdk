@@ -4,6 +4,7 @@
 
 import { coreConfigDefaults, coreHeadConfigSettings, coreTailConfigSettings } from './schema-domain-core.js';
 import { runtimeConfigDefaults, runtimePrimaryConfigSettings, runtimeSecondaryConfigSettings } from './schema-domain-runtime.js';
+import { atRestConfigDefaults, atRestConfigSettings } from './schema-domain-at-rest.js';
 import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-surfaces.js';
 import type { ConfigKey, ConfigSetting, GoodVibesConfig, SurfacesConfig } from './schema-types.js';
 
@@ -33,6 +34,7 @@ export const DEFAULT_CONFIG = {
   network: runtimeConfigDefaults.network,
   runtime: runtimeConfigDefaults.runtime,
   telemetry: runtimeConfigDefaults.telemetry,
+  atRest: atRestConfigDefaults.atRest,
   batch: runtimeConfigDefaults.batch,
   cloudflare: runtimeConfigDefaults.cloudflare,
   daemon: coreConfigDefaults.daemon,
@@ -48,6 +50,7 @@ export const DEFAULT_CONFIG = {
 export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...coreHeadConfigSettings,
   ...runtimePrimaryConfigSettings,
+  ...atRestConfigSettings,
   ...surfaceConfigSettings,
   ...runtimeSecondaryConfigSettings,
   ...coreTailConfigSettings,

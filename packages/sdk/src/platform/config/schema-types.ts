@@ -380,6 +380,16 @@ export interface TelemetryConfig {
   includeRawPrompts: boolean;
 }
 
+/** At-rest redaction + retention policy for the transcript journal and execution ledger. */
+export interface AtRestConfig {
+  /** Redact secret/credential patterns at write time (default true). */
+  redactionEnabled: boolean;
+  /** Age cap (days) for on-disk journal/ledger files (default 30). */
+  retentionMaxAgeDays: number;
+  /** Total-size cap (MB) across the on-disk journal/ledger file set (default 512). */
+  retentionMaxTotalMb: number;
+}
+
 export interface GoodVibesConfig {
   display: {
     stream: boolean;            // default: true
@@ -509,6 +519,7 @@ export interface GoodVibesConfig {
   featureFlags: Record<string, PersistedFlagState>;
   runtime: RuntimeConfig;
   telemetry: TelemetryConfig;
+  atRest: AtRestConfig;
   batch: BatchConfig;
   cloudflare: CloudflareConfig;
 }
@@ -770,6 +781,9 @@ export type ConfigKey =
   | 'runtime.companionChatLimiter.perSessionLimit'
   | 'runtime.eventBus.maxListeners'
   | 'telemetry.includeRawPrompts'
+  | 'atRest.redactionEnabled'
+  | 'atRest.retentionMaxAgeDays'
+  | 'atRest.retentionMaxTotalMb'
   | 'batch.mode'
   | 'batch.fallback'
   | 'batch.queueBackend'
@@ -1056,6 +1070,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   K extends 'runtime.eventBus.maxListeners' ? number :
   K extends 'telemetry.includeRawPrompts' ? boolean :
+  K extends 'atRest.redactionEnabled' ? boolean :
+  K extends 'atRest.retentionMaxAgeDays' ? number :
+  K extends 'atRest.retentionMaxTotalMb' ? number :
   K extends 'batch.mode' ? BatchMode :
   K extends 'batch.fallback' ? BatchFallbackMode :
   K extends 'batch.queueBackend' ? BatchQueueBackend :

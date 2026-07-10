@@ -100,6 +100,11 @@ export function handleReplayCommand(
       engine.load(runId, syntheticSnapshot, entries);
       logger.info('[ReplayCommandHandler] run loaded', { runId, events: entries.length });
 
+      // At-rest redaction runs at write time, so a recorded run may already carry
+      // [REDACTED_*] markers where a secret was masked. Surface that honestly so a
+      // viewer reads a marker as "redacted here", never as missing or corrupt data.
+      const redacted = entries.some((entry) => JSON.stringify(entry.payload ?? '').includes('[REDACTED'));
+
       return {
         ok: true,
         output: [
@@ -107,6 +112,9 @@ export function handleReplayCommand(
           `  Events: ${entries.length}`,
           `  First: ${new Date(entries[0]?.ts ?? Date.now()).toISOString()}`,
           `  Last:  ${new Date(entries[entries.length - 1]?.ts ?? Date.now()).toISOString()}`,
+          ...(redacted
+            ? ['', 'Note: some records were redacted at rest — secrets appear as [REDACTED_*] markers; the content shown is post-redaction.']
+            : []),
           '',
           'Use /replay step to advance, /replay seek <rev> to jump, /replay diff to compare.',
         ].join('\n'),

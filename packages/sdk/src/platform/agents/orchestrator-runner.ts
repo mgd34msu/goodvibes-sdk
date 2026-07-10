@@ -55,6 +55,8 @@ type EmitterContext = import('../runtime/emitters/index.js').EmitterContext;
 export interface AgentOrchestratorRunContext {
   readonly workingDirectory: string;
   readonly surfaceRoot?: string | undefined;
+  /** At-rest journal redaction + retention policy; undefined -> honest default (redaction on). */
+  readonly atRestPolicy?: import('../runtime/at-rest-persistence.js').AtRestPolicy | undefined;
   readonly runtimeBus: RuntimeEventBus | null;
   readonly featureFlagManager: FeatureFlagManager | null;
   readonly emitterContext: (agentId: string) => EmitterContext;
@@ -509,7 +511,7 @@ export async function runAgentTask(
     session = new AgentSession(record.id, modelId, record.provider ?? currentModel.provider ?? 'unknown', {
       sessionsDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'sessions'),
       stateDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'state'),
-    });
+    }, context.atRestPolicy);
     session.appendMessage({ type: 'session_config', template: record.template, task: record.task, tools: record.tools, model: modelId, provider: record.provider ?? 'unknown', timestamp: new Date().toISOString() });
 
     const toolRegistry = context.buildScopedRegistry(record.tools, context.getFullRegistry());

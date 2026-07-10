@@ -4,6 +4,12 @@ import { ConversationManager } from '../core/conversation.js';
 import { KVState } from '../state/kv-state.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import {
+  type AtRestPolicy,
+  DEFAULT_AT_REST_POLICY,
+  redactAtRestLine,
+  enforceJournalDirectoryRetention,
+} from '../runtime/at-rest-persistence.js';
 
 export interface AgentSessionPaths {
   readonly sessionsDir: string;
@@ -42,9 +48,28 @@ export class AgentSession {
   /** Path to the agent's JSONL message log. */
   readonly sessionFile: string;
 
-  constructor(agentId: string, model: string, provider: string, paths: AgentSessionPaths) {
+  /** The at-rest redaction + retention policy for this journal. */
+  private readonly atRestPolicy: AtRestPolicy;
+
+  constructor(
+    agentId: string,
+    model: string,
+    provider: string,
+    paths: AgentSessionPaths,
+    atRestPolicy: AtRestPolicy = DEFAULT_AT_REST_POLICY,
+  ) {
     this.agentId = agentId;
+    this.atRestPolicy = atRestPolicy;
     const resolvedPaths = resolveAgentSessionPaths(paths);
+
+    // Retention enforcement point (checkpoint-gc lesson: gc that is never called
+    // reclaims nothing). Each new agent journal prunes stale/oversized sibling
+    // journals in the sessions dir before it starts writing its own.
+    try {
+      enforceJournalDirectoryRetention(resolvedPaths.sessionsDir, this.atRestPolicy);
+    } catch (err) {
+      logger.debug('AgentSession journal retention skipped', { agentId, error: summarizeError(err) });
+    }
 
     // Own ConversationManager — not shared with main session
     this.conversation = new ConversationManager();
@@ -78,7 +103,9 @@ export class AgentSession {
       if (!this.dirCreated) {
         this._ensureSessionDir();
       }
-      appendFileSync(this.sessionFile, JSON.stringify(msg) + '\n', 'utf-8');
+      const serialized = JSON.stringify(msg);
+      const line = this.atRestPolicy.redact ? redactAtRestLine(serialized) : serialized;
+      appendFileSync(this.sessionFile, line + '\n', 'utf-8');
     } catch (err) {
       logger.error('AgentSession.appendMessage failed', { agentId: this.agentId, error: summarizeError(err) });
     }
