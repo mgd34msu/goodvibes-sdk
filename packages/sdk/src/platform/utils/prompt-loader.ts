@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { dirname, resolve, join } from 'path';
 import { logger } from './logger.js';
 import { summarizeError } from './error-display.js';
@@ -96,39 +96,131 @@ export interface LoadSystemPromptOptions {
   readonly argv?: readonly string[] | undefined;
 }
 
-export function loadSystemPrompt(
+/**
+ * Which instruction file a loaded chain segment came from.
+ *
+ *  - `cli`     — an explicit `--system-prompt-file` argument (exclusive path)
+ *  - `base`    — `~/.goodvibes/SYSTEM.md`
+ *  - `global`  — `~/.goodvibes/GOODVIBES.md`
+ *  - `agents`  — the nearest `AGENTS.md` walking up from the working directory
+ *  - `project` — `<workingDirectory>/.goodvibes/GOODVIBES.md`
+ *  - `config`  — the `provider.systemPromptFile` config value
+ */
+export type PromptSourceKind = 'cli' | 'base' | 'global' | 'agents' | 'project' | 'config';
+
+/** One instruction file that actually contributed content to the system prompt. */
+export interface PromptSource {
+  readonly kind: PromptSourceKind;
+  /** Absolute path of the file that was read. */
+  readonly path: string;
+}
+
+/** The assembled system prompt plus the provenance of every file that fed it. */
+export interface SystemPromptResult {
+  readonly prompt: string;
+  /** Loaded instruction files, in the order they were concatenated. */
+  readonly sources: readonly PromptSource[];
+}
+
+/**
+ * Walk from `startDir` upward toward the filesystem root and return the path of
+ * the nearest `AGENTS.md` (nearest-file-wins). Returns `null` when none is
+ * found on the way up. The walk stops at the root (when `dirname(dir) === dir`)
+ * so it always terminates.
+ */
+export function findNearestAgentsFile(startDir: string): string | null {
+  let current = resolve(startDir);
+  // Bounded by the filesystem depth: dirname eventually fixes at the root.
+  for (;;) {
+    const candidate = join(current, 'AGENTS.md');
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+/**
+ * Load the system prompt chain and report the provenance of every file that
+ * contributed. See {@link loadSystemPrompt} for the plain-string variant.
+ *
+ * Layering (each present, non-empty file is concatenated in this order):
+ *   1. `--system-prompt-file` CLI arg — exclusive; when set and readable it is
+ *      the only source.
+ *   2. `~/.goodvibes/SYSTEM.md`
+ *   3. `~/.goodvibes/GOODVIBES.md`
+ *   4. nearest `AGENTS.md` (walking up from the working directory) — a
+ *      convention fallback/addition. It is placed BEFORE the project's own
+ *      `GOODVIBES.md` so the project-specific file keeps precedence (it is
+ *      concatenated later, and later sources win in the append order).
+ *   5. `<workingDirectory>/.goodvibes/GOODVIBES.md`
+ *   6. `provider.systemPromptFile` (appended last)
+ */
+export function loadSystemPromptWithSources(
   options: LoadSystemPromptOptions,
-): string {
+): SystemPromptResult {
   const parts: string[] = [];
+  const sources: PromptSource[] = [];
   const argv = options.argv ?? process.argv;
+
+  const add = (kind: PromptSourceKind, path: string, content: string): void => {
+    parts.push(content);
+    sources.push({ kind, path: resolve(path) });
+  };
 
   // 1. CLI arg override — exclusive, does not chain with other sources
   const argIdx = argv.indexOf('--system-prompt-file');
   if (argIdx !== -1 && argv[argIdx + 1]) {
-    const content = readPromptFile(argv[argIdx + 1]!);
-    if (content) return content;
+    const cliPath = argv[argIdx + 1]!;
+    const content = readPromptFile(cliPath);
+    if (content) {
+      return { prompt: content, sources: [{ kind: 'cli', path: resolve(cliPath) }] };
+    }
   }
 
   // 2. ~/.goodvibes/SYSTEM.md (base)
-  const systemContent = readPromptFile(join(options.homeDirectory, '.goodvibes', 'SYSTEM.md'));
-  if (systemContent) parts.push(systemContent);
+  const basePath = join(options.homeDirectory, '.goodvibes', 'SYSTEM.md');
+  const systemContent = readPromptFile(basePath);
+  if (systemContent) add('base', basePath, systemContent);
 
   // 3. ~/.goodvibes/GOODVIBES.md (global extensions)
-  const globalContent = readPromptFile(join(options.homeDirectory, '.goodvibes', 'GOODVIBES.md'));
-  if (globalContent) parts.push(globalContent);
+  const globalPath = join(options.homeDirectory, '.goodvibes', 'GOODVIBES.md');
+  const globalContent = readPromptFile(globalPath);
+  if (globalContent) add('global', globalPath, globalContent);
 
-  // 4. .goodvibes/GOODVIBES.md (project)
-  const projectContent = readPromptFile(
-    join(options.workingDirectory, '.goodvibes', 'GOODVIBES.md'),
-  );
-  if (projectContent) parts.push(projectContent);
+  // 4. Nearest AGENTS.md (nearest-file-wins upward from the working directory).
+  //    Additive convention fallback; placed before the project GOODVIBES.md so
+  //    the project's own instruction file keeps precedence.
+  const agentsPath = findNearestAgentsFile(options.workingDirectory);
+  if (agentsPath) {
+    const agentsContent = readPromptFile(agentsPath);
+    if (agentsContent) add('agents', agentsPath, agentsContent);
+  }
 
-  // 5. Config-specified file (additional, appended last)
+  // 5. .goodvibes/GOODVIBES.md (project)
+  const projectPath = join(options.workingDirectory, '.goodvibes', 'GOODVIBES.md');
+  const projectContent = readPromptFile(projectPath);
+  if (projectContent) add('project', projectPath, projectContent);
+
+  // 6. Config-specified file (additional, appended last)
   const configPath = options.getConfigPath?.();
   if (typeof configPath === 'string' && configPath) {
     const configContent = readPromptFile(configPath);
-    if (configContent) parts.push(configContent);
+    if (configContent) add('config', configPath, configContent);
   }
 
-  return parts.join('\n\n');
+  return { prompt: parts.join('\n\n'), sources };
+}
+
+/**
+ * Load system prompt by chain-loading SYSTEM.md + global + nearest AGENTS.md +
+ * project GOODVIBES.md files. Returns the concatenated prompt string.
+ *
+ * @param getConfigPath Optional injector for the config-specified systemPromptFile path.
+ *                      Defaults to reading from configManager (used in production).
+ */
+export function loadSystemPrompt(
+  options: LoadSystemPromptOptions,
+): string {
+  return loadSystemPromptWithSources(options).prompt;
 }

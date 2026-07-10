@@ -3,7 +3,10 @@ import type { ServiceRegistry } from '../config/service-registry.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { IntegrationRecord } from './store/domains/integrations.js';
 import { logger } from '../utils/logger.js';
-import { loadSystemPrompt as _loadSystemPrompt } from '../utils/prompt-loader.js';
+import {
+  loadSystemPromptWithSources as _loadSystemPromptWithSources,
+  type SystemPromptResult,
+} from '../utils/prompt-loader.js';
 import { isAbsolute, resolve } from 'node:path';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -20,10 +23,16 @@ function requireOwnedPromptRoot(path: string | null, name: 'workingDirectory' | 
   return trimmed;
 }
 
-export function loadRuntimeSystemPrompt(configManager: ConfigManager): string {
+/**
+ * Load the runtime system prompt together with the provenance of every
+ * instruction file that fed it (including a nearest-file-wins `AGENTS.md`).
+ * The loaded sources are logged so the set of active instruction files is
+ * always reported, and returned so a host surface can display them.
+ */
+export function loadRuntimeSystemPromptWithSources(configManager: ConfigManager): SystemPromptResult {
   const workingDirectory = requireOwnedPromptRoot(configManager.getWorkingDirectory(), 'workingDirectory');
   const homeDirectory = requireOwnedPromptRoot(configManager.getHomeDirectory(), 'homeDirectory');
-  return _loadSystemPrompt(
+  const result = _loadSystemPromptWithSources(
     {
       workingDirectory,
       homeDirectory,
@@ -37,6 +46,14 @@ export function loadRuntimeSystemPrompt(configManager: ConfigManager): string {
       argv: process.argv,
     },
   );
+  logger.debug('Loaded system prompt instruction sources', {
+    sources: result.sources.map((s) => ({ kind: s.kind, path: s.path })),
+  });
+  return result;
+}
+
+export function loadRuntimeSystemPrompt(configManager: ConfigManager): string {
+  return loadRuntimeSystemPromptWithSources(configManager).prompt;
 }
 
 export async function synchronizeConfiguredServices(
