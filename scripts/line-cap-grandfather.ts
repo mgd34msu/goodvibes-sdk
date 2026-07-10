@@ -50,8 +50,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // schema-types.ts ~1.07k — config schema type surface, pre-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1079,
-    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries)',
+    ceiling: 1093,
+    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries)',
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
@@ -95,8 +95,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator-runner.ts ~0.97k — agent orchestrator runner, pre-split, shrink-only
   'packages/sdk/src/platform/agents/orchestrator-runner.ts': {
-    ceiling: 973,
-    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections',
+    ceiling: 982,
+    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts)',
   },
   // service.ts (knowledge) ~0.92k — knowledge service facade, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/service.ts': {
@@ -125,8 +125,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // services.ts (runtime) ~0.86k — runtime services composition root, pre-split, shrink-only
   'packages/sdk/src/platform/runtime/services.ts': {
-    ceiling: 858,
-    justification: 'runtime services composition root, pre-split, shrink-only',
+    ceiling: 884,
+    justification: 'runtime services composition root, pre-split, shrink-only; +26 for constructing the background-agent PermissionManager (ask handler bridged to the shared approval broker with subagent attribution) and threading it into the AgentOrchestrator dependencies',
   },
   // scheduler.ts ~0.85k — scheduler core, pre-split, shrink-only
   'packages/sdk/src/platform/scheduler/scheduler.ts': {

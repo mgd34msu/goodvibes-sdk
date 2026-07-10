@@ -90,6 +90,7 @@ import type { FeatureFlagManager } from './feature-flags/index.js';
 import { createFeatureFlagManager } from './feature-flags/index.js';
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
 import { bindPermissionModeChangeEvent } from '../permissions/mode-change-emitter.js';
+import { PermissionManager, createPermissionConfigReader } from '../permissions/manager.js';
 import { requireSurfaceRoot } from './surface-root.js';
 import {
   createNoopKeybindingsManager,
@@ -641,7 +642,32 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     subscriptionManager,
     secretsManager,
   });
+  // Background/subagent tool calls are brokered through the SAME session
+  // permission mode as the foreground turn loop. The ask handler is the shared
+  // approval broker, so a background ask surfaces through the same blocked-on-
+  // user machinery — here carrying the subagent's attribution. The escape hatch
+  // (config permissions.backgroundAgents: 'allow-all') exempts background agents.
+  const backgroundPermissionManager = new PermissionManager(
+    (request) => approvalBroker.requestApproval({
+      request,
+      ...(request.attribution
+        ? {
+            routeId: request.attribution.agentId,
+            metadata: {
+              source: 'background-agent',
+              agentId: request.attribution.agentId,
+              ...(request.attribution.template ? { agentTemplate: request.attribution.template } : {}),
+            },
+          }
+        : {}),
+    }),
+    createPermissionConfigReader(configManager),
+    policyRuntimeState,
+    hookDispatcher,
+    featureFlags,
+  );
   agentOrchestrator.setDependencies({
+    permissionManager: backgroundPermissionManager,
     fileCache,
     projectIndex,
     workingDirectory,

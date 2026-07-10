@@ -36,6 +36,7 @@ export const coreConfigDefaults = {
   },
   permissions: {
     mode: 'prompt',
+    backgroundAgents: 'inherit',
     tools: {
       read: 'allow',
       write: 'prompt',
@@ -291,6 +292,20 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
       + 'accept-edits: file write/edit tools auto-approve, exec and other risky classes still ask. '
       + 'allow-all ("auto"): every tool auto-approved. custom: per-tool config actions apply.',
     enumValues: ['prompt', 'allow-all', 'custom', 'plan', 'accept-edits'],
+  },
+  {
+    key: 'permissions.backgroundAgents',
+    type: 'enum',
+    default: 'inherit',
+    description:
+      'How background/subagent tool calls consult the permission layer. '
+      + 'inherit (default): background tool execution runs through the same session '
+      + 'permission mode as the foreground turn loop (allow-all changes nothing; '
+      + 'prompt/plan/accept-edits/custom apply their matrices; asks broker through the '
+      + 'same blocked-on-user machinery with subagent attribution). '
+      + 'allow-all: background agents are exempt — their tool calls auto-approve regardless '
+      + 'of the session mode.',
+    enumValues: ['inherit', 'allow-all'],
   },
   {
     key: 'permissions.tools.read',
