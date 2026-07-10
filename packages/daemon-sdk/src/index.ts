@@ -182,3 +182,15 @@ export {
 } from './pagination.js';
 export type { PaginatedResponse } from './pagination.js';
 export type { JsonErrorResponseOptions } from './error-response.js';
+export {
+  RelayHub,
+  RelayConnection,
+  DEFAULT_RELAY_LIMITS,
+} from './relay-server.js';
+export type {
+  RelayServerSocket,
+  RelayServerLogger,
+  RelayServerLimits,
+} from './relay-server.js';
+export { createBunRelayServer } from './relay-server-entry.js';
+export type { BunRelayServerOptions } from './relay-server-entry.js';
