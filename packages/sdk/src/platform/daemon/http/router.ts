@@ -682,6 +682,7 @@ export class DaemonHttpRouter {
         chatManager,
         parseJsonBody: (request) => this.parseJsonBody(request),
         resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
+        homeGraph: this.context.homeGraphService,
       });
     }
     return this.homeAssistantRoutes;
