@@ -14,6 +14,11 @@ import { VERSION } from '../version.js';
 import { isDaemonVersionCompatible, describeVersionIncompatibility } from './daemon-version-compat.js';
 import { resolveDaemonEnabled } from '../config/index.js';
 import { recordDetachedDaemonRuntime } from './detached-daemon-runtime.js';
+import {
+  classifyDaemonProbe,
+  decideDaemonAdoption,
+  type DaemonIdentityProbeResult,
+} from './daemon-adoption-policy.js';
 
 interface DaemonService {
   enable(config: { daemon: boolean }, token?: string): boolean;
@@ -122,6 +127,14 @@ interface ServiceFactories {
    * incompatible-adoption refusal without constructing skewed daemons.
    */
   isDaemonVersionCompatible?: ((localVersion: string, remoteVersion: string | undefined) => boolean) | undefined;
+  /**
+   * Adopt-only policy: attach to a compatible running daemon but NEVER spawn or
+   * embed one when the port is free. Expresses the "this surface does not own the
+   * daemon lifecycle" stance (e.g. the agent connecting to an externally-owned
+   * host) as configuration rather than a wholesale override of this function.
+   * The version band-check still applies before adopting. Default false.
+   */
+  adoptOnly?: boolean | undefined;
 }
 
 export type HostServiceMode = 'disabled' | 'embedded' | 'external' | 'blocked' | 'incompatible' | 'unavailable';
@@ -135,13 +148,6 @@ export interface HostServiceStatus {
   readonly status?: string | undefined;
   readonly version?: string | undefined;
   readonly authenticated?: boolean | undefined;
-}
-
-interface DaemonIdentityProbeResult {
-  readonly kind: 'goodvibes' | 'unauthorized' | 'unknown';
-  readonly status?: string | undefined;
-  readonly version?: string | undefined;
-  readonly reason?: string | undefined;
 }
 
 export interface HostServicesHandle {
@@ -447,7 +453,7 @@ export async function startHostServices(
     identity: DaemonIdentityProbeResult,
     reasonAdopted: string,
   ): HostServiceStatus => {
-    if (versionCompatible(localDaemonVersion, identity.version)) {
+    if (classifyDaemonProbe({ identity, localVersion: localDaemonVersion, versionCompatible }) === 'adopt') {
       return createServiceStatus('external', daemonHost, daemonPort, {
         authenticated: true,
         status: identity.status,
@@ -576,82 +582,108 @@ export async function startHostServices(
   });
 
   if (resolveDaemonEnabled(config)) {
-    if (await probeDaemonPortInUse(daemonHost, daemonPort)) {
-      const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
-      if (identity.kind === 'goodvibes') {
-        daemonStatus = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified on configured host/port');
+    // Port is free. Owner ruling (D7a): the daemon is a SYSTEM SERVICE, so
+    // starting a surface must NOT couple the daemon's lifetime to this process.
+    // DEFAULT (Layer 2): spawn the daemon as a detached standalone process and
+    // adopt it as 'external'. In-process embedding is an explicit opt-in
+    // (Layer 3: daemon.embedInProcess).
+    const startEmbeddedDaemon = async (): Promise<{ readonly service: DaemonService | null; readonly status: HostServiceStatus }> => {
+      const pendingDaemonServer = factories.createDaemonServer
+        ? factories.createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices)
+        : await createDefaultDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
+      const service = pendingDaemonServer;
+      service.enable({ daemon: true }, factories.sharedDaemonToken);
+      return startGuardedService({
+        label: 'Daemon server',
+        service,
+        timeoutMs: startupTimeoutMs,
+        timedOutStatus: () => createServiceStatus('unavailable', daemonHost, daemonPort, {
+          reason: 'Daemon server startup timed out',
+        }),
+        startedStatus: () => createServiceStatus('embedded', daemonHost, daemonPort, {
+          reason: 'Embedded daemon started in this host instance (daemon.embedInProcess opt-in)',
+        }),
+        bindConflictStatus: async (message) => {
+          const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
+          if (identity.kind === 'goodvibes') {
+            const verified = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified after bind conflict');
+            if (verified.mode === 'external') {
+              logger.info(
+                'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
+                { host: daemonHost, port: daemonPort, version: identity.version },
+              );
+            }
+            return verified;
+          }
+          logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
+          return createServiceStatus('blocked', daemonHost, daemonPort, {
+            authenticated: identity.kind !== 'unauthorized' ? undefined : false,
+            reason: identity.reason ?? message,
+          });
+        },
+      });
+    };
+
+    // ONE shared adopt-or-spawn decision (daemon-adoption-policy.ts). Probe the
+    // port + identity, then map the pure ruling onto this surface's I/O. The
+    // version band-check is inside the policy, applied before any adopt — the
+    // agent's stub used to skip it; the adopt-only stance is now `factories.adoptOnly`.
+    const portInUse = await probeDaemonPortInUse(daemonHost, daemonPort);
+    const identity = portInUse
+      ? await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken)
+      : null;
+    const decision = decideDaemonAdoption({
+      enabled: true,
+      portInUse,
+      identity,
+      localVersion: localDaemonVersion,
+      versionCompatible,
+      embedInProcess: readDaemonEmbedInProcess(config),
+      adoptOnly: factories.adoptOnly === true,
+    });
+
+    switch (decision.action) {
+      case 'adopt':
+      case 'incompatible': {
+        daemonStatus = resolveVerifiedDaemonStatus(decision.identity!, 'Existing GoodVibes daemon verified on configured host/port');
         if (daemonStatus.mode === 'external') {
           logger.info('Existing GoodVibes daemon detected; continuing without embedded daemon in this host instance', {
             host: daemonHost,
             port: daemonPort,
-            version: identity.version,
+            version: decision.identity?.version,
           });
         }
-      } else {
+        break;
+      }
+      case 'blocked': {
         daemonStatus = createServiceStatus('blocked', daemonHost, daemonPort, {
-          authenticated: identity.kind !== 'unauthorized' ? undefined : false,
-          reason: identity.reason ?? 'Configured daemon port is occupied by an unverified process',
+          authenticated: decision.identity?.kind !== 'unauthorized' ? undefined : false,
+          reason: decision.identity?.reason ?? 'Configured daemon port is occupied by an unverified process',
         });
         logger.warn(
           'Daemon server port already in use by an unverified process; continuing without embedded daemon in this host instance',
-          {
-            host: daemonHost,
-            port: daemonPort,
-            reason: identity.reason,
-          },
+          { host: daemonHost, port: daemonPort, reason: decision.identity?.reason },
         );
+        break;
       }
-    } else {
-      // Port is free. Owner ruling (D7a): the daemon is a SYSTEM SERVICE, so
-      // starting a surface must NOT couple the daemon's lifetime to this process.
-      // DEFAULT (Layer 2): spawn the daemon as a detached standalone process and
-      // adopt it as 'external'. In-process embedding is an explicit opt-in
-      // (Layer 3: daemon.embedInProcess).
-      const startEmbeddedDaemon = async (): Promise<{ readonly service: DaemonService | null; readonly status: HostServiceStatus }> => {
-        const pendingDaemonServer = factories.createDaemonServer
-          ? factories.createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices)
-          : await createDefaultDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
-        const service = pendingDaemonServer;
-        service.enable({ daemon: true }, factories.sharedDaemonToken);
-        return startGuardedService({
-          label: 'Daemon server',
-          service,
-          timeoutMs: startupTimeoutMs,
-          timedOutStatus: () => createServiceStatus('unavailable', daemonHost, daemonPort, {
-            reason: 'Daemon server startup timed out',
-          }),
-          startedStatus: () => createServiceStatus('embedded', daemonHost, daemonPort, {
-            reason: 'Embedded daemon started in this host instance (daemon.embedInProcess opt-in)',
-          }),
-          bindConflictStatus: async (message) => {
-            const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
-            if (identity.kind === 'goodvibes') {
-              const verified = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified after bind conflict');
-              if (verified.mode === 'external') {
-                logger.info(
-                  'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
-                  { host: daemonHost, port: daemonPort, version: identity.version },
-                );
-              }
-              return verified;
-            }
-            logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
-            return createServiceStatus('blocked', daemonHost, daemonPort, {
-              authenticated: identity.kind !== 'unauthorized' ? undefined : false,
-              reason: identity.reason ?? message,
-            });
-          },
+      case 'adopt-only-idle': {
+        daemonStatus = createServiceStatus('unavailable', daemonHost, daemonPort, { reason: decision.reason });
+        logger.info('adopt-only policy: no daemon reachable on the configured host/port; running without a local daemon', {
+          host: daemonHost,
+          port: daemonPort,
         });
-      };
-
-      if (readDaemonEmbedInProcess(config)) {
+        break;
+      }
+      case 'embed': {
         logger.warn(
           'daemon.embedInProcess is enabled: hosting the daemon in-process couples its lifetime to this surface (single point of failure)',
         );
         const started = await startEmbeddedDaemon();
         embeddedDaemonServer = started.service;
         daemonStatus = started.status;
-      } else {
+        break;
+      }
+      case 'spawn': {
         const detached = await attemptDetachedDaemonSpawn();
         if ('status' in detached) {
           daemonStatus = detached.status;
@@ -670,7 +702,10 @@ export async function startHostServices(
           embeddedDaemonServer = started.service;
           daemonStatus = started.status;
         }
+        break;
       }
+      case 'disabled':
+        break;
     }
   }
 
