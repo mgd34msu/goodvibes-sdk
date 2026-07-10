@@ -8,6 +8,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A capability-bundle plugin format with SHA-256-pinned distribution and a
+  governed marketplace index.** A bundle manifest declares exactly which
+  capabilities a plugin needs — the security capabilities it uses plus the tools
+  it registers, hooks it subscribes to, config domains it reads, and channels it
+  touches — and the runtime grants it ONLY what it declared. A deny-by-default
+  guard (`createBundleCapabilityGuard` / `enforceBundleCapability`) refuses any
+  tool, hook, config domain, channel, or security capability the manifest did not
+  list; over-reach into high-risk capabilities beyond the bundle's trust tier is
+  withheld and recorded (quarantined on install via `planBundleActivation`)
+  rather than silently granted. Distribution is SHA-256 pinned:
+  `fetchAndVerifyBundle` resolves a file/URL/git source and verifies the expected
+  hash BEFORE returning — a missing or mismatched pin is a hard `BundlePinRefusal`
+  with no install-anyway path. The `PinnedMarketplaceIndex` format is governed by
+  construction: each entry's pin and capability summary are required by the type,
+  so a self-hostable registry built from it cannot represent an unpinned or
+  capability-opaque bundle. Shipped under
+  `@pellux/goodvibes-sdk/platform/runtime/ecosystem` with a `plugin-bundle`
+  init/validate CLI (`scripts/plugin-bundle.ts`).
 - **A zero-knowledge, self-hostable relay so a daemon is reachable from outside
   the LAN without the relay operator being able to read the traffic.** A daemon
   connects OUTBOUND to the relay and registers under an unguessable rendezvous
