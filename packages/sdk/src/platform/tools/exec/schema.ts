@@ -309,6 +309,12 @@ export interface ExecCommandResult {
   duration_ms?: number | undefined;
   cwd?: string | undefined;
   env?: Record<string, string> | undefined;
+  /**
+   * Credential-bearing environment variable NAMES withheld from the spawned
+   * process by the exec env scrub (never values). Present only when at least one
+   * variable was withheld, so a clean spawn stays quiet.
+   */
+  withheld_env?: string[] | undefined;
   /** Truncation note. */
   stdout_truncated?: boolean | undefined;
   stderr_truncated?: boolean | undefined;

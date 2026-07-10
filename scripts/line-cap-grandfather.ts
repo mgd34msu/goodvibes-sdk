@@ -105,8 +105,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // runtime.ts (tools/exec) ~0.92k — exec tool runtime, pre-split, shrink-only
   'packages/sdk/src/platform/tools/exec/runtime.ts': {
-    ceiling: 919,
-    justification: 'exec tool runtime, pre-split, shrink-only; +3 lines document the guard authority split (permission layer owns class risk, tool layer only the frozen catastrophic block)',
+    ceiling: 949,
+    justification: 'exec tool runtime, pre-split, shrink-only; +3 lines document the guard authority split (permission layer owns class risk, tool layer only the frozen catastrophic block); +30 for X: the credential-bearing env scrub — the scrub call + withheld-name computation + attach helper in runCommand and the scrub-config option/threading through the command dispatch chain (the scrub itself lives in credential-env.ts)',
   },
   // manager.ts (tools/agent) ~0.87k — agent tool manager, pre-split, shrink-only
   'packages/sdk/src/platform/tools/agent/manager.ts': {

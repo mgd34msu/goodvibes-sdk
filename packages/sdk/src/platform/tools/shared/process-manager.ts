@@ -3,6 +3,7 @@
 import { summarizeError } from '../../utils/error-display.js';
 import { logger } from '../../utils/logger.js';
 import { sleep } from '../../utils/concurrency.js';
+import { resolveCredentialEnvScrub, scrubCredentialEnv, type ResolvedCredentialEnvScrub } from '../exec/credential-env.js';
 
 /**
  * ProcessManager — tracks background processes for a single GoodVibes runtime.
@@ -41,6 +42,12 @@ export interface SpawnOptions {
   timeout_ms?: number | undefined;
   /** Grace period (ms) between SIGTERM and SIGKILL after timeout. Default: 5000. */
   sigterm_grace_ms?: number | undefined;
+  /**
+   * Credential-bearing env-var scrub applied to the inherited base environment
+   * before spawning. Defaults to enabled with an empty allowlist, so a
+   * background process is protected even when a caller does not thread config.
+   */
+  credentialEnvScrub?: ResolvedCredentialEnvScrub | undefined;
 }
 
 // ─── ExecCommandResult subset (for command handler return values) ─────────────
@@ -108,7 +115,12 @@ export class ProcessManager {
     const cleanEnv = Object.fromEntries(
       Object.entries(process.env).filter(([, v]) => v !== undefined),
     ) as Record<string, string>;
-    const mergedEnv = { ...cleanEnv, ...env };
+    // Scrub credential-bearing vars out of the inherited base env before merging
+    // the caller-supplied env (an explicit opt-in) on top. Without this, the
+    // background spawn would re-introduce every secret from process.env that the
+    // foreground scrub already removed.
+    const scrubbedBase = scrubCredentialEnv(cleanEnv, opts?.credentialEnvScrub ?? resolveCredentialEnvScrub()).env;
+    const mergedEnv = { ...scrubbedBase, ...env };
 
     let proc: ReturnType<typeof Bun.spawn>;
     try {
