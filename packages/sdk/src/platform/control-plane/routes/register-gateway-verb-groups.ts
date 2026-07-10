@@ -18,6 +18,8 @@ import { registerPushGatewayMethods } from './push.js';
 import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
+import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
+import { ChannelProfileRegistry, ChannelProfileStore } from '../../channel-profiles/index.js';
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
@@ -103,6 +105,16 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new PrincipalStore(deps.shellPaths.resolveUserPath('control-plane', 'principals.json')),
   );
   registerPrincipalsGatewayMethods(catalog, principalRegistry);
+
+  // Per-channel profile bindings (model/permission defaults for the sessions a
+  // channel originates), over a JSON snapshot under the daemon's control-plane
+  // state directory. Constructed here like the principal/skill/push groups. The
+  // intake helpers in ../../channel-profiles (attribution + profile resolution)
+  // pair this registry with the principal registry above at the inbound seam.
+  const channelProfileRegistry = new ChannelProfileRegistry(
+    new ChannelProfileStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-profiles.json')),
+  );
+  registerChannelProfilesGatewayMethods(catalog, channelProfileRegistry);
 
   // Session-scoped permission mode (get/set) + context-usage exposure on the
   // wire, over the daemon's own config + runtime store (its live local

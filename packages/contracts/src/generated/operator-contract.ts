@@ -20053,6 +20053,423 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "channels.profiles.delete",
+        "title": "Unbind Channel Profile",
+        "description": "Remove a channel profile binding. Returns { deleted: false } when no binding for that key existed — an honest boolean, never a phantom removal.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:channels"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/channels/profiles/{surfaceKind}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "surfaceKind": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "surfaceKind"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "surfaceKind": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            },
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "surfaceKind",
+            "deleted"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "channels.profiles.get",
+        "title": "Get Channel Profile Binding",
+        "description": "Return the profile binding for a channel (surfaceKind plus optional channelId). Returns 404 when no binding for that exact key exists.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:channels"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/channels/profiles/{surfaceKind}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "surfaceKind": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "surfaceKind"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "binding": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "surfaceKind": {
+                  "type": "string"
+                },
+                "channelId": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "permissionMode": {
+                  "type": "string",
+                  "enum": [
+                    "plan",
+                    "normal",
+                    "accept-edits",
+                    "auto"
+                  ]
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "surfaceKind",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "binding"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "channels.profiles.list",
+        "title": "List Channel Profile Bindings",
+        "description": "Return every per-channel profile binding (the model/permission defaults applied to sessions each channel originates).",
+        "category": "channels",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:channels"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/channels/profiles"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "surfaceKind": {
+                    "type": "string"
+                  },
+                  "channelId": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "permissionMode": {
+                    "type": "string",
+                    "enum": [
+                      "plan",
+                      "normal",
+                      "accept-edits",
+                      "auto"
+                    ]
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "surfaceKind",
+                  "updatedAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "bindings"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "channels.profiles.set",
+        "title": "Bind Channel Profile",
+        "description": "Bind (upsert) the model/provider and permission-mode defaults for a channel. Keyed on (surfaceKind, channelId?): a channelId-scoped binding wins over the surface-wide default; setting the same key again replaces it.",
+        "category": "channels",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:channels"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/channels/profiles"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "surfaceKind": {
+              "type": "string"
+            },
+            "channelId": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "permissionMode": {
+              "type": "string",
+              "enum": [
+                "plan",
+                "normal",
+                "accept-edits",
+                "auto"
+              ]
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "surfaceKind"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "binding": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "surfaceKind": {
+                  "type": "string"
+                },
+                "channelId": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "permissionMode": {
+                  "type": "string",
+                  "enum": [
+                    "plan",
+                    "normal",
+                    "accept-edits",
+                    "auto"
+                  ]
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "surfaceKind",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "binding"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "channels.repairs.list",
         "title": "List Channel Repair Actions",
         "description": "Return repair actions exposed by a channel surface.",
@@ -83594,10 +84011,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 348,
-      "typedInputs": 348,
+      "methods": 352,
+      "typedInputs": 352,
       "genericInputs": 0,
-      "typedOutputs": 348,
+      "typedOutputs": 352,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -83606,8 +84023,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 348,
-      "validated": 346,
+      "methods": 352,
+      "validated": 350,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `348`
+- Methods: `352`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -20069,6 +20069,438 @@ Update ingress policy configuration for a channel surface.
     "groupPolicies",
     "updatedAt",
     "metadata"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.profiles.delete`
+
+Remove a channel profile binding. Returns { deleted: false } when no binding for that key existed — an honest boolean, never a phantom removal.
+
+- Title: `Unbind Channel Profile`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/channels/profiles/{surfaceKind}`
+- Scopes: `write:channels`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "surfaceKind": {
+      "type": "string"
+    },
+    "channelId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "surfaceKind"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "surfaceKind": {
+      "type": "string"
+    },
+    "channelId": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "surfaceKind",
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.profiles.get`
+
+Return the profile binding for a channel (surfaceKind plus optional channelId). Returns 404 when no binding for that exact key exists.
+
+- Title: `Get Channel Profile Binding`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/channels/profiles/{surfaceKind}`
+- Scopes: `read:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "surfaceKind": {
+      "type": "string"
+    },
+    "channelId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "surfaceKind"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "binding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "surfaceKind": {
+          "type": "string"
+        },
+        "channelId": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "permissionMode": {
+          "type": "string",
+          "enum": [
+            "plan",
+            "normal",
+            "accept-edits",
+            "auto"
+          ]
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "surfaceKind",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "binding"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.profiles.list`
+
+Return every per-channel profile binding (the model/permission defaults applied to sessions each channel originates).
+
+- Title: `List Channel Profile Bindings`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/channels/profiles`
+- Scopes: `read:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "surfaceKind": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "permissionMode": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "normal",
+              "accept-edits",
+              "auto"
+            ]
+          },
+          "updatedAt": {
+            "type": "number"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "surfaceKind",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "bindings"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `channels.profiles.set`
+
+Bind (upsert) the model/provider and permission-mode defaults for a channel. Keyed on (surfaceKind, channelId?): a channelId-scoped binding wins over the surface-wide default; setting the same key again replaces it.
+
+- Title: `Bind Channel Profile`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/channels/profiles`
+- Scopes: `write:channels`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "surfaceKind": {
+      "type": "string"
+    },
+    "channelId": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "permissionMode": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "normal",
+        "accept-edits",
+        "auto"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "surfaceKind"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "binding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "surfaceKind": {
+          "type": "string"
+        },
+        "channelId": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "permissionMode": {
+          "type": "string",
+          "enum": [
+            "plan",
+            "normal",
+            "accept-edits",
+            "auto"
+          ]
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "surfaceKind",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "binding"
   ],
   "additionalProperties": false
 }
