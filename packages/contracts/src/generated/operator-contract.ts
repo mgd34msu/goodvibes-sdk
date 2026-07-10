@@ -27341,6 +27341,205 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
+        "id": "cost.attribution.get",
+        "title": "Get Cost Attribution",
+        "description": "Return windowed (24h/7d) cost attribution over observed LLM usage, grouped by a dimension (agent, tool, hook, mcp, model, provider, session), with cache-aware pricing (fresh input vs cache-read vs cache-write). Honest-unpriced: an unknown model contributes to unpricedRecordCount with a null cost, never a fabricated amount; costState is priced, unpriced, or estimated (a mix). totalCostUsd is null when every contributor is unpriced.",
+        "category": "cost",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:telemetry"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "window": {
+              "type": "string",
+              "enum": [
+                "24h",
+                "7d"
+              ]
+            },
+            "dimension": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "tool",
+                "hook",
+                "mcp",
+                "model",
+                "provider",
+                "session"
+              ]
+            }
+          },
+          "required": [
+            "window",
+            "dimension"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "window": {
+              "type": "string",
+              "enum": [
+                "24h",
+                "7d"
+              ]
+            },
+            "windowStartMs": {
+              "type": "number"
+            },
+            "dimension": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "tool",
+                "hook",
+                "mcp",
+                "model",
+                "provider",
+                "session"
+              ]
+            },
+            "totalCostUsd": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "costState": {
+              "type": "string",
+              "enum": [
+                "priced",
+                "estimated",
+                "unpriced"
+              ]
+            },
+            "pricedRecordCount": {
+              "type": "number"
+            },
+            "unpricedRecordCount": {
+              "type": "number"
+            },
+            "tokens": {
+              "type": "object",
+              "properties": {
+                "inputTokens": {
+                  "type": "number"
+                },
+                "outputTokens": {
+                  "type": "number"
+                },
+                "cacheReadTokens": {
+                  "type": "number"
+                },
+                "cacheWriteTokens": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "inputTokens",
+                "outputTokens",
+                "cacheReadTokens",
+                "cacheWriteTokens"
+              ],
+              "additionalProperties": false
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "costUsd": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "costState": {
+                    "type": "string",
+                    "enum": [
+                      "priced",
+                      "estimated",
+                      "unpriced"
+                    ]
+                  },
+                  "pricedRecordCount": {
+                    "type": "number"
+                  },
+                  "unpricedRecordCount": {
+                    "type": "number"
+                  },
+                  "tokens": {
+                    "type": "object",
+                    "properties": {
+                      "inputTokens": {
+                        "type": "number"
+                      },
+                      "outputTokens": {
+                        "type": "number"
+                      },
+                      "cacheReadTokens": {
+                        "type": "number"
+                      },
+                      "cacheWriteTokens": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "inputTokens",
+                      "outputTokens",
+                      "cacheReadTokens",
+                      "cacheWriteTokens"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "key",
+                  "costUsd",
+                  "costState",
+                  "pricedRecordCount",
+                  "unpricedRecordCount",
+                  "tokens"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "window",
+            "windowStartMs",
+            "dimension",
+            "totalCostUsd",
+            "costState",
+            "pricedRecordCount",
+            "unpricedRecordCount",
+            "tokens",
+            "rows"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "deliveries.get",
         "title": "Get Delivery",
         "description": "Return a single delivery record.",
@@ -63910,6 +64109,91 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "quota.fanout.get",
+        "title": "Assess Fan-out Against Quota Window",
+        "description": "Assess whether spawning N agents against a provider likely exhausts its quota window right now, grounded in observed rate-limit signals (429 retry-after, and limit/remaining when headers carry them). verdict is likely-exhausts (with the evidence it rests on — an active cooldown or an observed remaining below the fan-out), unlikely (with the evidence), or unknown when no signal has been observed — never a fabricated certainty.",
+        "category": "quota",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:telemetry"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "agentCount": {
+              "type": "number"
+            },
+            "callsPerAgent": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "provider",
+            "agentCount"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "verdict": {
+              "type": "string",
+              "enum": [
+                "likely-exhausts",
+                "unlikely",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "object",
+              "properties": {
+                "recentRateLimitCount": {
+                  "type": "number"
+                },
+                "activeCooldownMs": {
+                  "type": "number"
+                },
+                "observedRemaining": {
+                  "type": "number"
+                },
+                "observedLimit": {
+                  "type": "number"
+                },
+                "requestedAgents": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "recentRateLimitCount",
+                "requestedAgents"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "provider",
+            "verdict",
+            "reason",
+            "evidence"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "remote.node_host.contract",
         "title": "Node Host Contract",
         "description": "Return the distributed node/device host API contract.",
@@ -85092,10 +85376,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 364,
-      "typedInputs": 364,
+      "methods": 366,
+      "typedInputs": 366,
       "genericInputs": 0,
-      "typedOutputs": 364,
+      "typedOutputs": 366,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -85104,8 +85388,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 364,
-      "validated": 362,
+      "methods": 366,
+      "validated": 364,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

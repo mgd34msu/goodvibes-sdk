@@ -109,6 +109,12 @@ import {
   WORKTREE_SNAPSHOT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-control.ts';
 import {
+  COST_ATTRIBUTION_GET_INPUT_SCHEMA,
+  COST_ATTRIBUTION_GET_OUTPUT_SCHEMA,
+  QUOTA_FANOUT_GET_INPUT_SCHEMA,
+  QUOTA_FANOUT_GET_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-telemetry.ts';
+import {
   CHANNEL_PROFILES_DELETE_INPUT_SCHEMA,
   CHANNEL_PROFILES_DELETE_OUTPUT_SCHEMA,
   CHANNEL_PROFILES_GET_INPUT_SCHEMA,
@@ -286,6 +292,9 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'ci.watches.create', input: CI_WATCHES_CREATE_INPUT_SCHEMA, output: CI_WATCHES_CREATE_OUTPUT_SCHEMA },
   { methodId: 'ci.watches.delete', input: CI_WATCHES_DELETE_INPUT_SCHEMA, output: CI_WATCHES_DELETE_OUTPUT_SCHEMA },
   { methodId: 'ci.watches.run', input: CI_WATCHES_RUN_INPUT_SCHEMA, output: CI_WATCHES_RUN_OUTPUT_SCHEMA },
+  // Cost attribution + quota-window pre-fan-out warning:
+  { methodId: 'cost.attribution.get', input: COST_ATTRIBUTION_GET_INPUT_SCHEMA, output: COST_ATTRIBUTION_GET_OUTPUT_SCHEMA },
+  { methodId: 'quota.fanout.get', input: QUOTA_FANOUT_GET_INPUT_SCHEMA, output: QUOTA_FANOUT_GET_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

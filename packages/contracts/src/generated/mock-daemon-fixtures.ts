@@ -4947,6 +4947,41 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "html": "sample"
     }
   },
+  "cost.attribution.get": {
+    "methodId": "cost.attribution.get",
+    "http": null,
+    "status": 200,
+    "body": {
+      "window": "24h",
+      "windowStartMs": 0,
+      "dimension": "agent",
+      "totalCostUsd": 0,
+      "costState": "priced",
+      "pricedRecordCount": 0,
+      "unpricedRecordCount": 0,
+      "tokens": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0
+      },
+      "rows": [
+        {
+          "key": "sample",
+          "costUsd": 0,
+          "costState": "priced",
+          "pricedRecordCount": 0,
+          "unpricedRecordCount": 0,
+          "tokens": {
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "cacheReadTokens": 0,
+            "cacheWriteTokens": 0
+          }
+        }
+      ]
+    }
+  },
   "deliveries.get": {
     "methodId": "deliveries.get",
     "http": {
@@ -12023,6 +12058,23 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "status": 200,
     "body": {
       "publicKey": "sample"
+    }
+  },
+  "quota.fanout.get": {
+    "methodId": "quota.fanout.get",
+    "http": null,
+    "status": 200,
+    "body": {
+      "provider": "sample",
+      "verdict": "likely-exhausts",
+      "reason": "sample",
+      "evidence": {
+        "recentRateLimitCount": 0,
+        "activeCooldownMs": 0,
+        "observedRemaining": 0,
+        "observedLimit": 0,
+        "requestedAgents": 0
+      }
     }
   },
   "remote.node_host.contract": {

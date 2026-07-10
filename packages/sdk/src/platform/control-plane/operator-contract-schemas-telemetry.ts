@@ -347,3 +347,74 @@ export const OTLP_LOG_DOCUMENT_SCHEMA = objectSchema({
 export const OTLP_METRIC_DOCUMENT_SCHEMA = objectSchema({
   resourceMetrics: arraySchema(JSON_OBJECT_SCHEMA),
 }, ['resourceMetrics']);
+
+// ── Cost attribution ──────────────────────────────────────────────────────────
+
+const COST_STATE_SCHEMA = enumSchema(['priced', 'estimated', 'unpriced']);
+
+const COST_TOKENS_SCHEMA = objectSchema({
+  inputTokens: NUMBER_SCHEMA,
+  outputTokens: NUMBER_SCHEMA,
+  cacheReadTokens: NUMBER_SCHEMA,
+  cacheWriteTokens: NUMBER_SCHEMA,
+}, ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens']);
+
+const COST_ATTRIBUTION_ROW_SCHEMA = objectSchema({
+  key: STRING_SCHEMA,
+  costUsd: nullableSchema(NUMBER_SCHEMA),
+  costState: COST_STATE_SCHEMA,
+  pricedRecordCount: NUMBER_SCHEMA,
+  unpricedRecordCount: NUMBER_SCHEMA,
+  tokens: COST_TOKENS_SCHEMA,
+}, ['key', 'costUsd', 'costState', 'pricedRecordCount', 'unpricedRecordCount', 'tokens']);
+
+export const COST_ATTRIBUTION_GET_INPUT_SCHEMA = objectSchema({
+  window: enumSchema(['24h', '7d']),
+  dimension: enumSchema(['agent', 'tool', 'hook', 'mcp', 'model', 'provider', 'session']),
+}, ['window', 'dimension']);
+
+/**
+ * Windowed cost attribution. `totalCostUsd` is null when every contributor is
+ * unpriced (never a fabricated zero); costState `estimated` flags a mix of
+ * priced + unpriced contributors so a partial total is not mistaken for a
+ * complete one.
+ */
+export const COST_ATTRIBUTION_GET_OUTPUT_SCHEMA = objectSchema({
+  window: enumSchema(['24h', '7d']),
+  windowStartMs: NUMBER_SCHEMA,
+  dimension: enumSchema(['agent', 'tool', 'hook', 'mcp', 'model', 'provider', 'session']),
+  totalCostUsd: nullableSchema(NUMBER_SCHEMA),
+  costState: COST_STATE_SCHEMA,
+  pricedRecordCount: NUMBER_SCHEMA,
+  unpricedRecordCount: NUMBER_SCHEMA,
+  tokens: COST_TOKENS_SCHEMA,
+  rows: arraySchema(COST_ATTRIBUTION_ROW_SCHEMA),
+}, ['window', 'windowStartMs', 'dimension', 'totalCostUsd', 'costState', 'pricedRecordCount', 'unpricedRecordCount', 'tokens', 'rows']);
+
+// ── Quota window / pre-fan-out warning ────────────────────────────────────────
+
+const FANOUT_EVIDENCE_SCHEMA = objectSchema({
+  recentRateLimitCount: NUMBER_SCHEMA,
+  activeCooldownMs: NUMBER_SCHEMA,
+  observedRemaining: NUMBER_SCHEMA,
+  observedLimit: NUMBER_SCHEMA,
+  requestedAgents: NUMBER_SCHEMA,
+}, ['recentRateLimitCount', 'requestedAgents']);
+
+export const QUOTA_FANOUT_GET_INPUT_SCHEMA = objectSchema({
+  provider: STRING_SCHEMA,
+  agentCount: NUMBER_SCHEMA,
+  callsPerAgent: NUMBER_SCHEMA,
+}, ['provider', 'agentCount']);
+
+/**
+ * Pre-fan-out quota assessment. verdict `unknown` (with empty evidence) when no
+ * signal has been observed for the provider — never a fabricated certainty. A
+ * `likely-exhausts` verdict always carries the evidence it rests on.
+ */
+export const QUOTA_FANOUT_GET_OUTPUT_SCHEMA = objectSchema({
+  provider: STRING_SCHEMA,
+  verdict: enumSchema(['likely-exhausts', 'unlikely', 'unknown']),
+  reason: STRING_SCHEMA,
+  evidence: FANOUT_EVIDENCE_SCHEMA,
+}, ['provider', 'verdict', 'reason', 'evidence']);
