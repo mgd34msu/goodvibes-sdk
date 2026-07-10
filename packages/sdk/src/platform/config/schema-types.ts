@@ -419,6 +419,9 @@ export interface GoodVibesConfig {
     tools: PermissionsToolConfig;
     backgroundAgents: BackgroundAgentsMode; // default: 'inherit'
   };
+  diagnostics: {
+    postEdit: 'on' | 'off';     // default: 'on' — cheap in-process post-edit syntax diagnostics
+  };
   orchestration: {
     recursionEnabled: boolean;  // default: false — allow recursive agent spawning under bounded policy
     maxActiveAgents: number;    // default: 8 — total active agents across the orchestration tree
@@ -562,6 +565,7 @@ export type ConfigKey =
   | 'permissions.tools.registry'
   | 'permissions.tools.delegate'
   | 'permissions.tools.mcp'
+  | 'diagnostics.postEdit'
   | 'orchestration.recursionEnabled'
   | 'orchestration.maxActiveAgents'
   | 'orchestration.maxDepth'
@@ -847,6 +851,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'permissions.tools.registry' ? PermissionAction :
   K extends 'permissions.tools.delegate' ? PermissionAction :
   K extends 'permissions.tools.mcp' ? PermissionAction :
+  K extends 'diagnostics.postEdit' ? 'on' | 'off' :
   K extends 'orchestration.recursionEnabled' ? boolean :
   K extends 'orchestration.maxActiveAgents' ? number :
   K extends 'orchestration.maxDepth' ? number :

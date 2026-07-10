@@ -54,6 +54,9 @@ export const coreConfigDefaults = {
       mcp: 'prompt',
     },
   },
+  diagnostics: {
+    postEdit: 'on',
+  },
   orchestration: {
     recursionEnabled: false,
     maxActiveAgents: 8,
@@ -306,6 +309,18 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
       + 'allow-all: background agents are exempt — their tool calls auto-approve regardless '
       + 'of the session mode.',
     enumValues: ['inherit', 'allow-all'],
+  },
+  {
+    key: 'diagnostics.postEdit',
+    type: 'enum',
+    default: 'on',
+    description:
+      'Post-edit diagnostics: after a successful file write/edit, append cheap, '
+      + 'in-process syntax diagnostics (errors only) for the touched file to the tool '
+      + 'result so the model sees a broken edit immediately. on (default): run the '
+      + 'tree-sitter syntax provider when a TS/JS project context is detectable (no '
+      + 'process spawn, no type checking). off: never append diagnostics.',
+    enumValues: ['on', 'off'],
   },
   {
     key: 'permissions.tools.read',

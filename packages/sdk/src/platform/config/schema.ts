@@ -15,6 +15,7 @@ export const DEFAULT_CONFIG = {
   behavior: coreConfigDefaults.behavior,
   storage: coreConfigDefaults.storage,
   permissions: coreConfigDefaults.permissions,
+  diagnostics: coreConfigDefaults.diagnostics,
   orchestration: coreConfigDefaults.orchestration,
   planner: coreConfigDefaults.planner,
   sandbox: coreConfigDefaults.sandbox,

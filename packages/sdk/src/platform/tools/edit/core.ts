@@ -11,6 +11,7 @@ import type { ToolLLM } from '../../config/tool-llm.js';
 import { resolveAndValidatePath } from '../../utils/path-safety.js';
 import { editSchema } from './schema.js';
 import { AutoHealer } from '../shared/auto-heal.js';
+import { collectPostEditDiagnostics, formatDiagnosticsBlock, type DiagnosticsProvider } from '../shared/post-edit-diagnostics.js';
 import { ImportGraph } from '../../intelligence/index.js';
 import {
   buildFailedEditResult,
@@ -50,6 +51,7 @@ interface EditExecutionContext {
   configManager?: Pick<ConfigManager, 'get' | 'getWorkingDirectory'> | undefined;
   toolLLM?: Pick<ToolLLM, 'chat'> | undefined;
   changeTracker?: Pick<SessionChangeTracker, 'recordChange'> | undefined;
+  diagnosticsProvider?: DiagnosticsProvider | undefined;
 }
 
 interface ResolvedTextEditInput {
@@ -499,9 +501,22 @@ async function executeTextEdits(
     }
   }
 
+  // Post-edit diagnostics — cheap, in-process syntax check of each file we just
+  // wrote, appended as a text block (this output already carries text suffixes
+  // like the import-graph warning). Off when configured off; empty block when
+  // the provider finds nothing (honest absence).
+  let diagnosticsBlock = '';
+  if (!dryRun && writtenPaths.size > 0 && env.diagnosticsProvider
+    && (env.configManager?.get('diagnostics.postEdit') ?? 'on') === 'on') {
+    const touched = [...writtenPaths]
+      .map((path) => ({ path, content: workingContents.get(path) }))
+      .filter((f): f is { path: string; content: string } => typeof f.content === 'string');
+    diagnosticsBlock = formatDiagnosticsBlock(await collectPostEditDiagnostics(env.diagnosticsProvider, touched));
+  }
+
   return {
     success: anySuccess,
-    output: formatOutput(results, outputFormat, dryRun) + (importGraphWarning ?? ''),
+    output: formatOutput(results, outputFormat, dryRun) + (importGraphWarning ?? '') + diagnosticsBlock,
   };
 }
 
@@ -511,6 +526,7 @@ export interface EditToolOptions {
   configManager?: Pick<ConfigManager, 'get' | 'getWorkingDirectory'> | undefined;
   toolLLM?: Pick<ToolLLM, 'chat'> | undefined;
   changeTracker?: Pick<SessionChangeTracker, 'recordChange'> | undefined;
+  diagnosticsProvider?: DiagnosticsProvider | undefined;
 }
 
 function resolveEditCwd(options?: EditToolOptions): string {
@@ -556,6 +572,7 @@ export function createEditTool(fileCache: FileStateCache, options?: EditToolOpti
         configManager: options?.configManager,
         toolLLM: options?.toolLLM,
         changeTracker: options?.changeTracker,
+        diagnosticsProvider: options?.diagnosticsProvider,
       };
 
       if (input.notebook_operations) {

@@ -15,6 +15,7 @@ import { logger } from '../../utils/logger.js';
 import type { SessionChangeTracker } from '../../sessions/change-tracker.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { resolveAndValidatePath } from '../../utils/path-safety.js';
+import { collectPostEditDiagnostics, type DiagnosticsProvider } from '../shared/post-edit-diagnostics.js';
 
 // ---------------------------------------------------------------------------
 // Result types
@@ -346,6 +347,7 @@ export function createWriteTool(options?: {
   configManager?: Pick<ConfigManager, 'get'> | undefined;
   toolLLM?: Pick<ToolLLM, 'chat'> | undefined;
   changeTracker?: Pick<SessionChangeTracker, 'recordChange'> | undefined;
+  diagnosticsProvider?: DiagnosticsProvider | undefined;
 }): Tool {
   if (typeof options?.projectRoot !== 'string' || options.projectRoot.trim().length === 0) {
     throw new Error('createWriteTool requires projectRoot');
@@ -677,6 +679,21 @@ export function createWriteTool(options?: {
           logger.warn('write tool: validator execution error', { error: validationMessage });
           finalOutput.validation_error = validationMessage;
           appendWarning(warnings, `Post-write validator execution failed: ${validationMessage}`);
+        }
+      }
+
+      // Post-edit diagnostics — cheap, in-process syntax check of each file we
+      // just wrote, appended so the model sees a broken edit immediately. Off
+      // when configured off; absent (no field) when the provider produces
+      // nothing (honest absence, never a fabricated "no errors").
+      if (!dryRun && results.length > 0 && options.diagnosticsProvider
+        && (options.configManager?.get('diagnostics.postEdit') ?? 'on') === 'on') {
+        const touched = results
+          .filter((r) => !r.would_write && typeof r._content === 'string')
+          .map((r) => ({ path: r.resolved_path, content: r._content as string }));
+        const diagnostics = await collectPostEditDiagnostics(options.diagnosticsProvider, touched);
+        if (diagnostics.length > 0) {
+          finalOutput.diagnostics = diagnostics;
         }
       }
 
