@@ -26,6 +26,8 @@ export type {
   EvalDimension,
   DimensionScore,
   RegressionEntry,
+  FloorFailureEntry,
+  UnbaselinedScenario,
   BaselineSuiteSummary,
 } from './types.js';
 
