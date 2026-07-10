@@ -70,6 +70,15 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // if/when a concrete in-process consumer (e.g. T2's union surface) needs
   // cursor pagination without going through the wire.
   'sessions.search': 'http-only',
+  // sessions.permissionMode.get/set + sessions.contextUsage.get: session-scoped
+  // permission mode and context-usage RPCs that exist for REMOTE surfaces
+  // (webui) which cannot read the in-process per-session runtime state the TUI
+  // sees directly. The TUI reads its own runtime's permission mode + context
+  // usage in-process (config + the session read model), so no DirectTransport
+  // wrapper is needed — 'http-only' documents that deliberate skip.
+  'sessions.permissionMode.get': 'http-only',
+  'sessions.permissionMode.set': 'http-only',
+  'sessions.contextUsage.get': 'http-only',
   // fleet.*: the TUI's fleet panel (src/panels/fleet-read-model.ts)
   // already holds a direct reference to the SDK's ProcessRegistry and calls
   // `registry.query()` in-process — it does NOT go through operator-client

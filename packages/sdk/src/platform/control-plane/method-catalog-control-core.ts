@@ -416,6 +416,63 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
       deleted: BOOLEAN_SCHEMA,
     }, ['sessionId', 'deleted']),
   }),
+  // ── sessions.permissionMode.get / .set + sessions.contextUsage.get ─────────
+  // Session-scoped permission mode (read + write) and context-usage exposure on
+  // the operator wire. The daemon answers only for the live LOCAL runtime it
+  // hosts; any other session id is an honest 404 (SESSION_NOT_LOCAL). A mode
+  // change flows to surfaces as runtime.permissions (PERMISSION_MODE_CHANGED)
+  // via the config-change binding — see routes/session-runtime.ts and
+  // permissions/mode-change-emitter.ts. The context-usage figures derive from
+  // the token ESTIMATOR (estimatedContextTokens), not a measured provider
+  // count; the field name and the `estimated` flag keep that honest.
+  methodDescriptor({
+    id: 'sessions.permissionMode.get',
+    title: 'Get Session Permission Mode',
+    description: 'Return the permission mode currently in effect for a session (plan/normal/accept-edits/auto, or custom for a bespoke rule set). Only the daemon\'s live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.',
+    category: 'sessions',
+    scopes: ['read:sessions'],
+    http: { method: 'GET', path: '/api/sessions/{sessionId}/permission-mode' },
+    inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
+    outputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      mode: { type: 'string', enum: ['plan', 'normal', 'accept-edits', 'auto', 'custom'] },
+    }, ['sessionId', 'mode']),
+  }),
+  methodDescriptor({
+    id: 'sessions.permissionMode.set',
+    title: 'Set Session Permission Mode',
+    description: 'Set a session\'s permission mode to plan, normal, accept-edits, or auto. Emits runtime.permissions (PERMISSION_MODE_CHANGED) so every surface stays in sync. Only the daemon\'s live local runtime session is settable; any other session id is a 404 SESSION_NOT_LOCAL.',
+    category: 'sessions',
+    scopes: ['write:sessions'],
+    http: { method: 'POST', path: '/api/sessions/{sessionId}/permission-mode' },
+    events: [runtimeEventId('permissions')],
+    inputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      mode: { type: 'string', enum: ['plan', 'normal', 'accept-edits', 'auto'] },
+    }, ['sessionId', 'mode']),
+    outputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      mode: { type: 'string', enum: ['plan', 'normal', 'accept-edits', 'auto', 'custom'] },
+      previousMode: { type: 'string', enum: ['plan', 'normal', 'accept-edits', 'auto', 'custom'] },
+    }, ['sessionId', 'mode', 'previousMode']),
+  }),
+  methodDescriptor({
+    id: 'sessions.contextUsage.get',
+    title: 'Get Session Context Usage',
+    description: 'Return the live context-window usage for a session: estimatedContextTokens (the token ESTIMATOR\'s figure, not a measured provider count), the model contextWindow, and the derived contextUsagePct and contextRemainingTokens. `estimated` is always true, marking the token figure as an estimate rather than a fact. Only the daemon\'s live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.',
+    category: 'sessions',
+    scopes: ['read:sessions'],
+    http: { method: 'GET', path: '/api/sessions/{sessionId}/context-usage' },
+    inputSchema: objectSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
+    outputSchema: objectSchema({
+      sessionId: STRING_SCHEMA,
+      estimatedContextTokens: NUMBER_SCHEMA,
+      contextWindow: NUMBER_SCHEMA,
+      contextUsagePct: NUMBER_SCHEMA,
+      contextRemainingTokens: NUMBER_SCHEMA,
+      estimated: BOOLEAN_SCHEMA,
+    }, ['sessionId', 'estimatedContextTokens', 'contextWindow', 'contextUsagePct', 'contextRemainingTokens', 'estimated']),
+  }),
   methodDescriptor({
     id: 'sessions.messages.list',
     title: 'List Shared Session Messages',

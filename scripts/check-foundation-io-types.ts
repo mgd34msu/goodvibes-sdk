@@ -182,6 +182,10 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'checkpoints.restorePreview', input: CHECKPOINTS_RESTORE_PREVIEW_INPUT_SCHEMA, output: CHECKPOINTS_RESTORE_PREVIEW_OUTPUT_SCHEMA },
   { methodId: 'sessions.search', input: SESSIONS_SEARCH_INPUT_SCHEMA, output: SESSIONS_SEARCH_OUTPUT_SCHEMA },
   { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
+  // Session-scoped permission mode (get/set) + context-usage exposure:
+  { methodId: 'sessions.permissionMode.get', ...descriptorSchemas('sessions.permissionMode.get') },
+  { methodId: 'sessions.permissionMode.set', ...descriptorSchemas('sessions.permissionMode.set') },
+  { methodId: 'sessions.contextUsage.get', ...descriptorSchemas('sessions.contextUsage.get') },
   // Delete-honesty verbs (landed after this check's first cut; covered
   // per the follow-up noted in docs/decisions/2026-07-06-foundation-io-types-hand-authored.md):
   { methodId: 'sessions.delete', ...descriptorSchemas('sessions.delete') },

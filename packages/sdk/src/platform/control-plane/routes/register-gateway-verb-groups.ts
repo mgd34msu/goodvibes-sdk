@@ -16,6 +16,9 @@ import type { GatewayMethodCatalog } from '../method-catalog.js';
 import { registerW3S2GatewayMethods, type W3S2GatewayDeps } from './register-w3-s2.js';
 import { registerPushGatewayMethods } from './push.js';
 import { registerSkillsGatewayMethods } from './skills.js';
+import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
+import type { ConfigManager } from '../../config/manager.js';
+import type { RuntimeStore } from '../../runtime/store/index.js';
 import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
 import {
   PushService,
@@ -53,6 +56,18 @@ export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
    * pushes.
    */
   readonly sessionPresence?: NeedsInputPresence | undefined;
+  /**
+   * Config surface backing the session-scoped permission-mode verbs
+   * (sessions.permissionMode.get/set): the daemon's own `permissions.mode`
+   * read/write. A set flows to surfaces as runtime.permissions via the
+   * already-wired mode-change binding.
+   */
+  readonly configManager: Pick<ConfigManager, 'get' | 'set'>;
+  /**
+   * Runtime store backing sessions.contextUsage.get and the local-session
+   * resolution the session-runtime verbs gate on (getState().session.id).
+   */
+  readonly runtimeStore: Pick<RuntimeStore, 'getState'>;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -77,6 +92,15 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new FileSystemSkillStore(deps.shellPaths.resolveUserPath('skills')),
   );
   registerSkillsGatewayMethods(catalog, skillService);
+
+  // Session-scoped permission mode (get/set) + context-usage exposure on the
+  // wire, over the daemon's own config + runtime store (its live local
+  // runtime). Constructed here rather than threaded through the runtime-
+  // services composition root, exactly like the skill/push groups above.
+  registerSessionRuntimeGatewayMethods(
+    catalog,
+    createSessionRuntimeControls({ config: deps.configManager, store: deps.runtimeStore }),
+  );
 
   const pushService = new PushService({
     vapid: new VapidManager(deps.secretsManager, { subject: deps.vapidSubject }),
