@@ -9,6 +9,7 @@ import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } fr
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerGatewayVerbGroups } from '../control-plane/index.js';
+import { hasFreshSurfaceParticipant, SURFACE_ROUTE_FRESHNESS_MS } from '../control-plane/session-broker-sessions.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { WatcherRegistry } from '../watchers/index.js';
 import { ArtifactStore } from '../artifacts/index.js';
@@ -719,14 +720,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexService: codeIndexStore,
   }));
 
-  // Surface fleet lifecycle deltas (started/state-changed/finished/blocked-on-user/
-  // unblocked) onto the runtime bus `fleet` domain so operator surfaces update
-  // without polling fleet.snapshot. The gateway already fans this domain out to
-  // subscribed SSE/WS clients. The subscription lives for the registry's lifetime
-  // (no daemon-wide shutdown seam yet — mirrors the verb registrations below).
+  // Surface fleet lifecycle deltas on the runtime bus `fleet` domain (gateway fans it out; no polling). sessionPresence gates needs-input push suppression. Both subscriptions live for the registry's lifetime.
   attachFleetEmitBridge({ registry: processRegistry, bus: options.runtimeBus });
-
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths }); // see routes/register-gateway-verb-groups.ts
+  const isAttached = (sessionId: string): boolean => {
+    const s = sessionBroker.getSession(sessionId);
+    return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
+  };
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached } }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,

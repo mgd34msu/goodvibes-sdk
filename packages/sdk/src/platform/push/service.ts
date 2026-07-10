@@ -38,6 +38,30 @@ export interface ApprovalNotice {
   readonly request?: { readonly tool?: string; readonly analysis?: { readonly summary?: string } } | undefined;
 }
 
+/**
+ * A fleet lifecycle notice — the structural slice of a FleetEvent payload the
+ * needs-input push source reacts to. Kept structural (not an import of the fleet
+ * event union) so the push module stays decoupled from the runtime bus; the
+ * composition root adapts `bus.onDomain('fleet', …)` into this source.
+ */
+export interface FleetNotice {
+  readonly type: string;
+  readonly nodeId: string;
+  readonly label?: string | undefined;
+  readonly reason?: 'approval' | 'input' | undefined;
+  readonly sessionId?: string | undefined;
+}
+
+/** The slice of a fleet event stream the needs-input push source subscribes to. */
+export interface FleetNoticeSource {
+  subscribe(listener: (notice: FleetNotice) => void): () => void;
+}
+
+/** Presence check: is an operator surface currently attached to this session? */
+export interface NeedsInputPresence {
+  isAttached(sessionId: string): boolean;
+}
+
 export interface PushServiceDeps {
   readonly vapid: VapidManager;
   readonly store: PushSubscriptionStore;
@@ -57,6 +81,8 @@ export class PushService {
   private readonly transport?: PushTransport | undefined;
   /** Approval ids already pushed, so re-publishes (claim/approve) don't re-notify. */
   private readonly notifiedApprovals = new Set<string>();
+  /** Fleet node ids already pushed as needs-input, cleared when they unblock/finish. */
+  private readonly notifiedNeedsInput = new Set<string>();
 
   constructor(deps: PushServiceDeps) {
     this.vapid = deps.vapid;
@@ -129,6 +155,48 @@ export class PushService {
       }).catch((error) => {
         logger.warn('PushService: approval fan-out failed', {
           approvalId: approval.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    });
+  }
+
+  /**
+   * Wire the fleet needs-input source: when a fleet node becomes blocked on the
+   * operator (a FLEET_NODE_BLOCKED_ON_USER notice), push a 'needs-input'
+   * notification carrying the session/node deep-link reference. The push is
+   * SUPPRESSED when an operator surface is already attached to that node's
+   * session (presence) — someone is looking, so a device push would be noise.
+   * A node's notice is de-duped by node id until it unblocks or finishes, so a
+   * later re-block re-notifies. Returns an unsubscribe handle.
+   */
+  attachFleetNeedsInputSource(source: FleetNoticeSource, presence?: NeedsInputPresence): () => void {
+    return source.subscribe((notice) => {
+      if (notice.type === 'FLEET_NODE_UNBLOCKED' || notice.type === 'FLEET_NODE_FINISHED') {
+        this.notifiedNeedsInput.delete(notice.nodeId);
+        return;
+      }
+      if (notice.type !== 'FLEET_NODE_BLOCKED_ON_USER') return;
+      if (this.notifiedNeedsInput.has(notice.nodeId)) return;
+      // Presence suppression: an operator is actively attached to this session,
+      // so they will see the block in-surface — do not also push to a device.
+      // Not marked notified, so if they detach and it re-blocks we still notify.
+      if (notice.sessionId && presence?.isAttached(notice.sessionId)) return;
+      this.notifiedNeedsInput.add(notice.nodeId);
+      const label = notice.label ?? 'A background task';
+      const reason = notice.reason === 'approval' ? 'needs your approval' : 'needs your input';
+      void this.deliver({
+        title: 'Input needed',
+        body: `${label} ${reason}.`,
+        data: {
+          kind: 'needs-input',
+          ...(notice.sessionId ? { sessionId: notice.sessionId } : {}),
+          nodeId: notice.nodeId,
+        },
+        urgency: 'high',
+      }).catch((error) => {
+        logger.warn('PushService: needs-input fan-out failed', {
+          nodeId: notice.nodeId,
           error: error instanceof Error ? error.message : String(error),
         });
       });

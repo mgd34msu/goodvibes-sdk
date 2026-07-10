@@ -20,8 +20,13 @@ import {
   PushSubscriptionStore,
   VapidManager,
   type ApprovalSource,
+  type FleetNotice,
+  type FleetNoticeSource,
+  type NeedsInputPresence,
   type VapidSecretStore,
 } from '../../push/index.js';
+import type { RuntimeEventBus } from '../../runtime/events/index.js';
+import type { FleetEvent } from '../../../events/fleet.js';
 
 export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
   /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
@@ -32,6 +37,31 @@ export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
   readonly shellPaths: { resolveUserPath(...segments: string[]): string };
   /** Optional VAPID JWT `sub` contact. */
   readonly vapidSubject?: string | undefined;
+  /**
+   * Optional: the runtime event bus. When present, a fleet node that becomes
+   * blocked on the operator fans out as a 'needs-input' push (the poll-free
+   * counterpart to the approval source above). Absent → no needs-input pushes
+   * (graceful degrade); every other verb group is unaffected.
+   */
+  readonly runtimeBus?: Pick<RuntimeEventBus, 'onDomain'> | undefined;
+  /**
+   * Optional: operator presence lookup. When present, a needs-input push is
+   * suppressed while an operator surface is actively attached to that node's
+   * session (someone is already looking). Absent → every needs-input block
+   * pushes.
+   */
+  readonly sessionPresence?: NeedsInputPresence | undefined;
+}
+
+/** Adapt a fleet event payload down to the structural notice the push source needs. */
+function toFleetNotice(event: FleetEvent): FleetNotice {
+  return {
+    type: event.type,
+    nodeId: event.nodeId,
+    ...('label' in event && event.label ? { label: event.label } : {}),
+    ...('reason' in event && event.reason ? { reason: event.reason } : {}),
+    ...('sessionId' in event && event.sessionId ? { sessionId: event.sessionId } : {}),
+  };
 }
 
 export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: GatewayVerbGroupDeps): void {
@@ -49,4 +79,15 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // lives for the daemon's lifetime, exactly like the fleet/checkpoint verb
   // registrations above (there is no RuntimeServices-wide shutdown seam yet).
   pushService.attachApprovalSource(deps.approvalBroker);
+
+  // Second event source: a fleet node blocked on the operator -> a 'needs-input'
+  // push carrying the session/node deep link, suppressed when an operator is
+  // already attached to that session. Only when the runtime bus is wired.
+  if (deps.runtimeBus) {
+    const bus = deps.runtimeBus;
+    const source: FleetNoticeSource = {
+      subscribe: (listener) => bus.onDomain('fleet', (envelope) => listener(toFleetNotice(envelope.payload))),
+    };
+    pushService.attachFleetNeedsInputSource(source, deps.sessionPresence);
+  }
 }

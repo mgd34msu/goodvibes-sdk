@@ -63,12 +63,38 @@ export interface PushDeliveryReceipt {
 /** Message urgency, mapped straight onto the push `Urgency` header. */
 export type PushUrgency = 'very-low' | 'low' | 'normal' | 'high';
 
+/**
+ * Notification category — the `kind` discriminant the service worker switches on
+ * to decide how to render a push and where its deep link goes.
+ * - 'approval'    — an approval decision is waiting (deep link: approvalId).
+ * - 'needs-input' — a fleet node is blocked waiting on the operator (deep link:
+ *   sessionId/nodeId).
+ * - 'completion'  — a tracked run finished (reserved; no fan-out wired yet).
+ */
+export type PushNotificationCategory = 'approval' | 'needs-input' | 'completion';
+
+/**
+ * Typed structured payload carried on a push, replacing a free-form bag so the
+ * category and its deep-link reference are contract-backed. All deep-link fields
+ * are optional and category-specific; the service worker reads the ones its
+ * `kind` implies.
+ */
+export interface PushNotificationData {
+  readonly kind: PushNotificationCategory;
+  /** Approval deep link (category 'approval'). */
+  readonly approvalId?: string | undefined;
+  /** Session deep link (category 'needs-input'). */
+  readonly sessionId?: string | undefined;
+  /** Fleet-node deep link (category 'needs-input'). */
+  readonly nodeId?: string | undefined;
+}
+
 /** The notification a caller wants delivered to the operator's devices. */
 export interface PushMessage {
   readonly title: string;
   readonly body: string;
   /** Optional structured data the service worker can act on (e.g. a deep link). */
-  readonly data?: Record<string, unknown> | undefined;
+  readonly data?: PushNotificationData | undefined;
   readonly urgency?: PushUrgency | undefined;
   /** How long (seconds) the push service should retain the message if offline. */
   readonly ttlSeconds?: number | undefined;

@@ -12,7 +12,15 @@ export type { RegisterSubscriptionInput } from './subscription-store.js';
 export { deliverToSubscription, deliverToAll } from './delivery.js';
 export type { PushTransport, DeliveryDeps } from './delivery.js';
 export { PushService } from './service.js';
-export type { PushServiceDeps, SubscribeInput, ApprovalSource, ApprovalNotice } from './service.js';
+export type {
+  PushServiceDeps,
+  SubscribeInput,
+  ApprovalSource,
+  ApprovalNotice,
+  FleetNotice,
+  FleetNoticeSource,
+  NeedsInputPresence,
+} from './service.js';
 export type {
   StoredPushSubscription,
   PublicPushSubscription,
@@ -20,4 +28,6 @@ export type {
   PushDeliveryReceipt,
   PushUrgency,
   PushMessage,
+  PushNotificationCategory,
+  PushNotificationData,
 } from './types.js';
