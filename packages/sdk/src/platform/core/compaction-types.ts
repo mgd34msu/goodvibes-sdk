@@ -115,6 +115,20 @@ export interface CompactionContext {
 
   /** Optional provider name for extraction model disambiguation. */
   extractionProvider?: string | undefined;
+
+  /**
+   * The standing system instruction chain to re-include at the compaction
+   * boundary so compaction never silently strips it. Optional: when absent,
+   * no system-instruction block is re-injected.
+   */
+  instructionChain?: string | undefined;
+
+  /**
+   * Frontmatter of the active skill (if any) to re-include at the compaction
+   * boundary alongside the instruction chain. Optional: when absent, no
+   * active-skill block is re-injected.
+   */
+  activeSkillFrontmatter?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +148,12 @@ export interface CompactionEvent {
   sectionsIncluded?: string[] | undefined;
   /** Whether post-compaction validation passed. */
   validationPassed?: boolean | undefined;
+  /**
+   * Whether the standing instruction chain and/or active skill frontmatter
+   * were re-injected into the compacted context. Part of the compaction
+   * receipt so a stripped-instructions regression is visible in the log.
+   */
+  instructionsReinjected?: boolean | undefined;
 }
 
 /** Result of a compaction operation. */

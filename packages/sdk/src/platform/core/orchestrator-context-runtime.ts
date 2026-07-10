@@ -87,6 +87,10 @@ type AutoCompactionDeps = {
   wrfcController: Pick<WrfcController, 'listChains'>;
   planManager: Pick<ExecutionPlanManager, 'getActive'> | null;
   sessionId: string;
+  /** Returns the standing system instruction chain to re-inject at compaction. */
+  getSystemPrompt?: (() => string) | undefined;
+  /** Returns the active skill's frontmatter to re-inject at compaction, if any. */
+  getActiveSkillFrontmatter?: (() => string | null | undefined) | undefined;
 };
 
 function buildAutoCompactionContext(
@@ -98,6 +102,8 @@ function buildAutoCompactionContext(
     extractionProvider?: string;
   },
 ): CompactionContext {
+  const instructionChain = deps.getSystemPrompt?.().trim() || undefined;
+  const activeSkillFrontmatter = deps.getActiveSkillFrontmatter?.()?.trim() || undefined;
   return {
     messages: params.messages,
     sessionMemories: deps.sessionMemoryStore?.list() ?? [],
@@ -111,6 +117,8 @@ function buildAutoCompactionContext(
     trigger: 'auto',
     extractionModelId: params.extractionModelId,
     extractionProvider: params.extractionProvider,
+    instructionChain,
+    activeSkillFrontmatter,
   };
 }
 
@@ -132,6 +140,8 @@ export type PreflightDeps = {
   setIsCompacting: (value: boolean) => void;
   modelContextWarning?: ModelContextWarning | null | undefined;
   clearModelContextWarning?: (() => void) | undefined;
+  getSystemPrompt?: (() => string) | undefined;
+  getActiveSkillFrontmatter?: (() => string | null | undefined) | undefined;
 };
 
 export async function checkContextWindowPreflight(
@@ -356,6 +366,8 @@ export type PostTurnContextDeps = {
   setLastWarningBracket: (value: number) => void;
   modelContextWarning?: ModelContextWarning | null | undefined;
   clearModelContextWarning?: (() => void) | undefined;
+  getSystemPrompt?: (() => string) | undefined;
+  getActiveSkillFrontmatter?: (() => string | null | undefined) | undefined;
 };
 
 export async function handlePostTurnContextMaintenance(

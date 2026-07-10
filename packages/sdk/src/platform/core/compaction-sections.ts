@@ -71,6 +71,74 @@ export function buildHandoffHeader(): CompactionSection {
 }
 
 // ---------------------------------------------------------------------------
+// Re-injected standing instructions
+// ---------------------------------------------------------------------------
+
+/**
+ * Sentinel markers wrapping the re-injected instruction block. They let a
+ * later compaction pass strip a prior re-injected block out of the message
+ * history before it is summarized again, so the instructions appear exactly
+ * once no matter how many times compaction runs.
+ */
+export const REINJECT_INSTRUCTIONS_START = '<!-- goodvibes:reinjected-instructions:start -->';
+export const REINJECT_INSTRUCTIONS_END = '<!-- goodvibes:reinjected-instructions:end -->';
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const REINJECT_BLOCK_PATTERN = new RegExp(
+  `${escapeRegExp(REINJECT_INSTRUCTIONS_START)}[\\s\\S]*?${escapeRegExp(REINJECT_INSTRUCTIONS_END)}\\n*`,
+  'g',
+);
+
+/**
+ * Remove any previously re-injected instruction block(s) from a piece of text.
+ * Used to keep repeated compactions from stacking duplicate instruction copies.
+ */
+export function stripReinjectedInstructions(text: string): string {
+  if (!text.includes(REINJECT_INSTRUCTIONS_START)) return text;
+  return text.replace(REINJECT_BLOCK_PATTERN, '').trimEnd();
+}
+
+/**
+ * buildReinjectedInstructions — re-includes the standing system instruction
+ * chain and the frontmatter of any active skill at the compaction boundary so
+ * compaction never silently strips them. Returns null when neither is present.
+ *
+ * The block is wrapped in sentinel markers ({@link REINJECT_INSTRUCTIONS_START}
+ * / {@link REINJECT_INSTRUCTIONS_END}) so a subsequent compaction can strip the
+ * prior copy before re-adding a fresh one (no duplication across passes).
+ */
+export function buildReinjectedInstructions(
+  instructionChain: string | undefined,
+  activeSkillFrontmatter: string | undefined,
+): CompactionSection | null {
+  const chain = instructionChain?.trim() ?? '';
+  const skill = activeSkillFrontmatter?.trim() ?? '';
+  if (!chain && !skill) return null;
+
+  const parts: string[] = [REINJECT_INSTRUCTIONS_START];
+  if (chain) {
+    parts.push('### System Instructions');
+    parts.push(chain);
+  }
+  if (skill) {
+    parts.push('### Active Skill');
+    parts.push(skill);
+  }
+  parts.push(REINJECT_INSTRUCTIONS_END);
+  const content = parts.join('\n');
+
+  return {
+    id: 'reinjected-instructions',
+    header: '## Standing Instructions (re-injected)',
+    content,
+    tokens: estimateTokens('## Standing Instructions (re-injected)\n' + content),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Session memories
 // ---------------------------------------------------------------------------
 
