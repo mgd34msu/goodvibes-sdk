@@ -163,6 +163,7 @@ export const WORKSPACE_CHECKPOINT_SCHEMA = objectSchema({
   parentId: nullableSchema(STRING_SCHEMA),
   turnId: STRING_SCHEMA,
   agentId: STRING_SCHEMA,
+  sessionId: STRING_SCHEMA,
   retentionClass: RETENTION_CLASS_SCHEMA,
   commit: STRING_SCHEMA,
   sizeBytes: NUMBER_SCHEMA,
@@ -170,6 +171,7 @@ export const WORKSPACE_CHECKPOINT_SCHEMA = objectSchema({
 
 export const CHECKPOINTS_LIST_INPUT_SCHEMA = objectSchema({
   kind: CHECKPOINT_KIND_SCHEMA,
+  sessionId: STRING_SCHEMA,
   since: NUMBER_SCHEMA,
   limit: NUMBER_SCHEMA,
 }, []);
@@ -184,6 +186,7 @@ export const CHECKPOINTS_CREATE_INPUT_SCHEMA = objectSchema({
   retentionClass: RETENTION_CLASS_SCHEMA,
   turnId: STRING_SCHEMA,
   agentId: STRING_SCHEMA,
+  sessionId: STRING_SCHEMA,
   paths: STRING_LIST_SCHEMA,
 }, ['kind']);
 
@@ -279,3 +282,24 @@ export const SESSIONS_SEARCH_OUTPUT_SCHEMA = objectSchema({
   nextCursor: STRING_SCHEMA,
   hasMore: BOOLEAN_SCHEMA,
 }, ['sessions', 'hasMore']);
+
+export const SESSIONS_CHANGES_GET_INPUT_SCHEMA = objectSchema({
+  sessionId: STRING_SCHEMA,
+}, ['sessionId']);
+
+/**
+ * The aggregate workspace file changes a session made, joined over its
+ * session-stamped checkpoints (see WorkspaceCheckpointManager.sessionChanges).
+ * `checkpointCount: 0` with an empty diff is an honest "nothing recorded for
+ * this session", not an error.
+ */
+export const SESSIONS_CHANGES_GET_OUTPUT_SCHEMA = objectSchema({
+  sessionId: STRING_SCHEMA,
+  checkpointCount: NUMBER_SCHEMA,
+  checkpointIds: STRING_LIST_SCHEMA,
+  from: STRING_SCHEMA,
+  to: STRING_SCHEMA,
+  files: STRING_LIST_SCHEMA,
+  unifiedDiff: STRING_SCHEMA,
+  stat: STRING_SCHEMA,
+}, ['sessionId', 'checkpointCount', 'checkpointIds', 'from', 'to', 'files', 'unifiedDiff', 'stat']);

@@ -69,6 +69,8 @@ import {
   FLEET_UNARCHIVE_OUTPUT_SCHEMA,
   SESSIONS_SEARCH_INPUT_SCHEMA,
   SESSIONS_SEARCH_OUTPUT_SCHEMA,
+  SESSIONS_CHANGES_GET_INPUT_SCHEMA,
+  SESSIONS_CHANGES_GET_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-fleet.ts';
 import { METADATA_SCHEMA } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-shared.ts';
 import {
@@ -227,6 +229,7 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'checkpoints.restore', input: CHECKPOINTS_RESTORE_INPUT_SCHEMA, output: CHECKPOINTS_RESTORE_OUTPUT_SCHEMA },
   { methodId: 'checkpoints.restorePreview', input: CHECKPOINTS_RESTORE_PREVIEW_INPUT_SCHEMA, output: CHECKPOINTS_RESTORE_PREVIEW_OUTPUT_SCHEMA },
   { methodId: 'sessions.search', input: SESSIONS_SEARCH_INPUT_SCHEMA, output: SESSIONS_SEARCH_OUTPUT_SCHEMA },
+  { methodId: 'sessions.changes.get', input: SESSIONS_CHANGES_GET_INPUT_SCHEMA, output: SESSIONS_CHANGES_GET_OUTPUT_SCHEMA },
   { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
   // Session-scoped permission mode (get/set) + context-usage exposure:
   { methodId: 'sessions.permissionMode.get', ...descriptorSchemas('sessions.permissionMode.get') },

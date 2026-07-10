@@ -255,3 +255,72 @@ describe('WorkspaceCheckpointManager', () => {
     expect(list).toHaveLength(1);
   });
 });
+
+describe('WorkspaceCheckpointManager session linkage', () => {
+  test('stamps sessionId on explicit create and filters list() by it', async () => {
+    const root = tempWorkspace('wcp-session-');
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root });
+
+    writeFileSync(join(root, 'a.txt'), '1');
+    const cpA = await manager.create({ kind: 'manual', label: 'a', sessionId: 'sess-1' });
+    writeFileSync(join(root, 'a.txt'), '2');
+    const cpB = await manager.create({ kind: 'manual', label: 'b', sessionId: 'sess-2' });
+
+    expect(cpA!.sessionId).toBe('sess-1');
+    expect(cpB!.sessionId).toBe('sess-2');
+
+    const onlyS1 = await manager.list({ sessionId: 'sess-1' });
+    expect(onlyS1.map((c) => c.id)).toEqual([cpA!.id]);
+    const onlyS2 = await manager.list({ sessionId: 'sess-2' });
+    expect(onlyS2.map((c) => c.id)).toEqual([cpB!.id]);
+    const none = await manager.list({ sessionId: 'sess-unknown' });
+    expect(none).toEqual([]);
+  });
+
+  test('an explicit create with no sessionId leaves the record unstamped (never fabricated)', async () => {
+    const root = tempWorkspace('wcp-unstamped-');
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root });
+    writeFileSync(join(root, 'a.txt'), '1');
+    const cp = await manager.create({ kind: 'manual', label: 'a' });
+    expect(cp!.sessionId).toBeUndefined();
+  });
+
+  test('sessionChanges aggregates a session net diff from the pre-session state to its latest checkpoint', async () => {
+    const root = tempWorkspace('wcp-changes-');
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root });
+
+    // A pre-session checkpoint establishes the "before" baseline.
+    writeFileSync(join(root, 'base.txt'), 'base\n');
+    await manager.create({ kind: 'manual', label: 'baseline' });
+
+    // Two checkpoints the session made.
+    writeFileSync(join(root, 'feature.txt'), 'v1\n');
+    const s1 = await manager.create({ kind: 'turn', label: 't1', sessionId: 'sess-1' });
+    writeFileSync(join(root, 'feature.txt'), 'v2\n');
+    const s2 = await manager.create({ kind: 'turn', label: 't2', sessionId: 'sess-1' });
+
+    const changes = await manager.sessionChanges('sess-1');
+    expect(changes.checkpointCount).toBe(2);
+    expect(changes.checkpointIds).toEqual([s1!.id, s2!.id]);
+    expect(changes.to).toBe(s2!.id);
+    expect(changes.files).toContain('feature.txt');
+    // base.txt existed before the session, so it is NOT part of the session's change.
+    expect(changes.files).not.toContain('base.txt');
+    expect(changes.unifiedDiff).toContain('v2');
+  });
+
+  test('sessionChanges on a session with no stamped checkpoints is an honest empty result, not an error', async () => {
+    const root = tempWorkspace('wcp-changes-empty-');
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root });
+    writeFileSync(join(root, 'a.txt'), '1');
+    await manager.create({ kind: 'manual', label: 'unstamped' });
+
+    const changes = await manager.sessionChanges('sess-none');
+    expect(changes.checkpointCount).toBe(0);
+    expect(changes.checkpointIds).toEqual([]);
+    expect(changes.from).toBe('EMPTY');
+    expect(changes.to).toBe('EMPTY');
+    expect(changes.files).toEqual([]);
+    expect(changes.unifiedDiff).toBe('');
+  });
+});

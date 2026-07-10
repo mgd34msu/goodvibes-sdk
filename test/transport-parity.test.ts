@@ -79,6 +79,12 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.permissionMode.get': 'http-only',
   'sessions.permissionMode.set': 'http-only',
   'sessions.contextUsage.get': 'http-only',
+  // sessions.changes.get: aggregate workspace file changes for a session,
+  // joined over its stamped WorkspaceCheckpoints. A wire-only read for REMOTE
+  // surfaces that cannot reach the in-process workspaceCheckpointManager the
+  // TUI holds directly — 'http-only' documents the deliberate skip, exactly as
+  // sessions.search / checkpoints.* do.
+  'sessions.changes.get': 'http-only',
   // fleet.*: the TUI's fleet panel (src/panels/fleet-read-model.ts)
   // already holds a direct reference to the SDK's ProcessRegistry and calls
   // `registry.query()` in-process — it does NOT go through operator-client

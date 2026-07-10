@@ -41,12 +41,11 @@ import {
   RetentionPolicy,
   type RetentionConfig,
   type RetentionClass,
-  type CheckpointRecord,
-  type Pruner,
   type PruneResult,
-  type PruneOptions,
 } from '../../runtime/retention/index.js';
 import { SideGitRunner, CHECKPOINT_REF_PREFIX, EMPTY_TREE_HASH, detectGitToplevel } from './side-git.js';
+import { WorkspaceCheckpointPruner } from './pruner.js';
+import { computeSessionChanges } from './session-changes.js';
 import {
   BROAD_ROOT_OVERRIDE,
   DEFAULT_MAX_FIRST_SNAPSHOT_FILES,
@@ -54,7 +53,7 @@ import {
   broadRootRefusalMessage,
   firstSnapshotTooLargeMessage,
 } from './root-guard.js';
-import type { WorkspaceCheckpoint, CheckpointKind, CheckpointDiff, RestoreResult } from './types.js';
+import type { WorkspaceCheckpoint, CheckpointKind, CheckpointDiff, RestoreResult, CheckpointSessionChanges } from './types.js';
 
 const ID_PREFIX = 'wcp';
 
@@ -73,80 +72,19 @@ interface Manifest {
   checkpoints: WorkspaceCheckpoint[];
 }
 
-/**
- * `Pruner` implementation for `RetentionPolicy` that deletes checkpoint REFS
- * (not filesystem paths — that is what `SnapshotPruner`, the compaction-side
- * pruner, does, and reusing it here would be a no-op at best since our
- * "artifacts" are refs+objects, not files). Actual object reclamation is a
- * single `git gc --prune=now` run once by `WorkspaceCheckpointManager.gc()`
- * after refs are deleted, not per-record here.
- */
-class WorkspaceCheckpointPruner implements Pruner {
-  constructor(
-    private readonly sideGit: SideGitRunner,
-    private readonly onDeleted: (id: string) => void,
-  ) {}
-
-  async delete(candidates: readonly CheckpointRecord[], options?: PruneOptions): Promise<PruneResult> {
-    const dryRun = options?.dryRun ?? false;
-    const deletedIds: string[] = [];
-    const failedIds: string[] = [];
-    const errors: Record<string, string> = {};
-    let reclaimedBytes = 0;
-    const byClass: Record<RetentionClass, { deletedCount: number; reclaimedBytes: number; deletedIds: string[]; candidateIds: string[]; failedIds: string[] }> = {
-      short: { deletedCount: 0, reclaimedBytes: 0, deletedIds: [], candidateIds: [], failedIds: [] },
-      standard: { deletedCount: 0, reclaimedBytes: 0, deletedIds: [], candidateIds: [], failedIds: [] },
-      forensic: { deletedCount: 0, reclaimedBytes: 0, deletedIds: [], candidateIds: [], failedIds: [] },
-    };
-    for (const record of candidates) {
-      byClass[record.retentionClass].candidateIds.push(record.id);
-    }
-    if (dryRun) {
-      return {
-        deletedCount: 0,
-        reclaimedBytes: 0,
-        deletedIds: [],
-        candidateIds: candidates.map((c) => c.id),
-        failedIds: [],
-        errors: {},
-        dryRun: true,
-        byClass,
-      };
-    }
-    for (const record of candidates) {
-      try {
-        await this.sideGit.deleteRef(`${CHECKPOINT_REF_PREFIX}${record.id}`);
-        deletedIds.push(record.id);
-        reclaimedBytes += record.sizeBytes;
-        byClass[record.retentionClass].deletedCount += 1;
-        byClass[record.retentionClass].reclaimedBytes += record.sizeBytes;
-        byClass[record.retentionClass].deletedIds.push(record.id);
-        this.onDeleted(record.id);
-      } catch (err) {
-        failedIds.push(record.id);
-        errors[record.id] = summarizeError(err);
-        byClass[record.retentionClass].failedIds.push(record.id);
-      }
-    }
-    return {
-      deletedCount: deletedIds.length,
-      reclaimedBytes,
-      deletedIds,
-      candidateIds: [],
-      failedIds,
-      errors,
-      dryRun: false,
-      byClass,
-    };
-  }
-}
-
 export interface CreateCheckpointOptions {
   readonly kind: CheckpointKind;
   readonly label?: string | undefined;
   readonly retentionClass?: RetentionClass | undefined;
   readonly turnId?: string | undefined;
   readonly agentId?: string | undefined;
+  /**
+   * Session this checkpoint belongs to. Explicit callers may pass it directly;
+   * automatic snapshots leave it undefined and let the manager's
+   * `resolveSessionId` hook stamp it from the triggering turn/agent. Never
+   * fabricated — stays undefined when no session is in scope.
+   */
+  readonly sessionId?: string | undefined;
   /** Scope the snapshot to these paths instead of sweeping the whole workspace. */
   readonly paths?: string[] | undefined;
 }
@@ -162,7 +100,24 @@ export interface ListCheckpointsFilter {
   readonly kind?: CheckpointKind | undefined;
   readonly since?: number | undefined;
   readonly limit?: number | undefined;
+  /** Restrict to checkpoints stamped with this session id (see `WorkspaceCheckpoint.sessionId`). */
+  readonly sessionId?: string | undefined;
 }
+
+/**
+ * Context handed to {@link WorkspaceCheckpointManagerOptions.resolveSessionId}
+ * when an automatic snapshot fires, carrying whichever id the triggering
+ * lifecycle event supplied (a turn id for TURN_* events, an agent id for
+ * AGENT_COMPLETED). The resolver returns the owning session id, or undefined
+ * when it cannot map the event to a session — in which case the checkpoint is
+ * simply left unstamped rather than guessed.
+ */
+export interface CheckpointSessionResolveContext {
+  readonly turnId?: string | undefined;
+  readonly agentId?: string | undefined;
+}
+
+export type CheckpointSessionResolver = (ctx: CheckpointSessionResolveContext) => string | undefined;
 
 export interface WorkspaceCheckpointManagerOptions {
   readonly workspaceRoot: string;
@@ -170,6 +125,15 @@ export interface WorkspaceCheckpointManagerOptions {
   readonly checkpointDir?: string | undefined;
   /** When provided, the manager subscribes to TURN_COMPLETED/TURN_ERROR/TURN_CANCEL/AGENT_COMPLETED for automatic snapshots. */
   readonly runtimeBus?: RuntimeEventBus | undefined;
+  /**
+   * Optional hook that maps a triggering turn/agent to its owning session id so
+   * automatic snapshots can be stamped with `sessionId`. Consulted at the
+   * moment each lifecycle event fires (not at subscription time), so it may be
+   * installed after construction via {@link WorkspaceCheckpointManager.setSessionResolver}.
+   * Returning undefined leaves the checkpoint unstamped — the linkage is never
+   * fabricated.
+   */
+  readonly resolveSessionId?: CheckpointSessionResolver | undefined;
   readonly retention?: Partial<RetentionConfig> | undefined;
   /** Clock override for deterministic tests. */
   readonly now?: (() => number) | undefined;
@@ -226,6 +190,8 @@ export class WorkspaceCheckpointManager {
   private retentionPolicy!: RetentionPolicy;
   private readonly now: () => number;
   private readonly runtimeBus: RuntimeEventBus | undefined;
+  /** Resolves a triggering turn/agent to its owning session id for automatic-snapshot stamping. May be replaced post-construction via `setSessionResolver`. */
+  private resolveSessionId: CheckpointSessionResolver | undefined;
   private readonly unsubscribers: (() => void)[] = [];
 
   // Root-guard configuration (see WorkspaceCheckpointManagerOptions).
@@ -287,6 +253,7 @@ export class WorkspaceCheckpointManager {
   constructor(opts: WorkspaceCheckpointManagerOptions) {
     this.now = opts.now ?? Date.now;
     this.runtimeBus = opts.runtimeBus;
+    this.resolveSessionId = opts.resolveSessionId;
     this.rawWorkspaceRoot = opts.workspaceRoot;
     this.explicitCheckpointDir = opts.checkpointDir;
     this.retentionOverride = opts.retention;
@@ -322,6 +289,17 @@ export class WorkspaceCheckpointManager {
       this.now,
       new WorkspaceCheckpointPruner(this.sideGit, (id) => this.checkpoints.delete(id)),
     );
+  }
+
+  /**
+   * Install (or replace) the session resolver used to stamp `sessionId` onto
+   * automatic snapshots. Wired after construction because the daemon's
+   * agent→session mapping (the session broker) is built alongside this manager;
+   * the subscription reads the resolver at each event, so a later install takes
+   * effect for all subsequent snapshots.
+   */
+  setSessionResolver(resolver: CheckpointSessionResolver | undefined): void {
+    this.resolveSessionId = resolver;
   }
 
   /**
@@ -428,7 +406,11 @@ export class WorkspaceCheckpointManager {
    */
   private subscribeToAutomaticSnapshots(bus: RuntimeEventBus): void {
     const snapshotTurn = (turnId: string, reason: string): void => {
-      this.create({ kind: 'turn', turnId, retentionClass: 'standard', label: `turn ${reason}` }).catch((err) => {
+      // Resolve the owning session synchronously, at event-fire time, so the id
+      // is captured even though create() runs async and the resolver's backing
+      // state (e.g. the session's active turn/agent) may move on afterwards.
+      const sessionId = this.resolveSessionId?.({ turnId });
+      this.create({ kind: 'turn', turnId, sessionId, retentionClass: 'standard', label: `turn ${reason}` }).catch((err) => {
         logger.warn('WorkspaceCheckpointManager: automatic turn snapshot failed', {
           turnId,
           reason,
@@ -437,7 +419,8 @@ export class WorkspaceCheckpointManager {
       });
     };
     const snapshotAgentRun = (agentId: string): void => {
-      this.create({ kind: 'agent-run', agentId, retentionClass: 'standard', label: 'agent run' }).catch((err) => {
+      const sessionId = this.resolveSessionId?.({ agentId });
+      this.create({ kind: 'agent-run', agentId, sessionId, retentionClass: 'standard', label: 'agent run' }).catch((err) => {
         logger.warn('WorkspaceCheckpointManager: automatic agent-run snapshot failed', {
           agentId,
           error: summarizeError(err),
@@ -519,6 +502,7 @@ export class WorkspaceCheckpointManager {
       parentId: parent?.id ?? null,
       turnId: opts.turnId,
       agentId: opts.agentId,
+      sessionId: opts.sessionId,
       retentionClass,
       commit,
       sizeBytes,
@@ -543,6 +527,7 @@ export class WorkspaceCheckpointManager {
     await this.init();
     let results = Array.from(this.checkpoints.values()).sort((a, b) => b.createdAt - a.createdAt);
     if (filter?.kind) results = results.filter((c) => c.kind === filter.kind);
+    if (filter?.sessionId) results = results.filter((c) => c.sessionId === filter.sessionId);
     if (filter?.since != null) results = results.filter((c) => c.createdAt >= filter.since!);
     if (filter?.limit != null) results = results.slice(0, filter.limit);
     return results;
@@ -579,6 +564,20 @@ export class WorkspaceCheckpointManager {
       unifiedDiff,
       stat: stat_,
     };
+  }
+
+  /**
+   * Aggregate the file changes a single session made — the "what changed in
+   * this session" surface a remote view needs, one diff spanning every
+   * turn/agent snapshot stamped with `sessionId` (see
+   * {@link computeSessionChanges} for the base/latest selection and the honest
+   * empty result for a session with no stamped checkpoints). Both endpoints are
+   * committed side-repo trees, so this is a pure two-tree diff; it still takes
+   * the lock to stay consistent with a concurrent create()/gc().
+   */
+  async sessionChanges(sessionId: string): Promise<CheckpointSessionChanges> {
+    await this.init();
+    return this.withLock(() => computeSessionChanges(this.checkpoints, this.sideGit, sessionId));
   }
 
   /**

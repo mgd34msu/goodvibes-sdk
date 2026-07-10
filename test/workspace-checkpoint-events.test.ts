@@ -40,6 +40,27 @@ describe('WorkspaceCheckpointManager automatic snapshots', () => {
     expect(checkpoint!.turnId).toBe('turn-1');
   });
 
+  test('resolveSessionId stamps the owning session on automatic snapshots; an unresolved agent stays unstamped', async () => {
+    const root = tempWorkspace('wcp-events-session-');
+    const bus = new RuntimeEventBus();
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root, runtimeBus: bus });
+    manager.setSessionResolver(({ agentId }) => (agentId === 'agent-known' ? 'sess-known' : undefined));
+    await manager.init();
+
+    writeFileSync(join(root, 'a.txt'), 'v1\n');
+    emitAgentCompleted(bus, ctx, { agentId: 'agent-known', durationMs: 1 });
+    await waitFor(async () => (await manager.list()).length === 1);
+    const [stamped] = await manager.list();
+    expect(stamped!.sessionId).toBe('sess-known');
+    expect((await manager.list({ sessionId: 'sess-known' })).map((c) => c.id)).toEqual([stamped!.id]);
+
+    writeFileSync(join(root, 'a.txt'), 'v2\n');
+    emitAgentCompleted(bus, ctx, { agentId: 'agent-unknown', durationMs: 1 });
+    await waitFor(async () => (await manager.list()).length === 2);
+    const unstamped = (await manager.list()).find((c) => c.agentId === 'agent-unknown');
+    expect(unstamped!.sessionId).toBeUndefined();
+  });
+
   test('TURN_ERROR and TURN_CANCEL also trigger turn-kind checkpoints', async () => {
     const root = tempWorkspace('wcp-events-turn-err-');
     const bus = new RuntimeEventBus();

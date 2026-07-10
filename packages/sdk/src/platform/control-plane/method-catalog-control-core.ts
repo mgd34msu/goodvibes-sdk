@@ -27,6 +27,8 @@ import {
   CONTROL_PLANE_SNAPSHOT_SCHEMA,
   SESSIONS_SEARCH_INPUT_SCHEMA,
   SESSIONS_SEARCH_OUTPUT_SCHEMA,
+  SESSIONS_CHANGES_GET_INPUT_SCHEMA,
+  SESSIONS_CHANGES_GET_OUTPUT_SCHEMA,
   OTLP_LOG_DOCUMENT_SCHEMA,
   OTLP_METRIC_DOCUMENT_SCHEMA,
   OTLP_TRACE_DOCUMENT_SCHEMA,
@@ -612,6 +614,24 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     transport: ['ws'],
     inputSchema: SESSIONS_SEARCH_INPUT_SCHEMA,
     outputSchema: SESSIONS_SEARCH_OUTPUT_SCHEMA,
+  }),
+  // Session-scoped aggregate workspace file changes, joined over the session's
+  // sessionId-stamped WorkspaceCheckpoints — "what changed in THIS session" for
+  // a remote surface, computed from one diff spanning the session's earliest
+  // (its parent, or the empty tree) to its latest checkpoint. Handler:
+  // routes/checkpoints.ts (over the same workspaceCheckpointManager the
+  // checkpoints.* verbs use); ws-only per the TRANSPORT NOTE above. This is the
+  // session→workspace-checkpoint linkage a future unified message-anchored
+  // rewind will build on (joining conversation snapshots + file undo too).
+  methodDescriptor({
+    id: 'sessions.changes.get',
+    title: 'Get Session Workspace Changes',
+    description: 'Return the aggregate workspace file changes a session made, joined over its sessionId-stamped checkpoints: the net diff (files, unified diff, --stat) from the state before the session\'s earliest checkpoint to its latest. A session with no stamped checkpoints returns checkpointCount:0 with an empty diff (from/to:"EMPTY") — an honest "nothing recorded", not an error.',
+    category: 'sessions',
+    scopes: ['read:sessions'],
+    transport: ['ws'],
+    inputSchema: SESSIONS_CHANGES_GET_INPUT_SCHEMA,
+    outputSchema: SESSIONS_CHANGES_GET_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'tasks.list',

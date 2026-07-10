@@ -22049,6 +22049,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "agentId": {
               "type": "string"
             },
+            "sessionId": {
+              "type": "string"
+            },
             "paths": {
               "type": "array",
               "items": {
@@ -22100,6 +22103,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "type": "string"
                     },
                     "agentId": {
+                      "type": "string"
+                    },
+                    "sessionId": {
                       "type": "string"
                     },
                     "retentionClass": {
@@ -22240,6 +22246,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "manual"
               ]
             },
+            "sessionId": {
+              "type": "string"
+            },
             "since": {
               "type": "number"
             },
@@ -22288,6 +22297,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "type": "string"
                   },
                   "agentId": {
+                    "type": "string"
+                  },
+                  "sessionId": {
                     "type": "string"
                   },
                   "retentionClass": {
@@ -70567,6 +70579,79 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.changes.get",
+        "title": "Get Session Workspace Changes",
+        "description": "Return the aggregate workspace file changes a session made, joined over its sessionId-stamped checkpoints: the net diff (files, unified diff, --stat) from the state before the session's earliest checkpoint to its latest. A session with no stamped checkpoints returns checkpointCount:0 with an empty diff (from/to:\"EMPTY\") — an honest \"nothing recorded\", not an error.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "checkpointCount": {
+              "type": "number"
+            },
+            "checkpointIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "unifiedDiff": {
+              "type": "string"
+            },
+            "stat": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "checkpointCount",
+            "checkpointIds",
+            "from",
+            "to",
+            "files",
+            "unifiedDiff",
+            "stat"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.close",
         "title": "Close Shared Session",
         "description": "Mark a shared session as closed.",
@@ -84783,10 +84868,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 361,
-      "typedInputs": 361,
+      "methods": 362,
+      "typedInputs": 362,
       "genericInputs": 0,
-      "typedOutputs": 361,
+      "typedOutputs": 362,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -84795,8 +84880,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 361,
-      "validated": 359,
+      "methods": 362,
+      "validated": 360,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
