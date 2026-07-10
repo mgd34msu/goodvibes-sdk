@@ -263,6 +263,7 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/plugins` | Plugin API, loader, and manager | beta |
 | `platform/profiles` | Profile manager and profile shape helpers | beta |
 | `platform/providers` | LLM provider registry, catalog, capabilities; includes `inferFallbackContextWindow` and `FALLBACK_CONTEXT_WINDOW` (added in 0.35.0) | beta |
+| `platform/rewind` | Unified message-anchored rewind service (`UnifiedRewindService`) over the existing workspace-checkpoint / conversation / file-undo stores, plus its ports and plan/receipt IO types, so a consumer can construct it and thread the workspace + conversation ports | beta |
 | `platform/runtime` | Curated runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, and UI as namespaces | beta |
 | `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
 | `platform/runtime/sandbox` | Sandbox host status, presets, reviews, and session registry helpers | beta |
