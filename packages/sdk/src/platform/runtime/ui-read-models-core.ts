@@ -5,6 +5,7 @@ import type { SessionDomainState } from './store/domains/session.js';
 import type { TurnState } from './store/domains/conversation.js';
 import { createStoreBackedReadModel, listProviderIds, projectRecords, projectValues } from './ui-read-model-helpers.js';
 import type { UiReadModel } from './ui-read-models-base.js';
+import { deriveContextUsage } from './context-usage.js';
 
 /** Fraction of the model context window at which the context-warning flag activates. */
 const CONTEXT_WARNING_THRESHOLD = 0.85;
@@ -66,14 +67,15 @@ export function createCoreReadModels(runtimeServices: RuntimeServices): UiCoreRe
       const state = runtimeStore.getState();
       const usedTokens = state.conversation.estimatedContextTokens;
       const window = state.model.tokenLimits.contextWindow;
+      const usage = deriveContextUsage(usedTokens, window);
       return {
         session: state.session,
         totalTurns: state.conversation.totalTurns,
         messageCount: state.conversation.messageCount,
         estimatedContextTokens: usedTokens,
         contextWindow: window,
-        contextUsagePct: window > 0 ? Math.min(100, Math.round((usedTokens / window) * 100)) : 0,
-        contextRemainingTokens: window > 0 ? Math.max(0, window - usedTokens) : 0,
+        contextUsagePct: usage.contextUsagePct,
+        contextRemainingTokens: usage.contextRemainingTokens,
         turnState: state.conversation.turnState,
         streamToolPreview: state.conversation.stream.partialToolPreview,
         contextWarningActive:

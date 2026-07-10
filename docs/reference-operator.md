@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `339`
+- Methods: `342`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -69719,6 +69719,74 @@ Mark a shared session as closed.
 }
 ```
 
+#### `sessions.contextUsage.get`
+
+Return the live context-window usage for a session: estimatedContextTokens (the token ESTIMATOR's figure, not a measured provider count), the model contextWindow, and the derived contextUsagePct and contextRemainingTokens. `estimated` is always true, marking the token figure as an estimate rather than a fact. Only the daemon's live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.
+
+- Title: `Get Session Context Usage`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/sessions/{sessionId}/context-usage`
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "estimatedContextTokens": {
+      "type": "number"
+    },
+    "contextWindow": {
+      "type": "number"
+    },
+    "contextUsagePct": {
+      "type": "number"
+    },
+    "contextRemainingTokens": {
+      "type": "number"
+    },
+    "estimated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "estimatedContextTokens",
+    "contextWindow",
+    "contextUsagePct",
+    "contextRemainingTokens",
+    "estimated"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `sessions.create`
 
 Create a shared session for a surface, route, or web client.
@@ -73202,6 +73270,145 @@ Return message history for a shared session.
   "required": [
     "session",
     "messages"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `sessions.permissionMode.get`
+
+Return the permission mode currently in effect for a session (plan/normal/accept-edits/auto, or custom for a bespoke rule set). Only the daemon's live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.
+
+- Title: `Get Session Permission Mode`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/sessions/{sessionId}/permission-mode`
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "normal",
+        "accept-edits",
+        "auto",
+        "custom"
+      ]
+    }
+  },
+  "required": [
+    "sessionId",
+    "mode"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `sessions.permissionMode.set`
+
+Set a session's permission mode to plan, normal, accept-edits, or auto. Emits runtime.permissions (PERMISSION_MODE_CHANGED) so every surface stays in sync. Only the daemon's live local runtime session is settable; any other session id is a 404 SESSION_NOT_LOCAL.
+
+- Title: `Set Session Permission Mode`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/sessions/{sessionId}/permission-mode`
+- Scopes: `write:sessions`
+- Emits events: `runtime.permissions`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "normal",
+        "accept-edits",
+        "auto"
+      ]
+    }
+  },
+  "required": [
+    "sessionId",
+    "mode"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "normal",
+        "accept-edits",
+        "auto",
+        "custom"
+      ]
+    },
+    "previousMode": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "normal",
+        "accept-edits",
+        "auto",
+        "custom"
+      ]
+    }
+  },
+  "required": [
+    "sessionId",
+    "mode",
+    "previousMode"
   ],
   "additionalProperties": false
 }

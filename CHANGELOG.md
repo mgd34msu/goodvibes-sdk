@@ -8,6 +8,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Session-scoped permission mode and context usage on the operator wire.**
+  Three new daemon gateway verbs let a remote surface (webui) read and write a
+  session's permission mode and read its context-window pressure, instead of
+  only touching the daemon-wide `permissions.mode` config the way it did
+  before while the in-process TUI saw per-session state. `sessions.permissionMode.get`
+  and `sessions.permissionMode.set` speak an operator vocabulary
+  (`plan`/`normal`/`accept-edits`/`auto`, plus a read-only `custom`) mapped onto
+  the internal config modes; a set flows to every surface as a
+  `runtime.permissions` `PERMISSION_MODE_CHANGED` event via the already-wired
+  mode-change binding, and reports the `previousMode` it replaced.
+  `sessions.contextUsage.get` returns `estimatedContextTokens` (the token
+  estimator's figure, flagged `estimated: true` — never presented as a measured
+  provider count), the model `contextWindow`, and the derived `contextUsagePct`
+  and `contextRemainingTokens` from the one shared `deriveContextUsage` helper
+  the in-process context chip also uses. All three answer only for the live
+  local runtime the daemon hosts; any other session id is an honest 404
+  (`SESSION_NOT_LOCAL`). Verbs land with typed IO and register together with
+  their descriptors, so none is a cataloged-but-unhandled 501.
 - **A local-first MCP (Model Context Protocol) server that exposes the operator
   surface.** New `@pellux/goodvibes-sdk/platform/mcp/server` generates MCP tool
   definitions from the operator catalog (every cataloged, invokable operator

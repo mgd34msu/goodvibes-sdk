@@ -68792,6 +68792,70 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.contextUsage.get",
+        "title": "Get Session Context Usage",
+        "description": "Return the live context-window usage for a session: estimatedContextTokens (the token ESTIMATOR's figure, not a measured provider count), the model contextWindow, and the derived contextUsagePct and contextRemainingTokens. `estimated` is always true, marking the token figure as an estimate rather than a fact. Only the daemon's live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/sessions/{sessionId}/context-usage"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "estimatedContextTokens": {
+              "type": "number"
+            },
+            "contextWindow": {
+              "type": "number"
+            },
+            "contextUsagePct": {
+              "type": "number"
+            },
+            "contextRemainingTokens": {
+              "type": "number"
+            },
+            "estimated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "estimatedContextTokens",
+            "contextWindow",
+            "contextUsagePct",
+            "contextRemainingTokens",
+            "estimated"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.create",
         "title": "Create Shared Session",
         "description": "Create a shared session for a surface, route, or web client.",
@@ -72250,6 +72314,140 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "session",
             "messages"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.permissionMode.get",
+        "title": "Get Session Permission Mode",
+        "description": "Return the permission mode currently in effect for a session (plan/normal/accept-edits/auto, or custom for a bespoke rule set). Only the daemon's live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/sessions/{sessionId}/permission-mode"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "plan",
+                "normal",
+                "accept-edits",
+                "auto",
+                "custom"
+              ]
+            }
+          },
+          "required": [
+            "sessionId",
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.permissionMode.set",
+        "title": "Set Session Permission Mode",
+        "description": "Set a session's permission mode to plan, normal, accept-edits, or auto. Emits runtime.permissions (PERMISSION_MODE_CHANGED) so every surface stays in sync. Only the daemon's live local runtime session is settable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/sessions/{sessionId}/permission-mode"
+        },
+        "events": [
+          "runtime.permissions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "plan",
+                "normal",
+                "accept-edits",
+                "auto"
+              ]
+            }
+          },
+          "required": [
+            "sessionId",
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "plan",
+                "normal",
+                "accept-edits",
+                "auto",
+                "custom"
+              ]
+            },
+            "previousMode": {
+              "type": "string",
+              "enum": [
+                "plan",
+                "normal",
+                "accept-edits",
+                "auto",
+                "custom"
+              ]
+            }
+          },
+          "required": [
+            "sessionId",
+            "mode",
+            "previousMode"
           ],
           "additionalProperties": false
         },
@@ -82619,10 +82817,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 339,
-      "typedInputs": 339,
+      "methods": 342,
+      "typedInputs": 342,
       "genericInputs": 0,
-      "typedOutputs": 339,
+      "typedOutputs": 342,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -82631,8 +82829,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 339,
-      "validated": 337,
+      "methods": 342,
+      "validated": 340,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
