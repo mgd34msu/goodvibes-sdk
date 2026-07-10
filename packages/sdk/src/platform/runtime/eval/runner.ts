@@ -9,7 +9,7 @@
  * The runner exercises the production code paths that gate CI.
  */
 
-import type { EvalScenario, EvalRawResult, EvalResult, EvalSuiteResult, EvalGateResult, EvalBaseline, RegressionEntry } from './types.js';
+import type { EvalScenario, EvalRawResult, EvalResult, EvalSuiteResult, EvalGateResult, EvalBaseline, RegressionEntry, FloorFailureEntry, UnbaselinedScenario } from './types.js';
 import { scoreScenario } from './scorecard.js';
 import { createPerfMonitor } from '../perf/index.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -75,44 +75,77 @@ export class EvalRunner {
   }
 
   /**
-   * Compare a fresh suite result against a stored baseline.
-   * Produces an EvalGateResult indicating whether CI should pass.
+   * Compare a fresh suite result against a stored baseline and enforce the
+   * absolute per-dimension floors.
+   *
+   * The gate fails when EITHER of these holds for any scenario:
+   *   1. The scenario is below its absolute floor (`scorecard.passed === false`)
+   *      — checked for every fresh scenario, independently of the baseline.
+   *   2. The scenario regressed more than `regressionThreshold` points versus
+   *      its baseline score.
+   *
+   * Scenarios present in the fresh run but absent from the baseline are NOT
+   * silently skipped: they are still floor-checked (rule 1) and surfaced in
+   * `unbaselined`. They simply cannot be regression-checked (rule 2) this run
+   * because there is nothing to compare against — they seed the next baseline.
    *
    * @param fresh - Result from a freshly-run suite.
    * @param baseline - Previously stored baseline (may be undefined).
-   * @returns Gate result with per-scenario regression entries.
+   * @returns Gate result with regression, floor-failure, and unbaselined entries.
    */
   evaluateGate(fresh: EvalSuiteResult, baseline: EvalBaseline | undefined): EvalGateResult {
     const regressions: RegressionEntry[] = [];
+    const floorFailures: FloorFailureEntry[] = [];
+    const unbaselined: UnbaselinedScenario[] = [];
 
-    if (baseline) {
-      const baselineSuite = baseline.suites[fresh.suite];
-      if (baselineSuite) {
-        for (const result of fresh.results) {
-          const baselineScore = baselineSuite.scenarioScores[result.scenario.id];
-          if (baselineScore === undefined) continue;
-          const freshScore = result.scorecard.compositeScore;
-          const delta = freshScore - baselineScore;
-          if (delta < -this.regressionThreshold) {
-            regressions.push({
-              scenarioId: result.scenario.id,
-              scenarioName: result.scenario.name,
-              baselineScore,
-              freshScore,
-              delta,
-            });
-          }
-        }
+    const baselineSuite = baseline?.suites[fresh.suite];
+
+    for (const result of fresh.results) {
+      const freshScore = result.scorecard.compositeScore;
+      const floorPassed = result.scorecard.passed;
+
+      // Rule 1 — absolute floor, enforced regardless of baseline presence.
+      if (!floorPassed) {
+        floorFailures.push({
+          scenarioId: result.scenario.id,
+          scenarioName: result.scenario.name,
+          freshScore,
+          failingDimensions: result.scorecard.notes ?? [],
+        });
+      }
+
+      // Rule 2 — regression, only when this scenario has a baseline score.
+      const baselineScore = baselineSuite?.scenarioScores[result.scenario.id];
+      if (baselineScore === undefined) {
+        unbaselined.push({
+          scenarioId: result.scenario.id,
+          scenarioName: result.scenario.name,
+          freshScore,
+          floorPassed,
+        });
+        continue;
+      }
+      const delta = freshScore - baselineScore;
+      if (delta < -this.regressionThreshold) {
+        regressions.push({
+          scenarioId: result.scenario.id,
+          scenarioName: result.scenario.name,
+          baselineScore,
+          freshScore,
+          delta,
+        });
       }
     }
 
     return {
       suite: fresh.suite,
-      passed: regressions.length === 0,
+      passed: regressions.length === 0 && floorFailures.length === 0,
       regressionThreshold: this.regressionThreshold,
       fresh,
       baseline,
       regressions,
+      floorFailures,
+      unbaselined,
     };
   }
 

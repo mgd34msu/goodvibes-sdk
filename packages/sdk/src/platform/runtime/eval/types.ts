@@ -154,7 +154,13 @@ export interface BaselineSuiteSummary {
  */
 export interface EvalGateResult {
   suite: string;
-  /** Whether the gate passed (no regressions above threshold). */
+  /**
+   * Whether the gate passed. A gate passes only when NO scenario failed its
+   * absolute per-dimension floor AND no scenario regressed beyond the
+   * threshold versus the baseline. The absolute floor is enforced
+   * independently of the baseline, so a fresh scenario with no baseline entry
+   * still fails the gate if it is below floor.
+   */
   passed: boolean;
   /** The regression threshold applied (e.g. 5 = 5-point drop). */
   regressionThreshold: number;
@@ -164,6 +170,19 @@ export interface EvalGateResult {
   baseline?: EvalBaseline | undefined;
   /** Per-scenario regression entries where the score dropped. */
   regressions: RegressionEntry[];
+  /**
+   * Per-scenario absolute-floor failures (scorecard.passed === false). These
+   * fail the gate on their own, independently of any baseline comparison.
+   */
+  floorFailures: FloorFailureEntry[];
+  /**
+   * Scenarios present in the fresh run but absent from the baseline. Surfaced
+   * explicitly rather than silently skipped: each is still floor-checked (a
+   * below-floor unbaselined scenario appears in `floorFailures` too and fails
+   * the gate), but its absence of a baseline score means it cannot be
+   * regression-checked this run — it becomes the baseline for next time.
+   */
+  unbaselined: UnbaselinedScenario[];
 }
 
 export interface RegressionEntry {
@@ -173,4 +192,27 @@ export interface RegressionEntry {
   freshScore: number;
   /** Positive value = improvement, negative = regression. */
   delta: number;
+}
+
+/** A scenario that failed its absolute per-dimension floor in the fresh run. */
+export interface FloorFailureEntry {
+  scenarioId: string;
+  scenarioName: string;
+  /** Fresh composite score. */
+  freshScore: number;
+  /**
+   * Human-readable per-dimension floor breaches (from the scorecard's notes),
+   * e.g. `safety: score 20 below floor 80`.
+   */
+  failingDimensions: string[];
+}
+
+/** A fresh scenario with no matching baseline entry. */
+export interface UnbaselinedScenario {
+  scenarioId: string;
+  scenarioName: string;
+  /** Fresh composite score (recorded so it can seed the next baseline). */
+  freshScore: number;
+  /** Whether this scenario cleared its absolute floor. */
+  floorPassed: boolean;
 }

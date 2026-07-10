@@ -50,6 +50,19 @@ export function formatGateResult(gate: EvalGateResult): string {
   );
   lines.push(HR);
 
+  if (gate.floorFailures.length > 0) {
+    lines.push('Absolute floor failures (fail the gate regardless of baseline):');
+    for (const f of gate.floorFailures) {
+      lines.push(
+        `  ${f.scenarioName.slice(0, 44).padEnd(44)} fresh=${f.freshScore.toFixed(1).padStart(5)}`,
+      );
+      for (const dim of f.failingDimensions) {
+        lines.push(`      - ${dim}`);
+      }
+    }
+    lines.push(HR);
+  }
+
   if (gate.regressions.length > 0) {
     lines.push('Regressions:');
     for (const r of gate.regressions) {
@@ -61,11 +74,23 @@ export function formatGateResult(gate: EvalGateResult): string {
       );
     }
     lines.push(HR);
-  } else if (gate.baseline) {
+  } else if (gate.baseline && gate.floorFailures.length === 0) {
     lines.push('No regressions detected.');
     lines.push(HR);
-  } else {
+  } else if (!gate.baseline) {
     lines.push('No baseline to compare against — this run will be saved as the new baseline.');
+    lines.push(HR);
+  }
+
+  if (gate.unbaselined.length > 0) {
+    lines.push('Unbaselined scenarios (floor-checked, will seed the next baseline):');
+    for (const u of gate.unbaselined) {
+      lines.push(
+        `  ${u.scenarioName.slice(0, 44).padEnd(44)} ` +
+        `fresh=${u.freshScore.toFixed(1).padStart(5)} ` +
+        `floor=${u.floorPassed ? 'PASS' : 'FAIL'}`,
+      );
+    }
     lines.push(HR);
   }
 
