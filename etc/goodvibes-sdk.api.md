@@ -8437,6 +8437,10 @@ export interface OperatorMethodOutputMap {
                 resumable: boolean;
                 steerable: boolean;
             };
+            needsAttention?: {
+                reason: "approval" | "input";
+                detail?: string;
+            };
             sessionRef?: {
                 sessionId?: string;
                 agentId?: string;
@@ -8488,6 +8492,10 @@ export interface OperatorMethodOutputMap {
                 resumable: boolean;
                 steerable: boolean;
             };
+            needsAttention?: {
+                reason: "approval" | "input";
+                detail?: string;
+            };
             sessionRef?: {
                 sessionId?: string;
                 agentId?: string;
@@ -8538,6 +8546,10 @@ export interface OperatorMethodOutputMap {
                 pausable: boolean;
                 resumable: boolean;
                 steerable: boolean;
+            };
+            needsAttention?: {
+                reason: "approval" | "input";
+                detail?: string;
             };
             sessionRef?: {
                 sessionId?: string;

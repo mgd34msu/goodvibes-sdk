@@ -3,6 +3,7 @@
 import type { AgentRecord } from '../../../tools/agent/manager.js';
 import type {
   ProcessActivity,
+  ProcessAttention,
   ProcessNode,
   ProcessState,
   ProcessUsage,
@@ -158,6 +159,22 @@ function deriveAgentState(
   return 'executing-tool';
 }
 
+/**
+ * Derive the attention marker from a node's already-derived coarse `state`.
+ *
+ * Pure projection — no new signal is consulted. `awaiting-approval` is the only
+ * blocked-on-human state today, so it is the only one that yields an attention
+ * marker; every other state yields `undefined`. Kept as a shared helper so any
+ * adapter (or a roll-up) derives attention identically from state. The
+ * `detail` (e.g. the tool awaiting approval) is passed by the caller when known.
+ */
+export function deriveNeedsAttention(state: ProcessState, detail?: string): ProcessAttention | undefined {
+  if (state === 'awaiting-approval') {
+    return detail ? { reason: 'approval', detail } : { reason: 'approval' };
+  }
+  return undefined;
+}
+
 /** AgentRecord → ProcessNode. */
 export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): ProcessNode {
   const entry = ctx.activity.get(record.id);
@@ -201,6 +218,7 @@ export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): Proce
     costState,
     currentActivity: entry?.activity,
     capabilities: { interruptible: active, killable: active, pausable: false, resumable: false, steerable: active && ctx.messageBusPresent },
+    ...(deriveNeedsAttention(state) ? { needsAttention: deriveNeedsAttention(state) } : {}),
     sessionRef: { sessionId, agentId: record.id },
     raw: record,
   };

@@ -27200,6 +27200,25 @@ Return the session-archived process nodes (same node shape as fleet.snapshot; st
             ],
             "additionalProperties": false
           },
+          "needsAttention": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "approval",
+                  "input"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "additionalProperties": false
+          },
           "sessionRef": {
             "type": "object",
             "properties": {
@@ -27504,6 +27523,25 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
             ],
             "additionalProperties": false
           },
+          "needsAttention": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "approval",
+                  "input"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "additionalProperties": false
+          },
           "sessionRef": {
             "type": "object",
             "properties": {
@@ -27758,6 +27796,25 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
               "pausable",
               "resumable",
               "steerable"
+            ],
+            "additionalProperties": false
+          },
+          "needsAttention": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "approval",
+                  "input"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
             ],
             "additionalProperties": false
           },

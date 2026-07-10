@@ -191,7 +191,7 @@ function snapshotSignature(nodes: readonly ProcessNode[]): string {
       node.usage
         ? `${node.usage.inputTokens}:${node.usage.outputTokens}:${node.usage.toolCallCount}:${node.usage.turnCount}`
         : '',
-      node.currentActivity ? `${node.currentActivity.kind}=${node.currentActivity.text}` : '',
+      node.currentActivity ? `${node.currentActivity.kind}=${node.currentActivity.text}` : '', node.needsAttention ? `!${node.needsAttention.reason}` : '',
       String(node.costUsd ?? ''),
       node.costState,
       node.sessionRef?.sessionId ?? '',

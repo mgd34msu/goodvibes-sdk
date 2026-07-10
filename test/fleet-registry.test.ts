@@ -769,7 +769,21 @@ describe('fleet registry — awaiting-approval', () => {
         listApprovals: () => [makeApproval({ id: 'ap-1', metadata: { agentId: 'ag-appr' } })],
       },
     }));
-    expect(nodeById(registry, 'ag-appr').state).toBe('awaiting-approval');
+    const node = nodeById(registry, 'ag-appr');
+    expect(node.state).toBe('awaiting-approval');
+    // Derived attention marker rides along with the awaiting-approval state.
+    expect(node.needsAttention).toEqual({ reason: 'approval' });
+    registry.dispose();
+  });
+
+  test('a running agent with no pending approval carries no attention marker', () => {
+    const agent = makeAgent({ id: 'ag-clear' });
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: { list: () => [agent], cancel: () => false },
+    }));
+    const node = nodeById(registry, 'ag-clear');
+    expect(node.state).not.toBe('awaiting-approval');
+    expect(node.needsAttention).toBeUndefined();
     registry.dispose();
   });
 
