@@ -361,6 +361,7 @@ export const OPERATOR_METHOD_IDS = [
   "watchers.update",
   "web_search.providers.list",
   "web_search.query",
+  "worktrees.setup.run",
   "worktrees.snapshot",
 ] as const;
 export type OperatorMethodId = typeof OPERATOR_METHOD_IDS[number];

@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `363`
+- Methods: `364`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -84424,6 +84424,118 @@ Execute a provider-backed web search and return normalized ranked results.
 
 ### worktrees
 
+#### `worktrees.setup.run`
+
+Re-run cold-start setup (configured commands + untracked-file carry-over) on a live worktree by path, recording the honest outcome onto the worktree record. Returns the setup result: state skipped (nothing configured), succeeded, or failed with the failing step and error. A failed setup is a visible worktree state, never silent.
+
+- Title: `Re-run Worktree Setup`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:worktrees`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "setup": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "skipped",
+            "succeeded",
+            "failed"
+          ]
+        },
+        "startedAt": {
+          "type": "number"
+        },
+        "completedAt": {
+          "type": "number"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "command",
+                  "carry-over"
+                ]
+              },
+              "label": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean"
+              },
+              "exitCode": {
+                "type": "number"
+              },
+              "output": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "label",
+              "ok",
+              "output"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "startedAt",
+        "completedAt",
+        "steps"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "path",
+    "setup"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `worktrees.snapshot`
 
 Return the worktree integration snapshot.
@@ -84540,6 +84652,69 @@ Return the worktree integration snapshot.
           },
           "taskId": {
             "type": "string"
+          },
+          "setup": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "skipped",
+                  "succeeded",
+                  "failed"
+                ]
+              },
+              "startedAt": {
+                "type": "number"
+              },
+              "completedAt": {
+                "type": "number"
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "command",
+                        "carry-over"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "exitCode": {
+                      "type": "number"
+                    },
+                    "output": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "label",
+                    "ok",
+                    "output"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state",
+              "startedAt",
+              "completedAt",
+              "steps"
+            ],
+            "additionalProperties": false
           },
           "updatedAt": {
             "type": "number"

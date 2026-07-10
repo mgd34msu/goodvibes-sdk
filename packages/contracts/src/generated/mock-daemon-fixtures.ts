@@ -15711,6 +15711,29 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "metadata": {}
     }
   },
+  "worktrees.setup.run": {
+    "methodId": "worktrees.setup.run",
+    "http": null,
+    "status": 200,
+    "body": {
+      "path": "sample",
+      "setup": {
+        "state": "skipped",
+        "startedAt": 0,
+        "completedAt": 0,
+        "steps": [
+          {
+            "kind": "command",
+            "label": "sample",
+            "ok": false,
+            "exitCode": 0,
+            "output": "sample"
+          }
+        ],
+        "error": "sample"
+      }
+    }
+  },
   "worktrees.snapshot": {
     "methodId": "worktrees.snapshot",
     "http": {
@@ -15740,6 +15763,21 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "ownerId": "sample",
           "sessionId": "sample",
           "taskId": "sample",
+          "setup": {
+            "state": "skipped",
+            "startedAt": 0,
+            "completedAt": 0,
+            "steps": [
+              {
+                "kind": "command",
+                "label": "sample",
+                "ok": false,
+                "exitCode": 0,
+                "output": "sample"
+              }
+            ],
+            "error": "sample"
+          },
           "updatedAt": 0
         }
       ]

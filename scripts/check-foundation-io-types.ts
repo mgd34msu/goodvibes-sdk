@@ -104,6 +104,11 @@ import {
   CHANNEL_TEST_SEND_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-channels.ts';
 import {
+  WORKTREE_SETUP_RUN_INPUT_SCHEMA,
+  WORKTREE_SETUP_RUN_OUTPUT_SCHEMA,
+  WORKTREE_SNAPSHOT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-control.ts';
+import {
   CHANNEL_PROFILES_DELETE_INPUT_SCHEMA,
   CHANNEL_PROFILES_DELETE_OUTPUT_SCHEMA,
   CHANNEL_PROFILES_GET_INPUT_SCHEMA,
@@ -262,6 +267,9 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'principals.resolve', input: PRINCIPALS_RESOLVE_INPUT_SCHEMA, output: PRINCIPALS_RESOLVE_OUTPUT_SCHEMA },
   // Live per-channel test-message probe:
   { methodId: 'channels.test.send', input: CHANNEL_TEST_SEND_INPUT_SCHEMA, output: CHANNEL_TEST_SEND_OUTPUT_SCHEMA },
+  // Worktree cold-start setup rerun + the snapshot record (now carrying setup state):
+  { methodId: 'worktrees.setup.run', input: WORKTREE_SETUP_RUN_INPUT_SCHEMA, output: WORKTREE_SETUP_RUN_OUTPUT_SCHEMA },
+  { methodId: 'worktrees.snapshot', input: EMPTY_OBJECT_SCHEMA, output: WORKTREE_SNAPSHOT_SCHEMA },
   // Per-channel profile bindings (model/permission defaults for originated sessions):
   { methodId: 'channels.profiles.list', input: CHANNEL_PROFILES_LIST_INPUT_SCHEMA, output: CHANNEL_PROFILES_LIST_OUTPUT_SCHEMA },
   { methodId: 'channels.profiles.get', input: CHANNEL_PROFILES_GET_INPUT_SCHEMA, output: CHANNEL_PROFILES_GET_OUTPUT_SCHEMA },

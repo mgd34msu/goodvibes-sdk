@@ -20,6 +20,9 @@ import { registerPrincipalsGatewayMethods } from './principals.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
 import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
 import { registerChannelTestGatewayMethods } from './channel-test.js';
+import { registerWorktreeSetupGatewayMethods } from './worktree-setup.js';
+import { WorktreeRegistry } from '../../runtime/worktree/registry.js';
+import { resolveWorktreeSetupConfig } from '../../runtime/worktree/setup.js';
 import {
   ChannelProfileRegistry,
   ChannelProfileStore,
@@ -155,6 +158,13 @@ export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
    * degrade for embeds that wire no channel intake).
    */
   readonly sessionIntake?: InboundIntakeBroker | undefined;
+  /**
+   * The daemon's working directory (source working tree). When present, the
+   * worktrees.setup.run rerun verb is registered over a worktree registry rooted
+   * here (the same store worktrees.snapshot reads); absent → the verb stays
+   * cataloged-but-unhandled, a graceful degrade for embeds with no worktree root.
+   */
+  readonly workingDirectory?: string | undefined;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -244,6 +254,19 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // stays cataloged-but-unhandled rather than a facade that pretends to deliver.
   if (deps.channelDeliveryRouter) {
     registerChannelTestGatewayMethods(catalog, deps.channelDeliveryRouter);
+  }
+
+  // worktrees.setup.run — re-run cold-start setup on a live worktree. Registered
+  // over a registry rooted at the daemon working directory (matching
+  // worktrees.snapshot's reader) so the recorded outcome is visible there.
+  if (deps.workingDirectory !== undefined) {
+    const worktreeSetupRegistry = new WorktreeRegistry(deps.workingDirectory);
+    const sourceRoot = deps.workingDirectory;
+    registerWorktreeSetupGatewayMethods(catalog, {
+      registry: worktreeSetupRegistry,
+      sourceRoot,
+      resolveConfig: () => resolveWorktreeSetupConfig((key) => (deps.configManager.get as unknown as (k: string) => unknown)(key)),
+    });
   }
 
   // Proactive check-in (the "heartbeat initiative"): a briefing→judgment→

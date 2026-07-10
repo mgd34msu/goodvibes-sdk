@@ -526,3 +526,32 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     rmSync(root, { recursive: true, force: true });
   }, 30_000);
 });
+
+describe('WorktreeIsolationManager — cold-start setup hook', () => {
+  test('runWorktreeSetup fires once per created item worktree, with that worktree path', async () => {
+    root = freshRoot();
+    writeFileSync(join(root, 'seed.txt'), 'seed\n');
+    runGit(root, ['add', 'seed.txt']);
+    runGit(root, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-m', 'seed']);
+
+    const h = makeWtHarness();
+    const setupPaths: string[] = [];
+    const engine = makeEngine(root, h, {
+      runWorktreeSetup: async (worktreePath: string) => { setupPaths.push(worktreePath); },
+    });
+
+    const items: WorkItemSpec[] = [{ id: 'item-solo', title: 'solo', task: 'do it' }];
+    const ws = engine.createWorkstream({
+      id: 'ws-setup', title: 'setup hook', phases: [enginePhase(1)], items, isolation: 'worktree',
+    });
+    engine.start(ws.id);
+
+    await waitUntil(() => h.spawnedIds.length === 1);
+    const solo = ws.items.find((i) => i.id === 'item-solo')!;
+    expect(solo.worktreePath).toBeDefined();
+    await waitUntil(() => setupPaths.length === 1);
+    expect(setupPaths[0]).toBe(solo.worktreePath);
+
+    rmSync(root, { recursive: true, force: true });
+  }, 30_000);
+});

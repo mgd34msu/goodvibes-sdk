@@ -56,6 +56,16 @@ export interface WorktreeIsolationManagerDeps {
   readonly now?: (() => number) | undefined;
   /** Bounds how many KEPT (conflict/dirty) worktrees are retained before oldest-first eviction. Default 20. */
   readonly keptWorktreeCap?: number | undefined;
+  /**
+   * Cold-start setup hook run once, right after a worktree is first created, so
+   * an isolated agent starts with dependencies installed and carried-over
+   * untracked files present instead of broken-by-default. The wiring is
+   * responsible for capturing/recording the honest outcome (e.g. onto the
+   * worktree registry record); a thrown/rejected setup NEVER fails worktree
+   * creation — a broken setup is surfaced as a visible state, not a lost
+   * worktree. Absent → today's behavior (no provisioning).
+   */
+  readonly runSetup?: ((worktreePath: string) => Promise<void> | void) | undefined;
 }
 
 export interface ItemWorktreeHandle {
@@ -144,6 +154,18 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       item.worktreePath = instance.path;
       item.worktreeBranch = instance.branch;
       deps.emit({ type: 'item-worktree-created', workstreamId: workstream.id, itemId: item.id, path: instance.path, branch: instance.branch });
+      // Cold-start setup: install deps, run codegen, carry over untracked
+      // files. Never fails worktree creation — the wiring records the honest
+      // outcome (including a failure) as a visible worktree state.
+      if (deps.runSetup) {
+        try {
+          await deps.runSetup(instance.path);
+        } catch (error) {
+          logger.warn('worktree-isolation: cold-start setup hook threw (worktree kept; failure recorded by the setup wiring)', {
+            itemId: item.id, path: instance.path, error: summarizeError(error),
+          });
+        }
+      }
     }
     return { path: instance.path, commit: (message, paths) => instance.commit(message, paths) };
   }
