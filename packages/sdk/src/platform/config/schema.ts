@@ -23,6 +23,7 @@ export const DEFAULT_CONFIG = {
   tts: coreConfigDefaults.tts,
   release: coreConfigDefaults.release,
   automation: runtimeConfigDefaults.automation,
+  checkin: runtimeConfigDefaults.checkin,
   controlPlane: runtimeConfigDefaults.controlPlane,
   httpListener: runtimeConfigDefaults.httpListener,
   web: runtimeConfigDefaults.web,

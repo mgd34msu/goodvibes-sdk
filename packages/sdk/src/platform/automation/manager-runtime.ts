@@ -10,6 +10,7 @@ import { AutomationRunStore } from './store/runs.js';
 import { AutomationDeliveryManager } from './delivery-manager.js';
 import { RouteBindingManager } from '../channels/index.js';
 import type { AutomationJob } from './jobs.js';
+import type { AutomationCheckinEvaluator } from './checkin-execution.js';
 import type { AutomationRun, AutomationRunContinuationMode, AutomationRunTelemetry } from './runs.js';
 import type { AutomationRunTrigger, AutomationSurfaceKind } from './types.js';
 import { SharedSessionBroker } from '../control-plane/index.js';
@@ -127,6 +128,9 @@ export class AutomationManager {
   private readonly heartbeatWakes = new Map<string, AutomationHeartbeatWake>();
   private deliveryManager: AutomationDeliveryManager | null;
   private readonly deliveryInFlight = new Set<string>();
+  // Attached post-construction by the CheckinService (attachCheckinEvaluator);
+  // runs the briefing→judgment→delivery loop for kind:'checkin' jobs.
+  private checkinEvaluator?: AutomationCheckinEvaluator | undefined;
   // runtimeDispatch and runtimeBus are wired lazily via attachRuntime() after
   // construction; null-init here avoids a required-constructor-arg dependency.
   private runtimeDispatch: DomainDispatch | null = null;
@@ -203,6 +207,7 @@ export class AutomationManager {
       applyFailureToJob: (job: AutomationJob, timestamp: number, countRun = true) => this.applyFailureToJob(job, timestamp, countRun),
       jobs: this.jobs,
       runs: this.runs,
+      checkinEvaluator: this.checkinEvaluator,
     };
   }
 
@@ -257,6 +262,16 @@ export class AutomationManager {
       this.reconcileTimer = null;
     }
     this.running = false;
+  }
+
+  /**
+   * Attach the check-in evaluator that runs when a `kind: 'checkin'` job fires.
+   * Called once by the CheckinService after construction (the service needs the
+   * manager to schedule the check-in job, so the manager cannot depend on it at
+   * construction). Idempotent-ish: the last attached evaluator wins.
+   */
+  attachCheckinEvaluator(evaluator: AutomationCheckinEvaluator): void {
+    this.checkinEvaluator = evaluator;
   }
 
   attachRuntime(config: {

@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `352`
+- Methods: `356`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -21804,6 +21804,298 @@ Return operator tools for a single channel surface.
   },
   "required": [
     "tools"
+  ],
+  "additionalProperties": false
+}
+```
+
+### checkin
+
+#### `checkin.config.get`
+
+Return the proactive check-in configuration: enabled, cadence (cron), delivery channel, and quiet hours.
+
+- Title: `Get Check-in Config`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/checkin/config`
+- Scopes: `read:checkin`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "cadence": {
+          "type": "string"
+        },
+        "deliveryChannel": {
+          "type": "string"
+        },
+        "quietHours": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "cadence",
+        "deliveryChannel",
+        "quietHours"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "config"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkin.config.set`
+
+Update the proactive check-in configuration. Absent fields are left unchanged. Enabling syncs the kind:checkin automation job onto the scheduler; disabling stops it.
+
+- Title: `Update Check-in Config`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/checkin/config`
+- Scopes: `write:checkin`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "cadence": {
+      "type": "string"
+    },
+    "deliveryChannel": {
+      "type": "string"
+    },
+    "quietHours": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "cadence": {
+          "type": "string"
+        },
+        "deliveryChannel": {
+          "type": "string"
+        },
+        "quietHours": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "cadence",
+        "deliveryChannel",
+        "quietHours"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "config"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkin.receipts.list`
+
+Return the visible receipts of past check-in runs (newest first): each run records whether it stayed quiet, delivered a message (and what), or was skipped.
+
+- Title: `List Check-in Receipts`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/checkin/receipts`
+- Scopes: `read:checkin`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ranAt": {
+            "type": "number"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "manual"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "delivered",
+              "quiet",
+              "skipped-disabled",
+              "skipped-quiet-hours",
+              "error"
+            ]
+          },
+          "briefingSummary": {
+            "type": "string"
+          },
+          "decisionReason": {
+            "type": "string"
+          },
+          "deliveredMessage": {
+            "type": "string"
+          },
+          "deliveryChannel": {
+            "type": "string"
+          },
+          "deliveryId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ranAt",
+          "trigger",
+          "outcome",
+          "briefingSummary"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "receipts"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `checkin.run`
+
+Trigger one check-in evaluation immediately (a manual run): assemble the briefing, judge whether to contact the user, deliver if so, and record a receipt.
+
+- Title: `Run Check-in Now`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/checkin/run`
+- Scopes: `write:checkin`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "delivered",
+        "quiet",
+        "skipped",
+        "error"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "deliveryId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "outcome",
+    "summary"
   ],
   "additionalProperties": false
 }

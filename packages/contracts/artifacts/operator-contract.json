@@ -21733,6 +21733,280 @@
         "invokable": true
       },
       {
+        "id": "checkin.config.get",
+        "title": "Get Check-in Config",
+        "description": "Return the proactive check-in configuration: enabled, cadence (cron), delivery channel, and quiet hours.",
+        "category": "checkin",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:checkin"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/checkin/config"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "config": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "cadence": {
+                  "type": "string"
+                },
+                "deliveryChannel": {
+                  "type": "string"
+                },
+                "quietHours": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "enabled",
+                "cadence",
+                "deliveryChannel",
+                "quietHours"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "config"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "checkin.config.set",
+        "title": "Update Check-in Config",
+        "description": "Update the proactive check-in configuration. Absent fields are left unchanged. Enabling syncs the kind:checkin automation job onto the scheduler; disabling stops it.",
+        "category": "checkin",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:checkin"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/checkin/config"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "cadence": {
+              "type": "string"
+            },
+            "deliveryChannel": {
+              "type": "string"
+            },
+            "quietHours": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "config": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "cadence": {
+                  "type": "string"
+                },
+                "deliveryChannel": {
+                  "type": "string"
+                },
+                "quietHours": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "enabled",
+                "cadence",
+                "deliveryChannel",
+                "quietHours"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "config"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "checkin.receipts.list",
+        "title": "List Check-in Receipts",
+        "description": "Return the visible receipts of past check-in runs (newest first): each run records whether it stayed quiet, delivered a message (and what), or was skipped.",
+        "category": "checkin",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:checkin"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/checkin/receipts"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "receipts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "ranAt": {
+                    "type": "number"
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "scheduled",
+                      "manual"
+                    ]
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "delivered",
+                      "quiet",
+                      "skipped-disabled",
+                      "skipped-quiet-hours",
+                      "error"
+                    ]
+                  },
+                  "briefingSummary": {
+                    "type": "string"
+                  },
+                  "decisionReason": {
+                    "type": "string"
+                  },
+                  "deliveredMessage": {
+                    "type": "string"
+                  },
+                  "deliveryChannel": {
+                    "type": "string"
+                  },
+                  "deliveryId": {
+                    "type": "string"
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "ranAt",
+                  "trigger",
+                  "outcome",
+                  "briefingSummary"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "receipts"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "checkin.run",
+        "title": "Run Check-in Now",
+        "description": "Trigger one check-in evaluation immediately (a manual run): assemble the briefing, judge whether to contact the user, deliver if so, and record a receipt.",
+        "category": "checkin",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:checkin"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/checkin/run"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "delivered",
+                "quiet",
+                "skipped",
+                "error"
+              ]
+            },
+            "summary": {
+              "type": "string"
+            },
+            "deliveryId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "outcome",
+            "summary"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "checkpoints.create",
         "title": "Create Workspace Checkpoint",
         "description": "Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an error) when the workspace tree is identical to the most recent checkpoint — no commit, ref, or manifest entry is created in that case.",
@@ -84009,10 +84283,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 352,
-      "typedInputs": 352,
+      "methods": 356,
+      "typedInputs": 356,
       "genericInputs": 0,
-      "typedOutputs": 352,
+      "typedOutputs": 356,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -84021,8 +84295,8 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 352,
-      "validated": 350,
+      "methods": 356,
+      "validated": 354,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

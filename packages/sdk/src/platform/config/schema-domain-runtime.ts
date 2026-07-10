@@ -64,6 +64,12 @@ export const runtimeConfigDefaults = {
     failureCooldownMs: 5 * 60 * 1000,
     deleteAfterRun: false,
   },
+  checkin: {
+    enabled: false,
+    cadence: '0 */4 * * *',
+    deliveryChannel: '',
+    quietHours: '',
+  },
   controlPlane: {
     enabled: false,
     hostMode: 'local',
@@ -184,6 +190,30 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description: 'Delete one-shot automation jobs after their first successful run',
+  },
+  {
+    key: 'checkin.enabled',
+    type: 'boolean',
+    default: false,
+    description: 'Enable the proactive check-in: on a cadence, a briefing is judged and the user is contacted only when something warrants it',
+  },
+  {
+    key: 'checkin.cadence',
+    type: 'string',
+    default: '0 */4 * * *',
+    description: 'Proactive check-in cadence as a cron expression (default: every 4 hours)',
+  },
+  {
+    key: 'checkin.deliveryChannel',
+    type: 'string',
+    default: '',
+    description: 'Where a proactive check-in message is delivered: "surfaceKind" or "surfaceKind:address" (e.g. "slack:C123")',
+  },
+  {
+    key: 'checkin.quietHours',
+    type: 'string',
+    default: '',
+    description: 'Proactive check-in quiet hours as "HH:MM-HH:MM" local time (empty disables); no message is sent during this window',
   },
   {
     key: 'controlPlane.enabled',

@@ -9,8 +9,18 @@ import type { AutomationExecutionPolicy } from './session-targets.js';
 import type { AutomationEntityBase, AutomationJobStatus } from './types.js';
 import type { AutomationSourceRecord } from './sources.js';
 
+/**
+ * The job type discriminator on the shared automation scheduler. `standard`
+ * (the default; an absent value is standard) is an ordinary agent-spawning job.
+ * `checkin` is a proactive check-in: when the scheduler fires it, the attached
+ * check-in evaluator runs a briefing→judgment→conditional-delivery loop instead
+ * of spawning a generic agent. See checkin/ and automation/checkin-execution.ts.
+ */
+export type AutomationJobKind = 'standard' | 'checkin';
+
 export interface AutomationJob extends AutomationEntityBase {
   readonly name: string;
+  readonly kind?: AutomationJobKind | undefined;
   readonly description?: string | undefined;
   readonly status: AutomationJobStatus;
   readonly enabled: boolean;

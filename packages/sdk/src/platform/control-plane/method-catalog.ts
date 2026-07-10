@@ -43,6 +43,9 @@ import {
   builtinGatewayChannelProfilesMethodDescriptors,
 } from './method-catalog-channel-profiles.js';
 import {
+  builtinGatewayCheckinMethodDescriptors,
+} from './method-catalog-checkin.js';
+import {
   builtinGatewaySkillsMethodDescriptors,
 } from './method-catalog-skills.js';
 import { GatewayVerbError } from './routes/gateway-verb-error.js';
@@ -87,6 +90,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewaySkillsMethodDescriptors,
   ...builtinGatewayPrincipalsMethodDescriptors,
   ...builtinGatewayChannelProfilesMethodDescriptors,
+  ...builtinGatewayCheckinMethodDescriptors,
 ];
 
 function normalizeDescriptor(descriptor: GatewayMethodDescriptor): GatewayMethodDescriptor {

@@ -13,6 +13,7 @@ import {
   buildAutomationExecutionIntent,
   buildAutomationExecutionContext,
 } from './manager-runtime-helpers.js';
+import { executeCheckinJob, type AutomationCheckinEvaluator } from './checkin-execution.js';
 
 export interface AutomationManagerExecutionContext {
   readonly configManager: ConfigManager;
@@ -49,6 +50,13 @@ export interface AutomationManagerExecutionContext {
   readonly applyFailureToJob: (job: AutomationJob, timestamp: number, countRun?: boolean) => AutomationJob;
   readonly jobs: Map<string, AutomationJob>;
   readonly runs: Map<string, AutomationRun>;
+  /**
+   * Optional check-in evaluator. When a `kind: 'checkin'` job fires and this is
+   * attached, executeAutomationJob delegates to it (see checkin-execution.ts)
+   * instead of the generic agent-spawn path. Absent → a checkin job degrades to
+   * an ordinary job (nothing to evaluate), never an error.
+   */
+  readonly checkinEvaluator?: AutomationCheckinEvaluator | undefined;
 }
 
 interface ResolvedAutomationExecution {
@@ -90,6 +98,9 @@ export async function executeAutomationJob(
   dueRun: boolean,
   attempt = 1,
 ): Promise<AutomationRun> {
+  if (job.kind === 'checkin' && context.checkinEvaluator) {
+    return await executeCheckinJob(context, context.checkinEvaluator, job, trigger, dueRun, attempt);
+  }
   const now = Date.now();
   const prompt = job.execution.prompt ?? job.description ?? job.name;
   const resolved = await resolveAutomationExecution(context, job, prompt, trigger);

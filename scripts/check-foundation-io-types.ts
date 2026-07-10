@@ -107,6 +107,16 @@ import {
   CHANNEL_PROFILES_SET_INPUT_SCHEMA,
   CHANNEL_PROFILES_SET_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-channel-profiles.ts';
+import {
+  CHECKIN_CONFIG_GET_INPUT_SCHEMA,
+  CHECKIN_CONFIG_GET_OUTPUT_SCHEMA,
+  CHECKIN_CONFIG_SET_INPUT_SCHEMA,
+  CHECKIN_CONFIG_SET_OUTPUT_SCHEMA,
+  CHECKIN_RECEIPTS_LIST_INPUT_SCHEMA,
+  CHECKIN_RECEIPTS_LIST_OUTPUT_SCHEMA,
+  CHECKIN_RUN_INPUT_SCHEMA,
+  CHECKIN_RUN_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/method-catalog-checkin.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
@@ -236,6 +246,11 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'channels.profiles.get', input: CHANNEL_PROFILES_GET_INPUT_SCHEMA, output: CHANNEL_PROFILES_GET_OUTPUT_SCHEMA },
   { methodId: 'channels.profiles.set', input: CHANNEL_PROFILES_SET_INPUT_SCHEMA, output: CHANNEL_PROFILES_SET_OUTPUT_SCHEMA },
   { methodId: 'channels.profiles.delete', input: CHANNEL_PROFILES_DELETE_INPUT_SCHEMA, output: CHANNEL_PROFILES_DELETE_OUTPUT_SCHEMA },
+  // Proactive check-in (the heartbeat initiative):
+  { methodId: 'checkin.config.get', input: CHECKIN_CONFIG_GET_INPUT_SCHEMA, output: CHECKIN_CONFIG_GET_OUTPUT_SCHEMA },
+  { methodId: 'checkin.config.set', input: CHECKIN_CONFIG_SET_INPUT_SCHEMA, output: CHECKIN_CONFIG_SET_OUTPUT_SCHEMA },
+  { methodId: 'checkin.receipts.list', input: CHECKIN_RECEIPTS_LIST_INPUT_SCHEMA, output: CHECKIN_RECEIPTS_LIST_OUTPUT_SCHEMA },
+  { methodId: 'checkin.run', input: CHECKIN_RUN_INPUT_SCHEMA, output: CHECKIN_RUN_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

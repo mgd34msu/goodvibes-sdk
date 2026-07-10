@@ -40,6 +40,7 @@ export async function createAutomationJobRecord(
     updatedAt: now,
     createdBy: 'automation-manager',
     updatedBy: 'automation-manager',
+    ...(input.kind ? { kind: input.kind } : {}),
     name: input.name.trim() || input.prompt.slice(0, 40),
     description: input.description ?? input.prompt,
     status: enabled ? 'enabled' : 'paused',
@@ -129,6 +130,7 @@ export async function updateAutomationJobRecord(
       : job.execution.fallbackModels ?? job.execution.routing?.fallbackModels);
   const updated: AutomationJob = {
     ...job,
+    ...(patch.kind ? { kind: patch.kind } : {}),
     name: patch.name ?? job.name,
     description: patch.description ?? (patch.prompt ? patch.prompt : job.description),
     enabled: nextEnabled,
