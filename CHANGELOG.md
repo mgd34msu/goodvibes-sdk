@@ -8,6 +8,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A shared registered-workspace registry the whole platform reads.** A
+  daemon-side store of the project roots an operator has explicitly opted into,
+  the platform-wide successor to the agent fork's local
+  `registered-workspaces.json` (the persisted record shape is kept identical so
+  that file migrates in). Settled coverage semantics: coverage flows DOWN a
+  registered root's subtree and never up; a nearer registered root wins when
+  registrations nest; a "no" to a prompt is remembered subtree-scoped at the
+  root that was asked; and worktree inheritance follows the git
+  worktree→main-repo LINK (resolved from `git rev-parse --git-common-dir`), not
+  path ancestry — so an orchestration-spawned sibling worktree living outside the
+  registered root still inherits its main repo's registration. Registering an
+  absurdly broad root (`$HOME`, `/`, or the daemon state dir) is refused through
+  the same root-guard the checkpoint manager uses. Ships as
+  `@pellux/goodvibes-sdk/platform/workspace` exports (`WorkspaceRegistrationStore`
+  with user-scoped, injectable I/O; the pure `resolveWorkspaceRegistration`; the
+  `probeWorktreeLink` link probe) plus four operator verbs with typed IO and REST
+  parity: `workspaces.registrations.list` / `.add` / `.remove` and
+  `workspaces.resolve`. The checkpoint manager's registered-workspace consumers
+  adopt it in their own rounds.
 - **A per-command exec sandbox (bubblewrap) to shrink the approval tail.** When
   bubblewrap (`bwrap`) is available on a Linux host, exec tool calls can run
   inside a per-command OS boundary — the workspace bound read-write, the rest of

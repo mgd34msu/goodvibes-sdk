@@ -63,6 +63,9 @@ import {
 import {
   builtinGatewayRewindMethodDescriptors,
 } from './method-catalog-rewind.js';
+import {
+  builtinGatewayWorkspacesMethodDescriptors,
+} from './method-catalog-workspaces.js';
 import { GatewayVerbError } from './routes/gateway-verb-error.js';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 
@@ -111,6 +114,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayCiMethodDescriptors,
   ...builtinGatewayFlagsMethodDescriptors,
   ...builtinGatewayRewindMethodDescriptors,
+  ...builtinGatewayWorkspacesMethodDescriptors,
 ];
 
 function normalizeDescriptor(descriptor: GatewayMethodDescriptor): GatewayMethodDescriptor {

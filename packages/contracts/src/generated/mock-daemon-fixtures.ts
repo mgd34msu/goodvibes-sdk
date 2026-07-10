@@ -16000,6 +16000,73 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "metadata": {}
     }
   },
+  "workspaces.registrations.add": {
+    "methodId": "workspaces.registrations.add",
+    "http": {
+      "method": "POST",
+      "path": "/api/workspaces/registrations"
+    },
+    "status": 200,
+    "body": {
+      "workspace": {
+        "root": "sample",
+        "registeredAt": "sample",
+        "label": "sample"
+      },
+      "alreadyRegistered": false
+    }
+  },
+  "workspaces.registrations.list": {
+    "methodId": "workspaces.registrations.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/workspaces/registrations"
+    },
+    "status": 200,
+    "body": {
+      "workspaces": [
+        {
+          "root": "sample",
+          "registeredAt": "sample",
+          "label": "sample"
+        }
+      ],
+      "declines": [
+        {
+          "root": "sample",
+          "declinedAt": "sample"
+        }
+      ]
+    }
+  },
+  "workspaces.registrations.remove": {
+    "methodId": "workspaces.registrations.remove",
+    "http": {
+      "method": "DELETE",
+      "path": "/api/workspaces/registrations"
+    },
+    "status": 200,
+    "body": {
+      "root": "sample",
+      "removed": false
+    }
+  },
+  "workspaces.resolve": {
+    "methodId": "workspaces.resolve",
+    "http": {
+      "method": "POST",
+      "path": "/api/workspaces/resolve"
+    },
+    "status": 200,
+    "body": {
+      "path": "sample",
+      "status": "covered",
+      "coveredBy": "sample",
+      "declinedRoot": "sample",
+      "viaWorktreeLink": false,
+      "reason": "sample"
+    }
+  },
   "worktrees.setup.run": {
     "methodId": "worktrees.setup.run",
     "http": null,

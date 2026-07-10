@@ -135,6 +135,16 @@ import {
   REWIND_APPLY_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-rewind.ts';
 import {
+  WORKSPACES_REGISTRATIONS_LIST_INPUT_SCHEMA,
+  WORKSPACES_REGISTRATIONS_LIST_OUTPUT_SCHEMA,
+  WORKSPACES_REGISTRATIONS_ADD_INPUT_SCHEMA,
+  WORKSPACES_REGISTRATIONS_ADD_OUTPUT_SCHEMA,
+  WORKSPACES_REGISTRATIONS_REMOVE_INPUT_SCHEMA,
+  WORKSPACES_REGISTRATIONS_REMOVE_OUTPUT_SCHEMA,
+  WORKSPACES_RESOLVE_INPUT_SCHEMA,
+  WORKSPACES_RESOLVE_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-workspaces.ts';
+import {
   CHANNEL_PROFILES_DELETE_INPUT_SCHEMA,
   CHANNEL_PROFILES_DELETE_OUTPUT_SCHEMA,
   CHANNEL_PROFILES_GET_INPUT_SCHEMA,
@@ -325,6 +335,11 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Unified message-anchored rewind (plan + confirm-gated apply):
   { methodId: 'rewind.plan', input: REWIND_PLAN_INPUT_SCHEMA, output: REWIND_PLAN_OUTPUT_SCHEMA },
   { methodId: 'rewind.apply', input: REWIND_APPLY_INPUT_SCHEMA, output: REWIND_APPLY_OUTPUT_SCHEMA },
+  // Shared registered-workspace registry (list/add/remove + resolve):
+  { methodId: 'workspaces.registrations.list', input: WORKSPACES_REGISTRATIONS_LIST_INPUT_SCHEMA, output: WORKSPACES_REGISTRATIONS_LIST_OUTPUT_SCHEMA },
+  { methodId: 'workspaces.registrations.add', input: WORKSPACES_REGISTRATIONS_ADD_INPUT_SCHEMA, output: WORKSPACES_REGISTRATIONS_ADD_OUTPUT_SCHEMA },
+  { methodId: 'workspaces.registrations.remove', input: WORKSPACES_REGISTRATIONS_REMOVE_INPUT_SCHEMA, output: WORKSPACES_REGISTRATIONS_REMOVE_OUTPUT_SCHEMA },
+  { methodId: 'workspaces.resolve', input: WORKSPACES_RESOLVE_INPUT_SCHEMA, output: WORKSPACES_RESOLVE_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');
