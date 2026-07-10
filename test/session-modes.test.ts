@@ -14,6 +14,8 @@ import type { PolicyRuntimeState } from '../packages/sdk/src/platform/runtime/pe
 import type { PermissionMode } from '../packages/sdk/src/platform/config/schema.js';
 import { buildToolDenial, buildDenialErrorMessage, PLAN_MODE_DENIAL_REASON } from '../packages/sdk/src/platform/permissions/denial.js';
 import { bindPermissionModeChangeEvent } from '../packages/sdk/src/platform/permissions/mode-change-emitter.js';
+import type { ConfigManager, ConfigChangeCallback } from '../packages/sdk/src/platform/config/manager.js';
+import type { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import {
   appendPlanModeInstruction,
   PLAN_MODE_INSTRUCTION_MARKER,
@@ -21,6 +23,20 @@ import {
 import { buildReinjectedInstructions } from '../packages/sdk/src/platform/core/compaction-sections.js';
 
 // ── helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * A minimal RuntimeEventBus whose emit() records (channel, payload) into the
+ * supplied sink. The double-cast through the emit shape is the repo's standard
+ * bus-fixture bridge (see makeRuntimeBus in the plugins observability test) —
+ * a typed factory, not an `any` suppression.
+ */
+function makeCapturingBus(sink: Array<{ channel: string; payload: unknown }>): RuntimeEventBus {
+  return {
+    emit(channel: string, env: { payload: unknown }) {
+      sink.push({ channel, payload: env.payload });
+    },
+  } as unknown as RuntimeEventBus;
+}
 
 function makeConfigReader(mode: PermissionMode): PermissionConfigReader {
   return {
@@ -153,15 +169,17 @@ describe('structured plan-mode denial', () => {
 
 describe('permission mode-change event', () => {
   test('bindPermissionModeChangeEvent emits PERMISSION_MODE_CHANGED on real transitions', () => {
-    let listener: ((n: unknown, o: unknown) => void) | null = null;
-    const configManager = {
-      subscribe: (_key: string, cb: (n: unknown, o: unknown) => void) => { listener = cb; return () => {}; },
+    let listener: ConfigChangeCallback<'permissions.mode'> | null = null;
+    const configManager: Pick<ConfigManager, 'subscribe'> = {
+      subscribe: (_key, cb) => {
+        listener = cb as ConfigChangeCallback<'permissions.mode'>;
+        return () => {};
+      },
     };
     const emitted: Array<{ channel: string; payload: unknown }> = [];
-    const bus = { emit: (channel: string, env: { payload: unknown }) => emitted.push({ channel, payload: env.payload }) };
+    const bus = makeCapturingBus(emitted);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const unsub = bindPermissionModeChangeEvent(configManager as any, bus as any, 'sess-1');
+    const unsub = bindPermissionModeChangeEvent(configManager, bus, 'sess-1');
     expect(typeof listener).toBe('function');
 
     listener!('plan', 'prompt');
