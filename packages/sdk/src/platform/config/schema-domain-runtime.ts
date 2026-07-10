@@ -1,5 +1,22 @@
 import { type ConfigSettingDefinition, intRange, port } from './schema-shared.js';
 
+/**
+ * Per-project worktree cold-start setup (resolveWorktreeSetupConfig). Both fields
+ * are arrays, so — like notifications.webhookUrls / wrfc.gates — they are NOT
+ * scalar ConfigKeys; read them via getCategory('worktree').setup. The domain is
+ * augmented onto GoodVibesConfig here (co-located with its default below) so
+ * schema-types.ts stays under its grandfathered line ceiling; registering it is
+ * what keeps get('worktree.setup.*') from throwing "section 'worktree' does not
+ * exist" — the daemon reads those keys via a cast.
+ */
+export interface WorktreeConfig {
+  setup: { commands: string[]; carryOverGlobs: string[] };
+}
+declare module './schema-types.js' {
+  interface GoodVibesConfig {
+    worktree: WorktreeConfig;
+  }
+}
 export const runtimeConfigDefaults = {
   runtime: {
     companionChatLimiter: {
@@ -139,6 +156,12 @@ export const runtimeConfigDefaults = {
     },
     remoteFetch: {
       allowPrivateHosts: false,
+    },
+  },
+  worktree: {
+    setup: {
+      commands: [] as string[],
+      carryOverGlobs: [] as string[],
     },
   },
 };

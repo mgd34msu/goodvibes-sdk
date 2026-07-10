@@ -35,6 +35,7 @@ export const DEFAULT_CONFIG = {
   runtime: runtimeConfigDefaults.runtime,
   telemetry: runtimeConfigDefaults.telemetry,
   atRest: atRestConfigDefaults.atRest,
+  worktree: runtimeConfigDefaults.worktree,
   batch: runtimeConfigDefaults.batch,
   cloudflare: runtimeConfigDefaults.cloudflare,
   daemon: coreConfigDefaults.daemon,
