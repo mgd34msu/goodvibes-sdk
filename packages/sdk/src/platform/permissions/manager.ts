@@ -55,6 +55,7 @@ const TOOL_CATEGORIES: Record<string, PermissionCategory> = {
   state: 'read',
   registry: 'read',
   goodvibes_context: 'read',
+  repo_map: 'read',
   // write — new tool names
   write: 'write',
   edit: 'write',

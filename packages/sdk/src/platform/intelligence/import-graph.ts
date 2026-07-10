@@ -89,6 +89,26 @@ function resolveSpecifierFromKnownFiles(
   // Already an exact file?
   if (fileExists(base)) return base;
 
+  // TS ESM: a '.js'/'.jsx'/'.mjs'/'.cjs' import specifier commonly points at a
+  // TypeScript sibling the compiler emits to that name (e.g. './core.js' ->
+  // core.ts). Try the TS sibling before anything else so import edges resolve in
+  // TS-ESM projects (this codebase included) instead of silently dropping.
+  const JS_TO_TS: Record<string, readonly string[]> = {
+    '.js': ['.ts', '.tsx'],
+    '.jsx': ['.tsx'],
+    '.mjs': ['.mts'],
+    '.cjs': ['.cts'],
+  };
+  const specExt = extname(base);
+  const tsSiblings = JS_TO_TS[specExt];
+  if (tsSiblings) {
+    const stem = base.slice(0, base.length - specExt.length);
+    for (const tsExt of tsSiblings) {
+      const candidate = stem + tsExt;
+      if (fileExists(candidate)) return candidate;
+    }
+  }
+
   // Try extensions
   for (const ext of ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']) {
     const candidate = base + ext;

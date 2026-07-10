@@ -13,6 +13,7 @@ import { ReadTool } from './read/index.js';
 import { createWriteTool } from './write/index.js';
 import { createEditTool } from './edit/index.js';
 import { TypeScriptSyntaxDiagnosticsProvider } from './shared/post-edit-diagnostics.js';
+import { createRepoMapTool } from './repo-map/index.js';
 import { createFindTool } from './find/index.js';
 import { createExecTool } from './exec/index.js';
 import { createAnalyzeTool } from './analyze/index.js';
@@ -101,6 +102,7 @@ export type { SkillLoaderRoots } from './registry-tool/skill-loader.js';
 export { ReadTool } from './read/index.js';
 export { createWriteTool } from './write/index.js';
 export { createEditTool } from './edit/index.js';
+export { createRepoMapTool } from './repo-map/index.js';
 export type { EditToolOptions } from './edit/index.js';
 export type { EditItem, EditInput } from './edit/types.js';
 export { createFindTool } from './find/index.js';
@@ -279,6 +281,7 @@ export function registerAllTools(
     diagnosticsProvider,
   }));
   registerTool(createFindTool(workingDirectory, deps.featureFlags));
+  registerTool(createRepoMapTool({ projectRoot: workingDirectory }));
   registerTool(createExecTool(processManager, {
     featureFlags: deps.featureFlags,
     overflowHandler: deps.overflowHandler,
