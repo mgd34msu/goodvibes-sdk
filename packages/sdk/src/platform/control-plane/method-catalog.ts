@@ -8,6 +8,9 @@ import {
   builtinGatewayChannelTestMethodDescriptors,
 } from './method-catalog-channels-test.js';
 import {
+  builtinGatewayCostMethodDescriptors,
+} from './method-catalog-cost.js';
+import {
   builtinGatewayControlMethodDescriptors,
 } from './method-catalog-control.js';
 import {
@@ -87,6 +90,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayControlMethodDescriptors,
   ...builtinGatewayChannelMethodDescriptors,
   ...builtinGatewayChannelTestMethodDescriptors,
+  ...builtinGatewayCostMethodDescriptors,
   ...builtinGatewayEmailMethodDescriptors,
   ...builtinGatewayCalendarMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,

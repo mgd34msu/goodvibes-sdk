@@ -23,6 +23,9 @@ import { registerChannelTestGatewayMethods } from './channel-test.js';
 import { registerWorktreeSetupGatewayMethods } from './worktree-setup.js';
 import { WorktreeRegistry } from '../../runtime/worktree/registry.js';
 import { resolveWorktreeSetupConfig } from '../../runtime/worktree/setup.js';
+import { registerCostGatewayMethods } from './cost.js';
+import { CostAttributionService, type ResolvePricing } from '../../runtime/cost/attribution.js';
+import { QuotaWindowTracker } from '../../runtime/cost/quota-window.js';
 import {
   ChannelProfileRegistry,
   ChannelProfileStore,
@@ -357,4 +360,51 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     };
     pushService.attachFleetNeedsInputSource(source, deps.sessionPresence);
   }
+
+  // Cost attribution + quota-window tracking over the platform's own LLM usage
+  // records. Pricing uses the provider registry's catalog with the same
+  // honest-unpriced gate as services.ts (unknown model -> unpriced, never a
+  // fabricated cost); absent registry -> everything unpriced. The verbs are
+  // always registered; ingestion is wired only when the runtime bus is present.
+  const resolvePricing: ResolvePricing = (model) => {
+    const registry = deps.providerRegistry;
+    if (!model || !registry) return null;
+    const known = registry.getRawCatalogModels().some(
+      (entry) => model === entry.id || model.startsWith(entry.id) || model.includes(entry.id),
+    );
+    if (!known && !model.endsWith(':free')) return null;
+    const pricing = registry.getCostFromCatalog(model);
+    return { input: pricing.input, output: pricing.output };
+  };
+  const costAttribution = new CostAttributionService({ resolvePricing });
+  const quotaWindow = new QuotaWindowTracker();
+  registerCostGatewayMethods(catalog, { costAttribution, quotaWindow });
+
+  if (deps.runtimeBus) {
+    deps.runtimeBus.onDomain('turn', (envelope) => {
+      const event = envelope.payload;
+      if (event.type === 'LLM_RESPONSE_RECEIVED') {
+        costAttribution.record({
+          at: Date.now(),
+          provider: event.provider,
+          model: event.model,
+          sessionId: envelope.sessionId,
+          inputTokens: event.inputTokens,
+          outputTokens: event.outputTokens,
+          cacheReadTokens: event.cacheReadTokens ?? 0,
+          cacheWriteTokens: event.cacheWriteTokens ?? 0,
+        });
+      } else if (event.type === 'STREAM_RETRY' && isRateLimitReason(event.reason)) {
+        // A rate-limit retry carries the provider's requested backoff, which is
+        // the real cooldown window the fan-out assessment reasons over.
+        quotaWindow.record({ provider: event.provider, at: Date.now(), retryAfterMs: event.delayMs });
+      }
+    });
+  }
+}
+
+/** Whether a STREAM_RETRY reason names a rate-limit/quota condition (as opposed to a transient network/server retry). */
+function isRateLimitReason(reason: string): boolean {
+  const lower = reason.toLowerCase();
+  return lower.includes('rate') || lower.includes('quota') || lower.includes('429') || lower.includes('limit') || lower.includes('overloaded');
 }

@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `364`
+- Methods: `366`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -27620,6 +27620,216 @@ Return the built-in control-plane HTML shell for external clients.
   },
   "required": [
     "html"
+  ],
+  "additionalProperties": false
+}
+```
+
+### cost
+
+#### `cost.attribution.get`
+
+Return windowed (24h/7d) cost attribution over observed LLM usage, grouped by a dimension (agent, tool, hook, mcp, model, provider, session), with cache-aware pricing (fresh input vs cache-read vs cache-write). Honest-unpriced: an unknown model contributes to unpricedRecordCount with a null cost, never a fabricated amount; costState is priced, unpriced, or estimated (a mix). totalCostUsd is null when every contributor is unpriced.
+
+- Title: `Get Cost Attribution`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:telemetry`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "window": {
+      "type": "string",
+      "enum": [
+        "24h",
+        "7d"
+      ]
+    },
+    "dimension": {
+      "type": "string",
+      "enum": [
+        "agent",
+        "tool",
+        "hook",
+        "mcp",
+        "model",
+        "provider",
+        "session"
+      ]
+    }
+  },
+  "required": [
+    "window",
+    "dimension"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "window": {
+      "type": "string",
+      "enum": [
+        "24h",
+        "7d"
+      ]
+    },
+    "windowStartMs": {
+      "type": "number"
+    },
+    "dimension": {
+      "type": "string",
+      "enum": [
+        "agent",
+        "tool",
+        "hook",
+        "mcp",
+        "model",
+        "provider",
+        "session"
+      ]
+    },
+    "totalCostUsd": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "costState": {
+      "type": "string",
+      "enum": [
+        "priced",
+        "estimated",
+        "unpriced"
+      ]
+    },
+    "pricedRecordCount": {
+      "type": "number"
+    },
+    "unpricedRecordCount": {
+      "type": "number"
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "inputTokens": {
+          "type": "number"
+        },
+        "outputTokens": {
+          "type": "number"
+        },
+        "cacheReadTokens": {
+          "type": "number"
+        },
+        "cacheWriteTokens": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "inputTokens",
+        "outputTokens",
+        "cacheReadTokens",
+        "cacheWriteTokens"
+      ],
+      "additionalProperties": false
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "costState": {
+            "type": "string",
+            "enum": [
+              "priced",
+              "estimated",
+              "unpriced"
+            ]
+          },
+          "pricedRecordCount": {
+            "type": "number"
+          },
+          "unpricedRecordCount": {
+            "type": "number"
+          },
+          "tokens": {
+            "type": "object",
+            "properties": {
+              "inputTokens": {
+                "type": "number"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "cacheReadTokens": {
+                "type": "number"
+              },
+              "cacheWriteTokens": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "inputTokens",
+              "outputTokens",
+              "cacheReadTokens",
+              "cacheWriteTokens"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "key",
+          "costUsd",
+          "costState",
+          "pricedRecordCount",
+          "unpricedRecordCount",
+          "tokens"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "window",
+    "windowStartMs",
+    "dimension",
+    "totalCostUsd",
+    "costState",
+    "pricedRecordCount",
+    "unpricedRecordCount",
+    "tokens",
+    "rows"
   ],
   "additionalProperties": false
 }
@@ -64826,6 +65036,102 @@ none
   },
   "required": [
     "publicKey"
+  ],
+  "additionalProperties": false
+}
+```
+
+### quota
+
+#### `quota.fanout.get`
+
+Assess whether spawning N agents against a provider likely exhausts its quota window right now, grounded in observed rate-limit signals (429 retry-after, and limit/remaining when headers carry them). verdict is likely-exhausts (with the evidence it rests on — an active cooldown or an observed remaining below the fan-out), unlikely (with the evidence), or unknown when no signal has been observed — never a fabricated certainty.
+
+- Title: `Assess Fan-out Against Quota Window`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:telemetry`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string"
+    },
+    "agentCount": {
+      "type": "number"
+    },
+    "callsPerAgent": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "provider",
+    "agentCount"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "likely-exhausts",
+        "unlikely",
+        "unknown"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "recentRateLimitCount": {
+          "type": "number"
+        },
+        "activeCooldownMs": {
+          "type": "number"
+        },
+        "observedRemaining": {
+          "type": "number"
+        },
+        "observedLimit": {
+          "type": "number"
+        },
+        "requestedAgents": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "recentRateLimitCount",
+        "requestedAgents"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "provider",
+    "verdict",
+    "reason",
+    "evidence"
   ],
   "additionalProperties": false
 }
