@@ -49,6 +49,7 @@ import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
 import { registerRewindGatewayMethods } from './rewind.js';
 import { UnifiedRewindService } from '../../rewind/index.js';
+import type { RewindConversationPort } from '../../rewind/index.js';
 import { createEventEnvelope } from '../../runtime/events/index.js';
 import type { WorkspaceEvent } from '../../../events/workspace.js';
 
@@ -173,6 +174,16 @@ export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
    * cataloged-but-unhandled, a graceful degrade for embeds with no worktree root.
    */
   readonly workingDirectory?: string | undefined;
+  /**
+   * Optional: a daemon-side conversation store port for the conversation half of
+   * the unified rewind (rewind.plan/apply with scope 'conversation' or 'both').
+   * When present, conversation rewind becomes available on the wire; absent (the
+   * default — no daemon-hosted mutable conversation store is wired today) the
+   * conversation part is honestly reported unavailable in a plan warning rather
+   * than faked, exactly as before this parameter existed. The files half is
+   * unaffected either way.
+   */
+  readonly conversationRewindPort?: RewindConversationPort | null | undefined;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -396,12 +407,14 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // over the daemon's workspace-checkpoint store — files rewind reuses the same
   // manager checkpoints.* uses (never a fourth history system), and the pre-restore
   // safety checkpoint it already takes is the undo point that makes a rewind
-  // reversible. No daemon-side mutable conversation store is wired here, so the
-  // conversation part is honestly reported unavailable rather than faked. Receipt
-  // events fan out on the workspace domain when the runtime bus is present.
+  // reversible. The conversation half is wired only when a consumer threads a
+  // conversationRewindPort (a daemon-hosted mutable conversation store); absent
+  // — the default today — the conversation part is honestly reported unavailable
+  // rather than faked. Receipt events fan out on the workspace domain when the
+  // runtime bus is present.
   const rewindService = new UnifiedRewindService({
     workspace: deps.workspaceCheckpointManager,
-    conversation: null,
+    conversation: deps.conversationRewindPort ?? null,
     ...(deps.runtimeBus
       ? {
         emit: (event: WorkspaceEvent, sessionId: string): void => {

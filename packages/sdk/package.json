@@ -344,6 +344,10 @@
       "types": "./dist/platform/providers/index.d.ts",
       "import": "./dist/platform/providers/index.js"
     },
+    "./platform/rewind": {
+      "types": "./dist/platform/rewind/index.d.ts",
+      "import": "./dist/platform/rewind/index.js"
+    },
     "./platform/runtime": {
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"

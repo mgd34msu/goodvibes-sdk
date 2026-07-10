@@ -357,6 +357,10 @@
     "gzip_bytes": 1206,
     "rationale": "provider registry surface; measured 1005 B gzip @ commit 4e5a5e2; headroom max(ceil(1005*1.2)=1206, 1005+50=1055) → 1206 (1.2x dominates by 151 B); dominated by ProviderRegistry + autoRegisterProviders (~450 B), LLMProvider/ChatRequest/ChatResponse/ProviderApi types (~300 B), AnthropicCompatProvider + createProviderApi (~250 B)"
   },
+  "./platform/rewind": {
+    "gzip_bytes": 374,
+    "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types); measured 311 B gzip; headroom max(ceil(311*1.2)=374, 311+50=361) → 374 (1.2x dominates by 13 B)"
+  },
   "./platform/runtime": {
     "gzip_bytes": 192,
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) → 192 (+50 B floor dominates by 21 B)"
