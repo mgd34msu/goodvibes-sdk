@@ -300,6 +300,10 @@
       "types": "./dist/platform/mcp/index.d.ts",
       "import": "./dist/platform/mcp/index.js"
     },
+    "./platform/mcp/server": {
+      "types": "./dist/platform/mcp/server/index.d.ts",
+      "import": "./dist/platform/mcp/server/index.js"
+    },
     "./platform/multimodal": {
       "types": "./dist/platform/multimodal/index.d.ts",
       "import": "./dist/platform/multimodal/index.js"
@@ -371,6 +375,10 @@
     "./platform/sessions": {
       "types": "./dist/platform/sessions/index.d.ts",
       "import": "./dist/platform/sessions/index.js"
+    },
+    "./platform/skills": {
+      "types": "./dist/platform/skills/index.d.ts",
+      "import": "./dist/platform/skills/index.js"
     },
     "./platform/state": {
       "types": "./dist/platform/state/index.d.ts",
