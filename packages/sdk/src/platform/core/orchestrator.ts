@@ -1,4 +1,5 @@
 import type { ConversationManager } from './conversation.js';
+import { resolveCompactionStrategy } from './conversation-compaction.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { ToolCall, ToolResult } from '../types/tools.js';
 import { ProviderError, isNonTransientProviderFailure } from '../types/errors.js';
@@ -951,6 +952,10 @@ export class Orchestrator {
       modelContextWarning: this.modelContextWarning,
       clearModelContextWarning: () => { this.modelContextWarning = null; },
       getSystemPrompt: this.getSystemPrompt,
+      getCompactionStrategy: () => resolveCompactionStrategy(
+        requireConfigManager(this.coreServices).get('behavior.compactionStrategy'),
+        this.flagManager?.isEnabled('compaction-distiller-strategy') ?? false,
+      ),
     }, turnId, model);
   }
 

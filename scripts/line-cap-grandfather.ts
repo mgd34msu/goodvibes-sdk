@@ -48,6 +48,12 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 806,
     justification: 'code index store, pre-split, shrink-only; +6 for the sqlite-vec platform-capability-limit classification (platformLimitReason field + branch)',
   },
+  // schema-domain-core.ts ~0.80k — core config defaults + per-key setting
+  // definitions; crossed 800 with the behavior.compactionStrategy key.
+  'packages/sdk/src/platform/config/schema-domain-core.ts': {
+    ceiling: 803,
+    justification: 'core config defaults + setting definitions, pre-split, shrink-only; +9 for the behavior.compactionStrategy config key (default in coreConfigDefaults + its ConfigSettingDefinition metadata entry) selecting structured vs distiller conversation compaction',
+  },
   // schema-domain-runtime.ts ~0.83k — runtime config defaults + per-key setting
   // definitions; crossed 800 with the relay.* reachability keys.
   'packages/sdk/src/platform/config/schema-domain-runtime.ts': {
@@ -56,13 +62,13 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // schema-types.ts ~1.07k — config schema type surface, pre-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1154,
-    justification: 'config schema type surface, pre-split, shrink-only; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries); +17 for the atRest config section backing on-disk transcript-journal + execution-ledger secret redaction and age/size retention (AtRestConfig interface + doc, the GoodVibesConfig member, and the three atRest.* keys in the ConfigKey union and ConfigValue mapped type); +8 for the per-command exec sandbox config: a 3-line explanatory comment plus the sandbox.enabled/egressAllowlist/workspaceWritable interface members and sandbox.enabled in the ConfigKey union and ConfigValue mapped type (the two arrays are read via getCategory); +27 for the relay.* reachability config (RelayConfig interface + doc, the GoodVibesConfig member, and the four relay.enabled/url/rendezvousId/label keys in the ConfigKey union and ConfigValue mapped type); +4 for relay.requireStepUpForMutations (RelayConfig member + its ConfigKey union and ConfigValue mapped-type entries) backing WebAuthn step-up on mutating relay calls',
+    ceiling: 1157,
+    justification: 'config schema type surface, pre-split, shrink-only; +3 for the behavior.compactionStrategy config key (behavior interface member + its ConfigKey union and ConfigValue mapped-type entries) selecting structured vs distiller compaction; +2 for the daemon.embedInProcess config key (ConfigKey union + ConfigValue mapped-type entry); +13 for the four opt-in web UI serving / cross-origin config keys (controlPlane.webui.serve/bundleDir + controlPlane.cors.enabled/allowedOrigins: two nested interface members plus their ConfigKey union and ConfigValue mapped-type entries); +14 for the permissions.backgroundAgents config key (BackgroundAgentsMode type + doc, the permissions interface member, and its ConfigKey union and ConfigValue mapped-type entries); +5 for the diagnostics.postEdit config key (diagnostics interface member + its ConfigKey union and ConfigValue mapped-type entries); +17 for the atRest config section backing on-disk transcript-journal + execution-ledger secret redaction and age/size retention (AtRestConfig interface + doc, the GoodVibesConfig member, and the three atRest.* keys in the ConfigKey union and ConfigValue mapped type); +8 for the per-command exec sandbox config: a 3-line explanatory comment plus the sandbox.enabled/egressAllowlist/workspaceWritable interface members and sandbox.enabled in the ConfigKey union and ConfigValue mapped type (the two arrays are read via getCategory); +27 for the relay.* reachability config (RelayConfig interface + doc, the GoodVibesConfig member, and the four relay.enabled/url/rendezvousId/label keys in the ConfigKey union and ConfigValue mapped type); +4 for relay.requireStepUpForMutations (RelayConfig member + its ConfigKey union and ConfigValue mapped-type entries) backing WebAuthn step-up on mutating relay calls',
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
-    ceiling: 1095,
-    justification: 'core orchestrator monolith, pre-split, shrink-only; +15 for model-context-warning plumbing (pending-warning field, turn-loop note callback, preflight/post-turn dep wiring); +6 for replay deliver-once acknowledgment after injection; +11 for per-model tool-format telemetry (import + defensive active-model resolution + observeToolResults after the main-session tool loop)',
+    ceiling: 1100,
+    justification: 'core orchestrator monolith, pre-split, shrink-only; +5 for the compaction-strategy resolver wiring into checkContextWindowPreflight (import + getCompactionStrategy dep resolving behavior.compactionStrategy against the compaction-distiller-strategy flag; the resolver lives in conversation-compaction.ts); +15 for model-context-warning plumbing (pending-warning field, turn-loop note callback, preflight/post-turn dep wiring); +6 for replay deliver-once acknowledgment after injection; +11 for per-model tool-format telemetry (import + defensive active-model resolution + observeToolResults after the main-session tool loop)',
   },
   // enrichment.ts ~1.00k — semantic enrichment pipeline, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/semantic/enrichment.ts': {

@@ -12,7 +12,7 @@ import type { ExecutionPlanManager } from './execution-plan.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitOpsContextWarning, emitCompactionReceipt } from '../runtime/emitters/index.js';
 import type { HookEvent, HookResult } from '../hooks/types.js';
-import type { CompactionReceipt } from './compaction-types.js';
+import type { CompactionReceipt, CompactionStrategyChoice } from './compaction-types.js';
 import { CompactionQualityError } from './compaction-types.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -116,6 +116,11 @@ type AutoCompactionDeps = {
   getSystemPrompt?: (() => string) | undefined;
   /** Returns the active skill's frontmatter to re-inject at compaction, if any. */
   getActiveSkillFrontmatter?: (() => string | null | undefined) | undefined;
+  /**
+   * Resolves the effective compaction strategy (config value gated by the
+   * distiller feature flag). Absent → the structured default.
+   */
+  getCompactionStrategy?: (() => CompactionStrategyChoice) | undefined;
 };
 
 function buildAutoCompactionContext(
@@ -144,6 +149,7 @@ function buildAutoCompactionContext(
     extractionProvider: params.extractionProvider,
     instructionChain,
     activeSkillFrontmatter,
+    strategy: deps.getCompactionStrategy?.() ?? 'structured',
   };
 }
 
@@ -167,6 +173,7 @@ export type PreflightDeps = {
   clearModelContextWarning?: (() => void) | undefined;
   getSystemPrompt?: (() => string) | undefined;
   getActiveSkillFrontmatter?: (() => string | null | undefined) | undefined;
+  getCompactionStrategy?: (() => CompactionStrategyChoice) | undefined;
 };
 
 export async function checkContextWindowPreflight(

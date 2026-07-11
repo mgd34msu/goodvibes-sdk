@@ -139,6 +139,28 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
   },
 
   {
+    id: 'compaction-distiller-strategy',
+    name: 'Fresh-Context Distiller Compaction',
+    description:
+      'Enables the fresh-context DISTILLER compaction strategy as an alternative to '
+      + 'the default in-place structured summarization. When on AND '
+      + 'behavior.compactionStrategy is set to "distiller", one fresh model call distills '
+      + 'the conversation into a structured continuation brief (task state, decisions, open '
+      + 'threads, key file/symbol references) that seeds a fresh context, instead of '
+      + 'assembling a handoff from many targeted extraction calls. The distillation is scored '
+      + 'through the SAME quality scorer as the structured strategy and falls back to '
+      + 'structured when it scores below the floor or the fresh call is unavailable — the '
+      + 'receipt names the strategy used and any fallback. Standing instruction-chain / '
+      + 'active-skill re-injection at the boundary applies to both strategies. DEFAULT OFF: '
+      + 'it graduates through the flag-graduation machinery — dark until quality-score '
+      + 'evidence earns it a soaking/candidate state. When the flag is off, the config '
+      + 'selection resolves back to structured and the compaction path is unchanged.',
+    defaultState: 'disabled',
+    tier: 6,
+    runtimeToggleable: true,
+  },
+
+  {
     id: 'fetch-sanitization',
     name: 'Fetch Response Sanitization',
     description:

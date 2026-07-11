@@ -430,6 +430,7 @@ export interface GoodVibesConfig {
   behavior: {
     autoApprove: boolean;       // default: false
     autoCompactThreshold: number; // default: 80
+    compactionStrategy: 'structured' | 'distiller'; // default: 'structured'
     staleContextWarnings: boolean; // default: true
     saveHistory: boolean;       // default: true
     notifyOnComplete: boolean;  // default: true
@@ -578,6 +579,7 @@ export type ConfigKey =
   | 'provider.systemPromptFile'
   | 'behavior.autoApprove'
   | 'behavior.autoCompactThreshold'
+  | 'behavior.compactionStrategy'
   | 'behavior.staleContextWarnings'
   | 'behavior.saveHistory'
   | 'behavior.notifyOnComplete'
@@ -873,6 +875,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'provider.systemPromptFile' ? string :
   K extends 'behavior.autoApprove' ? boolean :
   K extends 'behavior.autoCompactThreshold' ? number :
+  K extends 'behavior.compactionStrategy' ? 'structured' | 'distiller' :
   K extends 'behavior.staleContextWarnings' ? boolean :
   K extends 'behavior.saveHistory' ? boolean :
   K extends 'behavior.notifyOnComplete' ? boolean :
