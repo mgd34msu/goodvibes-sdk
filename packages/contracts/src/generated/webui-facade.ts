@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.6.1
- * Methods: 382 total, 351 REST-routed, 31 ws-only invoke.
+ * Methods: 384 total, 353 REST-routed, 31 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -972,6 +972,14 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/memory/embeddings/default"
   },
+  "memory.projections.get": {
+    "method": "GET",
+    "path": "/api/memory/projections/{id}"
+  },
+  "memory.projections.list": {
+    "method": "GET",
+    "path": "/api/memory/projections"
+  },
   "memory.records.add": {
     "method": "POST",
     "path": "/api/memory/records"
@@ -1736,6 +1744,8 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "multimodal.writeback": "rest",
   "memory.doctor": "rest",
   "memory.embeddings.default.set": "rest",
+  "memory.projections.get": "rest",
+  "memory.projections.list": "rest",
   "memory.records.add": "rest",
   "memory.records.delete": "rest",
   "memory.records.export": "rest",
@@ -13552,6 +13562,51 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         ]
       },
       "checkedAt": 0
+    }
+  },
+  "memory.projections.get": {
+    "input": {
+      "id": "sample"
+    },
+    "output": {
+      "projection": {
+        "id": "sample",
+        "filename": "sample",
+        "scope": "session",
+        "cls": "decision",
+        "summary": "sample",
+        "tags": [
+          "sample"
+        ],
+        "confidence": 0,
+        "reviewState": "fresh",
+        "validFrom": 0,
+        "validUntil": 0,
+        "status": "active"
+      },
+      "markdown": "sample"
+    }
+  },
+  "memory.projections.list": {
+    "input": {},
+    "output": {
+      "projections": [
+        {
+          "id": "sample",
+          "filename": "sample",
+          "scope": "session",
+          "cls": "decision",
+          "summary": "sample",
+          "tags": [
+            "sample"
+          ],
+          "confidence": 0,
+          "reviewState": "fresh",
+          "validFrom": 0,
+          "validUntil": 0,
+          "status": "active"
+        }
+      ]
     }
   },
   "memory.records.add": {

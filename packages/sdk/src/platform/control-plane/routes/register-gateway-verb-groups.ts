@@ -24,6 +24,7 @@ import { registerWorktreeSetupGatewayMethods } from './worktree-setup.js';
 import { WorktreeRegistry } from '../../runtime/worktree/registry.js';
 import { resolveWorktreeSetupConfig } from '../../runtime/worktree/setup.js';
 import { registerCostGatewayMethods } from './cost.js';
+import { registerMemoryProjectionsGatewayMethods, type MemoryProjectionSource } from './memory-projections.js';
 import { CostAttributionService, type ResolvePricing } from '../../runtime/cost/attribution.js';
 import { QuotaWindowTracker } from '../../runtime/cost/quota-window.js';
 import {
@@ -197,6 +198,13 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * relay wiring) → the verbs stay cataloged-but-unhandled, a graceful degrade.
    */
   readonly stepUpService?: StepUpGatewayService | undefined;
+  /**
+   * The canonical memory registry backing memory.projections.list/get. When
+   * present, the read-only memory-projection verbs are registered over it;
+   * absent (an embed with no memory store) → the verbs stay cataloged-but-
+   * unhandled, a graceful degrade exactly like the other optional groups.
+   */
+  readonly memoryRegistry?: MemoryProjectionSource | undefined;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -429,6 +437,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   const costAttribution = new CostAttributionService({ resolvePricing });
   const quotaWindow = new QuotaWindowTracker();
   registerCostGatewayMethods(catalog, { costAttribution, quotaWindow });
+
+  // Memory projection read verbs (memory.projections.list/get) over the canonical
+  // memory registry. Registered only when the memory store is wired; absent, the
+  // verbs stay cataloged-but-unhandled rather than a facade over no store.
+  if (deps.memoryRegistry) {
+    registerMemoryProjectionsGatewayMethods(catalog, deps.memoryRegistry);
+  }
 
   // Feature-flag graduation report: a read-only view over the static flag
   // registry + owner graduation annotations. Needs no runtime dependency (the

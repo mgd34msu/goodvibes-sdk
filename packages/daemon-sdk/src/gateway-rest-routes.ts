@@ -97,6 +97,13 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // challenge). Both handler-backed gateway verbs with an advertised REST path.
   route('POST', '/api/stepup/credentials', 'stepup.credentials.register'),
   route('POST', '/api/stepup/challenge', 'stepup.challenge.mint'),
+  // memory.projections.* — the live read-only projection of standing memory
+  // records (project/team scope) to their markdown form. Handler-backed gateway
+  // verbs with an advertised REST path, so they need parity entries here (the
+  // Pattern-B memory.records.* verbs are served by operator.ts's own table
+  // instead and are intentionally NOT listed here).
+  route('GET', '/api/memory/projections', 'memory.projections.list'),
+  route('GET', '/api/memory/projections/{id}', 'memory.projections.get'),
   // runtime.metrics.get — the process-wide RuntimeMeter snapshot. This is the
   // sole route for GET /api/runtime/metrics: the daemon-sdk raw handler that
   // once served it was removed in favor of this gateway-verb parity entry, so

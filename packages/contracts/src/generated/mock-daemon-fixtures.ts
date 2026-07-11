@@ -11329,6 +11329,59 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "checkedAt": 0
     }
   },
+  "memory.projections.get": {
+    "methodId": "memory.projections.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/memory/projections/{id}"
+    },
+    "status": 200,
+    "body": {
+      "projection": {
+        "id": "sample",
+        "filename": "sample",
+        "scope": "session",
+        "cls": "decision",
+        "summary": "sample",
+        "tags": [
+          "sample"
+        ],
+        "confidence": 0,
+        "reviewState": "fresh",
+        "validFrom": 0,
+        "validUntil": 0,
+        "status": "active"
+      },
+      "markdown": "sample"
+    }
+  },
+  "memory.projections.list": {
+    "methodId": "memory.projections.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/memory/projections"
+    },
+    "status": 200,
+    "body": {
+      "projections": [
+        {
+          "id": "sample",
+          "filename": "sample",
+          "scope": "session",
+          "cls": "decision",
+          "summary": "sample",
+          "tags": [
+            "sample"
+          ],
+          "confidence": 0,
+          "reviewState": "fresh",
+          "validFrom": 0,
+          "validUntil": 0,
+          "status": "active"
+        }
+      ]
+    }
+  },
   "memory.records.add": {
     "methodId": "memory.records.add",
     "http": {

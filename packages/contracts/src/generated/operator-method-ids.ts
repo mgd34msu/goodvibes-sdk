@@ -230,6 +230,8 @@ export const OPERATOR_METHOD_IDS = [
   "media.transform",
   "memory.doctor",
   "memory.embeddings.default.set",
+  "memory.projections.get",
+  "memory.projections.list",
   "memory.records.add",
   "memory.records.delete",
   "memory.records.export",

@@ -60890,6 +60890,248 @@
         "invokable": true
       },
       {
+        "id": "memory.projections.get",
+        "title": "Get Memory Projection",
+        "description": "Return one standing record's projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id — a session-scope or unknown id is an honest miss, never an empty projection.",
+        "category": "memory",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:memory"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/memory/projections/{id}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "projection": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "session",
+                    "project",
+                    "team"
+                  ]
+                },
+                "cls": {
+                  "type": "string",
+                  "enum": [
+                    "decision",
+                    "constraint",
+                    "incident",
+                    "pattern",
+                    "fact",
+                    "risk",
+                    "runbook",
+                    "architecture",
+                    "ownership"
+                  ]
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "confidence": {
+                  "type": "number"
+                },
+                "reviewState": {
+                  "type": "string",
+                  "enum": [
+                    "fresh",
+                    "reviewed",
+                    "stale",
+                    "contradicted"
+                  ]
+                },
+                "validFrom": {
+                  "type": "number"
+                },
+                "validUntil": {
+                  "type": "number"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "pending",
+                    "expired"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "scope",
+                "cls",
+                "summary",
+                "tags",
+                "confidence",
+                "reviewState",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            "markdown": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "projection",
+            "markdown"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "memory.projections.list",
+        "title": "List Memory Projections",
+        "description": "Return the live projection of standing (project/team-scope) memory records — one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:\"expired\" rather than silently dropped.",
+        "category": "memory",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:memory"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/memory/projections"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "projections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "filename": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "session",
+                      "project",
+                      "team"
+                    ]
+                  },
+                  "cls": {
+                    "type": "string",
+                    "enum": [
+                      "decision",
+                      "constraint",
+                      "incident",
+                      "pattern",
+                      "fact",
+                      "risk",
+                      "runbook",
+                      "architecture",
+                      "ownership"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "confidence": {
+                    "type": "number"
+                  },
+                  "reviewState": {
+                    "type": "string",
+                    "enum": [
+                      "fresh",
+                      "reviewed",
+                      "stale",
+                      "contradicted"
+                    ]
+                  },
+                  "validFrom": {
+                    "type": "number"
+                  },
+                  "validUntil": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "pending",
+                      "expired"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "scope",
+                  "cls",
+                  "summary",
+                  "tags",
+                  "confidence",
+                  "reviewState",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "projections"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "memory.records.add",
         "title": "Add Memory Record",
         "description": "Add a memory record to the daemon-owned canonical store. The daemon is the single writer for its store; a client surface routes its writes here instead of opening the store file, so two processes never write the same sql.js file. New records default to confidence 60 (the recall floor) and reviewState fresh unless the review block overrides them.",
@@ -87622,10 +87864,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 382,
-      "typedInputs": 382,
+      "methods": 384,
+      "typedInputs": 384,
       "genericInputs": 0,
-      "typedOutputs": 382,
+      "typedOutputs": 384,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -87634,8 +87876,8 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 382,
-      "validated": 380,
+      "methods": 384,
+      "validated": 382,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
