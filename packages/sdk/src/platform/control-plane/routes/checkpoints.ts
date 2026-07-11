@@ -71,7 +71,7 @@ const CHECKPOINTS_LIST_MAX_LIMIT = 500;
  * public `get(id)` to pre-check existence without a second full manager
  * call, so this handler matches the message text the manager already
  * commits to (any manager.ts rewrite of that string is covered by the
- * bootDaemon proof test — see test/w3-s2-*.test.ts — as a regression net,
+ * bootDaemon proof test — see test/fleet-checkpoints-search.test.ts — as a regression net,
  * not by this string match alone).
  */
 const NO_CHECKPOINT_FOUND_MARKER = 'no checkpoint found with id';

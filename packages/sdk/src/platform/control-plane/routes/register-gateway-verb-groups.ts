@@ -6,14 +6,14 @@
  * and a single call regardless of how many groups exist.
  *
  * It folds in the pre-existing fleet / checkpoints / sessions.search group
- * (registerW3S2GatewayMethods, unchanged) and constructs + wires the browser-
+ * (registerFleetCheckpointsSearchGatewayMethods, unchanged) and constructs + wires the browser-
  * push group: a PushService over the subscription store and VAPID key custody,
  * its verb handlers, and — the real event source — a subscription to the
  * approval broker so an approval that needs a decision fans out as a push to the
  * operator's registered devices.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
-import { registerW3S2GatewayMethods, type W3S2GatewayDeps } from './register-w3-s2.js';
+import { registerFleetCheckpointsSearchGatewayMethods, type FleetCheckpointsSearchGatewayDeps } from './register-fleet-checkpoints-search.js';
 import { registerPushGatewayMethods } from './push.js';
 import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
@@ -114,7 +114,7 @@ import {
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import type { FleetEvent } from '../../../events/fleet.js';
 
-export interface GatewayVerbGroupDeps extends W3S2GatewayDeps {
+export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps {
   /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
   readonly secretsManager: VapidSecretStore;
   /** The approval broker — the real event source push fans out from. */
@@ -201,7 +201,7 @@ function toFleetNotice(event: FleetEvent): FleetNotice {
 }
 
 export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: GatewayVerbGroupDeps): void {
-  registerW3S2GatewayMethods(catalog, deps);
+  registerFleetCheckpointsSearchGatewayMethods(catalog, deps);
 
   // The canonical skill service over a directory of Markdown documents under the
   // daemon's own state directory. Constructed here (from the shellPaths this

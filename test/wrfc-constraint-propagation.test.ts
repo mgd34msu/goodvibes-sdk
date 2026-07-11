@@ -17,6 +17,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { createWrfcControllerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -184,7 +185,7 @@ function createHarness(opts?: {
 
   const messageBus = { registerAgent: (_opts: unknown) => {} };
 
-  const controller = new WrfcController(bus, messageBus, {
+  const controller = createWrfcControllerForTest(bus, messageBus, {
     agentManager,
     configManager,
     projectRoot: '/tmp/test-propagation',

@@ -158,13 +158,6 @@ export class WrfcController {
       readonly surfaceRoot?: string | undefined;
       readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
       readonly selectChildRoute?: WrfcChildRouteSelector | undefined;
-      /**
-       * When true, skip verifyEngineerClaims for both engineer and fixer completions.
-       * Use ONLY in test harnesses where projectRoot is a synthetic path without real files.
-       * Production code must NEVER set this flag — it disables the phantom-work guard.
-       * Prefer the environment-driven skip (nonexistent projectRoot) where possible.
-       */
-      readonly skipClaimVerification?: boolean;
     },
   ) {
     this.runtimeBus = runtimeBus;
@@ -172,7 +165,10 @@ export class WrfcController {
     this.agentManager = deps.agentManager;
     this.configManager = deps.configManager;
     this.projectRoot = deps.projectRoot;
-    this.skipClaimVerification = deps.skipClaimVerification ?? false;
+    // skipClaimVerification is not a public constructor option (it disables the
+    // phantom-work guard). It is read only via this internal seam shape, set
+    // exclusively by createWrfcControllerForTest; production defaults to false.
+    this.skipClaimVerification = (deps as { readonly skipClaimVerification?: boolean }).skipClaimVerification ?? false;
     // Cache existsSync at construction time — the workmap will mkdir under projectRoot
     // during the first appendOwnerDecision, so checking later would always return true.
     this.projectRootExistedAtStartup = existsSync(deps.projectRoot);
@@ -722,7 +718,8 @@ export class WrfcController {
    * Skip conditions (applied uniformly to engineer AND fixer completions):
    *   1. `this.skipClaimVerification` is true — explicit opt-out for test harnesses that
    *      use real /tmp paths (directories that exist on disk) where files are never actually
-   *      written to disk by agents. Use this when the environment-driven skip does not apply.
+   *      written to disk by agents. Injected only via createWrfcControllerForTest (never a
+   *      public constructor option). Use this when the environment-driven skip does not apply.
    *   2. `!this.projectRootExistedAtStartup` — environment-driven skip: projectRoot did not
    *      exist on disk when this controller was constructed. Cached at construction time because
    *      the WrfcWorkmap mkdir's the directory tree on the first appendOwnerDecision call,
@@ -2126,7 +2123,7 @@ export class WrfcController {
     // is the same phantom-work pattern as a lying engineer — the same tri-state logic applies.
     //
     // Skip conditions (see shouldSkipClaimVerification for full rationale):
-    //   - Explicit opt-out (skipClaimVerification constructor flag) — harness use only.
+    //   - Explicit opt-out (skipClaimVerification, injected only via createWrfcControllerForTest) — harness use only.
     //   - Environment-driven: projectRoot does not exist on disk (existsSync false).
     //
     // Tri-state kind logic (same for engineer and fixer passes):

@@ -18,7 +18,7 @@ import {
   isFanoutShapeConstraintText,
   userRequestsParallelFanout,
 } from '../packages/sdk/src/platform/tools/agent/wrfc-batch-policy.js';
-import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { createWrfcControllerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -160,7 +160,7 @@ function createHarness() {
     clear: () => agentStore.clear(),
   };
   const messageBus = { registerAgent: () => {} };
-  const controller = new WrfcController(bus, messageBus, {
+  const controller = createWrfcControllerForTest(bus, messageBus, {
     agentManager, configManager, projectRoot: '/tmp/test-fanout-collapse',
     skipClaimVerification: true,
     createWorktree: () => ({ merge: async () => true, cleanup: async () => {} }),

@@ -1,5 +1,5 @@
 /**
- * routes/register-w3-s2.ts
+ * routes/register-fleet-checkpoints-search.ts
  *
  * Single composite entry point for the fleet.*, checkpoints.*, sessions.search
  * verb-registration calls (see CHANGELOG 1.0.0), so ../../runtime/services.ts —
@@ -21,7 +21,7 @@ import { createEventEnvelope } from '../../runtime/events/index.js';
 import type { RuntimeEventBus, RuntimeEventEnvelope } from '../../runtime/events/index.js';
 import type { WorkspaceEvent } from '../../../events/workspace.js';
 
-export interface W3S2GatewayDeps {
+export interface FleetCheckpointsSearchGatewayDeps {
   readonly processRegistry: FleetQueryOnlyRegistry;
   readonly workspaceCheckpointManager: CheckpointsGatewayManager;
   readonly sessionBroker: SessionSearchBroker;
@@ -41,7 +41,7 @@ export interface W3S2GatewayDeps {
   readonly attemptsController?: FleetAttemptsController | undefined;
 }
 
-export function registerW3S2GatewayMethods(catalog: GatewayMethodCatalog, deps: W3S2GatewayDeps): void {
+export function registerFleetCheckpointsSearchGatewayMethods(catalog: GatewayMethodCatalog, deps: FleetCheckpointsSearchGatewayDeps): void {
   registerFleetGatewayMethods(catalog, deps.processRegistry, deps.attemptsController);
   const bus = deps.runtimeBus;
   const checkpointsEmit: CheckpointsEventSink | undefined = bus
