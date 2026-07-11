@@ -144,6 +144,19 @@ export interface TokenAuditorConfig {
    * Audits still report violations while disabled.
    */
   featureFlags?: FeatureFlagReader | undefined;
+  /**
+   * Default rotation cadence (ms) applied to tokens whose policy does not set its
+   * own `rotationCadenceMs`. Sourced from config (security.tokenAudit.rotationCadenceDays)
+   * by SDK runtime services; falls back to DEFAULT_ROTATION_CADENCE_MS when unset.
+   */
+  defaultRotationCadenceMs?: number | undefined;
+  /**
+   * Default rotation warning lead time (ms) applied to tokens whose policy does not
+   * set its own `rotationWarningThresholdMs`. Sourced from config
+   * (security.tokenAudit.rotationWarningDays); falls back to
+   * DEFAULT_ROTATION_WARNING_THRESHOLD_MS when unset.
+   */
+  defaultRotationWarningThresholdMs?: number | undefined;
 }
 
 /**
@@ -285,9 +298,12 @@ export class ApiTokenAuditor {
     policy: TokenScopePolicy,
     now: number,
   ): TokenRotationAuditResult {
-    const cadenceMs = policy.rotationCadenceMs ?? DEFAULT_ROTATION_CADENCE_MS;
+    const cadenceMs =
+      policy.rotationCadenceMs ?? this._config.defaultRotationCadenceMs ?? DEFAULT_ROTATION_CADENCE_MS;
     const warningThresholdMs =
-      policy.rotationWarningThresholdMs ?? DEFAULT_ROTATION_WARNING_THRESHOLD_MS;
+      policy.rotationWarningThresholdMs
+      ?? this._config.defaultRotationWarningThresholdMs
+      ?? DEFAULT_ROTATION_WARNING_THRESHOLD_MS;
 
     const ageMs = now - token.issuedAt;
     const dueAt = token.issuedAt + cadenceMs;

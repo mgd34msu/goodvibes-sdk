@@ -93,6 +93,7 @@ import { createShellPathService, type ShellPathService } from './shell-paths.js'
 import type { FeatureFlagManager } from './feature-flags/index.js';
 import { createFeatureFlagManager } from './feature-flags/index.js';
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
+import { loadConfiguredPolicyBundle } from './permissions/policy-config-loader.js';
 import { bindPermissionModeChangeEvent } from '../permissions/mode-change-emitter.js';
 import { PermissionManager, createPermissionConfigReader } from '../permissions/manager.js';
 import { requireSurfaceRoot } from './surface-root.js';
@@ -290,6 +291,33 @@ export function bindProviderOptimizerFeatureFlag(
       providerOptimizer.setEnabled(state === 'enabled');
     }
   });
+}
+
+/**
+ * Apply the persistent provider-optimizer routing mode from config
+ * (provider.optimizerMode / provider.optimizerPinnedModel) at startup. The
+ * provider-optimizer feature flag still gates whether the optimizer is enabled;
+ * this only seeds the mode/pin so an operator can persist "auto" or a pinned
+ * model without re-issuing a /provider command each session. Runtime pin/unpin/
+ * setMode still override for the live session.
+ */
+export function applyProviderOptimizerConfigMode(
+  configManager: Pick<ConfigManager, 'get'>,
+  providerOptimizer: Pick<ProviderOptimizer, 'setMode' | 'pin'>,
+): void {
+  const mode = configManager.get('provider.optimizerMode');
+  if (mode === 'pinned') {
+    const pinned = configManager.get('provider.optimizerPinnedModel').trim();
+    const sep = pinned.indexOf(':');
+    if (sep > 0 && sep < pinned.length - 1) {
+      providerOptimizer.pin(pinned.slice(0, sep), pinned.slice(sep + 1));
+    } else {
+      // Pinned mode requested without a valid provider-qualified model — stay manual.
+      providerOptimizer.setMode('manual');
+    }
+  } else {
+    providerOptimizer.setMode(mode);
+  }
 }
 
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
@@ -593,7 +621,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // MCP elicitation/create requests ride the SAME approval broker as a permission
   // ask (see mcp/elicitation.ts) instead of the client dropping them with -32601.
   mcpRegistry.setElicitationHandler(createMcpElicitationApprovalHandler((input) => approvalBroker.requestApproval(input)));
-  const tokenAuditor = new ApiTokenAuditor({ managed: false, featureFlags });
+  const tokenAuditor = new ApiTokenAuditor({
+    managed: configManager.get('security.tokenAudit.managed'),
+    featureFlags,
+    defaultRotationCadenceMs:
+      configManager.get('security.tokenAudit.rotationCadenceDays') * 24 * 60 * 60 * 1000,
+    defaultRotationWarningThresholdMs:
+      configManager.get('security.tokenAudit.rotationWarningDays') * 24 * 60 * 60 * 1000,
+  });
   const componentHealthMonitor = new ComponentHealthMonitor();
   const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
   const webhookNotifier = new WebhookNotifier();
@@ -604,6 +639,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     false,
   );
   bindProviderOptimizerFeatureFlag(featureFlags, providerOptimizer);
+  applyProviderOptimizerConfigMode(configManager, providerOptimizer);
   // Poll-free runtime event for permission-mode changes so surfaces can render a live mode pill.
   bindPermissionModeChangeEvent(configManager, options.runtimeBus, 'runtime');
   const sessionMemoryStore = new SessionMemoryStore();
@@ -612,8 +648,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const planManager = new ExecutionPlanManager(workingDirectory);
   const adaptivePlanner = new AdaptivePlanner();
   const idempotencyStore = new IdempotencyStore();
-  const overflowHandler = new OverflowHandler({ baseDir: workingDirectory, featureFlags });
+  const overflowHandler = new OverflowHandler({
+    baseDir: workingDirectory,
+    featureFlags,
+    spillBackend: configManager.get('tools.overflowSpillBackend'),
+  });
   const policyRuntimeState = new PolicyRuntimeState();
+  loadConfiguredPolicyBundle(configManager, featureFlags, policyRuntimeState);
   const fileCache = new FileStateCache();
   const projectIndex = new ProjectIndex(workingDirectory);
   const channelDeliveryRouter = new ChannelDeliveryRouter({
