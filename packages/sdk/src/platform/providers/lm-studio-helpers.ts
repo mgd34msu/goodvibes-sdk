@@ -3,6 +3,7 @@ import { ProviderError } from '../types/errors.js';
 import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import { summarizeError } from '../utils/error-display.js';
 import { getErrorStatus } from './provider-error.js';
+import { resolveOpenAIClientApiKey } from './openai-compat.js';
 export { normalizeProviderError } from './provider-error.js';
 import type {
   ChatRequest,
@@ -60,7 +61,7 @@ export function createResponsesClient(
   defaultHeaders: Record<string, string> | undefined,
 ): LMStudioResponsesClient {
   const client = new OpenAI({
-    apiKey,
+    apiKey: resolveOpenAIClientApiKey(apiKey),
     baseURL,
     ...(defaultHeaders ? { defaultHeaders } : {}),
   });

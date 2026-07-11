@@ -30,6 +30,7 @@ import { parseRateLimitHeaders } from './rate-limit-headers.js';
 import type { CacheHitTracker } from './cache-strategy.js';
 import { extractOpenAIStreamTextDelta } from './openai-stream-delta.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
+import { resolveOpenAIClientApiKey } from './openai-compat.js';
 
 const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},
@@ -51,7 +52,10 @@ export class OpenAIProvider implements LLMProvider {
 
   constructor(apiKey: string, cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'> = NOOP_CACHE_HIT_TRACKER) {
     this.apiKey = apiKey;
-    this.client = new OpenAI({ apiKey });
+    // isConfigured() derives from this.apiKey (the ORIGINAL value, possibly
+    // empty) below; the client itself needs a non-empty placeholder because
+    // openai's constructor throws "Missing credentials..." on a falsy key.
+    this.client = new OpenAI({ apiKey: resolveOpenAIClientApiKey(apiKey) });
     this.cacheHitTracker = cacheHitTracker;
     this.batch = {
       kind: 'provider-batch',

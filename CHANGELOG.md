@@ -4,6 +4,56 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.7.1] - 2026-07-11
+
+**1.7.0 broke local-provider discovery in production. Consumers on 1.7.0 should
+upgrade straight to 1.7.1 — do not stay on 1.7.0.**
+
+### Fixed
+
+- **`GATE_SUITES` (the eval harness's standing-gate suite set, added in 1.7.0)
+  was unreachable through any public import path.** `evaluateGate`'s new
+  absolute per-dimension floor enforcement and `GATE_SUITES` — documented
+  in-source as "the separate, all-floors-passing set the standing gate
+  runs" and the intended migration off `BUILTIN_SUITES` — were exported only
+  from the internal `platform/runtime/eval/index.ts` barrel. The public
+  `platform/runtime/observability` subpath re-exported `BUILTIN_SUITES` but
+  never `GATE_SUITES`, and there was no dedicated `platform/runtime/eval`
+  subpath, so consumers had no way to import it. `GATE_SUITES` is now
+  re-exported alongside `BUILTIN_SUITES` from `platform/runtime/observability`
+  (the existing, idiomatic barrel — no new subpath needed). The registry
+  install-smoke check now resolves `GATE_SUITES` through the public
+  specifier as part of every release.
+- **Local/discovered LLM providers (Ollama, LM Studio, llama.cpp, vLLM, TGI,
+  LocalAI) threw at discovery, breaking every local-server user on 1.7.0.**
+  The `openai` npm dependency's client constructor started throwing
+  `"Missing credentials..."` on a falsy `apiKey` (previously it only threw on
+  `undefined`) somewhere between 6.29 and 6.46. `platform/providers/discovered-factory.ts`
+  registers every discovered local server with a hardcoded `apiKey: ''`
+  (local servers don't need a real key), and that empty string reached
+  `new OpenAI({ apiKey })` unchanged in `openai-compat.ts`, `openai.ts`, and
+  `lm-studio-helpers.ts` — so `ProviderRegistry.registerDiscoveredProviders()`
+  crashed at startup for anyone running a local model server. Fixed by
+  substituting a harmless placeholder (`'gv-local'`, the same literal the
+  builtin-provider registry's own anonymous-provider fallback already used)
+  whenever the effective `apiKey` is empty, at the point each of those three
+  files constructs an `openai` client. `configured`/`isConfigured()` status is
+  still derived from the ORIGINAL `apiKey` value, so unconfigured/anonymous
+  state is unaffected.
+- **The SDK's own `openai` dependency range (`^6.29.0`) let the published
+  package resolve to a version its own test suite never ran against.**
+  `bun.lock` pinned `openai@6.35.0`, so `bun install --frozen-lockfile` in CI
+  always tested a safe, older resolution — but a fresh consumer install
+  (`npm install` / `bun add` with no matching lockfile) followed the semver
+  range to whatever was newest (6.46.0), which carried the breaking
+  constructor change above. The lockfile shielded CI from exactly what fresh
+  installs got. `openai` is now exact-pinned to `6.46.0` in
+  `packages/sdk/package.json` (matching this same dependency block's existing
+  exact pins on `cloudflare`, `google-auth-library`, and `pdfjs-dist`), and
+  the regression tests below run against whatever version is actually
+  resolved so a future drift back to a range would surface as a real failure
+  rather than a silent gap between the lockfile and a fresh install.
+
 ## [1.7.0] - 2026-07-11
 
 ### Added
