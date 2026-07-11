@@ -458,4 +458,56 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
     expect(capturedSystemPrompts[0]).toBe(EXPECTED_BASE_PROMPT);
     expect(turnInjectionRecords).toEqual([]);
   });
+
+  test('a sparse config source that returns undefined for the passive-injection keys still injects at the documented defaults', async () => {
+    // A real ConfigManager always resolves the schema default for every key, but
+    // context.configManager is typed Pick<ConfigManager, 'get'> — a partial/stub
+    // implementation (as some embedders and tests supply) can legitimately return
+    // undefined for a key it does not model. Before restoring the module-constant
+    // fallbacks, `agents.contextCompactThreshold` -> undefined made the headroom
+    // clamp NaN (turnBudgetTokens never > 0 -> hard no-op every turn) and
+    // `agents.passiveInjection.relevanceFloor` -> undefined made every relevance
+    // comparison against NaN silently fail (no record ever clears the floor) —
+    // both a total, permanent injection blackout with no error, no matter how
+    // relevant the record. This proves injection still works at the documented
+    // defaults (0.85 / 95 / 800 / 3) when a config source omits these keys.
+    const { registry: memoryRegistry } = makeCountingMemoryRegistry([
+      makeMemoryRecord({
+        id: 'mem_ratelimit',
+        summary: 'rate limiting: token bucket, 100 requests per minute',
+        tags: ['rate-limiting'],
+        reviewState: 'reviewed',
+        confidence: 90,
+      }),
+    ]);
+
+    const { context, capturedSystemPrompts, turnInjectionRecords } = makeContext({
+      text: 'how do I configure rate limiting for the API',
+      provider: finalResponseProvider(),
+      memoryRegistry,
+      // Non-zero so the headroom-clamp branch (the one that reads
+      // agents.contextCompactThreshold) actually runs instead of being skipped —
+      // a contextWindow of 0 would hide the threshold-NaN regression entirely.
+      contextWindow: 100_000,
+    });
+    context.configManager = {
+      get: (key: string) => {
+        if (key === 'display.stream') return false;
+        if (key === 'cache.hitRateWarningThreshold') return 0;
+        if (key === 'cache.monitorHitRate') return false;
+        // Every passive-injection / context-compaction key this sparse source does
+        // not model — the exact shape a partial embedder-supplied config takes.
+        return undefined;
+      },
+    };
+
+    await executeOrchestratorTurnLoop(context);
+
+    expect(capturedSystemPrompts).toHaveLength(1);
+    expect(capturedSystemPrompts[0]).toContain('mem_ratelimit');
+    expect(capturedSystemPrompts[0]).toContain('Injected Project Knowledge');
+    expect(turnInjectionRecords).toHaveLength(1);
+    expect(turnInjectionRecords[0]!.injectedIds).toEqual(['mem_ratelimit']);
+    expect(turnInjectionRecords[0]!.budgetTokens).toBe(800); // DEFAULT_TURN_KNOWLEDGE_BUDGET_TOKENS
+  });
 });
