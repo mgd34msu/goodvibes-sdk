@@ -109,6 +109,15 @@
       "category": "architecture",
       "confidence": "high",
       "status": "active"
+    },
+    {
+      "id": "openai-optional-dep-exact-pin",
+      "date": "2026-07-11",
+      "what": "packages/sdk/package.json's optionalDependencies.openai changed from a caret range (\"^6.29.0\") to an exact pin (\"6.46.0\")",
+      "why": "1.7.0 shipped with openai resolving via caret range. bun.lock pinned openai@6.35.0, so `bun install --frozen-lockfile` in CI always tested the safe older resolution — but a fresh consumer install (npm install / bun add with no matching lockfile) followed the semver range to whatever was newest (6.46.0), which broke: openai's client constructor started throwing on a falsy apiKey somewhere between 6.29 and 6.46 (previously only threw on `undefined`), crashing every discovered/anonymous local provider (Ollama, LM Studio, llama.cpp, vLLM, TGI, LocalAI) at registration. Root cause class: the lockfile shielded CI from exactly what fresh installs got. Fixed for 1.7.1 in two parts: (1) substitute a harmless placeholder apiKey ('gv-local', matching the pre-existing builtin-registry.ts anonymous-provider convention) at every `new OpenAI(...)` construction site (openai-compat.ts, openai.ts, lm-studio-helpers.ts) whenever the effective key is empty, deriving configured/isConfigured() status from the ORIGINAL apiKey; (2) exact-pin openai itself, matching this SAME dependency block's existing exact-pin precedent on cloudflare/google-auth-library/pdfjs-dist. Any other optionalDependency still on a caret range carries the same latent risk class (CI-green-but-fresh-install-broken) and should be reviewed the same way if it starts causing consumer-reported breaks.",
+      "category": "dependency-management",
+      "confidence": "high",
+      "status": "active"
     }
   ]
 }
