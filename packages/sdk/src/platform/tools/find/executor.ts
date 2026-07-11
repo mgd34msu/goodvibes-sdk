@@ -11,6 +11,7 @@ import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { FindRuntimeService } from './shared.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { mapWithConcurrency } from '../../utils/concurrency.js';
+import type { ReadAccessFilter } from '../shared/read-access.js';
 
 const MAX_FIND_QUERIES = 20;
 const MAX_PARALLEL_FIND_QUERIES = 5;
@@ -19,6 +20,13 @@ export function createFindTool(
   projectRoot: string,
   featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null,
   runtime = new FindRuntimeService(),
+  /**
+   * Per-file read-permission decision, wired at the composition root to
+   * PermissionManager.previewReadAccess. When present, a candidate file whose
+   * read is currently restricted has its CONTENT withheld from results and is
+   * flagged in path listings. Omitted → all files allowed (unchanged behavior).
+   */
+  readAccessFilter?: ReadAccessFilter,
 ): Tool {
   if (typeof projectRoot !== 'string' || projectRoot.trim().length === 0) {
     throw new Error('createFindTool requires projectRoot');
@@ -43,10 +51,10 @@ export function createFindTool(
           let result: Record<string, unknown>;
           switch (query.mode) {
             case 'files':
-              result = await executeFilesQuery(query, output, projectRoot);
+              result = await executeFilesQuery(query, output, projectRoot, readAccessFilter);
               break;
             case 'content':
-              result = await executeContentQuery(query, output, runtime, projectRoot);
+              result = await executeContentQuery(query, output, runtime, projectRoot, readAccessFilter);
               break;
             case 'symbols':
               result = await executeSymbolsQuery(query, output, projectRoot);

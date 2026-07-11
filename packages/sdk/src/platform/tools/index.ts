@@ -227,6 +227,13 @@ export function registerAllTools(
      * resolveCredentialEnvScrub).
      */
     credentialEnvScrub?: CredentialEnvScrubConfig | undefined;
+    /**
+     * Per-file read-permission decision shared with search / list / map tools
+     * (find, repo_map). Wired at the composition root to
+     * PermissionManager.previewReadAccess so a file the read tool would gate
+     * never leaks its content through a search. Omitted → all files allowed.
+     */
+    readAccessFilter?: import('./shared/read-access.js').ReadAccessFilter | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -310,8 +317,8 @@ export function registerAllTools(
     changeTracker: deps?.changeTracker,
     diagnosticsProvider,
   }));
-  registerTool(createFindTool(workingDirectory, deps.featureFlags));
-  registerTool(createRepoMapTool({ projectRoot: workingDirectory }));
+  registerTool(createFindTool(workingDirectory, deps.featureFlags, undefined, deps.readAccessFilter));
+  registerTool(createRepoMapTool({ projectRoot: workingDirectory, ...(deps.readAccessFilter ? { readAccessFilter: deps.readAccessFilter } : {}) }));
   // Per-command exec sandbox: only probe the host (a bwrap spawn) when the
   // graduation-gated flag AND the sandbox.enabled config switch are both on, so
   // the default path stays zero-cost and byte-for-byte unchanged.
