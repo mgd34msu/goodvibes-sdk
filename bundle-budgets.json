@@ -393,6 +393,10 @@
     "gzip_bytes": 264,
     "rationale": "new public entrypoint (the typed runtime-event emitter wrappers barrel, e.g. emitPermissionModeChanged, previously reachable only by deep-importing platform/runtime/emitters/*.js; a consumer composing its own RuntimeServices-compatible object needs these to emit the same typed events the daemon does); measured 214 B gzip; headroom max(ceil(214*1.2)=257, 214+50=264) -> 264 (+50 B floor dominates)"
   },
+  "./platform/runtime/feature-flags": {
+    "gzip_bytes": 525,
+    "rationale": "new public entrypoint (the feature-flag barrel — FEATURE_FLAG_CONFIG/getFeatureFlagConfig/FEATURE_FLAGS/FeatureFlagManager — previously reachable only by deep-importing dist/platform/runtime/feature-flags/*.js; a consumer such as webui settings needs FEATURE_FLAG_CONFIG/getFeatureFlagConfig to render each feature's flag toggle alongside its tuning config keys); measured 437 B gzip; headroom max(ceil(437*1.2)=525, 437+50=487) -> 525 (1.2x dominates by 38 B)"
+  },
   "./platform/runtime/permissions/sandbox-policy": {
     "gzip_bytes": 2106,
     "rationale": "sandbox-aware exec permission input (decideSandboxedExec + SandboxPolicyDecision/Effect/Input types) exposed so consumers can wire approval flows to the sandbox policy; measured 1755 B gzip @ commit 01b2cf4c; headroom max(ceil(1755*1.2)=2106, 1755+50=1805) -> 2106 (1.2x dominates); dominated by the command-normalization import decideSandboxedExec reasons over"
