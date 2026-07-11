@@ -12,6 +12,7 @@ import {
   createDaemonSystemRouteHandlers,
   createDaemonIntegrationRouteHandlers,
   createDaemonRuntimeSessionRouteHandlers,
+  createDaemonRuntimeRouteHandlers,
 } from '../packages/daemon-sdk/dist/index.js';
 import { AccountsSnapshotResponseSchema } from '../packages/contracts/dist/index.js';
 import type {
@@ -336,5 +337,92 @@ describe('createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents auth', 
     expect(body.session.participants).toEqual([]);
     expect(body.session.metadata).toEqual({});
     expect(body.messages).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createDaemonRuntimeRouteHandlers getRuntimeMetrics
+// ---------------------------------------------------------------------------
+
+describe('createDaemonRuntimeRouteHandlers getRuntimeMetrics auth', () => {
+  function makeContext(): DaemonRuntimeRouteContext {
+    return {
+      requireAdmin: makeRequireAdmin(ADMIN_TOKEN),
+      snapshotMetrics: () => ({ uptimeMs: 1234 }),
+      sessionBroker: {
+        start: async () => {},
+        submitMessage: async () => { throw new Error('not expected'); },
+        steerMessage: async () => { throw new Error('not expected'); },
+        followUpMessage: async () => { throw new Error('not expected'); },
+        bindAgent: async () => {},
+        createSession: async () => ({ id: 'stub' }),
+        getSession: () => null,
+        getMessages: () => [],
+        getInputs: () => [],
+        closeSession: async () => null,
+        reopenSession: async () => null,
+        cancelInput: async () => null,
+        completeAgent: async () => {},
+        appendCompanionMessage: async () => {},
+      },
+      agentManager: { getStatus: () => null, cancel: () => {} },
+      automationManager: {
+        listJobs: () => [],
+        listRuns: () => [],
+        getRun: () => null,
+        triggerHeartbeat: async () => ({}),
+        cancelRun: async () => null,
+        retryRun: async () => { throw new Error('not expected'); },
+        createJob: async () => ({ id: 'stub-job' }),
+        updateJob: async () => null,
+        removeJob: async () => {},
+        setEnabled: async () => null,
+        runNow: async () => ({ id: 'stub-run', status: 'running' }),
+        getSchedulerCapacity: () => ({ slotsTotal: 4, slotsInUse: 0, queueDepth: 0, oldestQueuedAgeMs: null }),
+      },
+      normalizeAtSchedule: () => ({}),
+      normalizeEverySchedule: () => ({}),
+      normalizeCronSchedule: () => ({}),
+      routeBindings: { start: async () => {}, getBinding: () => undefined },
+      trySpawnAgent: () => new Response(JSON.stringify({ error: 'not expected' }), { status: 500 }),
+      queueSurfaceReplyFromBinding: () => {},
+      surfaceDeliveryEnabled: () => false,
+      syncSpawnedAgentTask: () => {},
+      syncFinishedAgentTask: () => {},
+      configManager: { get: () => undefined },
+      runtimeStore: null,
+      runtimeDispatch: null,
+      publishConversationFollowup: () => {},
+      openSessionEventStream: () => new Response('', { status: 200 }),
+      parseJsonBody: async () => ({}),
+      parseOptionalJsonBody: async () => null,
+      recordApiResponse: (_req: unknown, _path: unknown, res: Response) => res,
+    } as unknown as DaemonRuntimeRouteContext;
+  }
+
+  test('getRuntimeMetrics allows admin, denies non-admin', async () => {
+    const handlers = createDaemonRuntimeRouteHandlers(makeContext());
+
+    const allowed = await handlers.getRuntimeMetrics(adminReq);
+    expect(allowed.status).not.toBe(403);
+    const allowedBody = await allowed.json() as Record<string, unknown>;
+    expect(allowedBody['uptimeMs']).toBe(1234);
+
+    const denied = await handlers.getRuntimeMetrics(nonAdminReq);
+    expect(denied.status).toBe(403);
+  });
+
+  test('identity-of-request: getRuntimeMetrics passes each call-site request to requireAdmin', async () => {
+    const seen: Request[] = [];
+    const requireAdmin = (req: Request): Response | null => {
+      seen.push(req);
+      return req.headers.get('authorization') === `Bearer ${ADMIN_TOKEN}` ? null : new Response('', { status: 403 });
+    };
+    const ctx = makeContext();
+    const handlers = createDaemonRuntimeRouteHandlers({ ...ctx, requireAdmin });
+    await handlers.getRuntimeMetrics(adminReq);
+    await handlers.getRuntimeMetrics(nonAdminReq);
+    expect(seen[0]).toBe(adminReq);
+    expect(seen[1]).toBe(nonAdminReq);
   });
 });

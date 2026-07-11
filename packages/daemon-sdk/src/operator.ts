@@ -365,7 +365,7 @@ async function dispatchOperatorRoutesInner(
   if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile(req);
 
   if (pathname === '/api/runtime/scheduler' && method === 'GET') return handlers.getSchedulerCapacity(req);
-  if (pathname === '/api/runtime/metrics' && method === 'GET') return handlers.getRuntimeMetrics();
+  if (pathname === '/api/runtime/metrics' && method === 'GET') return handlers.getRuntimeMetrics(req);
 
   if (pathname === '/api/panels' && method === 'GET') return handlers.getPanels();
   if (pathname === '/api/panels/open' && method === 'POST') return handlers.postPanelOpen(req);
