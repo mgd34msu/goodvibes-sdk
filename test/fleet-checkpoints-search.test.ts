@@ -1,5 +1,5 @@
 /**
- * w3-s2-fleet-checkpoints-search.test.ts
+ * fleet-checkpoints-search.test.ts
  *
  * bootDaemon parity proof for fleet.snapshot / fleet.list / checkpoints.* /
  * sessions.search, each proven over a REAL live daemon (bootDaemon, port 0,
@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { bootDaemon, type BootedDaemon } from '../packages/sdk/src/platform/daemon/boot.ts';
 
-const TOKEN = 'w3-s2-test-token';
+const TOKEN = 'fleet-search-test-token';
 let home: string;
 let work: string;
 let daemon: BootedDaemon;
@@ -175,8 +175,8 @@ async function invokeVerb<T extends WireError = WireError>(
 }
 
 beforeAll(async () => {
-  home = mkdtempSync(join(tmpdir(), 'w3s2-home-'));
-  work = mkdtempSync(join(tmpdir(), 'w3s2-work-'));
+  home = mkdtempSync(join(tmpdir(), 'fleet-search-home-'));
+  work = mkdtempSync(join(tmpdir(), 'fleet-search-work-'));
   daemon = await bootDaemon({
     homeDirectory: home,
     workingDir: work,
@@ -193,7 +193,7 @@ afterAll(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-describe('W3-S2 — fleet.snapshot / fleet.list', () => {
+describe('fleet/checkpoints/search — fleet.snapshot / fleet.list', () => {
   test('fleet.snapshot returns a well-shaped, empty-or-sparse fleet before any process exists', async () => {
     const { status, json } = await invokeVerb<FleetSnapshotResponse>('fleet.snapshot');
     expect(status).toBe(200);
@@ -240,7 +240,7 @@ describe('W3-S2 — fleet.snapshot / fleet.list', () => {
   });
 });
 
-describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
+describe('fleet/checkpoints/search — checkpoints.list / create / diff / restore', () => {
   // A fresh bootDaemon `work` tmpdir is EMPTY, whose git tree hash equals the
   // canonical empty-tree constant WorkspaceCheckpointManager also uses as the
   // "no parent yet" sentinel (manager.ts:349-357) — so the very first
@@ -250,17 +250,17 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
   let seedCounter = 0;
   function touchWorkspaceFile(): void {
     seedCounter += 1;
-    writeFileSync(join(work, `w3s2-checkpoint-seed-${seedCounter}.txt`), `seed ${seedCounter}\n`);
+    writeFileSync(join(work, `fleet-search-checkpoint-seed-${seedCounter}.txt`), `seed ${seedCounter}\n`);
   }
 
   test('checkpoints.create then checkpoints.list returns the created checkpoint', async () => {
     touchWorkspaceFile();
-    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'w3s2 test checkpoint' } });
+    const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'fleet-search test checkpoint' } });
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
     expect(created.json.checkpoint).not.toBeNull();
     expect(created.json.checkpoint.kind).toBe('manual');
-    expect(created.json.checkpoint.label).toBe('w3s2 test checkpoint');
+    expect(created.json.checkpoint.label).toBe('fleet-search test checkpoint');
     const checkpointId: string = created.json.checkpoint.id;
 
     const list = await invokeVerb<CheckpointsListResponse>('checkpoints.list');
@@ -303,13 +303,13 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
     // manager.ts:420-437) does not surface untracked files, only tracked
     // modifications — so the diff must touch a file the side-git index
     // already knows about to show up in `files`.
-    writeFileSync(join(work, 'w3s2-checkpoint-seed-1.txt'), 'modified after diff-base checkpoint\n');
+    writeFileSync(join(work, 'fleet-search-checkpoint-seed-1.txt'), 'modified after diff-base checkpoint\n');
     const diff = await invokeVerb<CheckpointsDiffResponse>('checkpoints.diff', { body: { a: checkpointId } });
     expect(diff.status).toBe(200);
     expect(diff.json.diff.from).toBe(checkpointId);
     expect(diff.json.diff.to).toBe('WORKING');
     expect(Array.isArray(diff.json.diff.files)).toBe(true);
-    expect(diff.json.diff.files).toContain('w3s2-checkpoint-seed-1.txt');
+    expect(diff.json.diff.files).toContain('fleet-search-checkpoint-seed-1.txt');
     expect(typeof diff.json.diff.unifiedDiff).toBe('string');
   });
 
@@ -418,7 +418,7 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
   });
 
   test('checkpoints.create stamps sessionId, checkpoints.list filters by it, and sessions.changes.get aggregates the session diff', async () => {
-    const sessionId = `w3s2-session-${Date.now()}`;
+    const sessionId = `fleet-search-session-${Date.now()}`;
     touchWorkspaceFile();
     const first = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'session cp 1', sessionId } });
     expect(first.status).toBe(200);
@@ -441,7 +441,7 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
   });
 
   test('sessions.changes.get for a session with no stamped checkpoints is an honest empty result', async () => {
-    const changes = await invokeVerb<SessionsChangesResponse>('sessions.changes.get', { body: { sessionId: 'w3s2-no-such-session' } });
+    const changes = await invokeVerb<SessionsChangesResponse>('sessions.changes.get', { body: { sessionId: 'fleet-search-no-such-session' } });
     expect(changes.status).toBe(200);
     expect(changes.json.checkpointCount).toBe(0);
     expect(changes.json.from).toBe('EMPTY');
@@ -455,18 +455,18 @@ describe('W3-S2 — checkpoints.list / create / diff / restore', () => {
   });
 });
 
-describe('W3-S2 — sessions.search', () => {
-  const searchProject = `w3s2-search-project-${Date.now()}`;
+describe('fleet/checkpoints/search — sessions.search', () => {
+  const searchProject = `fleet-search-search-project-${Date.now()}`;
 
   beforeAll(async () => {
     await fetch(`${daemon.url}/api/sessions/register`, {
       method: 'POST',
       headers: auth(),
       body: JSON.stringify({
-        sessionId: 'w3s2-search-active',
+        sessionId: 'fleet-search-search-active',
         kind: 'tui',
         project: searchProject,
-        title: 'w3s2 active session',
+        title: 'fleet-search active session',
         participant: { surfaceKind: 'tui', surfaceId: 's-active', lastSeenAt: Date.now() },
       }),
     });
@@ -474,46 +474,46 @@ describe('W3-S2 — sessions.search', () => {
       method: 'POST',
       headers: auth(),
       body: JSON.stringify({
-        sessionId: 'w3s2-search-closed',
+        sessionId: 'fleet-search-search-closed',
         kind: 'tui',
         project: searchProject,
-        title: 'w3s2 closed session',
+        title: 'fleet-search closed session',
         participant: { surfaceKind: 'tui', surfaceId: 's-closed', lastSeenAt: Date.now() },
       }),
     });
-    await fetch(`${daemon.url}/api/sessions/w3s2-search-closed/close`, { method: 'POST', headers: auth() });
+    await fetch(`${daemon.url}/api/sessions/fleet-search-search-closed/close`, { method: 'POST', headers: auth() });
   });
 
   test('excludes closed sessions by default', async () => {
     const { status, json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: searchProject } });
     expect(status).toBe(200);
     const ids = json.sessions.map((s) => s.id);
-    expect(ids).toContain('w3s2-search-active');
-    expect(ids).not.toContain('w3s2-search-closed');
+    expect(ids).toContain('fleet-search-search-active');
+    expect(ids).not.toContain('fleet-search-search-closed');
   });
 
   test('includeClosed:true includes the closed session with an honest status', async () => {
     const { status, json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: searchProject, includeClosed: true } });
     expect(status).toBe(200);
-    const closed = json.sessions.find((s) => s.id === 'w3s2-search-closed');
+    const closed = json.sessions.find((s) => s.id === 'fleet-search-search-closed');
     expect(closed).toBeDefined();
     expect(closed?.status).toBe('closed');
-    const active = json.sessions.find((s) => s.id === 'w3s2-search-active');
+    const active = json.sessions.find((s) => s.id === 'fleet-search-search-active');
     expect(active?.status).toBe('active');
   });
 
   test('project filter isolates the search scope', async () => {
     const { json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: 'some-other-project-entirely', includeClosed: true } });
     const ids = json.sessions.map((s) => s.id);
-    expect(ids).not.toContain('w3s2-search-active');
-    expect(ids).not.toContain('w3s2-search-closed');
+    expect(ids).not.toContain('fleet-search-search-active');
+    expect(ids).not.toContain('fleet-search-search-closed');
   });
 
   test('free-text query matches title', async () => {
     const { status, json } = await invokeVerb<SessionsSearchResponse>('sessions.search', { body: { project: searchProject, query: 'active session' } });
     expect(status).toBe(200);
     const ids = json.sessions.map((s) => s.id);
-    expect(ids).toContain('w3s2-search-active');
+    expect(ids).toContain('fleet-search-search-active');
   });
 
   test('cursor pagination returns disjoint pages that union to the full matching set', async () => {
@@ -528,8 +528,8 @@ describe('W3-S2 — sessions.search', () => {
     expect(page2.status).toBe(200);
 
     const unionIds = new Set([...page1.json.sessions, ...page2.json.sessions].map((s) => s.id));
-    expect(unionIds.has('w3s2-search-active')).toBe(true);
-    expect(unionIds.has('w3s2-search-closed')).toBe(true);
+    expect(unionIds.has('fleet-search-search-active')).toBe(true);
+    expect(unionIds.has('fleet-search-search-closed')).toBe(true);
     // Pages are disjoint.
     const page1Ids = page1.json.sessions.map((s) => s.id);
     const page2Ids = page2.json.sessions.map((s) => s.id);
@@ -552,7 +552,7 @@ describe('W3-S2 — sessions.search', () => {
   });
 });
 
-describe('W3-S2 — access gates', () => {
+describe('fleet/checkpoints/search — access gates', () => {
   test('the generic invoke endpoint requires auth like every other route', async () => {
     const res = await fetch(`${daemon.url}/api/control-plane/methods/fleet.snapshot/invoke`, {
       method: 'POST',
@@ -568,7 +568,7 @@ describe('W3-S2 — access gates', () => {
   });
 });
 
-describe('W3-S2 — event-emission honesty (verified-not-applicable for EVENT_DOMAIN)', () => {
+describe('fleet/checkpoints/search — event-emission honesty (verified-not-applicable for EVENT_DOMAIN)', () => {
   // The landed scope for this verb set is read/lifecycle verbs with NO broadcast events:
   // the handlers call the managers and return; ProcessRegistry.subscribe() is
   // an in-registry callback (explicitly not a runtime-bus event contract) and
@@ -579,7 +579,7 @@ describe('W3-S2 — event-emission honesty (verified-not-applicable for EVENT_DO
   // grows an `events` declaration, this test fails, and the author is forced
   // to register the event's domain in EVENT_DOMAIN (gateway-scope-enforcement.ts)
   // at the same time instead of shipping an untagged over-broadcast.
-  const W3_S2_METHOD_IDS = [
+  const FLEET_CHECKPOINTS_SEARCH_METHOD_IDS = [
     'fleet.snapshot',
     'fleet.list',
     'checkpoints.list',
@@ -589,8 +589,8 @@ describe('W3-S2 — event-emission honesty (verified-not-applicable for EVENT_DO
     'sessions.search',
   ] as const;
 
-  test('none of the W3-S2 verbs declares a wire event (no EVENT_DOMAIN entries needed)', async () => {
-    for (const methodId of W3_S2_METHOD_IDS) {
+  test('none of the fleet/checkpoints/search verbs declares a wire event (no EVENT_DOMAIN entries needed)', async () => {
+    for (const methodId of FLEET_CHECKPOINTS_SEARCH_METHOD_IDS) {
       const res = await fetch(`${daemon.url}/api/control-plane/methods/${methodId}`, { headers: auth() });
       expect(res.status).toBe(200);
       const { method } = await res.json() as { method: { id: string; events?: string[] } };
