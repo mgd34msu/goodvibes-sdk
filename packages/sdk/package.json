@@ -357,6 +357,10 @@
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
     },
+    "./platform/runtime/feature-flags": {
+      "types": "./dist/platform/runtime/feature-flags/index.d.ts",
+      "import": "./dist/platform/runtime/feature-flags/index.js"
+    },
     "./platform/runtime/sandbox": {
       "types": "./dist/platform/runtime/sandbox.d.ts",
       "import": "./dist/platform/runtime/sandbox.js"

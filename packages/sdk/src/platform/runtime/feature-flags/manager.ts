@@ -38,6 +38,16 @@ class FeatureFlagManagerImpl {
   /** Active subscriber callbacks */
   private readonly _subscribers: Set<FlagSubscriber> = new Set();
 
+  /**
+   * Persisted config values for startup-gated (runtimeToggleable: false) flags
+   * whose value differs from the current effective state. Populated by
+   * `applyConfigState()` when a live config change targets a flag that cannot
+   * be applied without a restart; cleared once the persisted and effective
+   * values agree again (including at the next process start, when
+   * `loadFromConfig()` seeds the effective state from the same value).
+   */
+  private readonly _pendingRestart: Map<string, FlagState> = new Map();
+
   constructor() {
     // Seed all flags with their declared defaults
     for (const [id, flag] of FEATURE_FLAG_MAP) {
@@ -83,16 +93,48 @@ class FeatureFlagManagerImpl {
   /**
    * Returns a new snapshot Map of all flags with their current state.
    * Changes to the returned map do not affect the manager's internal state.
+   *
+   * `state` is the live effective state. `persistedState` is the last known
+   * config-layer value; for a startup-gated flag with a pending restart these
+   * two differ, which `pendingRestart` calls out explicitly rather than
+   * leaving a caller to infer it — see `applyConfigState()`.
    */
-  getAll(): Map<string, { flag: FeatureFlag; state: FlagState }> {
-    const result = new Map<string, { flag: FeatureFlag; state: FlagState }>();
+  getAll(): Map<string, { flag: FeatureFlag; state: FlagState; persistedState: FlagState; pendingRestart: boolean }> {
+    const result = new Map<string, { flag: FeatureFlag; state: FlagState; persistedState: FlagState; pendingRestart: boolean }>();
     for (const [id, state] of this._states) {
       const flag = FEATURE_FLAG_MAP.get(id);
       if (flag !== undefined) {
-        result.set(id, { flag, state });
+        const pending = this._pendingRestart.get(id);
+        result.set(id, {
+          flag,
+          state,
+          persistedState: pending ?? state,
+          pendingRestart: pending !== undefined,
+        });
       }
     }
     return result;
+  }
+
+  /**
+   * True when a startup-gated flag has a persisted config value that differs
+   * from its current effective state — i.e. a process restart is required
+   * before the persisted value takes effect.
+   *
+   * @param flagId - The flag's kebab-case identifier.
+   */
+  hasPendingRestart(flagId: string): boolean {
+    return this._pendingRestart.has(flagId);
+  }
+
+  /**
+   * The persisted-but-not-yet-effective state recorded for a startup-gated
+   * flag, or `null` when no restart is pending for it.
+   *
+   * @param flagId - The flag's kebab-case identifier.
+   */
+  getPendingRestartState(flagId: string): FlagState | null {
+    return this._pendingRestart.get(flagId) ?? null;
   }
 
   /**
@@ -205,6 +247,13 @@ class FeatureFlagManagerImpl {
    * - A config-level `'killed'` state is applied without a reason string;
    *   use `kill()` directly for operator-initiated kills with reasons.
    *
+   * This is the boot-time path — called once, before the runtime event loop
+   * begins, so it applies EVERY flag's desired state directly regardless of
+   * `runtimeToggleable` (a startup-only flag may only be seeded this way).
+   * For a config change arriving after boot, use `applyConfigState()`
+   * instead, which respects `runtimeToggleable` and never fakes a live apply
+   * for a startup-gated flag.
+   *
    * @param config - Parsed flag config block from the user config file.
    */
   loadFromConfig(config: FlagConfig): void {
@@ -213,23 +262,66 @@ class FeatureFlagManagerImpl {
       if (flag === undefined) {
         throw new Error(`[FeatureFlagManager] Unknown flag in config: "${id}"`);
       }
-
-      const current = this._states.get(id) as FlagState;
-      if (current === desiredState) continue; // already correct — skip
-
-      if (desiredState === 'killed') {
-        this._killReasons.set(id, 'Loaded from config');
-        this._transition(id, current, 'killed', 'Loaded from config');
-        continue;
-      }
-
-      if (desiredState === 'enabled' && current === 'killed') {
-        // Config wants enabled but flag is killed — skip; kill takes precedence
-        continue;
-      }
-
-      this._transition(id, current, desiredState);
+      this._applyPersistedState(id, desiredState);
     }
+  }
+
+  /**
+   * Applies a single flag's config-layer value from a LIVE config change
+   * (i.e. `configManager.set('featureFlags.<id>', ...)` firing after boot —
+   * see `bindFeatureFlagConfigBridge`), honoring `runtimeToggleable`:
+   *
+   * - Runtime-toggleable flags apply immediately through the same
+   *   transition path `enable()`/`disable()`/`kill()` use, so subscribers
+   *   fire exactly as they would for a direct manager toggle.
+   * - Startup-gated flags are never faked live: the effective state is left
+   *   untouched and the persisted value is recorded as pending a restart
+   *   (see `getAll()` / `hasPendingRestart()` / `getPendingRestartState()`)
+   *   instead of silently doing nothing.
+   *
+   * @param flagId - The flag's kebab-case identifier.
+   * @param persistedState - The new value read from config.
+   */
+  applyConfigState(flagId: string, persistedState: FlagState): void {
+    const flag = this._requireFlag(flagId);
+    const current = this._states.get(flagId) as FlagState;
+
+    if (!flag.runtimeToggleable) {
+      if (persistedState === current) {
+        this._pendingRestart.delete(flagId);
+      } else {
+        this._pendingRestart.set(flagId, persistedState);
+      }
+      return;
+    }
+
+    this._pendingRestart.delete(flagId);
+    this._applyPersistedState(flagId, persistedState);
+  }
+
+  /**
+   * Shared transition logic for a single flag's desired config-layer state —
+   * used by both `loadFromConfig()` (every flag, at boot) and
+   * `applyConfigState()` (one flag, already gated on `runtimeToggleable` by
+   * its caller). Idempotent, and honors kill precedence: config can never
+   * silently re-enable a killed flag.
+   */
+  private _applyPersistedState(id: string, desiredState: FlagState): void {
+    const current = this._states.get(id) as FlagState;
+    if (current === desiredState) return; // already correct — skip
+
+    if (desiredState === 'killed') {
+      this._killReasons.set(id, 'Loaded from config');
+      this._transition(id, current, 'killed', 'Loaded from config');
+      return;
+    }
+
+    if (desiredState === 'enabled' && current === 'killed') {
+      // Config wants enabled but flag is killed — skip; kill takes precedence
+      return;
+    }
+
+    this._transition(id, current, desiredState);
   }
 
   // ── Subscriptions ───────────────────────────────────────────────────────

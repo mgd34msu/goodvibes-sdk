@@ -92,6 +92,7 @@ import { SandboxSessionRegistry } from './sandbox/session-registry.js';
 import { createShellPathService, type ShellPathService } from './shell-paths.js';
 import type { FeatureFlagManager } from './feature-flags/index.js';
 import { createFeatureFlagManager } from './feature-flags/index.js';
+import { bindFeatureFlagConfigBridge } from './feature-flags/config-bridge.js';
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
 import { loadConfiguredPolicyBundle } from './permissions/policy-config-loader.js';
 import { bindPermissionModeChangeEvent } from '../permissions/mode-change-emitter.js';
@@ -332,6 +333,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const featureFlags = options.featureFlags ?? createFeatureFlagManager();
   if (options.featureFlags === undefined) {
     featureFlags.loadFromConfig({ flags: { ...configManager.getCategory('featureFlags') } });
+    // Live bridge: without this, a config.set('featureFlags.<id>', ...) after
+    // boot (the path the webui settings surface uses) persists but never
+    // reaches the manager until restart. Only wired when this call owns the
+    // manager it just constructed — an injected featureFlags (options.featureFlags
+    // set) is the caller's to bridge, if it wants to.
+    bindFeatureFlagConfigBridge(configManager, featureFlags);
   }
   const runtimeDispatch = createDomainDispatch(options.runtimeStore);
   const gatewayMethods = new GatewayMethodCatalog();
