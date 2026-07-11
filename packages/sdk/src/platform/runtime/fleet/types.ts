@@ -227,7 +227,9 @@ export interface ProcessKillOptions {
  * `COMMUNICATION_CONSUMED` runtime-bus event on the `communication` domain
  * carrying the same `messageId`.
  */
-export type SteerResult = { readonly queued: true; readonly messageId: string } | { readonly queued: false; readonly reason: string };
+export type SteerResult =
+  | { readonly queued: true; readonly messageId: string; readonly woke?: boolean | undefined }
+  | { readonly queued: false; readonly reason: string };
 
 /**
  * The live process registry surface.

@@ -218,6 +218,15 @@ export interface AgentRecord {
    * via `session.appendMessage({type:'knowledge_injection', ...})`.
    */
   turnInjections?: TurnInjectionRecord[] | undefined;
+  /**
+   * Transient wake seed set by {@link AgentManager.wakeWithSteer} when a steer
+   * re-triggers a wedged (terminally-failed) agent. runAgentTask consumes it on
+   * the next run: it seeds the fresh conversation with a summary of the prior
+   * run's transcript tail (honest context, not a risky tool-call replay) and the
+   * steer as a user turn, then clears the field. Never persisted across a clean
+   * completion.
+   */
+  resumeSteer?: { readonly steer: string; readonly priorSummary?: string | undefined } | undefined;
 }
 
 export class AgentManager {
@@ -660,6 +669,57 @@ export class AgentManager {
     }
 
     return record;
+  }
+
+  /**
+   * Re-trigger a wedged agent's processing loop with a steer message as input.
+   *
+   * Only a terminally-FAILED agent is woken: its turn loop has definitively
+   * exited (an exhausted turn/circuit-breaker loop, idle-after-error, or a
+   * watchdog kill), so re-running cannot race a still-live promise — the honest,
+   * safe subset of "wedged". A genuinely-running agent is left alone (its steer
+   * is delivered through the message bus and drained at its next turn boundary,
+   * exactly as today); a completed or cancelled agent is not auto-woken. The
+   * re-run restores context from the frozen transcript tail (a summary, not a
+   * risky tool-call replay) and appends the steer as a fresh user turn.
+   */
+  wakeWithSteer(agentId: string, steer: string): { woke: boolean; reason: string } {
+    const record = this.agents.get(agentId);
+    if (!record) return { woke: false, reason: 'unknown-agent' };
+    if (record.status !== 'failed') {
+      return { woke: false, reason: `agent status is '${record.status}', not a wedged/failed loop` };
+    }
+    if (!this.executor) return { woke: false, reason: 'no executor configured' };
+    if (typeof steer !== 'string' || steer.trim().length === 0) {
+      return { woke: false, reason: 'empty steer message' };
+    }
+    const priorSummary = this.summarizeTranscriptTailForWake(agentId);
+    record.resumeSteer = { steer, ...(priorSummary ? { priorSummary } : {}) };
+    // Clear the prior terminal outcome; runAgentTask sets status back to
+    // 'running' and emits agent-started on the re-run.
+    record.error = undefined;
+    record.completedAt = undefined;
+    this.executor.runAgent(record).catch((error) => {
+      record.status = 'failed';
+      record.error = summarizeError(error, {
+        ...(record.provider ? { provider: record.provider } : {}),
+      });
+      record.completedAt = Date.now();
+    });
+    return { woke: true, reason: 're-triggered from failed state with steer' };
+  }
+
+  /** Build an honest prior-context summary from the frozen transcript tail for a wake. */
+  private summarizeTranscriptTailForWake(agentId: string): string | undefined {
+    const snapshot = this.getConversationSnapshot(agentId);
+    if (!snapshot || snapshot.length === 0) return undefined;
+    const tail = snapshot.slice(-6).map((message) => {
+      const raw = (message as { content?: unknown }).content;
+      const text = typeof raw === 'string' ? raw : '[structured content]';
+      const preview = text.replace(/\s+/g, ' ').trim().slice(0, 200);
+      return `${message.role}: ${preview}`;
+    });
+    return `Prior run before this steer — last ${tail.length} transcript message(s):\n${tail.join('\n')}`;
   }
 
   getStatus(id: string): AgentRecord | null {

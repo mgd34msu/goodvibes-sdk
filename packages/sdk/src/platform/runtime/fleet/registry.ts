@@ -89,7 +89,7 @@ export interface RegistryTimers {
  * cannot participate in a construction cycle.
  */
 export interface ProcessRegistryDeps {
-  readonly agentManager: Pick<AgentManager, 'list' | 'cancel'>;
+  readonly agentManager: Pick<AgentManager, 'list' | 'cancel'> & Partial<Pick<AgentManager, 'wakeWithSteer'>>;
   readonly wrfcController: Pick<WrfcController, 'listChains'>;
   /**
    * Optional: folds workstream/phase/work-item nodes into
@@ -739,6 +739,18 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     switch (target.kind) {
       case 'agent': {
         if (!target.capabilities.steerable) {
+          // A wedged agent whose loop has definitively exited ('failed':
+          // exhausted turn/circuit-breaker loop, idle-after-error, watchdog kill)
+          // is re-triggered from its retained context with the steer as input,
+          // rather than silently refused. A 'stalled' (still-running, no
+          // heartbeat) agent is NOT re-run — that would race a live promise; its
+          // steer stays refused honestly rather than falsely claimed delivered.
+          if (target.state === 'failed' && deps.agentManager.wakeWithSteer) {
+            const woke = deps.agentManager.wakeWithSteer(target.id, text);
+            return woke.woke
+              ? { queued: true, messageId: crypto.randomUUID(), woke: true }
+              : { queued: false, reason: woke.reason };
+          }
           return { queued: false, reason: 'agent is not active and cannot be steered' };
         }
         const messageId = crypto.randomUUID();

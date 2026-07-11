@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A steer message to a wedged agent now re-triggers its processing loop
+  instead of being silently dropped.** `AgentManager.wakeWithSteer(agentId,
+  steer)` re-triggers a terminally-FAILED agent — one whose turn loop has
+  definitively exited (an exhausted turn / circuit-breaker loop, idle-after-
+  error, or a watchdog kill) — by restoring honest prior context (a summary of
+  the frozen transcript tail, not a risky tool-call replay) and injecting the
+  steer as a fresh user turn. Only that safe subset is woken: re-running a
+  still-live loop would race its promise, so a genuinely-running agent still
+  receives its steer through the message bus and drains it at the next turn
+  boundary exactly as today, and a completed/cancelled agent is not auto-woken.
+  The fleet steer path (`ProcessRegistry.steer`) routes a failed agent's steer
+  through the wake instead of the previous honest-but-dead-end refusal; a
+  still-running ('stalled') agent is not re-run (no false success).
 - **A model-invokable `context_accounting` tool: the model can read its own
   context composition honestly.** Registered on the standard tool roster (every
   consumer inherits it like `repo_map`), it reports — from existing records,
