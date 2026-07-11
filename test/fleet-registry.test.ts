@@ -1361,6 +1361,43 @@ describe('fleet registry — steer', () => {
     registry.dispose();
   });
 
+  test('steer(): a wedged (failed) agent is re-triggered via wakeWithSteer, not refused', () => {
+    const failed = makeAgent({ id: 'ag-wedged', status: 'failed', error: 'Circuit breaker tripped', completedAt: T0 + 1_000 });
+    const wakeCalls: Array<{ id: string; text: string }> = [];
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: {
+        list: () => [failed],
+        cancel: () => false,
+        wakeWithSteer: (id: string, text: string) => { wakeCalls.push({ id, text }); return { woke: true, reason: 'ok' }; },
+      },
+      messageBus: fakeMessageBus(),
+    }));
+    const result = registry.steer('ag-wedged', 'rerun with the fix');
+    expect(result.queued).toBe(true);
+    if (result.queued) expect(result.woke).toBe(true);
+    expect(wakeCalls).toEqual([{ id: 'ag-wedged', text: 'rerun with the fix' }]);
+    registry.dispose();
+  });
+
+  test('steer(): a genuinely-running agent is delivered via the bus, not woken', () => {
+    const running = makeAgent({ id: 'ag-live', status: 'running' });
+    let wakeCalled = false;
+    const bus = fakeMessageBus(true);
+    const registry = createProcessRegistry(makeDeps({
+      agentManager: {
+        list: () => [running],
+        cancel: () => false,
+        wakeWithSteer: () => { wakeCalled = true; return { woke: true, reason: 'ok' }; },
+      },
+      messageBus: bus,
+    }));
+    const result = registry.steer('ag-live', 'keep going but check the edge case');
+    expect(result.queued).toBe(true);
+    if (result.queued) expect(result.woke).toBeUndefined();
+    expect(wakeCalled).toBe(false);
+    registry.dispose();
+  });
+
   test('steer(): a wrfc-subtask routes to its currently-active live member agent, not the subtask node id', () => {
     const bus = fakeMessageBus(true);
     const chain = makeChain({

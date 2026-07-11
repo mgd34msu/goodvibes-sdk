@@ -523,6 +523,17 @@ export async function runAgentTask(
 
     conversation = new ConversationManager();
     conversation.addUserMessage(record.task);
+    // Steer-wake resume: a wedged (failed) agent re-triggered via
+    // AgentManager.wakeWithSteer carries a resumeSteer seed. Restore honest prior
+    // context (a transcript-tail summary, not a tool-call replay) and inject the
+    // steer as a fresh user turn, then clear the seed so it never re-fires.
+    if (record.resumeSteer) {
+      if (record.resumeSteer.priorSummary) {
+        conversation.addSystemMessage(record.resumeSteer.priorSummary);
+      }
+      conversation.addUserMessage(record.resumeSteer.steer);
+      record.resumeSteer = undefined;
+    }
     // Conversation-snapshot bridge (Part C6): hand AgentManager a live accessor onto THIS
     // ConversationManager instance so a fleet tab can render a full-fidelity
     // transcript while the agent runs. `activeConversation` is a separate
