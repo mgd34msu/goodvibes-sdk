@@ -20,6 +20,8 @@ import type { ApprovalBroker, SharedSessionBroker } from '../control-plane/index
 import type { SharedSessionSubmission } from '../control-plane/session-types.js';
 import type { AutomationSurfaceKind } from '../automation/types.js';
 import type { PermissionRequestHandler } from '../permissions/prompt.js';
+import type { McpServerConfig } from '../mcp/config.js';
+import { logger } from '../utils/logger.js';
 
 /** Options for {@link createEmbeddedSession}. */
 export interface EmbedSessionOptions {
@@ -39,6 +41,14 @@ export interface EmbedSessionOptions {
   readonly surfaceKind?: AutomationSurfaceKind | undefined;
   /** Stable surface id for this embedder. Default a generated `embed-<uuid>`. */
   readonly surfaceId?: string | undefined;
+  /**
+   * MCP servers to connect into the session's tool surface at boot (e.g. the
+   * servers an ACP client declares in `session/new`). Each is connected through
+   * the daemon's live MCP registry (tools namespaced `mcp:<name>:<tool>`). stdio
+   * transport only — the registry spawns a process. A server that fails to
+   * connect is logged and skipped; it never aborts session creation.
+   */
+  readonly mcpServers?: readonly McpServerConfig[] | undefined;
   /** Escape hatch for the remaining boot options (port, host, serveFactory…). */
   readonly boot?: Partial<Omit<BootDaemonOptions, 'workingDir' | 'homeDirectory' | 'token'>> | undefined;
 }
@@ -65,6 +75,15 @@ export interface EmbeddedSession {
   readonly sessions: SharedSessionBroker;
   /** Submit input to the session. Returns the broker's submission record. */
   submit(input: string | EmbeddedSessionInput): Promise<SharedSessionSubmission>;
+  /**
+   * Cancel the in-flight work for one or more running agents (the agent ids a
+   * submission reported as `activeAgentId`). This is a REAL cancellation: it
+   * aborts the agent's in-flight provider call so the turn stops mid-flight and
+   * emits its cancelled outcome, rather than only cancelling a still-queued
+   * input. Unknown ids are ignored. Returns the number of agents actually
+   * cancelled.
+   */
+  cancelActive(agentIds: Iterable<string>): number;
   /** Tear down the session and release the port. Idempotent. */
   stop(): Promise<void>;
 }
@@ -87,6 +106,20 @@ export async function createEmbeddedSession(options: EmbedSessionOptions): Promi
   const approvals = daemon.approvals;
   const surfaceKind: AutomationSurfaceKind = options.surfaceKind ?? 'webhook';
   const surfaceId = options.surfaceId ?? `embed-${randomUUID()}`;
+
+  // Connect any embedder-declared MCP servers (e.g. an ACP client's session/new
+  // servers) into the live MCP registry so their tools join the session surface.
+  // A single server's failure is logged and skipped — it never aborts the session.
+  for (const mcpServer of options.mcpServers ?? []) {
+    try {
+      await server.registerMcpServer(mcpServer);
+    } catch (error) {
+      logger.warn('createEmbeddedSession: failed to connect declared MCP server', {
+        server: mcpServer.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   // Bridge an injected permission callback onto the broker: each pending
   // approval is answered by the callback and resolved with its decision.
@@ -128,6 +161,13 @@ export async function createEmbeddedSession(options: EmbedSessionOptions): Promi
         ...(structured?.title !== undefined ? { title: structured.title } : {}),
         ...(structured?.metadata !== undefined ? { metadata: structured.metadata } : {}),
       });
+    },
+    cancelActive: (agentIds) => {
+      let cancelled = 0;
+      for (const agentId of agentIds) {
+        if (server.cancelAgent(agentId)) cancelled += 1;
+      }
+      return cancelled;
     },
     stop: async () => {
       unsubscribe?.();

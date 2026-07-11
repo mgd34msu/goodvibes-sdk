@@ -763,12 +763,17 @@ export async function runAgentTask(
           };
 
           try {
+            // Thread the agent's cancellation signal into the in-flight LLM
+            // request so a cancel/kill aborts the provider call mid-stream, not
+            // only cooperatively at the next turn/tool boundary.
+            const cancelSignal = context.getCancellationSignal?.(record.id);
             response = await activeRoute.provider.chat({
               model: activeRoute.modelId,
               messages: conversation.getMessagesForLLM(),
               tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
               systemPrompt: appendGoodVibesRuntimeAwarenessPrompt(composeTurnSystemPrompt(systemPrompt)),
               ...(record.reasoningEffort ? { reasoningEffort: record.reasoningEffort } : {}),
+              ...(cancelSignal ? { signal: cancelSignal } : {}),
               onDelta,
             });
             break;

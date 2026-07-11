@@ -125,6 +125,7 @@ export class DaemonServer {
     get approvals(): ApprovalBroker;
     get boundHost(): string;
     get boundPort(): number;
+    cancelAgent(agentId: string): boolean;
     // Warning: (ae-forgotten-export) The symbol "DaemonDangerConfig" needs to be exported by the entry point embed.d.ts
     enable(dangerConfig: DaemonDangerConfig, token?: string): boolean;
     get eventBus(): RuntimeEventBus;
@@ -137,6 +138,8 @@ export class DaemonServer {
     listRecentControlPlaneEvents(limit?: number): readonly ControlPlaneRecentEvent[];
     // Warning: (ae-forgotten-export) The symbol "RuntimeServices" needs to be exported by the entry point embed.d.ts
     get memory(): RuntimeServices['memoryRegistry'];
+    // Warning: (ae-forgotten-export) The symbol "McpServerConfig" needs to be exported by the entry point embed.d.ts
+    registerMcpServer(config: McpServerConfig): Promise<void>;
     get sessions(): SharedSessionBroker;
     start(): Promise<void>;
     // (undocumented)
@@ -147,6 +150,7 @@ export class DaemonServer {
 // @public
 export interface EmbeddedSession {
     readonly approvals: ApprovalBroker;
+    cancelActive(agentIds: Iterable<string>): number;
     readonly events: RuntimeEventBus;
     readonly sessions: SharedSessionBroker;
     stop(): Promise<void>;
@@ -171,6 +175,7 @@ export interface EmbeddedSessionInput {
 export interface EmbedSessionOptions {
     readonly boot?: Partial<Omit<BootDaemonOptions, 'workingDir' | 'homeDirectory' | 'token'>> | undefined;
     readonly homeDirectory: string;
+    readonly mcpServers?: readonly McpServerConfig[] | undefined;
     readonly requestPermission?: PermissionRequestHandler | undefined;
     readonly surfaceId?: string | undefined;
     // Warning: (ae-forgotten-export) The symbol "AutomationSurfaceKind" needs to be exported by the entry point embed.d.ts
