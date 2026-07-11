@@ -35,6 +35,32 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},
 };
 
+/**
+ * Placeholder credential passed to the `openai` package's client constructor
+ * when no real API key is configured (local servers such as Ollama, LM
+ * Studio, llama.cpp, TGI, and LocalAI ignore the value entirely; discovery
+ * registers these providers with `apiKey: ''`). openai's client constructor
+ * has thrown "Missing credentials..." on a falsy `apiKey` (empty string
+ * included) since 6.4x — previously it only threw on `undefined` — so every
+ * unconfigured/anonymous provider broke at registration time once the SDK's
+ * `openai` dependency resolved past that change. This is the SAME literal
+ * already used by the builtin-provider registry's own anonymous fallback
+ * (`packages/sdk/src/platform/providers/builtin-registry.ts`); kept as a
+ * named export so every `new OpenAI(...)` construction site in this codebase
+ * uses one grep-able placeholder.
+ */
+export const OPENAI_CLIENT_LOCAL_PLACEHOLDER_API_KEY = 'gv-local';
+
+/**
+ * Returns an apiKey value safe to pass to `new OpenAI(...)`, substituting the
+ * shared placeholder when the effective key is empty. Callers must derive
+ * `configured`/`isConfigured()` status from the ORIGINAL apiKey (or an
+ * explicit override) BEFORE calling this — never from the substituted value.
+ */
+export function resolveOpenAIClientApiKey(apiKey: string): string {
+  return apiKey.length > 0 ? apiKey : OPENAI_CLIENT_LOCAL_PLACEHOLDER_API_KEY;
+}
+
 interface ChatRequestFingerprint {
   readonly model: string;
   readonly messageCount: number;
@@ -317,7 +343,7 @@ export class OpenAICompatProvider implements LLMProvider {
       }
     })();
     this.client = new OpenAI({
-      apiKey: opts.apiKey,
+      apiKey: resolveOpenAIClientApiKey(opts.apiKey),
       baseURL: opts.baseURL,
       ...(opts.defaultHeaders ? { defaultHeaders: opts.defaultHeaders } : {}),
     });

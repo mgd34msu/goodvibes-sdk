@@ -102,6 +102,7 @@ export {
   formatScorecard,
   DIMENSION_FLOOR,
   BUILTIN_SUITES,
+  GATE_SUITES,
   ALL_SCENARIOS,
   captureBaseline,
   serialiseBaseline,

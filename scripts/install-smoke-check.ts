@@ -85,6 +85,7 @@ if (!contracts.OPERATOR_METHOD_IDS || !contracts.PEER_ENDPOINT_IDS) throw new Er
 if (typeof runtimeEvents.createRemoteRuntimeEvents !== 'function') throw new Error('runtime realtime export missing');
 if (!runtime.observability || !runtime.transport || !runtime.state) throw new Error('runtime namespace seams missing');
 if (typeof runtimeObservability.TimelineBuffer !== 'function') throw new Error('runtime observability state inspector export missing');
+if (!runtimeObservability.GATE_SUITES || typeof runtimeObservability.GATE_SUITES !== 'object') throw new Error('runtime observability GATE_SUITES export missing');
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');
