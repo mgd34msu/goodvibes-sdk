@@ -304,6 +304,7 @@ export const OPERATOR_METHOD_IDS = [
   "routes.bindings.list",
   "routes.bindings.update",
   "routes.snapshot",
+  "runtime.metrics.get",
   "scheduler.capacity",
   "security.settings",
   "services.install",

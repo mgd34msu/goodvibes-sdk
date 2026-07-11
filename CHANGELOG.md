@@ -549,6 +549,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   `DEFAULT_MEMORY_CONSOLIDATION_CONFIG` (a test guards against drift), leaving
   the resolver's behavior unchanged.
 
+- **The per-model tool-format telemetry (`toolFormat` in `snapshotMetrics()`)
+  is now actually reachable by consumers.** It was recorded but stranded: no
+  package export subpath carried `snapshotMetrics`/its types, and no operator
+  method exposed it — only a bare, uncataloged `GET /api/runtime/metrics` route
+  existed, invisible to the typed operator client, REST-parity checks, and
+  Stage-B mock fixtures. Fixed both ends: (a) `snapshotMetrics` plus its new
+  `RuntimeMetricsSnapshot`/`RuntimeMetricsBucket` types and
+  `ToolFormatFailureClass` are exported from
+  `@pellux/goodvibes-sdk/platform/runtime/observability`; (b) a new
+  `runtime.metrics.get` operator method (typed IO, so the coverage ratchet
+  holds at 97 untyped) is cataloged with its handler attached at composition
+  time (`registerRuntimeMetricsGatewayMethods`, wired from
+  `registerGatewayVerbGroups` — the same descriptor+handler-together idiom
+  `flags.graduation.report` uses, so it can never regress to the 501 "cataloged
+  but not invokable" defect class; a pin test invokes it through a composed
+  catalog). The existing REST binding is unchanged.
+
 ## [1.6.1] - 2026-07-09
 
 ### Fixed

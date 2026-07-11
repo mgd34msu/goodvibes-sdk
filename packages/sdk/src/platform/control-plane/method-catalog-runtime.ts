@@ -131,6 +131,23 @@ const MCP_TOOLS_RESPONSE_SCHEMA = objectSchema({
   tools: arraySchema(MCP_TOOL_SCHEMA),
 }, ['tools']);
 
+/**
+ * `snapshotMetrics()`'s shape (see platform/runtime/metrics.ts): process-wide
+ * counters/gauges/histograms plus per-model tool-format telemetry. The
+ * counter/gauge/histogram buckets and the tool-format byModel/byClass maps are
+ * genuinely dynamic-keyed (label values, model ids, failure classes), so they
+ * stay `additionalProperties: true` rather than pretending to a closed shape.
+ */
+const RUNTIME_METRICS_SNAPSHOT_SCHEMA = objectSchema({
+  counters: objectSchema({}, [], { additionalProperties: true }),
+  gauges: objectSchema({}, [], { additionalProperties: true }),
+  histograms: objectSchema({}, [], { additionalProperties: true }),
+  toolFormat: objectSchema({
+    byModel: objectSchema({}, [], { additionalProperties: true }),
+    byClass: objectSchema({}, [], { additionalProperties: true }),
+  }, ['byModel', 'byClass']),
+}, ['counters', 'gauges', 'histograms', 'toolFormat']);
+
 /** The shared memory search-filter fields (no `recall` — that is search-only). Reused by list / search-semantic / export. */
 const MEMORY_SEARCH_FILTER_FIELDS = {
   scope: MEMORY_SCOPE_SCHEMA,
@@ -701,5 +718,15 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
       queueDepth: NUMBER_SCHEMA,
       oldestQueuedAgeMs: nullableSchema(NUMBER_SCHEMA),
     }, ['slotsTotal', 'slotsInUse', 'queueDepth', 'oldestQueuedAgeMs']),
+  }),
+  methodDescriptor({
+    id: 'runtime.metrics.get',
+    title: 'Runtime Metrics',
+    description: 'Return the process-wide runtime metrics snapshot: HTTP/LLM/auth/transport counters, gauges, request-duration and token histograms, and per-model tool-format telemetry (edit-tool failure classes and declared exec-expectation misses).',
+    category: 'runtime',
+    scopes: ['read:telemetry'],
+    http: { method: 'GET', path: '/api/runtime/metrics' },
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: RUNTIME_METRICS_SNAPSHOT_SCHEMA,
   }),
 ];

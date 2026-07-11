@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.6.1",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 378 cataloged methods: 348 with dedicated REST bindings, 30 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 379 cataloged methods: 349 with dedicated REST bindings, 30 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -71685,6 +71685,84 @@
         ]
       }
     },
+    "/api/runtime/metrics": {
+      "get": {
+        "operationId": "runtime.metrics.get",
+        "summary": "Runtime Metrics",
+        "description": "Return the process-wide runtime metrics snapshot: HTTP/LLM/auth/transport counters, gauges, request-duration and token histograms, and per-model tool-format telemetry (edit-tool failure classes and declared exec-expectation misses).",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "counters": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    },
+                    "gauges": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    },
+                    "histograms": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    },
+                    "toolFormat": {
+                      "type": "object",
+                      "properties": {
+                        "byModel": {
+                          "type": "object",
+                          "properties": {},
+                          "additionalProperties": true
+                        },
+                        "byClass": {
+                          "type": "object",
+                          "properties": {},
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "byModel",
+                        "byClass"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "counters",
+                    "gauges",
+                    "histograms",
+                    "toolFormat"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:telemetry"
+        ]
+      }
+    },
     "/api/runtime/scheduler": {
       "get": {
         "operationId": "scheduler.capacity",
@@ -90942,6 +91020,15 @@
       "category": "routes",
       "access": "authenticated",
       "rest": "GET /api/surfaces",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "runtime.metrics.get",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "GET /api/runtime/metrics",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.6.1
- * Methods: 378 total, 348 REST-routed, 30 ws-only invoke.
+ * Methods: 379 total, 349 REST-routed, 30 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1152,6 +1152,10 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/surfaces"
   },
+  "runtime.metrics.get": {
+    "method": "GET",
+    "path": "/api/runtime/metrics"
+  },
   "scheduler.capacity": {
     "method": "GET",
     "path": "/api/runtime/scheduler"
@@ -1776,6 +1780,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "routes.bindings.update": "rest",
   "routes.snapshot": "rest",
   "surfaces.list": "rest",
+  "runtime.metrics.get": "rest",
   "scheduler.capacity": "rest",
   "services.install": "rest",
   "services.restart": "rest",
@@ -15568,6 +15573,18 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "metadata": {}
         }
       ]
+    }
+  },
+  "runtime.metrics.get": {
+    "input": {},
+    "output": {
+      "counters": {},
+      "gauges": {},
+      "histograms": {},
+      "toolFormat": {
+        "byModel": {},
+        "byClass": {}
+      }
     }
   },
   "scheduler.capacity": {

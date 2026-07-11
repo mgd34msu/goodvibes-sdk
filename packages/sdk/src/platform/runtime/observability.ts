@@ -225,5 +225,15 @@ export type {
 } from './telemetry/exporters/local-ledger.js';
 export { getSecuritySettingsReport } from './security-settings.js';
 export type { SecuritySettingReport, SecuritySettingsReporter } from './security-settings.js';
+
+// ── Runtime metrics ────────────────────────────────────────────────────────
+// The process-wide RuntimeMeter snapshot (HTTP/LLM/auth/transport counters,
+// gauges, histograms) plus per-model tool-format telemetry — see metrics.ts
+// and telemetry/tool-format-telemetry.ts. Reachable on the wire via the
+// `runtime.metrics.get` operator method; exported here for a consumer that
+// wants the same accessor and its typed shape directly.
+export { snapshotMetrics } from './metrics.js';
+export type { RuntimeMetricsSnapshot, RuntimeMetricsBucket } from './metrics.js';
+export type { ToolFormatFailureClass } from './telemetry/tool-format-telemetry.js';
 export type { ComponentConfig as PanelConfig } from './diagnostics/types.js';
 export { DEFAULT_COMPONENT_CONFIG as DEFAULT_PANEL_CONFIG } from './diagnostics/types.js';

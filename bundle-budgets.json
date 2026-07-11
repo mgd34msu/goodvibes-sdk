@@ -374,8 +374,8 @@
     "rationale": "public runtime seam for the daemon-owned memory service; full-detach 1.2.0 added the extended verb catalog (list/searchSemantic/update/link/linksFor/reviewQueue/export/import/vectorStats/doctor) plus the freshness-stamped recall snapshot seam (recall-snapshot.ts); measured 562 B gzip; headroom max(ceil(562*1.2)=675, 562+50=612) → 675 (1.2x dominates by 63 B); bumped from 443 to 675 for the widened surface"
   },
   "./platform/runtime/observability": {
-    "gzip_bytes": 1265,
-    "rationale": "public runtime seam; replaced 5 export* wildcards with 84 named re-exports across diagnostics/eval/forensics/idempotency/perf sections (per surface NIT-01); measured 1054 B gzip @ commit 32e7909; headroom max(ceil(1054*1.2)=1265, 1054+50=1104) → 1265 (1.2x dominates by 161 B); budget bumped from 692 to 1265 to accommodate the named-export expansion"
+    "gzip_bytes": 1371,
+    "rationale": "public runtime seam; added snapshotMetrics + RuntimeMetricsSnapshot/RuntimeMetricsBucket/ToolFormatFailureClass re-exports (the runtime.metrics.get operator method's underlying accessor and types) @ commit d468ef66; measured 1142 B gzip; headroom max(ceil(1142*1.2)=1371, 1142+50=1192) → 1371 (1.2x dominates by 179 B); budget bumped from 1265 to 1371"
   },
   "./embed": {
     "gzip_bytes": 1152,
