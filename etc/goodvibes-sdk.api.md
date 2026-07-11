@@ -17741,6 +17741,10 @@ export type TurnEvent =
     costUsdCents?: number | undefined;
     finishReason?: string | undefined;
     providerRequestId?: string | undefined;
+    originTool?: string | undefined;
+    originCallId?: string | undefined;
+    originHook?: string | undefined;
+    originMcpServer?: string | undefined;
 }
 /** A batch of tool calls is ready for execution. */
 | {

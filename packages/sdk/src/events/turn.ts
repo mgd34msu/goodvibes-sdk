@@ -87,6 +87,16 @@ export type TurnEvent =
     costUsdCents?: number | undefined;
     finishReason?: string | undefined;
     providerRequestId?: string | undefined;
+    /**
+     * Cost-attribution origin: the tool call / hook / MCP server on whose behalf
+     * this LLM call was made, when the engine emitted it inside a cost-origin
+     * scope (runtime/cost/cost-origin.ts). Absent for a top-level agent-reasoning
+     * call, which is attributed to the session/agent rather than a tool it called.
+     */
+    originTool?: string | undefined;
+    originCallId?: string | undefined;
+    originHook?: string | undefined;
+    originMcpServer?: string | undefined;
   }
   /** A batch of tool calls is ready for execution. */
   | { type: 'TOOL_BATCH_READY'; turnId: string; toolCalls: string[] }

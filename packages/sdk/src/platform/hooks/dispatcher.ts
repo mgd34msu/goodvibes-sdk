@@ -5,6 +5,7 @@ import { matchesEventPath, matchesMatcher } from './matcher.js';
 import { getHookPointContract } from './contracts.js';
 import { HookActivityTracker } from './activity.js';
 import { logger } from '../utils/logger.js';
+import { withCostOriginAsync } from '../runtime/cost/cost-origin.js';
 import type { HooksConfig } from './types.js';
 import type { AgentManager } from '../tools/agent/index.js';
 import type { ToolLLM } from '../config/tool-llm.js';
@@ -197,6 +198,12 @@ export class HookDispatcher {
    * Async hooks fire and forget.
    */
   async fire(event: HookEvent): Promise<HookResult> {
+    // Attribute any LLM usage a hook drives to the hook path (cost-origin scope),
+    // so cost.attribution.get grouped by 'hook' reflects hook-caused spend.
+    return withCostOriginAsync({ hook: event.path }, () => this.fireInScope(event));
+  }
+
+  private async fireInScope(event: HookEvent): Promise<HookResult> {
     const contract = getHookPointContract(event.path);
     const matchingEntries: Array<{ pattern: string; hook: HookDefinition }> = [];
 
