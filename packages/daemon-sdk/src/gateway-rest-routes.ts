@@ -6,8 +6,8 @@ import type { DaemonGatewayRestRouteHandlers } from './context.js';
  * Explicit REST route table for the handler-backed gateway verb families that
  * ALSO advertise an `http` binding in the operator method catalog (skills.*,
  * principals.*, checkin.*, ci.*, channels.profiles.*, the session-scoped
- * sessions.permissionMode.get/set + sessions.contextUsage.get, and stepup.*
- * (the relay step-up ceremony)). Those verbs are
+ * sessions.permissionMode.get/set + sessions.contextUsage.get, stepup.* (the
+ * relay step-up ceremony), and runtime.metrics.get). Those verbs are
  * served in-process through `invokeGatewayMethodCall`'s registered-handler
  * branch, reachable over the wire via the generic
  * `POST /api/control/gateway-methods/:methodId/invoke` endpoint. But each one
@@ -97,6 +97,14 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // challenge). Both handler-backed gateway verbs with an advertised REST path.
   route('POST', '/api/stepup/credentials', 'stepup.credentials.register'),
   route('POST', '/api/stepup/challenge', 'stepup.challenge.mint'),
+  // runtime.metrics.get — the process-wide RuntimeMeter snapshot. This is the
+  // sole route for GET /api/runtime/metrics: the daemon-sdk raw handler that
+  // once served it was removed in favor of this gateway-verb parity entry, so
+  // the URL now resolves to the same in-process handler (and the same
+  // read:telemetry scope gate) as the methodId-invoke endpoint. Because
+  // dispatchDaemonApiRoutes tries the gateway-REST table BEFORE the operator
+  // dispatcher, this entry is what answers the URL.
+  route('GET', '/api/runtime/metrics', 'runtime.metrics.get'),
 ];
 
 /**
