@@ -151,7 +151,7 @@ import {
   MEMORY_PROJECTIONS_LIST_OUTPUT_SCHEMA,
   MEMORY_PROJECTIONS_GET_INPUT_SCHEMA,
   MEMORY_PROJECTIONS_GET_OUTPUT_SCHEMA,
-} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-runtime.ts';
+} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-memory-projection.ts';
 import {
   CHANNEL_PROFILES_DELETE_INPUT_SCHEMA,
   CHANNEL_PROFILES_DELETE_OUTPUT_SCHEMA,
