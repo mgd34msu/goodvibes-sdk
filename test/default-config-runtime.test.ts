@@ -110,6 +110,9 @@ describe('ConfigManager resolves all runtime.* schema keys', () => {
     expect(runtimeKeys).toEqual([
       'runtime.companionChatLimiter.perSessionLimit',
       'runtime.eventBus.maxListeners',
+      'runtime.toolBudget.maxMs',
+      'runtime.toolBudget.maxTokens',
+      'runtime.toolBudget.maxCostUsd',
     ]);
   });
 

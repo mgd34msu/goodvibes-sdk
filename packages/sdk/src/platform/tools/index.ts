@@ -190,7 +190,8 @@ export function registerToolWithContractGate(
  * into a trimmed, non-empty host list. Returns undefined when empty so the fetch
  * runtime keeps its "no default list" semantics.
  */
-function splitHostConfig(value: string): string[] | undefined {
+function splitHostConfig(value: unknown): string[] | undefined {
+  if (typeof value !== 'string') return undefined;
   const hosts = value
     .split(',')
     .map((h) => h.trim())

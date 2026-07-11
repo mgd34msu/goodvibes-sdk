@@ -147,6 +147,10 @@ function makeContext(opts: TestContextOverrides): {
         if (key === 'display.stream') return false;
         if (key === 'cache.hitRateWarningThreshold') return 0;
         if (key === 'cache.monitorHitRate') return false;
+        if (key === 'agents.contextCompactThreshold') return 0.85;
+        if (key === 'agents.passiveInjection.budgetTokens') return 800;
+        if (key === 'agents.passiveInjection.relevanceFloor') return 95;
+        if (key === 'agents.passiveInjection.codeLimit') return 3;
         return undefined;
       },
     },
