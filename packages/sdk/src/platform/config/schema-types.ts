@@ -39,6 +39,12 @@ export interface PermissionsToolConfig {
 
 export interface NotificationsConfig {
   webhookUrls: string[];
+  /** Burst-detection observation window (ms) for adaptive-notification-suppression. */
+  burstWindowMs: number;
+  /** Event count within the burst window that trips suppression to panel_only. */
+  burstThreshold: number;
+  /** Cooldown (ms) after a burst before a domain:level group can trip again. */
+  burstCooldownMs: number;
 }
 
 export interface TtsConfig {
@@ -318,6 +324,16 @@ export interface RuntimeConfig {
   eventBus: {
     maxListeners: number;
   };
+  /**
+   * Default per-phase tool-execution budget limits for the
+   * runtime-tools-budget-enforcement feature. A value of 0 means "unlimited"
+   * for that dimension; per-call ToolRuntimeContext.budget still overrides.
+   */
+  toolBudget: {
+    maxMs: number;
+    maxTokens: number;
+    maxCostUsd: number;
+  };
 }
 
 export type BatchMode = 'off' | 'explicit' | 'eligible-by-default';
@@ -437,6 +453,8 @@ export interface GoodVibesConfig {
     model: string;              // default: 'openrouter:openrouter/free'
     embeddingProvider: string;  // default: 'hashed-local'
     systemPromptFile: string;   // default: ''
+    optimizerMode: 'manual' | 'auto' | 'pinned'; // default: 'manual' — provider-optimizer persistent routing mode
+    optimizerPinnedModel: string; // default: '' — provider-qualified model id applied when optimizerMode is 'pinned'
   };
   behavior: {
     autoApprove: boolean;       // default: false
@@ -460,6 +478,8 @@ export interface GoodVibesConfig {
     mode: PermissionMode;       // default: 'prompt'
     tools: PermissionsToolConfig;
     backgroundAgents: BackgroundAgentsMode; // default: 'inherit'
+    divergenceThreshold: number; // default: 0.05 — permission-divergence-dashboard enforce-gate max divergence rate
+    maxDivergenceRecords: number; // default: 500 — retained divergence records for the simulation dashboard
   };
   diagnostics: {
     postEdit: 'on' | 'off';     // default: 'on' — cheap in-process post-edit syntax diagnostics
@@ -529,6 +549,7 @@ export interface GoodVibesConfig {
     autoHeal: boolean;              // default: false — auto-fix syntax errors on write/edit
     defaultTokenBudget: number;     // default: 5000 — default token budget for read operations
     hooksFile: string;              // default: 'hooks.json' — hook configuration file name
+    overflowSpillBackend: 'file' | 'ledger' | 'diagnostics'; // default: 'file' — overflow-spill-backends target
   };
   wrfc: {
     scoreThreshold: number;
@@ -591,6 +612,8 @@ export type ConfigKey =
   | 'provider.model'
   | 'provider.embeddingProvider'
   | 'provider.systemPromptFile'
+  | 'provider.optimizerMode'
+  | 'provider.optimizerPinnedModel'
   | 'behavior.autoApprove'
   | 'behavior.autoCompactThreshold'
   | 'behavior.compactionStrategy'
@@ -605,6 +628,8 @@ export type ConfigKey =
   | 'storage.artifacts.maxBytes'
   | 'permissions.mode'
   | 'permissions.backgroundAgents'
+  | 'permissions.divergenceThreshold'
+  | 'permissions.maxDivergenceRecords'
   | 'permissions.tools.read'
   | 'permissions.tools.write'
   | 'permissions.tools.edit'
@@ -661,6 +686,7 @@ export type ConfigKey =
   | 'tools.autoHeal'
   | 'tools.defaultTokenBudget'
   | 'tools.hooksFile'
+  | 'tools.overflowSpillBackend'
   | 'wrfc.scoreThreshold'
   | 'wrfc.maxFixAttempts'
   | 'wrfc.autoCommit'
@@ -830,6 +856,9 @@ export type ConfigKey =
   | 'relay.requireStepUpForMutations'
   | 'runtime.companionChatLimiter.perSessionLimit'
   | 'runtime.eventBus.maxListeners'
+  | 'runtime.toolBudget.maxMs'
+  | 'runtime.toolBudget.maxTokens'
+  | 'runtime.toolBudget.maxCostUsd'
   | 'telemetry.includeRawPrompts'
   | 'telemetry.decisionOtlpEnabled'
   | 'telemetry.decisionOtlpEndpoint'
@@ -875,7 +904,27 @@ export type ConfigKey =
   | 'cloudflare.r2BucketName'
   | 'cloudflare.secretsStoreName'
   | 'cloudflare.secretsStoreId'
-  | 'cloudflare.maxQueueOpsPerDay';
+  | 'cloudflare.maxQueueOpsPerDay'
+  | 'notifications.burstWindowMs'
+  | 'notifications.burstThreshold'
+  | 'notifications.burstCooldownMs'
+  | 'fetch.sanitizeMode'
+  | 'fetch.trustedHosts'
+  | 'fetch.blockedHosts'
+  | 'security.tokenAudit.rotationCadenceDays'
+  | 'security.tokenAudit.rotationWarningDays'
+  | 'security.tokenAudit.managed'
+  | 'integrations.delivery.maxRetries'
+  | 'integrations.delivery.initialDelayMs'
+  | 'integrations.delivery.maxDelayMs'
+  | 'integrations.delivery.maxDlqSize'
+  | 'integrations.delivery.sloEnforced'
+  | 'policy.bundleSource'
+  | 'policy.bundlePath'
+  | 'agents.passiveInjection.budgetTokens'
+  | 'agents.passiveInjection.relevanceFloor'
+  | 'agents.passiveInjection.codeLimit'
+  | 'agents.contextCompactThreshold';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -891,6 +940,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'provider.model' ? string :
   K extends 'provider.embeddingProvider' ? string :
   K extends 'provider.systemPromptFile' ? string :
+  K extends 'provider.optimizerMode' ? 'manual' | 'auto' | 'pinned' :
+  K extends 'provider.optimizerPinnedModel' ? string :
   K extends 'behavior.autoApprove' ? boolean :
   K extends 'behavior.autoCompactThreshold' ? number :
   K extends 'behavior.compactionStrategy' ? 'structured' | 'distiller' :
@@ -905,6 +956,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'storage.artifacts.maxBytes' ? number :
   K extends 'permissions.mode' ? PermissionMode :
   K extends 'permissions.backgroundAgents' ? BackgroundAgentsMode :
+  K extends 'permissions.divergenceThreshold' ? number :
+  K extends 'permissions.maxDivergenceRecords' ? number :
   K extends 'permissions.tools.read' ? PermissionAction :
   K extends 'permissions.tools.write' ? PermissionAction :
   K extends 'permissions.tools.edit' ? PermissionAction :
@@ -961,6 +1014,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'tools.autoHeal' ? boolean :
   K extends 'tools.defaultTokenBudget' ? number :
   K extends 'tools.hooksFile' ? string :
+  K extends 'tools.overflowSpillBackend' ? 'file' | 'ledger' | 'diagnostics' :
   K extends 'wrfc.scoreThreshold' ? number :
   K extends 'wrfc.maxFixAttempts' ? number :
   K extends 'wrfc.autoCommit' ? boolean :
@@ -1130,6 +1184,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'relay.requireStepUpForMutations' ? boolean :
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   K extends 'runtime.eventBus.maxListeners' ? number :
+  K extends 'runtime.toolBudget.maxMs' ? number :
+  K extends 'runtime.toolBudget.maxTokens' ? number :
+  K extends 'runtime.toolBudget.maxCostUsd' ? number :
   K extends 'telemetry.includeRawPrompts' ? boolean :
   K extends 'telemetry.decisionOtlpEnabled' ? boolean :
   K extends 'telemetry.decisionOtlpEndpoint' ? string :
@@ -1176,4 +1233,24 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'cloudflare.secretsStoreName' ? string :
   K extends 'cloudflare.secretsStoreId' ? string :
   K extends 'cloudflare.maxQueueOpsPerDay' ? number :
+  K extends 'notifications.burstWindowMs' ? number :
+  K extends 'notifications.burstThreshold' ? number :
+  K extends 'notifications.burstCooldownMs' ? number :
+  K extends 'fetch.sanitizeMode' ? 'none' | 'safe-text' | 'strict' :
+  K extends 'fetch.trustedHosts' ? string :
+  K extends 'fetch.blockedHosts' ? string :
+  K extends 'security.tokenAudit.rotationCadenceDays' ? number :
+  K extends 'security.tokenAudit.rotationWarningDays' ? number :
+  K extends 'security.tokenAudit.managed' ? boolean :
+  K extends 'integrations.delivery.maxRetries' ? number :
+  K extends 'integrations.delivery.initialDelayMs' ? number :
+  K extends 'integrations.delivery.maxDelayMs' ? number :
+  K extends 'integrations.delivery.maxDlqSize' ? number :
+  K extends 'integrations.delivery.sloEnforced' ? boolean :
+  K extends 'policy.bundleSource' ? 'none' | 'file' :
+  K extends 'policy.bundlePath' ? string :
+  K extends 'agents.passiveInjection.budgetTokens' ? number :
+  K extends 'agents.passiveInjection.relevanceFloor' ? number :
+  K extends 'agents.passiveInjection.codeLimit' ? number :
+  K extends 'agents.contextCompactThreshold' ? number :
   never;
