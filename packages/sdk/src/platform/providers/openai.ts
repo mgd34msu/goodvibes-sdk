@@ -26,6 +26,7 @@ import {
 import type { OpenAIToolCall } from './tool-formats.js';
 import { accumOpenAIToolCall, finalizeOpenAIToolCalls, applyOpenAIChunkUsage, resolveOpenAIToolCallsAndFallback } from './openai-stream-helpers.js';
 import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
+import { parseRateLimitHeaders } from './rate-limit-headers.js';
 import type { CacheHitTracker } from './cache-strategy.js';
 import { extractOpenAIStreamTextDelta } from './openai-stream-delta.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
@@ -74,12 +75,15 @@ export class OpenAIProvider implements LLMProvider {
       let rawStopReason: string | undefined;
       let stopReason: ChatStopReason = 'unknown';
       let rawToolCalls: OpenAIToolCall[] = [];
+      let rateLimit: ChatResponse['rateLimit'];
 
       const openaiMessages = toOpenAIMessages(messages, systemPrompt);
       const openaiTools = tools && tools.length > 0 ? toOpenAITools(tools) : undefined;
 
       try {
-        const stream = await this.client.chat.completions.create(
+        // .withResponse() surfaces the raw HTTP Response so rate-limit headers
+        // are readable on the SUCCESS path (not only 429s).
+        const created = await this.client.chat.completions.create(
           {
             model,
             messages: openaiMessages as Parameters<typeof this.client.chat.completions.create>[0]['messages'],
@@ -89,9 +93,12 @@ export class OpenAIProvider implements LLMProvider {
             stream_options: { include_usage: true },
           } as Parameters<typeof this.client.chat.completions.create>[0],
           signal !== undefined ? { signal } : undefined,
-        ) as unknown as AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & {
-          controller: AbortController;
+        ).withResponse() as unknown as {
+          data: AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & { controller: AbortController };
+          response: Response;
         };
+        const stream = created.data;
+        rateLimit = parseRateLimitHeaders(created.response.headers) ?? undefined;
 
         const accToolCalls: Map<number, { id: string; name: string; args: string }> = new Map();
 
@@ -160,6 +167,7 @@ export class OpenAIProvider implements LLMProvider {
         },
         stopReason: resolveCompletedStopReason(stopReason, responseText),
         ...withProviderStopReason(rawStopReason),
+        ...(rateLimit ? { rateLimit } : {}),
       };
     }, undefined, onRetry);
   }
