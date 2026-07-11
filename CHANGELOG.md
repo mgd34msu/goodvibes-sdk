@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A decision-log → OTLP exporter: the permission/policy decision log maps to
+  OpenTelemetry span and log semantics.** The decision log already records every
+  allow/deny with its evaluation layer and reason; this exposes that
+  ahead-of-field data by mapping each record to OTLP — `decision.id`, `tool.name`,
+  `command.class`, `permission.mode`, `decision.layer`, `decision.reason`, and
+  `decision.allowed` as attributes — and POSTing it as OTLP/HTTP JSON (which the
+  protocol supports) with the platform's `instrumentedFetch`, so there is no new
+  heavyweight dependency. Honest scope: EXPORT-ONLY, no ingestion. Off by default
+  behind three new config keys — `telemetry.decisionOtlpEnabled`,
+  `telemetry.decisionOtlpEndpoint`, `telemetry.decisionOtlpSignal`
+  (`span` | `log` | `both`) — spans POST to `<endpoint>/v1/traces` and logs to
+  `<endpoint>/v1/logs`. Export never throws: an unreachable collector never
+  blocks a permission decision. New: `exportDecisions`, `buildTracePayload`,
+  `buildLogsPayload`, `decisionToSpan`, `decisionToLogRecord`,
+  `decisionAttributes`, and the OTLP shape types.
 - **A fresh-context DISTILLER compaction strategy, as an alternative to in-place
   structured summarization.** Instead of assembling a handoff from many targeted
   extraction calls over the message history, the distiller makes ONE fresh model

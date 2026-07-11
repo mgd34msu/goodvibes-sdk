@@ -15,6 +15,25 @@ export type {
   SandboxPolicyInput,
 } from './sandbox-policy.js';
 export { DecisionLog } from './decision-log.js';
+export {
+  exportDecisions,
+  buildTracePayload,
+  buildLogsPayload,
+  decisionToSpan,
+  decisionToLogRecord,
+  decisionAttributes,
+} from './decision-otlp.js';
+export type {
+  DecisionOtlpConfig,
+  DecisionOtlpContext,
+  DecisionExportResult,
+  OtlpSpan,
+  OtlpLogRecord,
+  OtlpKeyValue,
+  OtlpAnyValue,
+  OtlpTracePayload,
+  OtlpLogsPayload,
+} from './decision-otlp.js';
 export { runSafetyChecks } from './safety-checks.js';
 export { PermissionSimulator, SimulationEnforcementError } from './simulation.js';
 export { buildDefaultPolicySimulationScenarios, runPolicySimulationScenarios } from './simulation-scenarios.js';

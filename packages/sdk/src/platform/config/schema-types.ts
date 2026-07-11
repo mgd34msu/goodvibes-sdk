@@ -378,6 +378,17 @@ export interface TelemetryConfig {
    * environments; a startup WARN is logged.
    */
   includeRawPrompts: boolean;
+  /**
+   * Export permission/policy decision-log records to an OTLP endpoint. Off by
+   * default (export-only, no ingestion). When enabled with an endpoint, each
+   * recorded decision is mapped to OTLP span and/or log semantics and POSTed as
+   * OTLP/HTTP JSON. See `decisionOtlpSignal` for which record shape is emitted.
+   */
+  decisionOtlpEnabled: boolean;
+  /** OTLP/HTTP JSON endpoint base for decision-log export (empty = disabled). */
+  decisionOtlpEndpoint: string;
+  /** Which OTLP record shape to emit for each decision: span, log, or both. */
+  decisionOtlpSignal: 'span' | 'log' | 'both';
 }
 
 /** At-rest redaction + retention policy for the transcript journal and execution ledger. */
@@ -816,6 +827,9 @@ export type ConfigKey =
   | 'runtime.companionChatLimiter.perSessionLimit'
   | 'runtime.eventBus.maxListeners'
   | 'telemetry.includeRawPrompts'
+  | 'telemetry.decisionOtlpEnabled'
+  | 'telemetry.decisionOtlpEndpoint'
+  | 'telemetry.decisionOtlpSignal'
   | 'atRest.redactionEnabled'
   | 'atRest.retentionMaxAgeDays'
   | 'atRest.retentionMaxTotalMb'
@@ -1112,6 +1126,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   K extends 'runtime.eventBus.maxListeners' ? number :
   K extends 'telemetry.includeRawPrompts' ? boolean :
+  K extends 'telemetry.decisionOtlpEnabled' ? boolean :
+  K extends 'telemetry.decisionOtlpEndpoint' ? string :
+  K extends 'telemetry.decisionOtlpSignal' ? 'span' | 'log' | 'both' :
   K extends 'atRest.redactionEnabled' ? boolean :
   K extends 'atRest.retentionMaxAgeDays' ? number :
   K extends 'atRest.retentionMaxTotalMb' ? number :
