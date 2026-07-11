@@ -32,8 +32,10 @@
  *    carry through to the engine work-item spec. Previously the plan format
  *    constrained best-of-N OUT (every item was single-attempt); the engine now
  *    supports it, so the planner may propose it and a consumer's plan format may
- *    re-enable the field. A best-of-N item is a LEAF (no deps in or out) and is
- *    only expanded under `worktree` isolation — see WorkItemSpec.attempts.
+ *    re-enable the field. A best-of-N item may be NON-LEAF: it may declare its own
+ *    `dependsOn` (each attempt inherits it) and other items may depend on it (they
+ *    gate on the group's picked-and-merged winner — see WorkItemSpec.attempts and
+ *    scheduler.ts dependencyStatus). Only expanded under `worktree` isolation.
  *
  * ASSERT-AT-ASSEMBLY (BIG-3 item 2): even though `assemblePlanProposal` already
  * rejects dangling dependencies and cycles, this function re-checks both and
@@ -128,7 +130,8 @@ export function fromPlanProposal(
     ...(wi.dependsOn.length > 0 ? { dependsOn: [...wi.dependsOn] } : {}),
     // Best-of-N carries through to the engine, which expands an attempts:N item
     // into N sibling attempts and holds the merge for a winner pick (attempts.ts).
-    // Only honored under worktree isolation; a leaf item by construction.
+    // Only honored under worktree isolation. May be non-leaf: dependents gate on
+    // the group's picked-and-merged winner (scheduler.ts dependencyStatus).
     ...(wi.attempts !== undefined ? { attempts: wi.attempts } : {}),
     ...(wi.autoAcceptWinner !== undefined ? { autoAcceptWinner: wi.autoAcceptWinner } : {}),
   }));

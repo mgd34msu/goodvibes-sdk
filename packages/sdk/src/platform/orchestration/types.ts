@@ -264,6 +264,24 @@ export interface WorkItem {
   /** How many sibling attempts the group has (N), carried for display (best-of-N only). */
   attemptTotal?: number | undefined;
   /**
+   * The id of the ORIGINAL spec this attempt was expanded from (best-of-N only).
+   * Every sibling of a group shares it. It is what lets a NON-LEAF best-of-N work:
+   * a dependent declared `dependsOn: [<sourceId>]` no longer dangles once the
+   * source id is rewritten into sibling ids — the dependency gate
+   * (scheduler.ts dependencyStatus) resolves the source id back to this group and
+   * holds the dependent until the group's winner is picked AND merged. Absent on
+   * an ordinary item and on an anonymous (no-id) best-of-N item (which stays a
+   * leaf by construction — nothing can depend on it).
+   */
+  attemptSourceId?: string | undefined;
+  /**
+   * Set true on the ONE sibling accepted as the group's winner at pick time
+   * (best-of-N only). Combined with `mergeState: 'merged'` it marks the winner
+   * whose work has landed on the base branch, which is exactly the point a
+   * dependent of the group may proceed. Losing siblings never carry it.
+   */
+  attemptWinner?: boolean | undefined;
+  /**
    * When true, a judge proposal (fleet.attempts.judge) for this item's group may
    * auto-pick the proposed winner instead of only PROPOSING it. Opt-in per the
    * source item's spec; default (absent/false) means a human always picks.
@@ -298,8 +316,15 @@ export interface WorkItemSpec {
    * Values above {@link MAX_ATTEMPTS} are clamped. Only honored when the
    * workstream is `worktree`-isolated — attempts need isolated trees to compare;
    * under `shared` isolation the value is ignored (a single item runs).
-   * A best-of-N item is a LEAF: no other item may depend on it, and it declares
-   * no dependencies (the winner is chosen by pick, not by the dependency graph).
+   *
+   * A best-of-N item may be NON-LEAF. It MAY declare its own `dependsOn` (each
+   * sibling inherits it, so every attempt waits for the same upstream items), and
+   * other items MAY depend on it: a dependent's `dependsOn: [<thisId>]` is held by
+   * the dependency gate until this group's winner is picked and merged, then
+   * resolves to that winner (the losing attempts are cleaned, so the dependent
+   * builds only on the selected result). The one requirement is that this item
+   * carries a stable `id` (a dependency edge references an id); an anonymous
+   * best-of-N item stays a leaf by construction because nothing can name it.
    */
   readonly attempts?: number | undefined;
   /** Best-of-N: allow a judge proposal for this item's group to auto-pick the winner (opt-in; default: a human picks). */
