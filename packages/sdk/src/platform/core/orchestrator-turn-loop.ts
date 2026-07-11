@@ -43,6 +43,7 @@ import { buildWrfcWorkflowRoutingPrompt } from './wrfc-routing.js';
 import {
   buildPerTurnKnowledgeInjection,
   defaultTurnKnowledgeBudgetTokens,
+  DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR,
   type TurnInjectionRecord,
   type TurnKnowledgeRegistrySource,
   type TurnCodeIndexSource,
@@ -56,7 +57,17 @@ const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
  * SEPARATE from `behavior.autoCompactThreshold` (default 80), which governs
  * CONVERSATION compaction and can be user-tuned or disabled (0) independently of
  * this feature; the injection headroom margin has its own key.
+ *
+ * Final fallback when a config source's `.get()` returns `undefined` for this key
+ * — a real ConfigManager always resolves the schema default (0.85, identical to
+ * this constant) so behaviour is unchanged in production, but `context.configManager`
+ * is typed `Pick<ConfigManager, 'get'>`, and a partial/stub implementation (as used
+ * by some embedders/tests) can legitimately return `undefined`. Without this
+ * fallback, `Math.floor(window * undefined)` is `NaN`, which silently zeroes the
+ * injection budget every turn instead of falling back to a sane default. Mirrors
+ * the agent-runner's identical CONTEXT_COMPACT_THRESHOLD fallback.
  */
+const DEFAULT_PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD = 0.85;
 
 interface HookDispatcherLike {
   fire(event: HookEvent): Promise<HookResult>;
@@ -306,7 +317,8 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     const composedBaseSystemPrompt = wrfcRoutingPromptForCall
       ? `${baseSystemPromptForCall}\n\n${wrfcRoutingPromptForCall}`
       : baseSystemPromptForCall;
-    const contextCompactThreshold = context.configManager.get('agents.contextCompactThreshold');
+    const contextCompactThreshold = context.configManager.get('agents.contextCompactThreshold')
+      ?? DEFAULT_PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD;
     if (passiveKnowledgeInjectionEnabled && newUserInputThisTurn && context.memoryRegistry) {
       const configuredBudget = context.passiveKnowledgeInjectionBudgetTokens
         ?? defaultTurnKnowledgeBudgetTokens(
@@ -328,7 +340,8 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       }
       if (turnBudgetTokens > 0) {
         const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor
-          ?? context.configManager.get('agents.passiveInjection.relevanceFloor');
+          ?? context.configManager.get('agents.passiveInjection.relevanceFloor')
+          ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
         // Stage B: code hits share this turn's SAME budget/floor. Gated on the separate
         // (default-off) code-injection flag AND the embedder's storage.codeIndexEnabled
         // setting, both folded into isPassiveCodeInjectionEnabled by the orchestrator.
