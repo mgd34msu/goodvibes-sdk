@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **MCP server elicitation requests now reach the model and the human through
+  the one approval broker.** An MCP server's `elicitation/create` request (the
+  spec's ask-the-user channel) was previously hard-rejected by the client with
+  a JSON-RPC `-32601` before anyone was consulted. It is now translated into a
+  `PermissionPromptRequest` — attributed to the asking server
+  (`attribution: { kind: 'mcp-server', serverName }`), category `delegate` —
+  and routed through the same `ApprovalBroker.requestApproval` as a permission
+  ask, so every surface's existing approval UI renders it and background-agent
+  bubbling applies. Approve maps to the elicitation `accept` action (carrying
+  any surface-supplied content, never fabricated); deny/expire maps to
+  `decline`. The client advertises the `elicitation` capability at handshake
+  only when the resolver is wired, and still returns `-32601` for genuinely
+  unsupported server methods (`roots/list`, `sampling/createMessage`).
 - **An agent-side ACP adapter: GoodVibes is now drivable from ACP-capable
   editors (Zed and others) over stdio.** `serveAcpAgent` /
   `GoodVibesAcpAgent` (exported from `@pellux/goodvibes-sdk/platform/acp`, run

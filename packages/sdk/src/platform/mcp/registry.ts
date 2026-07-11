@@ -21,6 +21,10 @@ import type {
   McpProcessSpec,
 } from './client.js';
 import type { McpToolInfo, McpToolSchema } from './client.js';
+import {
+  parseElicitationParams,
+  type McpElicitationHandler,
+} from './elicitation.js';
 import type {
   McpConfigRoots,
   McpConfigScope,
@@ -90,6 +94,7 @@ export class McpRegistry {
   private sandboxSessions: SandboxSessionRegistry;
   private sandboxSessionByServer = new Map<string, string>();
   private readonly hookDispatcher: Pick<HookDispatcher, 'fire'>;
+  private elicitationHandler: McpElicitationHandler | null = null;
 
   constructor(options: {
     readonly hookDispatcher: Pick<HookDispatcher, 'fire'>;
@@ -101,6 +106,16 @@ export class McpRegistry {
 
   setRuntimeBus(runtimeBus: RuntimeEventBus | null): void {
     this.runtimeBus = runtimeBus;
+  }
+
+  /**
+   * Wire the resolver for MCP `elicitation/create` requests. When set, connected
+   * clients advertise the elicitation capability and route incoming elicitation
+   * requests through this handler (the approval broker) instead of rejecting
+   * them. Set once at composition; applies to servers connected afterwards.
+   */
+  setElicitationHandler(handler: McpElicitationHandler | null): void {
+    this.elicitationHandler = handler;
   }
 
   setSandboxRuntime(configManager: ConfigManager, sessions: SandboxSessionRegistry): void {
@@ -507,11 +522,18 @@ export class McpRegistry {
       sandboxSessionId = resolved?.sessionId ?? null;
       processSpec = resolved?.processSpec;
     }
+    const elicitationHandler = this.elicitationHandler;
     const client = new McpClient(serverConfig, {
       ...(processSpec ? { processSpec } : {}),
       onNotification: (notification) => this._handleClientNotification(notification),
       onServerRequest: (request) => this._handleClientServerRequest(request),
       onUnhandledResponse: (response) => this._handleClientUnhandledResponse(response),
+      ...(elicitationHandler
+        ? {
+            onElicitation: (input) =>
+              elicitationHandler(parseElicitationParams(input.serverName, input.params)),
+          }
+        : {}),
     });
     this.freshness.registerServer(name);
     try {
