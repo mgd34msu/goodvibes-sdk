@@ -71,6 +71,9 @@ export const runtimeConfigDefaults = {
   },
   telemetry: {
     includeRawPrompts: false,
+    decisionOtlpEnabled: false,
+    decisionOtlpEndpoint: '',
+    decisionOtlpSignal: 'span',
   },
   automation: {
     enabled: false,
@@ -589,6 +592,25 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
       'When false (default), turn emitters emit a redacted prompt summary {length, sha256, first100chars} instead of raw prompt/response content. ' +
       'Set to true ONLY for debugging in non-production environments — raw prompts may contain PII, secrets, or proprietary data. ' +
       'When true at startup, a WARN log is emitted to make the configuration visible to ops.',
+  },
+  {
+    key: 'telemetry.decisionOtlpEnabled',
+    type: 'boolean',
+    default: false,
+    description: 'Export permission/policy decision-log records to an OTLP endpoint (export-only, no ingestion). Requires telemetry.decisionOtlpEndpoint',
+  },
+  {
+    key: 'telemetry.decisionOtlpEndpoint',
+    type: 'string',
+    default: '',
+    description: 'OTLP/HTTP JSON endpoint base for decision-log export (empty = disabled). Spans POST to <base>/v1/traces, logs to <base>/v1/logs',
+  },
+  {
+    key: 'telemetry.decisionOtlpSignal',
+    type: 'enum',
+    default: 'span',
+    description: 'Which OTLP record shape each decision is emitted as: span, log, or both',
+    enumValues: ['span', 'log', 'both'],
   },
   {
     key: 'batch.mode',
