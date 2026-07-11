@@ -37,8 +37,8 @@
     "rationale": "Node-only contract re-export entry; measured 70 B gzip @ commit 4e5a5e2; headroom max(ceil(70*1.2)=84, 70+50=120) → 120 (+50 B floor dominates by 36 B)"
   },
   "./daemon": {
-    "gzip_bytes": 484,
-    "rationale": "daemon route handler re-export entry; measured 403 B gzip after adding the daemon-side relay surface (reachability control + WebAuthn step-up policy hook + LAN certificate minter re-exports for the zero-knowledge relay); headroom max(ceil(403*1.2)=484, 403+50=453) → 484"
+    "gzip_bytes": 658,
+    "rationale": "daemon route handler re-export entry; measured 548 B gzip after adding the StepUpService class + its ceremony types (RuntimeServices.stepUpService is required — DaemonServer.start() calls createVerifier() unconditionally — so a consumer composing its own RuntimeServices-compatible object needs the class, not a deep import) alongside the pre-existing relay surface (reachability control + WebAuthn step-up policy hook + LAN certificate minter re-exports for the zero-knowledge relay); headroom max(ceil(548*1.2)=658, 548+50=598) → 658 (1.2x dominates by 60 B)"
   },
   "./errors": {
     "gzip_bytes": 112,
@@ -388,6 +388,10 @@
   "./platform/runtime/sandbox": {
     "gzip_bytes": 270,
     "rationale": "new public package export budget; measured 220 B gzip @ v0.33.0 release verification; headroom max(ceil(220*1.2)=264, 220+50=270) -> 270 (+50 B floor dominates)"
+  },
+  "./platform/runtime/emitters": {
+    "gzip_bytes": 264,
+    "rationale": "new public entrypoint (the typed runtime-event emitter wrappers barrel, e.g. emitPermissionModeChanged, previously reachable only by deep-importing platform/runtime/emitters/*.js; a consumer composing its own RuntimeServices-compatible object needs these to emit the same typed events the daemon does); measured 214 B gzip; headroom max(ceil(214*1.2)=257, 214+50=264) -> 264 (+50 B floor dominates)"
   },
   "./platform/runtime/permissions/sandbox-policy": {
     "gzip_bytes": 2106,

@@ -21,6 +21,7 @@ import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
 import { toProviderError } from '../utils/error-display.js';
+import { parseRateLimitHeaders } from './rate-limit-headers.js';
 
 const DEFAULT_MAX_OUTPUT = 8192;
 
@@ -40,6 +41,19 @@ type AnthropicMessageStream = AsyncIterable<MessageStreamEvent> & {
       cache_creation_input_tokens?: number | null | undefined;
     };
   }>;
+  /**
+   * The raw HTTP `Response`, populated once the stream connects (well before
+   * `finalMessage()` resolves — the SDK's `_connected(response)` fires as soon
+   * as headers arrive). Verified against the installed
+   * `@anthropic-ai/sdk` `lib/MessageStream.d.ts`: `get response(): Response |
+   * null | undefined`. Both AmazonBedrockProvider (`@anthropic-ai/bedrock-sdk`,
+   * whose `messages` resource is literally `@anthropic-ai/sdk`'s `Resources.
+   * Messages` re-exported — see its `client.d.ts`) and AnthropicVertexProvider
+   * (`AnthropicVertexClient extends BaseAnthropic` from the same SDK, using the
+   * same `Resources.Messages`) return this exact class from `.stream()`, so one
+   * read site here covers both.
+   */
+  readonly response?: Response | null | undefined;
 };
 
 export interface AnthropicSdkProviderAuthConfig {
@@ -146,6 +160,11 @@ export class AnthropicSdkProvider implements LLMProvider {
           this.name,
           finalMessage.content as AnthropicContentBlock[],
         );
+        // By the time finalMessage() resolves, the stream has long since
+        // connected, so `.response` is populated whenever the transport gave the
+        // SDK a Response object at all (a Bedrock/Vertex proxy that returns
+        // something other than a genuine Response would leave it absent).
+        const rateLimit = stream.response ? (parseRateLimitHeaders(stream.response.headers) ?? undefined) : undefined;
 
         return {
           content: parsed.text,
@@ -158,6 +177,7 @@ export class AnthropicSdkProvider implements LLMProvider {
           },
           stopReason: resolveCompletedStopReason(stopReason, parsed.text),
           ...withProviderStopReason(rawStopReason),
+          ...(rateLimit ? { rateLimit } : {}),
         };
       } catch (error) {
         throw toProviderError(error, {
