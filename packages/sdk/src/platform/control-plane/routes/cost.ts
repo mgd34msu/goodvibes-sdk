@@ -66,16 +66,27 @@ export function createQuotaFanoutGetHandler(tracker: Pick<QuotaWindowTracker, 'a
   };
 }
 
-export interface CostGatewayDeps {
-  readonly costAttribution: Pick<CostAttributionService, 'attribution'>;
-  readonly quotaWindow: Pick<QuotaWindowTracker, 'assessFanout'>;
+export function createQuotaSnapshotGetHandler(tracker: Pick<QuotaWindowTracker, 'snapshot'>): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const provider = requireString(params.provider, 'provider');
+    return tracker.snapshot(provider);
+  };
 }
 
-/** Attach the cost.attribution.get + quota.fanout.get handlers to their descriptors. Missing descriptor is a silent no-op. */
+export interface CostGatewayDeps {
+  readonly costAttribution: Pick<CostAttributionService, 'attribution'>;
+  readonly quotaWindow: Pick<QuotaWindowTracker, 'assessFanout' | 'snapshot'>;
+}
+
+/** Attach the cost.attribution.get + quota.fanout.get + quota.snapshot.get handlers to their descriptors. Missing descriptor is a silent no-op. */
 export function registerCostGatewayMethods(catalog: GatewayMethodCatalog, deps: CostGatewayDeps): void {
   const costDescriptor = catalog.get('cost.attribution.get');
   if (costDescriptor) catalog.register(costDescriptor, createCostAttributionGetHandler(deps.costAttribution), { replace: true });
 
   const quotaDescriptor = catalog.get('quota.fanout.get');
   if (quotaDescriptor) catalog.register(quotaDescriptor, createQuotaFanoutGetHandler(deps.quotaWindow), { replace: true });
+
+  const snapshotDescriptor = catalog.get('quota.snapshot.get');
+  if (snapshotDescriptor) catalog.register(snapshotDescriptor, createQuotaSnapshotGetHandler(deps.quotaWindow), { replace: true });
 }

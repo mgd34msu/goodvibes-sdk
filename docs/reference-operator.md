@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `381`
+- Methods: `382`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -66440,6 +66440,77 @@ Assess whether spawning N agents against a provider likely exhausts its quota wi
     "verdict",
     "reason",
     "evidence"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `quota.snapshot.get`
+
+Return the most recent observed quota window for a provider — remaining, limit, reset, and any active cooldown — parsed from rate-limit headers carried on ordinary (successful) responses, so a consumer can render remaining quota BEFORE hitting a limit. hasSignal is false (with the observed-* fields absent) when no rate-limit signal has been seen for the provider in the lookback window: an honest "no observation", never a fabricated full quota.
+
+- Title: `Get Observed Quota Snapshot`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:telemetry`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string"
+    },
+    "hasSignal": {
+      "type": "boolean"
+    },
+    "observedAt": {
+      "type": "number"
+    },
+    "remaining": {
+      "type": "number"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "resetAt": {
+      "type": "number"
+    },
+    "activeCooldownMs": {
+      "type": "number"
+    },
+    "recentRateLimitCount": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "provider",
+    "hasSignal",
+    "recentRateLimitCount"
   ],
   "additionalProperties": false
 }

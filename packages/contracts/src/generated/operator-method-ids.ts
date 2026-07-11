@@ -284,6 +284,7 @@ export const OPERATOR_METHOD_IDS = [
   "push.subscriptions.verify",
   "push.vapid.get",
   "quota.fanout.get",
+  "quota.snapshot.get",
   "remote.node_host.contract",
   "remote.pair.requests.approve",
   "remote.pair.requests.list",

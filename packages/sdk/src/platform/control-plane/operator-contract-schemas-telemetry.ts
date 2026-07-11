@@ -418,3 +418,26 @@ export const QUOTA_FANOUT_GET_OUTPUT_SCHEMA = objectSchema({
   reason: STRING_SCHEMA,
   evidence: FANOUT_EVIDENCE_SCHEMA,
 }, ['provider', 'verdict', 'reason', 'evidence']);
+
+// ── Quota snapshot (remaining-before-limit render) ────────────────────────────
+
+export const QUOTA_SNAPSHOT_GET_INPUT_SCHEMA = objectSchema({
+  provider: STRING_SCHEMA,
+}, ['provider']);
+
+/**
+ * A point-in-time view of a provider's observed quota window, parsed from
+ * rate-limit headers on ordinary (successful) responses. `hasSignal:false` (with
+ * every observed-* field absent) when nothing has been observed for the provider
+ * — an honest "no observation", never a fabricated full quota.
+ */
+export const QUOTA_SNAPSHOT_GET_OUTPUT_SCHEMA = objectSchema({
+  provider: STRING_SCHEMA,
+  hasSignal: BOOLEAN_SCHEMA,
+  observedAt: NUMBER_SCHEMA,
+  remaining: NUMBER_SCHEMA,
+  limit: NUMBER_SCHEMA,
+  resetAt: NUMBER_SCHEMA,
+  activeCooldownMs: NUMBER_SCHEMA,
+  recentRateLimitCount: NUMBER_SCHEMA,
+}, ['provider', 'hasSignal', 'recentRateLimitCount']);

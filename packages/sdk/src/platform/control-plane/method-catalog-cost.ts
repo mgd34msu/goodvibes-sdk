@@ -17,6 +17,8 @@ import {
   COST_ATTRIBUTION_GET_OUTPUT_SCHEMA,
   QUOTA_FANOUT_GET_INPUT_SCHEMA,
   QUOTA_FANOUT_GET_OUTPUT_SCHEMA,
+  QUOTA_SNAPSHOT_GET_INPUT_SCHEMA,
+  QUOTA_SNAPSHOT_GET_OUTPUT_SCHEMA,
 } from './operator-contract-schemas-telemetry.js';
 
 export const builtinGatewayCostMethodDescriptors: readonly GatewayMethodDescriptor[] = [
@@ -39,5 +41,15 @@ export const builtinGatewayCostMethodDescriptors: readonly GatewayMethodDescript
     transport: ['ws'],
     inputSchema: QUOTA_FANOUT_GET_INPUT_SCHEMA,
     outputSchema: QUOTA_FANOUT_GET_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'quota.snapshot.get',
+    title: 'Get Observed Quota Snapshot',
+    description: 'Return the most recent observed quota window for a provider — remaining, limit, reset, and any active cooldown — parsed from rate-limit headers carried on ordinary (successful) responses, so a consumer can render remaining quota BEFORE hitting a limit. hasSignal is false (with the observed-* fields absent) when no rate-limit signal has been seen for the provider in the lookback window: an honest "no observation", never a fabricated full quota.',
+    category: 'quota',
+    scopes: ['read:telemetry'],
+    transport: ['ws'],
+    inputSchema: QUOTA_SNAPSHOT_GET_INPUT_SCHEMA,
+    outputSchema: QUOTA_SNAPSHOT_GET_OUTPUT_SCHEMA,
   }),
 ];

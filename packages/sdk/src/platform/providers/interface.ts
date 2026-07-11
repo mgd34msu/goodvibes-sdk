@@ -275,6 +275,20 @@ export interface ChatResponse {
     breakpointsPlaced: number;
     hitRate?: number | undefined;  // Computed from this response's usage
   };
+  /**
+   * Rate-limit / quota snapshot parsed from THIS response's headers (populated on
+   * every response, not just 429s), when the provider carried recognized headers.
+   * Undefined when no rate-limit header was present. Fields are only set when a
+   * header genuinely carried them — never a fabricated "full quota". See
+   * rate-limit-headers.ts. Downstream, the runtime records this into the
+   * QuotaWindowTracker so consumers can render remaining quota before a limit.
+   */
+  rateLimit?: {
+    limit?: number | undefined;
+    remaining?: number | undefined;
+    resetAt?: number | undefined;
+    retryAfterMs?: number | undefined;
+  } | undefined;
 }
 
 export type ProviderMessage =

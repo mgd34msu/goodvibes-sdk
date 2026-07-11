@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.6.1
- * Methods: 381 total, 351 REST-routed, 30 ws-only invoke.
+ * Methods: 382 total, 351 REST-routed, 31 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1473,6 +1473,7 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "push.subscriptions.verify",
   "push.vapid.get",
   "quota.fanout.get",
+  "quota.snapshot.get",
   "rewind.apply",
   "rewind.plan",
   "sessions.changes.get",
@@ -1767,6 +1768,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "push.subscriptions.verify": "ws-invoke",
   "push.vapid.get": "ws-invoke",
   "quota.fanout.get": "ws-invoke",
+  "quota.snapshot.get": "ws-invoke",
   "stepup.challenge.mint": "rest",
   "stepup.credentials.register": "rest",
   "remote.node_host.contract": "rest",
@@ -14561,6 +14563,21 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "observedLimit": 0,
         "requestedAgents": 0
       }
+    }
+  },
+  "quota.snapshot.get": {
+    "input": {
+      "provider": "sample"
+    },
+    "output": {
+      "provider": "sample",
+      "hasSignal": false,
+      "observedAt": 0,
+      "remaining": 0,
+      "limit": 0,
+      "resetAt": 0,
+      "activeCooldownMs": 0,
+      "recentRateLimitCount": 0
     }
   },
   "stepup.challenge.mint": {

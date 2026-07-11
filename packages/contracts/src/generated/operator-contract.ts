@@ -65448,6 +65448,68 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "quota.snapshot.get",
+        "title": "Get Observed Quota Snapshot",
+        "description": "Return the most recent observed quota window for a provider — remaining, limit, reset, and any active cooldown — parsed from rate-limit headers carried on ordinary (successful) responses, so a consumer can render remaining quota BEFORE hitting a limit. hasSignal is false (with the observed-* fields absent) when no rate-limit signal has been seen for the provider in the lookback window: an honest \"no observation\", never a fabricated full quota.",
+        "category": "quota",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:telemetry"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "hasSignal": {
+              "type": "boolean"
+            },
+            "observedAt": {
+              "type": "number"
+            },
+            "remaining": {
+              "type": "number"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "resetAt": {
+              "type": "number"
+            },
+            "activeCooldownMs": {
+              "type": "number"
+            },
+            "recentRateLimitCount": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "provider",
+            "hasSignal",
+            "recentRateLimitCount"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "stepup.challenge.mint",
         "title": "Mint Step-up Challenge",
         "description": "Issue a short-lived, single-use WebAuthn challenge bound to the calling session/rendezvous. A surface passes it to navigator.credentials.get and returns the assertion on its next mutating relay call. The freshness window (ttlMs) is clamped to 5s–300s (default 120s).",
@@ -87562,10 +87624,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 381,
-      "typedInputs": 381,
+      "methods": 382,
+      "typedInputs": 382,
       "genericInputs": 0,
-      "typedOutputs": 381,
+      "typedOutputs": 382,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -87574,8 +87636,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 381,
-      "validated": 379,
+      "methods": 382,
+      "validated": 380,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }
