@@ -134,6 +134,13 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // verb (auth, OTLP ingestion, contract introspection, GraphQL execution).
     'login', 'current', 'contract', 'schema', 'execute', 'logs', 'metrics', 'traces', 'web',
   ],
+  'relay-step-up-ceremony': [
+    // The relay WebAuthn step-up ceremony: `mint` issues a single-use challenge a
+    // surface signs with a passkey before a mutating relay call — named for the
+    // cryptographic act, not a generic CRUD lifecycle. (Credential `register` is
+    // already a CORE_VERB.)
+    'mint',
+  ],
   'ingest-and-content': [
     // Content-shaped verbs describing what is being brought in or produced,
     // not a generic lifecycle action.

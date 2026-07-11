@@ -48,6 +48,7 @@ import { registerCiGatewayMethods } from './ci.js';
 import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief } from '../../ci-watch/index.js';
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
 import { registerRuntimeMetricsGatewayMethods } from './runtime-metrics.js';
+import { registerStepUpGatewayMethods, type StepUpGatewayService } from './stepup.js';
 import { dirname } from 'node:path';
 import { registerRewindGatewayMethods } from './rewind.js';
 import { registerWorkspacesGatewayMethods } from './workspaces.js';
@@ -188,6 +189,14 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * unaffected either way.
    */
   readonly conversationRewindPort?: RewindConversationPort | null | undefined;
+  /**
+   * The relay WebAuthn step-up ceremony service. When present, the
+   * stepup.credentials.register + stepup.challenge.mint verbs are registered over
+   * it — the SAME instance whose verifier the relay dispatch gate installs
+   * (services.ts constructs one and threads it to both). Absent (an embed with no
+   * relay wiring) → the verbs stay cataloged-but-unhandled, a graceful degrade.
+   */
+  readonly stepUpService?: StepUpGatewayService | undefined;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -377,6 +386,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       deps.shellPaths.resolveUserPath('control-plane', 'push-subscriptions.json'),
     ),
   });
+  // Relay WebAuthn step-up ceremony verbs (register a credential, mint a
+  // challenge). Registered only when the composition root threads the shared
+  // service (the one whose verifier the relay gate installs).
+  if (deps.stepUpService) {
+    registerStepUpGatewayMethods(catalog, deps.stepUpService);
+  }
+
   registerPushGatewayMethods(catalog, pushService);
   // Real event source: approvals-needed -> push to every registered device.
   // The unsubscribe handle is intentionally not retained — the subscription

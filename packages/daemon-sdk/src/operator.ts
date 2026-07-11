@@ -35,8 +35,8 @@ const INVALID_ENCODING_RESPONSE = Response.json(
  *   authenticated session per handler implementation.
  * - STATE-CHANGING routes (service install/start/stop, route bindings,
  *   automation jobs, knowledge ingest) — always `withAdmin(context, req, ...)`.
- * - SCHEDULER/RUNTIME routes (getSchedulerCapacity, getRuntimeMetrics) —
- *   require admin per handler implementation.
+ * - SCHEDULER routes (getSchedulerCapacity) — require admin per handler
+ *   implementation.
  *
  * Dispatcher does not short-circuit unauthenticated requests; all auth
  * enforcement lives in the handler factories (system-routes.ts,
@@ -365,7 +365,10 @@ async function dispatchOperatorRoutesInner(
   if (pathname === '/api/local-auth/bootstrap-file' && method === 'DELETE') return handlers.deleteBootstrapFile(req);
 
   if (pathname === '/api/runtime/scheduler' && method === 'GET') return handlers.getSchedulerCapacity(req);
-  if (pathname === '/api/runtime/metrics' && method === 'GET') return handlers.getRuntimeMetrics(req);
+  // GET /api/runtime/metrics is served by the gateway-REST parity table
+  // (gateway-rest-routes.ts → runtime.metrics.get), which dispatchDaemonApiRoutes
+  // tries ahead of this dispatcher. The raw handler that once lived here was
+  // removed to consolidate on the single gateway-verb mechanism.
 
   if (pathname === '/api/panels' && method === 'GET') return handlers.getPanels();
   if (pathname === '/api/panels/open' && method === 'POST') return handlers.postPanelOpen(req);

@@ -12,7 +12,9 @@ import {
   createDaemonSystemRouteHandlers,
   createDaemonIntegrationRouteHandlers,
   createDaemonRuntimeSessionRouteHandlers,
-  createDaemonRuntimeRouteHandlers,
+  dispatchGatewayRestRoutes,
+  dispatchDaemonApiRoutes,
+  GATEWAY_REST_ROUTES,
 } from '../packages/daemon-sdk/dist/index.js';
 import { AccountsSnapshotResponseSchema } from '../packages/contracts/dist/index.js';
 import type {
@@ -341,88 +343,60 @@ describe('createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents auth', 
 });
 
 // ---------------------------------------------------------------------------
-// createDaemonRuntimeRouteHandlers getRuntimeMetrics
+// GET /api/runtime/metrics — consolidated on the gateway verb (runtime.metrics.get)
+//
+// The daemon-sdk raw getRuntimeMetrics handler was removed; the URL is now
+// served solely by the gateway-REST parity table, which dispatchDaemonApiRoutes
+// tries ahead of the operator dispatcher. That table routes the path to
+// invokeGatewayRestVerb for methodId 'runtime.metrics.get', whose read:telemetry
+// scope gate is enforced by the SDK's invokeGatewayMethodCall (pinned in
+// runtime-metrics-gateway-verb.test.ts). These tests pin the surviving daemon-sdk
+// surface: the URL keeps answering, and it answers by delegating to the single
+// gateway-verb gate rather than any bypassing raw handler.
 // ---------------------------------------------------------------------------
 
-describe('createDaemonRuntimeRouteHandlers getRuntimeMetrics auth', () => {
-  function makeContext(): DaemonRuntimeRouteContext {
-    return {
-      requireAdmin: makeRequireAdmin(ADMIN_TOKEN),
-      snapshotMetrics: () => ({ uptimeMs: 1234 }),
-      sessionBroker: {
-        start: async () => {},
-        submitMessage: async () => { throw new Error('not expected'); },
-        steerMessage: async () => { throw new Error('not expected'); },
-        followUpMessage: async () => { throw new Error('not expected'); },
-        bindAgent: async () => {},
-        createSession: async () => ({ id: 'stub' }),
-        getSession: () => null,
-        getMessages: () => [],
-        getInputs: () => [],
-        closeSession: async () => null,
-        reopenSession: async () => null,
-        cancelInput: async () => null,
-        completeAgent: async () => {},
-        appendCompanionMessage: async () => {},
-      },
-      agentManager: { getStatus: () => null, cancel: () => {} },
-      automationManager: {
-        listJobs: () => [],
-        listRuns: () => [],
-        getRun: () => null,
-        triggerHeartbeat: async () => ({}),
-        cancelRun: async () => null,
-        retryRun: async () => { throw new Error('not expected'); },
-        createJob: async () => ({ id: 'stub-job' }),
-        updateJob: async () => null,
-        removeJob: async () => {},
-        setEnabled: async () => null,
-        runNow: async () => ({ id: 'stub-run', status: 'running' }),
-        getSchedulerCapacity: () => ({ slotsTotal: 4, slotsInUse: 0, queueDepth: 0, oldestQueuedAgeMs: null }),
-      },
-      normalizeAtSchedule: () => ({}),
-      normalizeEverySchedule: () => ({}),
-      normalizeCronSchedule: () => ({}),
-      routeBindings: { start: async () => {}, getBinding: () => undefined },
-      trySpawnAgent: () => new Response(JSON.stringify({ error: 'not expected' }), { status: 500 }),
-      queueSurfaceReplyFromBinding: () => {},
-      surfaceDeliveryEnabled: () => false,
-      syncSpawnedAgentTask: () => {},
-      syncFinishedAgentTask: () => {},
-      configManager: { get: () => undefined },
-      runtimeStore: null,
-      runtimeDispatch: null,
-      publishConversationFollowup: () => {},
-      openSessionEventStream: () => new Response('', { status: 200 }),
-      parseJsonBody: async () => ({}),
-      parseOptionalJsonBody: async () => null,
-      recordApiResponse: (_req: unknown, _path: unknown, res: Response) => res,
-    } as unknown as DaemonRuntimeRouteContext;
-  }
+describe('GET /api/runtime/metrics gateway-REST consolidation', () => {
+  const metricsReq = (): Request => new Request('http://localhost/api/runtime/metrics', { method: 'GET' });
 
-  test('getRuntimeMetrics allows admin, denies non-admin', async () => {
-    const handlers = createDaemonRuntimeRouteHandlers(makeContext());
-
-    const allowed = await handlers.getRuntimeMetrics(adminReq);
-    expect(allowed.status).not.toBe(403);
-    const allowedBody = await allowed.json() as Record<string, unknown>;
-    expect(allowedBody['uptimeMs']).toBe(1234);
-
-    const denied = await handlers.getRuntimeMetrics(nonAdminReq);
-    expect(denied.status).toBe(403);
+  test('the gateway-REST table maps GET /api/runtime/metrics to runtime.metrics.get', () => {
+    const entry = GATEWAY_REST_ROUTES.find(
+      (r) => r.method === 'GET' && r.methodId === 'runtime.metrics.get',
+    );
+    expect(entry).toBeDefined();
+    expect(entry!.regex.test('/api/runtime/metrics')).toBe(true);
   });
 
-  test('identity-of-request: getRuntimeMetrics passes each call-site request to requireAdmin', async () => {
-    const seen: Request[] = [];
-    const requireAdmin = (req: Request): Response | null => {
-      seen.push(req);
-      return req.headers.get('authorization') === `Bearer ${ADMIN_TOKEN}` ? null : new Response('', { status: 403 });
-    };
-    const ctx = makeContext();
-    const handlers = createDaemonRuntimeRouteHandlers({ ...ctx, requireAdmin });
-    await handlers.getRuntimeMetrics(adminReq);
-    await handlers.getRuntimeMetrics(nonAdminReq);
-    expect(seen[0]).toBe(adminReq);
-    expect(seen[1]).toBe(nonAdminReq);
+  test('dispatchGatewayRestRoutes routes the URL through invokeGatewayRestVerb (single gateway gate)', async () => {
+    const seen: Array<{ methodId: string; req: Request }> = [];
+    const response = await dispatchGatewayRestRoutes(metricsReq(), {
+      invokeGatewayRestVerb: (invocation) => {
+        seen.push({ methodId: invocation.methodId, req: invocation.req });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+    expect(response).not.toBeNull();
+    expect(response!.status).toBe(200);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.methodId).toBe('runtime.metrics.get');
+  });
+
+  test('dispatchDaemonApiRoutes serves the URL from the gateway-REST leg, not any raw runtime handler', async () => {
+    let restVerbCalled = false;
+    const handlers = {
+      invokeGatewayRestVerb: (invocation: { methodId: string }) => {
+        restVerbCalled = invocation.methodId === 'runtime.metrics.get';
+        return new Response(JSON.stringify({ served: 'gateway' }), { status: 200 });
+      },
+    } as unknown as Parameters<typeof dispatchDaemonApiRoutes>[1];
+    const response = await dispatchDaemonApiRoutes(metricsReq(), handlers);
+    expect(response).not.toBeNull();
+    expect(response!.status).toBe(200);
+    expect(restVerbCalled).toBe(true);
+    expect(await response!.json()).toEqual({ served: 'gateway' });
+  });
+
+  test('when the daemon has not wired invokeGatewayRestVerb, the URL degrades to unrouted (null)', async () => {
+    const response = await dispatchGatewayRestRoutes(metricsReq(), {});
+    expect(response).toBeNull();
   });
 });

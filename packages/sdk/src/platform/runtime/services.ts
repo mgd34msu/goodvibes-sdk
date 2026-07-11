@@ -9,6 +9,7 @@ import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } fr
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
 import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerGatewayVerbGroups } from '../control-plane/index.js';
+import { StepUpService } from '../relay/step-up-service.js';
 import { hasFreshSurfaceParticipant, SURFACE_ROUTE_FRESHNESS_MS } from '../control-plane/session-broker-sessions.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { WatcherRegistry } from '../watchers/index.js';
@@ -174,6 +175,8 @@ export interface RuntimeServices {
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
   readonly serviceRegistry: ServiceRegistry;
   readonly secretsManager: SecretsManager;
+  /** Relay WebAuthn step-up ceremony service (shared by the stepup.* verbs and the relay gate's verifier). */
+  readonly stepUpService: StepUpService;
   readonly subscriptionManager: SubscriptionManager;
   readonly localUserAuthManager: UserAuthManager;
   readonly profileManager: ProfileManager;
@@ -781,7 +784,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     const s = sessionBroker.getSession(sessionId);
     return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
   };
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine }); // see routes/register-gateway-verb-groups.ts
+  const stepUpService = new StepUpService({ secrets: secretsManager });
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,
@@ -814,6 +818,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexReindexScheduler,
     serviceRegistry,
     secretsManager,
+    stepUpService,
     subscriptionManager,
     localUserAuthManager,
     profileManager,

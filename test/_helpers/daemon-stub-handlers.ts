@@ -150,7 +150,6 @@ function remoteAndRuntimeStubs(): HandlerStubs {
     cancelRemoteWork: jsonStub({ ok: true }),
     getRemoteNodeHostContract: jsonStub({}),
     getSchedulerCapacity: jsonStub({ capacity: 0 }),
-    getRuntimeMetrics: jsonStub({ metrics: {} }),
     getRuntimeTask: jsonStub(null),
     runtimeTaskAction: jsonStub({ ok: true }),
     getTaskStatus: jsonStub({ status: 'pending' }),

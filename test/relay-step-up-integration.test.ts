@@ -87,4 +87,33 @@ describe('relay step-up gate end-to-end', () => {
     client.close();
     reachability.stop();
   });
+
+  test('the challenge-mint bootstrap path is exempt from the gate (mutating, but not blocked)', async () => {
+    const reachability = buildDaemonRelayReachability(
+      fakeConfig({ 'relay.rendezvousId': 'rid-stepup-mint' }),
+      memSecrets,
+      flags,
+      echo,
+      silent,
+      // A verifier that refuses everything: proves the mint path bypasses it.
+      async () => false,
+    );
+    await reachability.start();
+    await waitRegistered(() => reachability.status);
+    const pairing = await reachability.mintPairing();
+    const client = createRelayClient({ pairing: pairing! });
+    await client.connect();
+
+    // POST to the challenge-mint path with NO assertion still reaches the daemon.
+    const mint = await client.fetch('https://relay.invalid/api/stepup/challenge', { method: 'POST', body: '{}' });
+    expect(mint.status).toBe(200);
+    expect(await mint.json()).toMatchObject({ ok: true, method: 'POST' });
+
+    // Credential registration is NOT exempt: a mutating call there is still gated.
+    const register = await client.fetch('https://relay.invalid/api/stepup/credentials', { method: 'POST', body: '{}' });
+    expect(register.status).toBe(401);
+
+    client.close();
+    reachability.stop();
+  });
 });

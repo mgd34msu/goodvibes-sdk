@@ -165,7 +165,6 @@ function buildMinimalContext(
     },
     recordApiResponse: (_req, _path, response) => response,
     requireAdmin: () => null,
-    snapshotMetrics: () => ({}),
     sessionBroker: {
       start: async () => {},
       submitMessage: async () => { throw new Error('not expected'); },

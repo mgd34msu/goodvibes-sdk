@@ -33,6 +33,15 @@ function wrapDispatchWithStepUp(
   return async (req) => {
     const viaRelay = isRelayTunneledRequest(req);
     const mutating = isMutatingMethod(req.method);
+    // Bootstrap exemption: minting a step-up challenge is the prerequisite for
+    // producing an assertion, so it cannot itself require one — otherwise a relay
+    // client could never obtain a challenge (a deadlock). It creates only an
+    // ephemeral, single-use challenge and returns no privileged data. Credential
+    // registration is deliberately NOT exempt: it is an admin/local-only
+    // bootstrap that a mutating-relay caller must not be able to perform.
+    if (viaRelay && mutating && new URL(req.url).pathname === STEP_UP_CHALLENGE_MINT_PATH) {
+      return dispatch(req);
+    }
     if (viaRelay && mutating) {
       const assertion = req.headers.get(STEP_UP_ASSERTION_HEADER);
       const verified = !verifier
@@ -53,6 +62,9 @@ function wrapDispatchWithStepUp(
 }
 
 const IDENTITY_SECRET_KEY = 'relay.identity';
+
+/** The step-up challenge-mint REST path, exempt from the step-up gate (bootstrap). */
+const STEP_UP_CHALLENGE_MINT_PATH = '/api/stepup/challenge';
 
 /**
  * Compose a {@link RelayReachability} from daemon collaborators. The daemon's

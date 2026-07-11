@@ -101,12 +101,36 @@ credential**: whoever holds one can reach the daemon through the relay.
   (passkey) step-up assertion (`relay.requireStepUpForMutations`). Which methods
   are mutating comes straight from the operator catalog (read-only methods carry
   `read:<domain>` scope + a GET binding; mutating ones carry `write:<domain>` +
-  POST/PUT/PATCH/DELETE). **Honest scope:** the SDK ships the *policy hook* and
-  the verb metadata; actual assertion verification is a consumer-side ceremony
-  (a credential store and per-call challenge), wired as an injected
-  `StepUpAssertionVerifier`. Until one is wired, the policy **fails closed** —
-  it denies rather than allowing or faking a pass. Nothing ever reports an
-  unverified assertion as verified.
+  POST/PUT/PATCH/DELETE). The ceremony is now **real and bundled** (no external
+  WebAuthn library):
+  - **Register** a passkey with the admin/local-only `stepup.credentials.register`
+    verb: it stores the credential (`credentialId`, COSE public key, starting
+    signature counter) in the daemon's secret store and records the deployment
+    policy (relying-party id, allowed origins, user-verification requirement).
+  - **Mint** a short-lived, single-use challenge with `stepup.challenge.mint`
+    (bound to the calling session/rendezvous; freshness window `ttlMs`, clamped
+    5s–300s, default 120s). This one verb is exempt from the gate — it is the
+    prerequisite for producing an assertion, so requiring one would deadlock.
+    Credential registration is **not** exempt.
+  - **Verify.** The daemon's `StepUpAssertionVerifier` (node/Web Crypto only)
+    checks, in order: `clientDataJSON` type is `webauthn.get`, its challenge is a
+    live+unconsumed one we minted, its origin is allowed; the `rpIdHash` equals
+    SHA-256(rpId); the user-presence flag is set (and user-verification when the
+    policy requires it, default required); the P-256 ECDSA signature over
+    `authenticatorData || SHA-256(clientDataJSON)` is valid; and the signature
+    counter has not gone backwards (a cloned-authenticator signal). Only a
+    complete pass consumes the challenge and advances the stored counter. Every
+    other path **fails closed** — it denies rather than allowing or faking a
+    pass, and nothing ever reports an unverified assertion as verified.
+
+  **Threat model — 'none' attestation.** Registration accepts the credential's
+  COSE public key directly and does **not** verify an attestation certificate
+  chain ('none' attestation). This is the standard, deliberate posture for a
+  self-hosted deployment: there is no central RP verifying which *make/model* of
+  authenticator an operator uses, and registration is already an admin/local-only
+  act on the daemon the operator controls. The security of the control rests on
+  the signature check against the registered public key and the single-use,
+  time-bound challenge — not on attestation provenance.
 - **Daemon-minted LAN HTTPS.** `mintLanCertificate` mints a local CA + a SAN
   leaf certificate for the daemon's LAN endpoints so browsers stop warning on
   LAN access. **Honest scope:** it *generates* (via `openssl`, not hand-rolled
@@ -145,5 +169,3 @@ running the relay — can read.
   unary request/response calls (the bulk of the operator surface); event
   streaming keeps using the direct realtime connectors on the LAN. A streaming
   bridge is future work, not faked.
-- **WebAuthn verification** is a policy hook plus an injected verifier interface,
-  not a bundled ceremony (see above). It fails closed until wired.

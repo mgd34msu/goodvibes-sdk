@@ -65448,6 +65448,151 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "stepup.challenge.mint",
+        "title": "Mint Step-up Challenge",
+        "description": "Issue a short-lived, single-use WebAuthn challenge bound to the calling session/rendezvous. A surface passes it to navigator.credentials.get and returns the assertion on its next mutating relay call. The freshness window (ttlMs) is clamped to 5s–300s (default 120s).",
+        "category": "relay",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:relay"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/stepup/challenge"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "rendezvousId": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "ttlMs": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "challengeId": {
+              "type": "string"
+            },
+            "challenge": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "challengeId",
+            "challenge",
+            "expiresAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "stepup.credentials.register",
+        "title": "Register Step-up Credential",
+        "description": "Store a WebAuthn (passkey) credential for relay step-up — its credentialId, COSE public key, and starting signature counter — and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly ('none' attestation).",
+        "category": "relay",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:relay"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/stepup/credentials"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "rpId": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "credentialId": {
+              "type": "string"
+            },
+            "publicKeyCose": {
+              "type": "string"
+            },
+            "signCount": {
+              "type": "number"
+            },
+            "userVerification": {
+              "type": "string",
+              "enum": [
+                "required",
+                "preferred",
+                "discouraged"
+              ]
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rpId",
+            "origin",
+            "credentialId",
+            "publicKeyCose"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "credential": {
+              "type": "object",
+              "properties": {
+                "credentialId": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "signCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "credentialId",
+                "createdAt",
+                "signCount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "credential"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "remote.node_host.contract",
         "title": "Node Host Contract",
         "description": "Return the distributed node/device host API contract.",
@@ -87417,10 +87562,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 379,
-      "typedInputs": 379,
+      "methods": 381,
+      "typedInputs": 381,
       "genericInputs": 0,
-      "typedOutputs": 379,
+      "typedOutputs": 381,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -87429,8 +87574,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 379,
-      "validated": 377,
+      "methods": 381,
+      "validated": 379,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

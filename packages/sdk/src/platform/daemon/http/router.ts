@@ -55,7 +55,6 @@ import {
 } from './remote-routes.js';
 import { createDaemonRuntimeRouteHandlers } from './runtime-routes.js';
 import { buildRouterSessionBrokerAdapter } from './router-session-broker-adapter.js';
-import { snapshotMetrics } from '../../runtime/metrics.js';
 import { createDaemonControlRouteHandlers } from './control-routes.js';
 import { createDaemonIntegrationRouteHandlers } from './integration-routes.js';
 import { createDaemonTelemetryRouteHandlers } from './telemetry-routes.js';
@@ -586,7 +585,6 @@ export class DaemonHttpRouter {
             { sessionId, ...envelope },
           );
         },
-        snapshotMetrics: () => snapshotMetrics(),
         openSessionEventStream: (req, sessionId) => {
           // Create a session-scoped SSE stream for the companion app to receive
           // turn events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events.

@@ -421,7 +421,7 @@ export class DaemonServer {
       // Outbound relay reachability (default OFF; gated by relay.enabled + the
       // relay-connect flag + a configured relay.url). Non-blocking so a relay
       // hiccup never blocks daemon startup.
-      this.relayReachability = buildDaemonRelayReachability(this.configManager, this.runtimeServices.secretsManager, this.runtimeServices.featureFlags, (req) => this.handleRequest(req), logger);
+      this.relayReachability = buildDaemonRelayReachability(this.configManager, this.runtimeServices.secretsManager, this.runtimeServices.featureFlags, (req) => this.handleRequest(req), logger, this.runtimeServices.stepUpService.createVerifier());
       void this.relayReachability.start().catch((error: unknown) =>
         logger.warn('DaemonServer: relay reachability failed to start', { error: summarizeError(error) }),
       );
