@@ -258,6 +258,16 @@ export class AgentManager {
    */
   private readonly cancellationSignals = new Map<string, AbortSignal>();
   /**
+   * Manager-owned abort controllers, one per agent — the seam that lets
+   * cancel()/kill genuinely abort an in-flight provider call (not only
+   * cooperatively at the next turn/tool boundary). An orchestration engine may
+   * ALSO register its own signal via registerCancellationSignal (that one wins
+   * in getCancellationSignal so the engine's own kill path is unchanged); a
+   * plain broker/ACP-spawned agent has no external signal and falls back to this
+   * owned controller, which cancel() aborts.
+   */
+  private readonly cancellationControllers = new Map<string, AbortController>();
+  /**
    * Frozen final snapshots for agents whose live source was released (their
    * run ended). Map insertion order doubles as the bounded ring's age order:
    * oldest entry (first key) is evicted once conversationSnapshotRetention is
@@ -733,6 +743,19 @@ export class AgentManager {
       record.status = 'cancelled';
       record.terminationKind = kind;
       record.completedAt = Date.now();
+      // Abort the manager-owned controller so an in-flight provider call for this
+      // agent is interrupted mid-stream, not only cooperatively at the next
+      // boundary. (An engine-registered external signal is aborted by the engine's
+      // own kill path; this covers the plain broker/ACP-spawned agent.) Create the
+      // controller if the runner has not read the signal yet, so a later
+      // getCancellationSignal() returns THIS already-aborted controller — no race
+      // where a cancel is dropped because the signal was requested afterwards.
+      let controller = this.cancellationControllers.get(id);
+      if (!controller) {
+        controller = new AbortController();
+        this.cancellationControllers.set(id, controller);
+      }
+      controller.abort();
       if (this.runtimeBus) {
         emitAgentCancelled(this.runtimeBus, {
           sessionId: 'agent-manager',
@@ -783,14 +806,28 @@ export class AgentManager {
     this.cancellationSignals.set(agentId, signal);
   }
 
-  /** Drop the registered signal once the run ends (success, failure, or cancel). Safe to call unconditionally. */
+  /** Drop the registered signal + owned controller once the run ends (success, failure, or cancel). Safe to call unconditionally. */
   releaseCancellationSignal(agentId: string): void {
     this.cancellationSignals.delete(agentId);
+    this.cancellationControllers.delete(agentId);
   }
 
-  /** Read back the registered signal for AgentOrchestrator's per-tool-call opts. */
+  /**
+   * The cancellation signal for an agent's in-flight work. An
+   * engine-registered external signal wins (keeps the orchestration engine's own
+   * kill path authoritative); otherwise a manager-owned controller's signal is
+   * returned (created on first read), so a plain broker/ACP-spawned agent still
+   * has an abortable signal that cancel() will trip.
+   */
   getCancellationSignal(agentId: string): AbortSignal | undefined {
-    return this.cancellationSignals.get(agentId);
+    const external = this.cancellationSignals.get(agentId);
+    if (external) return external;
+    let controller = this.cancellationControllers.get(agentId);
+    if (!controller) {
+      controller = new AbortController();
+      this.cancellationControllers.set(agentId, controller);
+    }
+    return controller.signal;
   }
 
   /**

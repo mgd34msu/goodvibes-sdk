@@ -48,6 +48,7 @@ import {
   type ResolvedInboundTlsContext,
 } from '../runtime/network/index.js';
 import { createRuntimeServices, type RuntimeServices } from '../runtime/services.js';
+import type { McpServerConfig } from '../mcp/config.js';
 import { isSurfaceFeatureGateEnabled } from '../runtime/feature-flags/index.js';
 import { buildDaemonRelayReachability } from '../relay/daemon-wiring.js';
 import type { RelayReachability } from '../relay/reachability.js';
@@ -281,6 +282,30 @@ export class DaemonServer {
 
   /** The daemon's shared session broker — the SAME broker the HTTP session routes drive. Exposed so an in-process embedder can submit input to a session directly. */
   get sessions(): SharedSessionBroker { return this.sessionBroker; }
+
+  /**
+   * Cancel a running agent by id — the SAME cooperative-plus-abort cancellation
+   * the operator kill path uses: it flips the agent to `cancelled` and aborts the
+   * agent's in-flight provider call so the turn stops mid-flight rather than
+   * running to completion. Returns false for an unknown id. Exposed so an
+   * in-process embedder (the ACP adapter) can honor a client `session/cancel` as
+   * a real cancellation of the session's active agent.
+   */
+  cancelAgent(agentId: string): boolean {
+    return this.agentManager.cancel(agentId);
+  }
+
+  /**
+   * Connect a single MCP server by config into this daemon's live MCP registry —
+   * the SAME registry that namespaces tools as `mcp:<name>:<tool>`. Exposed so an
+   * in-process embedder (the ACP adapter) can wire the MCP servers a client
+   * declared in `session/new` into the session's tool surface. stdio transport
+   * only (the registry spawns a process); an error connecting one server is
+   * surfaced to the caller.
+   */
+  async registerMcpServer(config: McpServerConfig): Promise<void> {
+    await this.runtimeServices.mcpRegistry.connectServer(config);
+  }
 
   /**
    * Start the daemon. Refuses to start if not explicitly enabled.

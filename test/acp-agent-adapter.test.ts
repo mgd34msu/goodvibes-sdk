@@ -16,6 +16,7 @@ import {
   promptText,
   mapStopReason,
   mapPermissionOutcome,
+  translateAcpMcpServers,
 } from '../packages/sdk/src/platform/acp/agent.ts';
 import type { EmbeddedSession } from '../packages/sdk/src/platform/embed/session.ts';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.ts';
@@ -52,19 +53,23 @@ function makeConn(permissionOptionId = 'allow-once'): {
   };
 }
 
-function makeFakeSubstrate(runtimeSessionId: string): {
+function makeFakeSubstrate(runtimeSessionId: string, activeAgentId?: string): {
   bus: RuntimeEventBus;
   submitted: string[];
   cancelled: string[];
+  cancelledAgents: string[];
+  mcpServers: { value: readonly { name: string; command: string }[] | undefined };
   stopped: { value: boolean };
   permissionHandlers: PermissionRequestHandler[];
-  factory: (options: { workspace: string; requestPermission: PermissionRequestHandler }) => Promise<EmbeddedSession>;
+  factory: (options: { workspace: string; requestPermission: PermissionRequestHandler; mcpServers?: readonly { name: string; command: string }[] | undefined }) => Promise<EmbeddedSession>;
   emitTurn: (event: TurnEvent) => void;
   emitTool: (event: ToolEvent) => void;
 } {
   const bus = new RuntimeEventBus();
   const submitted: string[] = [];
   const cancelled: string[] = [];
+  const cancelledAgents: string[] = [];
+  const mcpServers: { value: readonly { name: string; command: string }[] | undefined } = { value: undefined };
   const stopped = { value: false };
   const permissionHandlers: PermissionRequestHandler[] = [];
   const emitTurn = (event: TurnEvent): void => {
@@ -76,8 +81,10 @@ function makeFakeSubstrate(runtimeSessionId: string): {
   const factory = async (options: {
     workspace: string;
     requestPermission: PermissionRequestHandler;
+    mcpServers?: readonly { name: string; command: string }[] | undefined;
   }): Promise<EmbeddedSession> => {
     permissionHandlers.push(options.requestPermission);
+    mcpServers.value = options.mcpServers;
     const fake: Partial<EmbeddedSession> = {
       workspace: options.workspace,
       url: 'http://127.0.0.1:0',
@@ -87,9 +94,17 @@ function makeFakeSubstrate(runtimeSessionId: string): {
         return {
           session: { id: runtimeSessionId },
           input: { id: 'input-1' },
+          ...(activeAgentId ? { activeAgentId } : {}),
           mode: 'spawn',
           created: true,
         } as unknown as SharedSessionSubmission;
+      },
+      cancelActive: (agentIds) => {
+        let count = 0;
+        for (const id of agentIds) {
+          if (id === activeAgentId) { cancelledAgents.push(id); count += 1; }
+        }
+        return count;
       },
       sessions: {
         cancelInput: async (sessionId: string, inputId: string) => {
@@ -103,7 +118,7 @@ function makeFakeSubstrate(runtimeSessionId: string): {
     };
     return fake as EmbeddedSession;
   };
-  return { bus, submitted, cancelled, stopped, permissionHandlers, factory, emitTurn, emitTool };
+  return { bus, submitted, cancelled, cancelledAgents, mcpServers, stopped, permissionHandlers, factory, emitTurn, emitTool };
 }
 
 describe('pure mappings', () => {
@@ -203,6 +218,56 @@ describe('session lifecycle + prompt streaming', () => {
     const result = await promptPromise;
     expect(result.stopReason).toBe('cancelled');
     expect(substrate.cancelled).toEqual(['runtime-session-2:input-1']);
+  });
+
+  test('cancel aborts the session active agent in-flight (real cancellation), not only the queued input', async () => {
+    const substrate = makeFakeSubstrate('runtime-session-2b', 'agent-42');
+    const { conn } = makeConn();
+    const agent = new GoodVibesAcpAgent(conn, { sessionFactory: substrate.factory });
+    const created = await agent.newSession({ cwd: '/work/p2b', mcpServers: [] });
+    const promptPromise = agent.prompt({ sessionId: created.sessionId, prompt: [{ type: 'text', text: 'long task' }] });
+    await Bun.sleep(10);
+    await agent.cancel({ sessionId: created.sessionId });
+    const result = await promptPromise;
+    expect(result.stopReason).toBe('cancelled');
+    // The active agent was cancelled in-flight (the real-cancellation seam),
+    // in addition to the queued-input cancel.
+    expect(substrate.cancelledAgents).toEqual(['agent-42']);
+  });
+});
+
+describe('ACP MCP-server passthrough (session/new)', () => {
+  test('translateAcpMcpServers keeps stdio servers and reports http/sse as unsupported', () => {
+    const { configs, unsupported } = translateAcpMcpServers([
+      { name: 'fs', command: '/usr/bin/mcp-fs', args: ['--root', '/w'], env: [{ name: 'TOKEN', value: 'x' }] },
+      { type: 'http', name: 'remote', url: 'https://example.com/mcp' },
+      { type: 'sse', name: 'events', url: 'https://example.com/sse' },
+    ]);
+    expect(configs).toEqual([
+      { name: 'fs', command: '/usr/bin/mcp-fs', args: ['--root', '/w'], env: { TOKEN: 'x' } },
+    ]);
+    expect(unsupported).toEqual(['remote (http)', 'events (sse)']);
+  });
+
+  test('newSession threads declared stdio MCP servers into the embedded session', async () => {
+    const substrate = makeFakeSubstrate('runtime-session-mcp');
+    const { conn } = makeConn();
+    const agent = new GoodVibesAcpAgent(conn, { sessionFactory: substrate.factory });
+    await agent.newSession({
+      cwd: '/work/mcp',
+      mcpServers: [{ name: 'fs', command: '/usr/bin/mcp-fs', args: [], env: [] }],
+    } as never);
+    expect(substrate.mcpServers.value).toEqual([{ name: 'fs', command: '/usr/bin/mcp-fs' }]);
+  });
+
+  test('newSession rejects an http/sse MCP server by name (honest unsupported-transport error)', async () => {
+    const substrate = makeFakeSubstrate('runtime-session-mcp2');
+    const { conn } = makeConn();
+    const agent = new GoodVibesAcpAgent(conn, { sessionFactory: substrate.factory });
+    await expect(agent.newSession({
+      cwd: '/work/mcp2',
+      mcpServers: [{ type: 'http', name: 'remote', url: 'https://x/mcp' }],
+    } as never)).rejects.toThrow(/unsupported transport.*remote/);
   });
 
   test('permission asks bridge to ACP requestPermission and map the outcome back', async () => {

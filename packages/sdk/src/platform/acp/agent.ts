@@ -16,12 +16,17 @@
  *   - `loadSession: false` (no session restore over ACP)
  *   - prompt `image`/`audio`/`embeddedContext`: false (input is text; the
  *     submit seam takes a text body)
- *   - `mcpCapabilities.http`/`sse`: false (this adapter does not wire the
- *     client's MCP servers into the embedded session; `mcpServers` entries in
- *     `session/new` are ignored)
- * Turn cancellation is best-effort: `session/cancel` cancels a queued input via
- * the broker's `cancelInput` and resolves the in-flight prompt with stop reason
- * `cancelled`; an already-executing provider call is not aborted mid-flight.
+ *   - `mcpCapabilities.http`/`sse`: false (our MCP client is stdio JSON-RPC
+ *     only). STDIO `mcpServers` declared in `session/new` ARE wired into the
+ *     embedded session's tool surface; an http/sse entry is rejected by name
+ *     (a compliant client never sends one, given the advertised capabilities).
+ * Turn cancellation is real: `session/cancel` aborts the session's active
+ * agent(s) in-flight (`EmbeddedSession.cancelActive` → the agent's cancellation
+ * signal, which the agent runner threads into the provider call), so an
+ * already-executing provider call is stopped mid-flight and the turn emits its
+ * cancelled outcome. A still-queued input (not yet delivered to an agent) is
+ * additionally cancelled via the broker's `cancelInput`, and the in-flight
+ * prompt resolves with stop reason `cancelled`.
  */
 
 import { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION, type Agent } from '@agentclientprotocol/sdk';
@@ -44,12 +49,69 @@ import { createEmbeddedSession, type EmbeddedSession } from '../embed/session.js
 import type { PermissionPromptDecision, PermissionPromptRequest, PermissionRequestHandler } from '../permissions/prompt.js';
 import type { TurnEvent } from '../../events/turn.js';
 import type { ToolEvent } from '../../events/tools.js';
+import type { McpServerConfig } from '../mcp/config.js';
 
 /** Factory seam for the embedded-session substrate (tests inject fakes). */
 export type EmbeddedSessionFactory = (options: {
   readonly workspace: string;
   readonly requestPermission: PermissionRequestHandler;
+  /** stdio MCP servers the ACP client declared, translated for the embedded session. */
+  readonly mcpServers?: readonly McpServerConfig[] | undefined;
 }) => Promise<EmbeddedSession>;
+
+/**
+ * The ACP `mcpServers` entry shapes (from the ACP schema): a stdio server
+ * (untagged, carrying `command`) or an http/sse server (tagged `type`, carrying
+ * `url`). Modeled locally and read defensively because the vendor types degrade
+ * to `any` when the ACP SDK types are absent.
+ */
+interface AcpEnvVariable { readonly name: string; readonly value: string }
+interface AcpMcpServerDeclaration {
+  readonly type?: string | undefined;
+  readonly name?: string | undefined;
+  readonly command?: string | undefined;
+  readonly args?: readonly string[] | undefined;
+  readonly env?: readonly AcpEnvVariable[] | undefined;
+  readonly url?: string | undefined;
+}
+
+/**
+ * Translate a client's declared ACP MCP servers into our stdio `McpServerConfig`
+ * shape. Returns the supported stdio configs and the names of servers we
+ * genuinely cannot support (http/sse — no such transport in our MCP client,
+ * which is stdio JSON-RPC only). We advertise `mcpCapabilities.http/sse: false`
+ * in `initialize`, so a compliant client never sends those; when one arrives
+ * anyway it is reported by name rather than silently dropped.
+ */
+export function translateAcpMcpServers(
+  servers: readonly AcpMcpServerDeclaration[],
+): { readonly configs: McpServerConfig[]; readonly unsupported: string[] } {
+  const configs: McpServerConfig[] = [];
+  const unsupported: string[] = [];
+  for (const server of servers) {
+    const transport = server.type;
+    const isRemote = transport === 'http' || transport === 'sse' || (server.url !== undefined && server.command === undefined);
+    if (isRemote) {
+      unsupported.push(`${server.name ?? server.url ?? 'unnamed'} (${transport ?? 'http/sse'})`);
+      continue;
+    }
+    if (!server.name || !server.command) {
+      unsupported.push(`${server.name ?? 'unnamed'} (missing command)`);
+      continue;
+    }
+    const env: Record<string, string> = {};
+    for (const variable of server.env ?? []) {
+      if (variable && typeof variable.name === 'string') env[variable.name] = String(variable.value ?? '');
+    }
+    configs.push({
+      name: server.name,
+      command: server.command,
+      ...(server.args && server.args.length > 0 ? { args: [...server.args] } : {}),
+      ...(Object.keys(env).length > 0 ? { env } : {}),
+    });
+  }
+  return { configs, unsupported };
+}
 
 export interface AcpAgentOptions {
   /** Home directory handed to the embedded daemon. Defaults to $HOME. */
@@ -152,17 +214,32 @@ export class GoodVibesAcpAgent implements Agent {
 
   async newSession(params: NewSessionRequest): Promise<NewSessionResponse> {
     const acpSessionId = `gv-${randomUUID()}`;
+    // Translate the client's declared MCP servers: stdio servers are wired into
+    // the session's tool surface; http/sse servers are genuinely unsupported (our
+    // MCP client is stdio JSON-RPC only) and rejected by name rather than dropped.
+    const declared = Array.isArray((params as { mcpServers?: unknown }).mcpServers)
+      ? ((params as { mcpServers: unknown[] }).mcpServers as Parameters<typeof translateAcpMcpServers>[0])
+      : [];
+    const { configs: mcpServers, unsupported } = translateAcpMcpServers(declared);
+    if (unsupported.length > 0) {
+      throw new Error(
+        `ACP session/new declared MCP server(s) with an unsupported transport: ${unsupported.join(', ')}. ` +
+        `This agent supports stdio MCP servers only (it advertises mcpCapabilities.http=false, sse=false).`,
+      );
+    }
     const factory: EmbeddedSessionFactory =
       this.options.sessionFactory ??
-      (async ({ workspace, requestPermission }) =>
+      (async ({ workspace, requestPermission, mcpServers: servers }) =>
         createEmbeddedSession({
           workspace,
           homeDirectory: this.options.homeDirectory ?? process.env.HOME ?? process.cwd(),
           requestPermission,
+          ...(servers && servers.length > 0 ? { mcpServers: servers } : {}),
         }));
     const embedded = await factory({
       workspace: params.cwd,
       requestPermission: (request) => this.bridgePermission(acpSessionId, request),
+      ...(mcpServers.length > 0 ? { mcpServers } : {}),
     });
     this.sessions.set(acpSessionId, {
       embedded,
@@ -231,6 +308,13 @@ export class GoodVibesAcpAgent implements Agent {
     if (!state) return;
     state.cancelled = true;
     const active = state.activePrompt;
+    // Real cancellation: abort the session's active agent(s) in-flight so the
+    // running turn stops mid-provider-call and emits its cancelled outcome,
+    // rather than running to completion. (knownIds carries the shared session id
+    // too; cancelActive ignores non-agent ids.)
+    state.embedded.cancelActive(state.knownIds);
+    // Also cancel a still-queued input (the pre-execution case cancelActive
+    // cannot reach — the input has not been delivered to an agent yet).
     if (active?.inputId) {
       const sharedId = [...state.knownIds][0];
       if (sharedId) {
