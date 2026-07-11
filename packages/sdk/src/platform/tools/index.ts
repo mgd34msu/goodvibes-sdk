@@ -186,6 +186,19 @@ export function registerToolWithContractGate(
 }
 
 /**
+ * Split a comma-separated host config value (fetch.trustedHosts / blockedHosts)
+ * into a trimmed, non-empty host list. Returns undefined when empty so the fetch
+ * runtime keeps its "no default list" semantics.
+ */
+function splitHostConfig(value: string): string[] | undefined {
+  const hosts = value
+    .split(',')
+    .map((h) => h.trim())
+    .filter((h) => h.length > 0);
+  return hosts.length > 0 ? hosts : undefined;
+}
+
+/**
  * Register all built-in tools into the given registry.
  * Creates shared FileStateCache and ProjectIndex instances so read/write/edit
  * tools share cache state within a session.
@@ -396,6 +409,9 @@ export function registerAllTools(
   registerTool(createFetchTool({
     serviceRegistry: deps.serviceRegistry,
     featureFlags: deps.featureFlags,
+    defaultSanitizeMode: deps.configManager.get('fetch.sanitizeMode'),
+    defaultTrustedHosts: splitHostConfig(deps.configManager.get('fetch.trustedHosts')),
+    defaultBlockedHosts: splitHostConfig(deps.configManager.get('fetch.blockedHosts')),
   }));
   if (webSearchService) {
     registerTool(createWebSearchTool(webSearchService));

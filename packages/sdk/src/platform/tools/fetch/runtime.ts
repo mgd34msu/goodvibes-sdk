@@ -23,6 +23,22 @@ export interface FetchRuntimeDeps {
   readonly serviceRegistry?: Pick<ServiceRegistry, 'resolveAuth'> | null | undefined;
   readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
   /**
+   * Default sanitize mode applied when a fetch call omits sanitize_mode.
+   * Sourced from config (fetch.sanitizeMode) by SDK runtime services; a per-call
+   * sanitize_mode still overrides. Absent → the built-in 'safe-text' default.
+   */
+  readonly defaultSanitizeMode?: FetchSanitizeMode | undefined;
+  /**
+   * Default trusted hosts (from config fetch.trustedHosts). Merged with — never
+   * replaced by — per-call trusted_hosts.
+   */
+  readonly defaultTrustedHosts?: readonly string[] | undefined;
+  /**
+   * Default blocked hosts (from config fetch.blockedHosts). Merged with per-call
+   * blocked_hosts.
+   */
+  readonly defaultBlockedHosts?: readonly string[] | undefined;
+  /**
    * Cooperative cancellation: an externally-supplied signal,
    * combined with each request's own per-URL timeout signal via
    * `AbortSignal.any`. Optional and additive — omitted, behavior is
@@ -96,10 +112,10 @@ export class FetchRuntimeService {
       };
     }
 
-    const sanitizeMode = resolveSanitizeMode(input.sanitize_mode);
+    const sanitizeMode = resolveSanitizeMode(input.sanitize_mode ?? deps.defaultSanitizeMode);
     const trustTierConfig: TrustTierConfig = {
-      trustedHosts: input.trusted_hosts,
-      blockedHosts: input.blocked_hosts,
+      trustedHosts: mergeHostLists(deps.defaultTrustedHosts, input.trusted_hosts),
+      blockedHosts: mergeHostLists(deps.defaultBlockedHosts, input.blocked_hosts),
     };
 
     const fetchOpts: FetchOneOptions = {
@@ -646,6 +662,23 @@ function cacheSuccessfulGet(
   if (cacheTtlSeconds > 0 && method === 'GET') {
     runtime.cacheSet(key, { data: result, timestamp: Date.now(), ttl: cacheTtlSeconds });
   }
+}
+
+/**
+ * Union of a config-supplied default host list with the per-call host list.
+ * Per-call hosts are ADDED to (never replace) the config defaults; duplicates are
+ * removed. Returns undefined when the union is empty so TrustTierConfig keeps its
+ * "no list supplied" semantics unchanged.
+ */
+function mergeHostLists(
+  defaults: readonly string[] | undefined,
+  perCall: readonly string[] | undefined,
+): string[] | undefined {
+  const merged = [...(defaults ?? []), ...(perCall ?? [])]
+    .map((h) => h.trim())
+    .filter((h) => h.length > 0);
+  if (merged.length === 0) return undefined;
+  return [...new Set(merged)];
 }
 
 export function createFetchTool(
