@@ -26,6 +26,11 @@ test/workers-wrangler/.wrangler/
 # Defensive guard against accidental SQLite `:memory:` sentinel file leaks
 :memory:
 
+# Python bytecode cache from the bundled contracts artifact client — the
+# interpreter drops __pycache__/ next to the .py source; keep it out of the tree.
+__pycache__/
+*.py[cod]
+
 # Review artifacts (transient)
 *-review.md
 *-review-*.md
