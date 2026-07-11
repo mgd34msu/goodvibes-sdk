@@ -48,17 +48,31 @@ export {
 } from './formatters/index.js';
 
 import { NotificationRouter } from './router.js';
+import type { ConfigManager } from '../../config/manager.js';
 
 /**
  * Factory function — creates a NotificationRouter with default policy stack.
  *
  * @param batchWindowMs - Optional batch window override in milliseconds
  *                        (default: 2000ms).
+ * @param adaptiveSuppression - Whether adaptive-notification-suppression policies
+ *                        (mode-context + burst) are active.
+ * @param configManager - Optional config source; when supplied, burst-detector
+ *                        thresholds are read from notifications.burst* (window /
+ *                        threshold / cooldown). Constructor params still override.
  * @returns A configured NotificationRouter instance ready for use.
  */
 export function createNotificationRouter(
   batchWindowMs?: number,
   adaptiveSuppression?: boolean,
+  configManager?: Pick<ConfigManager, 'get'>,
 ): NotificationRouter {
-  return new NotificationRouter(batchWindowMs, adaptiveSuppression);
+  const burstConfig = configManager
+    ? {
+        windowMs: configManager.get('notifications.burstWindowMs'),
+        threshold: configManager.get('notifications.burstThreshold'),
+        cooldownMs: configManager.get('notifications.burstCooldownMs'),
+      }
+    : undefined;
+  return new NotificationRouter(batchWindowMs, adaptiveSuppression, burstConfig);
 }

@@ -2,6 +2,7 @@ import { logger } from '../utils/logger.js';
 import { randomInt, randomUUID } from 'node:crypto';
 import { GoodVibesSdkError, RETRYABLE_STATUS_CODES } from '@pellux/goodvibes-errors';
 import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
+import type { ConfigManager } from '../config/manager.js';
 
 import { summarizeError } from '../utils/error-display.js';
 
@@ -168,6 +169,12 @@ export interface DeliveryQueueConfig {
 
 export interface DeliveryQueueOptions extends Partial<DeliveryQueueConfig> {
   readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+  /**
+   * Optional config source. When supplied, retry/backoff/DLQ/SLO defaults are read
+   * from integrations.delivery.* — explicit option fields still override, and the
+   * feature flag remains the fallback source for sloEnforced.
+   */
+  readonly configManager?: Pick<ConfigManager, 'get'> | null | undefined;
 }
 
 const DEFAULT_CONFIG: DeliveryQueueConfig = {
@@ -177,6 +184,20 @@ const DEFAULT_CONFIG: DeliveryQueueConfig = {
   maxDlqSize: 500,
   sloEnforced: false,
 };
+
+/** Read integration delivery defaults from config, or {} when no config source. */
+function readDeliveryConfig(
+  configManager?: Pick<ConfigManager, 'get'> | null | undefined,
+): Partial<DeliveryQueueConfig> {
+  if (!configManager) return {};
+  return {
+    maxRetries: configManager.get('integrations.delivery.maxRetries'),
+    initialDelayMs: configManager.get('integrations.delivery.initialDelayMs'),
+    maxDelayMs: configManager.get('integrations.delivery.maxDelayMs'),
+    maxDlqSize: configManager.get('integrations.delivery.maxDlqSize'),
+    sloEnforced: configManager.get('integrations.delivery.sloEnforced'),
+  };
+}
 
 interface PendingEntry {
   id: string;
@@ -222,11 +243,14 @@ export class DeliveryQueue {
   private _deadLettered = 0;
 
   constructor(config: DeliveryQueueOptions = {}) {
-    const { featureFlags, ...queueConfig } = config;
+    const { featureFlags, configManager, ...queueConfig } = config;
+    const fromConfig = readDeliveryConfig(configManager);
     this._config = {
       ...DEFAULT_CONFIG,
+      ...fromConfig,
       ...queueConfig,
       sloEnforced: queueConfig.sloEnforced
+        ?? fromConfig.sloEnforced
         ?? featureFlags?.isEnabled('integration-delivery-slo')
         ?? DEFAULT_CONFIG.sloEnforced,
     };

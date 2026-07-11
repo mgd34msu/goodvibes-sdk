@@ -76,13 +76,20 @@ export class NotificationRouter {
 
   constructor(
     batchWindowMs?: number,
-    adaptiveSuppression: boolean = false
+    adaptiveSuppression: boolean = false,
+    burstConfig?: { windowMs?: number | undefined; threshold?: number | undefined; cooldownMs?: number | undefined } | undefined,
   ) {
     const effectiveMs = batchWindowMs !== undefined
       ? Math.max(1, Number.isFinite(batchWindowMs) ? batchWindowMs : DEFAULT_BATCH_WINDOW_MS)
       : undefined;
     this.batchPolicy = new BatchPolicy(effectiveMs);
-    this.burstPolicy = new BurstPolicy();
+    // Burst thresholds come from config (notifications.burst*) when supplied;
+    // BurstPolicy applies its own hardcoded defaults for any omitted dimension.
+    this.burstPolicy = new BurstPolicy(
+      burstConfig?.windowMs,
+      burstConfig?.threshold,
+      burstConfig?.cooldownMs,
+    );
     this.adaptiveSuppression = adaptiveSuppression;
   }
 

@@ -27,11 +27,14 @@ export async function budgetPhase(
   context: ToolRuntimeContext,
   record: ToolExecutionRecord,
   checkpoint: BudgetCheckPoint,
+  defaultBudget?: { maxMs?: number | undefined; maxTokens?: number | undefined; maxCostUsd?: number | undefined } | undefined,
 ): Promise<PhaseResult> {
   const start = performance.now();
   const phaseName = checkpoint === 'entry' ? 'budget-entry' : 'budget-exit';
 
-  const budget = context.budget;
+  // A per-call context.budget overrides; otherwise fall back to the executor's
+  // config-derived default budget (runtime.toolBudget.*).
+  const budget = context.budget ?? defaultBudget;
 
   // No budget constraints — fast path
   if (!budget) {
