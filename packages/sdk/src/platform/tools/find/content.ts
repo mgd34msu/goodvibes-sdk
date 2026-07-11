@@ -15,6 +15,7 @@ import {
   validateSearchPath,
   withFindWarnings,
 } from './shared.js';
+import { partitionByReadAccess, accessRestrictedNote, type ReadAccessFilter } from '../shared/read-access.js';
 
 interface CacheKey {
   pattern: string;
@@ -28,6 +29,7 @@ async function executeContentQuery(
   output: OutputOptions,
   runtime: FindRuntimeService,
   projectRoot: string,
+  readAccessFilter?: ReadAccessFilter,
 ): Promise<Record<string, unknown>> {
   const validatedPath = validateSearchPath(query.path, projectRoot);
   if (typeof validatedPath === 'object') return validatedPath;
@@ -69,7 +71,20 @@ async function executeContentQuery(
     return { error: `Invalid regex: ${summarizeError(e)}` };
   }
 
-  const files = await collectFilesForSearch(basePath, query.glob, diagnostics);
+  const allCandidateFiles = await collectFilesForSearch(basePath, query.glob, diagnostics);
+  // Read-side deny enforcement: a file whose read is currently restricted never
+  // has its content searched or returned. content mode is a content surface in
+  // EVERY format (even files_only/locations reveal that the pattern matched a
+  // file), so restricted candidates are dropped from the search set entirely and
+  // their count is surfaced. The cache key is unaffected: it never uses restricted
+  // content, and the filter re-applies on every call.
+  const { allowed: files, restricted: restrictedFiles } = partitionByReadAccess(
+    allCandidateFiles,
+    (f) => f,
+    readAccessFilter,
+  );
+  const restrictedNote = accessRestrictedNote(restrictedFiles.length);
+  if (restrictedNote) addFindWarning(diagnostics, restrictedNote);
 
   if (query.negate) {
     const nonMatchingFiles: string[] = [];
@@ -96,6 +111,22 @@ async function executeContentQuery(
   if (cacheValid && cachedEntry) {
     matchedFiles = cachedEntry.matchedFiles;
     totalMatches = cachedEntry.totalMatches;
+    // A cache entry may have been populated under a more permissive mode; the
+    // filter is the sole authority, so re-apply it and drop any now-restricted
+    // file's content before it can be returned. Rebuild into a fresh Map so the
+    // shared cache entry is never mutated.
+    if (readAccessFilter && Array.from(matchedFiles.keys()).some((f) => !readAccessFilter(f))) {
+      const kept = new Map<string, { content: string; matches: ContentMatch[] }>();
+      let keptMatches = 0;
+      for (const [file, entry] of matchedFiles) {
+        if (readAccessFilter(file)) {
+          kept.set(file, entry);
+          keptMatches += entry.matches.length;
+        }
+      }
+      matchedFiles = kept;
+      totalMatches = keptMatches;
+    }
   } else {
     matchedFiles = new Map<string, { content: string; matches: ContentMatch[] }>();
     totalMatches = 0;

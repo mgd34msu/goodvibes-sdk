@@ -15,11 +15,13 @@ import {
 } from './shared.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { compileSafeRegExp, safeRegExpTest } from '../../utils/safe-regex.js';
+import { accessRestrictedNote, type ReadAccessFilter } from '../shared/read-access.js';
 
 export async function executeFilesQuery(
   query: FilesQuery,
   output: OutputOptions,
   projectRoot: string,
+  readAccessFilter?: ReadAccessFilter,
 ): Promise<Record<string, unknown>> {
   const validatedPath = validateSearchPath(query.path, projectRoot);
   if (typeof validatedPath === 'object') return validatedPath;
@@ -131,9 +133,19 @@ export async function executeFilesQuery(
 
   entries = entries.slice(0, maxResults);
 
+  // Read-side deny enforcement: a file whose read is currently restricted keeps
+  // its PATH in listings (hiding existence would be dishonest) but never has its
+  // CONTENT read or returned. Files mode is path-oriented, so restricted entries
+  // are marked, not dropped — except has_content, which cannot be verified
+  // without reading, so restricted entries are excluded from that content query.
+  const restrictedPaths = new Set<string>(
+    readAccessFilter ? entries.filter((e) => !readAccessFilter(e.path)).map((e) => e.path) : [],
+  );
+
   if (hasContentRegex) {
     const filtered: FileEntry[] = [];
     for (const entry of entries) {
+      if (restrictedPaths.has(entry.path)) continue; // cannot read to verify content
       try {
         const text = await Bun.file(entry.path).text();
         if (safeRegExpTest(hasContentRegex, text, { operation: 'find files has_content', maxInputChars: 500_000 })) filtered.push(entry);
@@ -143,6 +155,10 @@ export async function executeFilesQuery(
     }
     entries = filtered;
   }
+
+  const restrictedNote = accessRestrictedNote(restrictedPaths.size);
+  if (restrictedNote) addFindWarning(diagnostics, restrictedNote);
+  const isRestricted = (p: string): boolean => restrictedPaths.has(p);
 
   const sortBy = query.sort_by ?? 'name';
   const sortOrder = query.sort_order ?? 'asc';
@@ -163,13 +179,19 @@ export async function executeFilesQuery(
       file: e.path,
       size: e.size,
       modified: e.mtimeMs !== undefined ? new Date(e.mtimeMs).toISOString() : undefined,
+      ...(isRestricted(e.path) ? { access_restricted: true } : {}),
     }));
     return withFindWarnings({ files: result, count: result.length }, diagnostics.warnings);
   }
   if (format === 'with_preview') {
     const previewLines = output.preview_lines ?? 3;
-    const result: Array<{ file: string; preview: string[] }> = [];
+    const result: Array<{ file: string; preview: string[]; access_restricted?: boolean }> = [];
     for (const entry of entries) {
+      if (isRestricted(entry.path)) {
+        // Withhold content: show the path, an empty preview, and the flag.
+        result.push({ file: entry.path, preview: [], access_restricted: true });
+        continue;
+      }
       let preview: string[] = [];
       try {
         const text = await Bun.file(entry.path).text();
@@ -182,5 +204,12 @@ export async function executeFilesQuery(
     return withFindWarnings({ files: result, count: result.length }, diagnostics.warnings);
   }
 
-  return withFindWarnings(makeFilesResult(entries.map((e) => e.path), entries.length), diagnostics.warnings);
+  const filesResult = makeFilesResult(entries.map((e) => e.path), entries.length);
+  const accessRestrictedFiles = entries.map((e) => e.path).filter(isRestricted);
+  return withFindWarnings(
+    accessRestrictedFiles.length > 0
+      ? { ...filesResult, access_restricted: accessRestrictedFiles }
+      : filesResult,
+    diagnostics.warnings,
+  );
 }

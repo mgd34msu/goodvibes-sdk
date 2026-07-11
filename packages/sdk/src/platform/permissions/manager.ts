@@ -270,6 +270,59 @@ export class PermissionManager {
   }
 
   /**
+   * previewReadAccess — non-interactive answer to "would a `read` of `path` be
+   * auto-allowed right now, WITHOUT prompting?" Returns 'allow' when it would be
+   * auto-allowed and 'restricted' otherwise (a would-prompt/ask path or an
+   * outright deny). Search / list / map tools call this per candidate file so
+   * their results never surface CONTENT the read tool itself would gate behind
+   * an ask/deny (e.g. the shipped credential-read defaults).
+   *
+   * It runs the SAME layered decision as {@link checkDetailed} up to the ask
+   * boundary — the same mode logic, the same isGatedCredentialRead check (→
+   * matchesShippedCredentialReadPath), and the same policy evaluator + mapping —
+   * so it can never drift from a parallel path matcher. It never prompts, caches,
+   * records, or fires hooks; it is a pure read of current config + rules.
+   */
+  previewReadAccess(rawPath: string): 'allow' | 'restricted' {
+    if (typeof rawPath !== 'string' || rawPath.length === 0) return 'allow';
+    const category: PermissionCategory = 'read';
+    const args: Record<string, unknown> = { path: rawPath };
+
+    if (this.configReader.isAutoApproveEnabled()) return 'allow';
+
+    const permsConfig = this.configReader.getSnapshot().permissions;
+    const mode = permsConfig?.mode ?? 'prompt';
+
+    if (mode === 'allow-all') return 'allow';
+    if (mode === 'plan') return 'allow'; // reads are permitted in plan mode
+    if (mode === 'accept-edits') {
+      return this.isGatedCredentialRead(category, args) ? 'restricted' : 'allow';
+    }
+
+    if (this.featureFlags?.isEnabled('permissions-policy-engine') === true) {
+      const analysis = analyzePermissionRequest('read', args, category);
+      const mapped = this.mapEvaluatorDecision(this.evaluateRuntimePolicy('read', args, mode), analysis);
+      if (mapped) return mapped.approved ? 'allow' : 'restricted';
+    }
+
+    if (mode === 'custom') {
+      const toolKey = TOOL_CONFIG_KEYS['read'];
+      if (toolKey !== undefined) {
+        const action = permsConfig?.tools?.[toolKey] ?? 'prompt';
+        if (action === 'allow') return 'allow';
+        if (action === 'deny') return 'restricted';
+      }
+      // No per-tool allow: a read would prompt, which a mid-search filter cannot
+      // do — treat as restricted so no unvetted content is surfaced.
+      return 'restricted';
+    }
+
+    // prompt mode ("normal"): reads auto-allow EXCEPT gated credential stores,
+    // which fall through to the ask path and are therefore restricted here.
+    return this.isGatedCredentialRead(category, args) ? 'restricted' : 'allow';
+  }
+
+  /**
    * getMode — Returns the active session permission mode from config.
    * Surfaces (mode pill) and the orchestrator's standing plan-mode instruction
    * read this to reflect the current mode. Defaults to 'prompt' ("normal").

@@ -13,6 +13,7 @@ import type { Tool, ToolDefinition, ToolResult } from '../../types/tools.js';
 import { ImportGraph } from '../../intelligence/index.js';
 import { estimateTokens } from '../../core/compaction-types.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { accessRestrictedNote, type ReadAccessFilter } from '../shared/read-access.js';
 
 const DEFAULT_BUDGET_TOKENS = 2_000;
 const MIN_BUDGET_TOKENS = 200;
@@ -119,8 +120,17 @@ const REPO_MAP_SCHEMA: Record<string, unknown> = {
  * Build the repo_map tool bound to a project root. The tool is read-only and
  * safe to run in parallel.
  */
-export function createRepoMapTool(options: { projectRoot: string }): Tool {
+export function createRepoMapTool(options: {
+  projectRoot: string;
+  /**
+   * Per-file read-permission decision (wired to PermissionManager.previewReadAccess).
+   * A restricted file keeps its ranked path line but its exported symbols — which
+   * require reading the file — are withheld and the line is flagged.
+   */
+  readAccessFilter?: ReadAccessFilter;
+}): Tool {
   const projectRoot = options.projectRoot;
+  const readAccessFilter = options.readAccessFilter;
   if (typeof projectRoot !== 'string' || projectRoot.trim().length === 0) {
     throw new Error('createRepoMapTool requires projectRoot');
   }
@@ -163,14 +173,24 @@ export function createRepoMapTool(options: { projectRoot: string }): Tool {
 
       let output = header;
       let included = 0;
+      let restrictedCount = 0;
       for (const file of ranked) {
+        const absolute = resolve(root, file.rel);
         let block: string;
-        try {
-          const exports = extractTopLevelExports(readFileSync(resolve(root, file.rel), 'utf-8')).slice(0, MAX_EXPORTS_PER_FILE);
-          const exportsLine = exports.length > 0 ? `\n    exports: ${exports.join(', ')}` : '';
-          block = `\n  ${file.rel}  (dependents: ${file.dependents}, ${formatBytes(file.bytes)})${exportsLine}`;
-        } catch {
-          block = `\n  ${file.rel}  (dependents: ${file.dependents}, ${formatBytes(file.bytes)})`;
+        if (readAccessFilter && !readAccessFilter(absolute)) {
+          // Read-side deny enforcement: keep the ranked path (existence is not a
+          // leak) but withhold the exported symbols, which would require reading
+          // the file's content.
+          block = `\n  ${file.rel}  (dependents: ${file.dependents}, ${formatBytes(file.bytes)}) [access-restricted]`;
+          restrictedCount++;
+        } else {
+          try {
+            const exports = extractTopLevelExports(readFileSync(absolute, 'utf-8')).slice(0, MAX_EXPORTS_PER_FILE);
+            const exportsLine = exports.length > 0 ? `\n    exports: ${exports.join(', ')}` : '';
+            block = `\n  ${file.rel}  (dependents: ${file.dependents}, ${formatBytes(file.bytes)})${exportsLine}`;
+          } catch {
+            block = `\n  ${file.rel}  (dependents: ${file.dependents}, ${formatBytes(file.bytes)})`;
+          }
         }
         if (estimateTokens(output + block) > budgetTokens) break;
         output += block;
@@ -180,6 +200,9 @@ export function createRepoMapTool(options: { projectRoot: string }): Tool {
       if (included < ranked.length) {
         output += `\n  … ${ranked.length - included} more file(s) omitted to stay within the token budget.`;
       }
+
+      const restrictedNote = accessRestrictedNote(restrictedCount);
+      if (restrictedNote) output += `\n\n${restrictedNote} (paths shown, exported symbols withheld).`;
 
       return { success: true, output };
     } catch (err) {
