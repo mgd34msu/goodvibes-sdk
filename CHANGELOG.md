@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A child agent that dies abnormally now delivers a structured failure
+  envelope to its supervising parent instead of a bare status.** When a spawned
+  agent terminates on an API error, watchdog kill, budget exhaustion, an
+  exhausted turn / circuit-breaker loop, or a cancel/kill, the parent's poll
+  (`agent` tool `status` / `get` / `wait`) returns a `failure` envelope
+  `{ agentId, phase, reason: { code, message }, partialOutputs }`. The reason
+  code is classified from the child's own record (`max_turns`,
+  `circuit_breaker`, `watchdog_timeout`, `budget_exhausted`, `claim_unverified`,
+  `api_error`, `killed`, `interrupted`, `error`); `partialOutputs` is whatever
+  the child genuinely produced — its last committed output and a role-tagged
+  transcript-tail summary from the live-or-frozen conversation snapshot — never
+  fabricated, with an honest note when it produced nothing. A failed WRFC
+  owner's echoed failure message is not passed off as genuine output.
 - **Per-model edit-failure and declared-exec-expectation-miss telemetry, so
   tool-format regressions surface as data.** A new process-wide recorder
   (`ToolFormatTelemetry`, mirroring `platformMeter`) counts, keyed by model id
