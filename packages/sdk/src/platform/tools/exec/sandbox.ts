@@ -27,6 +27,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { normalizeCommand } from '../../runtime/permissions/normalization/index.js';
+import { decideSandboxedExec } from '../../runtime/permissions/sandbox-policy.js';
 import type { ExecCommandResult } from './schema.js';
 
 /** Operator-facing per-command exec sandbox configuration (`sandbox.*`). */
@@ -308,6 +309,20 @@ export interface ExecSandboxRuntime {
   readonly availability: SandboxAvailability;
   readonly featureEnabled: boolean;
   readonly homeDir?: string | undefined;
+  /**
+   * Broker a sandbox host-access escalation ask (network, host-privilege
+   * escalation) through the approval broker before the command runs. Wired at
+   * the composition root to the sandbox-escalation seam. Returns true when
+   * approved. When absent, escalations are not asked (today's behavior); the
+   * frozen catastrophic block is enforced independently regardless.
+   */
+  readonly requestEscalation?: ((input: {
+    readonly command: string;
+    readonly escalations: readonly string[];
+    readonly boundary: string;
+    readonly policyReasons: readonly string[];
+    readonly workingDirectory?: string | undefined;
+  }) => Promise<boolean>) | undefined;
 }
 
 /**
@@ -331,6 +346,39 @@ export function resolveRuntimeSandboxPlan(
     cwd,
     ...(sandbox.homeDir ? { homeDir: sandbox.homeDir } : {}),
   });
+}
+
+/**
+ * Broker a sandbox host-access escalation ask through the injected
+ * `requestEscalation` seam BEFORE the command runs. Returns the named
+ * escalations when the ask was DENIED (the caller then denies the command), or
+ * null when there was nothing to ask or the ask was approved. The frozen
+ * catastrophic block is enforced independently (guardExecCommand) and is
+ * untouched here — this only ever gates the host-access escalation, never the
+ * command class.
+ */
+export async function brokerSandboxEscalation(
+  sandbox: ExecSandboxRuntime | null,
+  plan: ExecSandboxPlan | null,
+  command: string,
+  workingDirectory: string,
+): Promise<{ deniedEscalations: string[] } | null> {
+  if (!plan?.sandboxed || !sandbox?.requestEscalation) return null;
+  const decision = decideSandboxedExec({
+    command,
+    sandboxActive: true,
+    egressAllowlist: sandbox.config.egressAllowlist,
+    baseEffectWhenNotSandboxed: 'ask',
+  });
+  if (decision.effect !== 'ask' || decision.escalations.length === 0) return null;
+  const approved = await sandbox.requestEscalation({
+    command,
+    escalations: decision.escalations,
+    boundary: plan.boundary,
+    policyReasons: [decision.reason],
+    workingDirectory,
+  });
+  return approved ? null : { deniedEscalations: decision.escalations };
 }
 
 /**

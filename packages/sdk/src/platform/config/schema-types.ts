@@ -480,6 +480,9 @@ export interface GoodVibesConfig {
     // by the graduation-tracked `exec-sandbox` feature flag; egressAllowlist and
     // workspaceWritable are arrays (accessed via getCategory('sandbox')), not scalar ConfigKeys.
     enabled: boolean;
+    // Opt into auto-approving a looks-safe verdict from the sandbox-model-judgment
+    // tier (default false = annotate-only). Gated by the sandbox-model-judgment flag.
+    judgmentAutoApprove: boolean;
     egressAllowlist: string[];
     workspaceWritable: string[];
     replIsolation: 'shared-vm' | 'per-runtime-vm';
@@ -625,6 +628,7 @@ export type ConfigKey =
   | 'planner.tokenCeiling'
   | 'planner.wallTimeoutMs'
   | 'sandbox.enabled'
+  | 'sandbox.judgmentAutoApprove'
   | 'sandbox.replIsolation'
   | 'sandbox.mcpIsolation'
   | 'sandbox.windowsMode'
@@ -924,6 +928,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'planner.tokenCeiling' ? number :
   K extends 'planner.wallTimeoutMs' ? number :
   K extends 'sandbox.enabled' ? boolean :
+  K extends 'sandbox.judgmentAutoApprove' ? boolean :
   K extends 'sandbox.replIsolation' ? 'shared-vm' | 'per-runtime-vm' :
   K extends 'sandbox.mcpIsolation' ? 'disabled' | 'shared-vm' | 'hybrid' | 'per-server-vm' :
   K extends 'sandbox.windowsMode' ? 'native-basic' | 'require-wsl' :

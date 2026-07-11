@@ -65,6 +65,7 @@ import { UserAuthManager } from '../security/user-auth.js';
 import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
 import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
+import { buildSandboxEscalationHandler } from './permissions/sandbox-escalation-wiring.js';
 import { ContextAccountingHolder } from '../tools/context-accounting/index.js';
 import { DeterministicReplayEngine } from '../core/deterministic-replay.js';
 import { ProviderOptimizer } from '../providers/optimizer.js';
@@ -681,7 +682,19 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // after construction; passing it through here registers the context_accounting
   // tool on the shared roster (every consumer inherits it, like repo_map).
   const contextAccountingHolder = new ContextAccountingHolder();
+  // Sandbox boundary escalations ride the SAME approval broker as a permission
+  // ask and an MCP elicitation — one learned pattern, not five. The optional
+  // model-judgment tier (dark flag) annotates or opt-in auto-approves the ask;
+  // it never converts allow→deny and never touches the frozen catastrophic block.
+  // (Wiring + judgment provider live in permissions/sandbox-escalation-wiring.ts.)
+  const sandboxEscalationHandler = buildSandboxEscalationHandler({
+    requestApproval: (input) => approvalBroker.requestApproval(input),
+    providerRegistry,
+    configManager,
+    featureFlags,
+  });
   agentOrchestrator.setDependencies({
+    sandboxEscalationHandler,
     permissionManager: backgroundPermissionManager,
     contextAccountingHolder,
     fileCache,

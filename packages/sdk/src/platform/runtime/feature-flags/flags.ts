@@ -576,6 +576,26 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     tier: 11,
     runtimeToggleable: true,
   },
+  {
+    id: 'sandbox-model-judgment',
+    name: 'Sandbox Model-Judgment Tier',
+    description:
+      'Enables an optional model-judgment pass on the residual sandbox ask-tail: when the '
+      + 'per-command exec sandbox is active and a command still lands on ask (a boundary needing '
+      + 'host access — network, host-privilege escalation), a provider call over the command, its '
+      + 'sandbox plan, workspace context, and the policy reasons produces a PROPOSED verdict with '
+      + 'stated reasons. The tier NEVER converts allow→deny and NEVER touches the frozen '
+      + 'catastrophic-only exec block (rm -rf /, dd to devices, mkfs, fork bomb…); it can only '
+      + 'ANNOTATE the human ask ("model judgment: looks safe because… / flags risk because…") or, '
+      + 'ONLY when the operator opted into sandbox.judgmentAutoApprove, auto-approve a looks-safe '
+      + 'verdict. A flags-risk verdict never auto-denies — it annotates the ask the human still '
+      + 'decides; a judgment failure degrades to a plain ask. Every judgment leaves a receipt. '
+      + 'DEFAULT OFF: it graduates through the flag-graduation machinery — dark until evidence '
+      + 'earns it a soaking/candidate state. Config default is annotate-only.',
+    defaultState: 'disabled',
+    tier: 11,
+    runtimeToggleable: true,
+  },
   // ── Reachability ───────────────────────────────────────────────────────────
   {
     id: 'relay-connect',

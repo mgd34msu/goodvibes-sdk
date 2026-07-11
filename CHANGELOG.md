@@ -8,6 +8,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Sandbox boundary escalations now ride the ONE approval broker, plus an
+  optional model-judgment tier for the residual ask-tail.** (a) When the
+  per-command exec sandbox is active and a command needs host access a
+  boundary-safe command would not (network, host-privilege escalation), that
+  escalation is now brokered through the SAME approval broker as a permission ask
+  and an MCP elicitation — attributed to the sandbox and the specific escalation
+  (`{ kind: 'sandbox-escalation', sandbox, escalations }`) — so every surface's
+  approval UI renders it and background bubbling applies. A refused escalation
+  denies the command before it spawns; the frozen catastrophic block is enforced
+  independently and untouched. (b) A new dark, graduation-tracked
+  `sandbox-model-judgment` flag gates an optional model-judgment pass on the
+  residual ask: a provider call over the command, its sandbox plan, workspace
+  context, and the policy reasons produces a PROPOSED verdict with stated
+  reasons. Per recorded doctrine — "permission settings are the sole authority
+  for command-class risk; the exec-layer unconditional block is a frozen
+  catastrophic-only list … that must NEVER expand without Mike's explicit
+  approval" — the tier NEVER converts allow→deny and NEVER touches the frozen
+  list; its verdict either annotates the human ask ("model judgment: looks safe
+  because… / flags risk because…", the default) or, only when the operator opts
+  into `sandbox.judgmentAutoApprove`, auto-approves a looks-safe verdict. A
+  flags-risk verdict never auto-denies, and a judgment failure degrades to a
+  plain ask. Every judgment leaves a receipt. New:
+  `createSandboxEscalationApprovalHandler`, `runSandboxJudgment`,
+  `applySandboxJudgment`, `createSandboxJudgmentProvider`,
+  `buildSandboxEscalationHandler`, and the `sandbox-escalation` attribution
+  member.
 - **A decision-log → OTLP exporter: the permission/policy decision log maps to
   OpenTelemetry span and log semantics.** The decision log already records every
   allow/deny with its evaluation layer and reason; this exposes that
