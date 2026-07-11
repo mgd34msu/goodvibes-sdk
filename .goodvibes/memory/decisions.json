@@ -100,6 +100,15 @@
       "category": "convention",
       "confidence": "high",
       "status": "active"
+    },
+    {
+      "id": "feature-flag-config-promotion-pattern",
+      "date": "2026-07-11",
+      "what": "Flag-gated feature knobs promoted to live CONFIG_SCHEMA keys, plus a FEATURE_FLAG_CONFIG grouping map (flag -> config categories/keys) covering all 44 flags",
+      "why": "Owner ruling: every feature's meaningful sub-options must be settable through the interactive config surface, not left behind a bare flag toggle. Pattern: (1) add scalar keys to schema-types.ts ConfigKey union + ConfigValue map (unavoidable there); new top-level categories use a `declare module './schema-types.js'` GoodVibesConfig augmentation in a domain file (schema-domain-features.ts) like the worktree idiom, so schema-types.ts interface stays put; (2) defaults equal prior hardcoded values; (3) wire a genuine READ at the best in-scope site — runtime/services.ts composition root has configManager (overflow, token-audit, provider-optimizer, policy bundle load); factories thread an optional configManager (phased-executor budget, notification router burst, permission simulator, delivery queue); the agent orchestrators read via their in-scope configManager (passive-injection budget/floor/codeLimit, context-compact threshold). Constructor/per-call params stay as override seams (config is the DEFAULT source). FEATURE_FLAG_CONFIG.configKeys is typed ConfigKey[] so a bad key fails typecheck; flag-config-map.test.ts guards bidirectional completeness. httpListener CORS was wired to the existing controlPlane.cors.* keys, not a parallel surface.",
+      "category": "architecture",
+      "confidence": "high",
+      "status": "active"
     }
   ]
 }
