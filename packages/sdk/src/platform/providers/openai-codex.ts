@@ -14,6 +14,7 @@ import { resolveSubscriptionAccessToken } from '../config/subscription-auth.js';
 import { arch, platform, release } from 'node:os';
 import type { SubscriptionManager } from '../config/subscriptions.js';
 import { toProviderError } from '../utils/error-display.js';
+import { parseRateLimitHeaders } from './rate-limit-headers.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
 import { mapCodexStopReason } from './stop-reason-maps.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
@@ -223,6 +224,8 @@ export async function chatWithOpenAICodex(
         });
       }
 
+      const rateLimit = parseRateLimitHeaders(response.headers) ?? undefined;
+
       try {
         const sseBuffer = new SseLineBuffer();
         let text = '';
@@ -399,6 +402,7 @@ export async function chatWithOpenAICodex(
           },
           stopReason: mapCodexStopReason(status, resolvedToolCalls.length > 0),
           ...(status !== 'completed' ? { providerStopReason: status } : {}),
+          ...(rateLimit ? { rateLimit } : {}),
         };
       } catch (error: unknown) {
         throw toProviderError(error, {
