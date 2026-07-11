@@ -796,38 +796,4 @@ export const MEMORY_RECORD_SEMANTIC_OUTPUT_SCHEMA = objectSchema({
 export const MEMORY_RECORD_LINKS_OUTPUT_SCHEMA = objectSchema({
   links: arraySchema(MEMORY_LINK_SCHEMA),
 }, ['links']);
-
-// ── Memory projection (standing records as markdown) ──────────────────────────
-
-const MEMORY_TEMPORAL_STATUS_SCHEMA = enumSchema(['active', 'pending', 'expired']);
-
-/** One entry in the live memory projection — standing-record metadata + temporal status. */
-export const MEMORY_PROJECTION_ENTRY_SCHEMA = objectSchema({
-  id: STRING_SCHEMA,
-  filename: STRING_SCHEMA,
-  scope: MEMORY_SCOPE_SCHEMA,
-  cls: MEMORY_CLASS_SCHEMA,
-  summary: STRING_SCHEMA,
-  tags: STRING_LIST_SCHEMA,
-  confidence: NUMBER_SCHEMA,
-  reviewState: MEMORY_REVIEW_STATE_SCHEMA,
-  validFrom: NUMBER_SCHEMA,
-  validUntil: NUMBER_SCHEMA,
-  status: MEMORY_TEMPORAL_STATUS_SCHEMA,
-}, ['id', 'filename', 'scope', 'cls', 'summary', 'tags', 'confidence', 'reviewState', 'status']);
-
-export const MEMORY_PROJECTIONS_LIST_INPUT_SCHEMA = objectSchema({}, []);
-
-export const MEMORY_PROJECTIONS_LIST_OUTPUT_SCHEMA = objectSchema({
-  projections: arraySchema(MEMORY_PROJECTION_ENTRY_SCHEMA),
-}, ['projections']);
-
-export const MEMORY_PROJECTIONS_GET_INPUT_SCHEMA = objectSchema({
-  id: STRING_SCHEMA,
-}, ['id']);
-
-/** One record's projection: its metadata entry plus the exact projected markdown. */
-export const MEMORY_PROJECTIONS_GET_OUTPUT_SCHEMA = objectSchema({
-  projection: MEMORY_PROJECTION_ENTRY_SCHEMA,
-  markdown: STRING_SCHEMA,
-}, ['projection', 'markdown']);
+// Memory projection wire schemas: operator-contract-schemas-memory-projection.ts (split for the line cap).

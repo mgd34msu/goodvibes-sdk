@@ -107,8 +107,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator-runner.ts ~0.97k — agent orchestrator runner, pre-split, shrink-only
   'packages/sdk/src/platform/agents/orchestrator-runner.ts': {
-    ceiling: 998,
-    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts); +2 for the run context\'s at-rest journal redaction/retention policy field, threaded into the AgentSession construction (policy resolution + logic live in runtime/at-rest-persistence.ts); +3 for per-model tool-format telemetry (import + observeToolResults after the background-agent tool loop); +11 for the steer-wake resume seed (restore prior-context summary + inject the steer as a fresh user turn when a wedged agent is re-triggered)',
+    ceiling: 1003,
+    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts); +2 for the run context\'s at-rest journal redaction/retention policy field, threaded into the AgentSession construction (policy resolution + logic live in runtime/at-rest-persistence.ts); +3 for per-model tool-format telemetry (import + observeToolResults after the background-agent tool loop); +11 for the steer-wake resume seed (restore prior-context summary + inject the steer as a fresh user turn when a wedged agent is re-triggered); +5 for threading the agent cancellation signal into provider.chat (the mid-run abort seam) so a cancel/kill aborts the in-flight LLM call instead of only cooperatively at the next boundary',
   },
   // service.ts (knowledge) ~0.92k — knowledge service facade, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/service.ts': {
@@ -122,8 +122,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // manager.ts (tools/agent) ~0.87k — agent tool manager, pre-split, shrink-only
   'packages/sdk/src/platform/tools/agent/manager.ts': {
-    ceiling: 928,
-    justification: 'agent tool manager, pre-split, shrink-only; +60 for steer-wake (the resumeSteer AgentRecord field + doc, the wakeWithSteer method that re-triggers a terminally-failed agent through the executor, and the transcript-tail summary helper it uses to restore honest prior context)',
+    ceiling: 965,
+    justification: 'agent tool manager, pre-split, shrink-only; +60 for steer-wake (the resumeSteer AgentRecord field + doc, the wakeWithSteer method that re-triggers a terminally-failed agent through the executor, and the transcript-tail summary helper it uses to restore honest prior context); +37 for the mid-run abort seam: the manager-owned per-agent AbortController map + doc, cancel() creating-then-aborting the controller so an in-flight provider call is interrupted (and a cancel requested before the runner reads the signal is not dropped), getCancellationSignal falling back to the owned controller (engine-registered external signal keeps precedence), and releaseCancellationSignal cleaning it up',
   },
   // projections.ts (knowledge) ~0.87k — knowledge projections, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/projections.ts': {
@@ -162,8 +162,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // facade.ts (daemon) ~0.83k — daemon facade, pre-split, shrink-only
   'packages/sdk/src/platform/daemon/facade.ts': {
-    ceiling: 853,
-    justification: 'daemon facade, pre-split, shrink-only; +9 for the approvals broker accessor (embedder/test seam) + doc; +18 for the outbound relay reachability boot seam (start/stop lifecycle wiring + surface accessor; the heavy composition lives in ../relay/daemon-wiring.ts)',
+    ceiling: 877,
+    justification: 'daemon facade, pre-split, shrink-only; +9 for the approvals broker accessor (embedder/test seam) + doc; +18 for the outbound relay reachability boot seam (start/stop lifecycle wiring + surface accessor; the heavy composition lives in ../relay/daemon-wiring.ts); +24 for two in-process embedder seams the ACP adapter needs: cancelAgent (a real cancellation of a running agent) + registerMcpServer (connect a client-declared MCP server into the live registry) with docs',
   },
   // gateway.ts (control-plane) ~0.83k — control-plane gateway, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/gateway.ts': {

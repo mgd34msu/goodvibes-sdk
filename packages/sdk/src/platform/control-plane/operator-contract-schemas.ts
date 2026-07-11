@@ -4,4 +4,5 @@ export * from './operator-contract-schemas-fleet.js';
 export * from './operator-contract-schemas-permissions.js';
 export * from './operator-contract-schemas-remote.js';
 export * from './operator-contract-schemas-runtime.js';
+export * from './operator-contract-schemas-memory-projection.js';
 export * from './operator-contract-schemas-telemetry.js';
