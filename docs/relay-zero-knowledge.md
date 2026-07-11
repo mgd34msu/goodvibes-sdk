@@ -163,9 +163,27 @@ Put it behind TLS (`wss://`) at the edge, point `relay.url` at it, pair a surfac
 with the daemon's QR, and you have reachability that no operator — not even you,
 running the relay — can read.
 
-## Deferrals (stated honestly)
+## Live event streaming over the relay
 
-- **SSE/event streaming over the relay is not yet bridged.** The relay tunnels
-  unary request/response calls (the bulk of the operator surface); event
-  streaming keeps using the direct realtime connectors on the LAN. A streaming
-  bridge is future work, not faked.
+The tunnel carries **both** unary request/response calls and **live event
+subscriptions**. A request whose `Accept` is `text/event-stream` is opened as a
+streaming subscription over the same E2E channel rather than a unary call:
+
+- The client sends a `stream-open` frame; the daemon dispatches it against its
+  own event source (the existing SSE route) and bridges the source's bytes back
+  as sealed `stream-data` frames — ciphertext to the relay, exactly like every
+  other payload.
+- **Flow control.** The daemon reads the source with natural backpressure and
+  holds a **bounded** per-stream send buffer. If a slow consumer makes it
+  overflow, chunks are dropped and **counted**, and a `stream-overflow` frame
+  carries the dropped count — the client surfaces it as a visible
+  `relay-overflow` SSE event. Never a silent gap. Per-pipe stream count is
+  capped, consistent with the relay server's other limits.
+- **Clean close** is explicit in both directions (`stream-close`): the daemon
+  closes when its source ends or errors; the client closes (unsubscribing the
+  daemon's source) when the consumer stops reading.
+
+Because the client exposes this through its relay-backed `fetch`, the existing
+Server-Sent-Events connector idiom (`openServerSentEventStream`, which just calls
+`fetch` and reads the streaming body) works over the relay unchanged — a surface
+that today rejects SSE over relay can drop that rejection and call it directly.

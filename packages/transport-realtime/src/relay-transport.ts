@@ -8,10 +8,13 @@
 // daemon, replayed there, and its response tunneled back. The relay operator
 // never sees any of it.
 //
-// Scope note (honest): this tunnels unary request/response calls — the bulk of
-// the operator surface. Server-Sent-Event streaming over the relay is not yet
-// bridged (see the relay docs); event streaming keeps using the direct realtime
-// connectors on the LAN. A streaming bridge is deferred, not faked.
+// This tunnels unary request/response calls AND live event subscriptions. A
+// request whose `Accept` is `text/event-stream` is opened as a tunneled stream:
+// the returned `Response` carries a `ReadableStream` body fed by `stream-data`
+// frames, so the EXISTING Server-Sent-Events connector idiom
+// (openServerSentEventStream, which just calls `fetch` and reads the streaming
+// body) works over the relay unchanged. Overflow on the daemon's bounded send
+// buffer surfaces as a visible `relay-overflow` SSE event (never a silent gap).
 
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import { createUuidV4 } from '@pellux/goodvibes-transport-core';
@@ -68,6 +71,11 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+interface PendingStream {
+  readonly controller: ReadableStreamDefaultController<Uint8Array>;
+  closed: boolean;
+}
+
 function resolvePairing(pairing: RelayPairingPayload | string): RelayPairingPayload {
   return typeof pairing === 'string' ? decodeRelayPairingString(pairing) : pairing;
 }
@@ -108,6 +116,21 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
   let initiatorState: RelayInitiatorState | null = null;
   let connectPromise: Promise<void> | null = null;
   const pending = new Map<string, PendingRequest>();
+  const streams = new Map<string, PendingStream>();
+
+  function closeStream(id: string, error?: unknown): void {
+    const stream = streams.get(id);
+    if (!stream) return;
+    streams.delete(id);
+    if (stream.closed) return;
+    stream.closed = true;
+    try {
+      if (error) stream.controller.error(error);
+      else stream.controller.close();
+    } catch {
+      // controller already closed
+    }
+  }
 
   function failAll(error: unknown): void {
     for (const [, p] of pending) {
@@ -115,6 +138,7 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
       p.reject(error);
     }
     pending.clear();
+    for (const id of [...streams.keys()]) closeStream(id, error);
   }
 
   function teardown(error?: unknown): void {
@@ -140,15 +164,39 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
       return;
     }
     const framed = decodeTunnelFrame(await channel.open(bytes));
-    if (!framed || framed.header.kind !== 'response') return;
-    const waiting = pending.get(framed.header.id);
-    if (!waiting) return;
-    pending.delete(framed.header.id);
-    clearTimeout(waiting.timer);
-    waiting.resolve(new Response(framed.body.length > 0 ? framed.body : null, {
-      status: framed.header.status,
-      headers: framed.header.headers.map(([k, v]) => [k, v] as [string, string]),
-    }));
+    if (!framed) return;
+    const header = framed.header;
+    if (header.kind === 'response') {
+      const waiting = pending.get(header.id);
+      if (!waiting) return;
+      pending.delete(header.id);
+      clearTimeout(waiting.timer);
+      waiting.resolve(new Response(framed.body.length > 0 ? framed.body : null, {
+        status: header.status,
+        headers: header.headers.map(([k, v]) => [k, v] as [string, string]),
+      }));
+      return;
+    }
+    if (header.kind === 'stream-data') {
+      const stream = streams.get(header.id);
+      if (stream && !stream.closed && framed.body.length > 0) {
+        try { stream.controller.enqueue(framed.body); } catch { /* consumer cancelled */ }
+      }
+      return;
+    }
+    if (header.kind === 'stream-overflow') {
+      const stream = streams.get(header.id);
+      if (stream && !stream.closed) {
+        // Surface the gap as a visible SSE event — never a silent drop.
+        const notice = encodeUtf8(`event: relay-overflow\ndata: {"dropped":${header.dropped}}\n\n`);
+        try { stream.controller.enqueue(notice); } catch { /* consumer cancelled */ }
+      }
+      return;
+    }
+    if (header.kind === 'stream-close') {
+      closeStream(header.id);
+      return;
+    }
   }
 
   function connect(): Promise<void> {
@@ -219,6 +267,35 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
     return connectPromise;
   }
 
+  async function openStream(
+    path: string,
+    headers: Array<[string, string]>,
+    activeChannel: RelaySecureChannel,
+    activeSocket: RelayWebSocketLike,
+  ): Promise<Response> {
+    const id = createUuidV4();
+    let streamController: ReadableStreamDefaultController<Uint8Array> | null = null;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) { streamController = controller; },
+      cancel() {
+        // The consumer stopped reading — tell the daemon to unsubscribe.
+        const stream = streams.get(id);
+        if (stream) stream.closed = true;
+        streams.delete(id);
+        void (async () => {
+          try {
+            const frame = encodeTunnelFrame({ id, kind: 'stream-close' }, new Uint8Array(0));
+            activeSocket.send(await activeChannel.seal(frame));
+          } catch { /* socket already gone */ }
+        })();
+      },
+    });
+    streams.set(id, { controller: streamController!, closed: false });
+    const openFrame = encodeTunnelFrame({ id, kind: 'stream-open', method: 'GET', path, headers }, new Uint8Array(0));
+    activeSocket.send(await activeChannel.seal(openFrame));
+    return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  }
+
   const relayFetch: typeof fetch = async (input, init) => {
     await connect();
     if (!channel || !socket) throw new GoodVibesSdkError('Relay channel is not ready.', { category: 'network', source: 'transport', recoverable: true });
@@ -226,6 +303,13 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
     const url = new URL(request.url, 'http://relay.local');
     const headers: Array<[string, string]> = [];
     request.headers.forEach((value, key) => headers.push([key, value]));
+    // A Server-Sent-Events request is opened as a tunneled stream rather than a
+    // unary call (its body never ends). The existing SSE connector — which just
+    // calls fetch and reads the streaming body — then works over the relay.
+    const accept = request.headers.get('accept') ?? '';
+    if (request.method === 'GET' && accept.includes('text/event-stream')) {
+      return openStream(`${url.pathname}${url.search}`, headers, channel, socket);
+    }
     const bodyText = request.method === 'GET' || request.method === 'HEAD' ? '' : await request.text();
     const id = createUuidV4();
     const frame = encodeTunnelFrame(

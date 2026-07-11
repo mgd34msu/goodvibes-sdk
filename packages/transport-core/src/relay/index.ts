@@ -83,4 +83,8 @@ export {
   type TunnelHeader,
   type TunnelRequestHeader,
   type TunnelResponseHeader,
+  type TunnelStreamOpenHeader,
+  type TunnelStreamDataHeader,
+  type TunnelStreamOverflowHeader,
+  type TunnelStreamCloseHeader,
 } from './tunnel.js';
