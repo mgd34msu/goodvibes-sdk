@@ -528,6 +528,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Changed
 
+- **`GET /api/runtime/metrics` is consolidated onto the `runtime.metrics.get`
+  gateway verb; the daemon-sdk raw REST handler is removed.** The URL previously
+  had two servers: the `@pellux/goodvibes-daemon-sdk` raw handler
+  (`getRuntimeMetrics` in the operator dispatcher, admin-wrapped) and the
+  `runtime.metrics.get` gateway method. They are now one. `runtime.metrics.get`
+  gains a `GATEWAY_REST_ROUTES` parity entry (`GET /api/runtime/metrics`), which
+  `dispatchDaemonApiRoutes` serves ahead of the operator dispatcher, so the URL
+  keeps answering — now through the same in-process handler and the same
+  `read:telemetry` scope gate as the methodId-invoke endpoint. **Breaking for
+  daemon-sdk embedders:** the `getRuntimeMetrics` member is removed from
+  `DaemonRuntimeRouteHandlers`/`DaemonOperatorRuntimeRouteHandlers`, the
+  `DaemonRuntimeMetricsRouteHandlers` interface is deleted, and
+  `DaemonRuntimeRouteContext.snapshotMetrics` is dropped. A daemon composed from
+  the SDK's own router is unaffected (the gateway verb was already registered);
+  an embedder that implemented the raw handler directly should register the
+  gateway verb and rely on the REST-parity route instead.
+
 - **Typed-IO coverage ratchet.** A new `contracts:check` gate
   (`scripts/check-foundation-io-coverage.ts`) freezes the number of operator
   methods that lack typed `OperatorMethodInputMap`/`OperatorMethodOutputMap`
