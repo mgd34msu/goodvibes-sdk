@@ -42,12 +42,19 @@ jobs:
   eval-gate:
     name: Eval gate (floors + regression)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
+      # The eval scripts execute SDK source directly (bun scripts/eval-*.ts ->
+      # packages/sdk/src/...), and that source imports bare workspace specifiers
+      # (@pellux/goodvibes-errors, etc.) whose package exports resolve to ./dist.
+      # Build the workspace first so those dist entrypoints exist; without this
+      # the eval steps fail with "Cannot find module '@pellux/goodvibes-errors'".
+      - name: Build workspace
+        run: bun run build
       - name: Baseline drift check
         run: bun run eval:baseline:check
       - name: Run eval gate
