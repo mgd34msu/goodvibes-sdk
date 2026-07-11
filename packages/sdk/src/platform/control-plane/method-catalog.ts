@@ -66,6 +66,9 @@ import {
 import {
   builtinGatewayWorkspacesMethodDescriptors,
 } from './method-catalog-workspaces.js';
+import {
+  builtinGatewayStepUpMethodDescriptors,
+} from './method-catalog-stepup.js';
 import { GatewayVerbError } from './routes/gateway-verb-error.js';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 
@@ -115,6 +118,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayFlagsMethodDescriptors,
   ...builtinGatewayRewindMethodDescriptors,
   ...builtinGatewayWorkspacesMethodDescriptors,
+  ...builtinGatewayStepUpMethodDescriptors,
 ];
 
 function normalizeDescriptor(descriptor: GatewayMethodDescriptor): GatewayMethodDescriptor {

@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.6.1
- * Methods: 379 total, 349 REST-routed, 30 ws-only invoke.
+ * Methods: 381 total, 351 REST-routed, 30 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1076,6 +1076,14 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/providers/{providerId}/usage"
   },
+  "stepup.challenge.mint": {
+    "method": "POST",
+    "path": "/api/stepup/challenge"
+  },
+  "stepup.credentials.register": {
+    "method": "POST",
+    "path": "/api/stepup/credentials"
+  },
   "remote.node_host.contract": {
     "method": "GET",
     "path": "/api/remote/node-host/contract"
@@ -1759,6 +1767,8 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "push.subscriptions.verify": "ws-invoke",
   "push.vapid.get": "ws-invoke",
   "quota.fanout.get": "ws-invoke",
+  "stepup.challenge.mint": "rest",
+  "stepup.credentials.register": "rest",
   "remote.node_host.contract": "rest",
   "remote.pair.requests.approve": "rest",
   "remote.pair.requests.list": "rest",
@@ -14550,6 +14560,37 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "observedRemaining": 0,
         "observedLimit": 0,
         "requestedAgents": 0
+      }
+    }
+  },
+  "stepup.challenge.mint": {
+    "input": {
+      "rendezvousId": "sample",
+      "sessionId": "sample",
+      "ttlMs": 0
+    },
+    "output": {
+      "challengeId": "sample",
+      "challenge": "sample",
+      "expiresAt": 0
+    }
+  },
+  "stepup.credentials.register": {
+    "input": {
+      "rpId": "sample",
+      "origin": "sample",
+      "credentialId": "sample",
+      "publicKeyCose": "sample",
+      "signCount": 0,
+      "userVerification": "required",
+      "label": "sample"
+    },
+    "output": {
+      "credential": {
+        "credentialId": "sample",
+        "label": "sample",
+        "createdAt": 0,
+        "signCount": 0
       }
     }
   },

@@ -5,8 +5,9 @@ import type { DaemonGatewayRestRouteHandlers } from './context.js';
  *
  * Explicit REST route table for the handler-backed gateway verb families that
  * ALSO advertise an `http` binding in the operator method catalog (skills.*,
- * principals.*, checkin.*, ci.*, channels.profiles.*, and the session-scoped
- * sessions.permissionMode.get/set + sessions.contextUsage.get). Those verbs are
+ * principals.*, checkin.*, ci.*, channels.profiles.*, the session-scoped
+ * sessions.permissionMode.get/set + sessions.contextUsage.get, and stepup.*
+ * (the relay step-up ceremony)). Those verbs are
  * served in-process through `invokeGatewayMethodCall`'s registered-handler
  * branch, reachable over the wire via the generic
  * `POST /api/control/gateway-methods/:methodId/invoke` endpoint. But each one
@@ -92,6 +93,10 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/sessions/{sessionId}/permission-mode', 'sessions.permissionMode.get'),
   route('POST', '/api/sessions/{sessionId}/permission-mode', 'sessions.permissionMode.set'),
   route('GET', '/api/sessions/{sessionId}/context-usage', 'sessions.contextUsage.get'),
+  // stepup.* — relay WebAuthn step-up ceremony (register a credential, mint a
+  // challenge). Both handler-backed gateway verbs with an advertised REST path.
+  route('POST', '/api/stepup/credentials', 'stepup.credentials.register'),
+  route('POST', '/api/stepup/challenge', 'stepup.challenge.mint'),
 ];
 
 /**

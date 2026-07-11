@@ -78,7 +78,6 @@ export interface DaemonRuntimeRouteContext {
   readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
   readonly recordApiResponse: (req: Request, path: string, response: Response) => Response;
   readonly requireAdmin: (req: Request) => Response | null;
-  readonly snapshotMetrics: () => Record<string, unknown>;
   readonly sessionBroker: {
     start(): Promise<void>;
     submitMessage(input: {

@@ -240,7 +240,6 @@ function makeAutomationContext(
     parseOptionalJsonBody: async () => null,
     recordApiResponse: (_req, _path, res) => res,
     requireAdmin: () => null,
-    snapshotMetrics: () => ({}),
     sessionBroker: {
       start: async () => undefined,
       submitMessage: async () => ({ mode: 'rejected', input: { id: '' }, session: { id: '', status: '' } }),

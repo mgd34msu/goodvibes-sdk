@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `379`
+- Methods: `381`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -66440,6 +66440,161 @@ Assess whether spawning N agents against a provider likely exhausts its quota wi
     "verdict",
     "reason",
     "evidence"
+  ],
+  "additionalProperties": false
+}
+```
+
+### relay
+
+#### `stepup.challenge.mint`
+
+Issue a short-lived, single-use WebAuthn challenge bound to the calling session/rendezvous. A surface passes it to navigator.credentials.get and returns the assertion on its next mutating relay call. The freshness window (ttlMs) is clamped to 5s–300s (default 120s).
+
+- Title: `Mint Step-up Challenge`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/stepup/challenge`
+- Scopes: `read:relay`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "rendezvousId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "ttlMs": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "challengeId": {
+      "type": "string"
+    },
+    "challenge": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "challengeId",
+    "challenge",
+    "expiresAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `stepup.credentials.register`
+
+Store a WebAuthn (passkey) credential for relay step-up — its credentialId, COSE public key, and starting signature counter — and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly ('none' attestation).
+
+- Title: `Register Step-up Credential`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/stepup/credentials`
+- Scopes: `write:relay`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "rpId": {
+      "type": "string"
+    },
+    "origin": {
+      "type": "string"
+    },
+    "credentialId": {
+      "type": "string"
+    },
+    "publicKeyCose": {
+      "type": "string"
+    },
+    "signCount": {
+      "type": "number"
+    },
+    "userVerification": {
+      "type": "string",
+      "enum": [
+        "required",
+        "preferred",
+        "discouraged"
+      ]
+    },
+    "label": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "rpId",
+    "origin",
+    "credentialId",
+    "publicKeyCose"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "credential": {
+      "type": "object",
+      "properties": {
+        "credentialId": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "signCount": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "credentialId",
+        "createdAt",
+        "signCount"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "credential"
   ],
   "additionalProperties": false
 }

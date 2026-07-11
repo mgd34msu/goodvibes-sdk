@@ -28,7 +28,6 @@ export interface DaemonOperatorRuntimeRouteHandlers {
   getAutomationHeartbeat(): MaybeResponse;
   postAutomationHeartbeat(req: Request): MaybeResponse;
   getSchedulerCapacity(req: Request): MaybeResponse;
-  getRuntimeMetrics(req: Request): MaybeResponse;
 }
 
 /** Route handlers for the automation surface — overview, runtime automation, and delivery. */
@@ -424,17 +423,11 @@ export interface DaemonRuntimeAutomationRouteHandlers {
   getSchedulerCapacity(req: Request): MaybeResponse;
 }
 
-/** Combined runtime route surface — sessions, tasks, automation, and metrics. */
+/** Combined runtime route surface — sessions, tasks, and automation. */
 export interface DaemonRuntimeRouteHandlers
   extends DaemonRuntimeSessionRouteHandlers,
     DaemonRuntimeTaskRouteHandlers,
-    DaemonRuntimeAutomationRouteHandlers,
-    DaemonRuntimeMetricsRouteHandlers {}
-
-/** Route handler for the runtime metrics endpoint. */
-export interface DaemonRuntimeMetricsRouteHandlers {
-  getRuntimeMetrics(req: Request): MaybeResponse;
-}
+    DaemonRuntimeAutomationRouteHandlers {}
 
 /**
  * The complete daemon API route handler interface. Implement this to satisfy

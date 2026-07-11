@@ -340,6 +340,8 @@ export const OPERATOR_METHOD_IDS = [
   "skills.get",
   "skills.list",
   "skills.update",
+  "stepup.challenge.mint",
+  "stepup.credentials.register",
   "surfaces.list",
   "tasks.cancel",
   "tasks.create",

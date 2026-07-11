@@ -12268,6 +12268,35 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "stepup.challenge.mint": {
+    "methodId": "stepup.challenge.mint",
+    "http": {
+      "method": "POST",
+      "path": "/api/stepup/challenge"
+    },
+    "status": 200,
+    "body": {
+      "challengeId": "sample",
+      "challenge": "sample",
+      "expiresAt": 0
+    }
+  },
+  "stepup.credentials.register": {
+    "methodId": "stepup.credentials.register",
+    "http": {
+      "method": "POST",
+      "path": "/api/stepup/credentials"
+    },
+    "status": 200,
+    "body": {
+      "credential": {
+        "credentialId": "sample",
+        "label": "sample",
+        "createdAt": 0,
+        "signCount": 0
+      }
+    }
+  },
   "remote.node_host.contract": {
     "methodId": "remote.node_host.contract",
     "http": {

@@ -8,6 +8,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Real WebAuthn step-up verification for mutating relay calls (server side).**
+  The relay step-up policy previously shipped only a hook and a fail-closed
+  injected verifier — every mutating call over the relay was refused. It now
+  ships a working ceremony over node/Web Crypto with no external WebAuthn
+  library. Two admin/authenticated operator verbs drive it:
+  `stepup.credentials.register` (admin/local-only) stores a passkey — its
+  `credentialId`, COSE public key, and starting signature counter — in the
+  daemon secret store and records the deployment policy (rpId, allowed origins,
+  user-verification requirement), accepting `'none'` attestation (the standard
+  self-hosted posture, documented in `docs/relay-zero-knowledge.md`); and
+  `stepup.challenge.mint` issues a short-lived, single-use challenge bound to the
+  calling session/rendezvous (freshness window `ttlMs`, clamped 5s–300s, default
+  120s). The daemon's real `StepUpAssertionVerifier` verifies a P-256 ECDSA
+  assertion over `authenticatorData || SHA-256(clientDataJSON)` with full
+  `clientDataJSON` type/challenge/origin checks, an rpIdHash check, the
+  user-presence flag (and user-verification when required), and
+  signature-counter regression detection; only a complete pass consumes the
+  challenge and advances the stored counter, and everything else still fails
+  closed with an honest reason. The challenge-mint path is exempt from the gate
+  (it is the bootstrap for producing an assertion); credential registration is
+  not. New: `stepup.credentials.register` + `stepup.challenge.mint` operator
+  verbs, and the daemon-side `StepUpService`/`verifyStepUpAssertion` core wired
+  as the relay gate's verifier.
+
 - **Sandbox boundary escalations now ride the ONE approval broker, plus an
   optional model-judgment tier for the residual ask-tail.** (a) When the
   per-command exec sandbox is active and a command needs host access a
