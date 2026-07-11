@@ -1,4 +1,4 @@
-import { type ConfigSettingDefinition, intRange, port } from './schema-shared.js';
+import { type ConfigSettingDefinition, intRange, numRange, port } from './schema-shared.js';
 
 /**
  * Per-project worktree cold-start setup (resolveWorktreeSetupConfig). Both fields
@@ -24,6 +24,11 @@ export const runtimeConfigDefaults = {
     },
     eventBus: {
       maxListeners: 100,
+    },
+    toolBudget: {
+      maxMs: 0,
+      maxTokens: 0,
+      maxCostUsd: 0,
     },
   },
   batch: {
@@ -583,6 +588,30 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
       'Maximum number of listeners per event channel (per-type and per-domain) before a warning is emitted in production ' +
       'or a RangeError is thrown in development mode. Raise this only if you have verified there is no subscriber leak.',
     ...intRange(1, 100_000),
+  },
+  {
+    key: 'runtime.toolBudget.maxMs',
+    type: 'number',
+    default: 0,
+    description:
+      'Default per-phase wall-clock budget (ms) for tool execution when the runtime-tools-budget-enforcement feature flag is enabled. 0 = unlimited. A per-call ToolRuntimeContext.budget.maxMs overrides this default.',
+    ...intRange(0, 24 * 60 * 60 * 1000),
+  },
+  {
+    key: 'runtime.toolBudget.maxTokens',
+    type: 'number',
+    default: 0,
+    description:
+      'Default token budget for a single tool execution when runtime-tools-budget-enforcement is enabled (checked against a tool result tokenCount annotation at phase exit). 0 = unlimited. A per-call ToolRuntimeContext.budget.maxTokens overrides.',
+    ...intRange(0, 100_000_000),
+  },
+  {
+    key: 'runtime.toolBudget.maxCostUsd',
+    type: 'number',
+    default: 0,
+    description:
+      'Default cost budget (USD) for a single tool execution when runtime-tools-budget-enforcement is enabled (checked against a tool result costUsd annotation at phase exit). 0 = unlimited. A per-call ToolRuntimeContext.budget.maxCostUsd overrides.',
+    ...numRange(0, 1_000_000),
   },
   {
     key: 'telemetry.includeRawPrompts',

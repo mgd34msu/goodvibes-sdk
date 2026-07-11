@@ -16,6 +16,8 @@ export const coreConfigDefaults = {
     model: 'openrouter:openrouter/free',
     embeddingProvider: 'hashed-local',
     systemPromptFile: '',
+    optimizerMode: 'manual',
+    optimizerPinnedModel: '',
   },
   behavior: {
     autoApprove: false,
@@ -38,6 +40,8 @@ export const coreConfigDefaults = {
   permissions: {
     mode: 'prompt',
     backgroundAgents: 'inherit',
+    divergenceThreshold: 0.05,
+    maxDivergenceRecords: 500,
     tools: {
       read: 'allow',
       write: 'prompt',
@@ -118,6 +122,7 @@ export const coreConfigDefaults = {
     autoHeal: false,
     defaultTokenBudget: 5000,
     hooksFile: 'hooks.json',
+    overflowSpillBackend: 'file',
   },
   wrfc: {
     scoreThreshold: 9.9,
@@ -146,6 +151,9 @@ export const coreConfigDefaults = {
   },
   notifications: {
     webhookUrls: [],
+    burstWindowMs: 1_000,
+    burstThreshold: 3,
+    burstCooldownMs: 3_000,
   },
   featureFlags: {},
 };
@@ -230,6 +238,21 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description: 'Path to a file containing the system prompt (empty = none)',
+  },
+  {
+    key: 'provider.optimizerMode',
+    type: 'enum',
+    default: 'manual',
+    description:
+      'Persistent provider-optimizer routing mode (applied at startup when the provider-optimizer feature flag is enabled): manual (never auto-routes), auto (selects the best capable provider per request via capability contracts), or pinned (force one model — see provider.optimizerPinnedModel). Runtime /provider commands and pin/unpin still override for the session.',
+    enumValues: ['manual', 'auto', 'pinned'],
+  },
+  {
+    key: 'provider.optimizerPinnedModel',
+    type: 'string',
+    default: '',
+    description:
+      'Provider-qualified model id (e.g. anthropic:claude-sonnet-4) pinned by the provider optimizer at startup when provider.optimizerMode is "pinned". Empty leaves the optimizer unpinned (falls back to manual).',
   },
   {
     key: 'behavior.autoApprove',
@@ -321,6 +344,22 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
       + 'allow-all: background agents are exempt — their tool calls auto-approve regardless '
       + 'of the session mode.',
     enumValues: ['inherit', 'allow-all'],
+  },
+  {
+    key: 'permissions.divergenceThreshold',
+    type: 'number',
+    default: 0.05,
+    description:
+      'Maximum permission-evaluator divergence rate (0.0–1.0) the permission-divergence-dashboard enforce gate tolerates before blocking a transition from simulation to enforce mode. Default 0.05 = 5%. A per-simulator divergenceThreshold override still wins.',
+    ...numRange(0, 1),
+  },
+  {
+    key: 'permissions.maxDivergenceRecords',
+    type: 'number',
+    default: 500,
+    description:
+      'Maximum divergence records the permissions simulator retains for the divergence dashboard/trend history. A per-simulator maxDivergenceRecords override still wins.',
+    ...intRange(1, 1_000_000),
   },
   {
     key: 'diagnostics.postEdit',
@@ -703,6 +742,14 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     description: 'Hook configuration file name (relative to the host .goodvibes data directory)',
   },
   {
+    key: 'tools.overflowSpillBackend',
+    type: 'enum',
+    default: 'file',
+    description:
+      'Where large tool-output overflow content spills when the overflow-spill-backends feature flag is enabled: file (on-disk .overflow, default), ledger (execution ledger), or diagnostics. When the flag is disabled the file backend is always used regardless of this setting. An injected custom backend still takes precedence.',
+    enumValues: ['file', 'ledger', 'diagnostics'],
+  },
+  {
     key: 'wrfc.scoreThreshold',
     type: 'number',
     default: 9.9,
@@ -806,5 +853,29 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     default: 'balanced',
     description: 'HITL UX mode: controls notification verbosity and burst batching (quiet/balanced/operator)',
     enumValues: ['quiet', 'balanced', 'operator'],
+  },
+  {
+    key: 'notifications.burstWindowMs',
+    type: 'number',
+    default: 1_000,
+    description:
+      'Observation window (ms) for the adaptive-notification-suppression burst detector: rapid domain:level notifications arriving within this window count toward the burst threshold. Applied at NotificationRouter construction.',
+    ...intRange(1, 60 * 60 * 1000),
+  },
+  {
+    key: 'notifications.burstThreshold',
+    type: 'number',
+    default: 3,
+    description:
+      'Number of notifications for one domain:level group within the burst window that trips adaptive suppression, collapsing further ones to panel_only with a burst_collapsed reason. Critical/milestone/alert notifications are always exempt.',
+    ...intRange(1, 10_000),
+  },
+  {
+    key: 'notifications.burstCooldownMs',
+    type: 'number',
+    default: 3_000,
+    description:
+      'Cooldown (ms) after a domain:level group trips the burst detector before it can trip again. Applied at NotificationRouter construction.',
+    ...intRange(0, 60 * 60 * 1000),
   },
 ];
