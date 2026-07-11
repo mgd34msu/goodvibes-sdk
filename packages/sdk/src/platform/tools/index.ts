@@ -251,6 +251,19 @@ export function registerAllTools(
      * honestly reports "no live session context bound".
      */
     contextAccountingHolder?: ContextAccountingHolder | undefined;
+    /**
+     * Broker a per-command exec-sandbox host-access escalation (network,
+     * host-privilege escalation) through the approval broker before the command
+     * runs. Wired at the composition root to the sandbox-escalation seam.
+     * Omitted → escalations are not asked (today's behavior).
+     */
+    sandboxEscalationHandler?: ((input: {
+      readonly command: string;
+      readonly escalations: readonly string[];
+      readonly boundary: string;
+      readonly policyReasons: readonly string[];
+      readonly workingDirectory?: string | undefined;
+    }) => Promise<boolean>) | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -352,6 +365,7 @@ export function registerAllTools(
           availability: detectSandboxAvailability(probeSandboxHost()),
           featureEnabled: true,
           homeDir: deps.configManager.getHomeDirectory() ?? undefined,
+          ...(deps.sandboxEscalationHandler ? { requestEscalation: deps.sandboxEscalationHandler } : {}),
         }
       : null;
   registerTool(createExecTool(processManager, {

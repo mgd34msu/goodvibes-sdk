@@ -12,7 +12,8 @@ import type { PermissionCategory, PermissionRequestAnalysis } from './types.js';
  */
 export type PermissionAttribution =
   | BackgroundAgentAttribution
-  | McpServerAttribution;
+  | McpServerAttribution
+  | SandboxEscalationAttribution;
 
 /** A background/subagent tool call brokered an ask on behalf of a spawned agent. */
 export interface BackgroundAgentAttribution {
@@ -33,6 +34,22 @@ export interface McpServerAttribution {
   readonly kind: 'mcp-server';
   /** The MCP server that issued the elicitation request. */
   readonly serverName: string;
+}
+
+/**
+ * The active per-command exec sandbox needs host access a boundary-safe command
+ * would not — network, a host-privilege escalation, a package install that
+ * reaches the network — so it brokers an ASK through the SAME approval broker as
+ * a permission ask (one learned pattern, not five). Every surface's approval UI
+ * renders it and background bubbling applies. Names the sandbox and the specific
+ * escalation so the prompt can attribute it ("wants-network").
+ */
+export interface SandboxEscalationAttribution {
+  readonly kind: 'sandbox-escalation';
+  /** The sandbox that raised the escalation (e.g. 'exec-sandbox'). */
+  readonly sandbox: string;
+  /** The specific host-access escalations named on this ask (e.g. 'wants-network'). */
+  readonly escalations: readonly string[];
 }
 
 export interface PermissionPromptRequest {

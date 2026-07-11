@@ -21,6 +21,7 @@ import {
 import {
   attachSandboxMeta,
   resolveRuntimeSandboxPlan,
+  brokerSandboxEscalation,
   type ExecSandboxRuntime,
 } from './sandbox.js';
 
@@ -280,6 +281,18 @@ async function runCommand(
   // metadata; null or not-sandboxed leaves the argv (and result) untouched.
   const sandboxPlan = resolveRuntimeSandboxPlan(sandbox, cmdStr, workingDirectory, cwd);
   const sandboxArgv = sandboxPlan?.sandboxed ? sandboxPlan.argvPrefix : [];
+  // Sandbox boundary escalation: a command that runs inside the boundary but
+  // needs host access (network, host-privilege escalation) rides the SAME
+  // approval broker as a permission ask via the injected requestEscalation seam
+  // (see brokerSandboxEscalation). The frozen catastrophic block was already
+  // enforced above (guardExecCommand) and is untouched here.
+  const deniedEscalation = await brokerSandboxEscalation(sandbox, sandboxPlan, cmdStr, workingDirectory);
+  if (deniedEscalation) {
+    return attachSandboxMeta({
+      cmd: cmdStr, exit_code: null, stdout: '', success: false, denied: true,
+      stderr: `Sandbox escalation denied: ${deniedEscalation.deniedEscalations.join('; ')}`,
+    } as ExecCommandResult, sandboxPlan);
+  }
   // Scrub credential-bearing vars out of the inherited base env, then layer the
   // model-supplied per-command env on top (an explicit per-command opt-in that a
   // withheld var is legitimately wanted). withheld_env reports only names the

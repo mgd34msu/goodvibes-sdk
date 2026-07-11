@@ -71,6 +71,7 @@ export const coreConfigDefaults = {
   },
   sandbox: {
     enabled: false,
+    judgmentAutoApprove: false,
     egressAllowlist: [] as string[],
     workspaceWritable: [] as string[],
     replIsolation: 'shared-vm',
@@ -485,6 +486,12 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     default: false,
     description:
       'Master switch for the per-command exec sandbox (bubblewrap on Linux): the workspace is writable, the rest of the filesystem is read-only, /tmp is isolated, and network is disabled unless a command is on sandbox.egressAllowlist. Default OFF; gated by the graduation-tracked exec-sandbox feature flag and honestly reported unavailable when bubblewrap is not present.',
+  },
+  {
+    key: 'sandbox.judgmentAutoApprove',
+    type: 'boolean',
+    default: false,
+    description: 'When the sandbox-model-judgment tier is enabled, opt into auto-approving a looks-safe verdict on a sandbox escalation ask. Default false = annotate-only (the human still decides). Never auto-denies and never touches the frozen catastrophic block',
   },
   {
     key: 'sandbox.replIsolation',

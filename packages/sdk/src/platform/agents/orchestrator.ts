@@ -116,6 +116,19 @@ type AgentOrchestratorToolDeps = {
    * session binds its Orchestrator-backed source after construction.
    */
   readonly contextAccountingHolder?: import('../tools/context-accounting/index.js').ContextAccountingHolder | undefined;
+  /**
+   * Broker a per-command exec-sandbox host-access escalation through the
+   * approval broker before the command runs. Threaded to registerAllTools so
+   * the exec tool's sandbox raises named escalation asks. Omitted → escalations
+   * are not asked (today's behavior).
+   */
+  readonly sandboxEscalationHandler?: ((input: {
+    readonly command: string;
+    readonly escalations: readonly string[];
+    readonly boundary: string;
+    readonly policyReasons: readonly string[];
+    readonly workingDirectory?: string | undefined;
+  }) => Promise<boolean>) | undefined;
 };
 
 /**
