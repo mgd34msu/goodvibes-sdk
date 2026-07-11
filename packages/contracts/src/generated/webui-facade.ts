@@ -1948,7 +1948,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             ],
             "host": "sample"
           },
-          "workingDirectory": "sample"
+          "workingDirectory": "sample",
+          "attribution": {
+            "kind": "background-agent",
+            "agentId": "sample",
+            "template": "sample"
+          }
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -2009,7 +2014,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             ],
             "host": "sample"
           },
-          "workingDirectory": "sample"
+          "workingDirectory": "sample",
+          "attribution": {
+            "kind": "background-agent",
+            "agentId": "sample",
+            "template": "sample"
+          }
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -2068,7 +2078,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             ],
             "host": "sample"
           },
-          "workingDirectory": "sample"
+          "workingDirectory": "sample",
+          "attribution": {
+            "kind": "background-agent",
+            "agentId": "sample",
+            "template": "sample"
+          }
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -2129,7 +2144,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             ],
             "host": "sample"
           },
-          "workingDirectory": "sample"
+          "workingDirectory": "sample",
+          "attribution": {
+            "kind": "background-agent",
+            "agentId": "sample",
+            "template": "sample"
+          }
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -2207,7 +2227,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               ],
               "host": "sample"
             },
-            "workingDirectory": "sample"
+            "workingDirectory": "sample",
+            "attribution": {
+              "kind": "background-agent",
+              "agentId": "sample",
+              "template": "sample"
+            }
           },
           "createdAt": 0,
           "updatedAt": 0,

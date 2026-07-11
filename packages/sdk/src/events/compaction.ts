@@ -52,6 +52,20 @@ export type CompactionEvent =
       lowQuality: boolean;
       instructionsReinjected: boolean;
       validationPassed: boolean;
+      /** IDs of the sections included in the compacted output. */
+      sectionsIncluded: string[];
+      /**
+       * The strategy the caller REQUESTED (from config), when it differs from the
+       * strategy that actually produced the applied result. Present only on a
+       * distiller→structured fallback; `strategy` names what actually ran.
+       */
+      requestedStrategy?: string | undefined;
+      /**
+       * Why the requested strategy fell back to `strategy` (e.g. the distillation
+       * scored below the quality floor, or the fresh model call was unavailable).
+       * Present only when `requestedStrategy` differs from `strategy`.
+       */
+      strategyFallbackReason?: string | undefined;
       outcome: 'applied' | 'kept-original' | 'failed';
       detail?: string | undefined;
     };

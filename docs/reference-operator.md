@@ -486,6 +486,77 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
             },
             "workingDirectory": {
               "type": "string"
+            },
+            "attribution": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "background-agent"
+                      ]
+                    },
+                    "agentId": {
+                      "type": "string"
+                    },
+                    "template": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "agentId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "mcp-server"
+                      ]
+                    },
+                    "serverName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "serverName"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "sandbox-escalation"
+                      ]
+                    },
+                    "sandbox": {
+                      "type": "string"
+                    },
+                    "escalations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "sandbox",
+                    "escalations"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "required": [
@@ -839,6 +910,77 @@ Cancel a pending approval.
             },
             "workingDirectory": {
               "type": "string"
+            },
+            "attribution": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "background-agent"
+                      ]
+                    },
+                    "agentId": {
+                      "type": "string"
+                    },
+                    "template": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "agentId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "mcp-server"
+                      ]
+                    },
+                    "serverName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "serverName"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "sandbox-escalation"
+                      ]
+                    },
+                    "sandbox": {
+                      "type": "string"
+                    },
+                    "escalations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "sandbox",
+                    "escalations"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "required": [
@@ -1186,6 +1328,77 @@ Claim a pending approval for operator handling.
             },
             "workingDirectory": {
               "type": "string"
+            },
+            "attribution": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "background-agent"
+                      ]
+                    },
+                    "agentId": {
+                      "type": "string"
+                    },
+                    "template": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "agentId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "mcp-server"
+                      ]
+                    },
+                    "serverName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "serverName"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "sandbox-escalation"
+                      ]
+                    },
+                    "sandbox": {
+                      "type": "string"
+                    },
+                    "escalations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "sandbox",
+                    "escalations"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "required": [
@@ -1539,6 +1752,77 @@ Deny a pending approval.
             },
             "workingDirectory": {
               "type": "string"
+            },
+            "attribution": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "background-agent"
+                      ]
+                    },
+                    "agentId": {
+                      "type": "string"
+                    },
+                    "template": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "agentId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "mcp-server"
+                      ]
+                    },
+                    "serverName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "serverName"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "sandbox-escalation"
+                      ]
+                    },
+                    "sandbox": {
+                      "type": "string"
+                    },
+                    "escalations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "sandbox",
+                    "escalations"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "required": [
@@ -2008,6 +2292,77 @@ Return pending and historical approval records.
               },
               "workingDirectory": {
                 "type": "string"
+              },
+              "attribution": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "background-agent"
+                        ]
+                      },
+                      "agentId": {
+                        "type": "string"
+                      },
+                      "template": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "agentId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "mcp-server"
+                        ]
+                      },
+                      "serverName": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "serverName"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "sandbox-escalation"
+                        ]
+                      },
+                      "sandbox": {
+                        "type": "string"
+                      },
+                      "escalations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "sandbox",
+                      "escalations"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
               }
             },
             "required": [
