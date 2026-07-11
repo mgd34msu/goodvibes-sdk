@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `382`
+- Methods: `384`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -61719,6 +61719,256 @@ Set the active default memory embedding provider.
     "vector",
     "embeddings",
     "checkedAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.projections.get`
+
+Return one standing record's projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id — a session-scope or unknown id is an honest miss, never an empty projection.
+
+- Title: `Get Memory Projection`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/memory/projections/{id}`
+- Scopes: `read:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "projection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "session",
+            "project",
+            "team"
+          ]
+        },
+        "cls": {
+          "type": "string",
+          "enum": [
+            "decision",
+            "constraint",
+            "incident",
+            "pattern",
+            "fact",
+            "risk",
+            "runbook",
+            "architecture",
+            "ownership"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "reviewState": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "reviewed",
+            "stale",
+            "contradicted"
+          ]
+        },
+        "validFrom": {
+          "type": "number"
+        },
+        "validUntil": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "pending",
+            "expired"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "filename",
+        "scope",
+        "cls",
+        "summary",
+        "tags",
+        "confidence",
+        "reviewState",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "markdown": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projection",
+    "markdown"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `memory.projections.list`
+
+Return the live projection of standing (project/team-scope) memory records — one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:"expired" rather than silently dropped.
+
+- Title: `List Memory Projections`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/memory/projections`
+- Scopes: `read:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "projections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "session",
+              "project",
+              "team"
+            ]
+          },
+          "cls": {
+            "type": "string",
+            "enum": [
+              "decision",
+              "constraint",
+              "incident",
+              "pattern",
+              "fact",
+              "risk",
+              "runbook",
+              "architecture",
+              "ownership"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "reviewState": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "reviewed",
+              "stale",
+              "contradicted"
+            ]
+          },
+          "validFrom": {
+            "type": "number"
+          },
+          "validUntil": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "pending",
+              "expired"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "scope",
+          "cls",
+          "summary",
+          "tags",
+          "confidence",
+          "reviewState",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "projections"
   ],
   "additionalProperties": false
 }

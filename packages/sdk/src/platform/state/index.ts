@@ -78,6 +78,8 @@ export {
   projectMemoryToFiles,
   parseProjectedMemoryFile,
   readProjectedMemoryFiles,
+  listMemoryProjections,
+  getMemoryProjection,
   diffProjectionToProposals,
   applyMemoryProjectionProposals,
 } from './memory-file-projection.js';
@@ -85,6 +87,7 @@ export type {
   MemoryProjectionOptions,
   MemoryProjectionGit,
   MemoryProjectionFile,
+  MemoryProjectionEntry,
   MemoryProjectionWriteReport,
   MemoryProjectionProposal,
   MemoryProjectionProposalKind,

@@ -17,7 +17,7 @@
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { MemoryClass, MemoryRecord, MemoryScope } from './memory-store.js';
+import type { MemoryClass, MemoryRecord, MemoryScope, MemoryTemporalStatus } from './memory-store.js';
 import { memoryRecordTemporalStatus } from './memory-store.js';
 
 /** Scopes eligible for the file projection — standing memory only (not per-session). */
@@ -164,6 +164,75 @@ export function parseProjectedMemoryFile(path: string, content: string): MemoryP
     ...(parseTime(front.validFrom) !== undefined ? { validFrom: parseTime(front.validFrom) } : {}),
     ...(parseTime(front.validUntil) !== undefined ? { validUntil: parseTime(front.validUntil) } : {}),
   };
+}
+
+/**
+ * One entry in the LIVE memory projection (computed from the store's standing
+ * records, not read from disk) — the shape the memory.projections.* wire verbs
+ * expose. `status` is the record's live temporal status (active / expired /
+ * pending), so an expired record is visibly labelled rather than silently
+ * dropped, exactly as the file projection labels it.
+ */
+export interface MemoryProjectionEntry {
+  readonly id: string;
+  /** The `<id>.md` filename the file projection would use — a stable per-record handle. */
+  readonly filename: string;
+  readonly scope: MemoryScope;
+  readonly cls: MemoryClass;
+  readonly summary: string;
+  readonly tags: readonly string[];
+  readonly confidence: number;
+  readonly reviewState: string;
+  readonly validFrom?: number | undefined;
+  readonly validUntil?: number | undefined;
+  readonly status: MemoryTemporalStatus;
+}
+
+function toProjectionEntry(record: MemoryRecord, now: number): MemoryProjectionEntry {
+  return {
+    id: record.id,
+    filename: recordFileName(record.id),
+    scope: record.scope,
+    cls: record.cls,
+    summary: record.summary,
+    tags: record.tags,
+    confidence: record.confidence,
+    reviewState: record.reviewState,
+    ...(record.validFrom !== undefined ? { validFrom: record.validFrom } : {}),
+    ...(record.validUntil !== undefined ? { validUntil: record.validUntil } : {}),
+    status: memoryRecordTemporalStatus(record, now),
+  };
+}
+
+/**
+ * The live projection of standing (project/team) memory records — one metadata
+ * entry per record, oldest first. Does not touch disk. Session-scope records are
+ * excluded (they are not standing memory), matching the file projection's own
+ * scope selection.
+ */
+export function listMemoryProjections(
+  records: readonly MemoryRecord[],
+  options: MemoryProjectionOptions & { readonly now?: number } = {},
+): MemoryProjectionEntry[] {
+  const now = options.now ?? Date.now();
+  return selectStandingRecords(records, options).map((record) => toProjectionEntry(record, now));
+}
+
+/**
+ * The live projection of ONE standing record by id: its metadata entry plus the
+ * exact markdown the file projection would write. Returns null when no standing
+ * record has that id (a session-scope or unknown id is an honest miss, not an
+ * empty projection).
+ */
+export function getMemoryProjection(
+  records: readonly MemoryRecord[],
+  id: string,
+  options: MemoryProjectionOptions & { readonly now?: number } = {},
+): { readonly entry: MemoryProjectionEntry; readonly markdown: string } | null {
+  const now = options.now ?? Date.now();
+  const record = selectStandingRecords(records, options).find((candidate) => candidate.id === id);
+  if (!record) return null;
+  return { entry: toProjectionEntry(record, now), markdown: projectMemoryRecordToMarkdown(record, now) };
 }
 
 /** Read + parse every `*.md` in the projection directory. */
