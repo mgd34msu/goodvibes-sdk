@@ -28,3 +28,19 @@ await import('./check-foundation-io-coverage.ts');
 // packages/contracts/artifacts/operator-openapi.json or
 // docs/operator-openapi.json reddens `contracts:check`.
 await import('./generate-openapi-contract.ts');
+
+// The generated consumer transport layers (Stage C): the webui mechanical
+// facade (packages/contracts/src/generated/webui-facade.ts) and the Home
+// Assistant Python client (packages/contracts/artifacts/python/
+// homeassistant_operator_client.py), both emitted from the committed
+// operator-contract.json. Same gate, same drift idiom — a stale generated
+// consumer layer reddens `contracts:check`.
+const { generateWebuiFacade } = await import('./generate-webui-facade.ts');
+const { generateHomeassistantClient } = await import('./generate-homeassistant-client.ts');
+let consumerDrift = false;
+consumerDrift = generateWebuiFacade({ check: true }) || consumerDrift;
+consumerDrift = generateHomeassistantClient({ check: true }) || consumerDrift;
+if (consumerDrift) {
+  console.error('[contracts:check] generated consumer transport drift — run `bun run refresh:contracts`');
+  process.exit(1);
+}

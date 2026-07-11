@@ -50,6 +50,10 @@
       "types": "./dist/generated/runtime-event-domains.d.ts",
       "import": "./dist/generated/runtime-event-domains.js"
     },
+    "./generated/webui-facade": {
+      "types": "./dist/generated/webui-facade.d.ts",
+      "import": "./dist/generated/webui-facade.js"
+    },
     "./node": {
       "types": "./dist/node.d.ts",
       "import": "./dist/node.js"
