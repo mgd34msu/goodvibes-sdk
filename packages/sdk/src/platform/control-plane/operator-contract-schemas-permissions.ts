@@ -29,6 +29,36 @@ export const PERMISSION_PROMPT_REQUEST_ANALYSIS_SCHEMA = objectSchema({
   host: STRING_SCHEMA,
 }, ['classification', 'riskLevel', 'summary', 'reasons'], { additionalProperties: false });
 
+// Attribution for a permission ask that did NOT originate from the foreground
+// turn loop (packages/sdk/src/platform/permissions/prompt.ts PermissionAttribution).
+// A discriminated union on `kind`; every non-foreground origin that reaches the
+// approval broker names itself here. Adding an origin means adding a variant to
+// this anyOf, never widening `kind` to a bare string.
+const PERMISSION_ATTRIBUTION_BACKGROUND_AGENT_SCHEMA = objectSchema({
+  kind: enumSchema(['background-agent']),
+  agentId: STRING_SCHEMA,
+  template: STRING_SCHEMA,
+}, ['kind', 'agentId'], { additionalProperties: false });
+
+const PERMISSION_ATTRIBUTION_MCP_SERVER_SCHEMA = objectSchema({
+  kind: enumSchema(['mcp-server']),
+  serverName: STRING_SCHEMA,
+}, ['kind', 'serverName'], { additionalProperties: false });
+
+const PERMISSION_ATTRIBUTION_SANDBOX_ESCALATION_SCHEMA = objectSchema({
+  kind: enumSchema(['sandbox-escalation']),
+  sandbox: STRING_SCHEMA,
+  escalations: arraySchema(STRING_SCHEMA),
+}, ['kind', 'sandbox', 'escalations'], { additionalProperties: false });
+
+export const PERMISSION_ATTRIBUTION_SCHEMA: Record<string, unknown> = {
+  anyOf: [
+    PERMISSION_ATTRIBUTION_BACKGROUND_AGENT_SCHEMA,
+    PERMISSION_ATTRIBUTION_MCP_SERVER_SCHEMA,
+    PERMISSION_ATTRIBUTION_SANDBOX_ESCALATION_SCHEMA,
+  ],
+};
+
 export const PERMISSION_PROMPT_REQUEST_SCHEMA = objectSchema({
   callId: STRING_SCHEMA,
   tool: STRING_SCHEMA,
@@ -36,6 +66,7 @@ export const PERMISSION_PROMPT_REQUEST_SCHEMA = objectSchema({
   category: PERMISSION_CATEGORY_SCHEMA,
   analysis: PERMISSION_PROMPT_REQUEST_ANALYSIS_SCHEMA,
   workingDirectory: STRING_SCHEMA,
+  attribution: PERMISSION_ATTRIBUTION_SCHEMA,
 }, ['callId', 'tool', 'args', 'category', 'analysis'], { additionalProperties: false });
 
 export const PERMISSION_PROMPT_DECISION_SCHEMA = objectSchema({

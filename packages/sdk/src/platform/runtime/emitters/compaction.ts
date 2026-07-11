@@ -178,6 +178,9 @@ export function emitCompactionReceipt(
     lowQuality: boolean;
     instructionsReinjected: boolean;
     validationPassed: boolean;
+    sectionsIncluded: string[];
+    requestedStrategy?: string | undefined;
+    strategyFallbackReason?: string | undefined;
     outcome: 'applied' | 'kept-original' | 'failed';
     detail?: string | undefined;
   },
