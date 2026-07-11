@@ -491,6 +491,18 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
           cacheReadTokens: event.cacheReadTokens ?? 0,
           cacheWriteTokens: event.cacheWriteTokens ?? 0,
         });
+        // Quota snapshot from rate-limit headers carried on THIS (successful)
+        // response — the pre-limit signal, not just the post-429 cooldown.
+        if (event.rateLimit) {
+          quotaWindow.record({
+            provider: event.provider,
+            at: Date.now(),
+            ...(event.rateLimit.limit !== undefined ? { limit: event.rateLimit.limit } : {}),
+            ...(event.rateLimit.remaining !== undefined ? { remaining: event.rateLimit.remaining } : {}),
+            ...(event.rateLimit.resetAt !== undefined ? { resetAt: event.rateLimit.resetAt } : {}),
+            ...(event.rateLimit.retryAfterMs !== undefined ? { retryAfterMs: event.rateLimit.retryAfterMs } : {}),
+          });
+        }
       } else if (event.type === 'STREAM_RETRY' && isRateLimitReason(event.reason)) {
         // A rate-limit retry carries the provider's requested backoff, which is
         // the real cooldown window the fan-out assessment reasons over.

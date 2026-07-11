@@ -12268,6 +12268,21 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "quota.snapshot.get": {
+    "methodId": "quota.snapshot.get",
+    "http": null,
+    "status": 200,
+    "body": {
+      "provider": "sample",
+      "hasSignal": false,
+      "observedAt": 0,
+      "remaining": 0,
+      "limit": 0,
+      "resetAt": 0,
+      "activeCooldownMs": 0,
+      "recentRateLimitCount": 0
+    }
+  },
   "stepup.challenge.mint": {
     "methodId": "stepup.challenge.mint",
     "http": {

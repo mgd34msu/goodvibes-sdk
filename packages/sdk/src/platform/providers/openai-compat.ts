@@ -21,6 +21,7 @@ import type { OpenAIToolCall } from './tool-formats.js';
 import { accumOpenAIToolCall, finalizeOpenAIToolCalls, applyOpenAIChunkUsage, resolveOpenAIToolCallsAndFallback } from './openai-stream-helpers.js';
 import type { OpenAIChunkUsage } from './openai-stream-helpers.js';
 import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
+import { parseRateLimitHeaders } from './rate-limit-headers.js';
 import { getCacheCapability } from './cache-capability.js';
 import type { ProviderCacheCapability } from './cache-capability.js';
 import type { CacheHitTracker } from './cache-strategy.js';
@@ -349,6 +350,7 @@ export class OpenAICompatProvider implements LLMProvider {
       let rawStopReason: string | undefined;
       let stopReason: ChatStopReason = 'unknown';
       let reasoningSummaryText: string | undefined;
+      let rateLimit: ChatResponse['rateLimit'];
       let rawToolCalls: OpenAIToolCall[] = [];
       const selectedModel = model ?? this.defaultModel;
       const requestFingerprint = buildChatRequestFingerprint(params, selectedModel);
@@ -389,7 +391,9 @@ export class OpenAICompatProvider implements LLMProvider {
       });
 
       try {
-        const stream = await this.client.chat.completions.create(
+        // .withResponse() surfaces the raw HTTP Response alongside the stream so
+        // rate-limit headers are readable on the SUCCESS path (not only 429s).
+        const created = await this.client.chat.completions.create(
           {
             model: selectedModel,
             messages: openaiMessages as Parameters<typeof this.client.chat.completions.create>[0]['messages'],
@@ -407,9 +411,12 @@ export class OpenAICompatProvider implements LLMProvider {
                 }
               : undefined
           ) as Parameters<typeof this.client.chat.completions.create>[1],
-        ) as unknown as AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & {
-          controller: AbortController;
+        ).withResponse() as unknown as {
+          data: AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & { controller: AbortController };
+          response: Response;
         };
+        const stream = created.data;
+        rateLimit = parseRateLimitHeaders(created.response.headers) ?? undefined;
         streamOpened = true;
         logger.debug('OpenAICompatProvider.chat stream opened', {
           provider: this.name,
@@ -512,6 +519,7 @@ export class OpenAICompatProvider implements LLMProvider {
         },
         stopReason: resolveCompletedStopReason(stopReason, responseText),
         ...withProviderStopReason(rawStopReason),
+        ...(rateLimit ? { rateLimit } : {}),
       };
 
       if (reasoningSummaryText) {

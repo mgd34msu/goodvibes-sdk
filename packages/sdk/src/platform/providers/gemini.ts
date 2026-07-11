@@ -11,6 +11,7 @@ import type {
 import { REASONING_BUDGET_MAP } from './interface.js';
 
 import { mapGeminiStopReason } from './stop-reason-maps.js';
+import { parseRateLimitHeaders } from './rate-limit-headers.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
@@ -267,6 +268,8 @@ export class GeminiProvider implements LLMProvider {
         });
       }
 
+      const rateLimit = parseRateLimitHeaders(res.headers) ?? undefined;
+
       // Accumulate state from streaming chunks
       const allParts: GeminiPart[] = [];
       let inputTokens = 0;
@@ -382,6 +385,7 @@ export class GeminiProvider implements LLMProvider {
         },
         stopReason,
         ...(lastFinishReason ? { providerStopReason: lastFinishReason } : {}),
+        ...(rateLimit ? { rateLimit } : {}),
       };
     }, undefined, onRetry), { provider: 'gemini', model: model })).result;
   }

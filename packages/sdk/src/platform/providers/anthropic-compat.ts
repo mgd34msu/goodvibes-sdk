@@ -17,6 +17,7 @@ import {
 import { toProviderError } from '../utils/error-display.js';
 import { createAnthropicSSEState, readAnthropicSSEStream, assembleAnthropicContentBlocks } from './anthropic-sse-assembler.js';
 import { resolveCompletedStopReason, withProviderStopReason } from './provider-stop-reason.js';
+import { parseRateLimitHeaders } from './rate-limit-headers.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 
 const ANTHROPIC_API_VERSION = '2023-06-01';
@@ -182,6 +183,8 @@ export class AnthropicCompatProvider implements LLMProvider {
         );
       }
 
+      const rateLimit = parseRateLimitHeaders(res.headers) ?? undefined;
+
       // Parse SSE stream
       const state = createAnthropicSSEState();
 
@@ -205,6 +208,7 @@ export class AnthropicCompatProvider implements LLMProvider {
         usage: { inputTokens: state.inputTokens, outputTokens: state.outputTokens, cacheReadTokens: state.cacheReadTokens, cacheWriteTokens: state.cacheWriteTokens },
         stopReason: resolveCompletedStopReason(state.stopReason, text),
         ...withProviderStopReason(state.rawStopReason),
+        ...(rateLimit ? { rateLimit } : {}),
       };
     }, this.retryConfig, onRetry), { provider: this.name, model: model ?? this.defaultModel })).result;
   }

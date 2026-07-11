@@ -556,6 +556,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         cacheWriteTokens: response.usage.cacheWriteTokens,
         durationMs: Date.now() - chatStartedAt,
         retries: chatRetries,
+        ...(response.rateLimit ? { rateLimit: response.rateLimit } : {}),
       });
     }
 

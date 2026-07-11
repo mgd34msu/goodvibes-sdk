@@ -62,6 +62,31 @@ export interface FanoutQuery {
   readonly callsPerAgent?: number | undefined;
 }
 
+/**
+ * A point-in-time view of a provider's observed quota window — the most recent
+ * limit/remaining/reset a provider's headers reported, plus any active cooldown.
+ * `hasSignal:false` (with every observed-* field absent) when no rate-limit
+ * signal has been seen for the provider in the lookback window — an honest "no
+ * observation", never a fabricated full quota.
+ */
+export interface QuotaSnapshot {
+  readonly provider: string;
+  /** Whether any rate-limit/quota signal has been observed within the lookback window. */
+  readonly hasSignal: boolean;
+  /** Epoch ms of the most recent observed signal, when one exists. */
+  readonly observedAt?: number | undefined;
+  /** Most recent observed remaining-in-window, when a provider reported it. */
+  readonly remaining?: number | undefined;
+  /** Most recent observed window limit, when a provider reported it. */
+  readonly limit?: number | undefined;
+  /** Most recent observed window reset (epoch ms), when a provider reported it. */
+  readonly resetAt?: number | undefined;
+  /** Remaining cooldown (ms) from the most recent retry-after that has not yet elapsed, when active. */
+  readonly activeCooldownMs?: number | undefined;
+  /** How many rate-limit (retry-after-carrying) signals were seen in the lookback window. */
+  readonly recentRateLimitCount: number;
+}
+
 export interface QuotaWindowTrackerOptions {
   /** How far back observed signals stay relevant to an assessment. Default 15 min. */
   readonly lookbackMs?: number | undefined;
@@ -93,6 +118,37 @@ export class QuotaWindowTracker {
       list.splice(0, list.length - this.maxSignalsPerProvider);
     }
     this.signals.set(signal.provider, list);
+  }
+
+  /**
+   * A point-in-time view of the provider's observed quota window: the most
+   * recent limit/remaining/reset and any active cooldown, grounded only in what
+   * headers actually reported. Honest "no observation" (hasSignal:false) when
+   * nothing has been seen in the lookback window.
+   */
+  snapshot(provider: string): QuotaSnapshot {
+    const now = this.now();
+    const recent = (this.signals.get(provider) ?? []).filter((s) => now - s.at <= this.lookbackMs);
+    if (recent.length === 0) {
+      return { provider, hasSignal: false, recentRateLimitCount: 0 };
+    }
+    const latest = recent[recent.length - 1]!;
+    const activeCooldownMs = latest.retryAfterMs !== undefined
+      ? Math.max(0, latest.at + latest.retryAfterMs - now)
+      : undefined;
+    const remaining = lastDefined(recent, (s) => s.remaining);
+    const limit = lastDefined(recent, (s) => s.limit);
+    const resetAt = lastDefined(recent, (s) => s.resetAt);
+    return {
+      provider,
+      hasSignal: true,
+      observedAt: latest.at,
+      recentRateLimitCount: recent.filter((s) => s.retryAfterMs !== undefined).length,
+      ...(remaining !== undefined ? { remaining } : {}),
+      ...(limit !== undefined ? { limit } : {}),
+      ...(resetAt !== undefined ? { resetAt } : {}),
+      ...(activeCooldownMs !== undefined && activeCooldownMs > 0 ? { activeCooldownMs } : {}),
+    };
   }
 
   /**

@@ -97,6 +97,18 @@ export type TurnEvent =
     originCallId?: string | undefined;
     originHook?: string | undefined;
     originMcpServer?: string | undefined;
+    /**
+     * Rate-limit / quota snapshot parsed from this response's headers (present on
+     * successes too, not only 429s), when the provider carried recognized
+     * headers. Consumed by the quota-window tracker so consumers can render
+     * remaining quota before a limit is hit.
+     */
+    rateLimit?: {
+      limit?: number | undefined;
+      remaining?: number | undefined;
+      resetAt?: number | undefined;
+      retryAfterMs?: number | undefined;
+    } | undefined;
   }
   /** A batch of tool calls is ready for execution. */
   | { type: 'TOOL_BATCH_READY'; turnId: string; toolCalls: string[] }

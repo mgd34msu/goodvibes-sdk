@@ -120,6 +120,12 @@ export function emitLlmResponseReceived(
     originCallId?: string | undefined;
     originHook?: string | undefined;
     originMcpServer?: string | undefined;
+    rateLimit?: {
+      limit?: number | undefined;
+      remaining?: number | undefined;
+      resetAt?: number | undefined;
+      retryAfterMs?: number | undefined;
+    } | undefined;
   }
 ): void {
   // Merge the ambient cost-attribution origin (the tool/hook/MCP scope this LLM

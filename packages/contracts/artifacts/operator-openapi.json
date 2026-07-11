@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.6.1",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 381 cataloged methods: 351 with dedicated REST bindings, 30 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 382 cataloged methods: 351 with dedicated REST bindings, 31 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -88247,6 +88247,7 @@
           "push.subscriptions.verify",
           "push.vapid.get",
           "quota.fanout.get",
+          "quota.snapshot.get",
           "rewind.apply",
           "rewind.plan",
           "sessions.changes.get",
@@ -91009,6 +91010,15 @@
     },
     {
       "id": "quota.fanout.get",
+      "category": "quota",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "quota.snapshot.get",
       "category": "quota",
       "access": "authenticated",
       "rest": null,

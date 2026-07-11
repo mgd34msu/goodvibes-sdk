@@ -31,6 +31,7 @@ import type { AnthropicContentBlock } from './tool-formats.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { toRecord } from '../utils/record-coerce.js';
+import { parseRateLimitHeaders } from './rate-limit-headers.js';
 
 const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 const ANTHROPIC_API_VERSION = '2023-06-01';
@@ -268,6 +269,10 @@ export class AnthropicProvider implements LLMProvider {
         });
       }
 
+      // Rate-limit snapshot from THIS response's headers (populated on success,
+      // not just 429) so the runtime can warn before a limit is hit.
+      const rateLimit = parseRateLimitHeaders(res.headers) ?? undefined;
+
       // Parse SSE stream
       const state = createAnthropicSSEState();
 
@@ -305,6 +310,7 @@ export class AnthropicProvider implements LLMProvider {
           breakpointsPlaced,
           hitRate,
         },
+        ...(rateLimit ? { rateLimit } : {}),
       };
     }, undefined, onRetry), { provider: 'anthropic', model: model })).result;
   }
