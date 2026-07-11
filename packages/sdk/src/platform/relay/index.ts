@@ -25,6 +25,20 @@ export {
 } from './step-up-policy.js';
 
 export {
+  StepUpService,
+  parseAssertionHeader,
+  encodeAssertionHeader,
+  type StepUpSecretStore,
+  type StepUpServiceOptions,
+  type UserVerificationRequirement,
+  type RegisterStepUpCredentialInput,
+  type StepUpCredentialSummary,
+  type MintStepUpChallengeInput,
+  type MintedStepUpChallenge,
+  type StepUpChallengeFailure,
+} from './step-up-service.js';
+
+export {
   mintLanCertificate,
   type MintLanCertificateOptions,
   type LanCertificateResult,

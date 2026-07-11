@@ -7,7 +7,10 @@ export { bootDaemon, DaemonServer } from './platform/daemon/index.js';
 export type { BootDaemonOptions, BootedDaemon } from './platform/daemon/index.js';
 
 // Daemon-side relay surface: reachability control, the WebAuthn step-up policy
-// hook, and the LAN certificate minter.
+// hook + ceremony service (RuntimeServices.stepUpService — DaemonServer.start()
+// calls its createVerifier() unconditionally, so a consumer composing its own
+// RuntimeServices-compatible object needs the class, not a deep import), and
+// the LAN certificate minter.
 export {
   createRelayReachability,
   isRelayReachabilityEnabled,
@@ -15,6 +18,9 @@ export {
   STEP_UP_ASSERTION_HEADER,
   evaluateStepUp,
   isMutatingMethod,
+  StepUpService,
+  parseAssertionHeader,
+  encodeAssertionHeader,
   mintLanCertificate,
   type RelayReachability,
   type RelayReachabilityOptions,
@@ -23,6 +29,14 @@ export {
   type StepUpDecision,
   type StepUpEvaluationInput,
   type StepUpAssertionVerifier,
+  type StepUpSecretStore,
+  type StepUpServiceOptions,
+  type UserVerificationRequirement,
+  type RegisterStepUpCredentialInput,
+  type StepUpCredentialSummary,
+  type MintStepUpChallengeInput,
+  type MintedStepUpChallenge,
+  type StepUpChallengeFailure,
   type MintLanCertificateOptions,
   type LanCertificateResult,
   type LanCertCommandRunner,

@@ -421,6 +421,10 @@
       "types": "./dist/platform/runtime/store/index.d.ts",
       "import": "./dist/platform/runtime/store/index.js"
     },
+    "./platform/runtime/emitters": {
+      "types": "./dist/platform/runtime/emitters/index.d.ts",
+      "import": "./dist/platform/runtime/emitters/index.js"
+    },
     "./platform/runtime/ui": {
       "types": "./dist/platform/runtime/ui.d.ts",
       "import": "./dist/platform/runtime/ui.js"
