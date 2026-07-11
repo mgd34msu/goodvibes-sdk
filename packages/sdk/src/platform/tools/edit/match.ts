@@ -518,6 +518,19 @@ export function classifyEditFailure(message: string): EditResultStatus {
   return 'failed';
 }
 
+/**
+ * Classify a successful edit's warning string into which lenient fallback the
+ * matcher used to land it, or null for a warning that is not a fallback notice.
+ * Co-located with the warning phrases produced by computeSingleEdit (see
+ * `usedFallback` above) so the classifier and the strings it reads stay in one
+ * file. Used by tool-format telemetry to count fallback-mode edits per model.
+ */
+export function classifyEditFallbackWarning(warning: string): 'whitespace' | 'fuzzy-lines' | null {
+  if (warning.includes('whitespace-normalized match')) return 'whitespace';
+  if (warning.includes('fuzzy line match')) return 'fuzzy-lines';
+  return null;
+}
+
 export function buildFailedEditResult(
   item: EditItem,
   error: string,
