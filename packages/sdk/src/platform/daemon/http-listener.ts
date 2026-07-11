@@ -202,6 +202,19 @@ interface HttpDangerConfig {
   httpListener: boolean;
 }
 
+/**
+ * Read the shared control-plane CORS allowlist (controlPlane.cors.allowedOrigins,
+ * a comma-separated string) into a trimmed origin list. Reused by the webhook
+ * HttpListener so it honors the same allowlist as the control-plane router.
+ */
+function readCorsAllowedOrigins(configManager: ConfigManager): string[] {
+  return configManager
+    .get('controlPlane.cors.allowedOrigins')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+}
+
 // ---------------------------------------------------------------------------
 // HttpListener
 // ---------------------------------------------------------------------------
@@ -255,8 +268,13 @@ export class HttpListener {
     );
     this.port = config.port ?? resolvedHttpBinding.port;
     this.host = config.host ?? resolvedHttpBinding.host;
-    this.allowedOrigins = config.allowedOrigins ?? [];
-    this.enforceCors = config.enforceCors ?? false;
+    // CORS defaults come from the shared controlPlane.cors.* config (the same keys
+    // the control-plane router honors) rather than a parallel httpListener.cors.*
+    // surface. An explicit constructor config.allowedOrigins / config.enforceCors
+    // still overrides. Default remains permissive because controlPlane.cors.enabled
+    // defaults false.
+    this.allowedOrigins = config.allowedOrigins ?? readCorsAllowedOrigins(this.configManager);
+    this.enforceCors = config.enforceCors ?? (this.configManager.get('controlPlane.cors.enabled') === true);
 
     // When enforceCors is true, refuse to construct with hostMode=network + empty allowedOrigins.
     // Off by default — home and single-user local deployments don't need CORS enforcement.
