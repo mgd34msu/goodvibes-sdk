@@ -10,6 +10,19 @@ import type { AgentRecord } from '../tools/agent/index.js';
 import type { WrfcChain } from '../agents/wrfc-types.js';
 import type { ExecutionPlan } from './execution-plan.js';
 
+/**
+ * Which conversation-compaction strategy produces the handoff.
+ *
+ * - `structured` — the default in-place strategy: assemble a handoff from many
+ *   targeted extraction calls over the existing message history.
+ * - `distiller`  — the fresh-context strategy: one fresh model call distills the
+ *   conversation into a structured continuation brief that seeds a new context.
+ *   Graduates through the `compaction-distiller-strategy` feature flag; when the
+ *   flag is dark the requested `distiller` selection resolves back to
+ *   `structured`.
+ */
+export type CompactionStrategyChoice = 'structured' | 'distiller';
+
 // ---------------------------------------------------------------------------
 // Section types
 // ---------------------------------------------------------------------------
@@ -129,6 +142,14 @@ export interface CompactionContext {
    * active-skill block is re-injected.
    */
   activeSkillFrontmatter?: string | undefined;
+
+  /**
+   * Which compaction strategy to run. Absent → `structured` (the default). The
+   * caller resolves this from the `behavior.compactionStrategy` config key
+   * gated by the `compaction-distiller-strategy` feature flag, so a `distiller`
+   * value here already means the flag is on.
+   */
+  strategy?: CompactionStrategyChoice | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,6 +208,18 @@ export interface CompactionReceipt {
   validationPassed: boolean;
   /** IDs of the sections included in the compacted output. */
   sectionsIncluded: string[];
+  /**
+   * The strategy the caller REQUESTED (from config), when it differs from the
+   * strategy that actually produced the applied result. Present only on a
+   * distiller→structured fallback; `strategy` names what actually ran.
+   */
+  requestedStrategy?: string | undefined;
+  /**
+   * Why the requested strategy fell back to `strategy` (e.g. the distillation
+   * scored below the quality floor, or the fresh model call was unavailable).
+   * Present only when `requestedStrategy` differs from `strategy`.
+   */
+  strategyFallbackReason?: string | undefined;
   /**
    * Outcome: `applied` — the compacted context replaced the conversation;
    * `kept-original` — the quality guard rejected the result and the full

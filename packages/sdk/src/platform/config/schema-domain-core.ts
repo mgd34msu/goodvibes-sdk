@@ -20,6 +20,7 @@ export const coreConfigDefaults = {
   behavior: {
     autoApprove: false,
     autoCompactThreshold: 80,
+    compactionStrategy: 'structured',
     staleContextWarnings: true,
     saveHistory: true,
     notifyOnComplete: true,
@@ -241,6 +242,13 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     default: 80,
     description: 'Compact conversation when context usage exceeds this percentage',
     ...numRange(10, 100),
+  },
+  {
+    key: 'behavior.compactionStrategy',
+    type: 'enum',
+    default: 'structured',
+    description: 'Compaction strategy: structured (in-place summarization) or distiller (fresh model call producing a continuation brief; gated by the compaction-distiller-strategy flag, falls back to structured below the quality floor)',
+    enumValues: ['structured', 'distiller'],
   },
   {
     key: 'behavior.staleContextWarnings',

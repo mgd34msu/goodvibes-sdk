@@ -8,6 +8,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A fresh-context DISTILLER compaction strategy, as an alternative to in-place
+  structured summarization.** Instead of assembling a handoff from many targeted
+  extraction calls over the message history, the distiller makes ONE fresh model
+  call that distills the conversation into a structured continuation brief (task
+  state, decisions made, open threads, key file/symbol references) which seeds a
+  fresh context. Selection is the new `behavior.compactionStrategy` config key
+  (`structured` default | `distiller`), and the distiller graduates through the
+  new dark, graduation-tracked `compaction-distiller-strategy` feature flag —
+  when the flag is off, a `distiller` config value honestly resolves back to
+  `structured`. Every distillation is scored through the SAME quality scorer as
+  the structured strategy: a distillation below the quality floor (or a fresh
+  call that is unavailable) FALLS BACK to the structured strategy, and the
+  compaction receipt names the strategy that ran plus the requested strategy and
+  the fallback reason. Standing instruction-chain / active-skill re-injection at
+  the compaction boundary applies to both strategies (the distiller re-injects
+  through the same `buildReinjectedInstructions` seam — parity, not a second
+  copy). New: `distillConversation`, `resolveCompactionStrategy`,
+  `CompactionStrategyChoice`, and the `requestedStrategy` /
+  `strategyFallbackReason` receipt fields.
+
 - **A steer message to a wedged agent now re-triggers its processing loop
   instead of being silently dropped.** `AgentManager.wakeWithSteer(agentId,
   steer)` re-triggers a terminally-FAILED agent — one whose turn loop has
