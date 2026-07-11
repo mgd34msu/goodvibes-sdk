@@ -31,6 +31,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   not. New: `stepup.credentials.register` + `stepup.challenge.mint` operator
   verbs, and the daemon-side `StepUpService`/`verifyStepUpAssertion` core wired
   as the relay gate's verifier.
+- **Live event streaming over the relay tunnel.** The relay tunnel carried only
+  unary request/response; live event subscriptions (SSE) fell back to polling for
+  relay-connected surfaces. The hop/tunnel protocol now has a streaming frame
+  family over the established E2E channel — `stream-open` / `stream-data` /
+  `stream-overflow` / `stream-close` — all sealed as ciphertext to the relay
+  exactly like every other payload. The daemon bridges its existing realtime
+  event source into `stream-data` frames with a **bounded** per-stream send
+  buffer and a per-pipe stream cap (consistent with the relay server's limits);
+  on overflow it drops-with-notice via a `stream-overflow` frame carrying the
+  dropped count (never a silent gap), and close is clean in both directions. On
+  the client, the relay-backed `fetch` opens a `text/event-stream` request as a
+  tunneled stream and returns a streaming `Response`, so the existing
+  Server-Sent-Events connector idiom (`openServerSentEventStream`) works over the
+  relay unchanged — a surface that rejects SSE over relay today can lift that
+  rejection and call it directly. New tunnel frame types
+  (`TunnelStreamOpenHeader`, `TunnelStreamDataHeader`, `TunnelStreamOverflowHeader`,
+  `TunnelStreamCloseHeader`).
 
 - **Sandbox boundary escalations now ride the ONE approval broker, plus an
   optional model-judgment tier for the residual ask-tail.** (a) When the
