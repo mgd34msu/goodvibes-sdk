@@ -65,6 +65,7 @@ import { UserAuthManager } from '../security/user-auth.js';
 import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
 import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
+import { ContextAccountingHolder } from '../tools/context-accounting/index.js';
 import { DeterministicReplayEngine } from '../core/deterministic-replay.js';
 import { ProviderOptimizer } from '../providers/optimizer.js';
 import { ProviderRegistry } from '../providers/registry.js';
@@ -221,6 +222,12 @@ export interface RuntimeServices {
   readonly agentManager: AgentManager;
   readonly agentMessageBus: AgentMessageBus;
   readonly agentOrchestrator: AgentOrchestrator;
+  /**
+   * Settable holder for the context_accounting tool's session source. The tool
+   * is registered on the shared roster; an interactive consumer binds its
+   * Orchestrator-backed source here (see tools/context-accounting).
+   */
+  readonly contextAccountingHolder: ContextAccountingHolder;
   readonly wrfcController: WrfcController;
   /**
    * Orchestration engine — ships ALONGSIDE wrfcController,
@@ -670,8 +677,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     hookDispatcher,
     featureFlags,
   );
+  // The interactive session binds its Orchestrator-backed source onto this holder
+  // after construction; passing it through here registers the context_accounting
+  // tool on the shared roster (every consumer inherits it, like repo_map).
+  const contextAccountingHolder = new ContextAccountingHolder();
   agentOrchestrator.setDependencies({
     permissionManager: backgroundPermissionManager,
+    contextAccountingHolder,
     fileCache,
     projectIndex,
     workingDirectory,
@@ -838,6 +850,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentManager,
     agentMessageBus,
     agentOrchestrator,
+    contextAccountingHolder,
     wrfcController,
     orchestrationEngine,
     processManager,

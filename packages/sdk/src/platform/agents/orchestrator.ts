@@ -110,6 +110,12 @@ type AgentOrchestratorToolDeps = {
   readonly permissionManager?:
     | Pick<import('../permissions/manager.js').PermissionManager, 'checkDetailed' | 'check' | 'getBackgroundAgentsMode' | 'previewReadAccess'>
     | undefined;
+  /**
+   * Settable holder for the context_accounting tool's session source. Threaded
+   * through so the tool is registered on the shared roster; the interactive
+   * session binds its Orchestrator-backed source after construction.
+   */
+  readonly contextAccountingHolder?: import('../tools/context-accounting/index.js').ContextAccountingHolder | undefined;
 };
 
 /**

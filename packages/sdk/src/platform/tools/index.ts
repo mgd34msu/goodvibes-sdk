@@ -14,6 +14,7 @@ import { createWriteTool } from './write/index.js';
 import { createEditTool } from './edit/index.js';
 import { TypeScriptSyntaxDiagnosticsProvider } from './shared/post-edit-diagnostics.js';
 import { createRepoMapTool } from './repo-map/index.js';
+import { ContextAccountingHolder, createContextAccountingTool } from './context-accounting/index.js';
 import { createFindTool } from './find/index.js';
 import { createExecTool } from './exec/index.js';
 import type { CredentialEnvScrubConfig } from './exec/credential-env.js';
@@ -109,6 +110,14 @@ export { ReadTool } from './read/index.js';
 export { createWriteTool } from './write/index.js';
 export { createEditTool } from './edit/index.js';
 export { createRepoMapTool } from './repo-map/index.js';
+export {
+  ContextAccountingHolder,
+  createContextAccountingTool,
+} from './context-accounting/index.js';
+export type {
+  ContextAccountingSource,
+  ContextTokenState,
+} from './context-accounting/index.js';
 export type { EditToolOptions } from './edit/index.js';
 export type { EditItem, EditInput } from './edit/types.js';
 export { createFindTool } from './find/index.js';
@@ -234,6 +243,14 @@ export function registerAllTools(
      * never leaks its content through a search. Omitted → all files allowed.
      */
     readAccessFilter?: import('./shared/read-access.js').ReadAccessFilter | undefined;
+    /**
+     * Settable holder for the context_accounting tool's session source. The tool
+     * is always registered (consumers inherit it like repo_map); the interactive
+     * session binds its Orchestrator-backed source onto this holder after
+     * construction. Omitted → the tool registers with a fresh empty holder and
+     * honestly reports "no live session context bound".
+     */
+    contextAccountingHolder?: ContextAccountingHolder | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -319,6 +336,7 @@ export function registerAllTools(
   }));
   registerTool(createFindTool(workingDirectory, deps.featureFlags, undefined, deps.readAccessFilter));
   registerTool(createRepoMapTool({ projectRoot: workingDirectory, ...(deps.readAccessFilter ? { readAccessFilter: deps.readAccessFilter } : {}) }));
+  registerTool(createContextAccountingTool(deps.contextAccountingHolder ?? new ContextAccountingHolder()));
   // Per-command exec sandbox: only probe the host (a bwrap spawn) when the
   // graduation-gated flag AND the sandbox.enabled config switch are both on, so
   // the default path stays zero-cost and byte-for-byte unchanged.

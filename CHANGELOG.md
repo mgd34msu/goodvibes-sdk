@@ -8,6 +8,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **A model-invokable `context_accounting` tool: the model can read its own
+  context composition honestly.** Registered on the standard tool roster (every
+  consumer inherits it like `repo_map`), it reports — from existing records,
+  never estimated-as-fact — what was passively injected this turn (memory record
+  ids, sources, and why), the recall-contract outcomes (relevance floor, records
+  dropped to fit the budget, lexical-fallback degraded mode, index-unavailable
+  reasons), compaction state, and token-budget state. Provider-measured token
+  counts are reported as fact; heuristic values (per-turn injection token cost,
+  context-used percent) are flagged as estimates. This lets the model tell "no
+  memory exists" apart from "recall was floored" apart from "the index is
+  unavailable." The tool binds to a session via a settable
+  `ContextAccountingHolder` (exposed as `runtimeServices.contextAccountingHolder`)
+  that an interactive consumer populates with its Orchestrator-backed source;
+  unbound, the tool says so honestly rather than inventing an accounting.
 - **A child agent that dies abnormally now delivers a structured failure
   envelope to its supervising parent instead of a bare status.** When a spawned
   agent terminates on an API error, watchdog kill, budget exhaustion, an
