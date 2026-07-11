@@ -43,7 +43,6 @@ import { buildWrfcWorkflowRoutingPrompt } from './wrfc-routing.js';
 import {
   buildPerTurnKnowledgeInjection,
   defaultTurnKnowledgeBudgetTokens,
-  DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR,
   type TurnInjectionRecord,
   type TurnKnowledgeRegistrySource,
   type TurnCodeIndexSource,
@@ -51,15 +50,13 @@ import {
 
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
 /**
- * Per-turn passive-injection headroom clamp for the MAIN interactive
- * session. Mirrors agents/orchestrator-runner.ts's CONTEXT_COMPACT_THRESHOLD (0.85) —
- * deliberately NOT derived from this loop's own configurable `behavior.autoCompactThreshold`
- * (default 80, see config/schema-domain-core.ts), which governs CONVERSATION compaction and
- * can be user-tuned or disabled (0) independently of this feature. Keeping this fixed keeps
- * the injection block's safety margin identical to the agent-runner's regardless of what the
- * operator has configured for compaction.
+ * Per-turn passive-injection headroom clamp for the MAIN interactive session.
+ * Sourced from config `agents.contextCompactThreshold` (default 0.85) — the same
+ * key the agent-runner's CONTEXT_COMPACT_THRESHOLD is promoted to. Deliberately
+ * SEPARATE from `behavior.autoCompactThreshold` (default 80), which governs
+ * CONVERSATION compaction and can be user-tuned or disabled (0) independently of
+ * this feature; the injection headroom margin has its own key.
  */
-const PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD = 0.85;
 
 interface HookDispatcherLike {
   fire(event: HookEvent): Promise<HookResult>;
@@ -309,24 +306,29 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     const composedBaseSystemPrompt = wrfcRoutingPromptForCall
       ? `${baseSystemPromptForCall}\n\n${wrfcRoutingPromptForCall}`
       : baseSystemPromptForCall;
+    const contextCompactThreshold = context.configManager.get('agents.contextCompactThreshold');
     if (passiveKnowledgeInjectionEnabled && newUserInputThisTurn && context.memoryRegistry) {
       const configuredBudget = context.passiveKnowledgeInjectionBudgetTokens
-        ?? defaultTurnKnowledgeBudgetTokens(knowledgeContextWindow);
+        ?? defaultTurnKnowledgeBudgetTokens(
+          knowledgeContextWindow,
+          context.configManager.get('agents.passiveInjection.budgetTokens'),
+        );
       let turnBudgetTokens = configuredBudget;
       if (knowledgeContextWindow > 0) {
-        // Clamp to whatever headroom remains under the same fixed safety threshold this
-        // block always uses (PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD) so base+block
+        // Clamp to whatever headroom remains under the same safety threshold this
+        // block always uses (agents.contextCompactThreshold) so base+block
         // can never silently exceed it, using LIVE token counts from the
         // post-preflight-compaction conversation state (checkContextWindowPreflight above
         // already ran this iteration) rather than turn-start estimates.
         const msgTokensForBudget = estimateConversationTokens(context.conversation.getMessagesForLLM());
         const sysTokensForBudget = estimateTokens(composedBaseSystemPrompt);
-        const threshold = Math.floor(knowledgeContextWindow * PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD);
+        const threshold = Math.floor(knowledgeContextWindow * contextCompactThreshold);
         const headroomTokens = threshold - msgTokensForBudget - sysTokensForBudget;
         turnBudgetTokens = Math.max(0, Math.min(configuredBudget, headroomTokens));
       }
       if (turnBudgetTokens > 0) {
-        const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
+        const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor
+          ?? context.configManager.get('agents.passiveInjection.relevanceFloor');
         // Stage B: code hits share this turn's SAME budget/floor. Gated on the separate
         // (default-off) code-injection flag AND the embedder's storage.codeIndexEnabled
         // setting, both folded into isPassiveCodeInjectionEnabled by the orchestrator.
@@ -347,6 +349,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
           turn: context.nextTurnKnowledgeSequence(),
           codeIndex: context.codeIndex,
           codeInjectionEnabled,
+          codeLimit: context.configManager.get('agents.passiveInjection.codeLimit'),
         });
         turnKnowledgeBlock = block;
         if (turnInjectionRecord.injectedIds.length > 0) {
@@ -373,7 +376,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         const liveMsgTokens = estimateConversationTokens(context.conversation.getMessagesForLLM());
         const liveSysTokens = estimateTokens(base);
         const liveBlockTokens = estimateTokens(turnKnowledgeBlock);
-        const threshold = Math.floor(knowledgeContextWindow * PASSIVE_KNOWLEDGE_INJECTION_CONTEXT_THRESHOLD);
+        const threshold = Math.floor(knowledgeContextWindow * contextCompactThreshold);
         if (liveMsgTokens + liveSysTokens + liveBlockTokens > threshold) return base;
       }
       return `${base}\n\n${turnKnowledgeBlock}`;

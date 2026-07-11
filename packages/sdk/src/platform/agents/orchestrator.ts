@@ -581,6 +581,7 @@ export class AgentOrchestrator {
       workingDirectory: cwd,
       surfaceRoot: this.toolDeps?.surfaceRoot ?? '',
       atRestPolicy: resolveAtRestPolicy(atRestGet),
+      ...(configManager ? { configManager } : {}),
       runtimeBus: this.runtimeBus,
       featureFlagManager: this.featureFlagManager,
       emitterContext: (agentId) => this.emitterContext(agentId),

@@ -106,11 +106,20 @@ export type TurnCodeIndexSource = {
 /** Source of one injected line: reviewable project memory vs the repo code index. */
 export type TurnInjectionSource = 'memory' | 'code-index';
 
-export function defaultTurnKnowledgeBudgetTokens(contextWindow: number): number {
+/**
+ * Default per-turn knowledge injection budget: min(ceiling, 3% of the model
+ * context window). `ceilingTokens` defaults to DEFAULT_TURN_KNOWLEDGE_BUDGET_TOKENS
+ * but callers with config in scope pass agents.passiveInjection.budgetTokens so the
+ * absolute cap is operator-tunable while the 3%-of-window clamp is preserved.
+ */
+export function defaultTurnKnowledgeBudgetTokens(
+  contextWindow: number,
+  ceilingTokens: number = DEFAULT_TURN_KNOWLEDGE_BUDGET_TOKENS,
+): number {
   if (!Number.isFinite(contextWindow) || contextWindow <= 0) {
-    return DEFAULT_TURN_KNOWLEDGE_BUDGET_TOKENS;
+    return ceilingTokens;
   }
-  return Math.min(DEFAULT_TURN_KNOWLEDGE_BUDGET_TOKENS, Math.floor(contextWindow * 0.03));
+  return Math.min(ceilingTokens, Math.floor(contextWindow * 0.03));
 }
 
 /**
