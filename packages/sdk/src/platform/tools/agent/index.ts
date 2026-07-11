@@ -10,6 +10,11 @@ import { evaluateOrchestrationSpawn, ORCHESTRATION_CAP_KEYS } from '../../runtim
 import { summarizeError } from '../../utils/error-display.js';
 import { toRecord } from '../../utils/record-coerce.js';
 import { evaluateWrfcBatchPolicy } from './wrfc-batch-policy.js';
+import {
+  buildChildFailureEnvelope,
+  isChildFailureTerminal,
+  type ChildFailureEnvelope,
+} from './child-failure-envelope.js';
 export type { AgentExecutor, AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 export { isActiveAgent } from './predicates.js';
@@ -73,6 +78,19 @@ function agentExecutionContract(record: AgentRecord) {
     communicationLane: record.communicationLane,
     knowledgeInjections: record.knowledgeInjections ?? [],
   };
+}
+
+/**
+ * Build the child-failure envelope for a terminally-failed/cancelled record so
+ * the supervising model receives {agentId, phase, reason, partialOutputs} as the
+ * RESULT of its poll — never a bare status. Returns null for non-terminal or
+ * cleanly-completed agents. The transcript tail is pulled from the manager's
+ * live-or-frozen snapshot (honest partial output, never fabricated).
+ */
+function childFailureFor(manager: AgentManager, record: AgentRecord): ChildFailureEnvelope | null {
+  if (!isChildFailureTerminal(record)) return null;
+  const transcriptTail = manager.getConversationSnapshot(record.id);
+  return buildChildFailureEnvelope(record, { transcriptTail });
 }
 
 function agentSummary(record: AgentRecord) {
@@ -215,6 +233,7 @@ export function createAgentTool(config: {
             ? record.completedAt - record.startedAt
             : Date.now() - record.startedAt;
 
+        const statusFailure = childFailureFor(manager, record);
         return {
           success: true,
           output: JSON.stringify({
@@ -226,6 +245,7 @@ export function createAgentTool(config: {
             toolCallCount: record.toolCallCount,
             progress: record.progress,
             error: record.error,
+            ...(statusFailure ? { failure: statusFailure } : {}),
             ...agentTopology(record),
           }),
         };
@@ -331,15 +351,17 @@ export function createAgentTool(config: {
           })),
         };
 
+        const getFailure = childFailureFor(manager, record);
+        const failureField = getFailure ? { failure: getFailure } : {};
         return {
           success: true,
           output: JSON.stringify(detail === 'full'
-            ? { ...base, ...contract, ...messages }
+            ? { ...base, ...failureField, ...contract, ...messages }
             : detail === 'contract'
-              ? { ...base, ...contract }
+              ? { ...base, ...failureField, ...contract }
               : detail === 'messages'
-                ? { ...base, ...messages }
-                : base),
+                ? { ...base, ...failureField, ...messages }
+                : { ...base, ...failureField }),
         };
       }
 
@@ -421,12 +443,14 @@ export function createAgentTool(config: {
         const terminalStatuses = new Set(['completed', 'failed', 'cancelled']);
 
         if (terminalStatuses.has(record.status)) {
+          const waitFailure = childFailureFor(manager, record);
           return {
             success: true,
             output: JSON.stringify({
               agentId: input.agentId,
               status: record.status,
               timedOut: false,
+              ...(waitFailure ? { failure: waitFailure } : {}),
             }),
           };
         }
@@ -456,6 +480,7 @@ export function createAgentTool(config: {
           return { success: true, output: JSON.stringify({ agentId: input.agentId, status: 'deleted', error: 'Agent was removed during wait' }) };
         }
         const finalStatus = finalRecord.status;
+        const finalFailure = childFailureFor(manager, finalRecord);
         return {
           success: true,
           output: JSON.stringify({
@@ -463,6 +488,7 @@ export function createAgentTool(config: {
             status: finalStatus,
             timedOut: !terminalStatuses.has(finalStatus),
             hint: terminalStatuses.has(finalStatus) ? undefined : 'Agent still running. Use mode=status to poll again.',
+            ...(finalFailure ? { failure: finalFailure } : {}),
           }),
         };
       }
