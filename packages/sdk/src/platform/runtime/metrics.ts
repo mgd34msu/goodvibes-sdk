@@ -10,6 +10,7 @@
  */
 import { RuntimeMeter } from './telemetry/meter.js';
 import { toolFormatTelemetry } from './telemetry/tool-format-telemetry.js';
+import type { HistogramSnapshot } from './telemetry/types.js';
 
 /** Singleton RuntimeMeter instance for the platform. */
 export const platformMeter = new RuntimeMeter({ scope: 'goodvibes-sdk' });
@@ -72,11 +73,54 @@ export function resetMetrics(): void {
   toolFormatTelemetry.reset();
 }
 
+/** A bucketed counter split by an outcome label (e.g. status class, success/error). */
+export interface RuntimeMetricsBucket {
+  readonly [label: string]: number;
+}
+
+/** The JSON-serialisable shape `snapshotMetrics()` returns. */
+export interface RuntimeMetricsSnapshot {
+  readonly counters: {
+    readonly http: { readonly requests: { readonly total: RuntimeMetricsBucket } };
+    readonly llm: { readonly requests: { readonly total: RuntimeMetricsBucket } };
+    readonly auth: { readonly success: { readonly total: number }; readonly failure: { readonly total: number } };
+    readonly transport: { readonly retries_total: number };
+    readonly [flatKey: string]: unknown;
+  };
+  readonly gauges: {
+    readonly sessions: { readonly active: number };
+    readonly sse: { readonly subscribers: number };
+    readonly telemetry: { readonly buffer: { readonly fill: number } };
+    readonly [flatKey: string]: unknown;
+  };
+  readonly histograms: {
+    readonly 'http.request.duration_ms': HistogramSnapshot;
+    readonly 'llm.request.duration_ms': HistogramSnapshot;
+    readonly 'llm.tokens.input': HistogramSnapshot;
+    readonly 'llm.tokens.output': HistogramSnapshot;
+  };
+  /** Per-model edit-failure + declared-exec-expectation-miss counts (see tool-format-telemetry.ts). */
+  readonly toolFormat: {
+    readonly byModel: Record<string, Record<string, number>>;
+    readonly byClass: Record<string, number>;
+  };
+  // An index signature so this remains assignable to the untyped
+  // `Record<string, unknown>` return type older context surfaces (e.g.
+  // daemon-sdk's DaemonRuntimeRouteContext) still declare for snapshotMetrics.
+  readonly [topLevelKey: string]: unknown;
+}
+
 /**
  * Snapshot all metric instruments as a JSON-serialisable object.
- * Used by the GET /api/runtime/metrics endpoint.
+ *
+ * Reachable two ways: the `runtime.metrics.get` operator method (typed IO,
+ * catalog-registered — see method-catalog-runtime.ts and routes/runtime-
+ * metrics.ts), and its REST binding `GET /api/runtime/metrics`. Consumers
+ * needing this shape directly (not through the operator client) can import
+ * `snapshotMetrics`/`RuntimeMetricsSnapshot` from
+ * `@pellux/goodvibes-sdk/platform/runtime/observability`.
  */
-export function snapshotMetrics(): Record<string, unknown> {
+export function snapshotMetrics(): RuntimeMetricsSnapshot {
   const httpRequestsSnapshot = {
     '2xx': httpRequestsTotal.value({ status_class: '2xx' }),
     '4xx': httpRequestsTotal.value({ status_class: '4xx' }),

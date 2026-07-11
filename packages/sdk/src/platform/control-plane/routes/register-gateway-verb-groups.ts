@@ -47,6 +47,7 @@ import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
 import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief } from '../../ci-watch/index.js';
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
+import { registerRuntimeMetricsGatewayMethods } from './runtime-metrics.js';
 import { dirname } from 'node:path';
 import { registerRewindGatewayMethods } from './rewind.js';
 import { registerWorkspacesGatewayMethods } from './workspaces.js';
@@ -419,6 +420,12 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // evidence provider is threaded here yet — flags with instrumentation report
   // "no evidence collected this run" rather than a fabricated readiness.
   registerFlagsGraduationGatewayMethods(catalog);
+
+  // runtime.metrics.get — the process-wide RuntimeMeter snapshot plus per-model
+  // tool-format telemetry. Needs no runtime dependency (platformMeter and the
+  // tool-format recorder are process-wide singletons), so it is always
+  // registered, exactly like the flags-graduation report above.
+  registerRuntimeMetricsGatewayMethods(catalog);
 
   // Unified message-anchored rewind (rewind.plan / rewind.apply): one coordinator
   // over the daemon's workspace-checkpoint store — files rewind reuses the same

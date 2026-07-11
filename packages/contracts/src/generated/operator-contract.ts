@@ -70702,6 +70702,78 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "runtime.metrics.get",
+        "title": "Runtime Metrics",
+        "description": "Return the process-wide runtime metrics snapshot: HTTP/LLM/auth/transport counters, gauges, request-duration and token histograms, and per-model tool-format telemetry (edit-tool failure classes and declared exec-expectation misses).",
+        "category": "runtime",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:telemetry"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/runtime/metrics"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "counters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": true
+            },
+            "gauges": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": true
+            },
+            "histograms": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": true
+            },
+            "toolFormat": {
+              "type": "object",
+              "properties": {
+                "byModel": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": true
+                },
+                "byClass": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "byModel",
+                "byClass"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "counters",
+            "gauges",
+            "histograms",
+            "toolFormat"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "scheduler.capacity",
         "title": "Scheduler Capacity",
         "description": "Return the current automation-scheduler capacity snapshot: total slots, in-use slots, queue depth, and age of the oldest queued run.",
@@ -87345,10 +87417,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 378,
-      "typedInputs": 378,
+      "methods": 379,
+      "typedInputs": 379,
       "genericInputs": 0,
-      "typedOutputs": 378,
+      "typedOutputs": 379,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -87357,8 +87429,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 378,
-      "validated": 376,
+      "methods": 379,
+      "validated": 377,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `378`
+- Methods: `379`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -71773,6 +71773,84 @@ Return registered channel and control surfaces.
   },
   "required": [
     "surfaces"
+  ],
+  "additionalProperties": false
+}
+```
+
+### runtime
+
+#### `runtime.metrics.get`
+
+Return the process-wide runtime metrics snapshot: HTTP/LLM/auth/transport counters, gauges, request-duration and token histograms, and per-model tool-format telemetry (edit-tool failure classes and declared exec-expectation misses).
+
+- Title: `Runtime Metrics`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/runtime/metrics`
+- Scopes: `read:telemetry`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "counters": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": true
+    },
+    "gauges": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": true
+    },
+    "histograms": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": true
+    },
+    "toolFormat": {
+      "type": "object",
+      "properties": {
+        "byModel": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "byClass": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "byModel",
+        "byClass"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "counters",
+    "gauges",
+    "histograms",
+    "toolFormat"
   ],
   "additionalProperties": false
 }

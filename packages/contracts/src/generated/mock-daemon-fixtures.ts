@@ -13309,6 +13309,23 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       ]
     }
   },
+  "runtime.metrics.get": {
+    "methodId": "runtime.metrics.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/runtime/metrics"
+    },
+    "status": 200,
+    "body": {
+      "counters": {},
+      "gauges": {},
+      "histograms": {},
+      "toolFormat": {
+        "byModel": {},
+        "byClass": {}
+      }
+    }
+  },
   "scheduler.capacity": {
     "methodId": "scheduler.capacity",
     "http": {
