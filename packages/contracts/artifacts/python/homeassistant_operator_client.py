@@ -5,7 +5,7 @@ emitted from the operator contract by scripts/generate-homeassistant-client.ts.
 Covers only the REST subset HA consumes; the webhook, conversation stream,
 and surface health probe are not operator methods and stay hand-written.
 
-Contract product version: 1.6.1
+Contract product version: 1.7.0
 Consumed operator methods: 33
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any, Literal, Mapping, NamedTuple, NotRequired, TypedDict
 
 #: Daemon contract version these types were generated against (the version pin).
-CONTRACT_VERSION: str = "1.6.1"
+CONTRACT_VERSION: str = "1.7.0"
 
 
 class OperatorRoute(NamedTuple):
