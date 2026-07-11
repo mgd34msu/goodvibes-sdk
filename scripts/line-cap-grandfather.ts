@@ -131,8 +131,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // services.ts (runtime) ~0.86k — runtime services composition root, pre-split, shrink-only
   'packages/sdk/src/platform/runtime/services.ts': {
-    ceiling: 884,
-    justification: 'runtime services composition root, pre-split, shrink-only; +26 for constructing the background-agent PermissionManager (ask handler bridged to the shared approval broker with subagent attribution) and threading it into the AgentOrchestrator dependencies',
+    ceiling: 888,
+    justification: 'runtime services composition root, pre-split, shrink-only; +26 for constructing the background-agent PermissionManager (ask handler bridged to the shared approval broker with subagent attribution) and threading it into the AgentOrchestrator dependencies; +4 for wiring the MCP elicitation handler (import + setElicitationHandler bridging elicitation/create to the same approval broker)',
   },
   // scheduler.ts ~0.85k — scheduler core, pre-split, shrink-only
   'packages/sdk/src/platform/scheduler/scheduler.ts': {

@@ -2,17 +2,37 @@ import type { PermissionCategory, PermissionRequestAnalysis } from './types.js';
 
 /**
  * Attribution for a permission ask that did NOT originate from the foreground
- * turn loop. Populated when a background/subagent tool call brokers an ask so a
- * surface can render "which agent is asking" instead of an anonymous prompt.
- * Absent on foreground asks (the common case).
+ * turn loop. Populated when a background/subagent tool call — or an MCP server's
+ * elicitation request — brokers an ask so a surface can render "who is asking"
+ * instead of an anonymous prompt. Absent on foreground asks (the common case).
+ *
+ * A discriminated union: every non-foreground origin that reaches the approval
+ * broker names itself here so the same prompt UI can attribute it. Adding an
+ * origin means adding a member, never widening `kind` to `string`.
  */
-export interface PermissionAttribution {
-  /** Marks the asking party. Currently only background agents attribute asks. */
+export type PermissionAttribution =
+  | BackgroundAgentAttribution
+  | McpServerAttribution;
+
+/** A background/subagent tool call brokered an ask on behalf of a spawned agent. */
+export interface BackgroundAgentAttribution {
   readonly kind: 'background-agent';
   /** The spawned agent's record id. */
   readonly agentId: string;
   /** The agent's archetype/template, when known (e.g. 'engineer'). */
   readonly template?: string | undefined;
+}
+
+/**
+ * An MCP server asked the client for user input (spec `elicitation/create`), and
+ * that request is routed through the SAME approval broker as a permission ask so
+ * every surface's existing approval UI renders it and background-agent bubbling
+ * applies. Carries which server is asking so the prompt can attribute it.
+ */
+export interface McpServerAttribution {
+  readonly kind: 'mcp-server';
+  /** The MCP server that issued the elicitation request. */
+  readonly serverName: string;
 }
 
 export interface PermissionPromptRequest {

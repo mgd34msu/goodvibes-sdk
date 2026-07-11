@@ -82,12 +82,29 @@ export interface McpClientUnhandledResponse {
   error?: string | undefined;
 }
 
+/**
+ * A resolver for the MCP `elicitation/create` server→client request. When
+ * wired, the client advertises the `elicitation` capability at handshake and
+ * routes incoming elicitation requests here instead of hard-rejecting them with
+ * `-32601`; the resolved outcome is written back as the JSON-RPC result.
+ */
+export type McpElicitationResolver = (input: {
+  serverName: string;
+  id: JsonRpcId;
+  params?: unknown | undefined;
+}) => Promise<{ action: 'accept' | 'decline' | 'cancel'; content?: Record<string, unknown> | undefined }>;
+
 export interface McpClientOptions {
   timeout?: number | undefined;
   processSpec?: McpProcessSpec | undefined;
   onNotification?: ((notification: McpClientNotification) => void) | undefined;
   onServerRequest?: ((request: McpClientServerRequest) => void) | undefined;
   onUnhandledResponse?: ((response: McpClientUnhandledResponse) => void) | undefined;
+  /**
+   * When set, `elicitation/create` server requests are resolved through this
+   * handler (which brokers them to the approval channel) rather than dropped.
+   */
+  onElicitation?: McpElicitationResolver | undefined;
 }
 
 function isJsonRpcId(value: unknown): value is JsonRpcId {
@@ -292,7 +309,10 @@ export class McpClient {
     try {
       await this._request('initialize', {
         protocolVersion: '2024-11-05',
-        capabilities: {},
+        // Advertise the elicitation capability only when a resolver is wired, so
+        // a spec-compliant server knows it may ask the user for input (and does
+        // not when we would only reject it).
+        capabilities: this.options?.onElicitation ? { elicitation: {} } : {},
         clientInfo: { name: 'goodvibes-sdk', version: VERSION },
       });
       this._notify('notifications/initialized', {});
@@ -468,18 +488,47 @@ export class McpClient {
   }
 
   private _handleServerRequest(request: JsonRpcRequest): void {
-    logger.info('McpClient: received unsupported server JSON-RPC request', {
-      server: this.config.name,
-      method: request.method,
-      id: request.id,
-    });
     const observed: McpClientServerRequest = {
       serverName: this.config.name,
       id: request.id,
       method: request.method,
       ...(request.params !== undefined ? { params: request.params } : {}),
     };
+    // The observer (a Lifecycle hook) fires for every server request regardless
+    // of whether we can answer it.
     this._callObserver('server request', () => this.options?.onServerRequest?.(observed));
+
+    // Elicitation is the one server→client request we can genuinely answer: route
+    // it to the wired resolver (the approval broker) and write its outcome back as
+    // the JSON-RPC result instead of rejecting with -32601.
+    const elicit = this.options?.onElicitation;
+    if (request.method === 'elicitation/create' && elicit) {
+      logger.info('McpClient: brokering elicitation/create request', {
+        server: this.config.name,
+        id: request.id,
+      });
+      void elicit({ serverName: this.config.name, id: request.id, params: request.params })
+        .then((outcome) => {
+          this._sendJsonRpcResult(request.id, outcome);
+        })
+        .catch((err: unknown) => {
+          logger.warn('McpClient: elicitation resolver failed', {
+            server: this.config.name,
+            id: request.id,
+            err: summarizeError(err),
+          });
+          // A resolver failure is not the same as an unsupported method — report
+          // an internal error so the server can distinguish the two.
+          this._sendJsonRpcError(request.id, -32603, 'Elicitation request could not be resolved');
+        });
+      return;
+    }
+
+    logger.info('McpClient: received unsupported server JSON-RPC request', {
+      server: this.config.name,
+      method: request.method,
+      id: request.id,
+    });
     this._sendJsonRpcError(request.id, -32601, `Client method '${request.method}' is not supported`);
   }
 
@@ -513,6 +562,24 @@ export class McpClient {
       (this.proc.stdin as import('bun').FileSink).write(JSON.stringify(response) + '\n');
     } catch (err) {
       logger.warn('McpClient: failed to send JSON-RPC error response', {
+        server: this.config.name,
+        id,
+        err: summarizeError(err),
+      });
+    }
+  }
+
+  private _sendJsonRpcResult(id: JsonRpcId, result: unknown): void {
+    if (!this.proc || !this.isConnected) return;
+    try {
+      const response: JsonRpcResponse = {
+        jsonrpc: '2.0',
+        id,
+        result,
+      };
+      (this.proc.stdin as import('bun').FileSink).write(JSON.stringify(response) + '\n');
+    } catch (err) {
+      logger.warn('McpClient: failed to send JSON-RPC result response', {
         server: this.config.name,
         id,
         err: summarizeError(err),

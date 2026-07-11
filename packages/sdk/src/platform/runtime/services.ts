@@ -64,6 +64,7 @@ import { ApiTokenAuditor } from '../security/token-audit.js';
 import { UserAuthManager } from '../security/user-auth.js';
 import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
+import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
 import { DeterministicReplayEngine } from '../core/deterministic-replay.js';
 import { ProviderOptimizer } from '../providers/optimizer.js';
 import { ProviderRegistry } from '../providers/registry.js';
@@ -578,6 +579,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   mcpRegistry.setRuntimeBus(options.runtimeBus);
   mcpRegistry.setSandboxRuntime(configManager, sandboxSessionRegistry);
+  // MCP elicitation/create requests ride the SAME approval broker as a permission
+  // ask (see mcp/elicitation.ts) instead of the client dropping them with -32601.
+  mcpRegistry.setElicitationHandler(createMcpElicitationApprovalHandler((input) => approvalBroker.requestApproval(input)));
   const tokenAuditor = new ApiTokenAuditor({ managed: false, featureFlags });
   const componentHealthMonitor = new ComponentHealthMonitor();
   const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
@@ -650,7 +654,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const backgroundPermissionManager = new PermissionManager(
     (request) => approvalBroker.requestApproval({
       request,
-      ...(request.attribution
+      ...(request.attribution?.kind === 'background-agent'
         ? {
             routeId: request.attribution.agentId,
             metadata: {
