@@ -48,8 +48,17 @@ const MAX_TURNS = 50; // hard cap per agent run to prevent unbounded loops
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000]; // exponential back-off on transient network errors
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // fixed pause on 429/quota responses
 const RATE_LIMIT_MAX_RETRIES = 3; // cap retries so a sustained quota violation terminates cleanly
-const CONTEXT_COMPACT_THRESHOLD = 0.85; // fraction of context window at which compaction is triggered
+const CONTEXT_COMPACT_THRESHOLD = 0.85; // fraction of context window at which compaction is triggered (default fallback)
 const MIN_WINDOW_FOR_LLM_COMPACT = 12_000; // don't attempt LLM-driven compaction below this token floor
+
+/**
+ * Fraction of the context window at which compaction is triggered — from config
+ * (agents.contextCompactThreshold) when a config source is present, else the
+ * module default (identical value, so behaviour is unchanged by default).
+ */
+function resolveContextCompactThreshold(context: AgentOrchestratorRunContext): number {
+  return context.configManager?.get('agents.contextCompactThreshold') ?? CONTEXT_COMPACT_THRESHOLD;
+}
 
 type EmitterContext = import('../runtime/emitters/index.js').EmitterContext;
 
@@ -129,6 +138,15 @@ export interface AgentOrchestratorRunContext {
    */
   readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
+  /**
+   * Optional config source. When present, supplies the DEFAULT passive-injection
+   * budget ceiling / relevance floor / code-chunk limit (agents.passiveInjection.*)
+   * and the context-window compaction threshold (agents.contextCompactThreshold).
+   * Explicit passiveKnowledgeInjection* context fields still override, and the
+   * module constants remain the final fallback when no config source is supplied —
+   * the config defaults equal those constants, so behaviour is unchanged by default.
+   */
+  readonly configManager?: Pick<import('../config/manager.js').ConfigManager, 'get'> | undefined;
   readonly archetypeLoader?: { loadArchetype(template: string): { systemPrompt?: string | undefined } | null | undefined } | undefined;
   /**
    * Permission gate for this run's background/subagent tool calls (see
@@ -225,18 +243,19 @@ function applyContextWindowAwareness(
     return systemPrompt;
   }
 
+  const compactThreshold = resolveContextCompactThreshold(context);
   const messages = conversation.getMessagesForLLM();
   const msgTokens = estimateConversationTokens(messages);
   const sysTokens = estimateTokens(systemPrompt);
   const totalEstimate = msgTokens + sysTokens + toolTokens;
-  const threshold = Math.floor(modelWindow * CONTEXT_COMPACT_THRESHOLD);
+  const threshold = Math.floor(modelWindow * compactThreshold);
 
   if (totalEstimate <= threshold) {
     return systemPrompt;
   }
 
   logger.warn(
-    `[AgentOrchestrator] context-window awareness: estimated ${totalEstimate} tokens exceeds ${threshold} (${Math.round(CONTEXT_COMPACT_THRESHOLD * 100)}% of ${modelWindow}) - compacting`,
+    `[AgentOrchestrator] context-window awareness: estimated ${totalEstimate} tokens exceeds ${threshold} (${Math.round(compactThreshold * 100)}% of ${modelWindow}) - compacting`,
     { agentId: record.id, turn, msgTokens, sysTokens, toolTokens, contextWindow: modelWindow },
   );
   record.progress = `Turn ${turn} · Compacting context…`;
@@ -249,7 +268,7 @@ function applyContextWindowAwareness(
 
   const remainingAfterMsgs = modelWindow - estimateConversationTokens(conversation.getMessagesForLLM()) - toolTokens;
   const currentSysTokens = estimateTokens(systemPrompt);
-  if (currentSysTokens > remainingAfterMsgs * CONTEXT_COMPACT_THRESHOLD) {
+  if (currentSysTokens > remainingAfterMsgs * compactThreshold) {
     logger.warn(
       `[AgentOrchestrator] context-window awareness: system prompt (${currentSysTokens} tokens) too large for remaining window (${remainingAfterMsgs}) - applying layered trim`,
       { agentId: record.id },
@@ -666,7 +685,10 @@ export async function runAgentTask(
       // retry path (which DOES reassign `systemPrompt`) inside the chat-retry loop.
       if (passiveKnowledgeInjectionEnabled && newUserInputThisTurn && context.memoryRegistry) {
         const configuredBudget = context.passiveKnowledgeInjectionBudgetTokens
-          ?? defaultTurnKnowledgeBudgetTokens(contextWindowForTurn);
+          ?? defaultTurnKnowledgeBudgetTokens(
+            contextWindowForTurn,
+            context.configManager?.get('agents.passiveInjection.budgetTokens'),
+          );
         let turnBudgetTokens = configuredBudget;
         if (contextWindowAwarenessEnabled && contextWindowForTurn > 0) {
           // Clamp the block's budget to whatever headroom is left under the SAME 85%
@@ -675,12 +697,14 @@ export async function runAgentTask(
           // composed after that check ran (risk: B-tier token dishonesty otherwise).
           const msgTokensForBudget = estimateConversationTokens(conversation.getMessagesForLLM());
           const sysTokensForBudget = estimateTokens(systemPrompt);
-          const threshold = Math.floor(contextWindowForTurn * CONTEXT_COMPACT_THRESHOLD);
+          const threshold = Math.floor(contextWindowForTurn * resolveContextCompactThreshold(context));
           const headroomTokens = threshold - msgTokensForBudget - sysTokensForBudget - toolTokens;
           turnBudgetTokens = Math.max(0, Math.min(configuredBudget, headroomTokens));
         }
         if (turnBudgetTokens > 0) {
-          const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
+          const relevanceFloor = context.passiveKnowledgeInjectionRelevanceFloor
+            ?? context.configManager?.get('agents.passiveInjection.relevanceFloor')
+            ?? DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR;
           // Stage B: code hits share this turn's SAME budget/floor. Gated on the separate
           // (default-off) code-injection flag AND the embedder's storage.codeIndexEnabled setting.
           const codeInjectionEnabled = !!context.codeIndex
@@ -697,6 +721,7 @@ export async function runAgentTask(
             turn,
             codeIndex: context.codeIndex,
             codeInjectionEnabled,
+            codeLimit: context.configManager?.get('agents.passiveInjection.codeLimit'),
           });
           priorTurnKnowledgeBlock = block;
           for (const id of turnInjectionRecord.injectedIds) knowledgeIdsAlreadySurfaced.add(id);
@@ -731,7 +756,7 @@ export async function runAgentTask(
           const liveMsgTokens = estimateConversationTokens(activeConversation.getMessagesForLLM());
           const liveSysTokens = estimateTokens(base);
           const liveBlockTokens = estimateTokens(priorTurnKnowledgeBlock);
-          const threshold = Math.floor(contextWindowForTurn * CONTEXT_COMPACT_THRESHOLD);
+          const threshold = Math.floor(contextWindowForTurn * resolveContextCompactThreshold(context));
           if (liveMsgTokens + liveSysTokens + liveBlockTokens + toolTokens > threshold) {
             return base;
           }
