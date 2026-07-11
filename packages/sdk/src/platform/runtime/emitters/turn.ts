@@ -13,6 +13,7 @@ import type { RuntimeEventBus } from '../events/index.js';
 import type { EmitterContext } from './index.js';
 import type { TurnInputOrigin } from '../../../events/turn.js';
 import type { PartialToolCall } from '../../providers/interface.js';
+import { getCostOrigin } from '../cost/cost-origin.js';
 
 /** Emit TURN_SUBMITTED when a user prompt is submitted. */
 export function emitTurnSubmitted(
@@ -115,9 +116,25 @@ export function emitLlmResponseReceived(
     costUsdCents?: number | undefined;
     finishReason?: string | undefined;
     providerRequestId?: string | undefined;
+    originTool?: string | undefined;
+    originCallId?: string | undefined;
+    originHook?: string | undefined;
+    originMcpServer?: string | undefined;
   }
 ): void {
-  bus.emit('turn', createEventEnvelope('LLM_RESPONSE_RECEIVED', { type: 'LLM_RESPONSE_RECEIVED', ...data }, ctx));
+  // Merge the ambient cost-attribution origin (the tool/hook/MCP scope this LLM
+  // call ran inside, if any) so the emit site does not have to thread it by
+  // hand. An explicitly-passed origin field wins over the ambient one.
+  const origin = getCostOrigin();
+  const enriched = {
+    type: 'LLM_RESPONSE_RECEIVED' as const,
+    ...data,
+    ...(data.originTool ?? origin.tool ? { originTool: data.originTool ?? origin.tool } : {}),
+    ...(data.originCallId ?? origin.callId ? { originCallId: data.originCallId ?? origin.callId } : {}),
+    ...(data.originHook ?? origin.hook ? { originHook: data.originHook ?? origin.hook } : {}),
+    ...(data.originMcpServer ?? origin.mcpServer ? { originMcpServer: data.originMcpServer ?? origin.mcpServer } : {}),
+  };
+  bus.emit('turn', createEventEnvelope('LLM_RESPONSE_RECEIVED', enriched, ctx));
 }
 
 /** Emit TOOL_BATCH_READY when a set of tool calls is ready for execution. */

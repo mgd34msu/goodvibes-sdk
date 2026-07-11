@@ -28,6 +28,7 @@ import type { ProviderRegistry } from '../providers/registry.js';
 import { evaluateOrchestrationSpawn } from '../runtime/orchestration/spawn-policy.js';
 import { summarizeError } from '../utils/error-display.js';
 import { isActiveAgent } from '../tools/agent/predicates.js';
+import { withCostOriginAsync, mcpServerOfToolName } from '../runtime/cost/cost-origin.js';
 
 type HookDispatcherLike = {
   fire(event: HookEvent): Promise<HookResult>;
@@ -190,7 +191,13 @@ export async function executeToolCalls(
 
     let result: ToolResult;
     try {
-      result = await deps.toolRegistry.execute(call.id, call.name, checkResult.modifiedArgs ?? call.arguments);
+      // Open a cost-attribution origin scope around the tool body: any LLM usage
+      // a tool drives synchronously (e.g. an MCP tool's model call) is attributed
+      // to this tool/MCP server rather than the agent's own reasoning.
+      result = await withCostOriginAsync(
+        { tool: call.name, callId: call.id, mcpServer: mcpServerOfToolName(call.name) },
+        () => deps.toolRegistry.execute(call.id, call.name, checkResult.modifiedArgs ?? call.arguments),
+      );
     } catch (err) {
       const message =
         err instanceof ToolError

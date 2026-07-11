@@ -478,6 +478,14 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
           provider: event.provider,
           model: event.model,
           sessionId: envelope.sessionId,
+          // Attribution dimensions: the agent (from the envelope) and the
+          // tool/hook/MCP-server cause (stamped on the event by the cost-origin
+          // scope). Each is left undefined when the emit carried no such origin,
+          // so a top-level reasoning call stays attributed to session/agent only.
+          ...(envelope.agentId !== undefined ? { agentId: envelope.agentId } : {}),
+          ...(event.originTool !== undefined ? { tool: event.originTool } : {}),
+          ...(event.originHook !== undefined ? { hook: event.originHook } : {}),
+          ...(event.originMcpServer !== undefined ? { mcpServer: event.originMcpServer } : {}),
           inputTokens: event.inputTokens,
           outputTokens: event.outputTokens,
           cacheReadTokens: event.cacheReadTokens ?? 0,
