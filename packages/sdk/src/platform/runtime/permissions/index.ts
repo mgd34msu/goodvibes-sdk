@@ -142,6 +142,7 @@ import { PolicyRegistry } from './policy-registry.js';
 import type { PermissionsConfig, SimulationMode, PermissionSimulatorConfig } from './types.js';
 import type { FeatureFlagManager } from '../feature-flags/manager.js';
 import type { FeatureFlagReader } from '../feature-flags/index.js';
+import type { ConfigManager } from '../../config/manager.js';
 import { requireFeatureGate } from '../feature-flags/index.js';
 import type { BundleProvenance } from './policy-loader.js';
 import type { DivergenceDashboardConfig } from './divergence-dashboard.js';
@@ -212,15 +213,25 @@ export function createPermissionSimulator(
   simulationMode: SimulationMode,
   config: PermissionSimulatorConfig = {},
   flagManager?: FeatureFlagManager,
+  configManager?: Pick<ConfigManager, 'get'>,
 ): PermissionSimulator {
   if (flagManager && !flagManager.isEnabled('permissions-simulation')) {
     throw new Error('Feature flag "permissions-simulation" is not enabled');
   }
+  // Config supplies the DEFAULT divergence threshold + record cap
+  // (permissions.divergenceThreshold / permissions.maxDivergenceRecords); an
+  // explicit per-call PermissionSimulatorConfig value still overrides, and the
+  // simulator's own hardcoded DEFAULT_* is the final fallback when no config source.
+  const resolved: PermissionSimulatorConfig = {
+    ...config,
+    divergenceThreshold: config.divergenceThreshold ?? configManager?.get('permissions.divergenceThreshold'),
+    maxDivergenceRecords: config.maxDivergenceRecords ?? configManager?.get('permissions.maxDivergenceRecords'),
+  };
   return new PermissionSimulator(
     actualConfig,
     simulatedConfig,
     simulationMode,
-    config,
+    resolved,
   );
 }
 

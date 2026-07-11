@@ -156,10 +156,10 @@ export class PhasedToolExecutor {
       ['validated',     validatePhase,                                              true],
       ['prehooked',     prehookPhase,                                               this.config.enableHooks],
       ['permissioned',  permissionPhase,                                            this.config.enablePermissions],
-      ['budget-entry',  (c, t, ctx, r) => budgetPhase(c, t, ctx, r, 'entry'),      budgetEnabled],
+      ['budget-entry',  (c, t, ctx, r) => budgetPhase(c, t, ctx, r, 'entry', this.config.defaultBudget), budgetEnabled],
       ['executing',     (c, t, ctx, r) => executePhase(c, t, ctx, r, this.config), true],
       ['mapped',        mapOutputPhase,                                             true],
-      ['budget-exit',   (c, t, ctx, r) => budgetPhase(c, t, ctx, r, 'exit'),       budgetEnabled],
+      ['budget-exit',   (c, t, ctx, r) => budgetPhase(c, t, ctx, r, 'exit', this.config.defaultBudget),  budgetEnabled],
       ['posthooked',    posthookPhase,                                              this.config.enableHooks],
     ];
 

@@ -137,6 +137,18 @@ export interface ExecutorConfig {
    */
   featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
   /**
+   * Default per-phase budget limits applied when a tool call's
+   * ToolRuntimeContext.budget is absent. Sourced from config
+   * (runtime.toolBudget.*) by createPhasedExecutor(); a per-call context.budget
+   * still overrides. Only meaningful when enableBudgetEnforcement is true. Each
+   * dimension is omitted (unlimited) when its config value is 0.
+   */
+  defaultBudget?: {
+    maxMs?: number | undefined;
+    maxTokens?: number | undefined;
+    maxCostUsd?: number | undefined;
+  } | undefined;
+  /**
    * Optional idempotency store.
    *
    * When provided, the executor checks each tool call against the store before
