@@ -134,6 +134,10 @@ export function createAttemptsCoordinator(deps: AttemptsCoordinatorDeps): Attemp
         sib.attemptGroupId = groupId;
         sib.attemptIndex = i;
         sib.attemptTotal = n;
+        // Record the original spec id (when it had one) so a dependent that
+        // referenced it can be resolved back to this group by the dependency
+        // gate — the seam that makes a NON-LEAF best-of-N item work.
+        if (spec.id) sib.attemptSourceId = spec.id;
         if (spec.autoAcceptWinner) sib.autoAcceptWinner = true;
         if (spec.budget) sib.itemBudget = spec.budget;
         siblingIds.push(sib.id);
@@ -262,8 +266,11 @@ export function createAttemptsCoordinator(deps: AttemptsCoordinatorDeps): Attemp
       throw new AttemptError(`winner must be a held (passed) candidate of group ${groupId}: ${winnerItemId}`);
     }
     const losers = siblings.filter((s) => s.id !== winnerItemId);
-    // Winner returns to 'passed' and merges through the existing lane.
+    // Winner returns to 'passed' and merges through the existing lane. Mark it the
+    // group winner so a dependent (non-leaf best-of-N) can gate on THIS sibling's
+    // merge rather than any passed sibling (losers are set 'passed' too, below).
     winner.state = 'passed';
+    winner.attemptWinner = true;
     deps.enqueueIntegration(workstream, winner);
     // Losers: discard their work (clean the worktree) and mark terminal. A held
     // loser passed its gates — it is 'passed' with an honest "not selected" note,

@@ -69,12 +69,54 @@ export function dependencyStatus(workstream: Workstream, item: WorkItem): Depend
   const failed: string[] = [];
   for (const depId of item.dependsOn) {
     const dep = workstream.items.find((i) => i.id === depId);
-    if (!dep) continue; // dangling id — assembly guarantees this can't happen; ignore rather than block forever
+    if (!dep) {
+      // No item with this id. It may be a NON-LEAF best-of-N source id that was
+      // expanded into sibling attempts (attempts.ts) — resolve it to the group.
+      // Otherwise it is a truly dangling id (assembly guarantees this can't
+      // happen); ignore rather than block forever.
+      const groupStatus = attemptGroupDependencyStatus(workstream, depId);
+      if (groupStatus === 'satisfied') continue;
+      if (groupStatus === 'waiting') { waiting.push(bestOfNWaitingLabel(workstream, depId)); continue; }
+      if (groupStatus === 'failed') { failed.push(bestOfNWaitingLabel(workstream, depId)); continue; }
+      continue; // 'not-a-group' → truly dangling, ignore
+    }
     if (dep.state === 'passed') continue;
     if (dep.state === 'failed') failed.push(dep.title);
     else waiting.push(dep.title);
   }
   return { ready: waiting.length === 0 && failed.length === 0, waiting, failed };
+}
+
+/**
+ * Resolve a dependency on a best-of-N SOURCE id (an id that was expanded into
+ * sibling attempts, so no live item carries it) against the group's outcome:
+ *   - 'satisfied' — the winner was picked and its branch merged onto base (the
+ *     losers are cleaned), so a dependent may build on the selected result.
+ *   - 'waiting'   — attempts are still running or held for a pick, or the winner
+ *     is picked but its merge has not landed yet.
+ *   - 'failed'    — every attempt failed, so no winner can be picked (a
+ *     recoverable block for the dependent, mirroring a failed ordinary dep).
+ *   - 'not-a-group' — no sibling references this id; it is not a best-of-N group.
+ */
+function attemptGroupDependencyStatus(
+  workstream: Workstream,
+  sourceId: string,
+): 'satisfied' | 'waiting' | 'failed' | 'not-a-group' {
+  const siblings = workstream.items.filter((i) => i.attemptSourceId === sourceId);
+  if (siblings.length === 0) return 'not-a-group';
+  const winner = siblings.find((s) => s.attemptWinner === true);
+  if (winner) return winner.mergeState === 'merged' ? 'satisfied' : 'waiting';
+  // No winner picked yet. Still waiting unless every attempt has terminally
+  // failed (nothing left to pick).
+  const anyNonFailed = siblings.some((s) => s.state !== 'failed');
+  return anyNonFailed ? 'waiting' : 'failed';
+}
+
+/** A readable label for a best-of-N group in a dependency-wait/failed report. */
+function bestOfNWaitingLabel(workstream: Workstream, sourceId: string): string {
+  const sibling = workstream.items.find((i) => i.attemptSourceId === sourceId);
+  const base = sibling ? sibling.title.replace(/\s*\(attempt \d+\/\d+\)\s*$/, '') : sourceId;
+  return `${base} (best-of-N winner)`;
 }
 
 /**

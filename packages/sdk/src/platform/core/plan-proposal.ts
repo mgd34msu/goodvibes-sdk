@@ -58,9 +58,10 @@ export interface WorkItem {
    * HOLD the merge for a winner pick instead of auto-merging (the orchestration
    * engine's best-of-N — platform/orchestration/attempts.ts). Previously the
    * plan format constrained this OUT (every item was single-attempt); the engine
-   * now supports it, so a planner may propose it. CONSTRAINT: a best-of-N item is
-   * a LEAF — it declares no dependencies and nothing depends on it (the winner is
-   * chosen by pick, not by the dependency graph). Omitted/1 ⇒ an ordinary single
+   * now supports it, so a planner may propose it. A best-of-N item may be
+   * NON-LEAF: it may declare `dependsOn` (each attempt inherits it) and other
+   * items may depend on it — a dependent gates on the group's picked-and-merged
+   * winner (the losing attempts are cleaned first). Omitted/1 ⇒ an ordinary single
    * item. Only honored under `worktree` workstream isolation.
    */
   attempts?: number | undefined;
