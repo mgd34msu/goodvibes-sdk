@@ -61,8 +61,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
-    ceiling: 1084,
-    justification: 'core orchestrator monolith, pre-split, shrink-only; +15 for model-context-warning plumbing (pending-warning field, turn-loop note callback, preflight/post-turn dep wiring); +6 for replay deliver-once acknowledgment after injection',
+    ceiling: 1095,
+    justification: 'core orchestrator monolith, pre-split, shrink-only; +15 for model-context-warning plumbing (pending-warning field, turn-loop note callback, preflight/post-turn dep wiring); +6 for replay deliver-once acknowledgment after injection; +11 for per-model tool-format telemetry (import + defensive active-model resolution + observeToolResults after the main-session tool loop)',
   },
   // enrichment.ts ~1.00k — semantic enrichment pipeline, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/semantic/enrichment.ts': {
@@ -101,8 +101,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator-runner.ts ~0.97k — agent orchestrator runner, pre-split, shrink-only
   'packages/sdk/src/platform/agents/orchestrator-runner.ts': {
-    ceiling: 984,
-    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts); +2 for the run context\'s at-rest journal redaction/retention policy field, threaded into the AgentSession construction (policy resolution + logic live in runtime/at-rest-persistence.ts)',
+    ceiling: 987,
+    justification: 'agent orchestrator runner, pre-split, shrink-only; +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts); +2 for the run context\'s at-rest journal redaction/retention policy field, threaded into the AgentSession construction (policy resolution + logic live in runtime/at-rest-persistence.ts); +3 for per-model tool-format telemetry (import + observeToolResults after the background-agent tool loop)',
   },
   // service.ts (knowledge) ~0.92k — knowledge service facade, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/service.ts': {

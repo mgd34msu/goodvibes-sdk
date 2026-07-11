@@ -25,6 +25,7 @@ import { WrfcController } from '../agents/wrfc-controller.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { CacheHitTracker } from '../providers/cache-strategy.js';
 import { IdempotencyStore } from '../runtime/idempotency/index.js';
+import { toolFormatTelemetry } from '../runtime/telemetry/tool-format-telemetry.js';
 import { type ReconciliationReason } from './tool-reconciliation.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus, TurnInputOrigin } from '../runtime/events/index.js';
@@ -1069,7 +1070,7 @@ export class Orchestrator {
   }
 
   private async executeToolCalls(turnId: string, calls: ToolCall[]): Promise<ToolResult[]> {
-    return executeToolCalls({
+    const results = await executeToolCalls({
       toolRegistry: this.toolRegistry,
       permissionManager: this.permissionManager,
       hookDispatcher: this.hookDispatcher,
@@ -1080,5 +1081,15 @@ export class Orchestrator {
         ? (toolName, args, success) => this.coreServices.codeIndexReindexScheduler!.onToolExecuted(toolName, args, success)
         : undefined,
     }, turnId, calls);
+    // Per-model edit-failure + exec-expectation-miss telemetry (measurement only;
+    // must never disturb the tool-execution path, so model resolution is defensive).
+    let model = 'unknown';
+    try {
+      model = this.coreServices.providerRegistry?.getCurrentModel()?.registryKey ?? 'unknown';
+    } catch {
+      // No configured provider (e.g. a bare test harness) — record under 'unknown'.
+    }
+    toolFormatTelemetry.observeToolResults(model, calls, results);
+    return results;
   }
 }

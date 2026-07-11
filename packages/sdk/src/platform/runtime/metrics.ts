@@ -9,6 +9,7 @@
  * - Telemetry buffer fill gauge
  */
 import { RuntimeMeter } from './telemetry/meter.js';
+import { toolFormatTelemetry } from './telemetry/tool-format-telemetry.js';
 
 /** Singleton RuntimeMeter instance for the platform. */
 export const platformMeter = new RuntimeMeter({ scope: 'goodvibes-sdk' });
@@ -68,6 +69,7 @@ export const listenerErrorsTotal = platformMeter.counter('listener_errors_total'
  */
 export function resetMetrics(): void {
   platformMeter.reset();
+  toolFormatTelemetry.reset();
 }
 
 /**
@@ -132,5 +134,9 @@ export function snapshotMetrics(): Record<string, unknown> {
       'llm.tokens.input': llmTokensInput.snapshot(),
       'llm.tokens.output': llmTokensOutput.snapshot(),
     },
+    // Per-model edit-failure + declared-exec-expectation-miss counts. Measurement
+    // only: keyed by model id and failure class so tool-format regressions surface
+    // as data ({ byModel: { [model]: { [class]: n } }, byClass: { [class]: n } }).
+    toolFormat: toolFormatTelemetry.snapshot(),
   };
 }

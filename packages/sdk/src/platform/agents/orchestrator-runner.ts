@@ -42,6 +42,7 @@ import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 import { gateBackgroundToolCall, type BackgroundPermissionManager } from './background-permission-gate.js';
+import { toolFormatTelemetry } from '../runtime/telemetry/tool-format-telemetry.js';
 
 const MAX_TURNS = 50; // hard cap per agent run to prevent unbounded loops
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000]; // exponential back-off on transient network errors
@@ -905,6 +906,8 @@ export async function runAgentTask(
           context,
         );
         conversation.addToolResults(results);
+        // Per-model edit-failure + exec-expectation-miss telemetry (measurement only).
+        toolFormatTelemetry.observeToolResults(activeRoute.modelId, response.toolCalls, results);
 
         const allFailed = results.length > 0 && results.every(r => r.success === false);
         if (allFailed) {

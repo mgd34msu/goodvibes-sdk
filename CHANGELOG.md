@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Per-model edit-failure and declared-exec-expectation-miss telemetry, so
+  tool-format regressions surface as data.** A new process-wide recorder
+  (`ToolFormatTelemetry`, mirroring `platformMeter`) counts, keyed by model id
+  and failure class, the edit tool's no-match / multi-match / external-conflict
+  / generic failures and its whitespace/fuzzy lenient fallbacks, plus each
+  declared exec expectation miss (`exit_code` / `stdout_contains` /
+  `stderr_contains`). It is fed at the two tool-execution loops (main session
+  and background agents), which know the active model, and read through the
+  existing runtime metrics snapshot at `GET /api/runtime/metrics` under a
+  `toolFormat` key (`{ byModel: { [model]: { [class]: n } }, byClass }`). This
+  is measurement only: nothing is read back to switch behavior, and it is
+  explicitly NOT a per-model edit-format matrix. An ordinary non-zero exec exit
+  (no declared expectation) is not counted — only genuine format regressions.
 - **MCP server elicitation requests now reach the model and the human through
   the one approval broker.** An MCP server's `elicitation/create` request (the
   spec's ask-the-user channel) was previously hard-rejected by the client with
