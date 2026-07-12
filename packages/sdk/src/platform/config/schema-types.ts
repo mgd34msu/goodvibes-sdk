@@ -715,6 +715,9 @@ export type ConfigKey =
   | 'service.platform'
   | 'service.serviceName'
   | 'service.logPath'
+  | 'update.auto'
+  | 'update.intervalMinutes'
+  | 'update.releasesUrl'
   | 'network.outboundTls.mode'
   | 'network.outboundTls.customCaFile'
   | 'network.outboundTls.customCaDir'
@@ -1068,6 +1071,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'service.platform' ? 'auto' | 'systemd' | 'launchd' | 'windows' | 'manual' :
   K extends 'service.serviceName' ? string :
   K extends 'service.logPath' ? string :
+  K extends 'update.auto' ? boolean :
+  K extends 'update.intervalMinutes' ? number :
+  K extends 'update.releasesUrl' ? string :
   K extends 'network.outboundTls.mode' ? 'bundled' | 'bundled+custom' | 'custom' :
   K extends 'network.outboundTls.customCaFile' ? string :
   K extends 'network.outboundTls.customCaDir' ? string :

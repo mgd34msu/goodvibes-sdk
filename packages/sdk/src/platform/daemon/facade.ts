@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.js';
 import { jsonErrorResponse } from './http/error-response.js';
 import { summarizeError } from '../utils/error-display.js';
+import { DaemonLifecycleRuntime, importLegacyDaemonSessionStores, registerDaemonHeartbeatWatcher } from './facade-lifecycle.js';
 import { AgentManager } from '../tools/agent/index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -12,7 +13,6 @@ import type {
 } from '../automation/index.js';
 import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
 import type { GatewayMethodCatalog } from '../control-plane/index.js';
-import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
 import type {
   BuiltinChannelRuntime,
   ChannelReplyPipeline,
@@ -126,6 +126,8 @@ export class DaemonServer {
   private readonly transportEventsHelper: DaemonTransportEventsHelper;
   private readonly httpRouter: DaemonHttpRouter;
   private replyPoller: ReturnType<typeof setInterval> | null = null;
+  /** Lifecycle sidecar: clean-shutdown marker, receipts, hourly auto-update. */
+  private lifecycle: DaemonLifecycleRuntime | null = null;
   private readonly companionChatManager: CompanionChatManager;
   private relayReachability: RelayReachability | null = null;
   private agentTaskAdapter: import('../runtime/tasks/adapters/agent-adapter.js').AgentTaskAdapter | null = null;
@@ -219,6 +221,16 @@ export class DaemonServer {
     this.httpRouter = collaborators.httpRouter;
     this.providerRuntime = collaborators.providerRuntime;
     this.builtinChannels = collaborators.builtinChannels;
+
+    // Lifecycle sidecar: clean-shutdown marker, update/crash receipts, and
+    // the hourly auto-updater gated on the real busy signal.
+    this.lifecycle = new DaemonLifecycleRuntime({
+      configManager: this.configManager,
+      platformServiceManager: this.platformServiceManager,
+      isIdle: () => this.sessionBroker.countBusySessions() === 0,
+    });
+    // /status surfaces undelivered daemon receipts (updates, crash restarts).
+    this.httpRouter.setDaemonReceiptsProvider(() => this.collectDaemonReceipts());
 
     // Wire AgentTaskAdapter to the RuntimeEventBus so task records reach terminal states on agent finish.
     this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore);
@@ -392,13 +404,7 @@ export class DaemonServer {
       });
 
       // Boot precondition: fold legacy stores into the home store before the broker serves (idempotent).
-      await importLegacySessionStores({
-        homeStorePath: this.runtimeServices.shellPaths.resolveUserPath('control-plane', 'sessions.json'),
-        sources: discoverLegacySessionSources({
-          projectRoot: this.runtimeServices.shellPaths.workingDirectory,
-          companionSessionsDir: this.runtimeServices.shellPaths.resolveUserPath('companion-chat', 'sessions'), // injected home
-        }),
-      }).catch((error: unknown) => logger.warn('DaemonServer: legacy session import failed', { error: summarizeError(error) }));
+      await importLegacyDaemonSessionStores(this.runtimeServices.shellPaths);
       await Promise.all([
         this.sessionBroker.start(),
         this.approvalBroker.start(),
@@ -423,26 +429,12 @@ export class DaemonServer {
       }
       this.surfaceRegistry.syncConfiguredSurfaces();
       if (this.configManager.get('watchers.enabled')) {
-        this.watcherRegistry.registerPollingWatcher({
-          id: 'daemon-heartbeat',
-          label: 'Daemon heartbeat',
-          source: {
-            id: 'source:daemon-heartbeat',
-            kind: 'watcher',
-            label: 'Daemon heartbeat',
-            enabled: true,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            metadata: {},
-          },
-          intervalMs: Number(this.configManager.get('watchers.heartbeatIntervalMs') ?? 30_000),
-          run: () => new Date().toISOString(),
-        });
-        this.watcherRegistry.startWatcher('daemon-heartbeat');
+        registerDaemonHeartbeatWatcher(this.watcherRegistry, this.configManager);
       }
       this.controlPlaneGateway.setServerState({ enabled: true, host: this.host, port: this.port });
       this._attachControlPlaneConfigWatcher();
       this.transportEventsHelper.emitTransportConnected();
+      this.lifecycle?.onStarted();
       // Outbound relay reachability (default OFF; gated by relay.enabled + the
       // relay-connect flag + a configured relay.url). Non-blocking so a relay
       // hiccup never blocks daemon startup.
@@ -531,12 +523,19 @@ export class DaemonServer {
     this.agentTaskAdapterUnsub = null;
     await this.sessionBroker.stop();
 
+    this.lifecycle?.onStopping(this._restarting);
+
     this.server.stop(true);
     this.server = null;
     this.tlsState = null;
     this.controlPlaneGateway.setServerState({ enabled: this.enabled, host: this.host, port: this.port });
     this.transportEventsHelper.emitTransportDisconnected('Daemon server stopped', false);
     logger.info('DaemonServer stopped');
+  }
+
+  /** Undelivered daemon receipts for the /status payload (marked delivered once served). */
+  collectDaemonReceipts(): readonly { id: string; text: string; at: number }[] {
+    return this.lifecycle?.collectReceipts() ?? [];
   }
 
   /**

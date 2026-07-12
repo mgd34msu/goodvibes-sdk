@@ -89,6 +89,7 @@ export const FEATURE_SETTINGS_BINDINGS: readonly FeatureSettingsBinding[] = [
   { featureId: 'web-surface', key: 'web.enabled', kind: 'boolean' },
   { featureId: 'watcher-framework', key: 'watchers.enabled', kind: 'boolean' },
   { featureId: 'service-management', key: 'service.enabled', kind: 'boolean' },
+  { featureId: 'daemon-auto-update', key: 'update.auto', kind: 'boolean' },
   { featureId: 'exec-sandbox', key: 'sandbox.enabled', kind: 'boolean' },
   { featureId: 'sandbox-model-judgment', key: 'sandbox.judgment', kind: 'enum', enabledValues: ['annotate', 'auto-approve'] },
   { featureId: 'relay-connect', key: 'relay.enabled', kind: 'boolean' },

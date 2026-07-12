@@ -285,6 +285,14 @@ export const FEATURE_FLAG_CONFIG: Readonly<Record<string, FeatureFlagConfigAssoc
       'service.logPath',
     ],
   },
+  'daemon-auto-update': {
+    configCategories: ['update'],
+    configKeys: [
+      'update.auto',
+      'update.intervalMinutes',
+      'update.releasesUrl',
+    ],
+  },
 
   // ── Execution isolation / reachability ───────────────────────────────────
   'exec-sandbox': {

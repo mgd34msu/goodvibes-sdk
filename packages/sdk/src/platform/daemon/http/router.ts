@@ -201,6 +201,13 @@ export class DaemonHttpRouter {
   private homeAssistantRoutes: HomeAssistantConversationRoutes | null = null;
   private homeGraphRoutes: HomeGraphRoutes | null = null;
   private projectPlanningRoutes: ProjectPlanningRoutes | null = null;
+  /** Supplied by the daemon facade after construction; feeds /status receipts. */
+  private daemonReceiptsProvider: (() => readonly { id: string; text: string; at: number }[]) | null = null;
+
+  /** Wire the facade's receipt store into /status (update/crash announcements). */
+  setDaemonReceiptsProvider(provider: () => readonly { id: string; text: string; at: number }[]): void {
+    this.daemonReceiptsProvider = provider;
+  }
 
   constructor(private readonly context: DaemonHttpRouterContext) {
     this.telemetryApi = context.runtimeStore
@@ -444,6 +451,7 @@ export class DaemonHttpRouter {
       ...createDaemonControlRouteHandlers({
         authToken: this.context.authToken(),
         version: VERSION,
+        ...(this.daemonReceiptsProvider ? { collectReceipts: this.daemonReceiptsProvider } : {}),
         sessionCookieName: OPERATOR_SESSION_COOKIE_NAME,
         controlPlaneGateway: this.context.controlPlaneGateway,
         extractAuthToken: this.context.extractAuthToken,
