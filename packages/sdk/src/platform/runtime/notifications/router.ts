@@ -69,8 +69,8 @@ export class NotificationRouter {
   private readonly burstPolicy: BurstPolicy;
 
   /**
-   * Whether the adaptive-notification-suppression feature flag is enabled.
-   * Controls policies 3 (mode-context) and 4 (burst).
+   * Whether adaptive suppression (the notifications.adaptiveSuppression
+   * setting) is active. Controls policies 3 (mode-context) and 4 (burst).
    */
   private adaptiveSuppression: boolean;
 
@@ -126,7 +126,7 @@ export class NotificationRouter {
       };
     }
 
-    // 3. Apply mode-context suppression (gated by adaptive-notification-suppression flag).
+    // 3. Apply mode-context suppression (part of adaptive suppression).
     if (this.adaptiveSuppression) {
       const modeReasonCode = applyModeContextPolicy(
         notification.level,
