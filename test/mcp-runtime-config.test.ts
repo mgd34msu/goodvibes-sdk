@@ -86,7 +86,7 @@ describe('MCP runtime config', () => {
     ]);
 
     expect(result.added).toBe(1);
-    expect(registry.listServers()).toEqual([{ name: 'bad', connected: false }]);
+    expect(registry.listServers()).toEqual([{ name: 'bad', connected: false, transport: 'stdio', protocolVersion: undefined, protocolEra: undefined }]);
   });
 
   test('registry reload retries unchanged servers that are not connected', async () => {

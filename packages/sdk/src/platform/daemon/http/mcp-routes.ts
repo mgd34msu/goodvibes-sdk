@@ -52,12 +52,18 @@ function parseServerConfig(value: unknown): McpServerConfig | Response {
   if (typeof value.name !== 'string' || !value.name.trim()) {
     return jsonErrorResponse({ error: 'MCP server name is required.' }, { status: 400 });
   }
-  if (typeof value.command !== 'string' || !value.command.trim()) {
-    return jsonErrorResponse({ error: 'MCP server command is required.' }, { status: 400 });
+  const command = typeof value.command === 'string' && value.command.trim() ? value.command.trim() : undefined;
+  const url = typeof value.url === 'string' && value.url.trim() ? value.url.trim() : undefined;
+  if (!command && !url) {
+    return jsonErrorResponse({ error: 'MCP server needs a command (stdio) or a url (HTTP).' }, { status: 400 });
+  }
+  if (command && url) {
+    return jsonErrorResponse({ error: 'MCP server may set command (stdio) or url (HTTP), not both.' }, { status: 400 });
   }
   return {
     name: value.name.trim(),
-    command: value.command.trim(),
+    command,
+    url,
     args: stringArray(value.args) ?? [],
     env: stringRecord(value.env),
     role: typeof value.role === 'string' ? value.role as McpServerConfig['role'] : undefined,
@@ -70,7 +76,8 @@ function parseServerConfig(value: unknown): McpServerConfig | Response {
 function redactServer(server: McpServerConfig): Record<string, unknown> {
   return {
     name: server.name,
-    command: server.command,
+    command: server.command ?? null,
+    url: server.url ?? null,
     args: server.args ?? [],
     envKeys: Object.keys(server.env ?? {}).sort(),
     role: server.role ?? null,

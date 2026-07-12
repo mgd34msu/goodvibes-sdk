@@ -6,11 +6,17 @@ import type { McpDecisionRecord, McpServerRole, McpTrustMode, QuarantineReason, 
 export interface McpServerRecord {
   readonly name: string;
   readonly connected: boolean;
+  readonly transport?: 'stdio' | 'http' | undefined;
+  readonly protocolVersion?: string | undefined;
+  readonly protocolEra?: 'modern' | 'legacy' | undefined;
 }
 
 export interface McpServerSecurityRecord {
   readonly name: string;
   readonly connected: boolean;
+  readonly transport?: 'stdio' | 'http' | undefined;
+  readonly protocolVersion?: string | undefined;
+  readonly protocolEra?: 'modern' | 'legacy' | undefined;
   readonly role: McpServerRole;
   readonly trustMode: McpTrustMode;
   readonly allowedPaths: readonly string[];

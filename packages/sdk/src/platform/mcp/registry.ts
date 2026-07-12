@@ -403,17 +403,35 @@ export class McpRegistry {
 
   /**
    * listServers — Return status info for all known servers (connected or not).
+   * Includes the negotiated protocol (era + version) and transport so
+   * diagnostics surfaces show what each server is actually speaking.
    */
-  listServers(): Array<{ name: string; connected: boolean }> {
-    return this.serverNames.map((name) => ({
-      name,
-      connected: this.clients.get(name)?.isConnected ?? false,
-    }));
+  listServers(): Array<{
+    name: string;
+    connected: boolean;
+    transport?: 'stdio' | 'http' | undefined;
+    protocolVersion?: string | undefined;
+    protocolEra?: 'modern' | 'legacy' | undefined;
+  }> {
+    return this.serverNames.map((name) => {
+      const client = this.clients.get(name);
+      const negotiated = client?.protocolInfo ?? null;
+      return {
+        name,
+        connected: client?.isConnected ?? false,
+        transport: negotiated?.transport ?? (this.serverConfigs.get(name)?.url ? 'http' as const : 'stdio' as const),
+        protocolVersion: negotiated?.version,
+        protocolEra: negotiated?.era,
+      };
+    });
   }
 
   listServerSecurity(): Array<{
     name: string;
     connected: boolean;
+    transport?: 'stdio' | 'http' | undefined;
+    protocolVersion?: string | undefined;
+    protocolEra?: 'modern' | 'legacy' | undefined;
     role: import('../runtime/mcp/types.js').McpServerRole;
     trustMode: import('../runtime/mcp/types.js').McpTrustMode;
     allowedPaths: string[];
@@ -429,6 +447,9 @@ export class McpRegistry {
       return {
         name: server.name,
         connected: server.connected,
+        transport: server.transport,
+        protocolVersion: server.protocolVersion,
+        protocolEra: server.protocolEra,
         role: permissions?.profile.role ?? 'general',
         trustMode: permissions?.profile.mode ?? 'ask-on-risk',
         allowedPaths: permissions?.profile.allowedPaths ?? [],
@@ -557,7 +578,8 @@ export class McpRegistry {
           source: 'mcp-registry',
         }, {
           serverId: name,
-          transport: 'stdio',
+          transport: client.protocolInfo?.transport ?? (serverConfig.url ? 'http' : 'stdio'),
+          ...(serverConfig.url ? { url: serverConfig.url } : {}),
           role: serverConfig.role ?? 'general',
           trustMode: serverConfig.trustMode ?? 'ask-on-risk',
           allowedPaths: serverConfig.allowedPaths ?? [],
@@ -594,6 +616,8 @@ export class McpRegistry {
   ): Promise<{ sessionId: string; processSpec: McpProcessSpec } | null> {
     const configManager = this.sandboxConfigManager;
     if (!configManager) return null;
+    // HTTP servers are remote endpoints — there is no local process to sandbox.
+    if (!serverConfig.command) return null;
     const sandbox = getSandboxConfigSnapshot(configManager);
     if (sandbox.mcpIsolation === 'disabled') return null;
 
