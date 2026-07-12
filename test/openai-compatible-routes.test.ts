@@ -115,7 +115,7 @@ describe('OpenAI-compatible daemon routes', () => {
     expect(text).toContain('data: [DONE]');
   });
 
-  test('rejects missing, unqualified, and removed default model aliases', async () => {
+  test('rejects missing and removed default model aliases; resolves a bare model id that is unique', async () => {
     const provider = makeProvider();
     const context = makeContext(provider);
 
@@ -124,17 +124,44 @@ describe('OpenAI-compatible daemon routes', () => {
     }), context);
     expect(missing?.status).toBe(400);
 
-    const unqualified = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
+    // A bare model id unique across the registry resolves via the shared
+    // resolver (model-id-resolution.ts) instead of the old "must be
+    // provider-qualified" rejection.
+    const bareUnique = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
       model: 'gpt-test',
       messages: [{ role: 'user', content: 'hi' }],
     }), context);
-    expect(unqualified?.status).toBe(400);
-    expect((await unqualified!.json() as { error: { message: string } }).error.message).toContain('provider-qualified registryKey');
+    expect(bareUnique?.status).toBe(200);
+    const bareUniqueBody = await bareUnique!.json() as { model: string };
+    expect(bareUniqueBody.model).toBe('openai:gpt-test');
 
     const removedAlias = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
       model: 'goodvibes/default',
       messages: [{ role: 'user', content: 'hi' }],
     }), context);
     expect(removedAlias?.status).toBe(400);
+  });
+
+  test('rejects an ambiguous bare model id with the real candidates', async () => {
+    const provider = makeProvider();
+    const openaiModel = makeModel('openai', 'gpt-test');
+    const anthropicModel = makeModel('anthropic', 'gpt-test');
+    const context = {
+      providerRegistry: {
+        listModels: () => [openaiModel, anthropicModel],
+        getCurrentModel: () => openaiModel,
+        getForModel: () => provider,
+      } as Pick<ProviderRegistry, 'listModels' | 'getCurrentModel' | 'getForModel'>,
+      parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
+      recordApiResponse: (_request: Request, _path: string, response: Response) => response,
+    };
+    const ambiguous = await dispatchOpenAICompatibleRoutes(request('/v1/chat/completions', {
+      model: 'gpt-test',
+      messages: [{ role: 'user', content: 'hi' }],
+    }), context);
+    expect(ambiguous?.status).toBe(400);
+    const body = await ambiguous!.json() as { error: { message: string } };
+    expect(body.error.message).toContain('openai:gpt-test');
+    expect(body.error.message).toContain('anthropic:gpt-test');
   });
 });

@@ -223,13 +223,13 @@ export class DaemonServer {
     // Wire AgentTaskAdapter to the RuntimeEventBus so task records reach terminal states on agent finish.
     this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore);
     this.agentTaskAdapterUnsub = this.agentTaskAdapter.attachRuntimeBus(this.runtimeBus);
-    // Mark any tasks that were running at startup as aborted after daemon restart.
-    this.agentTaskAdapter.reconcileOnRestart();
+    this.agentTaskAdapter.reconcileOnRestart(); // marks tasks running at startup as aborted after daemon restart
 
     configureDaemonSessionContinuation({
       sessionBroker: this.sessionBroker,
       trySpawnAgent: (input, logLabel, sessionId) => this.trySpawnAgent(input, logLabel, sessionId),
       queueSurfaceReplyFromBinding: (binding, input) => this.surfaceDeliveryHelper.queueSurfaceReplyFromBinding(binding, input),
+      modelCandidates: () => this.runtimeServices.providerRegistry.listModels(),
     });
 
     this.distributedRuntime.attachRuntime({

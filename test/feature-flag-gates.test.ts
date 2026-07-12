@@ -754,10 +754,21 @@ describe('feature flag safe-default gates', () => {
     expect(model.contextWindow).toBe(200_000);
   });
 
-  test('agent model overrides reject unqualified registry keys', () => {
+  // Bare model overrides resolve via the shared resolver (model-id-resolution.ts):
+  // unique across the registry -> auto-qualify (and reach the real provider
+  // lookup); ambiguous -> a rich error listing the real candidates. The old
+  // "must be provider-qualified" format lecture before any lookup is gone.
+  test('agent model overrides resolve a unique bare model id and reach the real provider lookup', () => {
+    const resolvedProvider: LLMProvider = {
+      name: 'openai',
+      async chat() {
+        return { content: 'ok' };
+      },
+    };
     const providerRegistry = {
-      getForModel(): LLMProvider {
-        throw new Error('provider lookup should not run for unqualified model overrides');
+      getForModel(modelId: string): LLMProvider {
+        if (modelId === 'openai:gpt-test') return resolvedProvider;
+        throw new Error(`unexpected getForModel(${modelId})`);
       },
       listModels() {
         return [
@@ -775,7 +786,7 @@ describe('feature flag safe-default gates', () => {
       },
     };
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
-    expect(() => (orchestrator as unknown as {
+    const route = (orchestrator as unknown as {
       resolveProviderForRecord(
         providerRegistry: typeof providerRegistry,
         record: AgentRecord,
@@ -785,7 +796,53 @@ describe('feature flag safe-default gates', () => {
       providerRegistry,
       makeAgentRecord({ model: 'gpt-test' }),
       { id: 'claude-test', provider: 'anthropic', registryKey: 'anthropic:claude-test' },
-    )).toThrow(/Agent model overrides must be provider-qualified registry keys/);
+    );
+    expect(route.provider).toBe(resolvedProvider);
+    expect(route.requestedModelId).toBe('openai:gpt-test');
+  });
+
+  test('agent model overrides reject an ambiguous bare model id with the real candidates', () => {
+    const providerRegistry = {
+      getForModel(): LLMProvider {
+        throw new Error('provider lookup should not run for an ambiguous bare model id');
+      },
+      listModels() {
+        return [
+          {
+            id: 'shared-name',
+            provider: 'openai',
+            registryKey: 'openai:shared-name',
+            displayName: 'OpenAI Shared',
+            description: 'Test model',
+            capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+            contextWindow: 128_000,
+            selectable: true,
+          },
+          {
+            id: 'shared-name',
+            provider: 'anthropic',
+            registryKey: 'anthropic:shared-name',
+            displayName: 'Anthropic Shared',
+            description: 'Test model',
+            capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+            contextWindow: 128_000,
+            selectable: true,
+          },
+        ];
+      },
+    };
+    const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
+    expect(() => (orchestrator as unknown as {
+      resolveProviderForRecord(
+        providerRegistry: typeof providerRegistry,
+        record: AgentRecord,
+        currentModel: { id: string; provider: string; registryKey: string },
+      ): { provider: LLMProvider; modelId: string; requestedModelId: string };
+    }).resolveProviderForRecord(
+      providerRegistry,
+      makeAgentRecord({ model: 'shared-name' }),
+      { id: 'claude-test', provider: 'anthropic', registryKey: 'anthropic:claude-test' },
+    )).toThrow(/openai:shared-name.*anthropic:shared-name/);
   });
 
   test('agent orchestrator rejects provider-only and conflicting persisted routes', () => {
@@ -841,10 +898,10 @@ describe('feature flag safe-default gates', () => {
     )).toThrow(/Agent model override 'openai:gpt-test' conflicts with provider 'anthropic'/);
   });
 
-  test('agent fallback routes reject unqualified registry keys', () => {
+  test('agent fallback routes reject a bare model id unknown to the registry', () => {
     const providerRegistry = {
       getForModel(): LLMProvider {
-        throw new Error('provider lookup should not run for unqualified fallback models');
+        throw new Error('provider lookup should not run for an unknown fallback model');
       },
       listModels() {
         return [];
@@ -863,7 +920,7 @@ describe('feature flag safe-default gates', () => {
       makeAgentRecord({ fallbackModels: ['claude-test'] }),
       { id: 'gpt-test', provider: 'openai', registryKey: 'openai:gpt-test' },
       'openai:gpt-test',
-    )).toThrow(/Agent fallback models must be provider-qualified registry keys/);
+    )).toThrow(/Unknown model 'claude-test'/);
   });
 
   test('agent fallback routes reject contradictory failover policy', () => {

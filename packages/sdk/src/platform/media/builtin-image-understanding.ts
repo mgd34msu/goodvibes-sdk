@@ -8,6 +8,7 @@ import type {
   MediaProviderStatus,
 } from './provider-registry.js';
 import { toRecord } from '../utils/record-coerce.js';
+import { resolveModelReference } from '../providers/model-id-resolution.js';
 
 interface StructuredImageAnalysis {
   description?: string | undefined;
@@ -93,10 +94,11 @@ async function resolveModel(
   const models: readonly ModelDefinition[] = providerRegistry.listModels();
   const resolveCandidate = async () => {
     if (modelId) {
-      if (!modelId.includes(':')) {
-        throw new Error(`Media analysis model must be a provider-qualified registry key; received '${modelId}'.`);
-      }
-      const explicit = models.find((model) => model.registryKey === modelId);
+      // Accepts either a provider-qualified registryKey or a bare model id —
+      // bare ids resolve via the shared resolver (unique -> auto-qualify;
+      // ambiguous or unknown -> a rich error naming real candidates).
+      const registryKey = resolveModelReference(modelId, models);
+      const explicit = models.find((model) => model.registryKey === registryKey);
       if (!explicit) {
         throw new Error(`Unknown model for media analysis: ${modelId}`);
       }

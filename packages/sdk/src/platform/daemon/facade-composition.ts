@@ -11,6 +11,7 @@ import {
 } from '../channels/index.js';
 import { ControlPlaneGateway } from '../control-plane/index.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
+import type { ModelIdCandidate } from '../providers/model-id-resolution.js';
 import {
   GOODVIBES_AGENT_KNOWLEDGE_DB_FILE,
   KnowledgeGraphqlService,
@@ -595,12 +596,14 @@ export function configureDaemonSessionContinuation(options: {
     readonly workflowChainId?: string | undefined;
     readonly sessionId?: string | undefined;
   }) => void;
+  /** The live registry's model candidates — enables bare model id resolution in routing overrides. */
+  readonly modelCandidates?: (() => readonly ModelIdCandidate[]) | undefined;
 }): void {
   options.sessionBroker.setContinuationRunner(async ({ sessionId, input, task, routeBinding }) => {
     const spawned = options.trySpawnAgent({
       mode: 'spawn',
       task,
-      ...buildSharedSessionAgentSpawnRoutingInput(input.routing),
+      ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { modelCandidates: options.modelCandidates?.() }),
       context: `shared-session:${sessionId}`,
     }, 'DaemonServer.sharedSessionFollowUp', sessionId);
     if (spawned instanceof Response) {

@@ -470,7 +470,11 @@ describe('PATCH /api/models/current', () => {
     expect(body.code).toBe('INVALID_REQUEST');
   });
 
-  test('returns 400 INVALID_REQUEST when registryKey is not provider-qualified', async () => {
+  // Bare model ids resolve via the shared resolver (model-id-resolution.ts):
+  // unique across the registry -> auto-qualify; ambiguous -> a rich error
+  // listing the real candidates; unknown -> closest-match suggestions.
+  // The old "must be provider-qualified" format lecture is gone.
+  test('accepts a bare model id that is unique across the registry (auto-qualify)', async () => {
     const m1 = makeModel('inception', 'mercury-2');
     const { context } = makeContext({ models: [m1], currentModel: m1, configuredIds: ['inception'] });
 
@@ -478,10 +482,40 @@ describe('PATCH /api/models/current', () => {
       registryKey: 'mercury-2',
     });
     const res = await dispatchModelRoutes(req, context);
+    expect(res!.status).toBe(200);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(body.model).not.toBeNull();
+  });
+
+  test('returns 400 INVALID_REQUEST with real candidates for an ambiguous bare model id', async () => {
+    const m1 = makeModel('inception', 'shared-name');
+    const m2 = makeModel('venice', 'shared-name');
+    const { context } = makeContext({ models: [m1, m2], currentModel: m1, configuredIds: ['inception', 'venice'] });
+
+    const req = makeRequest('PATCH', 'http://localhost/api/models/current', {
+      registryKey: 'shared-name',
+    });
+    const res = await dispatchModelRoutes(req, context);
     expect(res!.status).toBe(400);
     const body = await res!.json() as Record<string, unknown>;
     expect(body.code).toBe('INVALID_REQUEST');
-    expect(body.error).toContain('provider-qualified registryKey');
+    expect(body.error).toContain('inception:shared-name');
+    expect(body.error).toContain('venice:shared-name');
+  });
+
+  test('returns 400 INVALID_REQUEST with a concrete example for an unknown bare model id', async () => {
+    const m1 = makeModel('inception', 'mercury-2');
+    const { context } = makeContext({ models: [m1], currentModel: m1, configuredIds: ['inception'] });
+
+    const req = makeRequest('PATCH', 'http://localhost/api/models/current', {
+      registryKey: 'totally-unknown-model',
+    });
+    const res = await dispatchModelRoutes(req, context);
+    expect(res!.status).toBe(400);
+    const body = await res!.json() as Record<string, unknown>;
+    expect(body.code).toBe('INVALID_REQUEST');
+    expect(body.error).toContain('Unknown model');
+    expect(body.error).toContain('inception:mercury-2');
   });
 
   test('accepts OpenAI model switch when only a usable subscription route is configured', async () => {

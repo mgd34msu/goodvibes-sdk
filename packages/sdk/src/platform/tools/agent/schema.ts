@@ -54,7 +54,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       },
       model: {
         type: 'string',
-        description: 'Provider-qualified model registry key for the spawned agent (mode: spawn).',
+        description: 'Model for the spawned agent (mode: spawn). A bare model id (e.g. "claude-fable-5") resolves automatically; use the provider:model form only when the id exists on more than one provider.',
       },
       provider: {
         type: 'string',
@@ -63,7 +63,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       fallbackModels: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Ordered provider-qualified registry keys to try if the primary model fails (mode: spawn).',
+        description: 'Ordered models to try if the primary model fails (mode: spawn). Bare ids resolve automatically, same as model.',
       },
       executionIntent: {
         type: 'object',
@@ -175,9 +175,9 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
           properties: {
             task: { type: 'string', description: 'Task description for the agent.' },
             template: { type: 'string', enum: ['orchestrator', 'planner', 'engineer', 'reviewer', 'tester', 'researcher', 'integrator', 'general'], description: 'Agent template.' },
-            model: { type: 'string', description: 'Provider-qualified model registry key.' },
+            model: { type: 'string', description: 'Model for this task. A bare model id resolves automatically; use provider:model only when the id exists on more than one provider.' },
             provider: { type: 'string', description: 'Provider override.' },
-            fallbackModels: { type: 'array', items: { type: 'string' }, description: 'Ordered provider-qualified registry keys.' },
+            fallbackModels: { type: 'array', items: { type: 'string' }, description: 'Ordered models to try if the primary model fails. Bare ids resolve automatically.' },
             executionIntent: {
               type: 'object',
               properties: {

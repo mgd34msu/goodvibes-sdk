@@ -18,6 +18,7 @@ import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import type { SecretsManager } from '../../config/secrets.js';
 import type { ProviderAuthRouteDescriptor, ProviderRuntimeMetadata } from '../../providers/interface.js';
 import { findModelDefinition } from '../../providers/registry-models.js';
+import { resolveModelReference } from '../../providers/model-id-resolution.js';
 import { BUILTIN_COMPAT_PROVIDERS, BUILTIN_PROVIDER_ENV_KEYS } from '../../providers/builtin-catalog.js';
 import { logger } from '../../utils/logger.js';
 
@@ -408,26 +409,27 @@ async function handlePatchCurrentModel(
   if (bodyOrErr instanceof Response) return bodyOrErr;
 
   const body = bodyOrErr as Record<string, unknown>;
-  const registryKey = typeof body['registryKey'] === 'string' ? body['registryKey'] : null;
+  const rawModelReference = typeof body['registryKey'] === 'string' ? body['registryKey'] : null;
 
-  if (!registryKey) {
+  if (!rawModelReference) {
     return Response.json(
       { error: 'Missing required field: registryKey', code: 'INVALID_REQUEST' },
       { status: 400 },
     );
   }
-  if (!registryKey.includes(':')) {
-    return Response.json(
-      {
-        error: `Model selection requires a provider-qualified registryKey; received '${registryKey}'`,
-        code: 'INVALID_REQUEST',
-      },
-      { status: 400 },
-    );
+
+  // Accepts either a provider-qualified registryKey or a bare model id — bare
+  // ids resolve via the shared resolver (unique -> auto-qualify; ambiguous or
+  // unknown -> a rich error naming real candidates from the live registry).
+  const allModels = providerRegistry.listModels();
+  let registryKey: string;
+  try {
+    registryKey = resolveModelReference(rawModelReference, allModels);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return Response.json({ error: message, code: 'INVALID_REQUEST' }, { status: 400 });
   }
 
-  // Validate the model exists
-  const allModels = providerRegistry.listModels();
   const modelDef = findModelDefinition(registryKey, allModels);
   if (!modelDef) {
     return Response.json(

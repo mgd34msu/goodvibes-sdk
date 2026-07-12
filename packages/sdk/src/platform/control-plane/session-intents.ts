@@ -5,6 +5,7 @@ import type {
   ProviderRoutingSelection,
 } from '../automation/types.js';
 import type { ExecutionIntent } from '../runtime/execution-intents.js';
+import { resolveModelReference, type ModelIdCandidate } from '../providers/model-id-resolution.js';
 
 export const SHARED_SESSION_INPUT_INTENTS = ['submit', 'steer', 'follow-up'] as const;
 export const SHARED_SESSION_INPUT_STATES = ['queued', 'delivered', 'spawned', 'completed', 'cancelled', 'failed', 'rejected'] as const;
@@ -81,7 +82,20 @@ export interface SharedSessionAgentSpawnRoutingInput {
   readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
 }
 
-function normalizeSharedSessionModelId(modelId: string | undefined, providerId: string | undefined): string | undefined {
+/**
+ * When `modelCandidates` (the live registry's model list) is supplied, a
+ * bare id with no provider hint resolves via the shared resolver (unique
+ * across the registry -> auto-qualify; ambiguous/unknown -> a rich error
+ * naming real candidates) instead of the old abstract format lecture. A
+ * bare id WITH a provider hint keeps qualifying by concatenation — that
+ * path already correctly implements "provider in context -> qualify"
+ * without needing registry access.
+ */
+function normalizeSharedSessionModelId(
+  modelId: string | undefined,
+  providerId: string | undefined,
+  modelCandidates?: readonly ModelIdCandidate[],
+): string | undefined {
   const trimmedModelId = modelId?.trim();
   if (!trimmedModelId) return undefined;
   const trimmedProviderId = providerId?.trim();
@@ -94,33 +108,51 @@ function normalizeSharedSessionModelId(modelId: string | undefined, providerId: 
     return trimmedModelId;
   }
   if (trimmedProviderId) return `${trimmedProviderId}:${trimmedModelId}`;
+  if (modelCandidates) {
+    try {
+      return resolveModelReference(trimmedModelId, modelCandidates);
+    } catch (err) {
+      throw new Error(`Shared-session routing model: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   throw new Error(`Shared-session routing model '${trimmedModelId}' must be provider-qualified.`);
 }
 
-function normalizeSharedSessionFallbackModels(models: readonly string[] | undefined): string[] {
+function normalizeSharedSessionFallbackModels(
+  models: readonly string[] | undefined,
+  modelCandidates?: readonly ModelIdCandidate[],
+): string[] {
   return (models ?? [])
     .filter((model): model is string => typeof model === 'string' && model.trim().length > 0)
     .map((model) => {
       const trimmed = model.trim();
-      const separatorIndex = trimmed.indexOf(':');
-      if (separatorIndex <= 0 || separatorIndex === trimmed.length - 1) {
-        throw new Error(`Shared-session fallback model '${model}' must be provider-qualified.`);
+      if (trimmed.includes(':')) return trimmed;
+      if (modelCandidates) {
+        try {
+          return resolveModelReference(trimmed, modelCandidates);
+        } catch (err) {
+          throw new Error(`Shared-session fallback model: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
-      return trimmed;
+      throw new Error(`Shared-session fallback model '${model}' must be provider-qualified.`);
     });
 }
 
 export function buildSharedSessionAgentSpawnRoutingInput(
   routing: SharedSessionRoutingIntent | undefined,
-  options: { readonly restrictTools?: boolean | undefined } = {},
+  options: {
+    readonly restrictTools?: boolean | undefined;
+    /** The live registry's model candidates — enables bare model id resolution when supplied. */
+    readonly modelCandidates?: readonly ModelIdCandidate[] | undefined;
+  } = {},
 ): SharedSessionAgentSpawnRoutingInput {
   if (!routing) return options.restrictTools ? { restrictTools: true } : {};
   const provider = routing.providerId?.trim();
-  const model = normalizeSharedSessionModelId(routing.modelId, provider);
+  const model = normalizeSharedSessionModelId(routing.modelId, provider, options.modelCandidates);
   if (provider && !model) {
     throw new Error('Shared-session provider routing requires a provider-qualified model when provider is supplied.');
   }
-  const fallbackModels = normalizeSharedSessionFallbackModels(routing.fallbackModels);
+  const fallbackModels = normalizeSharedSessionFallbackModels(routing.fallbackModels, options.modelCandidates);
   const providerFailurePolicy = routing.providerFailurePolicy ?? (
     fallbackModels.length ? 'ordered-fallbacks' : 'fail'
   );
