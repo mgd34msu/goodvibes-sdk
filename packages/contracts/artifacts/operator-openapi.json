@@ -79516,9 +79516,12 @@
                           "type": {
                             "type": "string",
                             "enum": [
-                              "feature-flag",
+                              "setting",
                               "configuration"
                             ]
+                          },
+                          "featureId": {
+                            "type": "string"
                           },
                           "defaultState": {
                             "type": "string"
@@ -79554,6 +79557,7 @@
                         "required": [
                           "key",
                           "type",
+                          "featureId",
                           "defaultState",
                           "currentState",
                           "securityRelevant",

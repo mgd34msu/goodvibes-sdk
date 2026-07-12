@@ -2,8 +2,11 @@ import { FEATURE_FLAG_MAP } from './feature-flags/flags.js';
 import type { FlagState } from './feature-flags/types.js';
 
 export interface SecuritySettingReport {
+  /** The settings key that controls this behavior. */
   readonly key: string;
-  readonly type: 'feature-flag' | 'configuration';
+  readonly type: 'setting' | 'configuration';
+  /** Internal capability id used to resolve the live state. */
+  readonly featureId: string;
   readonly defaultState: FlagState | string;
   readonly currentState: FlagState | string;
   readonly securityRelevant: true;
@@ -15,59 +18,62 @@ export interface SecuritySettingReport {
 }
 
 export interface SecuritySettingsReporter {
-  getState?(flagId: string): FlagState;
-  isEnabled?(flagId: string): boolean;
+  getState?(featureId: string): FlagState;
+  isEnabled?(featureId: string): boolean;
 }
 
 const SECURITY_FEATURE_SETTINGS: readonly Omit<SecuritySettingReport, 'currentState'>[] = [
   {
-    key: 'featureFlags.fetch-sanitization',
-    type: 'feature-flag',
-    defaultState: FEATURE_FLAG_MAP.get('fetch-sanitization')?.defaultState ?? 'disabled',
+    key: 'fetch.sanitizeMode',
+    type: 'setting',
+    featureId: 'fetch-sanitization',
+    defaultState: FEATURE_FLAG_MAP.get('fetch-sanitization')?.defaultState ?? 'enabled',
     securityRelevant: true,
-    summary: 'Controls fetch response sanitization and host trust-tier checks for the fetch tool.',
+    summary: 'Controls fetch response sanitization; host trust-tier blocking is always active.',
     insecureWhen:
-      'When disabled, fetch responses are returned without SDK sanitization and SSRF-risk hosts are not blocked by this feature gate.',
+      'When fetch.sanitizeMode is none, response content is returned without sanitization; private-IP and cloud-metadata blocking still applies.',
     enablementEffect:
-      'When enabled, unknown hosts are sanitized by default, explicitly blocked hosts are denied, and localhost/private/metadata targets are denied before request or redirect follow.',
+      'At safe-text (the default) or strict, unknown hosts are sanitized, explicitly blocked hosts are denied, and private/metadata targets are denied before request or redirect follow. Localhost dev servers ask once and can be allowed per project (fetch.allowLocalhost).',
     enablementRequirements: [
-      'Enable featureFlags.fetch-sanitization in SDK/TUI configuration.',
       'Add trusted_hosts only for hosts whose raw content is safe to expose to the model.',
-      'Keep sanitize_mode at safe-text or strict unless the target host is explicitly trusted.',
+      'Keep fetch.sanitizeMode at safe-text or strict unless the target host is explicitly trusted.',
     ],
     operationalNotes: [
-      'Requests to localhost, private IPs, link-local metadata endpoints, and encoded private IP forms are blocked when the feature is enabled.',
-      'Redirect chains are validated hop-by-hop when the feature is enabled.',
+      'Requests to private IPs, link-local metadata endpoints, and encoded private IP forms are always blocked.',
+      'Redirect chains are validated hop-by-hop.',
+      'Localhost fetches are refused until approved; the approval persists per project via fetch.allowLocalhost.',
     ],
   },
   {
-    key: 'featureFlags.permissions-policy-engine',
-    type: 'feature-flag',
+    key: 'permissions.engine',
+    type: 'setting',
+    featureId: 'permissions-policy-engine',
     defaultState: FEATURE_FLAG_MAP.get('permissions-policy-engine')?.defaultState ?? 'disabled',
     securityRelevant: true,
-    summary: 'Controls the redesigned layered permission evaluator for tool execution.',
+    summary: 'Selects the layered permission evaluator (policy-engine) for tool execution.',
     insecureWhen:
-      'When disabled, the SDK uses the baseline permission manager and does not enforce layered path/tool policy bundles.',
+      'At baseline, the SDK uses the baseline permission manager and does not enforce layered path/tool policy bundles.',
     enablementEffect:
-      'When enabled, tool calls can be evaluated against granular runtime policy rules before execution.',
+      'At policy-engine, tool calls can be evaluated against granular runtime policy rules before execution.',
     enablementRequirements: [
       'Provide or load a valid permission policy.',
       'Validate policy behavior in prompt/custom modes before using enforce-heavy deployments.',
     ],
     operationalNotes: [
-      'Startup-only flag; consumers should set it before constructing runtime services.',
+      'Applies at startup; set it before constructing runtime services.',
     ],
   },
   {
-    key: 'featureFlags.policy-signing',
-    type: 'feature-flag',
+    key: 'policy.requireSignedBundles',
+    type: 'setting',
+    featureId: 'policy-signing',
     defaultState: FEATURE_FLAG_MAP.get('policy-signing')?.defaultState ?? 'disabled',
     securityRelevant: true,
     summary: 'Controls HMAC signature validation for managed permission policy bundles.',
     insecureWhen:
-      'When disabled, managed policy bundles are not cryptographically verified by this gate.',
+      'When off, managed policy bundles are not cryptographically verified by this check.',
     enablementEffect:
-      'When enabled, managed mode rejects policy bundles with invalid or missing signatures.',
+      'When on, managed mode rejects policy bundles with invalid or missing signatures.',
     enablementRequirements: [
       'Provision the policy signing secret in the runtime environment or secret store.',
       'Sign policy bundles before loading them in managed mode.',
@@ -77,35 +83,36 @@ const SECURITY_FEATURE_SETTINGS: readonly Omit<SecuritySettingReport, 'currentSt
     ],
   },
   {
-    key: 'featureFlags.permissions-simulation',
-    type: 'feature-flag',
-    defaultState: FEATURE_FLAG_MAP.get('permissions-simulation')?.defaultState ?? 'disabled',
+    key: 'permissions.simulation',
+    type: 'setting',
+    featureId: 'permissions-simulation',
+    defaultState: FEATURE_FLAG_MAP.get('permissions-simulation')?.defaultState ?? 'enabled',
     securityRelevant: true,
     summary: 'Runs the candidate permission evaluator beside the active evaluator without changing enforcement.',
     insecureWhen:
-      'When disabled, operators do not receive divergence telemetry before moving to stricter permission policy enforcement.',
+      'When off, operators do not receive divergence telemetry before moving to stricter permission policy enforcement.',
     enablementEffect:
-      'When enabled, the SDK records evaluator divergence so clients can validate a stricter permission policy before enforcing it.',
+      'When on (the default), the SDK records evaluator divergence so clients can validate a stricter permission policy before enforcing it.',
     enablementRequirements: [
-      'Enable alongside permissions-policy-engine during policy rollout.',
       'Review divergence diagnostics before switching enforcement modes.',
     ],
     operationalNotes: [
-      'Simulation should not block tool execution by itself; it is an observability step for permission hardening.',
+      'Simulation never blocks tool execution by itself; it is an observability step for permission hardening.',
     ],
   },
   {
-    key: 'featureFlags.permission-divergence-dashboard',
-    type: 'feature-flag',
-    defaultState: FEATURE_FLAG_MAP.get('permission-divergence-dashboard')?.defaultState ?? 'disabled',
+    key: 'permissions.divergenceDashboard',
+    type: 'setting',
+    featureId: 'permission-divergence-dashboard',
+    defaultState: FEATURE_FLAG_MAP.get('permission-divergence-dashboard')?.defaultState ?? 'enabled',
     securityRelevant: true,
     summary: 'Surfaces permission evaluator divergence and gates enforce-mode rollout.',
     insecureWhen:
-      'When disabled, clients may lack a first-class view of permission divergence before enabling stricter enforcement.',
+      'When off, clients may lack a first-class view of permission divergence before enabling stricter enforcement.',
     enablementEffect:
-      'When enabled, divergence by command class, prefix, and mode is exposed for diagnostics and can block unsafe enforce-mode transitions.',
+      'When on (the default), divergence by command class, prefix, and mode is exposed for diagnostics and can block unsafe enforce-mode transitions.',
     enablementRequirements: [
-      'Enable permissions-simulation first so divergence data exists.',
+      'Keep permissions.simulation on so divergence data exists.',
       'Configure an acceptable divergence threshold for the host surface.',
     ],
     operationalNotes: [
@@ -113,35 +120,37 @@ const SECURITY_FEATURE_SETTINGS: readonly Omit<SecuritySettingReport, 'currentSt
     ],
   },
   {
-    key: 'featureFlags.policy-as-code',
-    type: 'feature-flag',
+    key: 'policy.registryEnabled',
+    type: 'setting',
+    featureId: 'policy-as-code',
     defaultState: FEATURE_FLAG_MAP.get('policy-as-code')?.defaultState ?? 'disabled',
     securityRelevant: true,
     summary: 'Controls versioned permission policy bundle promotion and rollback.',
     insecureWhen:
-      'When disabled, permission policy changes are not managed through SDK-level promote/rollback controls.',
+      'When off, permission policy changes are not managed through SDK-level promote/rollback controls.',
     enablementEffect:
-      'When enabled, policy bundles can be loaded, diffed, simulated, promoted, and rolled back with recorded evidence.',
+      'When on, policy bundles can be loaded, diffed, simulated, promoted, and rolled back with recorded evidence.',
     enablementRequirements: [
       'Define a policy bundle source and promotion flow.',
-      'Use permissions-simulation and policy-signing for high-assurance managed deployments.',
+      'Use permissions.simulation and policy.requireSignedBundles for high-assurance managed deployments.',
     ],
     operationalNotes: [
       'Operational clients need to handle policy promotion failures and rollback states.',
     ],
   },
   {
-    key: 'featureFlags.runtime-tools-budget-enforcement',
-    type: 'feature-flag',
+    key: 'runtime.toolBudget.enforced',
+    type: 'setting',
+    featureId: 'runtime-tools-budget-enforcement',
     defaultState: FEATURE_FLAG_MAP.get('runtime-tools-budget-enforcement')?.defaultState ?? 'disabled',
     securityRelevant: true,
     summary: 'Controls runtime budget enforcement for tool execution pipelines.',
     insecureWhen:
-      'When disabled, tool phases do not fail closed on SDK-level wall-clock, token, or cost budget breaches.',
+      'When off, tool phases do not fail closed on SDK-level wall-clock, token, or cost budget breaches.',
     enablementEffect:
-      'When enabled, tools can be interrupted at phase boundaries when configured budgets are exceeded.',
+      'When on, tools can be interrupted at phase boundaries when configured budgets are exceeded.',
     enablementRequirements: [
-      'Configure appropriate budget limits for the host surface.',
+      'Configure appropriate budget limits (runtime.toolBudget.maxMs/maxTokens/maxCostUsd) for the host surface.',
       'Ensure callers handle budget-exceeded tool errors as normal failures.',
     ],
     operationalNotes: [
@@ -149,57 +158,60 @@ const SECURITY_FEATURE_SETTINGS: readonly Omit<SecuritySettingReport, 'currentSt
     ],
   },
   {
-    key: 'featureFlags.token-scope-rotation-audit',
-    type: 'feature-flag',
-    defaultState: FEATURE_FLAG_MAP.get('token-scope-rotation-audit')?.defaultState ?? 'disabled',
+    key: 'security.tokenAudit.enabled',
+    type: 'setting',
+    featureId: 'token-scope-rotation-audit',
+    defaultState: FEATURE_FLAG_MAP.get('token-scope-rotation-audit')?.defaultState ?? 'enabled',
     securityRelevant: true,
     summary: 'Audits API tokens for excessive scopes and stale rotation cadence.',
     insecureWhen:
-      'When disabled, token scope and age findings are advisory only and are not enforced by this gate.',
+      'When off, token scope and age findings are not reported at all; when on without security.tokenAudit.managed, findings are advisory only.',
     enablementEffect:
-      'When enabled in managed mode, tokens with excess scopes or expired rotation windows can be blocked from use.',
+      'When on (the default) with security.tokenAudit.managed, tokens with excess scopes or expired rotation windows can be blocked from use.',
     enablementRequirements: [
       'Define expected token scopes for the deployed integrations.',
       'Configure rotation cadence and managed-mode policy before relying on blocking behavior.',
     ],
     operationalNotes: [
-      'Tokens that currently work may be blocked if they are over-scoped or overdue for rotation.',
+      'In managed mode, tokens that currently work may be blocked if they are over-scoped or overdue for rotation.',
     ],
   },
   {
-    key: 'featureFlags.tool-contract-verification',
-    type: 'feature-flag',
+    key: 'tools.contractVerification',
+    type: 'setting',
+    featureId: 'tool-contract-verification',
     defaultState: FEATURE_FLAG_MAP.get('tool-contract-verification')?.defaultState ?? 'enabled',
     securityRelevant: true,
     summary: 'Validates registered tool contracts, timeout behavior, permission class mapping, and output policy alignment.',
     insecureWhen:
-      'When disabled, malformed or under-declared tools can register without SDK contract verification.',
+      'When off, malformed or under-declared tools can register without SDK contract verification.',
     enablementEffect:
-      'When enabled, invalid tool contracts fail closed with actionable diagnostics before normal execution.',
+      'When on (the default), invalid tool contracts fail closed with actionable diagnostics before normal execution.',
     enablementRequirements: [
       'Keep tool definitions accurate, including side effects and permission classes.',
       'Fix contract diagnostics in custom tool plugins before enabling in strict deployments.',
     ],
     operationalNotes: [
-      'This flag defaults to enabled; disabling it should be limited to isolated tool-development sessions.',
+      'On by default; turning it off should be limited to isolated tool-development sessions.',
     ],
   },
   {
-    key: 'featureFlags.shell-ast-normalization',
-    type: 'feature-flag',
-    defaultState: FEATURE_FLAG_MAP.get('shell-ast-normalization')?.defaultState ?? 'disabled',
+    key: 'permissions.commandParser',
+    type: 'setting',
+    featureId: 'shell-ast-normalization',
+    defaultState: FEATURE_FLAG_MAP.get('shell-ast-normalization')?.defaultState ?? 'enabled',
     securityRelevant: true,
-    summary: 'Controls AST-aware shell command normalization for exec permission review (default-on).',
+    summary: 'Controls AST-aware shell command evaluation for exec permission review (default ast).',
     insecureWhen:
-      'When disabled, exec command review uses baseline flat segmentation for every command and may provide less precise command verdicts.',
+      'At flat, exec command review uses baseline flat segmentation for every command and may provide less precise command verdicts.',
     enablementEffect:
-      'When enabled (the default), compound shell commands are decomposed into per-segment verdicts with more specific denial explanations. A parser failure falls back automatically to the baseline flat-segmentation matcher — never a hard error and never a blanket allow — and the frozen catastrophic block is enforced identically in both modes.',
+      'At ast (the default), compound shell commands are decomposed into per-segment verdicts with more specific denial explanations. A parser failure falls back automatically to the baseline flat-segmentation matcher — never a hard error and never a blanket allow — and the frozen catastrophic block is enforced identically in both modes.',
     enablementRequirements: [
-      'None to enable — this flag is on by default and remains runtime-toggleable.',
-      'Disable at runtime to force the baseline flat-segmentation matcher for every command.',
+      'None — ast is the default and remains runtime-switchable.',
+      'Set permissions.commandParser to flat to force the baseline matcher for every command.',
     ],
     operationalNotes: [
-      'Complex shell syntax can receive more granular per-segment verdicts when enabled.',
+      'Complex shell syntax receives more granular per-segment verdicts in ast mode.',
       'Denial explanations come from the AST verdict when the parse succeeds; on parse failure the baseline matcher produces the denial instead.',
     ],
   },
@@ -209,10 +221,9 @@ export function getSecuritySettingsReport(
   reporter: SecuritySettingsReporter | null | undefined,
 ): SecuritySettingReport[] {
   return SECURITY_FEATURE_SETTINGS.map((setting) => {
-    const flagId = setting.key.replace(/^featureFlags\./, '');
     const currentState = reporter?.getState
-      ? safeGetState(reporter, flagId, setting.defaultState)
-      : reporter?.isEnabled?.(flagId)
+      ? safeGetState(reporter, setting.featureId, setting.defaultState)
+      : reporter?.isEnabled?.(setting.featureId)
         ? 'enabled'
         : setting.defaultState;
     return {
@@ -224,11 +235,11 @@ export function getSecuritySettingsReport(
 
 function safeGetState(
   reporter: SecuritySettingsReporter,
-  flagId: string,
+  featureId: string,
   fallback: FlagState | string,
 ): FlagState | string {
   try {
-    return reporter.getState?.(flagId) ?? fallback;
+    return reporter.getState?.(featureId) ?? fallback;
   } catch {
     return fallback;
   }

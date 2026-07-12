@@ -17178,7 +17178,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "settings": [
         {
           "key": "sample",
-          "type": "feature-flag",
+          "type": "setting",
+          "featureId": "sample",
           "defaultState": "sample",
           "currentState": "sample",
           "securityRelevant": false,

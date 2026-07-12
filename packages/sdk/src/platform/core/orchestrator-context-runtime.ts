@@ -76,6 +76,9 @@ function findLargerContextModels(
 }
 
 function readAutoCompactThreshold(configManager: Pick<ConfigManager, 'get'>): number {
+  // behavior.compactionStrategy 'off' turns session compaction off entirely —
+  // the auto trigger honors it by reporting a disabled (0) threshold.
+  if (configManager.get('behavior.compactionStrategy') === 'off') return 0;
   const raw = Number(configManager.get('behavior.autoCompactThreshold') ?? 0);
   return Number.isFinite(raw) ? raw : 0;
 }

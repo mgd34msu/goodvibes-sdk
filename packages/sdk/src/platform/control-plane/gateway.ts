@@ -219,7 +219,7 @@ export class ControlPlaneGateway {
       return {
         server: { ...this.serverConfig, enabled: false },
         disabled: true,
-        featureFlag: 'control-plane-gateway',
+        setting: 'controlPlane.gateway',
         totals: {
           clients: 0,
           activeClients: 0,

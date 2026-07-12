@@ -29106,9 +29106,9 @@ Send a composed email via the configured SMTP account. Irreversible external sen
 
 #### `flags.graduation.report`
 
-Return the feature-flag graduation report: every flag with its current default, graduation state (dark = default-off with no evidence, soaking = accumulating evidence, graduate-candidate = judged ready and awaiting a release decision, graduated = default flipped on, blocked = held off with a dated reason), and its validation evidence. Evidence is real-only: a flag with no instrumentation reports "no evidence collected", never a fabricated readiness; the permissions divergence simulation is the one wired instrumentation today. releaseBlockers lists every graduate-candidate flag — the release policy (bun run flags:graduation) fails while that list is non-empty, forcing each ready flag to flip on or record a dated blocker.
+Return the feature defaults report: every platform capability with its current default, default-disposition state (dark = default-off with no evidence, soaking = accumulating evidence, graduate-candidate = judged ready and awaiting a release decision, graduated = default on, blocked = held off with a dated reason), and its validation evidence. Evidence is real-only: a capability with no instrumentation reports "no evidence collected", never a fabricated readiness; the permissions divergence simulation is the one wired instrumentation today. releaseBlockers lists every graduate-candidate entry — the release policy (bun run flags:graduation) fails while that list is non-empty, forcing each ready default to flip on or record a dated blocker.
 
-- Title: `Feature Flag Graduation Report`
+- Title: `Feature Defaults Report`
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `ws`
@@ -79589,9 +79589,12 @@ Return security-relevant settings, defaults, current state, and enablement trade
           "type": {
             "type": "string",
             "enum": [
-              "feature-flag",
+              "setting",
               "configuration"
             ]
+          },
+          "featureId": {
+            "type": "string"
           },
           "defaultState": {
             "type": "string"
@@ -79627,6 +79630,7 @@ Return security-relevant settings, defaults, current state, and enablement trade
         "required": [
           "key",
           "type",
+          "featureId",
           "defaultState",
           "currentState",
           "securityRelevant",

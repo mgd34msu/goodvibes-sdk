@@ -62,6 +62,9 @@ export const FEATURE_SETTINGS_BINDINGS: readonly FeatureSettingsBinding[] = [
   { featureId: 'otel-foundation', key: 'telemetry.otelMode', kind: 'enum', enabledValues: ['in-process', 'remote-export'] },
   { featureId: 'otel-remote-export', key: 'telemetry.otelMode', kind: 'enum', enabledValues: ['remote-export'] },
   { featureId: 'local-provider-context-ingestion', key: 'provider.localContextIngestion', kind: 'boolean' },
+  { featureId: 'agent-context-window-awareness', key: 'agents.contextWindowGuard', kind: 'boolean' },
+  { featureId: 'agent-passive-knowledge-injection', key: 'agents.passiveInjection.knowledge', kind: 'boolean' },
+  { featureId: 'agent-passive-code-injection', key: 'agents.passiveInjection.code', kind: 'boolean' },
   { featureId: 'provider-optimizer', key: 'provider.optimizerMode', kind: 'enum', enabledValues: ['manual', 'auto', 'pinned'] },
   { featureId: 'adaptive-execution-planner', key: 'planner.adaptive', kind: 'boolean' },
   // Sanitization mode and localhost approval tune the fetch pipeline; host
