@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { ConfigManager } from '../config/manager.js';
 import type { AutomationJob } from './jobs.js';
 import type { CreateAutomationJobInput, UpdateAutomationJobInput } from './manager-runtime-helpers.js';
+import type { ModelIdCandidate } from '../providers/model-id-resolution.js';
 import {
   buildDefaultDelivery,
   buildDefaultExecution,
@@ -24,6 +25,13 @@ interface AutomationJobMutationContext {
   readonly syncJobToRuntime: (job: AutomationJob, source: string) => void;
   readonly emitJobCreated: (job: AutomationJob) => void;
   readonly emitJobUpdated: (job: AutomationJob, changedFields: string[]) => void;
+  /**
+   * The live provider registry's model candidates, when the caller has one
+   * wired up. Enables bare model id resolution (unique -> auto-qualify;
+   * ambiguous/unknown -> a rich error) for `model`/`fallbackModels` fields.
+   * Omitted callers keep the prior format-only validation.
+   */
+  readonly listModels?: () => readonly ModelIdCandidate[];
 }
 
 export async function createAutomationJobRecord(
@@ -46,7 +54,7 @@ export async function createAutomationJobRecord(
     status: enabled ? 'enabled' : 'paused',
     enabled,
     schedule: input.schedule,
-    execution: buildDefaultExecution(input, context.configManager),
+    execution: buildDefaultExecution(input, context.configManager, context.listModels?.()),
     delivery: buildDefaultDelivery(input.delivery),
     failure: buildDefaultFailurePolicy(context.configManager, input.failure),
     source: buildDefaultSource(enabled, now),
@@ -107,8 +115,9 @@ export async function updateAutomationJobRecord(
   const nextEnabled = patch.enabled ?? job.enabled;
   const prompt = patch.prompt ?? job.execution.prompt ?? job.description ?? job.name;
   const updatedAt = Date.now();
+  const models = context.listModels?.();
   const fallbackModelsPatch = patch.fallbackModels !== undefined
-    ? normalizeProviderQualifiedModelList(patch.fallbackModels, 'Automation fallback models')
+    ? normalizeProviderQualifiedModelList(patch.fallbackModels, 'Automation fallback models', models)
     : undefined;
   const thinkingPatch = normalizeOptionalString(patch.thinking);
   const nextSchedule = patch.schedule ?? job.schedule;
@@ -116,12 +125,12 @@ export async function updateAutomationJobRecord(
     ? normalizeOptionalString(patch.provider)
     : job.execution.modelProvider;
   const nextModelId = patch.model !== undefined
-    ? normalizeProviderQualifiedModel(patch.model, 'Automation model')
+    ? normalizeProviderQualifiedModel(patch.model, 'Automation model', models, nextModelProvider)
     : job.execution.modelId;
   assertProviderHasModel(nextModelId, nextModelProvider, 'Automation model routing');
   assertProviderMatchesModel(nextModelId, nextModelProvider, 'Automation model');
   const routingFallbackModelsPatch = patch.routing?.fallbackModels !== undefined
-    ? normalizeProviderQualifiedModelList(patch.routing.fallbackModels, 'Automation fallback models')
+    ? normalizeProviderQualifiedModelList(patch.routing.fallbackModels, 'Automation fallback models', models)
     : undefined;
   const nextFallbackModels = routingFallbackModelsPatch
     ?? fallbackModelsPatch
@@ -148,7 +157,7 @@ export async function updateAutomationJobRecord(
         modelProvider: nextModelProvider,
         fallbackModels: nextFallbackModels,
         routing: patch.routing ?? job.execution.routing,
-      }),
+      }, models),
       reasoningEffort: patch.reasoningEffort ?? job.execution.reasoningEffort,
       thinking: thinkingPatch ?? job.execution.thinking,
       wakeMode: patch.wakeMode ?? job.execution.wakeMode,

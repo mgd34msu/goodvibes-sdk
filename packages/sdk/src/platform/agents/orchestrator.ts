@@ -32,7 +32,7 @@ import {
   emitOrchestrationNodeProgress,
 } from '../runtime/emitters/index.js';
 import { findModelDefinition } from '../providers/registry-models.js';
-import { splitModelRegistryKey } from '../providers/registry-helpers.js';
+import { resolveModelReference } from '../providers/model-id-resolution.js';
 import { runAgentTask, type AgentOrchestratorRunContext } from './orchestrator-runner.js';
 export { summarizeToolArgs } from './orchestrator-utils.js';
 
@@ -451,10 +451,16 @@ export class AgentOrchestrator {
     currentModel: ActiveModelRef,
     modelRegistry: readonly ModelDefinition[],
   ): ResolvedAgentProviderRouting {
-    const requestedModelId = this.normalizeRequestedModelId(record.model ?? currentModel.registryKey);
-    if (record.model) this.assertProviderQualifiedModel(record.model, 'Agent model overrides');
-    const providerFromRegistryKey = record.model
-      ? findModelDefinition(record.model, modelRegistry)?.provider
+    // A bare model override resolves via the shared resolver — the
+    // record's own `provider` field (when present) is passed as context so
+    // "model X on provider Y" qualifies immediately instead of demanding the
+    // user already know the provider:model registryKey format.
+    const resolvedModelOverride = record.model
+      ? resolveModelReference(record.model, modelRegistry, { contextProviderId: record.provider })
+      : undefined;
+    const requestedModelId = this.normalizeRequestedModelId(resolvedModelOverride ?? currentModel.registryKey);
+    const providerFromRegistryKey = resolvedModelOverride
+      ? findModelDefinition(resolvedModelOverride, modelRegistry)?.provider
       : undefined;
     if (record.provider && !record.model) {
       throw new Error('Agent provider routing requires a provider-qualified model when provider is supplied.');
@@ -468,7 +474,7 @@ export class AgentOrchestrator {
       ?? []
     )
       .filter((model): model is string => typeof model === 'string' && model.trim().length > 0)
-      .map((model) => model.trim());
+      .map((model) => resolveModelReference(model.trim(), modelRegistry));
     const providerSelection = record.routing?.providerSelection ?? (
       record.provider === 'synthetic'
         ? 'synthetic'
@@ -510,14 +516,6 @@ export class AgentOrchestrator {
     return requestedModelId.trim();
   }
 
-  private assertProviderQualifiedModel(modelId: string, label: string): void {
-    try {
-      splitModelRegistryKey(modelId.trim());
-    } catch {
-      throw new Error(`${label} must be provider-qualified registry keys; received '${modelId}'.`);
-    }
-  }
-
   private resolveChatModelId(
     providerRegistry: Pick<ProviderRegistry, 'listModels'>,
     requestedModelId: string,
@@ -547,10 +545,10 @@ export class AgentOrchestrator {
     const routes: Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }> = [];
     const modelRegistry = providerRegistry.listModels();
     for (const rawFallback of routing.fallbackModels) {
+      // routing.fallbackModels entries are already resolved/qualified by resolveProviderRouting().
       const requestedModelId = this.normalizeRequestedModelId(rawFallback);
       if (!requestedModelId || seen.has(requestedModelId)) continue;
       seen.add(requestedModelId);
-      this.assertProviderQualifiedModel(requestedModelId, 'Agent fallback models');
       const fallbackDef = findModelDefinition(requestedModelId, modelRegistry);
       if (!fallbackDef) {
         throw new Error(`Agent fallback model '${requestedModelId}' is not in registry.`);

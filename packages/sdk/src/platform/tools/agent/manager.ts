@@ -23,6 +23,8 @@ import { logger } from '../../utils/logger.js';
 import type { AgentInput } from './schema.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { splitModelRegistryKey } from '../../providers/registry-helpers.js';
+import type { ProviderRegistry } from '../../providers/registry.js';
+import { requireProviderQualifiedModel, normalizeProviderQualifiedModelList } from './model-routing.js';
 import type { WrfcAgentRole } from '../../agents/wrfc-types.js';
 import type { TurnInjectionRecord } from '../../agents/turn-knowledge-injection.js';
 import {
@@ -48,6 +50,8 @@ export interface AgentManagerDependencies {
    * DEFAULT_CONVERSATION_SNAPSHOT_RETENTION. Test-only knob in practice.
    */
   readonly conversationSnapshotRetention?: number | undefined;
+  /** The live provider registry, when wired up — enables bare model id resolution for spawn() overrides. */
+  readonly providerRegistry?: Pick<ProviderRegistry, 'listModels'> | undefined;
 }
 
 /**
@@ -97,24 +101,6 @@ export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools
     defaultTools: ['read', 'write', 'edit', 'find', 'exec', 'analyze', 'inspect', 'fetch', 'registry'],
   },
 };
-
-function requireProviderQualifiedModel(modelId: string | undefined, label: string): string | undefined {
-  const trimmed = typeof modelId === 'string' ? modelId.trim() : '';
-  if (!trimmed) return undefined;
-  try {
-    splitModelRegistryKey(trimmed);
-  } catch {
-    throw new Error(`${label} must be a provider-qualified registry key; received '${modelId}'.`);
-  }
-  return trimmed;
-}
-
-function normalizeProviderQualifiedModelList(models: readonly string[] | undefined, label: string): string[] | undefined {
-  const normalized = models
-    ?.filter((model) => typeof model === 'string' && model.trim().length > 0)
-    .map((model) => requireProviderQualifiedModel(model, label)!);
-  return normalized && normalized.length > 0 ? normalized : undefined;
-}
 
 export interface AgentRecord {
   id: string;
@@ -275,10 +261,12 @@ export class AgentManager {
    */
   private readonly frozenConversationSnapshots = new Map<string, ConversationMessageSnapshot[]>();
   private readonly conversationSnapshotRetention: number;
+  private readonly providerRegistry: Pick<ProviderRegistry, 'listModels'> | null;
 
   constructor(deps: AgentManagerDependencies = {}) {
     this.archetypeLoader = deps.archetypeLoader ?? new ArchetypeLoader();
     this.messageBus = deps.messageBus ?? new AgentMessageBus();
+    this.providerRegistry = deps.providerRegistry ?? null;
     this.wrfcController = deps.wrfcController ?? null;
     this.executor = deps.executor ?? null;
     this.configManager = deps.configManager ?? null;
@@ -465,16 +453,17 @@ export class AgentManager {
     const reviewMode = input.reviewMode ?? (input.dangerously_disable_wrfc ? 'none' : 'wrfc');
     const communicationLane = input.communicationLane
       ?? (input.parentAgentId ? 'parent-only' : input.cohort ? 'cohort' : 'direct');
-    const model = requireProviderQualifiedModel(input.model, 'Agent model overrides');
+    const modelCandidates = this.providerRegistry?.listModels();
     const provider = input.provider?.trim() || undefined;
+    const model = requireProviderQualifiedModel(input.model, 'Agent model overrides', modelCandidates, provider);
     if (!model && provider) {
       throw new Error('Agent provider routing requires a provider-qualified model when provider is supplied.');
     }
     if (model && provider && splitModelRegistryKey(model).providerId !== provider) {
       throw new Error(`Agent model override '${model}' conflicts with provider '${provider}'.`);
     }
-    const fallbackModels = normalizeProviderQualifiedModelList(input.fallbackModels, 'Agent fallback models');
-    const routingFallbackModels = normalizeProviderQualifiedModelList(input.routing?.fallbackModels, 'Agent routing fallback models');
+    const fallbackModels = normalizeProviderQualifiedModelList(input.fallbackModels, 'Agent fallback models', modelCandidates);
+    const routingFallbackModels = normalizeProviderQualifiedModelList(input.routing?.fallbackModels, 'Agent routing fallback models', modelCandidates);
     const effectiveFallbackModels = input.routing?.providerFailurePolicy === 'fail'
       ? undefined
       : routingFallbackModels ?? fallbackModels;

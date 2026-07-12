@@ -3,6 +3,7 @@ import type { ChatResponse, ContentPart, LLMProvider, ProviderMessage, StreamDel
 import type { ToolCall, ToolDefinition } from '../../types/tools.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { isRecord } from '../../utils/record-coerce.js';
+import { resolveModelReference } from '../../providers/model-id-resolution.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -142,8 +143,12 @@ function resolveModel(
     };
   }
 
+  // Accepts either a provider-qualified registryKey or a bare model id — bare
+  // ids resolve via the shared resolver (unique -> auto-qualify; ambiguous or
+  // unknown -> a rich error naming real candidates from the live registry).
   const models = registry.listModels();
-  const exact = models.find((model) => model.registryKey === raw);
+  const registryKey = resolveModelReference(raw, models);
+  const exact = models.find((model) => model.registryKey === registryKey);
   if (exact) {
     return {
       provider: registry.getForModel(exact.registryKey, exact.provider),
@@ -153,11 +158,7 @@ function resolveModel(
     };
   }
 
-  throw new Error(
-    raw.includes(':')
-      ? `Model '${raw}' not found.`
-      : `Model '${raw}' must be requested as a provider-qualified registryKey.`,
-  );
+  throw new Error(`Model '${raw}' not found.`);
 }
 
 function prepareChatRequest(input: ChatCompletionRequest): {

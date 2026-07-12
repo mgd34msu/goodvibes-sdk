@@ -97,6 +97,13 @@ interface AutomationManagerConfig {
   readonly sessionBroker: SharedSessionBroker;
   readonly defaultSurfaceKind?: AutomationSurfaceKind | undefined;
   readonly defaultSurfaceId?: string | undefined;
+  /**
+   * The live provider registry, when the caller has one wired up. Enables
+   * bare model id resolution for job `model`/`fallbackModels` fields
+   * (unique -> auto-qualify; ambiguous/unknown -> a rich error naming real
+   * candidates). Omitted callers keep the prior format-only validation.
+   */
+  readonly providerRegistry?: Pick<import('../providers/registry.js').ProviderRegistry, 'listModels'> | undefined;
   readonly featureFlags?: FeatureFlagReader | undefined;
 }
 
@@ -121,6 +128,7 @@ export class AutomationManager {
   private readonly sessionBroker: SharedSessionBroker;
   private readonly defaultSurfaceKind?: AutomationSurfaceKind | undefined;
   private readonly defaultSurfaceId?: string | undefined;
+  private readonly providerRegistry?: Pick<import('../providers/registry.js').ProviderRegistry, 'listModels'> | undefined;
   private readonly jobs = new Map<string, AutomationJob>();
   private readonly runs = new Map<string, AutomationRun>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -149,6 +157,7 @@ export class AutomationManager {
     this.sessionBroker = config.sessionBroker;
     this.defaultSurfaceKind = config.defaultSurfaceKind;
     this.defaultSurfaceId = config.defaultSurfaceId;
+    this.providerRegistry = config.providerRegistry;
     this.agentStatusProvider = config.agentStatusProvider;
     this.spawnTask = config.spawnTask;
     this.cancelTask = config.cancelTask;
@@ -220,6 +229,7 @@ export class AutomationManager {
       syncJobToRuntime: (job: AutomationJob, source: string) => this.syncJobToRuntime(job, source),
       emitJobCreated: (job: AutomationJob) => this.emitJobCreated(job),
       emitJobUpdated: (job: AutomationJob, changedFields: string[]) => this.emitJobUpdated(job, changedFields),
+      ...(this.providerRegistry ? { listModels: () => this.providerRegistry!.listModels() } : {}),
     };
   }
 

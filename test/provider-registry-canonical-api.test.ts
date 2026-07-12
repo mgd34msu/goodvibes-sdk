@@ -28,6 +28,10 @@ function makeProvider(name: string, models: readonly string[] = []): LLMProvider
   return {
     name,
     models: [...models],
+    // A test double with an empty models array needs a declared modelSource
+    // to pass the registration-time contract check (model-source-contract.ts)
+    // — same as any real provider whose list starts empty (e.g. Anthropic).
+    ...(models.length === 0 ? { modelSource: { kind: 'live-discovery' } } : {}),
     chat: async () => { throw new Error('not implemented'); },
     stream: async function* () { /* empty */ },
   } as unknown as LLMProvider;
@@ -242,22 +246,29 @@ describe('ProviderRegistry.require()', () => {
 });
 
 describe('ProviderRegistry model catalog cache', () => {
+  // 'gpt-9999-catalog-only-fixture' stands in for a model that is ONLY ever
+  // known via the third-party models.dev catalog — unlike a real OpenAI
+  // model id, it deliberately never appears in OpenAIProvider's dated-static
+  // baseline (openai.ts), so these tests still exercise "unknown until the
+  // catalog loads" instead of accidentally passing because the live-model-
+  // discovery baseline already knows the id (as it now does for real ids
+  // like 'gpt-5.4' — see provider-live-model-discovery.test.ts).
   test('initCatalog invalidates model registry built before cached catalog load', () => {
     const root = mkdtempSync(join(tmpdir(), 'goodvibes-provider-registry-'));
     try {
       const registry = makeRegistry(root);
-      expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-5.4')).toBe(false);
+      expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-9999-catalog-only-fixture')).toBe(false);
       saveCatalogCache(
-        [makeCatalogModel('gpt-5.4', 'openai')],
+        [makeCatalogModel('gpt-9999-catalog-only-fixture', 'openai')],
         getCatalogCachePath(root),
         getCatalogTmpPath(root),
       );
       registry.initCatalog();
-      expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-5.4')).toBe(true);
-      expect(() => registry.getForModel('gpt-5.4')).toThrow(
-        "Model lookup requires a provider-qualified registryKey; received 'gpt-5.4'.",
-      );
-      expect(registry.getForModel('openai:gpt-5.4').name).toBe('openai');
+      expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-9999-catalog-only-fixture')).toBe(true);
+      // Once the catalog load makes this bare id unique across the registry,
+      // the shared resolver auto-qualifies it — no format required.
+      expect(registry.getForModel('gpt-9999-catalog-only-fixture').name).toBe('openai');
+      expect(registry.getForModel('openai:gpt-9999-catalog-only-fixture').name).toBe('openai');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -265,14 +276,12 @@ describe('ProviderRegistry model catalog cache', () => {
 
   test('bare OpenAI model IDs are not guessed when local catalog is stale', () => {
     const registry = makeRegistry();
-    expect(() => registry.getForModel('gpt-5.4')).toThrow(
-      "Model lookup requires a provider-qualified registryKey; received 'gpt-5.4'.",
+    expect(() => registry.getForModel('gpt-9999-catalog-only-fixture')).toThrow(/Unknown model 'gpt-9999-catalog-only-fixture'/);
+    expect(() => registry.getForModel('gpt-9999-catalog-only-fixture', 'openai')).toThrow(
+      "No model 'gpt-9999-catalog-only-fixture' for provider 'openai' in registry.",
     );
-    expect(() => registry.getForModel('gpt-5.4', 'openai')).toThrow(
-      "No model 'gpt-5.4' for provider 'openai' in registry.",
-    );
-    expect(() => registry.getForModel('gpt-5.4', 'anthropic')).toThrow(
-      "No model 'gpt-5.4' for provider 'anthropic' in registry.",
+    expect(() => registry.getForModel('gpt-9999-catalog-only-fixture', 'anthropic')).toThrow(
+      "No model 'gpt-9999-catalog-only-fixture' for provider 'anthropic' in registry.",
     );
   });
 
@@ -282,17 +291,19 @@ describe('ProviderRegistry model catalog cache', () => {
     );
   });
 
-  test('model selection rejects bare model ids without a provider', () => {
+  // 'gpt-5.4' is a real model id that now appears in more than one provider's
+  // dated-static baseline (openai, openai-subscriber, github-copilot) — the
+  // shared resolver reports it as ambiguous with the real candidate keys,
+  // never a silent guess and never the old abstract format lecture.
+  test('bare model ids: ambiguous across providers reports the real candidates; unique auto-qualifies', () => {
     const registry = makeRegistry();
-    expect(() => registry.getForModel('gpt-5.4')).toThrow(
-      "Model lookup requires a provider-qualified registryKey; received 'gpt-5.4'.",
-    );
-    expect(() => registry.setCurrentModel('gpt-5.4')).toThrow(
-      "Model selection requires a provider-qualified registryKey; received 'gpt-5.4'.",
-    );
-    expect(() => registry.getCapabilityForModel('gpt-5.4')).toThrow(
-      "Model capability lookups require a provider-qualified registryKey; received 'gpt-5.4'.",
-    );
+    expect(() => registry.getForModel('gpt-5.4')).toThrow(/ambiguous/);
+    expect(() => registry.setCurrentModel('gpt-5.4')).toThrow(/ambiguous/);
+    expect(() => registry.getCapabilityForModel('gpt-5.4')).toThrow(/ambiguous/);
+
+    // 'claude-fable-5' is unique to Anthropic's dated-static baseline — it
+    // auto-qualifies and resolves to the real provider, no format required.
+    expect(registry.getForModel('claude-fable-5').name).toBe('anthropic');
   });
 
   test('custom provider changes and catalog override warnings use registry keys', async () => {

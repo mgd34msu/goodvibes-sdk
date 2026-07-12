@@ -14,6 +14,7 @@ import type {
   ProviderModelRoutingPolicy,
 } from './types.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
+import { resolveModelReference, type ModelIdCandidate } from '../providers/model-id-resolution.js';
 import { getNextAutomationOccurrence } from './schedules.js';
 
 export interface CreateAutomationJobInput {
@@ -139,10 +140,32 @@ export function normalizeStringList(value: readonly string[] | undefined): reado
     .map((entry) => entry.trim());
 }
 
-export function normalizeProviderQualifiedModel(value: string | undefined, label: string): string | undefined {
+/**
+ * Normalizes a user-supplied automation model reference. When `models` (the
+ * live registry's candidate list) is supplied, a bare id resolves via the
+ * shared resolver (unique -> auto-qualify; ambiguous/unknown -> a rich error
+ * naming real candidates) and the RESOLVED, provider-qualified key is
+ * returned — automation storage stays provider-qualified either way. When
+ * `models` is omitted (a caller that hasn't threaded the registry through
+ * yet), falls back to format-only validation so existing behavior is
+ * unaffected until that caller is updated.
+ */
+export function normalizeProviderQualifiedModel(
+  value: string | undefined,
+  label: string,
+  models?: readonly ModelIdCandidate[],
+  contextProviderId?: string | undefined,
+): string | undefined {
   if (value === undefined) return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
+  if (models) {
+    try {
+      return resolveModelReference(trimmed, models, { contextProviderId });
+    } catch (err) {
+      throw new Error(`${label}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   try {
     splitModelRegistryKey(trimmed);
   } catch {
@@ -164,13 +187,14 @@ export function assertProviderHasModel(modelId: string | undefined, providerId: 
   throw new Error(`${label} requires a provider-qualified model when provider is supplied.`);
 }
 
-export function normalizeProviderQualifiedModelList(value: readonly string[] | undefined, label: string): readonly string[] | undefined {
+export function normalizeProviderQualifiedModelList(
+  value: readonly string[] | undefined,
+  label: string,
+  models?: readonly ModelIdCandidate[],
+): readonly string[] | undefined {
   const normalized = normalizeStringList(value);
   if (normalized === undefined) return undefined;
-  for (const model of normalized) {
-    normalizeProviderQualifiedModel(model, label);
-  }
-  return normalized;
+  return normalized.map((model) => normalizeProviderQualifiedModel(model, label, models)!);
 }
 
 export function normalizeOptionalString(value: string | undefined): string | undefined {
@@ -184,12 +208,13 @@ export function normalizeProviderRoutingPolicy(input: {
   readonly modelProvider?: string | undefined;
   readonly fallbackModels?: readonly string[] | undefined;
   readonly routing?: ProviderModelRoutingPolicy | undefined;
-}): ProviderModelRoutingPolicy {
+}, models?: readonly ModelIdCandidate[]): ProviderModelRoutingPolicy {
   const providerId = normalizeOptionalString(input.modelProvider ?? input.provider);
   const fallbackModels = normalizeProviderQualifiedModelList(
     input.routing?.fallbackModels
       ?? input.fallbackModels,
     'Automation fallback models',
+    models,
   );
   const providerFailurePolicy = input.routing?.providerFailurePolicy ?? (
     fallbackModels && fallbackModels.length > 0
@@ -223,15 +248,20 @@ export function buildAutomationExecutionIntent(
   return { targetKind, mode };
 }
 
-export function buildDefaultExecution(input: CreateAutomationJobInput, configManager: ConfigManager): AutomationExecutionPolicy {
-  const modelId = normalizeProviderQualifiedModel(input.model, 'Automation model');
+export function buildDefaultExecution(
+  input: CreateAutomationJobInput,
+  configManager: ConfigManager,
+  models?: readonly ModelIdCandidate[],
+): AutomationExecutionPolicy {
   const provider = normalizeOptionalString(input.provider);
+  const modelId = normalizeProviderQualifiedModel(input.model, 'Automation model', models, provider);
   assertProviderHasModel(modelId, provider, 'Automation model routing');
   assertProviderMatchesModel(modelId, provider, 'Automation model');
   const fallbackModels = normalizeProviderQualifiedModelList(
     input.routing?.fallbackModels
       ?? input.fallbackModels,
     'Automation fallback models',
+    models,
   );
   const thinking = normalizeOptionalString(input.thinking);
   return {
@@ -248,7 +278,7 @@ export function buildDefaultExecution(input: CreateAutomationJobInput, configMan
       provider,
       fallbackModels,
       routing: input.routing,
-    }),
+    }, models),
     ...(input.executionIntent ? { executionIntent: input.executionIntent } : {}),
     ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {}),
     ...(thinking ? { thinking } : {}),
