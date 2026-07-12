@@ -1,5 +1,5 @@
 /**
- * w5-s1-delete-daemon-wire.test.ts
+ * delete-means-delete-daemon-wire.test.ts
  *
  * DELETE-MEANS-DELETE, proven over a REAL bootDaemon (isolated home,
  * ephemeral port, token auth — the boot-daemon-factory R1 pattern).
@@ -26,7 +26,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { bootDaemon, type BootedDaemon } from '../packages/sdk/src/platform/daemon/boot.ts';
 
-const TOKEN = 'w5-s1-token';
+const TOKEN = 'delete-means-delete-token';
 let home: string;
 let work: string;
 let daemon: BootedDaemon;
@@ -62,7 +62,7 @@ function companionFilePath(sessionId: string): string {
 // PART A — companion-chat close vs delete
 // ---------------------------------------------------------------------------
 
-describe('W5-S1 — companion.chat.sessions close vs delete', () => {
+describe('companion.chat.sessions close vs delete', () => {
   test('POST /close soft-closes: history preserved, still gettable', async () => {
     const createRes = await fetch(`${daemon.url}/api/companion/chat/sessions`, {
       method: 'POST',
@@ -162,7 +162,7 @@ describe('W5-S1 — companion.chat.sessions close vs delete', () => {
 // PART B — sessions.delete (the new spine hard-delete verb)
 // ---------------------------------------------------------------------------
 
-describe('W5-S1 — sessions.delete (spine hard-delete verb)', () => {
+describe('sessions.delete (spine hard-delete verb)', () => {
   async function registerSpineSession(sessionId: string): Promise<void> {
     const res = await fetch(`${daemon.url}/api/sessions/register`, {
       method: 'POST',

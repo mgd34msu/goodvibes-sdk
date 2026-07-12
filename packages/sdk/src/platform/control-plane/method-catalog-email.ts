@@ -55,7 +55,7 @@ const EMAIL_MESSAGE_DETAIL_SCHEMA = objectSchema({
  * callable" instead of letting a caller discover the 404 the hard way.
  * Un-mark a method once its real IMAP/SMTP-backed route or handler exists —
  * the route-reconcile regression gate (method-catalog-route-reconcile.ts,
- * exercised in test/w4-a3-capability-route-reconcile.test.ts) will catch it
+ * exercised in test/capability-route-reconcile.test.ts) will catch it
  * if this comment goes stale and a route reappears without the flag being
  * cleared, or a new advertise-without-route method slips in unmarked.
  */

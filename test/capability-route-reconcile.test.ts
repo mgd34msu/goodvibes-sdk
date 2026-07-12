@@ -1,5 +1,5 @@
 /**
- * w4-a3-capability-route-reconcile.test.ts
+ * capability-route-reconcile.test.ts
  *
  * Capability-advertisement honesty: proves the SDK's
  * advertisement-vs-route reconcile (method-catalog-route-reconcile.ts)
@@ -62,7 +62,7 @@ function liveCatalogDescriptors() {
   return new GatewayMethodCatalog().list();
 }
 
-describe('W4-A3 capability-advertisement honesty: route reconcile', () => {
+describe('capability-advertisement honesty: route reconcile', () => {
   test('email.inbox.list reproduces the dogfood finding: no route, and it is marked unavailable', async () => {
     const probe = createDaemonSdkRouteProbe();
     const descriptors = liveCatalogDescriptors();

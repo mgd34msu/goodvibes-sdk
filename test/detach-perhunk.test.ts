@@ -6,7 +6,7 @@
  *  B. ApprovalBroker.resolveApproval({ selectedHunks }) — server-side per-hunk
  *     apply, with the PARITY GOLDEN against the retired TUI reducer.
  *
- * The over-HTTP proofs live in w3-s3-detach-perhunk-daemon-wire.test.ts.
+ * The over-HTTP proofs live in detach-perhunk-daemon-wire.test.ts.
  */
 
 import { describe, expect, test } from 'bun:test';

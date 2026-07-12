@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { bootDaemon, type BootedDaemon } from '../packages/sdk/src/platform/daemon/boot.ts';
 import type { PermissionPromptRequest } from '../packages/sdk/src/platform/permissions/prompt.ts';
 
-const TOKEN = 'w3-s3-token';
+const TOKEN = 'detach-perhunk-token';
 let home: string;
 let work: string;
 let daemon: BootedDaemon;

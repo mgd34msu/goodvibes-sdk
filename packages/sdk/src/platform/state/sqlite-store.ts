@@ -125,8 +125,9 @@ export class SQLiteStore {
       const SQL = await initSqlJs() as SqlJsStatic;
       const dbPath = this.dbPath;
       const persistent = Boolean(dbPath && !isEphemeralDbPath(dbPath));
+      const existedOnDisk = persistent && existsSync(dbPath!);
 
-      if (persistent && existsSync(dbPath!)) {
+      if (existedOnDisk) {
         this.db = new SQL.Database(readFileSync(dbPath!));
         logger.info('SQLiteStore: loaded from disk', { path: dbPath });
       } else {
@@ -157,8 +158,10 @@ export class SQLiteStore {
       // The base schema always runs (it is IF NOT EXISTS-idempotent) so a
       // store already at the target version still gets any session tables.
       schema(this.getDb());
-      // Persist a freshly-stamped version so the next open skips migration.
-      if (result.applied.length > 0 && persistent) {
+      // Persist a freshly-stamped version so the next open skips migration —
+      // but only for a store that already lived on disk: a brand-new store
+      // keeps the long-standing contract of touching disk on first save().
+      if (result.applied.length > 0 && existedOnDisk) {
         await this.save();
       }
     } catch (err) {
