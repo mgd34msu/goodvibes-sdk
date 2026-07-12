@@ -67,6 +67,8 @@ import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
 import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
 import { buildSandboxEscalationHandler } from './permissions/sandbox-escalation-wiring.js';
+import { buildLocalhostFetchApproval } from './permissions/localhost-fetch-approval.js';
+import { applyProviderOptimizerConfigMode, bindProviderOptimizerFeatureFlag } from './provider-optimizer-wiring.js';
 import { ContextAccountingHolder } from '../tools/context-accounting/index.js';
 import { DeterministicReplayEngine } from '../core/deterministic-replay.js';
 import { ProviderOptimizer } from '../providers/optimizer.js';
@@ -282,47 +284,10 @@ export interface RuntimeServices {
   rerootStores(newWorkingDir: string): Promise<void>;
 }
 
-export function bindProviderOptimizerFeatureFlag(
-  featureFlags: Pick<FeatureFlagManager, 'isEnabled' | 'subscribe'>,
-  providerOptimizer: Pick<ProviderOptimizer, 'setEnabled'>,
-): () => void {
-  providerOptimizer.setEnabled(featureFlags.isEnabled('provider-optimizer'));
-  return featureFlags.subscribe((flagId, state) => {
-    if (flagId === 'provider-optimizer') {
-      providerOptimizer.setEnabled(state === 'enabled');
-    }
-  });
-}
-
-/**
- * Apply the persistent provider-optimizer routing mode from config at startup.
- * provider.optimizerMode 'off' keeps the optimizer inactive (its gate derives
- * from the same key); this only seeds the mode/pin so an operator can persist
- * "auto" or a pinned model without re-issuing a /provider command each
- * session. Runtime pin/unpin/setMode still override for the live session.
- */
-export function applyProviderOptimizerConfigMode(
-  configManager: Pick<ConfigManager, 'get'>,
-  providerOptimizer: Pick<ProviderOptimizer, 'setMode' | 'pin'>,
-): void {
-  const mode = configManager.get('provider.optimizerMode');
-  if (mode === 'off') {
-    providerOptimizer.setMode('manual'); // inert baseline while inactive
-    return;
-  }
-  if (mode === 'pinned') {
-    const pinned = configManager.get('provider.optimizerPinnedModel').trim();
-    const sep = pinned.indexOf(':');
-    if (sep > 0 && sep < pinned.length - 1) {
-      providerOptimizer.pin(pinned.slice(0, sep), pinned.slice(sep + 1));
-    } else {
-      // Pinned mode requested without a valid provider-qualified model — stay manual.
-      providerOptimizer.setMode('manual');
-    }
-  } else {
-    providerOptimizer.setMode(mode);
-  }
-}
+export {
+  applyProviderOptimizerConfigMode,
+  bindProviderOptimizerFeatureFlag,
+} from './provider-optimizer-wiring.js';
 
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
   const workingDirectory = options.workingDir;
@@ -744,8 +709,15 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
     featureFlags,
   });
+  // Localhost dev-server fetches ride the same broker: ask once, one-tap
+  // "allow for this project", persisted as fetch.allowLocalhost.
+  const localhostFetchApproval = buildLocalhostFetchApproval({
+    requestApproval: (input) => approvalBroker.requestApproval(input),
+    configManager,
+  });
   agentOrchestrator.setDependencies({
     sandboxEscalationHandler,
+    localhostFetchApproval,
     permissionManager: backgroundPermissionManager,
     contextAccountingHolder,
     fileCache,

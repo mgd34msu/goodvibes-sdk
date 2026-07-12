@@ -293,6 +293,63 @@ export class ConfigManager {
   }
 
   /**
+   * Set a single key and persist it to the PROJECT settings overlay, leaving
+   * the global settings file untouched. The project file keeps only its own
+   * explicit keys — the new value is merged into the raw on-disk shape rather
+   * than writing the full resolved config, so an approval like
+   * fetch.allowLocalhost scopes to this project and survives restarts. Falls
+   * back to the global set() when no project settings path exists.
+   */
+  setProjectValue<K extends ConfigKey>(key: K, value: ConfigValue<K>, options: ConfigSetOptions = {}): void {
+    if (!this.projectConfigPath) {
+      (this.set as (k: ConfigKey, v: unknown, o: ConfigSetOptions) => void)(key, value, options);
+      return;
+    }
+    const schema = CONFIG_SCHEMA.find(s => s.key === key);
+    if (schema?.validate && !schema.validate(value)) {
+      const hint = schema.validationHint ? ` (${schema.validationHint})` : '';
+      throw new ConfigError(`Invalid value for ${key}: ${String(value)}${hint}`);
+    }
+    if (schema?.type === 'enum' && schema.enumValues && !schema.enumValues.includes(value as string)) {
+      throw new ConfigError(`Invalid value for ${key}: "${String(value)}". Allowed: ${schema.enumValues.join(', ')}`);
+    }
+    if (!options.bypassManagedLock) {
+      const lock = getManagedSettingLock(key, this.configDir);
+      if (lock) {
+        throw new ConfigError(`Setting ${key} is locked by ${lock.source}: ${lock.reason}`);
+      }
+    }
+    const { parent, field } = this.resolvePath(key);
+    const previousValue = parent[field];
+    parent[field] = value;
+    let raw: Record<string, unknown> = {};
+    try {
+      if (existsSync(this.projectConfigPath)) {
+        raw = JSON.parse(readFileSync(this.projectConfigPath, 'utf-8')) as Record<string, unknown>;
+      }
+    } catch {
+      raw = {};
+    }
+    const segments = key.split('.');
+    let cursor: Record<string, unknown> = raw;
+    for (const segment of segments.slice(0, -1)) {
+      const next = cursor[segment];
+      if (next === null || typeof next !== 'object' || Array.isArray(next)) cursor[segment] = {};
+      cursor = cursor[segment] as Record<string, unknown>;
+    }
+    cursor[segments[segments.length - 1] as string] = value;
+    try {
+      mkdirSync(dirname(this.projectConfigPath), { recursive: true });
+      writeFileSync(this.projectConfigPath, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+    } catch (error) {
+      parent[field] = previousValue;
+      throw error;
+    }
+    this.notifyListeners(key, previousValue, value);
+    this.emitConfigHook(key, previousValue, value);
+  }
+
+  /**
    * Subscribe to changes on a specific config key.
    * Returns an unsubscribe function. Safe to call multiple times.
    */

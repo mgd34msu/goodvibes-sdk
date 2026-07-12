@@ -278,6 +278,14 @@ export function registerAllTools(
       readonly policyReasons: readonly string[];
       readonly workingDirectory?: string | undefined;
     }) => Promise<boolean>) | undefined;
+    /**
+     * Broker the one-tap "allow localhost fetches for this project" ask through
+     * the approval broker. Wired at the composition root (see
+     * runtime/permissions/localhost-fetch-approval.ts). Omitted → unapproved
+     * localhost fetches are refused with an honest reason naming
+     * fetch.allowLocalhost.
+     */
+    localhostFetchApproval?: ((input: { url: string; host: string }) => Promise<boolean>) | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -407,12 +415,16 @@ export function registerAllTools(
     ...(deps.memoryRegistry ? { memoryRegistry: deps.memoryRegistry } : {}),
   }));
   registerTool(createWorkflowTool(workflowServices));
+  const fetchConfigManager = deps.configManager;
   registerTool(createFetchTool({
     serviceRegistry: deps.serviceRegistry,
     featureFlags: deps.featureFlags,
-    defaultSanitizeMode: deps.configManager.get('fetch.sanitizeMode'),
-    defaultTrustedHosts: splitHostConfig(deps.configManager.get('fetch.trustedHosts')),
-    defaultBlockedHosts: splitHostConfig(deps.configManager.get('fetch.blockedHosts')),
+    defaultSanitizeMode: fetchConfigManager.get('fetch.sanitizeMode'),
+    defaultTrustedHosts: splitHostConfig(fetchConfigManager.get('fetch.trustedHosts')),
+    defaultBlockedHosts: splitHostConfig(fetchConfigManager.get('fetch.blockedHosts')),
+    // Live read: a persisted approval takes effect on the very next fetch.
+    isLocalhostAllowed: () => fetchConfigManager.get('fetch.allowLocalhost'),
+    ...(deps.localhostFetchApproval ? { approveLocalhostFetch: deps.localhostFetchApproval } : {}),
   }));
   if (webSearchService) {
     registerTool(createWebSearchTool(webSearchService));

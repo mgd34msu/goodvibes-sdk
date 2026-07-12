@@ -13,7 +13,8 @@ import type { PermissionCategory, PermissionRequestAnalysis } from './types.js';
 export type PermissionAttribution =
   | BackgroundAgentAttribution
   | McpServerAttribution
-  | SandboxEscalationAttribution;
+  | SandboxEscalationAttribution
+  | FetchLocalhostAttribution;
 
 /** A background/subagent tool call brokered an ask on behalf of a spawned agent. */
 export interface BackgroundAgentAttribution {
@@ -44,6 +45,20 @@ export interface McpServerAttribution {
  * renders it and background bubbling applies. Names the sandbox and the specific
  * escalation so the prompt can attribute it ("wants-network").
  */
+/**
+ * The fetch tool wants to reach a loopback dev server (localhost/127.0.0.1)
+ * and brokers a one-tap "allow for this project" ask through the SAME approval
+ * broker as every other ask. Approving persists fetch.allowLocalhost in the
+ * project settings so it is never asked again for this project.
+ */
+export interface FetchLocalhostAttribution {
+  readonly kind: 'fetch-localhost';
+  /** The loopback host being fetched (e.g. 'localhost'). */
+  readonly host: string;
+  /** The full URL of the first fetch that raised the ask. */
+  readonly url: string;
+}
+
 export interface SandboxEscalationAttribution {
   readonly kind: 'sandbox-escalation';
   /** The sandbox that raised the escalation (e.g. 'exec-sandbox'). */

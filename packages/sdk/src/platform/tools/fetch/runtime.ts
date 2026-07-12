@@ -45,6 +45,19 @@ export interface FetchRuntimeDeps {
    * unchanged from before this field existed.
    */
   readonly signal?: AbortSignal | undefined;
+  /**
+   * Live read of the per-project localhost approval (fetch.allowLocalhost).
+   * When true, fetches to loopback dev servers proceed without an ask.
+   */
+  readonly isLocalhostAllowed?: (() => boolean) | undefined;
+  /**
+   * One-tap "allow for this project" ask for a loopback fetch. Wired to the
+   * shared approval broker by the runtime composition root; resolving true
+   * means the approval was granted (and persisted per project by the wiring),
+   * so it is never asked again. Absent → unapproved localhost fetches are
+   * refused with an honest reason naming fetch.allowLocalhost.
+   */
+  readonly approveLocalhostFetch?: ((input: { url: string; host: string }) => Promise<boolean>) | undefined;
 }
 
 interface CacheEntry {
@@ -258,27 +271,23 @@ async function fetchOneRaw(
   body: string | FormData | undefined,
   effectiveUrl: string,
   trustTierConfig: TrustTierConfig,
-  sanitizationEnabled: boolean,
+  localhostApproved: boolean,
   externalSignal?: AbortSignal | undefined,
 ): Promise<Response> {
   const { signal: timeoutSignal, dispose } = createTimeoutController(urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
   const signal = externalSignal ? AbortSignal.any([timeoutSignal, externalSignal]) : timeoutSignal;
   try {
-    return sanitizationEnabled
-      ? await fetchWithValidatedRedirects({
-          url: effectiveUrl,
-          method,
-          headers,
-          body,
-          signal,
-          trustTierConfig,
-        })
-      : await instrumentedFetch(effectiveUrl, {
-          method,
-          ...(Object.keys(headers).length > 0 ? { headers: headers as HeadersInit } : {}),
-          ...(body !== undefined ? { body } : {}),
-          signal,
-        } as RequestInit);
+    // Redirect chains are ALWAYS validated hop-by-hop — host blocking is
+    // absolute and does not depend on the sanitization mode or kill switch.
+    return await fetchWithValidatedRedirects({
+      url: effectiveUrl,
+      method,
+      headers,
+      body,
+      signal,
+      trustTierConfig,
+      localhostApproved,
+    });
   } finally {
     dispose();
   }
@@ -291,6 +300,7 @@ async function fetchWithValidatedRedirects(input: {
   body: string | FormData | undefined;
   signal: AbortSignal;
   trustTierConfig: TrustTierConfig;
+  localhostApproved: boolean;
 }): Promise<Response> {
   let currentUrl = input.url;
   let currentMethod = input.method;
@@ -321,6 +331,12 @@ async function fetchWithValidatedRedirects(input: {
       emitHostTrustTier(nextHost, nextUrl, trustResult);
       if (trustResult.tier === 'blocked') {
         if (trustResult.isSsrf) emitSsrfDeny(nextHost, nextUrl, trustResult.reason);
+        throw new Error(`Redirect blocked: ${trustResult.reason}`);
+      }
+      if (trustResult.tier === 'localhost' && !input.localhostApproved) {
+        // A public origin redirecting into loopback is an SSRF vector; only an
+        // approved-for-this-project localhost target may be followed.
+        emitSsrfDeny(nextHost, nextUrl, trustResult.reason);
         throw new Error(`Redirect blocked: ${trustResult.reason}`);
       }
     }
@@ -455,16 +471,21 @@ async function fetchOne(
   const effectiveMaxContent = urlInput.max_content_length ?? maxContentLength;
 
   const effectiveUrl = buildUrl(urlInput.url, urlInput.params);
-  const sanitizationEnabled = deps.featureFlags?.isEnabled('fetch-sanitization') ?? false;
+  // Content sanitization respects the kill switch; host blocking does not.
+  const sanitizationEnabled = deps.featureFlags?.isEnabled('fetch-sanitization') ?? true;
   const effectiveSanitizeModeForBlocked = sanitizationEnabled ? sanitizeMode : 'none';
 
   const hostname = extractHostname(urlInput.url);
   let initialTrustResult: ReturnType<typeof classifyHostTrustTier> | null = null;
+  let localhostApproved = false;
   if (hostname !== null) {
     initialTrustResult = classifyHostTrustTier(hostname, trustTierConfig);
     emitHostTrustTier(hostname, urlInput.url, initialTrustResult);
 
-    if (sanitizationEnabled && initialTrustResult.tier === 'blocked') {
+    // Private-IP / metadata-endpoint blocking is absolute: no configuration,
+    // approval, or kill switch relaxes it. The tool result carries the honest
+    // reason; nothing else is surfaced.
+    if (initialTrustResult.tier === 'blocked') {
       if (initialTrustResult.isSsrf) {
         emitSsrfDeny(hostname, urlInput.url, initialTrustResult.reason);
       }
@@ -474,6 +495,28 @@ async function fetchOne(
         host_trust_tier: 'blocked',
         sanitization_tier: effectiveSanitizeModeForBlocked,
       };
+    }
+
+    // Loopback dev servers: allowed for this project, or a one-tap ask that
+    // persists the approval; otherwise refused with the setting named.
+    if (initialTrustResult.tier === 'localhost') {
+      localhostApproved = deps.isLocalhostAllowed?.() ?? false;
+      if (!localhostApproved && deps.approveLocalhostFetch) {
+        try {
+          localhostApproved = await deps.approveLocalhostFetch({ url: urlInput.url, host: hostname });
+        } catch {
+          localhostApproved = false;
+        }
+      }
+      if (!localhostApproved) {
+        return {
+          url: urlInput.url,
+          error: `Request blocked: localhost fetch to "${hostname}" is not approved for this project. `
+            + 'Approve the localhost fetch ask (allow for this project) or set fetch.allowLocalhost to true.',
+          host_trust_tier: 'localhost',
+          sanitization_tier: effectiveSanitizeModeForBlocked,
+        };
+      }
     }
   }
 
@@ -496,7 +539,7 @@ async function fetchOne(
       requestBody,
       effectiveUrl,
       trustTierConfig,
-      sanitizationEnabled,
+      localhostApproved,
       deps.signal,
     );
 
@@ -513,7 +556,7 @@ async function fetchOne(
           requestBody,
           effectiveUrl,
           trustTierConfig,
-          sanitizationEnabled,
+          localhostApproved,
           deps.signal,
         );
       }

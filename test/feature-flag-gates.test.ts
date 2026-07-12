@@ -328,10 +328,10 @@ describe('feature flag safe-default gates', () => {
     expect(registry.has('invalid_contract_tool')).toBe(true);
   });
 
-  test('fetch-sanitization blocks SSRF-risk hosts before fetching when enabled', async () => {
+  test('fetch blocks SSRF-risk hosts before fetching — absolutely', async () => {
     const output = await executeFetchInput(
       {
-        urls: [{ url: 'http://127.0.0.1:1/private' }],
+        urls: [{ url: 'http://10.0.0.5:1/private' }],
         sanitize_mode: 'none',
       },
       { featureFlags: flags(['fetch-sanitization']) },
@@ -342,6 +342,20 @@ describe('feature flag safe-default gates', () => {
     expect(result?.host_trust_tier).toBe('blocked');
     expect(result?.sanitization_tier).toBe('none');
     expect(result?.error).toMatch(/blocked/i);
+  });
+
+  test('an unapproved localhost fetch is refused with the setting named', async () => {
+    const output = await executeFetchInput(
+      {
+        urls: [{ url: 'http://127.0.0.1:1/dev' }],
+      },
+      { featureFlags: flags(['fetch-sanitization']) },
+    );
+
+    const result = output.results?.[0];
+    expect(output.summary.failed).toBe(1);
+    expect(result?.host_trust_tier).toBe('localhost');
+    expect(result?.error).toMatch(/fetch\.allowLocalhost/);
   });
 
   test('fetch-sanitization validates redirect targets before following', async () => {
@@ -400,7 +414,7 @@ describe('feature flag safe-default gates', () => {
     }
   });
 
-  test('fetch-sanitization disabled leaves raw fetch content unsanitized', async () => {
+  test('sanitization kill switch leaves content raw but never relaxes host blocking', async () => {
     const originalFetch = globalThis.fetch;
     let called = false;
     globalThis.fetch = (async () => {
@@ -414,7 +428,7 @@ describe('feature flag safe-default gates', () => {
     try {
       const output = await executeFetchInput(
         {
-          urls: [{ url: 'http://127.0.0.1:1/private' }],
+          urls: [{ url: 'https://example.test/page' }],
           sanitize_mode: 'none',
         },
         { featureFlags: flags([]) },
@@ -423,9 +437,16 @@ describe('feature flag safe-default gates', () => {
       const result = output.results?.[0];
       expect(called).toBe(true);
       expect(output.summary.succeeded).toBe(1);
-      expect(result?.host_trust_tier).toBe('blocked');
       expect(result?.sanitization_tier).toBe('none');
       expect(result?.content).toContain('<script>unsanitized</script>');
+
+      // The kill switch never relaxes host blocking: a private target still fails.
+      const blocked = await executeFetchInput(
+        { urls: [{ url: 'http://10.0.0.5:1/private' }] },
+        { featureFlags: flags([]) },
+      );
+      expect(blocked.results?.[0]?.host_trust_tier).toBe('blocked');
+      expect(blocked.results?.[0]?.error).toMatch(/blocked/i);
     } finally {
       globalThis.fetch = originalFetch;
     }

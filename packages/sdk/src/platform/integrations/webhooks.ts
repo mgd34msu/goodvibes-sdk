@@ -197,7 +197,9 @@ export class WebhookNotifier {
     const hostname = extractHostname(url);
     if (hostname !== null) {
       const trustResult = classifyHostTrustTier(hostname);
-      if (trustResult.tier === 'blocked') {
+      // Automated webhook egress has no interactive approval flow: loopback
+      // targets stay refused here alongside the absolute SSRF block.
+      if (trustResult.tier === 'blocked' || trustResult.tier === 'localhost') {
         emitSsrfDeny(hostname, url, trustResult.reason);
         throw new Error(`WebhookNotifier: blocked URL — ${trustResult.reason}`);
       }

@@ -1,22 +1,26 @@
 /**
  * Host trust tier classification.
  *
- * Classifies outbound HTTP request targets into one of three tiers before
+ * Classifies outbound HTTP request targets into one of four tiers before
  * the request is sent. Blocked hosts are denied pre-request with an
- * `SSRF_DENY` telemetry event. Unknown hosts receive `safe-text`
- * sanitization. Trusted hosts may opt into `none` sanitization via config.
+ * `SSRF_DENY` telemetry event — absolutely, regardless of configuration.
+ * Localhost/loopback targets (dev servers) are their own tier: they ask once
+ * and can be allowed per project (fetch.allowLocalhost). Unknown hosts
+ * receive `safe-text` sanitization. Trusted hosts may opt into `none`
+ * sanitization via config.
  *
  * Trust tiers:
- *   - `trusted`  — Host is explicitly allowlisted. Sanitization may be relaxed.
- *   - `unknown`  — Host is not in any list; apply `safe-text` sanitization.
- *   - `blocked`  — Host matches an internal address, metadata endpoint, or
- *                  explicit blocklist entry. Request is denied pre-flight.
+ *   - `trusted`   — Host is explicitly allowlisted. Sanitization may be relaxed.
+ *   - `unknown`   — Host is not in any list; apply `safe-text` sanitization.
+ *   - `localhost` — Loopback/dev-server target; requires the per-project
+ *                   approval (fetch.allowLocalhost) before the request is sent.
+ *   - `blocked`   — Host matches an internal address, metadata endpoint, or
+ *                   explicit blocklist entry. Request is denied pre-flight.
  *
- * SSRF protections detect:
- *   - Private IPv4 ranges (RFC 1918)
- *   - IPv6 loopback and link-local
- *   - Cloud metadata endpoints (169.254.x.x, metadata.google.internal, etc.)
- *   - Localhost variants
+ * SSRF protections detect (always blocked):
+ *   - Private IPv4 ranges (RFC 1918) and link-local metadata (169.254.x.x)
+ *   - IPv6 link-local and unique-local ranges
+ *   - Cloud metadata endpoints (metadata.google.internal, etc.)
  *   - DNS rebinding patterns (encoded or obfuscated IP addresses)
  */
 
@@ -30,11 +34,12 @@ import { hostMatchesGlob } from './host-utils.js';
 /**
  * Trust classification for an outbound request host.
  *
- * - `trusted`  — Explicitly allowlisted; sanitization may be relaxed.
- * - `unknown`  — Not in any list; standard `safe-text` sanitization applied.
- * - `blocked`  — Sensitive host; request denied pre-request.
+ * - `trusted`   — Explicitly allowlisted; sanitization may be relaxed.
+ * - `unknown`   — Not in any list; standard `safe-text` sanitization applied.
+ * - `localhost` — Loopback dev-server target; needs the per-project approval.
+ * - `blocked`   — Sensitive host; request denied pre-request, absolutely.
  */
-export type HostTrustTier = 'trusted' | 'unknown' | 'blocked';
+export type HostTrustTier = 'trusted' | 'unknown' | 'localhost' | 'blocked';
 
 /**
  * Result of classifying a host's trust tier.
@@ -193,6 +198,19 @@ function isLocalhostAlias(host: string): boolean {
   return LOCALHOST_ALIASES.has(host.toLowerCase());
 }
 
+/**
+ * Returns true if the host is a plainly-written loopback target — a localhost
+ * alias, a 127.0.0.0/8 IPv4 address, or IPv6 ::1. Encoded/obfuscated loopback
+ * forms (hex, octal, decimal-int) deliberately do NOT count: writing
+ * 0x7f000001 instead of localhost is a filter-bypass signal and stays blocked.
+ */
+function isPlainLoopbackHost(host: string): boolean {
+  if (isLocalhostAlias(host)) return true;
+  if (/^127\./.test(host)) return true;
+  const normalized = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;
+  return /^::1$/i.test(normalized);
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -213,10 +231,11 @@ export const TRUST_TIER_EVENTS = {
  *
  * Classification order (first match wins):
  *   1. Explicit blocklist → `blocked`
- *   2. SSRF patterns (private IPs, metadata endpoints, localhost) → `blocked`
- *   3. Encoded IP bypass attempts → `blocked`
- *   4. Explicit trustlist → `trusted`
- *   5. Default → `unknown`
+ *   2. Plain loopback targets (localhost, 127.x, ::1) → `localhost`
+ *   3. SSRF patterns (private IPs, metadata endpoints) → `blocked`
+ *   4. Encoded IP bypass attempts (including encoded loopback) → `blocked`
+ *   5. Explicit trustlist → `trusted`
+ *   6. Default → `unknown`
  *
  * @param host   - Hostname or IP to classify (without port).
  * @param config - Trust tier configuration with optional allow/deny lists.
@@ -240,16 +259,27 @@ export function classifyHostTrustTier(
     };
   }
 
-  // 2. SSRF — localhost aliases
-  if (isLocalhostAlias(normalizedHost)) {
+  // 2. Plain loopback dev-server targets — their own tier, gated by the
+  // per-project approval rather than blocked outright.
+  if (isPlainLoopbackHost(normalizedHost)) {
+    return {
+      tier: 'localhost',
+      reason: `host "${host}" is a loopback address — needs the per-project localhost approval (fetch.allowLocalhost)`,
+      isSsrf: false,
+    };
+  }
+
+  // 3. SSRF — cloud metadata endpoints (checked before the generic private
+  // ranges so 169.254.169.254 reports the specific metadata reason).
+  if (isMetadataHost(normalizedHost)) {
     return {
       tier: 'blocked',
-      reason: `host "${host}" is a localhost alias — SSRF risk`,
+      reason: `host "${host}" is a cloud metadata endpoint — SSRF risk`,
       isSsrf: true,
     };
   }
 
-  // 3. SSRF — private IPv4
+  // 4. SSRF — private IPv4
   if (isPrivateIpv4(normalizedHost)) {
     return {
       tier: 'blocked',
@@ -258,20 +288,11 @@ export function classifyHostTrustTier(
     };
   }
 
-  // 4. SSRF — private IPv6
+  // 5. SSRF — private IPv6
   if (isPrivateIpv6(normalizedHost)) {
     return {
       tier: 'blocked',
       reason: `host "${host}" is a private IPv6 address — SSRF risk`,
-      isSsrf: true,
-    };
-  }
-
-  // 5. SSRF — cloud metadata endpoints
-  if (isMetadataHost(normalizedHost)) {
-    return {
-      tier: 'blocked',
-      reason: `host "${host}" is a cloud metadata endpoint — SSRF risk`,
       isSsrf: true,
     };
   }
