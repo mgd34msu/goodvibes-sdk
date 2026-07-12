@@ -11,9 +11,15 @@ import type {
   ProviderBatchCreateResult,
   ProviderBatchPollResult,
   ProviderBatchResult,
+  ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
+import {
+  fetchOpenAIModelIds,
+  runLiveModelRefresh,
+  type LiveModelDiscoveryResult,
+} from './live-model-discovery.js';
 
 import { mapOpenAIStopReason } from './stop-reason-maps.js';
 import { ProviderError } from '../types/errors.js';
@@ -37,26 +43,64 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
 };
 
 /**
+ * Dated fallback model list — used when no API key is configured (so a live
+ * /v1/models call isn't possible) and as the offline baseline when a live
+ * call fails with no prior cache. Docs-verified (no OPENAI_API_KEY was
+ * available in the environment to live-verify against /v1/models) against
+ * developers.openai.com model pages on 2026-07-12; update this list (and the
+ * date below) whenever it is re-verified against a live key or current docs.
+ */
+export const OPENAI_DATED_STATIC_MODELS: readonly string[] = [
+  'gpt-5.6',
+  'gpt-5.6-sol',
+  'gpt-5.6-terra',
+  'gpt-5.6-luna',
+  'gpt-5.4',
+  'gpt-5.4-mini',
+  'gpt-5',
+  'gpt-4.1',
+  'gpt-4o',
+  'o3-mini',
+];
+export const OPENAI_DATED_STATIC_MODELS_AS_OF = '2026-07-12';
+
+/**
  * OpenAIProvider — wraps the official `openai` npm package.
  * Supports GPT-5 family models with full function/tool calling.
  */
 export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
-  readonly models: string[] = [];
+  readonly modelSource: ProviderModelSource = { kind: 'live-discovery' };
+
+  /**
+   * Populated synchronously with the dated-static baseline at construction
+   * (never empty), then replaced by `refreshModels()` with the live
+   * /v1/models result. See `modelSource`.
+   */
+  private _models: string[] = [...OPENAI_DATED_STATIC_MODELS];
+  get models(): string[] {
+    return this._models;
+  }
   readonly batch: ProviderBatchAdapter;
 
   private client: OpenAI;
   private readonly apiKey: string;
   private readonly embeddingModel = 'text-embedding-3-small';
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'>;
+  private readonly modelsCachePath: string | undefined;
 
-  constructor(apiKey: string, cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'> = NOOP_CACHE_HIT_TRACKER) {
+  constructor(
+    apiKey: string,
+    cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'> = NOOP_CACHE_HIT_TRACKER,
+    modelsCachePath?: string,
+  ) {
     this.apiKey = apiKey;
     // isConfigured() derives from this.apiKey (the ORIGINAL value, possibly
     // empty) below; the client itself needs a non-empty placeholder because
     // openai's constructor throws "Missing credentials..." on a falsy key.
     this.client = new OpenAI({ apiKey: resolveOpenAIClientApiKey(apiKey) });
     this.cacheHitTracker = cacheHitTracker;
+    this.modelsCachePath = modelsCachePath;
     this.batch = {
       kind: 'provider-batch',
       endpoints: ['/v1/chat/completions'],
@@ -208,6 +252,28 @@ export class OpenAIProvider implements LLMProvider {
 
   isConfigured(): boolean {
     return this.apiKey.trim().length > 0;
+  }
+
+  /**
+   * Re-check OpenAI's live model list. Called at boot (background, respects
+   * the on-disk TTL cache) and on-demand for a picker-open re-check or an
+   * explicit user refresh (`force: true`, bypasses the TTL cache). Always
+   * resolves — falls back to the on-disk cache, then to the dated-static
+   * list, and reports the honest reason when live discovery fails rather
+   * than silently keeping stale data with no explanation.
+   */
+  async refreshModels(force = false): Promise<LiveModelDiscoveryResult> {
+    const result = await runLiveModelRefresh({
+      providerName: this.name,
+      cachePath: this.modelsCachePath,
+      datedStaticModels: OPENAI_DATED_STATIC_MODELS,
+      datedStaticAsOf: OPENAI_DATED_STATIC_MODELS_AS_OF,
+      isConfigured: this.isConfigured(),
+      fetchLive: () => fetchOpenAIModelIds(this.apiKey),
+      force,
+    });
+    this._models = [...result.models];
+    return result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

@@ -4,6 +4,7 @@ import type {
   LLMProvider,
   PartialToolCall,
   ProviderMessage,
+  ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
@@ -23,6 +24,25 @@ import { SseLineBuffer } from './sse-line-buffer.js';
 
 const OPENAI_CODEX_BASE_URL = 'https://chatgpt.com/backend-api';
 const OPENAI_CODEX_PROVIDER_NAME = 'openai-subscriber';
+
+/**
+ * Dated fallback model list for the ChatGPT/Codex subscription surface. This
+ * backend (chatgpt.com/backend-api) has no public model-listing endpoint, so
+ * unlike the direct OpenAI API key provider this is a dated-static list only
+ * — docs-verified (no live subscription session was available in this
+ * environment to cross-check) against developers.openai.com Codex model
+ * pages on 2026-07-12; update this list (and the date below) whenever it is
+ * re-verified.
+ */
+export const OPENAI_CODEX_DATED_STATIC_MODELS: readonly string[] = [
+  'gpt-5.6-sol',
+  'gpt-5.6-terra',
+  'gpt-5.6-luna',
+  'gpt-5.3-codex',
+  'gpt-5.4',
+  'gpt-5.4-mini',
+];
+export const OPENAI_CODEX_DATED_STATIC_MODELS_AS_OF = '2026-07-12';
 
 function getOpenAICodexUserAgent(): string {
   return `pi (${platform()} ${release()}; ${arch()})`;
@@ -416,7 +436,11 @@ export async function chatWithOpenAICodex(
 
 export class OpenAICodexProvider implements LLMProvider {
   readonly name = OPENAI_CODEX_PROVIDER_NAME;
-  readonly models: string[] = [];
+  readonly modelSource: ProviderModelSource = {
+    kind: 'dated-static',
+    asOf: OPENAI_CODEX_DATED_STATIC_MODELS_AS_OF,
+  };
+  readonly models: string[] = [...OPENAI_CODEX_DATED_STATIC_MODELS];
 
   constructor(
     private readonly subscriptionManager: Pick<SubscriptionManager, 'get' | 'saveSubscription' | 'resolveAccessToken'>,

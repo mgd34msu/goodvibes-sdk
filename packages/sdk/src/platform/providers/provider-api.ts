@@ -10,6 +10,8 @@ import {
   type QualityTier,
 } from './model-benchmarks.js';
 import type { MinimalModelDefinition, SyntheticModelInfo } from './model-catalog.js';
+import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
+import { resolveModelReference } from './model-id-resolution.js';
 import type { FavoritesData, FavoritesStore } from './favorites.js';
 import type { LLMProvider, ProviderRuntimeMetadata } from './interface.js';
 import type { ModelDefinition } from './registry-types.js';
@@ -121,6 +123,10 @@ export interface ProviderApiCatalogRefreshResult {
   readonly providerCount: number;
 }
 
+export interface ProviderApiLiveModelRefreshReport extends LiveModelDiscoveryResult {
+  readonly providerId: string;
+}
+
 export type ProviderApiRuntimeQuery =
   | { readonly scope: 'all' }
   | { readonly scope: 'provider'; readonly providerId: string }
@@ -138,6 +144,14 @@ export interface ProviderApi {
   selectModel(registryKey: string): Promise<ProviderApiModelRecord>;
   registerDiscoveredProviders(servers: readonly DiscoveredServer[]): Promise<void>;
   refreshCatalog(): Promise<ProviderApiCatalogRefreshResult>;
+  /**
+   * Re-check live model discovery for one provider (or all providers that
+   * support it when omitted). This is the registry-level hook a picker-open
+   * handler or an explicit user "refresh models" command calls — routine
+   * background refreshes respect each provider's on-disk TTL cache;
+   * `force: true` bypasses it for an explicit user-triggered check.
+   */
+  refreshLiveModelDiscovery(providerId?: string, options?: { force?: boolean }): Promise<readonly ProviderApiLiveModelRefreshReport[]>;
   refreshBenchmarks(): Promise<number>;
   refreshModelLimits(): Promise<number>;
   getFavorites(): Promise<ProviderApiFavoritesSnapshot>;
@@ -169,6 +183,7 @@ export interface ProviderApiRegistry {
   listProviders(): readonly LLMProvider[];
   registerDiscoveredProviders(servers: DiscoveredServer[]): void;
   refreshCatalog(): Promise<void>;
+  refreshLiveModelDiscovery(providerId?: string, options?: { force?: boolean }): Promise<Array<{ providerId: string } & LiveModelDiscoveryResult>>;
   refreshModelLimits(): Promise<number>;
   setCurrentModel(registryKey: string): void;
 }
@@ -392,19 +407,18 @@ function applyModelQuery(
   });
 }
 
-function requireProviderQualifiedRegistryKey(modelRef: string): void {
-  if (!modelRef.includes(':')) {
-    throw new Error(`Model references must use a provider-qualified registryKey; received '${modelRef}'.`);
-  }
-}
+// Bare model ids resolve via the shared resolver (unique across the registry
+// -> auto-qualify; ambiguous or unknown -> a rich error naming real
+// candidates from the live registry). An already-qualified registryKey
+// passes through unchanged.
 
 function resolveModelOrThrow(
   deps: ProviderApiDependencies,
   modelRef: string,
 ): ModelDefinition {
-  requireProviderQualifiedRegistryKey(modelRef);
   const models = deps.providerRegistry.listModels();
-  const model = findModelDefinition(models, modelRef);
+  const registryKey = resolveModelReference(modelRef, models);
+  const model = findModelDefinition(models, registryKey);
   if (!model) {
     throw new Error(`Model '${modelRef}' not found.`);
   }
@@ -415,13 +429,22 @@ async function resolvePinnedRegistryKeyOrThrow(
   deps: ProviderApiDependencies,
   modelRef: string,
 ): Promise<string> {
-  requireProviderQualifiedRegistryKey(modelRef);
   const models = deps.providerRegistry.listModels();
-  const model = findModelDefinition(models, modelRef);
+  // A pinned favorite may reference a model no longer in the live registry
+  // (that's exactly why the favorites fallback below exists) — if resolution
+  // fails (unknown/ambiguous bare id), fall back to treating modelRef as a
+  // literal registryKey rather than losing the favorites-fallback path.
+  let registryKey: string;
+  try {
+    registryKey = resolveModelReference(modelRef, models);
+  } catch {
+    registryKey = modelRef;
+  }
+  const model = findModelDefinition(models, registryKey);
   if (model) return model.registryKey;
 
   const favorites = cloneFavoritesData(await deps.favoritesStore.load());
-  const pinned = favorites.pinned.find((entry) => entry.registryKey === modelRef);
+  const pinned = favorites.pinned.find((entry) => entry.registryKey === registryKey);
   if (pinned) return pinned.registryKey;
 
   throw new Error(`Model '${modelRef}' not found.`);
@@ -434,10 +457,7 @@ async function buildBenchmarkRecords(
   const models = deps.providerRegistry.listModels();
   const selectedModels = query?.registryKeys
     ? query.registryKeys
-        .map((registryKey) => {
-          requireProviderQualifiedRegistryKey(registryKey);
-          return findModelDefinition(models, registryKey);
-        })
+        .map((ref) => findModelDefinition(models, resolveModelReference(ref, models)))
         .filter((model): model is ModelDefinition => model != null)
     : models;
 
@@ -499,6 +519,13 @@ export function createProviderApi(deps: ProviderApiDependencies): ProviderApi {
     async refreshCatalog(): Promise<ProviderApiCatalogRefreshResult> {
       await deps.providerRegistry.refreshCatalog();
       return buildCatalogRefreshResult(deps);
+    },
+
+    async refreshLiveModelDiscovery(
+      providerId?: string,
+      options?: { force?: boolean },
+    ): Promise<readonly ProviderApiLiveModelRefreshReport[]> {
+      return await deps.providerRegistry.refreshLiveModelDiscovery(providerId, options);
     },
 
     async refreshBenchmarks(): Promise<number> {

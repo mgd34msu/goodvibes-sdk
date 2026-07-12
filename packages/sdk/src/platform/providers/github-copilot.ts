@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { ChatRequest, ChatResponse, LLMProvider, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
+import type { ChatRequest, ChatResponse, LLMProvider, ProviderModelSource, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
 import { OpenAICompatProvider } from './openai-compat.js';
 import { AnthropicCompatProvider } from './anthropic-compat.js';
 import { buildStandardProviderAuthRoutes } from './runtime-metadata.js';
@@ -177,9 +177,20 @@ function usesAnthropicTransport(model: string): boolean {
 
 export class GitHubCopilotProvider implements LLMProvider {
   readonly name = 'github-copilot';
+  /**
+   * Dated-static: GitHub Copilot's chat completions proxy has no public
+   * model-listing endpoint. Docs-verified against the direct Anthropic API's
+   * live /v1/models response (Copilot exposes the same Claude model ids) and
+   * OpenAI's published model docs on 2026-07-12 — not live-verified against
+   * a Copilot subscription itself (none was available in this environment).
+   */
+  readonly modelSource: ProviderModelSource = { kind: 'dated-static', asOf: '2026-07-12' };
   readonly models = [
+    'claude-opus-4-8',
+    'claude-sonnet-5',
     'claude-sonnet-4.6',
     'claude-sonnet-4.5',
+    'gpt-5.6',
     'gpt-4o',
     'gpt-4.1',
     'gpt-4.1-mini',
