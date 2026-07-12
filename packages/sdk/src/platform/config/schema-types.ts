@@ -17,9 +17,6 @@ export type PermissionAction = 'allow' | 'prompt' | 'deny';
 export type BackgroundAgentsMode = 'inherit' | 'allow-all';
 export type LineNumberMode = 'all' | 'code' | 'off';
 
-/** Persisted feature flag override state stored in config file. */
-export type PersistedFlagState = 'enabled' | 'disabled' | 'killed';
-
 export interface PermissionsToolConfig {
   read?: PermissionAction;        // default: 'allow'
   write?: PermissionAction;       // default: 'prompt'
@@ -39,9 +36,14 @@ export interface PermissionsToolConfig {
 
 export interface NotificationsConfig {
   webhookUrls: string[];
-  /** Burst-detection observation window (ms) for adaptive-notification-suppression. */
+  /**
+   * Adaptive suppression of operational churn: quiet/minimal-mode filtering and
+   * burst collapse into panel-only groups with reason codes. Default true.
+   */
+  adaptiveSuppression: boolean;
+  /** Burst-detection observation window (ms) for adaptive suppression. */
   burstWindowMs: number;
-  /** Event count within the burst window that trips suppression to panel_only. */
+  /** Event count within the burst window that trips collapse to panel_only. */
   burstThreshold: number;
   /** Cooldown (ms) after a burst before a domain:level group can trip again. */
   burstCooldownMs: number;
@@ -68,6 +70,12 @@ export interface AutomationConfig {
 
 export interface ControlPlaneConfig {
   enabled: boolean;
+  /**
+   * The shared gateway/control-plane host (state snapshots, live streams,
+   * authenticated control APIs). Default true: a stock daemon can stream
+   * companion chat; turn off for a request/response-only daemon.
+   */
+  gateway: boolean;
   hostMode: 'local' | 'network' | 'custom';
   host: string;
   port: number;
@@ -115,179 +123,9 @@ export interface WebConfig {
   staticAssetsDir: string;
 }
 
-export interface SlackSurfaceConfig {
-  enabled: boolean;
-  signingSecret: string;
-  botToken: string;
-  appToken: string;
-  defaultChannel: string;
-  workspaceId: string;
-  setupVersion: number;
-}
+export * from "./schema-types-surfaces.js";
+import type { SurfacesConfig } from "./schema-types-surfaces.js";
 
-export interface DiscordSurfaceConfig {
-  enabled: boolean;
-  publicKey: string;
-  botToken: string;
-  applicationId: string;
-  defaultChannelId: string;
-  guildId: string;
-  setupVersion: number;
-}
-
-export interface NtfySurfaceConfig {
-  enabled: boolean;
-  baseUrl: string;
-  topic: string;
-  chatTopic: string;
-  agentTopic: string;
-  remoteTopic: string;
-  token: string;
-  defaultPriority: number;
-  setupVersion: number;
-}
-
-export interface WebhookSurfaceConfig {
-  enabled: boolean;
-  defaultTarget: string;
-  timeoutMs: number;
-  secret: string;
-  setupVersion: number;
-}
-
-export interface HomeAssistantSurfaceConfig {
-  enabled: boolean;
-  instanceUrl: string;
-  accessToken: string;
-  webhookSecret: string;
-  defaultConversationId: string;
-  deviceId: string;
-  deviceName: string;
-  eventType: string;
-  remoteSessionTtlMs: number;
-  setupVersion: number;
-}
-
-export interface TelegramSurfaceConfig {
-  enabled: boolean;
-  botToken: string;
-  webhookSecret: string;
-  defaultChatId: string;
-  botUsername: string;
-  mode: 'webhook' | 'polling';
-  setupVersion: number;
-}
-
-export interface GoogleChatSurfaceConfig {
-  enabled: boolean;
-  webhookUrl: string;
-  verificationToken: string;
-  appId: string;
-  spaceId: string;
-  setupVersion: number;
-}
-
-export interface SignalSurfaceConfig {
-  enabled: boolean;
-  bridgeUrl: string;
-  account: string;
-  token: string;
-  defaultRecipient: string;
-  setupVersion: number;
-}
-
-export interface WhatsAppSurfaceConfig {
-  enabled: boolean;
-  provider: 'meta-cloud' | 'bridge';
-  accessToken: string;
-  verifyToken: string;
-  signingSecret: string;
-  phoneNumberId: string;
-  businessAccountId: string;
-  defaultRecipient: string;
-  setupVersion: number;
-}
-
-export interface TelephonySurfaceConfig {
-  enabled: boolean;
-  provider: 'twilio' | 'bridge';
-  mode: 'sms' | 'voice' | 'bridge';
-  bridgeUrl: string;
-  token: string;
-  accountSid: string;
-  authToken: string;
-  fromNumber: string;
-  defaultRecipient: string;
-  webhookSecret: string;
-  voiceLanguage: string;
-  setupVersion: number;
-}
-
-export interface IMessageSurfaceConfig {
-  enabled: boolean;
-  bridgeUrl: string;
-  account: string;
-  token: string;
-  defaultChatId: string;
-  setupVersion: number;
-}
-
-export interface MSTeamsSurfaceConfig {
-  enabled: boolean;
-  appId: string;
-  appPassword: string;
-  tenantId: string;
-  serviceUrl: string;
-  botId: string;
-  defaultConversationId: string;
-  defaultChannelId: string;
-  setupVersion: number;
-}
-
-export interface BlueBubblesSurfaceConfig {
-  enabled: boolean;
-  serverUrl: string;
-  password: string;
-  account: string;
-  defaultChatGuid: string;
-  setupVersion: number;
-}
-
-export interface MattermostSurfaceConfig {
-  enabled: boolean;
-  baseUrl: string;
-  botToken: string;
-  teamId: string;
-  defaultChannelId: string;
-  setupVersion: number;
-}
-
-export interface MatrixSurfaceConfig {
-  enabled: boolean;
-  homeserverUrl: string;
-  accessToken: string;
-  userId: string;
-  defaultRoomId: string;
-  setupVersion: number;
-}
-
-export interface SurfacesConfig {
-  slack: SlackSurfaceConfig;
-  discord: DiscordSurfaceConfig;
-  ntfy: NtfySurfaceConfig;
-  webhook: WebhookSurfaceConfig;
-  homeassistant: HomeAssistantSurfaceConfig;
-  telegram: TelegramSurfaceConfig;
-  googleChat: GoogleChatSurfaceConfig;
-  signal: SignalSurfaceConfig;
-  whatsapp: WhatsAppSurfaceConfig;
-  telephony: TelephonySurfaceConfig;
-  imessage: IMessageSurfaceConfig;
-  msteams: MSTeamsSurfaceConfig;
-  bluebubbles: BlueBubblesSurfaceConfig;
-  mattermost: MattermostSurfaceConfig;
-  matrix: MatrixSurfaceConfig;
-}
 
 export interface WatchersConfig {
   enabled: boolean;
@@ -324,12 +162,19 @@ export interface RuntimeConfig {
   eventBus: {
     maxListeners: number;
   };
+  /** Unified RuntimeTask tracking across subsystems (restart to apply). Default false. */
+  unifiedTasks: boolean;
+  /** Structured plugin init/teardown lifecycle with health integration (restart to apply). Default false. */
+  pluginLifecycle: boolean;
+  /** Structured MCP server connect/disconnect lifecycle with health integration (restart to apply). Default false. */
+  mcpLifecycle: boolean;
   /**
-   * Default per-phase tool-execution budget limits for the
-   * runtime-tools-budget-enforcement feature. A value of 0 means "unlimited"
-   * for that dimension; per-call ToolRuntimeContext.budget still overrides.
+   * Default per-phase tool-execution budget limits. `enforced` turns hard
+   * budget enforcement on; a limit value of 0 means "unlimited" for that
+   * dimension; per-call ToolRuntimeContext.budget still overrides.
    */
   toolBudget: {
+    enforced: boolean;
     maxMs: number;
     maxTokens: number;
     maxCostUsd: number;
@@ -405,6 +250,13 @@ export interface TelemetryConfig {
   decisionOtlpEndpoint: string;
   /** Which OTLP record shape to emit for each decision: span, log, or both. */
   decisionOtlpSignal: 'span' | 'log' | 'both';
+  /**
+   * OpenTelemetry instrumentation mode: off (no OTel SDK init), in-process
+   * (spans created and exported in-process only), or remote-export (spans
+   * additionally exported over OTLP/gRPC to the configured collector).
+   * Switching away from off requires a restart. Default off.
+   */
+  otelMode: 'off' | 'in-process' | 'remote-export';
 }
 
 /** At-rest redaction + retention policy for the transcript journal and execution ledger. */
@@ -421,9 +273,9 @@ export interface AtRestConfig {
  * Outbound relay reachability. When enabled, the daemon connects OUTBOUND to a
  * self-hostable, zero-knowledge relay and registers under an unguessable
  * rendezvous id so surfaces can reach it from outside the LAN. The relay never
- * sees plaintext — an end-to-end channel terminates inside the daemon. This
- * `relay.enabled` switch DEFAULTS OFF and, with a configured `relay.url`, gates
- * every connection (the `relay-connect` flag is the additional registry gate).
+ * sees plaintext — an end-to-end channel terminates inside the daemon.
+ * `relay.enabled` defaults ON, but no connection is ever made without an
+ * explicitly configured `relay.url` — leave it empty to stay LAN-only.
  */
 export interface RelayConfig {
   enabled: boolean;
@@ -453,18 +305,20 @@ export interface GoodVibesConfig {
     model: string;              // default: 'openrouter:openrouter/free'
     embeddingProvider: string;  // default: 'hashed-local'
     systemPromptFile: string;   // default: ''
-    optimizerMode: 'manual' | 'auto' | 'pinned'; // default: 'manual' — provider-optimizer persistent routing mode
+    optimizerMode: 'off' | 'manual' | 'auto' | 'pinned'; // default: 'off' — provider routing optimizer ('off' = optimizer inactive)
     optimizerPinnedModel: string; // default: '' — provider-qualified model id applied when optimizerMode is 'pinned'
+    localContextIngestion: boolean; // default: true — ingest max_context_length from local/custom provider /v1/models
   };
   behavior: {
     autoApprove: boolean;       // default: false
     autoCompactThreshold: number; // default: 80
-    compactionStrategy: 'structured' | 'distiller'; // default: 'structured'
+    compactionStrategy: 'off' | 'structured' | 'distiller'; // default: 'structured' — 'off' runs sessions uncompacted
     staleContextWarnings: boolean; // default: true
     saveHistory: boolean;       // default: true
     notifyOnComplete: boolean;  // default: true
     suggestAlternativeOnProviderFail: boolean; // default: false
-    hitlMode: 'quiet' | 'balanced' | 'operator'; // default: 'balanced'
+    hitlMode: 'off' | 'quiet' | 'balanced' | 'operator'; // default: 'balanced' — 'off' keeps the baseline notification policy
+    toolResultReconciliation: 'reconcile' | 'warn-only'; // default: 'reconcile' — inject synthetic results for dangling tool calls at turn end
     returnContextMode: 'off' | 'local' | 'assisted'; // default: 'off'
     guidanceMode: 'off' | 'minimal' | 'guided'; // default: 'minimal'
   };
@@ -478,7 +332,11 @@ export interface GoodVibesConfig {
     mode: PermissionMode;       // default: 'prompt'
     tools: PermissionsToolConfig;
     backgroundAgents: BackgroundAgentsMode; // default: 'inherit'
-    divergenceThreshold: number; // default: 0.05 — permission-divergence-dashboard enforce-gate max divergence rate
+    engine: 'baseline' | 'policy-engine'; // default: 'baseline' — layered tool/path policy evaluator (restart to apply)
+    simulation: boolean;        // default: true — dual-evaluator shadow pipeline recording divergence (restart to apply)
+    divergenceDashboard: boolean; // default: true — divergence aggregation + enforce-mode gate
+    commandParser: 'ast' | 'flat'; // default: 'ast' — shell AST per-segment verdicts vs flat segmentation
+    divergenceThreshold: number; // default: 0.05 — divergence-gate max divergence rate
     maxDivergenceRecords: number; // default: 500 — retained divergence records for the simulation dashboard
   };
   diagnostics: {
@@ -494,15 +352,18 @@ export interface GoodVibesConfig {
     maxTurns: number;                       // default: 6 — turn ceiling for the planning-decomposition agent
     tokenCeiling: number;                   // default: 120000 — token budget for the planning-decomposition agent
     wallTimeoutMs: number;                  // default: 60000 — wall-clock timeout for the planning-decomposition agent
+    adaptive: boolean;                      // default: false — score single/cohort/background/remote strategies each turn
   };
   sandbox: {
-    // Per-command exec sandbox (bubblewrap). enabled is the operator switch, gated
-    // by the graduation-tracked `exec-sandbox` feature flag; egressAllowlist and
-    // workspaceWritable are arrays (accessed via getCategory('sandbox')), not scalar ConfigKeys.
+    // Per-command exec sandbox (bubblewrap). enabled is the operator switch
+    // (default true; honestly unavailable where bubblewrap is absent).
+    // egressAllowlist and workspaceWritable are arrays (accessed via
+    // getCategory('sandbox')), not scalar ConfigKeys.
     enabled: boolean;
-    // Opt into auto-approving a looks-safe verdict from the sandbox-model-judgment
-    // tier (default false = annotate-only). Gated by the sandbox-model-judgment flag.
-    judgmentAutoApprove: boolean;
+    // Model-judgment pass on the residual sandbox ask-tail: off, annotate
+    // (default — annotates the human ask, never decides), or auto-approve
+    // (additionally auto-approves looks-safe verdicts; explicit opt-in).
+    judgment: 'off' | 'annotate' | 'auto-approve';
     egressAllowlist: string[];
     workspaceWritable: string[];
     replIsolation: 'shared-vm' | 'per-runtime-vm';
@@ -549,7 +410,9 @@ export interface GoodVibesConfig {
     autoHeal: boolean;              // default: false — auto-fix syntax errors on write/edit
     defaultTokenBudget: number;     // default: 5000 — default token budget for read operations
     hooksFile: string;              // default: 'hooks.json' — hook configuration file name
-    overflowSpillBackend: 'file' | 'ledger' | 'diagnostics'; // default: 'file' — overflow-spill-backends target
+    overflowSpillBackend: 'file' | 'ledger' | 'diagnostics'; // default: 'file' — where overflow content spills
+    contractVerification: boolean;  // default: true — registration-time contract checks on every tool
+    outputSchemaFingerprints: boolean; // default: false — append _meta schema fingerprints to find/analyze/inspect results
   };
   wrfc: {
     scoreThreshold: number;
@@ -578,8 +441,6 @@ export interface GoodVibesConfig {
   // NOTE: notifications.webhookUrls is an array and does not fit the scalar-value dot-path config API.
   // Access via configManager.getCategory('notifications') or mergeCategory('notifications', ...).
   notifications: NotificationsConfig;
-  /** Persisted feature flag overrides keyed by flag id. */
-  featureFlags: Record<string, PersistedFlagState>;
   runtime: RuntimeConfig;
   telemetry: TelemetryConfig;
   atRest: AtRestConfig;
@@ -614,6 +475,7 @@ export type ConfigKey =
   | 'provider.systemPromptFile'
   | 'provider.optimizerMode'
   | 'provider.optimizerPinnedModel'
+  | 'provider.localContextIngestion'
   | 'behavior.autoApprove'
   | 'behavior.autoCompactThreshold'
   | 'behavior.compactionStrategy'
@@ -622,12 +484,17 @@ export type ConfigKey =
   | 'behavior.notifyOnComplete'
   | 'behavior.suggestAlternativeOnProviderFail'
   | 'behavior.hitlMode'
+  | 'behavior.toolResultReconciliation'
   | 'behavior.returnContextMode'
   | 'behavior.guidanceMode'
   | 'storage.secretPolicy'
   | 'storage.artifacts.maxBytes'
   | 'permissions.mode'
   | 'permissions.backgroundAgents'
+  | 'permissions.engine'
+  | 'permissions.simulation'
+  | 'permissions.divergenceDashboard'
+  | 'permissions.commandParser'
   | 'permissions.divergenceThreshold'
   | 'permissions.maxDivergenceRecords'
   | 'permissions.tools.read'
@@ -652,8 +519,9 @@ export type ConfigKey =
   | 'planner.maxTurns'
   | 'planner.tokenCeiling'
   | 'planner.wallTimeoutMs'
+  | 'planner.adaptive'
   | 'sandbox.enabled'
-  | 'sandbox.judgmentAutoApprove'
+  | 'sandbox.judgment'
   | 'sandbox.replIsolation'
   | 'sandbox.mcpIsolation'
   | 'sandbox.windowsMode'
@@ -687,6 +555,8 @@ export type ConfigKey =
   | 'tools.defaultTokenBudget'
   | 'tools.hooksFile'
   | 'tools.overflowSpillBackend'
+  | 'tools.contractVerification'
+  | 'tools.outputSchemaFingerprints'
   | 'wrfc.scoreThreshold'
   | 'wrfc.maxFixAttempts'
   | 'wrfc.autoCommit'
@@ -709,6 +579,7 @@ export type ConfigKey =
   | 'automation.failureCooldownMs'
   | 'automation.deleteAfterRun'
   | 'controlPlane.enabled'
+  | 'controlPlane.gateway'
   | 'controlPlane.hostMode'
   | 'controlPlane.host'
   | 'controlPlane.port'
@@ -856,6 +727,10 @@ export type ConfigKey =
   | 'relay.requireStepUpForMutations'
   | 'runtime.companionChatLimiter.perSessionLimit'
   | 'runtime.eventBus.maxListeners'
+  | 'runtime.unifiedTasks'
+  | 'runtime.pluginLifecycle'
+  | 'runtime.mcpLifecycle'
+  | 'runtime.toolBudget.enforced'
   | 'runtime.toolBudget.maxMs'
   | 'runtime.toolBudget.maxTokens'
   | 'runtime.toolBudget.maxCostUsd'
@@ -863,6 +738,7 @@ export type ConfigKey =
   | 'telemetry.decisionOtlpEnabled'
   | 'telemetry.decisionOtlpEndpoint'
   | 'telemetry.decisionOtlpSignal'
+  | 'telemetry.otelMode'
   | 'atRest.redactionEnabled'
   | 'atRest.retentionMaxAgeDays'
   | 'atRest.retentionMaxTotalMb'
@@ -905,25 +781,35 @@ export type ConfigKey =
   | 'cloudflare.secretsStoreName'
   | 'cloudflare.secretsStoreId'
   | 'cloudflare.maxQueueOpsPerDay'
+  | 'notifications.adaptiveSuppression'
   | 'notifications.burstWindowMs'
   | 'notifications.burstThreshold'
   | 'notifications.burstCooldownMs'
   | 'fetch.sanitizeMode'
   | 'fetch.trustedHosts'
   | 'fetch.blockedHosts'
+  | 'fetch.allowLocalhost'
+  | 'security.tokenAudit.enabled'
   | 'security.tokenAudit.rotationCadenceDays'
   | 'security.tokenAudit.rotationWarningDays'
   | 'security.tokenAudit.managed'
+  | 'integrations.routeBinding'
+  | 'integrations.deliveryTracking'
   | 'integrations.delivery.maxRetries'
   | 'integrations.delivery.initialDelayMs'
   | 'integrations.delivery.maxDelayMs'
   | 'integrations.delivery.maxDlqSize'
   | 'integrations.delivery.sloEnforced'
+  | 'policy.registryEnabled'
+  | 'policy.requireSignedBundles'
   | 'policy.bundleSource'
   | 'policy.bundlePath'
+  | 'agents.passiveInjection.knowledge'
+  | 'agents.passiveInjection.code'
   | 'agents.passiveInjection.budgetTokens'
   | 'agents.passiveInjection.relevanceFloor'
   | 'agents.passiveInjection.codeLimit'
+  | 'agents.contextWindowGuard'
   | 'agents.contextCompactThreshold';
 
 /** Maps a ConfigKey to its value type. */
@@ -940,22 +826,28 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'provider.model' ? string :
   K extends 'provider.embeddingProvider' ? string :
   K extends 'provider.systemPromptFile' ? string :
-  K extends 'provider.optimizerMode' ? 'manual' | 'auto' | 'pinned' :
+  K extends 'provider.optimizerMode' ? 'off' | 'manual' | 'auto' | 'pinned' :
   K extends 'provider.optimizerPinnedModel' ? string :
+  K extends 'provider.localContextIngestion' ? boolean :
   K extends 'behavior.autoApprove' ? boolean :
   K extends 'behavior.autoCompactThreshold' ? number :
-  K extends 'behavior.compactionStrategy' ? 'structured' | 'distiller' :
+  K extends 'behavior.compactionStrategy' ? 'off' | 'structured' | 'distiller' :
   K extends 'behavior.staleContextWarnings' ? boolean :
   K extends 'behavior.saveHistory' ? boolean :
   K extends 'behavior.notifyOnComplete' ? boolean :
   K extends 'behavior.suggestAlternativeOnProviderFail' ? boolean :
-  K extends 'behavior.hitlMode' ? 'quiet' | 'balanced' | 'operator' :
+  K extends 'behavior.hitlMode' ? 'off' | 'quiet' | 'balanced' | 'operator' :
+  K extends 'behavior.toolResultReconciliation' ? 'reconcile' | 'warn-only' :
   K extends 'behavior.returnContextMode' ? 'off' | 'local' | 'assisted' :
   K extends 'behavior.guidanceMode' ? 'off' | 'minimal' | 'guided' :
   K extends 'storage.secretPolicy' ? 'plaintext_allowed' | 'preferred_secure' | 'require_secure' :
   K extends 'storage.artifacts.maxBytes' ? number :
   K extends 'permissions.mode' ? PermissionMode :
   K extends 'permissions.backgroundAgents' ? BackgroundAgentsMode :
+  K extends 'permissions.engine' ? 'baseline' | 'policy-engine' :
+  K extends 'permissions.simulation' ? boolean :
+  K extends 'permissions.divergenceDashboard' ? boolean :
+  K extends 'permissions.commandParser' ? 'ast' | 'flat' :
   K extends 'permissions.divergenceThreshold' ? number :
   K extends 'permissions.maxDivergenceRecords' ? number :
   K extends 'permissions.tools.read' ? PermissionAction :
@@ -980,8 +872,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'planner.maxTurns' ? number :
   K extends 'planner.tokenCeiling' ? number :
   K extends 'planner.wallTimeoutMs' ? number :
+  K extends 'planner.adaptive' ? boolean :
   K extends 'sandbox.enabled' ? boolean :
-  K extends 'sandbox.judgmentAutoApprove' ? boolean :
+  K extends 'sandbox.judgment' ? 'off' | 'annotate' | 'auto-approve' :
   K extends 'sandbox.replIsolation' ? 'shared-vm' | 'per-runtime-vm' :
   K extends 'sandbox.mcpIsolation' ? 'disabled' | 'shared-vm' | 'hybrid' | 'per-server-vm' :
   K extends 'sandbox.windowsMode' ? 'native-basic' | 'require-wsl' :
@@ -1015,6 +908,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'tools.defaultTokenBudget' ? number :
   K extends 'tools.hooksFile' ? string :
   K extends 'tools.overflowSpillBackend' ? 'file' | 'ledger' | 'diagnostics' :
+  K extends 'tools.contractVerification' ? boolean :
+  K extends 'tools.outputSchemaFingerprints' ? boolean :
   K extends 'wrfc.scoreThreshold' ? number :
   K extends 'wrfc.maxFixAttempts' ? number :
   K extends 'wrfc.autoCommit' ? boolean :
@@ -1037,6 +932,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'automation.failureCooldownMs' ? number :
   K extends 'automation.deleteAfterRun' ? boolean :
   K extends 'controlPlane.enabled' ? boolean :
+  K extends 'controlPlane.gateway' ? boolean :
   K extends 'controlPlane.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'controlPlane.host' ? string :
   K extends 'controlPlane.port' ? number :
@@ -1184,6 +1080,10 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'relay.requireStepUpForMutations' ? boolean :
   K extends 'runtime.companionChatLimiter.perSessionLimit' ? number :
   K extends 'runtime.eventBus.maxListeners' ? number :
+  K extends 'runtime.unifiedTasks' ? boolean :
+  K extends 'runtime.pluginLifecycle' ? boolean :
+  K extends 'runtime.mcpLifecycle' ? boolean :
+  K extends 'runtime.toolBudget.enforced' ? boolean :
   K extends 'runtime.toolBudget.maxMs' ? number :
   K extends 'runtime.toolBudget.maxTokens' ? number :
   K extends 'runtime.toolBudget.maxCostUsd' ? number :
@@ -1191,6 +1091,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'telemetry.decisionOtlpEnabled' ? boolean :
   K extends 'telemetry.decisionOtlpEndpoint' ? string :
   K extends 'telemetry.decisionOtlpSignal' ? 'span' | 'log' | 'both' :
+  K extends 'telemetry.otelMode' ? 'off' | 'in-process' | 'remote-export' :
   K extends 'atRest.redactionEnabled' ? boolean :
   K extends 'atRest.retentionMaxAgeDays' ? number :
   K extends 'atRest.retentionMaxTotalMb' ? number :
@@ -1233,24 +1134,34 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'cloudflare.secretsStoreName' ? string :
   K extends 'cloudflare.secretsStoreId' ? string :
   K extends 'cloudflare.maxQueueOpsPerDay' ? number :
+  K extends 'notifications.adaptiveSuppression' ? boolean :
   K extends 'notifications.burstWindowMs' ? number :
   K extends 'notifications.burstThreshold' ? number :
   K extends 'notifications.burstCooldownMs' ? number :
   K extends 'fetch.sanitizeMode' ? 'none' | 'safe-text' | 'strict' :
   K extends 'fetch.trustedHosts' ? string :
   K extends 'fetch.blockedHosts' ? string :
+  K extends 'fetch.allowLocalhost' ? boolean :
+  K extends 'security.tokenAudit.enabled' ? boolean :
   K extends 'security.tokenAudit.rotationCadenceDays' ? number :
   K extends 'security.tokenAudit.rotationWarningDays' ? number :
   K extends 'security.tokenAudit.managed' ? boolean :
+  K extends 'integrations.routeBinding' ? boolean :
+  K extends 'integrations.deliveryTracking' ? boolean :
   K extends 'integrations.delivery.maxRetries' ? number :
   K extends 'integrations.delivery.initialDelayMs' ? number :
   K extends 'integrations.delivery.maxDelayMs' ? number :
   K extends 'integrations.delivery.maxDlqSize' ? number :
   K extends 'integrations.delivery.sloEnforced' ? boolean :
+  K extends 'policy.registryEnabled' ? boolean :
+  K extends 'policy.requireSignedBundles' ? boolean :
   K extends 'policy.bundleSource' ? 'none' | 'file' :
   K extends 'policy.bundlePath' ? string :
+  K extends 'agents.passiveInjection.knowledge' ? boolean :
+  K extends 'agents.passiveInjection.code' ? boolean :
   K extends 'agents.passiveInjection.budgetTokens' ? number :
   K extends 'agents.passiveInjection.relevanceFloor' ? number :
   K extends 'agents.passiveInjection.codeLimit' ? number :
+  K extends 'agents.contextWindowGuard' ? boolean :
   K extends 'agents.contextCompactThreshold' ? number :
   never;

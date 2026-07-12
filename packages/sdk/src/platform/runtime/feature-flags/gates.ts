@@ -1,4 +1,5 @@
 import type { FeatureFlagManager } from './manager.js';
+import { getFeatureSettingsBinding } from './feature-settings.js';
 
 export type FeatureFlagReader = Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
 
@@ -16,7 +17,9 @@ export function requireFeatureGate(
   operation: string,
 ): void {
   if (isFeatureGateEnabled(featureFlags, flagId)) return;
-  throw new Error(`${flagId} feature flag is disabled; cannot ${operation}`);
+  const binding = getFeatureSettingsBinding(flagId);
+  const hint = binding ? ` (see the ${binding.key} setting)` : '';
+  throw new Error(`the ${flagId} feature is turned off${hint}; cannot ${operation}`);
 }
 
 export function surfaceFeatureGateId(surface: string): string | null {

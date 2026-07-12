@@ -2,8 +2,8 @@
  * sandbox-escalation-wiring.ts — compose the sandbox-escalation seam + the
  * optional model-judgment tier at the runtime composition root.
  *
- * Kept out of services.ts so the wiring (broker routing + the dark-flag judgment
- * tier + the provider adapter) lives next to the seam it configures rather than
+ * Kept out of services.ts so the wiring (broker routing + the judgment tier +
+ * the provider adapter) lives next to the seam it configures rather than
  * bloating the services monolith. Returns the boolean handler the exec tool's
  * sandbox calls; when the sandbox is inactive the handler is simply never
  * invoked.
@@ -42,9 +42,10 @@ export interface EscalationWiringDeps {
 
 /**
  * Build the exec-sandbox escalation handler: escalations ride the approval
- * broker, and — only when the `sandbox-model-judgment` flag is on — the judgment
- * tier annotates the ask (default) or auto-approves a looks-safe verdict (opt-in
- * via `sandbox.judgmentAutoApprove`). Every judgment leaves a receipt.
+ * broker, and — while the `sandbox.judgment` setting is annotate or
+ * auto-approve — the judgment tier annotates the ask (annotate, the default)
+ * or additionally auto-approves a looks-safe verdict (auto-approve, an
+ * explicit opt-in). Every judgment leaves a receipt.
  */
 export function buildSandboxEscalationHandler(deps: EscalationWiringDeps): ExecSandboxEscalationHandler {
   const judgment: SandboxEscalationJudgment | undefined = deps.featureFlags.isEnabled('sandbox-model-judgment')
@@ -55,7 +56,7 @@ export function buildSandboxEscalationHandler(deps: EscalationWiringDeps): ExecS
           const res = await provider.chat({ messages: [{ role: 'user', content: prompt }], model: model.id });
           return res.content ?? '';
         }) satisfies SandboxJudgmentChat),
-        config: { enabled: true, autoApprove: deps.configManager.get('sandbox.judgmentAutoApprove') },
+        config: { enabled: true, autoApprove: deps.configManager.get('sandbox.judgment') === 'auto-approve' },
         onReceipt: (r) => logger.info('[sandbox-judgment] receipt', {
           command: r.command, verdict: r.verdict, outcome: r.outcome, reasons: r.reasons,
         }),

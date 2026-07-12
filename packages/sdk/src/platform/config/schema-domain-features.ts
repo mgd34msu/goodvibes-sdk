@@ -1,14 +1,14 @@
 /**
- * schema-domain-features.ts — config for flag-gated runtime features whose
- * meaningful tuning knobs were previously constructor- or tool-call-only. Each
- * section here backs one feature flag (see runtime/feature-flags/flags.ts and
- * the FEATURE_FLAG_CONFIG association map). Defaults equal the values those
- * features hardcoded before promotion, so turning a flag on with no config
- * change reproduces prior behaviour; constructor/per-call params still override.
+ * schema-domain-features.ts — config domains for runtime features whose
+ * meaningful tuning knobs were previously constructor- or tool-call-only:
+ * fetch sanitization, the token audit, integration delivery, policy bundles,
+ * and agent context/injection tuning. Defaults equal the values those features
+ * hardcoded before promotion, so a fresh config reproduces prior behaviour;
+ * constructor/per-call params still override.
  *
- * These five sections are brand-new top-level config domains, so — like the
- * worktree domain in schema-domain-runtime.ts — they augment GoodVibesConfig
- * via `declare module` here (co-located with their defaults) instead of editing
+ * These five sections are top-level config domains, so — like the worktree
+ * domain in schema-domain-runtime.ts — they augment GoodVibesConfig via
+ * `declare module` here (co-located with their defaults) instead of editing
  * schema-types.ts. Registering the domain is what keeps get('fetch.*') etc. from
  * throwing "section 'fetch' does not exist"; the scalar keys additionally appear
  * in the ConfigKey union / ConfigValue map in schema-types.ts so config.get is typed.
@@ -16,7 +16,7 @@
 import type { ConfigSetting } from './schema-types.js';
 import { intRange, numRange } from './schema-shared.js';
 
-/** fetch-sanitization: default response-sanitization mode + trust-tier host defaults. */
+/** Fetch tool: response-sanitization mode, trust-tier host defaults, localhost approval. */
 export interface FetchConfig {
   /** Default sanitize mode applied when a fetch call omits sanitize_mode. */
   sanitizeMode: 'none' | 'safe-text' | 'strict';
@@ -24,19 +24,30 @@ export interface FetchConfig {
   trustedHosts: string;
   /** Comma-separated default blocked hosts (always refused); per-call blocked_hosts still adds. */
   blockedHosts: string;
+  /**
+   * Allow fetches to localhost/loopback dev servers for this project. Persisted
+   * per project by the one-tap "allow for this project" approval; private-IP and
+   * cloud-metadata blocking is unaffected and absolute.
+   */
+  allowLocalhost: boolean;
 }
 
-/** token-scope-rotation-audit: rotation cadence / warning window / managed enforcement defaults. */
+/** API token audit: enablement, rotation cadence / warning window / managed enforcement. */
 export interface SecurityConfig {
   tokenAudit: {
+    enabled: boolean;
     rotationCadenceDays: number;
     rotationWarningDays: number;
     managed: boolean;
   };
 }
 
-/** integration-delivery-slo: retry / backoff / dead-letter / SLO-enforcement defaults. */
+/** Channel integrations: route binding, delivery tracking, retry / dead-letter / SLO defaults. */
 export interface IntegrationsConfig {
+  /** Durable binding/resolution of external conversation routes and reply targets. */
+  routeBinding: boolean;
+  /** First-class delivery tracking: retries, dead letters, per-surface outcomes. */
+  deliveryTracking: boolean;
   delivery: {
     maxRetries: number;
     initialDelayMs: number;
@@ -46,19 +57,29 @@ export interface IntegrationsConfig {
   };
 }
 
-/** policy-as-code: bundle source + path so the registry is configurable without /policy commands. */
+/** Policy bundles: registry enablement, signature requirement, bundle source + path. */
 export interface PolicyConfig {
+  /** Versioned policy bundle registry with promote/rollback and the /policy commands. */
+  registryEnabled: boolean;
+  /** Reject policy bundles with invalid or missing HMAC signatures in managed mode (restart to apply). */
+  requireSignedBundles: boolean;
   bundleSource: 'none' | 'file';
   bundlePath: string;
 }
 
-/** Passive-injection and context-window-awareness tuning for the agent orchestrator. */
+/** Passive-injection and context-window tuning for the agent orchestrator. */
 export interface AgentsConfig {
   passiveInjection: {
+    /** Per-turn re-retrieval of project-memory knowledge against the evolving conversation. */
+    knowledge: boolean;
+    /** Additionally inject similarity-ranked source-code chunks (opt-in; higher-variance signal). */
+    code: boolean;
     budgetTokens: number;
     relevanceFloor: number;
     codeLimit: number;
   };
+  /** Estimate token usage before each provider call and compact past the threshold. */
+  contextWindowGuard: boolean;
   contextCompactThreshold: number;
 }
 
@@ -83,33 +104,42 @@ export const featureConfigDefaults: {
     sanitizeMode: 'safe-text',
     trustedHosts: '',
     blockedHosts: '',
+    allowLocalhost: false,
   },
   security: {
     tokenAudit: {
+      enabled: true,
       rotationCadenceDays: 90,
       rotationWarningDays: 14,
       managed: false,
     },
   },
   integrations: {
+    routeBinding: true,
+    deliveryTracking: true,
     delivery: {
       maxRetries: 3,
       initialDelayMs: 1_000,
       maxDelayMs: 30_000,
       maxDlqSize: 500,
-      sloEnforced: false,
+      sloEnforced: true,
     },
   },
   policy: {
+    registryEnabled: false,
+    requireSignedBundles: false,
     bundleSource: 'none',
     bundlePath: '',
   },
   agents: {
     passiveInjection: {
+      knowledge: true,
+      code: false,
       budgetTokens: 800,
       relevanceFloor: 95,
       codeLimit: 3,
     },
+    contextWindowGuard: true,
     contextCompactThreshold: 0.85,
   },
 };
@@ -120,8 +150,15 @@ export const featureConfigSettings: ConfigSetting[] = [
     type: 'enum',
     default: 'safe-text',
     description:
-      'Default response sanitization mode applied by the fetch tool when the fetch-sanitization feature flag is on and the per-call sanitize_mode is omitted: none (no sanitization), safe-text (strip active/script content, default), or strict (aggressive text-only reduction). A per-call sanitize_mode always overrides this default.',
+      'Default response sanitization mode applied by the fetch tool when the per-call sanitize_mode is omitted: none (no content sanitization), safe-text (strip active/script content, default), or strict (aggressive text-only reduction). A per-call sanitize_mode always overrides this default. Private-IP and cloud-metadata host blocking applies regardless of mode.',
     enumValues: ['none', 'safe-text', 'strict'],
+  },
+  {
+    key: 'fetch.allowLocalhost',
+    type: 'boolean',
+    default: false,
+    description:
+      'Allow the fetch tool to reach localhost/loopback dev servers for this project (e.g. http://localhost:3000). Set by the one-tap "allow for this project" answer to the localhost fetch ask and persisted in the project settings, so it never re-asks. Private-IP and cloud-metadata endpoint blocking is unaffected and absolute.',
   },
   {
     key: 'fetch.trustedHosts',
@@ -138,11 +175,18 @@ export const featureConfigSettings: ConfigSetting[] = [
       'Comma-separated default blocked hosts for fetch trust-tier classification. Blocked hosts are always refused regardless of sanitize mode. Per-call blocked_hosts are added on top of this default. The built-in SSRF-risk block (private IPs, metadata endpoints, localhost variants) applies independently of this list.',
   },
   {
+    key: 'security.tokenAudit.enabled',
+    type: 'boolean',
+    default: true,
+    description:
+      'Audit API tokens for minimum-scope violations and overdue rotation, surfacing age, scope, and rotation warnings in diagnostics with typed security events. Default on in advisory mode: tokens are reported, never blocked, unless security.tokenAudit.managed is also true.',
+  },
+  {
     key: 'security.tokenAudit.rotationCadenceDays',
     type: 'number',
     default: 90,
     description:
-      'Default rotation cadence (days) for the token-scope-rotation-audit feature: a token older than this is reported overdue. Per-policy rotationCadenceMs overrides this default. Only enforced (blocking) when security.tokenAudit.managed is true and the feature flag is enabled.',
+      'Default rotation cadence (days) for the token audit: a token older than this is reported overdue. Per-policy rotationCadenceMs overrides this default. Only enforced (blocking) when security.tokenAudit.managed is also true.',
     ...intRange(1, 3650),
   },
   {
@@ -158,14 +202,28 @@ export const featureConfigSettings: ConfigSetting[] = [
     type: 'boolean',
     default: false,
     description:
-      'When true (and the token-scope-rotation-audit feature flag is enabled), tokens with excess scopes or overdue rotation are BLOCKED from use rather than only reported. Default false = advisory reporting only.',
+      'When true (and security.tokenAudit.enabled is on), tokens with excess scopes or overdue rotation are BLOCKED from use rather than only reported. Default false = advisory reporting only.',
+  },
+  {
+    key: 'integrations.routeBinding',
+    type: 'boolean',
+    default: true,
+    description:
+      'Durably bind and resolve external conversation routes, thread contexts, and reply targets across channel surfaces. Default on; it is inert until a channel surface is configured.',
+  },
+  {
+    key: 'integrations.deliveryTracking',
+    type: 'boolean',
+    default: true,
+    description:
+      'Track integration deliveries first-class: retries, dead letters, and per-surface delivery outcomes. Default on; it is inert until a channel surface is configured.',
   },
   {
     key: 'integrations.delivery.maxRetries',
     type: 'number',
     default: 3,
     description:
-      'Maximum retry attempts for a retryable integration delivery (Slack/Discord/webhook) before it moves to the dead-letter queue, when the integration-delivery-slo feature is active. A per-queue maxRetries option overrides this default.',
+      'Maximum retry attempts for a retryable integration delivery (Slack/Discord/webhook) before it moves to the dead-letter queue. A per-queue maxRetries option overrides this default.',
     ...intRange(0, 100),
   },
   {
@@ -194,16 +252,30 @@ export const featureConfigSettings: ConfigSetting[] = [
   {
     key: 'integrations.delivery.sloEnforced',
     type: 'boolean',
+    default: true,
+    description:
+      'Enforce delivery service-level objectives for channel integrations: failures are classified retryable/terminal, retried with exponential backoff, and dead-letter events are logged at error level and surfaced in integration diagnostics (replayable via /notify replay). When false, dead letters are warn-level only. An explicit per-queue sloEnforced option still overrides this default.',
+  },
+  {
+    key: 'policy.registryEnabled',
+    type: 'boolean',
     default: false,
     description:
-      'When true (or the integration-delivery-slo feature flag is enabled), dead-letter events are logged at error level and surfaced in integration diagnostics; when false they are warn-level only. An explicit per-queue sloEnforced option still overrides this default.',
+      'Enable the versioned policy bundle registry with promote/rollback semantics and the /policy load, simulate, diff, promote, and rollback commands. Enforcement requires passing divergence-gate evidence first; default off until that evidence exists.',
+  },
+  {
+    key: 'policy.requireSignedBundles',
+    type: 'boolean',
+    default: false,
+    description:
+      'Validate HMAC-SHA256 signatures when policy bundles load: managed mode rejects bundles with invalid or missing signatures; non-managed mode permits unsigned bundles with a warning. Restart to apply. Default off until divergence evidence clears the governance gate.',
   },
   {
     key: 'policy.bundleSource',
     type: 'enum',
     default: 'none',
     description:
-      'Where the policy-as-code registry loads its initial bundle from at startup: none (no bundle loaded; bundles supplied programmatically or via commands), or file (load policy.bundlePath). Only consulted when the policy-as-code feature flag is enabled.',
+      'Where the policy bundle registry loads its initial bundle from at startup: none (no bundle loaded; bundles supplied programmatically or via commands), or file (load policy.bundlePath). Only consulted when policy.registryEnabled is true.',
     enumValues: ['none', 'file'],
   },
   {
@@ -211,14 +283,28 @@ export const featureConfigSettings: ConfigSetting[] = [
     type: 'string',
     default: '',
     description:
-      'Filesystem path to the policy bundle JSON loaded at startup when policy.bundleSource is "file" and the policy-as-code feature flag is enabled. Empty disables file loading. The loaded bundle enters the registry as a candidate (subject to the divergence gate before promotion).',
+      'Filesystem path to the policy bundle JSON loaded at startup when policy.bundleSource is "file" and policy.registryEnabled is true. Empty disables file loading. The loaded bundle enters the registry as a candidate (subject to the divergence gate before promotion).',
+  },
+  {
+    key: 'agents.passiveInjection.knowledge',
+    type: 'boolean',
+    default: true,
+    description:
+      'Re-retrieve project-memory knowledge each turn against the evolving conversation (steers, new sub-topics), under the hard token budget with a visible per-turn injection record on the agent record and session transcript. Default on: the block is hard-budgeted and every turn is honestly recorded. Turn off to revert to spawn-time-only injection.',
+  },
+  {
+    key: 'agents.passiveInjection.code',
+    type: 'boolean',
+    default: false,
+    description:
+      'Additionally inject similarity-ranked chunks from the repo source-code index each turn as untrusted reference pointers, sharing the knowledge-injection budget and relevance floor, each with an honest match label on the turn record. Default off: code chunks carry no review provenance, so this is deliberately opt-in. Also respects storage.codeIndexEnabled.',
   },
   {
     key: 'agents.passiveInjection.budgetTokens',
     type: 'number',
     default: 800,
     description:
-      'Default hard token budget for per-turn passive knowledge/code injection (agent-passive-knowledge-injection / agent-passive-code-injection). The effective budget is min(this value, 3% of the model context window). Set 0 to disable injection. A per-run passiveKnowledgeInjectionBudgetTokens override still wins.',
+      'Default hard token budget for per-turn passive knowledge/code injection. The effective budget is min(this value, 3% of the model context window). Set 0 to disable injection. A per-run passiveKnowledgeInjectionBudgetTokens override still wins.',
     ...intRange(0, 1_000_000),
   },
   {
@@ -234,15 +320,22 @@ export const featureConfigSettings: ConfigSetting[] = [
     type: 'number',
     default: 3,
     description:
-      'Maximum number of source-code chunks injected per turn by agent-passive-code-injection (chunks share the passive-injection token budget and relevance floor).',
+      'Maximum number of source-code chunks injected per turn by passive code injection (chunks share the passive-injection token budget and relevance floor).',
     ...intRange(0, 100),
+  },
+  {
+    key: 'agents.contextWindowGuard',
+    type: 'boolean',
+    default: true,
+    description:
+      'Before each sub-agent provider call, estimate total token count (system prompt + messages + tool definitions) and compact the conversation past agents.contextCompactThreshold, with layered system-prompt assembly for small windows and a single compaction retry on context-size errors. Turn off to revert to unchecked provider calls.',
   },
   {
     key: 'agents.contextCompactThreshold',
     type: 'number',
     default: 0.85,
     description:
-      'Fraction of the model context window at which the agent-context-window-awareness feature triggers sub-agent conversation compaction (estimated system + messages + tool tokens above this fraction compacts). Distinct from behavior.autoCompactThreshold, which governs main-session conversation compaction.',
+      'Fraction of the model context window at which the agent context-window guard triggers sub-agent conversation compaction (estimated system + messages + tool tokens above this fraction compacts). Distinct from behavior.autoCompactThreshold, which governs main-session conversation compaction.',
     ...numRange(0.1, 0.99),
   },
 ];

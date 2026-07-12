@@ -1,12 +1,13 @@
 /**
- * Machine-readable association between each feature flag and the CONFIG_SCHEMA
- * keys (and their top-level categories) that tune it. Consumers (TUI/webui) use
- * this to render each feature as ONE unit — its flag toggle plus its config keys
- * together — instead of scattering the flag and its knobs across unrelated panels.
+ * Machine-readable association between each capability in the internal
+ * registry and the CONFIG_SCHEMA keys (and their top-level categories) that
+ * tune it. feature-settings.ts joins this map with the enablement bindings to
+ * build FEATURE_SETTINGS — the per-feature metadata surfaces render as ONE
+ * unit (enablement + tuning keys together).
  *
  * Every entry's `configKeys` is typed `ConfigKey[]`, so a key that is not a real
- * config key fails typecheck (no decorative associations). EVERY flag id in
- * FEATURE_FLAGS has an entry here; a flag with no tuning config carries empty
+ * config key fails typecheck (no decorative associations). EVERY id in
+ * FEATURE_FLAGS has an entry here; a feature with no tuning config carries empty
  * arrays. The flag-config-map.test.ts guard keeps this map and FEATURE_FLAGS in
  * lockstep (bidirectional completeness).
  */
@@ -126,7 +127,7 @@ export const FEATURE_FLAG_CONFIG: Readonly<Record<string, FeatureFlagConfigAssoc
   // ── Fetch ────────────────────────────────────────────────────────────────
   'fetch-sanitization': {
     configCategories: ['fetch'],
-    configKeys: ['fetch.sanitizeMode', 'fetch.trustedHosts', 'fetch.blockedHosts'],
+    configKeys: ['fetch.sanitizeMode', 'fetch.trustedHosts', 'fetch.blockedHosts', 'fetch.allowLocalhost'],
   },
 
   // ── Providers / planning ─────────────────────────────────────────────────
@@ -307,7 +308,7 @@ export const FEATURE_FLAG_CONFIG: Readonly<Record<string, FeatureFlagConfigAssoc
   },
   'sandbox-model-judgment': {
     configCategories: ['sandbox'],
-    configKeys: ['sandbox.judgmentAutoApprove'],
+    configKeys: ['sandbox.judgment'],
   },
   'relay-connect': {
     configCategories: ['relay'],

@@ -25,7 +25,11 @@ export const runtimeConfigDefaults = {
     eventBus: {
       maxListeners: 100,
     },
+    unifiedTasks: false,
+    pluginLifecycle: false,
+    mcpLifecycle: false,
     toolBudget: {
+      enforced: false,
       maxMs: 0,
       maxTokens: 0,
       maxCostUsd: 0,
@@ -79,9 +83,10 @@ export const runtimeConfigDefaults = {
     decisionOtlpEnabled: false,
     decisionOtlpEndpoint: '',
     decisionOtlpSignal: 'span',
+    otelMode: 'off',
   },
   automation: {
-    enabled: false,
+    enabled: true,
     maxConcurrentRuns: 4,
     runHistoryLimit: 100,
     defaultTimeoutMs: 15 * 60 * 1000,
@@ -97,6 +102,7 @@ export const runtimeConfigDefaults = {
   },
   controlPlane: {
     enabled: false,
+    gateway: true,
     hostMode: 'local',
     host: '127.0.0.1',
     port: 3421,
@@ -134,7 +140,7 @@ export const runtimeConfigDefaults = {
     },
   },
   web: {
-    enabled: false,
+    enabled: true,
     hostMode: 'local',
     host: '127.0.0.1',
     port: 3423,
@@ -142,13 +148,13 @@ export const runtimeConfigDefaults = {
     staticAssetsDir: 'dist/web',
   },
   watchers: {
-    enabled: false,
+    enabled: true,
     pollIntervalMs: 60_000,
     heartbeatIntervalMs: 15_000,
     recoveryWindowMinutes: 10,
   },
   service: {
-    enabled: false,
+    enabled: true,
     autostart: false,
     restartOnFailure: true,
     platform: 'auto',
@@ -167,7 +173,7 @@ export const runtimeConfigDefaults = {
     },
   },
   relay: {
-    enabled: false,
+    enabled: true,
     url: '',
     rendezvousId: '',
     label: '',
@@ -185,8 +191,8 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'automation.enabled',
     type: 'boolean',
-    default: false,
-    description: 'Enable the automation subsystem',
+    default: true,
+    description: 'Enable the automation subsystem (durable routines, schedule evaluation, run history). Default on: with no routines defined it idles and surfaces a how-to-create-your-first-routine empty state.',
   },
   {
     key: 'automation.maxConcurrentRuns',
@@ -257,7 +263,13 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     key: 'controlPlane.enabled',
     type: 'boolean',
     default: false,
-    description: 'Enable the shared gateway/control-plane service',
+    description: 'Enable the standalone control-plane HTTP server',
+  },
+  {
+    key: 'controlPlane.gateway',
+    type: 'boolean',
+    default: true,
+    description: 'The shared gateway/control-plane host serving state snapshots, live streams (SSE/WS), and authenticated control APIs to terminal hosts and remote clients. Default on so a stock daemon can stream companion chat; every streaming endpoint stays auth-gated and the default bind stays loopback. Turn off for a request/response-only daemon.',
   },
   {
     key: 'controlPlane.hostMode',
@@ -408,8 +420,8 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'web.enabled',
     type: 'boolean',
-    default: false,
-    description: 'Enable the browser-based operator surface',
+    default: true,
+    description: 'Enable the browser-based operator surface. Default on, bound to loopback (web.hostMode local): served on this machine only until deliberately widened via web.hostMode. The URL is announced once at daemon start.',
   },
   {
     key: 'web.hostMode',
@@ -449,8 +461,8 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'watchers.enabled',
     type: 'boolean',
-    default: false,
-    description: 'Enable managed watcher/listener services',
+    default: true,
+    description: 'Enable managed watcher/listener services (checkpointing and recovery for long-running external sources). Default on: with no watchers configured the framework idles.',
   },
   {
     key: 'watchers.pollIntervalMs',
@@ -476,8 +488,8 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'service.enabled',
     type: 'boolean',
-    default: false,
-    description: 'Enable service-install and daemon-management features',
+    default: true,
+    description: 'Enable service-install and daemon-management features (install/start/stop/status/autostart verbs). Default on: nothing is installed or started until explicitly requested.',
   },
   {
     key: 'service.autostart',
@@ -544,8 +556,8 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'relay.enabled',
     type: 'boolean',
-    default: false,
-    description: 'Connect the daemon OUTBOUND to a zero-knowledge relay for reachability from outside the LAN (also gated by the relay-connect feature flag)',
+    default: true,
+    description: 'Connect the daemon OUTBOUND to a zero-knowledge relay for reachability from outside the LAN. Default on, but no connection is ever made without an explicitly configured relay.url — leave the URL empty to keep the daemon LAN-only.',
   },
   {
     key: 'relay.url',
@@ -588,30 +600,6 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
       'Maximum number of listeners per event channel (per-type and per-domain) before a warning is emitted in production ' +
       'or a RangeError is thrown in development mode. Raise this only if you have verified there is no subscriber leak.',
     ...intRange(1, 100_000),
-  },
-  {
-    key: 'runtime.toolBudget.maxMs',
-    type: 'number',
-    default: 0,
-    description:
-      'Default per-phase wall-clock budget (ms) for tool execution when the runtime-tools-budget-enforcement feature flag is enabled. 0 = unlimited. A per-call ToolRuntimeContext.budget.maxMs overrides this default.',
-    ...intRange(0, 24 * 60 * 60 * 1000),
-  },
-  {
-    key: 'runtime.toolBudget.maxTokens',
-    type: 'number',
-    default: 0,
-    description:
-      'Default token budget for a single tool execution when runtime-tools-budget-enforcement is enabled (checked against a tool result tokenCount annotation at phase exit). 0 = unlimited. A per-call ToolRuntimeContext.budget.maxTokens overrides.',
-    ...intRange(0, 100_000_000),
-  },
-  {
-    key: 'runtime.toolBudget.maxCostUsd',
-    type: 'number',
-    default: 0,
-    description:
-      'Default cost budget (USD) for a single tool execution when runtime-tools-budget-enforcement is enabled (checked against a tool result costUsd annotation at phase exit). 0 = unlimited. A per-call ToolRuntimeContext.budget.maxCostUsd overrides.',
-    ...numRange(0, 1_000_000),
   },
   {
     key: 'telemetry.includeRawPrompts',

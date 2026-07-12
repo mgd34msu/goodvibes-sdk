@@ -1,17 +1,27 @@
 /**
- * Registry of all known feature flags for goodvibes-sdk.
+ * Internal registry of platform capabilities and their default dispositions.
  *
- * All flags default to `'disabled'`. They are enabled as their corresponding
- * tier is fully implemented and validated.
+ * Every entry here is a first-class feature configured through its own domain
+ * settings (see feature-settings.ts for the id -> settings-key bindings that
+ * surfaces consume). Each defaultState is an owner-ruled default, recorded in
+ * the 2026-07-11 rulings worksheet; a disabled entry is a chosen default on a
+ * configurable feature, never unreachable capability.
  *
- * Flag IDs follow the kebab-case naming convention used throughout the runtime.
+ * This module is implementation detail: the emergency kill-switch plumbing
+ * keys off these ids, but no surface renders this registry as its own
+ * category — consumers render FEATURE_SETTINGS (domain, option shapes,
+ * descriptions) from feature-settings.ts.
+ *
+ * Ids follow the kebab-case naming convention used throughout the runtime.
  */
 import type { FeatureFlag } from './types.js';
 
 /**
- * The canonical list of feature flags across all implementation tiers.
+ * The canonical list of platform capabilities across all implementation tiers.
  *
- * Add new flags here; the manager initialises from this array at startup.
+ * Add new entries here AND bind them in feature-settings.ts; the manager
+ * initialises from this array at startup and the lockstep tests keep the
+ * registry, the settings bindings, and the config association map aligned.
  */
 export const FEATURE_FLAGS: FeatureFlag[] = [
   // ── Tier 2 ───────────────────────────────────────────────────────────────
@@ -31,8 +41,10 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     description:
       'Enables the dual-evaluator simulation pipeline for the permissions policy engine. '
       + 'Tracks divergence between actual and candidate evaluators without '
-      + 'changing enforcement behaviour until switched to enforce mode.',
-    defaultState: 'disabled',
+      + 'changing enforcement behaviour until switched to enforce mode. '
+      + 'On by default so divergence evidence accumulates before any stricter '
+      + 'enforcement is considered; it never blocks tool execution by itself.',
+    defaultState: 'enabled',
     tier: 2,
     runtimeToggleable: false,
   },
@@ -45,8 +57,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       'Enables the HITL UX mode system (quiet/balanced/operator) for notification verbosity '
       + 'control. When enabled, ModeManager applies the configured HITL preset to the '
       + 'notification router at startup and on mode change. '
-      + 'Disable to keep the router on its baseline delivery policy and reject HITL mode changes.',
-    defaultState: 'disabled',
+      + 'Set behavior.hitlMode to off to keep the router on its baseline delivery policy '
+      + 'and reject HITL mode changes.',
+    defaultState: 'enabled',
     tier: 3,
     runtimeToggleable: true,
   },
@@ -132,8 +145,10 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'session-compaction',
     name: 'Session Compaction',
     description:
-      'Activates structured session compaction with semantic chunking and relevance scoring.',
-    defaultState: 'disabled',
+      'Activates structured session compaction with semantic chunking and relevance scoring. '
+      + 'On by default: long sessions compact at behavior.autoCompactThreshold with a receipt '
+      + 'on every compaction. Set behavior.compactionStrategy to off to run uncompacted.',
+    defaultState: 'enabled',
     tier: 6,
     runtimeToggleable: true,
   },
@@ -151,10 +166,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'through the SAME quality scorer as the structured strategy and falls back to '
       + 'structured when it scores below the floor or the fresh call is unavailable — the '
       + 'receipt names the strategy used and any fallback. Standing instruction-chain / '
-      + 'active-skill re-injection at the boundary applies to both strategies. DEFAULT OFF: '
-      + 'it graduates through the flag-graduation machinery — dark until quality-score '
-      + 'evidence earns it a soaking/candidate state. When the flag is off, the config '
-      + 'selection resolves back to structured and the compaction path is unchanged.',
+      + 'active-skill re-injection at the boundary applies to both strategies. Not the '
+      + 'default: structured remains the default strategy until quality-score evidence '
+      + 'earns distiller the default slot; choose it via behavior.compactionStrategy.',
     defaultState: 'disabled',
     tier: 6,
     runtimeToggleable: true,
@@ -165,11 +179,12 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'Fetch Response Sanitization',
     description:
       'Enables fetch response sanitization and host trust tier classification.'
-      + ' Sanitizes HTTP response content (none/safe-text/strict modes) and blocks requests'
-      + ' to SSRF-risk hosts (private IPs, metadata endpoints, localhost variants).'
-      + ' Defaults to safe-text sanitization mode when enabled.'
-      + ' Set sanitize_mode: none in fetch config to override for explicitly trusted hosts.',
-    defaultState: 'disabled',
+      + ' Sanitizes HTTP response content (none/safe-text/strict modes, default safe-text).'
+      + ' Requests to private IPs, cloud metadata endpoints, and encoded private-IP forms are'
+      + ' always refused with an honest tool-result reason. Fetches to localhost dev servers'
+      + ' ask once and can be allowed per project (fetch.allowLocalhost).'
+      + ' Set fetch.sanitizeMode to none to skip content sanitization for trusted flows.',
+    defaultState: 'enabled',
     tier: 8,
     runtimeToggleable: true,
   },
@@ -208,7 +223,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'Aggregates divergence by tool/prefix/mode, exposes trend history in diagnostics, '
       + 'and blocks enforce mode transitions when the divergence rate exceeds the configured '
       + 'threshold. Disable to fall back to warn mode (no gate enforcement).',
-    defaultState: 'disabled',
+    defaultState: 'enabled',
     tier: 8,
     runtimeToggleable: true,
   },
@@ -383,8 +398,10 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'In quiet/minimal mode, operational churn is suppressed before reaching the '
       + 'conversation or status bar. Burst detection collapses rapid domain:level '
       + 'floods into panel_only with a burst_collapsed reason code. '
+      + 'On by default now that collapsed groups have a visible home: the notifications '
+      + 'panel renders burst-collapsed groups with their reason codes. '
       + 'Disable to revert to base default + quiet-typing + batch-window policies only.',
-    defaultState: 'disabled',
+    defaultState: 'enabled',
     tier: 3,
     runtimeToggleable: true,
   },
@@ -399,8 +416,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'Diagnostics panel surfaces token age, scope violations, and rotation warnings. '
       + 'Emits TOKEN_SCOPE_VIOLATION, TOKEN_ROTATION_WARNING, TOKEN_ROTATION_EXPIRED, '
       + 'and TOKEN_BLOCKED events via the security event domain. '
-      + 'Disable to revert to unenforced advisory reporting only.',
-    defaultState: 'disabled',
+      + 'On by default in advisory mode (security.tokenAudit.managed false): tokens are '
+      + 'reported, never blocked, until managed enforcement is opted into.',
+    defaultState: 'enabled',
     tier: 7,
     runtimeToggleable: true,
   },
@@ -426,13 +444,15 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'Automation Domain',
     description:
       'Enables the first-class automation job/run domain used by the shared scheduling engine. '
-      + 'This is the top-level gate for durable automation records, schedule evaluation, and run history.',
-    defaultState: 'disabled',
+      + 'This is the top-level switch for durable automation records, schedule evaluation, and '
+      + 'run history. On by default: with no routines defined it idles and surfaces a '
+      + 'how-to-create-your-first-routine empty state instead of requiring setup.',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
   {
-    // NOTE: control-plane-gateway is the ONE tier-10 flag that defaults ON (One-Platform).
+    // NOTE: control-plane-gateway was the first tier-10 capability to default ON (One-Platform).
     // A stock daemon (no config) must be able to stream companion chat over SSE;
     // leaving this OFF made a fresh daemon return 503 on the live-stream path (the
     // "stock daemon is dead" bug).
@@ -446,13 +466,14 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     // handful of unauthenticated bootstrap endpoints that carry NO session/runtime data and
     // exist only to establish auth. The default bind stays loopback and the 60/min + 5/min
     // rate limiters are unchanged. It remains runtimeToggleable, so an operator who wants a
-    // request/response-only daemon can turn it back off via config
-    // (`flags: { 'control-plane-gateway': 'disabled' }`), which the manager honours over
-    // this default. The channel family (route-binding, delivery-engine, the chat surfaces,
+    // request/response-only daemon can turn it back off via the controlPlane.gateway
+    // setting, which is honoured over this default.
+    // The channel family (route-binding, delivery-engine, the chat surfaces,
     // homeassistant-surface) graduated together once inbound channel messages became gated
     // by the per-surface owner allowlist (unknown senders ignored) with reply-based
     // approve/deny wired to the shared approval broker. web-surface, watcher-framework, and
-    // service-management stay OFF pending their own separately-recorded conditions.
+    // service-management were later ruled on as defaults too (2026-07-11 rulings), so the
+    // whole reachability tier now defaults on with the web surface bound to loopback.
     id: 'control-plane-gateway',
     name: 'Control-Plane Gateway',
     description:
@@ -542,8 +563,11 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'web-surface',
     name: 'Web Surface',
     description:
-      'Enables the browser-based operator surface backed by the shared control plane.',
-    defaultState: 'disabled',
+      'Enables the browser-based operator surface backed by the shared control plane. '
+      + 'On by default, bound to loopback (web.hostMode local, 127.0.0.1): a stock install '
+      + 'serves the web surface on this machine only and announces its URL once at start. '
+      + 'Widen deliberately via web.hostMode network/custom.',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -552,8 +576,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'Watcher Framework',
     description:
       'Enables managed watcher/listener services, checkpointing, and recovery semantics for '
-      + 'long-running external sources.',
-    defaultState: 'disabled',
+      + 'long-running external sources. On by default: with no watchers configured the '
+      + 'framework idles and consumes nothing.',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -562,8 +587,10 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'Service Management',
     description:
       'Enables install/start/stop/status/autostart management for running Goodvibes as a '
-      + 'durable host service.',
-    defaultState: 'disabled',
+      + 'durable host service. On by default: the management verbs become available, but '
+      + 'nothing is installed or started until explicitly requested (service.autostart '
+      + 'stays false).',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -578,12 +605,12 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'a command is on sandbox.egressAllowlist. When active, boundary-safe commands that would '
       + 'otherwise prompt can auto-allow, and commands needing host access (network, host-privilege '
       + 'escalation, package installs) surface as named escalation asks. The frozen catastrophic '
-      + 'command block stays in force identically inside the boundary. DEFAULT OFF: it graduates '
-      + 'through the flag-graduation machinery — dark until host-probe and policy evidence earn it a '
-      + 'soaking/candidate state. When bubblewrap is absent (or on non-Linux hosts) the feature '
-      + 'reports unavailable and the exec path is byte-for-byte unchanged. Also gated by the '
-      + 'sandbox.enabled config switch; disable either to revert to unsandboxed exec.',
-    defaultState: 'disabled',
+      + 'command block stays in force identically inside the boundary. On by default where the '
+      + 'host probe passes (Linux with bubblewrap available); the first auto-allow announces '
+      + 'once that commands now run contained and escalations will ask. When bubblewrap is '
+      + 'absent (or on non-Linux hosts) the feature reports honestly unavailable and the exec '
+      + 'path is byte-for-byte unchanged. Set sandbox.enabled false to revert to unsandboxed exec.',
+    defaultState: 'enabled',
     tier: 11,
     runtimeToggleable: true,
   },
@@ -598,12 +625,12 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'stated reasons. The tier NEVER converts allow→deny and NEVER touches the frozen '
       + 'catastrophic-only exec block (rm -rf /, dd to devices, mkfs, fork bomb…); it can only '
       + 'ANNOTATE the human ask ("model judgment: looks safe because… / flags risk because…") or, '
-      + 'ONLY when the operator opted into sandbox.judgmentAutoApprove, auto-approve a looks-safe '
+      + 'ONLY when the operator opted into sandbox.judgment auto-approve, auto-approve a looks-safe '
       + 'verdict. A flags-risk verdict never auto-denies — it annotates the ask the human still '
       + 'decides; a judgment failure degrades to a plain ask. Every judgment leaves a receipt. '
-      + 'DEFAULT OFF: it graduates through the flag-graduation machinery — dark until evidence '
-      + 'earns it a soaking/candidate state. Config default is annotate-only.',
-    defaultState: 'disabled',
+      + 'On by default in annotate-only mode (sandbox.judgment annotate); auto-approval is a '
+      + 'separate explicit opt-in (sandbox.judgment auto-approve).',
+    defaultState: 'enabled',
     tier: 11,
     runtimeToggleable: true,
   },
