@@ -339,6 +339,28 @@ export class ChannelPolicyManager {
       reason = 'command-not-allowed';
     }
 
+    // Owner allowlist self-seeding: a surface with no owner allowlist adopts
+    // the first identified sender as its owner — whoever pairs/configures the
+    // channel proves it by sending the first message, and no separate
+    // add-yourself step exists. From then on unknown senders are ignored.
+    let effectivePolicy = policy;
+    if (allowed && allowlistUserIds.length === 0 && input.userId) {
+      effectivePolicy = await this.upsertPolicy(input.surface, { allowlistUserIds: [input.userId] });
+      reason = 'owner-allowlist-seeded';
+      logger.info('Channel owner allowlist seeded from the first identified sender', {
+        surface: input.surface,
+        userId: input.userId,
+      });
+    }
+
+    if (!allowed && (reason === 'user-not-allowlisted' || reason === 'missing-user-identity')) {
+      logger.info('Channel message from unknown sender ignored', {
+        surface: input.surface,
+        ...(input.userId ? { userId: input.userId } : {}),
+        reason,
+      });
+    }
+
     this.audit.unshift({
       id: `policy-audit-${randomUUID().slice(0, 8)}`,
       surface: input.surface,
@@ -365,7 +387,7 @@ export class ChannelPolicyManager {
     return {
       allowed,
       reason,
-      policy,
+      policy: effectivePolicy,
       ...(matchedGroupPolicy ? { matchedGroupPolicy } : {}),
       matchedScope: matchedGroupPolicy ? 'group' : 'surface',
       effectiveRequireMention: requireMention,

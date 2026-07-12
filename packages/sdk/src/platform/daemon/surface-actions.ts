@@ -25,6 +25,7 @@ import {
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { tryResolveApprovalReplyFromChannel, type ApprovalReplyBroker } from './approval-reply.js';
 
 interface PendingNtfyChatReply {
   readonly sessionId: string;
@@ -76,6 +77,12 @@ interface DaemonSurfaceActionContext {
     action: 'claim' | 'approve' | 'deny' | 'cancel',
     req: Request,
   ) => Promise<Response>;
+  /**
+   * Shared pending-approval broker — the same machinery the TUI and webui
+   * resolve asks through. Lets a paired channel owner approve, deny, or
+   * steer a pending ask by replying in the channel.
+   */
+  readonly approvalBroker?: ApprovalReplyBroker | undefined;
   readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
 }
 
@@ -121,7 +128,20 @@ export class DaemonSurfaceActionHelper {
   }
 
   async authorizeSurfaceIngress(input: ChannelIngressPolicyInput): Promise<ChannelPolicyDecision> {
-    return this.context.channelPolicy.evaluateIngress(input);
+    const decision = await this.context.channelPolicy.evaluateIngress(input);
+    if (!decision.allowed) return decision;
+    const consumed = await tryResolveApprovalReplyFromChannel(input, decision, {
+      approvalBroker: this.context.approvalBroker,
+      routeBindings: this.context.routeBindings,
+    });
+    if (consumed) {
+      // The reply was an approval verb from the paired owner and resolved a
+      // pending ask through the shared broker. Report it as not-allowed so
+      // the adapter neither creates a session nor sends a chat turn — the
+      // approval machinery publishes its own resolution events.
+      return { ...decision, allowed: false, reason: 'approval-reply-consumed' };
+    }
+    return decision;
   }
 
   parseSurfaceControlCommand(text: string): { readonly action: 'status' | 'cancel' | 'retry'; readonly id: string } | null {
