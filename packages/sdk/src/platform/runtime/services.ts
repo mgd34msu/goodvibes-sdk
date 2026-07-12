@@ -69,6 +69,11 @@ import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
 import { buildSandboxEscalationHandler } from './permissions/sandbox-escalation-wiring.js';
 import { buildLocalhostFetchApproval } from './permissions/localhost-fetch-approval.js';
 import { applyProviderOptimizerConfigMode, bindProviderOptimizerFeatureFlag } from './provider-optimizer-wiring.js';
+import {
+  FeatureAnnouncementStore,
+  createSandboxContainmentAnnouncer,
+  featureAnnouncementsPath,
+} from './feature-announcements.js';
 import { ContextAccountingHolder } from '../tools/context-accounting/index.js';
 import { DeterministicReplayEngine } from '../core/deterministic-replay.js';
 import { ProviderOptimizer } from '../providers/optimizer.js';
@@ -715,9 +720,16 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     requestApproval: (input) => approvalBroker.requestApproval(input),
     configManager,
   });
+  // Announce-once receipts for default-on features: the first contained exec
+  // run yields the one-time containment line (persisted, once per install).
+  const announcementStore = new FeatureAnnouncementStore(featureAnnouncementsPath(configManager));
+  const onSandboxedRun = createSandboxContainmentAnnouncer(announcementStore, (announcement) => {
+    logger.info(announcement.text, { announcement: announcement.id });
+  });
   agentOrchestrator.setDependencies({
     sandboxEscalationHandler,
     localhostFetchApproval,
+    onSandboxedRun,
     permissionManager: backgroundPermissionManager,
     contextAccountingHolder,
     fileCache,

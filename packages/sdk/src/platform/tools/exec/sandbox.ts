@@ -316,6 +316,13 @@ export interface ExecSandboxRuntime {
    * approved. When absent, escalations are not asked (today's behavior); the
    * frozen catastrophic block is enforced independently regardless.
    */
+  /**
+   * Invoked each time a command actually runs inside the boundary. Wired at
+   * the composition root to the announce-once containment receipt ("commands
+   * now run contained; escalations will ask") — the announcer keeps the
+   * once-semantics, this seam just reports the runs.
+   */
+  readonly onSandboxedRun?: (() => void) | undefined;
   readonly requestEscalation?: ((input: {
     readonly command: string;
     readonly escalations: readonly string[];
@@ -363,14 +370,22 @@ export async function brokerSandboxEscalation(
   command: string,
   workingDirectory: string,
 ): Promise<{ deniedEscalations: string[] } | null> {
-  if (!plan?.sandboxed || !sandbox?.requestEscalation) return null;
+  if (!plan?.sandboxed) return null;
+  // A null return means this command WILL run inside the boundary — report it
+  // so the wired announcer can turn the first contained run into the one-time
+  // "commands now run contained; escalations will ask" line.
+  const reportContainedRun = (): null => {
+    sandbox?.onSandboxedRun?.();
+    return null;
+  };
+  if (!sandbox?.requestEscalation) return reportContainedRun();
   const decision = decideSandboxedExec({
     command,
     sandboxActive: true,
     egressAllowlist: sandbox.config.egressAllowlist,
     baseEffectWhenNotSandboxed: 'ask',
   });
-  if (decision.effect !== 'ask' || decision.escalations.length === 0) return null;
+  if (decision.effect !== 'ask' || decision.escalations.length === 0) return reportContainedRun();
   const approved = await sandbox.requestEscalation({
     command,
     escalations: decision.escalations,
@@ -378,7 +393,7 @@ export async function brokerSandboxEscalation(
     policyReasons: [decision.reason],
     workingDirectory,
   });
-  return approved ? null : { deniedEscalations: decision.escalations };
+  return approved ? reportContainedRun() : { deniedEscalations: decision.escalations };
 }
 
 /**
