@@ -15,7 +15,8 @@
  * `status: expired`, not silently dropped from the projection.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import type { MemoryClass, MemoryRecord, MemoryScope, MemoryTemporalStatus } from './memory-store.js';
 import { memoryRecordTemporalStatus } from './memory-store.js';
@@ -28,10 +29,81 @@ export interface MemoryProjectionOptions {
   readonly scopes?: readonly MemoryScope[];
 }
 
-/** Optional git seam: durably commit the projected files. Injectable for tests. */
+/**
+ * Optional git seam: durably commit the projected files. Injectable for tests.
+ *
+ * The projection only ever commits to a repository it OWNS — one whose
+ * toplevel is the projection directory itself — never a repository the
+ * directory merely sits inside. `projectMemoryToFiles` enforces that policy:
+ * it resolves the enclosing toplevel first, and when the directory is not its
+ * own repository root (nested in a foreign checkout, or not in any repository
+ * at all) it initializes a repository AT the projection directory before
+ * staging. Without this, a projection under a temp/scratch path nested inside
+ * a real checkout would commit into that checkout.
+ */
 export interface MemoryProjectionGit {
+  /**
+   * The toplevel directory git would resolve for `dir` (`git -C <dir>
+   * rev-parse --show-toplevel`), or null when no repository encloses it.
+   */
+  resolveToplevel(dir: string): string | null;
+  /** Initialize a repository whose root is exactly `dir`. */
+  init(dir: string): void;
   add(dir: string): void;
   commit(dir: string, message: string): void;
+}
+
+function samePath(left: string, right: string): boolean {
+  try {
+    return realpathSync(left) === realpathSync(right);
+  } catch {
+    return left === right;
+  }
+}
+
+/**
+ * Production git seam for the memory projection: shells out to the system
+ * git, commits with a neutral projection identity (never the operator's),
+ * and tolerates an unchanged tree.
+ */
+export function createMemoryProjectionGit(): MemoryProjectionGit {
+  const run = (args: readonly string[]): { ok: boolean; stdout: string; stderr: string } => {
+    const result = spawnSync('git', [...args], { encoding: 'utf-8', timeout: 30_000 });
+    return {
+      ok: result.status === 0,
+      stdout: (result.stdout ?? '').trim(),
+      stderr: (result.stderr ?? '').trim(),
+    };
+  };
+  return {
+    resolveToplevel(dir: string): string | null {
+      const result = run(['-C', dir, 'rev-parse', '--show-toplevel']);
+      return result.ok && result.stdout.length > 0 ? result.stdout : null;
+    },
+    init(dir: string): void {
+      const result = run(['init', dir]);
+      if (!result.ok) {
+        throw new Error(`memory projection git init failed for ${dir}: ${result.stderr || result.stdout}`);
+      }
+    },
+    add(dir: string): void {
+      const result = run(['-C', dir, 'add', '-A']);
+      if (!result.ok) {
+        throw new Error(`memory projection git add failed for ${dir}: ${result.stderr || result.stdout}`);
+      }
+    },
+    commit(dir: string, message: string): void {
+      const result = run([
+        '-C', dir,
+        '-c', 'user.name=GoodVibes Memory Projection',
+        '-c', 'user.email=memory-projection@goodvibes.local',
+        'commit', '--no-verify', '-m', message,
+      ]);
+      if (!result.ok && !/nothing to commit|nothing added to commit|no changes added/i.test(`${result.stdout}\n${result.stderr}`)) {
+        throw new Error(`memory projection git commit failed for ${dir}: ${result.stderr || result.stdout}`);
+      }
+    },
+  };
 }
 
 /** The parsed content of one projected markdown file. */
@@ -119,6 +191,15 @@ export function projectMemoryToFiles(
   }
   let committed = false;
   if (options.git) {
+    // Ownership gate: the projection only ever commits to a repository whose
+    // toplevel IS the projection directory. A directory nested inside some
+    // other checkout (or in no repository at all) gets its own repository
+    // initialized first — committing into an enclosing repository would
+    // pollute a checkout the projection merely sits inside.
+    const toplevel = options.git.resolveToplevel(dir);
+    if (toplevel === null || !samePath(toplevel, dir)) {
+      options.git.init(dir);
+    }
     options.git.add(dir);
     options.git.commit(dir, `memory projection: ${written.length} record(s)`);
     committed = true;
