@@ -118,6 +118,33 @@
       "category": "dependency-management",
       "confidence": "high",
       "status": "active"
+    },
+    {
+      "id": "provider-model-source-contract-and-native-models",
+      "date": "2026-07-12",
+      "what": "Providers must declare modelSource ('live-discovery' | 'dated-static' + asOf | 'catalog-backed') when their own models array is empty at registration; ProviderRegistry.register()/registerRuntimeProvider() throw otherwise. Anthropic/OpenAI/Gemini get real live discovery (GET /v1/models, ListModels) with dated-static baselines populated synchronously at construction; OpenAI-codex/github-copilot/bedrock/bedrock-mantle/vertex stay dated-static only (no listing API). Live/dated-static results feed a new providerNativeModels bucket in the model registry (registry-live-model-discovery.ts), merged ABOVE the third-party models.dev catalog for the same registryKey (provider truth beats a possibly-stale aggregator) but only filling gaps the catalog doesn't already cover richer.",
+      "why": "Root cause: AnthropicProvider/OpenAIProvider/OpenAICodexProvider had `readonly models: string[] = []` with the ONLY real model source being the third-party models.dev catalog fetch — meaning a brand-new model (e.g. claude-fable-5, claude-sonnet-5, verified live against a real Anthropic API key 2026-07-12) was unselectable until that third-party snapshot caught up, with no structural guard against a provider shipping a permanently-empty, undated array. Making refreshModels()'s dated-static baseline apply SYNCHRONOUSLY at construction (not just after an async fetch resolves) means a fresh boot with no network is never worse than before.",
+      "category": "architecture",
+      "confidence": "high",
+      "status": "active"
+    },
+    {
+      "id": "initcatalog-vs-initprovidermodeldiscovery-split",
+      "date": "2026-07-12",
+      "what": "Live-model-discovery's background sweep is a SEPARATE method (ProviderRegistry.initProviderModelDiscovery()) from initCatalog(), not bundled into it, even though both are 'background, TTL-respecting, called once at startup' in spirit.",
+      "why": "initCatalog() has zero callers inside this repo (only the models.dev third-party catalog fetch it does); it's called by external consumers (TUI/agent daemons) AND by many of this repo's own tests directly. Bundling the new live-discovery sweep into it would have made every such test silently fire a real network call to Anthropic's live API using whatever ANTHROPIC_API_KEY happens to be in the test-runner's environment (fire-and-forget, wouldn't fail tests, but is genuinely undesirable test hygiene and an unrequested real API call). Consumers should call both methods at startup; this repo's own composition root (runtime/services.ts) now calls initProviderModelDiscovery() right after initCustomProviders().",
+      "category": "test-hygiene",
+      "confidence": "high",
+      "status": "active"
+    },
+    {
+      "id": "bare-model-id-shared-resolver",
+      "date": "2026-07-12",
+      "what": "One shared resolver (providers/model-id-resolution.ts, resolveModelReference) implements: already-qualified passes through unchanged; provider-in-context qualifies; unique-across-registry auto-qualifies; ambiguous throws listing real candidate registryKeys; unknown throws with Levenshtein closest-match suggestions + one concrete valid example from the live registry. Wired directly (no opt-out) into ProviderRegistry.getForModel/setCurrentModel/getCapabilityForModel/explainRoute and AgentOrchestrator.resolveProviderRouting since those always have real registry access. Wired as an OPTIONAL parameter (models/modelCandidates/providerRegistry) into automation (buildDefaultExecution etc.), control-plane/session-intents.ts (buildSharedSessionAgentSpawnRoutingInput), and tools/agent/manager.ts (AgentManager.spawn) — omitted callers keep the exact prior format-only validation so existing tests/callers that haven't threaded the registry through are unaffected.",
+      "why": "The prework site map (prework-bare-model-id-resolution.md) separated 'registry access already in scope' sites from 'needs a registry dependency threaded in' sites specifically because the latter group (AgentManager had ZERO registry field; AutomationManager/session-intents had no registry dependency at all) could not safely be made to always resolve without breaking every existing caller/test that constructs them without a registry. The optional-parameter pattern was chosen over a required constructor dependency to avoid a breaking change to every construction site across the whole SDK+consumers in one round; the real composition root (runtime/services.ts, daemon/facade.ts) DOES wire the real ProviderRegistry through now, so production behavior is the full resolver everywhere it matters.",
+      "category": "api-design",
+      "confidence": "high",
+      "status": "active"
     }
   ]
 }
