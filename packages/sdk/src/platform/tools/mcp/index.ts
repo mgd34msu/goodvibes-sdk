@@ -9,6 +9,9 @@ function summarizeServer(server: McpServerSecurity) {
   return {
     name: server.name,
     connected: server.connected,
+    transport: server.transport,
+    protocolVersion: server.protocolVersion,
+    protocolEra: server.protocolEra,
     role: server.role,
     trustMode: server.trustMode,
     schemaFreshness: server.schemaFreshness,

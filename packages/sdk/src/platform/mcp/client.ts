@@ -1,53 +1,57 @@
 /**
- * McpClient — connects to a single MCP server process via stdio JSON-RPC 2.0.
+ * McpClient — connects to a single MCP server over stdio (spawned process,
+ * newline-delimited JSON-RPC 2.0) or Streamable HTTP (config `url`).
  *
- * Protocol: newline-delimited JSON (each message is one JSON line on stdout/stdin).
- * Progressive loading: listTools() returns names + descriptions only.
- * getToolSchema() fetches full inputSchema on demand and caches it.
+ * Protocol currency: speaks the stateless 2026-07-28 revision (per-request
+ * `_meta`, `server/discover`, Multi Round-Trip Requests) and the
+ * handshake-based revisions back through 2024-11-05. Era detection follows
+ * the specification: probe `server/discover` first, fall back to
+ * `initialize` on any error that is not a recognized modern error. The
+ * negotiated version is exposed via `protocolInfo` for diagnostics.
+ *
+ * Progressive loading: connect() fetches no tool data at all; listTools()
+ * returns names + descriptions only; getToolSchema() fetches full
+ * inputSchema on demand and caches it.
  */
 import { logger } from '../utils/logger.js';
 import { VERSION } from '../version.js';
 import type { McpServerConfig } from './config.js';
 import { summarizeError } from '../utils/error-display.js';
 import { isRecord } from '../utils/record-coerce.js';
-
-export interface McpProcessSpec {
-  command: string;
-  args?: string[] | undefined;
-  env?: Record<string, string> | undefined;
-  cwd?: string | undefined;
-  summary?: string | undefined;
-  sandboxSessionId?: string | undefined;
-}
-
-export interface McpToolInfo {
-  name: string;
-  description: string;
-}
-
-export interface McpToolSchema extends McpToolInfo {
-  inputSchema: Record<string, unknown>;
-}
-
-interface JsonRpcRequest {
-  jsonrpc: '2.0';
-  id: JsonRpcId;
-  method: string;
-  params?: unknown | undefined;
-}
-
-interface JsonRpcNotification {
-  jsonrpc: '2.0';
-  method: string;
-  params?: unknown | undefined;
-}
-
-interface JsonRpcResponse {
-  jsonrpc: '2.0';
-  id: JsonRpcId | null;
-  result?: unknown | undefined;
-  error?: { code: number; message: string; data?: unknown };
-}
+import { McpHttpConnection, McpRpcError } from './http-connection.js';
+import type {
+  McpClientNotification,
+  McpClientOptions,
+  McpClientServerRequest,
+  McpClientUnhandledResponse,
+  McpToolInfo,
+  McpToolSchema,
+} from './client-types.js';
+import {
+  isJsonRpcNotification,
+  isJsonRpcRequest,
+  isJsonRpcResponse,
+  jsonRpcIdKey,
+  type JsonRpcId,
+  type JsonRpcNotification,
+  type JsonRpcRequest,
+  type JsonRpcResponse,
+} from './jsonrpc.js';
+import { buildParamHeaders, hasValidHeaderAnnotations } from './http-headers.js';
+import {
+  buildModernMeta,
+  isInputRequiredResult,
+  isModernVersion,
+  isRecognizedModernErrorCode,
+  MCP_LEGACY_REVISIONS,
+  MCP_STATELESS_REVISION,
+  MCP_SUPPORTED_VERSIONS,
+  parseDiscoverSupportedVersions,
+  parseSupportedVersionsFromError,
+  selectMutualVersion,
+  withModernMeta,
+  type McpNegotiatedProtocol,
+} from './protocol.js';
 
 interface PendingRequest {
   resolve: (value: unknown) => void;
@@ -59,81 +63,22 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const PING_TIMEOUT_MS = 5_000;
 const RESTART_DELAY_MS = 2_000;
 const MAX_RESTART_ATTEMPTS = 3;
+/** Era-detection probe: a legacy server answers `server/discover` quickly with method-not-found; this bound covers servers that stay silent instead. */
+const DISCOVER_PROBE_TIMEOUT_MS = 3_000;
+/** Upper bound on Multi Round-Trip Request retries for one tool call. */
+const MAX_MRTR_ROUND_TRIPS = 4;
 
-export type JsonRpcId = number | string;
-
-export interface McpClientNotification {
-  serverName: string;
-  method: string;
-  params?: unknown | undefined;
-}
-
-export interface McpClientServerRequest {
-  serverName: string;
-  id: JsonRpcId;
-  method: string;
-  params?: unknown | undefined;
-}
-
-export interface McpClientUnhandledResponse {
-  serverName: string;
-  id: JsonRpcId | null;
-  hasError: boolean;
-  error?: string | undefined;
-}
-
-/**
- * A resolver for the MCP `elicitation/create` server→client request. When
- * wired, the client advertises the `elicitation` capability at handshake and
- * routes incoming elicitation requests here instead of hard-rejecting them with
- * `-32601`; the resolved outcome is written back as the JSON-RPC result.
- */
-export type McpElicitationResolver = (input: {
-  serverName: string;
-  id: JsonRpcId;
-  params?: unknown | undefined;
-}) => Promise<{ action: 'accept' | 'decline' | 'cancel'; content?: Record<string, unknown> | undefined }>;
-
-export interface McpClientOptions {
-  timeout?: number | undefined;
-  processSpec?: McpProcessSpec | undefined;
-  onNotification?: ((notification: McpClientNotification) => void) | undefined;
-  onServerRequest?: ((request: McpClientServerRequest) => void) | undefined;
-  onUnhandledResponse?: ((response: McpClientUnhandledResponse) => void) | undefined;
-  /**
-   * When set, `elicitation/create` server requests are resolved through this
-   * handler (which brokers them to the approval channel) rather than dropped.
-   */
-  onElicitation?: McpElicitationResolver | undefined;
-}
-
-function isJsonRpcId(value: unknown): value is JsonRpcId {
-  return typeof value === 'number' || typeof value === 'string';
-}
-
-function jsonRpcIdKey(id: JsonRpcId): string {
-  return `${typeof id}:${String(id)}`;
-}
-
-
-function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
-  return isRecord(value)
-    && 'id' in value
-    && (isJsonRpcId(value.id) || value.id === null)
-    && typeof value.method !== 'string';
-}
-
-function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
-  return isRecord(value)
-    && typeof value.method === 'string'
-    && isJsonRpcId(value.id);
-}
-
-function isJsonRpcNotification(value: unknown): value is JsonRpcNotification {
-  return isRecord(value)
-    && typeof value.method === 'string'
-    && (!('id' in value) || value.id === null);
-}
+export type { JsonRpcId } from './jsonrpc.js';
+export type {
+  McpClientNotification,
+  McpClientOptions,
+  McpClientServerRequest,
+  McpClientUnhandledResponse,
+  McpElicitationResolver,
+  McpProcessSpec,
+  McpToolInfo,
+  McpToolSchema,
+} from './client-types.js';
 
 export class McpClient {
   private proc: ReturnType<typeof Bun.spawn> | null = null;
@@ -145,6 +90,12 @@ export class McpClient {
   private initialized = false;
   /** Set true by disconnect() to suppress the read-loop's auto-restart. Reset on each successful _startProcess(). */
   private intentionalClose = false;
+
+  /** Streamable HTTP connection when the server is configured with a `url`. */
+  private http: McpHttpConnection | null = null;
+
+  /** Outcome of protocol version negotiation, for diagnostics. */
+  private negotiated: McpNegotiatedProtocol | null = null;
 
   /** Cache: tool name → full schema (populated lazily on first callTool) */
   private schemaCache = new Map<string, McpToolSchema>();
@@ -162,6 +113,7 @@ export class McpClient {
   }
 
   get isConnected(): boolean {
+    if (this.http) return this.http.isOpen;
     if (!this.proc) return false;
     try {
       return (this.proc as { exitCode: number | null }).exitCode === null;
@@ -170,14 +122,38 @@ export class McpClient {
     }
   }
 
+  /** The negotiated protocol (era, version, transport), or null before connect. */
+  get protocolInfo(): McpNegotiatedProtocol | null {
+    return this.negotiated;
+  }
+
   /**
-   * connect — Start the server process and perform MCP handshake (initialize).
-   * After connect, listTools() is available.
+   * connect — Start the transport and negotiate a protocol version.
+   * After connect, listTools() is available. No tool data is fetched here.
    */
   async connect(): Promise<void> {
+    if (this.config.url) {
+      if (this.http?.isOpen) return;
+      this.http = new McpHttpConnection({
+        serverName: this.config.name,
+        url: this.config.url,
+        clientInfo: { name: 'goodvibes-sdk', version: VERSION },
+        clientCapabilities: this._clientCapabilities(),
+        timeoutMs: this.options?.timeout ?? DEFAULT_TIMEOUT_MS,
+        fetchImpl: this.options?.fetchImpl,
+        handlers: {
+          onNotification: (method, params) => {
+            this._handleNotification({ jsonrpc: '2.0', method, ...(params !== undefined ? { params } : {}) });
+          },
+          onServerRequest: (id, method, params) => this._answerServerRequestOverHttp(id, method, params),
+        },
+      });
+      this.negotiated = await this.http.negotiate();
+      return;
+    }
     if (this.proc && this.isConnected) return;
     await this._startProcess();
-    await this._initialize();
+    await this._negotiate();
   }
 
   /**
@@ -217,10 +193,20 @@ export class McpClient {
     }>('tools/list');
 
     for (const t of result.tools ?? []) {
+      const inputSchema = t.inputSchema ?? { type: 'object', properties: {} };
+      // On the HTTP transport the specification requires excluding tool
+      // definitions whose x-mcp-header annotations are invalid.
+      if (this.http && !hasValidHeaderAnnotations(inputSchema)) {
+        logger.warn('McpClient: excluding tool with invalid x-mcp-header annotations', {
+          server: this.config.name,
+          tool: t.name,
+        });
+        continue;
+      }
       this.schemaCache.set(t.name, {
         name: t.name,
         description: t.description ?? '',
-        inputSchema: t.inputSchema ?? { type: 'object', properties: {} },
+        inputSchema,
       });
     }
 
@@ -230,6 +216,9 @@ export class McpClient {
   /**
    * callTool — Execute a tool on the MCP server.
    * Fetches full schema on first use (if not already cached).
+   * Modern-era servers may answer with an input_required interim result
+   * (Multi Round-Trip Requests); elicitation input requests are resolved
+   * through the wired resolver and the call is retried with inputResponses.
    */
   async callTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
     if (!this.isConnected) {
@@ -239,7 +228,52 @@ export class McpClient {
     if (!this.schemaCache.has(toolName)) {
       await this.getToolSchema(toolName);
     }
-    return this._request('tools/call', { name: toolName, arguments: args });
+
+    let params: Record<string, unknown> = { name: toolName, arguments: args };
+    for (let roundTrip = 0; roundTrip <= MAX_MRTR_ROUND_TRIPS; roundTrip++) {
+      const result = await this._request('tools/call', params, this._toolCallHeaders(toolName, args));
+      if (this.negotiated?.era !== 'modern' || !isInputRequiredResult(result)) {
+        return result;
+      }
+      const inputResponses = await this._resolveInputRequests(toolName, result.inputRequests);
+      params = {
+        name: toolName,
+        arguments: args,
+        ...(inputResponses ? { inputResponses } : {}),
+        ...(typeof result.requestState === 'string' ? { requestState: result.requestState } : {}),
+      };
+    }
+    throw new Error(`McpClient(${this.config.name}): tool '${toolName}' still required input after ${MAX_MRTR_ROUND_TRIPS} round trips`);
+  }
+
+  /** Mcp-Param-* headers for a tools/call on the modern HTTP transport. */
+  private _toolCallHeaders(toolName: string, args: Record<string, unknown>): Record<string, string> | undefined {
+    if (!this.http || this.negotiated?.era !== 'modern') return undefined;
+    const schema = this.schemaCache.get(toolName);
+    if (!schema) return undefined;
+    const headers = buildParamHeaders(schema.inputSchema, args);
+    return Object.keys(headers).length > 0 ? headers : undefined;
+  }
+
+  /** Resolve MRTR input requests; only elicitation is answerable client-side. */
+  private async _resolveInputRequests(
+    toolName: string,
+    inputRequests: Record<string, unknown> | undefined,
+  ): Promise<Record<string, unknown> | null> {
+    if (!inputRequests) return null;
+    const resolver = this.options?.onElicitation;
+    const responses: Record<string, unknown> = {};
+    for (const [key, request] of Object.entries(inputRequests)) {
+      const method = isRecord(request) && typeof request.method === 'string' ? request.method : 'unknown';
+      if (method !== 'elicitation/create' || !resolver) {
+        throw new Error(
+          `McpClient(${this.config.name}): tool '${toolName}' requested '${method}' input this client cannot provide`,
+        );
+      }
+      const params = isRecord(request) ? request.params : undefined;
+      responses[key] = await resolver({ serverName: this.config.name, id: key, params });
+    }
+    return responses;
   }
 
   /**
@@ -250,6 +284,12 @@ export class McpClient {
     // resurrect the process via _scheduleRestart(). Set synchronously before
     // any await so it is already true when the detached read loop runs.
     this.intentionalClose = true;
+    if (this.http) {
+      await this.http.close();
+      this.http = null;
+      this.negotiated = null;
+      return;
+    }
     if (!this.proc) return;
     // Reject all pending requests
     for (const [, pending] of this.pendingRequests) {
@@ -270,6 +310,7 @@ export class McpClient {
       this.buffer = '';
       this.readLoopRunning = false;
       this.initialized = false;
+      this.negotiated = null;
     }
   }
 
@@ -280,6 +321,9 @@ export class McpClient {
   private async _startProcess(): Promise<void> {
     const processSpec = this.options?.processSpec;
     const cmd = processSpec?.command ?? this.config.command;
+    if (!cmd) {
+      throw new Error(`McpClient(${this.config.name}): no command configured (stdio servers need 'command'; HTTP servers need 'url')`);
+    }
     const args = processSpec?.args ?? this.config.args ?? [];
     const env = { ...process.env, ...(this.config.env ?? {}), ...(processSpec?.env ?? {}) };
     const cwd = processSpec?.cwd;
@@ -303,19 +347,68 @@ export class McpClient {
     }
   }
 
-  /** Perform MCP initialize handshake. */
-  private async _initialize(): Promise<void> {
+  /** Capabilities advertised to the server (both eras). */
+  private _clientCapabilities(): Record<string, unknown> {
+    // Advertise the elicitation capability only when a resolver is wired, so
+    // a spec-compliant server knows it may ask the user for input (and does
+    // not when we would only reject it).
+    return this.options?.onElicitation ? { elicitation: {} } : {};
+  }
+
+  /**
+   * Detect the server's era and negotiate a protocol version (stdio).
+   *
+   * Probe with `server/discover` first, as the specification directs for
+   * dual-era stdio clients. A recognized modern error negotiates from the
+   * server's advertised versions; any other error (or probe silence) falls
+   * back to the `initialize` handshake.
+   */
+  private async _negotiate(): Promise<void> {
     if (this.initialized) return;
+    let modernSupported: string[] | 'legacy';
     try {
-      await this._request('initialize', {
-        protocolVersion: '2024-11-05',
-        // Advertise the elicitation capability only when a resolver is wired, so
-        // a spec-compliant server knows it may ask the user for input (and does
-        // not when we would only reject it).
-        capabilities: this.options?.onElicitation ? { elicitation: {} } : {},
+      const meta = buildModernMeta(MCP_STATELESS_REVISION, { name: 'goodvibes-sdk', version: VERSION }, this._clientCapabilities());
+      const result = await this._rawRequest('server/discover', withModernMeta({}, meta), DISCOVER_PROBE_TIMEOUT_MS);
+      modernSupported = parseDiscoverSupportedVersions(result) ?? [MCP_STATELESS_REVISION];
+    } catch (err) {
+      const supported = err instanceof McpRpcError && isRecognizedModernErrorCode(err.code)
+        ? parseSupportedVersionsFromError(err.data)
+        : null;
+      modernSupported = supported ?? 'legacy';
+    }
+
+    if (modernSupported !== 'legacy') {
+      const mutual = selectMutualVersion(modernSupported);
+      if (!mutual) {
+        throw new Error(
+          `McpClient(${this.config.name}): no shared protocol version `
+          + `(server: ${modernSupported.join(', ')}; client: ${MCP_SUPPORTED_VERSIONS.join(', ')})`,
+        );
+      }
+      if (isModernVersion(mutual)) {
+        // Stateless era: no handshake; every request carries _meta.
+        this.negotiated = { era: 'modern', version: mutual, transport: 'stdio' };
+        this.initialized = true;
+        return;
+      }
+      // Dual-era server whose newest mutual version is handshake-based.
+    }
+
+    try {
+      const requested = MCP_LEGACY_REVISIONS[0];
+      const result = await this._rawRequest('initialize', {
+        protocolVersion: requested,
+        capabilities: this._clientCapabilities(),
         clientInfo: { name: 'goodvibes-sdk', version: VERSION },
       });
+      const serverVersion = isRecord(result) && typeof result.protocolVersion === 'string'
+        ? result.protocolVersion
+        : requested;
+      if (!MCP_SUPPORTED_VERSIONS.includes(serverVersion)) {
+        throw new Error(`server negotiated unsupported protocol version ${serverVersion} (client supports: ${MCP_SUPPORTED_VERSIONS.join(', ')})`);
+      }
       this._notify('notifications/initialized', {});
+      this.negotiated = { era: 'legacy', version: serverVersion, transport: 'stdio' };
       this.initialized = true;
     } catch (err) {
       logger.error('McpClient: initialize handshake failed', { server: this.config.name, err: summarizeError(err) });
@@ -323,8 +416,24 @@ export class McpClient {
     }
   }
 
-  /** Send a JSON-RPC request; returns the result. */
-  private _request<T = unknown>(method: string, params?: unknown): Promise<T> {
+  /**
+   * Send a JSON-RPC request; returns the result. In the modern era the
+   * request params carry the per-request `_meta` the revision requires.
+   */
+  private _request<T = unknown>(method: string, params?: unknown, extraHeaders?: Record<string, string>): Promise<T> {
+    let finalParams = params;
+    if (this.negotiated?.era === 'modern') {
+      const meta = buildModernMeta(this.negotiated.version, { name: 'goodvibes-sdk', version: VERSION }, this._clientCapabilities());
+      finalParams = withModernMeta(params, meta);
+    }
+    if (this.http) {
+      return this.http.request(method, finalParams, extraHeaders) as Promise<T>;
+    }
+    return this._rawRequest<T>(method, finalParams);
+  }
+
+  /** Send a JSON-RPC request over stdio without protocol decoration. */
+  private _rawRequest<T = unknown>(method: string, params?: unknown, timeoutOverrideMs?: number): Promise<T> {
     if (!this.proc) {
       return Promise.reject(new Error(`McpClient(${this.config.name}): not running`));
     }
@@ -333,7 +442,7 @@ export class McpClient {
     const pendingKey = jsonRpcIdKey(id);
     const msg: JsonRpcRequest = { jsonrpc: '2.0', id, method, params };
     const line = JSON.stringify(msg) + '\n';
-    const timeoutMs = this.options?.timeout ?? DEFAULT_TIMEOUT_MS;
+    const timeoutMs = timeoutOverrideMs ?? this.options?.timeout ?? DEFAULT_TIMEOUT_MS;
 
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -392,6 +501,9 @@ export class McpClient {
         logger.warn('McpClient: stdout read loop ended', { server: this.config.name, err: summarizeError(err) });
       } finally {
         this.readLoopRunning = false;
+        // The process is gone; any restart must re-negotiate the protocol.
+        this.initialized = false;
+        this.negotiated = null;
         // Reject remaining pending requests
         for (const [, pending] of this.pendingRequests) {
           clearTimeout(pending.timer);
@@ -468,7 +580,11 @@ export class McpClient {
     clearTimeout(pending.timer);
     this.pendingRequests.delete(pendingKey);
     if (response.error) {
-      pending.reject(new Error(`McpClient(${this.config.name}) RPC error ${response.error.code}: ${response.error.message}`));
+      pending.reject(new McpRpcError(
+        response.error.code,
+        `McpClient(${this.config.name}) RPC error ${response.error.code}: ${response.error.message}`,
+        response.error.data,
+      ));
     } else {
       pending.resolve(response.result);
     }
@@ -608,7 +724,7 @@ export class McpClient {
       if (this.proc && this.isConnected) return; // Already restarted by something else
       try {
         await this._startProcess();
-        await this._initialize();
+        await this._negotiate();
         // Invalidate tool caches so they're re-fetched after restart (the
         // restarted server may advertise changed tool lists or schemas).
         this.toolInfoCache = null;
@@ -622,16 +738,37 @@ export class McpClient {
   }
 
   /**
-   * ping — Send a ping to check if server is healthy.
-   * Returns true if server responds within PING_TIMEOUT_MS.
+   * ping — Check whether the server is healthy.
+   * The 2026-07-28 revision removed `ping`; modern-era servers are probed
+   * with `server/discover` instead. Legacy servers keep the classic ping.
    */
   async ping(): Promise<boolean> {
     if (!this.isConnected) return false;
+    const method = this.negotiated?.era === 'modern' ? 'server/discover' : 'ping';
     try {
-      await this._request('ping', {});
+      await this._request(method, {});
       return true;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Answer a server-to-client JSON-RPC request arriving on a legacy HTTP SSE
+   * stream. Elicitation routes to the wired resolver; everything else is
+   * unsupported (the connection answers method-not-found for undefined).
+   */
+  private async _answerServerRequestOverHttp(id: JsonRpcId, method: string, params: unknown): Promise<unknown> {
+    this._callObserver('server request', () => this.options?.onServerRequest?.({
+      serverName: this.config.name,
+      id,
+      method,
+      ...(params !== undefined ? { params } : {}),
+    }));
+    const elicit = this.options?.onElicitation;
+    if (method === 'elicitation/create' && elicit) {
+      return elicit({ serverName: this.config.name, id, params });
+    }
+    return undefined;
   }
 }

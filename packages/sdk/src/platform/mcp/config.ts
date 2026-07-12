@@ -11,8 +11,10 @@ import { isRecord } from '../utils/record-coerce.js';
 export interface McpServerConfig {
   /** Unique server name, used as namespace prefix: mcp:<name>:<tool> */
   name: string;
-  /** Executable command to start the MCP server process */
-  command: string;
+  /** Executable command to start a stdio MCP server process. Exactly one of command/url. */
+  command?: string | undefined;
+  /** Streamable HTTP endpoint of a remote MCP server. Exactly one of command/url. */
+  url?: string | undefined;
   /** Arguments to pass to the command */
   args?: string[] | undefined;
   /** Optional environment variables to merge with process.env */
@@ -65,10 +67,13 @@ function optionalStringRecord(value: unknown): Record<string, string> | undefine
 }
 
 function normalizeServerConfig(name: string, raw: Record<string, unknown>): McpServerConfig | null {
-  if (typeof raw.command !== 'string' || !raw.command.trim()) return null;
+  const command = typeof raw.command === 'string' && raw.command.trim() ? raw.command : undefined;
+  const url = typeof raw.url === 'string' && raw.url.trim() ? raw.url : undefined;
+  if (!command && !url) return null;
   return {
     name,
-    command: raw.command,
+    command,
+    url,
     args: optionalStringArray(raw.args) ?? [],
     env: optionalStringRecord(raw.env),
     role: typeof raw.role === 'string' ? raw.role as McpServerConfig['role'] : undefined,
@@ -150,7 +155,10 @@ function assertServerConfig(server: McpServerConfig): void {
   if (server.name.includes(':') || server.name.includes('/')) {
     throw new Error('MCP server name may not contain ":" or "/".');
   }
-  if (!server.command.trim()) throw new Error('MCP server command is required.');
+  const hasCommand = Boolean(server.command?.trim());
+  const hasUrl = Boolean(server.url?.trim());
+  if (!hasCommand && !hasUrl) throw new Error('MCP server needs a command (stdio) or a url (HTTP).');
+  if (hasCommand && hasUrl) throw new Error('MCP server may set command (stdio) or url (HTTP), not both.');
 }
 
 function writeMcpConfigFile(path: string, config: McpConfig): void {
@@ -160,7 +168,8 @@ function writeMcpConfigFile(path: string, config: McpConfig): void {
       assertServerConfig(server);
       return {
         name: server.name,
-        command: server.command,
+        ...(server.command !== undefined ? { command: server.command } : {}),
+        ...(server.url !== undefined ? { url: server.url } : {}),
         ...(server.args !== undefined ? { args: [...server.args] } : {}),
         ...(server.env !== undefined ? { env: { ...server.env } } : {}),
         ...(server.role !== undefined ? { role: server.role } : {}),
@@ -247,7 +256,11 @@ function isMcpConfig(v: unknown): v is McpConfig {
     if (typeof s !== 'object' || s === null) return false;
     const srv = s as Record<string, unknown>;
     if (typeof srv['name'] !== 'string' || !srv['name']) return false;
-    if (typeof srv['command'] !== 'string' || !srv['command']) return false;
+    const hasCommand = typeof srv['command'] === 'string' && srv['command'].length > 0;
+    const hasUrl = typeof srv['url'] === 'string' && srv['url'].length > 0;
+    if (!hasCommand && !hasUrl) return false;
+    if (srv['command'] !== undefined && typeof srv['command'] !== 'string') return false;
+    if (srv['url'] !== undefined && typeof srv['url'] !== 'string') return false;
     if (srv['args'] !== undefined) {
       if (!Array.isArray(srv['args'])) return false;
       if (!srv['args'].every((a: unknown) => typeof a === 'string')) return false;
