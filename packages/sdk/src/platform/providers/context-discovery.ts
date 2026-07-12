@@ -14,7 +14,7 @@
  *   4. /props          — llama.cpp server-level n_ctx (single context all models)
  *   5. /info           — TGI format (max_input_tokens / max_total_tokens)
  *
- * Feature flag: `local-provider-context-ingestion`
+ * Capability gate: `local-provider-context-ingestion` (provider.localContextIngestion, default on)
  */
 
 import { logger } from '../utils/logger.js';

@@ -1,7 +1,7 @@
 /**
  * src/runtime/mcp — MCP lifecycle barrel.
  *
- * Gated by the `mcp-lifecycle` feature flag.
+ * Gated by the `mcp-lifecycle` capability gate (runtime.mcpLifecycle).
  *
  * Public API:
  *   - `createMcpLifecycleManager()` — factory function
@@ -57,7 +57,7 @@ import type { FeatureFlagManager } from '../feature-flags/index.js';
 /**
  * Factory function for creating a `McpLifecycleManager`.
  *
- * Check the `mcp-lifecycle` feature flag before calling this — when the
+ * Check the `mcp-lifecycle` gate (runtime.mcpLifecycle) before calling this — when the
  * flag is disabled, the caller should use the standard MCP registry path.
  *
  * @param options - Optional configuration overrides
@@ -67,7 +67,7 @@ export function createMcpLifecycleManager(
   flagManager?: Pick<FeatureFlagManager, 'isEnabled'> | null,
 ): McpLifecycleManager {
   if (flagManager && !flagManager.isEnabled('mcp-lifecycle')) {
-    throw new Error('Feature flag "mcp-lifecycle" is not enabled');
+    throw new Error('The structured MCP lifecycle is turned off; set runtime.mcpLifecycle to true (restart required), or use the standard MCP registry path.');
   }
   return new McpLifecycleManager(options);
 }

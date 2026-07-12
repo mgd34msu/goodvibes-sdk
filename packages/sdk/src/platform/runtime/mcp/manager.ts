@@ -1,7 +1,7 @@
 /**
  * McpLifecycleManager — drives the MCP server state machine.
  *
- * Gated by the `mcp-lifecycle` feature flag. When the flag is disabled
+ * Gated by the `mcp-lifecycle` capability gate (runtime.mcpLifecycle). When the gate is off
  * callers should use the standard MCP registry path instead.
  *
  * Responsibilities:

@@ -140,7 +140,7 @@ export interface TokenAuditorConfig {
    */
   managed: boolean;
   /**
-   * Feature flags gate managed blocking when supplied by SDK runtime services.
+   * The capability gates control managed blocking when supplied by SDK runtime services.
    * Audits still report violations while disabled.
    */
   featureFlags?: FeatureFlagReader | undefined;

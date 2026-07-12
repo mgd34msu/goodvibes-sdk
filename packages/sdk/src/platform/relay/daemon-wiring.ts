@@ -1,7 +1,7 @@
 // relay/daemon-wiring.ts
 //
 // Binds the injected-I/O reachability controller (reachability.ts) to the live
-// daemon's config, feature flag, secret custody, and request dispatch. Kept out
+// daemon's config, capability gate, secret custody, and request dispatch. Kept out
 // of the daemon facade so the facade's boot seam stays a single call and the
 // controller itself stays free of daemon-specific types.
 

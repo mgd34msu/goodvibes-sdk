@@ -7,7 +7,7 @@
 // couple of lines: the facade constructs one of these and calls start()/stop().
 //
 // Enablement is deliberately double-gated, mirroring how exec-sandbox gates
-// itself: the `relay.enabled` config switch AND the `relay-connect` feature flag
+// itself: the `relay.enabled` setting AND the `relay-connect` capability gate
 // AND a configured `relay.url` must all be true. Any one off keeps the daemon
 // LAN-only with the relay path byte-for-byte inert.
 //
@@ -50,7 +50,7 @@ export interface RelayReachabilityConfig {
 
 export interface RelayReachabilityOptions {
   readonly config: RelayReachabilityConfig;
-  /** Whether the `relay-connect` feature flag is enabled. */
+  /** Whether the `relay-connect` capability gate is on (relay.enabled). */
   readonly featureFlagEnabled: boolean;
   readonly identityStore: RelayIdentityStore;
   /** Replay a reconstructed request against the daemon (e.g. facade.handleRequest). */

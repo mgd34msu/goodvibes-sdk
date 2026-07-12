@@ -128,7 +128,7 @@ export interface ExecutorConfig {
   /**
    * Whether to enforce runtime budget limits (time, tokens, cost) at phase
    * entry and exit. When disabled, budget fields on ToolRuntimeContext are
-   * ignored. Controlled by the `runtime-tools-budget-enforcement` feature flag.
+   * ignored. Controlled by the runtime.toolBudget.enforced setting.
    */
   enableBudgetEnforcement?: boolean | undefined;
   /**

@@ -4,7 +4,7 @@
  * Exports the LayeredPolicyEvaluator, all types, rule evaluators, safety checks,
  * and the createPermissionEvaluator() factory function.
  *
- * Feature flag: `permissions-policy-engine` must be enabled to use this module in production.
+ * Capability gate: `permissions-policy-engine` (permissions.engine 'policy-engine') must be on to use this module in production.
  */
 
 export { LayeredPolicyEvaluator } from './evaluator.js';
@@ -178,7 +178,7 @@ export function createPermissionEvaluator(
   flagManager?: Pick<FeatureFlagManager, 'isEnabled'> | null,
 ): LayeredPolicyEvaluator {
   if (flagManager && !flagManager.isEnabled('permissions-policy-engine')) {
-    throw new Error('Feature flag "permissions-policy-engine" is not enabled');
+    throw new Error('The layered permissions policy engine is turned off; set permissions.engine to "policy-engine" (restart required) to use it.');
   }
   return new LayeredPolicyEvaluator(config, provenance);
 }
@@ -189,7 +189,7 @@ export function createPermissionEvaluator(
  * Creates a dual-evaluator simulation pipeline for the runtime permissions system that runs
  * both the actual and simulated evaluators in parallel, tracking divergence.
  *
- * Requires the `permissions-simulation` feature flag to be enabled.
+ * Requires the `permissions-simulation` gate (permissions.simulation) to be on.
  *
  * @param actualConfig    — Config for the authoritative evaluator.
  * @param simulatedConfig — Config for the candidate evaluator.
@@ -216,7 +216,7 @@ export function createPermissionSimulator(
   configManager?: Pick<ConfigManager, 'get'>,
 ): PermissionSimulator {
   if (flagManager && !flagManager.isEnabled('permissions-simulation')) {
-    throw new Error('Feature flag "permissions-simulation" is not enabled');
+    throw new Error('Permissions simulation is turned off; set permissions.simulation to true (restart required) to record evaluator divergence.');
   }
   // Config supplies the DEFAULT divergence threshold + record cap
   // (permissions.divergenceThreshold / permissions.maxDivergenceRecords); an
@@ -238,7 +238,7 @@ export function createPermissionSimulator(
 /**
  * createDivergenceDashboard — Factory for the permissions divergence dashboard.
  *
- * Requires the `permission-divergence-dashboard` feature flag when a flag manager
+ * Requires the `permission-divergence-dashboard` gate (permissions.divergenceDashboard) when a gate manager
  * is supplied. Hosts without the feature-flag subsystem can gate this factory
  * at their own boundary before calling it.
  */
@@ -255,7 +255,7 @@ export function createDivergenceDashboard(
 /**
  * createPolicyRegistry — Factory for the policy-as-code registry.
  *
- * Requires the `policy-as-code` feature flag when a flag manager is supplied.
+ * Requires the `policy-as-code` gate (policy.registryEnabled) when a gate manager is supplied.
  * Hosts without the feature-flag subsystem can gate this factory at their own
  * boundary before calling it.
  */

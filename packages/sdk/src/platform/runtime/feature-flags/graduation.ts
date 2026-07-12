@@ -1,13 +1,13 @@
 /**
  * graduation.ts — feature-flag graduation as a release policy.
  *
- * The platform ships most feature flags default-OFF ("dark") and flips them on
- * only once they are validated. Nothing forced a per-release DECISION about the
- * flags that had earned their way on — so validated work could sit dark
- * indefinitely. This module is the lightweight bookkeeping that forces that
- * decision: every flag carries an owner-facing graduation state, and the
- * release gate FAILS if any flag sits in `graduate-candidate` — a flag judged
- * ready but neither flipped on nor given a dated reason it is being held.
+ * Capabilities ship default-OFF ("dark") until validated, then default on.
+ * Nothing forced a per-release DECISION about the ones that had earned their
+ * way on — so validated work could sit dark indefinitely. This module is the
+ * lightweight bookkeeping that forces that decision: every capability carries
+ * an owner-facing graduation state, and the release gate FAILS if any sits in
+ * `graduate-candidate` — judged ready but neither defaulted on nor given a
+ * dated reason it is being held.
  *
  * It is bookkeeping, NOT a new simulation system. Evidence is wired in from the
  * machinery that already exists (the permissions divergence simulator); a flag

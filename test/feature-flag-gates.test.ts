@@ -1193,7 +1193,7 @@ describe('feature flag safe-default gates', () => {
   test('permissions-policy-engine gates permission evaluator factory when supplied', () => {
     expect(() => {
       createPermissionEvaluator({}, undefined, flags([]));
-    }).toThrow(/permissions-policy-engine/);
+    }).toThrow(/policy engine is turned off.*permissions\.engine/);
 
     expect(() => {
       createPermissionEvaluator({}, undefined, flags(['permissions-policy-engine']));
@@ -1225,10 +1225,10 @@ describe('feature flag safe-default gates', () => {
   test('plugin-lifecycle and mcp-lifecycle gate lifecycle factories when supplied', () => {
     expect(() => {
       createPluginLifecycleManager({}, flags([]));
-    }).toThrow(/plugin-lifecycle/);
+    }).toThrow(/plugin lifecycle is turned off.*runtime\.pluginLifecycle/);
     expect(() => {
       createMcpLifecycleManager({}, flags([]));
-    }).toThrow(/mcp-lifecycle/);
+    }).toThrow(/MCP lifecycle is turned off.*runtime\.mcpLifecycle/);
 
     expect(() => {
       createPluginLifecycleManager({}, flags(['plugin-lifecycle']));

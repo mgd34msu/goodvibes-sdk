@@ -17,7 +17,7 @@ import type { ExecutionPlan } from './execution-plan.js';
  *   targeted extraction calls over the existing message history.
  * - `distiller`  — the fresh-context strategy: one fresh model call distills the
  *   conversation into a structured continuation brief that seeds a new context.
- *   Graduates through the `compaction-distiller-strategy` feature flag; when the
+ *   Selected via behavior.compactionStrategy (the `compaction-distiller-strategy` gate); when the
  *   flag is dark the requested `distiller` selection resolves back to
  *   `structured`.
  */
@@ -146,7 +146,7 @@ export interface CompactionContext {
   /**
    * Which compaction strategy to run. Absent → `structured` (the default). The
    * caller resolves this from the `behavior.compactionStrategy` config key
-   * gated by the `compaction-distiller-strategy` feature flag, so a `distiller`
+   * gated by the `compaction-distiller-strategy` capability gate, so a `distiller`
    * value here already means the flag is on.
    */
   strategy?: CompactionStrategyChoice | undefined;

@@ -9,7 +9,7 @@
  * Integration pattern:
  *   1. After a mode-specific result is produced, call `appendSchemaFingerprint`.
  *   2. The `_meta.outputSchemaFingerprint` field is appended to the result object.
- *   3. When the feature flag is disabled the result object is returned unchanged.
+ *   3. When the fingerprint gate is off (tools.outputSchemaFingerprints) the result object is returned unchanged.
  */
 
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
@@ -19,7 +19,7 @@ export interface SchemaFingerprintOptions {
 }
 
 /**
- * Checks the runtime feature flags explicitly supplied by the composition root.
+ * Checks the runtime capability gates explicitly supplied by the composition root.
  */
 export function isSchemaFingerprintEnabled(options: SchemaFingerprintOptions = {}): boolean {
   return options.featureFlags?.isEnabled('output-schema-fingerprint') ?? false;

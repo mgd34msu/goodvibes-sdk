@@ -165,7 +165,7 @@ export interface PermissionDecision {
   policyBundleId?: string | undefined;
   /**
    * Signature validation status of the bundle at load time.
-   * Undefined when no bundle was loaded or when the feature flag is disabled.
+   * Undefined when no bundle was loaded or when the policy engine is off.
    */
   signatureStatus?: import('./policy-signer.js').SignatureStatus | undefined;
   /**

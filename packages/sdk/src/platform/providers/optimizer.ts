@@ -190,7 +190,7 @@ export class ProviderOptimizer {
    *
    * @remarks
    * `selectRoute` is wired by the orchestrator when the `provider-optimizer`
-   * feature flag is enabled. This follows the same deferred-integration pattern
+   * gate is on (provider.optimizerMode). This follows the same deferred-integration pattern
    * as session emitters — the method is fully functional but called externally
    * only when the feature is active. Until then it is a no-op (returns `null`).
    */

@@ -17,7 +17,7 @@
  *   - `enforce`            — Simulated decision becomes authoritative; blocked if
  *                           divergence gate fails (rate > threshold).
  *
- * Feature flag: `permissions-simulation` must be enabled to use this module.
+ * Capability gate: `permissions-simulation` (permissions.simulation) must be on to use this module.
  */
 
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';

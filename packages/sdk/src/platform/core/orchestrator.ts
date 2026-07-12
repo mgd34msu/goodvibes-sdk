@@ -122,7 +122,7 @@ export interface OrchestratorOptions {
   getSystemPrompt?: (() => string) | undefined;
   /** Optional hook dispatcher for lifecycle events. */
   hookDispatcher?: HookDispatcherLike | null | undefined;
-  /** Optional feature flag manager. */
+  /** Optional capability-gate manager. */
   flagManager?: FeatureFlagManager | null | undefined;
   /** Optional render request callback, called after state changes requiring a redraw. */
   requestRender?: (() => void) | null | undefined;
@@ -137,7 +137,7 @@ export interface OrchestratorOptions {
    * Per-turn passive-injection budget override for the main session,
    * mirroring agents/orchestrator-runner.ts's `passiveKnowledgeInjectionBudgetTokens`.
    * Omitted uses the derived default (defaultTurnKnowledgeBudgetTokens). `0` is a hard
-   * no-op, independent of the feature flag's own state.
+   * no-op, independent of the capability gate's own state.
    */
   passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   /**
@@ -230,7 +230,7 @@ export class Orchestrator {
   private readonly ownedCacheHitTracker = new CacheHitTracker();
 
   /**
-   * Optional feature flag manager.
+   * Optional capability-gate manager.
    *
    * When provided, the `tool-result-reconciliation` flag is
    * consulted at each turn end to decide whether to use full reconciliation
@@ -1053,7 +1053,7 @@ export class Orchestrator {
    * results for every unresolved call, adds a system message, and emits a
    * typed `TOOL_RECONCILED` runtime event.
    *
-   * When the feature flag is disabled this method logs a warning and returns
+   * When the capability gate is off this method logs a warning and returns
    * without taking action.
    *
    * @param resolvedResults - Tool results already collected this iteration.

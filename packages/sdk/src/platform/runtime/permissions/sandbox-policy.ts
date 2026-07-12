@@ -44,7 +44,7 @@ export interface SandboxPolicyDecision {
 export interface SandboxPolicyInput {
   readonly command: string;
   /**
-   * Whether the sandbox is genuinely active: the graduation-gated feature flag
+   * Whether the sandbox is genuinely active: the capability gate
    * is on, `sandbox.enabled` config is true, AND the host can provide a boundary.
    * When false, the base policy applies unchanged.
    */

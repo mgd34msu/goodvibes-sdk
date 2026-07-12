@@ -4,7 +4,7 @@
  * Integrates the Shell AST normalization pipeline with the exec tool to
  * provide per-segment verdict evaluation and user-facing denial explanations.
  *
- * When the `shell-ast-normalization` feature flag is enabled, every exec
+ * When AST command parsing is on (permissions.commandParser 'ast', the default), every exec
  * command is parsed into an AST, evaluated segment-by-segment, and denied
  * with a structured explanation if any segment fails policy.
  *
@@ -156,7 +156,7 @@ function astGuard(
 /**
  * Evaluates a shell command string through the AST guard.
  *
- * Routes to the AST pipeline when the `shell-ast-normalization` feature flag
+ * Routes to the AST pipeline when the `shell-ast-normalization` gate
  * is enabled, otherwise falls back to the baseline segmentation path.
  *
  * @param command        - The raw shell command string to evaluate.

@@ -121,7 +121,7 @@ type AutoCompactionDeps = {
   getActiveSkillFrontmatter?: (() => string | null | undefined) | undefined;
   /**
    * Resolves the effective compaction strategy (config value gated by the
-   * distiller feature flag). Absent → the structured default.
+   * distiller gate). Absent → the structured default.
    */
   getCompactionStrategy?: (() => CompactionStrategyChoice) | undefined;
 };

@@ -7,7 +7,7 @@
  * per-model `max_context_length` values. Results are keyed by model ID and
  * stored in an in-memory cache per provider.
  *
- * Feature flag: `local-provider-context-ingestion`
+ * Capability gate: `local-provider-context-ingestion` (provider.localContextIngestion, default on)
  * When disabled, this module is a no-op and callers fall back to the
  * statically-configured context window.
  *

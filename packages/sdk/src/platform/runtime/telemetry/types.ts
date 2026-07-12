@@ -187,7 +187,7 @@ export interface TracerConfig {
   readonly exporters: SpanExporter[];
   /**
    * Whether to sample all spans (true) or disable tracing (false).
-   * Defaults to true when the otel-foundation feature flag is enabled.
+   * Defaults to true when the OTel foundation is on (telemetry.otelMode).
    */
   readonly enabled: boolean;
 }

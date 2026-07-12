@@ -137,7 +137,7 @@ export interface OrchestratorTurnLoopContext {
   /**
    * Per-turn passive-injection wiring for the MAIN interactive session —
    * the sibling of the agent-runner's runAgentTask wiring in agents/orchestrator-runner.ts,
-   * gated on the SAME `agent-passive-knowledge-injection` feature flag (its description
+   * gated on the SAME `agent-passive-knowledge-injection` capability gate (its description
    * already promised "the EVOLVING main-session conversation" coverage; see
    * runtime/feature-flags/flags.ts). `memoryRegistry` undefined is a hard no-op, matching
    * the agent path. Budget/floor default to the same derived defaults
