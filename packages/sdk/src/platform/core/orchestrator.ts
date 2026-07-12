@@ -726,7 +726,7 @@ export class Orchestrator {
       providerRegistry,
       favoritesStore: this.coreServices.favoritesStore,
       cacheHitTracker: getCacheHitTracker(this.coreServices, this.ownedCacheHitTracker),
-      helperModel: new HelperModel({ configManager, providerRegistry }),
+      helperModel: new HelperModel({ configManager, providerRegistry, runtimeBus: this.runtimeBus, sessionId: () => this.sessionId }),
       sessionId: this.sessionId,
       preTurnPlan,
       planManager: this.coreServices.planManager ?? null,

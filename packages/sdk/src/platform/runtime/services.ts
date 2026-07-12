@@ -391,6 +391,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const toolLLM = new ToolLLM({
     configManager,
     providerRegistry,
+    runtimeBus: options.runtimeBus,
   });
   const localUserAuthManager = new UserAuthManager({
     bootstrapFilePath: shellPaths.resolveUserPath(surfaceRoot, 'auth-users.json'),
