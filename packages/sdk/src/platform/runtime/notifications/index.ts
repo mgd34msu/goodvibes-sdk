@@ -55,8 +55,10 @@ import type { ConfigManager } from '../../config/manager.js';
  *
  * @param batchWindowMs - Optional batch window override in milliseconds
  *                        (default: 2000ms).
- * @param adaptiveSuppression - Whether adaptive-notification-suppression policies
- *                        (mode-context + burst) are active.
+ * @param adaptiveSuppression - Whether the adaptive-suppression policies
+ *                        (mode-context + burst collapse) are active. Omitted
+ *                        with a configManager supplied, it derives from the
+ *                        notifications.adaptiveSuppression setting (default on).
  * @param configManager - Optional config source; when supplied, burst-detector
  *                        thresholds are read from notifications.burst* (window /
  *                        threshold / cooldown). Constructor params still override.
@@ -74,5 +76,7 @@ export function createNotificationRouter(
         cooldownMs: configManager.get('notifications.burstCooldownMs'),
       }
     : undefined;
-  return new NotificationRouter(batchWindowMs, adaptiveSuppression, burstConfig);
+  const effectiveSuppression = adaptiveSuppression
+    ?? (configManager ? configManager.get('notifications.adaptiveSuppression') : undefined);
+  return new NotificationRouter(batchWindowMs, effectiveSuppression, burstConfig);
 }
