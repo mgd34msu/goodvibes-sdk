@@ -92,7 +92,7 @@ import { SandboxSessionRegistry } from './sandbox/session-registry.js';
 import { createShellPathService, type ShellPathService } from './shell-paths.js';
 import type { FeatureFlagManager } from './feature-flags/index.js';
 import { createFeatureFlagManager } from './feature-flags/index.js';
-import { bindFeatureFlagConfigBridge } from './feature-flags/config-bridge.js';
+import { deriveFeatureStates, bindFeatureSettingsBridge } from './feature-flags/feature-settings.js';
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
 import { loadConfiguredPolicyBundle } from './permissions/policy-config-loader.js';
 import { bindPermissionModeChangeEvent } from '../permissions/mode-change-emitter.js';
@@ -295,18 +295,21 @@ export function bindProviderOptimizerFeatureFlag(
 }
 
 /**
- * Apply the persistent provider-optimizer routing mode from config
- * (provider.optimizerMode / provider.optimizerPinnedModel) at startup. The
- * provider-optimizer feature flag still gates whether the optimizer is enabled;
- * this only seeds the mode/pin so an operator can persist "auto" or a pinned
- * model without re-issuing a /provider command each session. Runtime pin/unpin/
- * setMode still override for the live session.
+ * Apply the persistent provider-optimizer routing mode from config at startup.
+ * provider.optimizerMode 'off' keeps the optimizer inactive (its gate derives
+ * from the same key); this only seeds the mode/pin so an operator can persist
+ * "auto" or a pinned model without re-issuing a /provider command each
+ * session. Runtime pin/unpin/setMode still override for the live session.
  */
 export function applyProviderOptimizerConfigMode(
   configManager: Pick<ConfigManager, 'get'>,
   providerOptimizer: Pick<ProviderOptimizer, 'setMode' | 'pin'>,
 ): void {
   const mode = configManager.get('provider.optimizerMode');
+  if (mode === 'off') {
+    providerOptimizer.setMode('manual'); // inert baseline while inactive
+    return;
+  }
   if (mode === 'pinned') {
     const pinned = configManager.get('provider.optimizerPinnedModel').trim();
     const sep = pinned.indexOf(':');
@@ -332,13 +335,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const configManager = options.configManager;
   const featureFlags = options.featureFlags ?? createFeatureFlagManager();
   if (options.featureFlags === undefined) {
-    featureFlags.loadFromConfig({ flags: { ...configManager.getCategory('featureFlags') } });
-    // Live bridge: without this, a config.set('featureFlags.<id>', ...) after
-    // boot (the path the webui settings surface uses) persists but never
-    // reaches the manager until restart. Only wired when this call owns the
-    // manager it just constructed — an injected featureFlags (options.featureFlags
-    // set) is the caller's to bridge, if it wants to.
-    bindFeatureFlagConfigBridge(configManager, featureFlags);
+    // Gate states derive from domain settings keys; the bridge keeps live
+    // config.set changes flowing. Wired only for a manager this call owns.
+    featureFlags.loadFromConfig({ flags: deriveFeatureStates(configManager) });
+    bindFeatureSettingsBridge(configManager, featureFlags);
   }
   const runtimeDispatch = createDomainDispatch(options.runtimeStore);
   const gatewayMethods = new GatewayMethodCatalog();

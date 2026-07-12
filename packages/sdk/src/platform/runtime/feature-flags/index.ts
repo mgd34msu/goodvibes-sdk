@@ -1,27 +1,43 @@
 /**
- * Feature flag and kill-switch system for the goodvibes-sdk runtime — barrel exports and factory.
+ * Capability gates and per-feature settings metadata — barrel exports and factory.
+ *
+ * Surfaces render FEATURE_SETTINGS: every platform capability as a first-class
+ * domain setting (enablement key, option shapes, real descriptions). The gate
+ * manager underneath is internal plumbing whose state derives from those same
+ * settings keys; it also carries the emergency kill switch.
  *
  * Usage:
  * ```ts
- * import { createFeatureFlagManager } from './feature-flags/index.js';
- * const flagManager = createFeatureFlagManager();
+ * import { createFeatureFlagManager, deriveFeatureStates } from './feature-flags/index.js';
+ * const gates = createFeatureFlagManager();
+ * gates.loadFromConfig({ flags: deriveFeatureStates(configManager) });
  *
  * // Check before using a gated subsystem
- * if (flagManager.isEnabled('fetch-sanitization')) {
- *   // enable stricter fetch sanitization rules
+ * if (gates.isEnabled('exec-sandbox')) {
+ *   // per-command sandbox is active
  * }
  *
  * // Emergency kill
- * flagManager.kill('fetch-sanitization', 'Crash loop detected in production');
+ * gates.kill('exec-sandbox', 'Crash loop detected in production');
  * ```
  */
 
 export type { FlagState, FeatureFlag, FlagConfig, FlagTransition } from './types.js';
 export type { FlagSubscriber } from './manager.js';
 export { FeatureFlagManager, createFeatureFlagManager } from './manager.js';
-export { FEATURE_FLAGS, FEATURE_FLAG_MAP } from './flags.js';
-export { FEATURE_FLAG_CONFIG, getFeatureFlagConfig } from './flag-config-map.js';
-export type { FeatureFlagConfigAssociation } from './flag-config-map.js';
+export type {
+  FeatureSetting,
+  FeatureSettingsBinding,
+  FeatureEnablementKind,
+} from './feature-settings.js';
+export {
+  FEATURE_SETTINGS,
+  FEATURE_SETTINGS_BINDINGS,
+  getFeatureSettingsBinding,
+  deriveFeatureState,
+  deriveFeatureStates,
+  bindFeatureSettingsBridge,
+} from './feature-settings.js';
 export type { FeatureFlagReader } from './gates.js';
 export {
   isFeatureGateEnabled,

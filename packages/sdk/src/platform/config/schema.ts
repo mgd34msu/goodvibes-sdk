@@ -8,6 +8,7 @@ import { atRestConfigDefaults, atRestConfigSettings } from './schema-domain-at-r
 import { learningConfigDefaults, learningConfigSettings } from './schema-domain-learning.js';
 import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-surfaces.js';
 import { featureConfigDefaults, featureConfigSettings } from './schema-domain-features.js';
+import { featureControlSettings } from './schema-domain-feature-controls.js';
 import type { ConfigKey, ConfigSetting, GoodVibesConfig, SurfacesConfig } from './schema-types.js';
 
 export * from './schema-types.js';
@@ -49,7 +50,6 @@ export const DEFAULT_CONFIG = {
   cache: coreConfigDefaults.cache,
   helper: coreConfigDefaults.helper,
   notifications: coreConfigDefaults.notifications,
-  featureFlags: coreConfigDefaults.featureFlags,
   fetch: featureConfigDefaults.fetch,
   security: featureConfigDefaults.security,
   integrations: featureConfigDefaults.integrations,
@@ -66,6 +66,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...runtimeSecondaryConfigSettings,
   ...coreTailConfigSettings,
   ...featureConfigSettings,
+  ...featureControlSettings,
 ] as ConfigSetting[];
 
 /** Set of all valid config keys for runtime validation. */

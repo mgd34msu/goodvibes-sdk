@@ -16,8 +16,9 @@ export const coreConfigDefaults = {
     model: 'openrouter:openrouter/free',
     embeddingProvider: 'hashed-local',
     systemPromptFile: '',
-    optimizerMode: 'manual',
+    optimizerMode: 'off',
     optimizerPinnedModel: '',
+    localContextIngestion: true,
   },
   behavior: {
     autoApprove: false,
@@ -28,6 +29,7 @@ export const coreConfigDefaults = {
     notifyOnComplete: true,
     suggestAlternativeOnProviderFail: false,
     hitlMode: 'balanced',
+    toolResultReconciliation: 'reconcile',
     returnContextMode: 'off',
     guidanceMode: 'minimal',
   },
@@ -40,6 +42,10 @@ export const coreConfigDefaults = {
   permissions: {
     mode: 'prompt',
     backgroundAgents: 'inherit',
+    engine: 'baseline',
+    simulation: true,
+    divergenceDashboard: true,
+    commandParser: 'ast',
     divergenceThreshold: 0.05,
     maxDivergenceRecords: 500,
     tools: {
@@ -72,10 +78,11 @@ export const coreConfigDefaults = {
     maxTurns: 6,
     tokenCeiling: 120_000,
     wallTimeoutMs: 120_000, // 60s starved reasoning models that think silently before emitting (live replay: planner hit the wall at Turn 3 and fell back)
+    adaptive: false,
   },
   sandbox: {
-    enabled: false,
-    judgmentAutoApprove: false,
+    enabled: true,
+    judgment: 'annotate',
     egressAllowlist: [] as string[],
     workspaceWritable: [] as string[],
     replIsolation: 'shared-vm',
@@ -123,6 +130,8 @@ export const coreConfigDefaults = {
     defaultTokenBudget: 5000,
     hooksFile: 'hooks.json',
     overflowSpillBackend: 'file',
+    contractVerification: true,
+    outputSchemaFingerprints: false,
   },
   wrfc: {
     scoreThreshold: 9.9,
@@ -151,11 +160,11 @@ export const coreConfigDefaults = {
   },
   notifications: {
     webhookUrls: [],
+    adaptiveSuppression: true,
     burstWindowMs: 1_000,
     burstThreshold: 3,
     burstCooldownMs: 3_000,
   },
-  featureFlags: {},
 };
 
 export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
@@ -242,10 +251,10 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'provider.optimizerMode',
     type: 'enum',
-    default: 'manual',
+    default: 'off',
     description:
-      'Persistent provider-optimizer routing mode (applied at startup when the provider-optimizer feature flag is enabled): manual (never auto-routes), auto (selects the best capable provider per request via capability contracts), or pinned (force one model — see provider.optimizerPinnedModel). Runtime /provider commands and pin/unpin still override for the session.',
-    enumValues: ['manual', 'auto', 'pinned'],
+      'Provider routing optimizer: off (optimizer inactive, default), manual (optimizer active but never auto-routes), auto (selects the best capable provider per request via capability contracts), or pinned (force one model — see provider.optimizerPinnedModel). Runtime /provider commands and pin/unpin still override for the session.',
+    enumValues: ['off', 'manual', 'auto', 'pinned'],
   },
   {
     key: 'provider.optimizerPinnedModel',
@@ -271,8 +280,8 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     key: 'behavior.compactionStrategy',
     type: 'enum',
     default: 'structured',
-    description: 'Compaction strategy: structured (in-place summarization) or distiller (fresh model call producing a continuation brief; gated by the compaction-distiller-strategy flag, falls back to structured below the quality floor)',
-    enumValues: ['structured', 'distiller'],
+    description: 'Session compaction: off (sessions run uncompacted), structured (in-place summarization with semantic chunking and relevance scoring, default), or distiller (fresh model call producing a continuation brief; falls back to structured below the quality floor and the receipt names any fallback). behavior.autoCompactThreshold sets when compaction triggers.',
+    enumValues: ['off', 'structured', 'distiller'],
   },
   {
     key: 'behavior.staleContextWarnings',
@@ -522,15 +531,16 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'sandbox.enabled',
     type: 'boolean',
-    default: false,
+    default: true,
     description:
-      'Master switch for the per-command exec sandbox (bubblewrap on Linux): the workspace is writable, the rest of the filesystem is read-only, /tmp is isolated, and network is disabled unless a command is on sandbox.egressAllowlist. Default OFF; gated by the graduation-tracked exec-sandbox feature flag and honestly reported unavailable when bubblewrap is not present.',
+      'Master switch for the per-command exec sandbox (bubblewrap on Linux): the workspace is writable, the rest of the filesystem is read-only, /tmp is isolated, and network is disabled unless a command is on sandbox.egressAllowlist. Default ON where the host probe passes; honestly reported unavailable when bubblewrap is not present, leaving the exec path unchanged.',
   },
   {
-    key: 'sandbox.judgmentAutoApprove',
-    type: 'boolean',
-    default: false,
-    description: 'When the sandbox-model-judgment tier is enabled, opt into auto-approving a looks-safe verdict on a sandbox escalation ask. Default false = annotate-only (the human still decides). Never auto-denies and never touches the frozen catastrophic block',
+    key: 'sandbox.judgment',
+    type: 'enum',
+    default: 'annotate',
+    description: 'Model-judgment pass on sandbox escalation asks: off (plain asks), annotate (default — a proposed verdict with stated reasons annotates the ask, the human still decides), or auto-approve (additionally auto-approves looks-safe verdicts; explicit opt-in). Never auto-denies and never touches the frozen catastrophic block; every judgment leaves a receipt.',
+    enumValues: ['off', 'annotate', 'auto-approve'],
   },
   {
     key: 'sandbox.replIsolation',
@@ -746,7 +756,7 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'enum',
     default: 'file',
     description:
-      'Where large tool-output overflow content spills when the overflow-spill-backends feature flag is enabled: file (on-disk .overflow, default), ledger (execution ledger), or diagnostics. When the flag is disabled the file backend is always used regardless of this setting. An injected custom backend still takes precedence.',
+      'Where large tool-output overflow content spills: file (on-disk .overflow, default), ledger (execution ledger), or diagnostics. An injected custom backend still takes precedence.',
     enumValues: ['file', 'ledger', 'diagnostics'],
   },
   {
@@ -851,31 +861,7 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     key: 'behavior.hitlMode',
     type: 'enum',
     default: 'balanced',
-    description: 'HITL UX mode: controls notification verbosity and burst batching (quiet/balanced/operator)',
-    enumValues: ['quiet', 'balanced', 'operator'],
-  },
-  {
-    key: 'notifications.burstWindowMs',
-    type: 'number',
-    default: 1_000,
-    description:
-      'Observation window (ms) for the adaptive-notification-suppression burst detector: rapid domain:level notifications arriving within this window count toward the burst threshold. Applied at NotificationRouter construction.',
-    ...intRange(1, 60 * 60 * 1000),
-  },
-  {
-    key: 'notifications.burstThreshold',
-    type: 'number',
-    default: 3,
-    description:
-      'Number of notifications for one domain:level group within the burst window that trips adaptive suppression, collapsing further ones to panel_only with a burst_collapsed reason. Critical/milestone/alert notifications are always exempt.',
-    ...intRange(1, 10_000),
-  },
-  {
-    key: 'notifications.burstCooldownMs',
-    type: 'number',
-    default: 3_000,
-    description:
-      'Cooldown (ms) after a domain:level group trips the burst detector before it can trip again. Applied at NotificationRouter construction.',
-    ...intRange(0, 60 * 60 * 1000),
+    description: 'Notification verbosity mode applied to the notification router at startup and on change: off (baseline delivery policy, mode changes rejected), quiet (minimal verbosity, long batch windows), balanced (default), or operator (verbose, short batch windows)',
+    enumValues: ['off', 'quiet', 'balanced', 'operator'],
   },
 ];
