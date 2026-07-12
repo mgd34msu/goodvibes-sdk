@@ -15,6 +15,12 @@
  */
 
 import { ConfigManager } from '../config/manager.js';
+import { logger } from '../utils/logger.js';
+import {
+  FeatureAnnouncementStore,
+  collectStartupAnnouncements,
+  featureAnnouncementsPath,
+} from '../runtime/feature-announcements.js';
 import type { ApprovalBroker } from '../control-plane/index.js';
 import { DaemonServer } from './facade.js';
 
@@ -91,6 +97,16 @@ export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaem
 
   server.enable({ daemon: true }, options.token);
   await server.start();
+
+  // Announce-once receipts due at daemon start (e.g. the web surface URL):
+  // collected against the persisted store, so each line appears exactly once
+  // per install, in the daemon-start log surfaces relay.
+  for (const announcement of collectStartupAnnouncements({
+    configManager,
+    store: new FeatureAnnouncementStore(featureAnnouncementsPath(configManager)),
+  })) {
+    logger.info(announcement.text, { announcement: announcement.id });
+  }
 
   const host = server.boundHost;
   const port = server.boundPort;

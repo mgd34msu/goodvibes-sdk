@@ -286,6 +286,11 @@ export function registerAllTools(
      * fetch.allowLocalhost.
      */
     localhostFetchApproval?: ((input: { url: string; host: string }) => Promise<boolean>) | undefined;
+    /**
+     * Reports each contained (sandboxed) command run; the composition root
+     * wires it to the announce-once containment receipt.
+     */
+    onSandboxedRun?: (() => void) | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -388,6 +393,7 @@ export function registerAllTools(
           featureEnabled: true,
           homeDir: deps.configManager.getHomeDirectory() ?? undefined,
           ...(deps.sandboxEscalationHandler ? { requestEscalation: deps.sandboxEscalationHandler } : {}),
+          ...(deps.onSandboxedRun ? { onSandboxedRun: deps.onSandboxedRun } : {}),
         }
       : null;
   registerTool(createExecTool(processManager, {

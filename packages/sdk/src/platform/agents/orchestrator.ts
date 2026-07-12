@@ -136,6 +136,8 @@ type AgentOrchestratorToolDeps = {
    * localhost fetches are refused with an honest reason.
    */
   readonly localhostFetchApproval?: ((input: { url: string; host: string }) => Promise<boolean>) | undefined;
+  /** Reports each contained (sandboxed) command run for the announce-once containment receipt. */
+  readonly onSandboxedRun?: (() => void) | undefined;
 };
 
 /**
