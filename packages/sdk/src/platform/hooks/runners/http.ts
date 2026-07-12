@@ -20,7 +20,9 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
     const hostname = extractHostname(url);
     if (hostname !== null) {
       const trustResult = classifyHostTrustTier(hostname);
-      if (trustResult.tier === 'blocked') {
+      // Automated hook egress has no interactive approval flow: loopback
+      // targets stay refused here unless the hook opts in via allowInternal.
+      if (trustResult.tier === 'blocked' || trustResult.tier === 'localhost') {
         emitSsrfDeny(hostname, url, trustResult.reason);
         return { ok: false, error: `http hook blocked: ${trustResult.reason}` };
       }

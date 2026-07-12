@@ -129,6 +129,13 @@ type AgentOrchestratorToolDeps = {
     readonly policyReasons: readonly string[];
     readonly workingDirectory?: string | undefined;
   }) => Promise<boolean>) | undefined;
+  /**
+   * Broker the one-tap "allow localhost fetches for this project" ask through
+   * the approval broker. Threaded to registerAllTools so the fetch tool can
+   * ask once and persist the per-project approval. Omitted → unapproved
+   * localhost fetches are refused with an honest reason.
+   */
+  readonly localhostFetchApproval?: ((input: { url: string; host: string }) => Promise<boolean>) | undefined;
 };
 
 /**
