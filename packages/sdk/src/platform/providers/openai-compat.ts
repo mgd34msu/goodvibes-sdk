@@ -6,9 +6,15 @@ import type {
   ChatStopReason,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
+  ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
+import {
+  fetchModelIdsFromListing,
+  runLiveModelRefresh,
+  type LiveModelDiscoveryResult,
+} from './live-model-discovery.js';
 import type { ProviderCapability } from './capabilities.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
@@ -284,6 +290,28 @@ export interface OpenAICompatOptions {
   authConfigured?: boolean | undefined;
   /** Shared cache-hit tracker owned by the runtime service graph. */
   cacheHitTracker?: Pick<CacheHitTracker, 'recordTurn'> | undefined;
+  /**
+   * How this backend's model list is discovered.
+   *  - 'openai-endpoint' (default): live discovery from the backend's
+   *    OpenAI-style GET {baseURL}/models listing, with `models` demoted to a
+   *    dated-static baseline that is used until the first successful fetch
+   *    and whenever live discovery fails.
+   *  - 'none': the backend has no model-listing API (verified per provider);
+   *    `models` is the complete dated-static list and no live fetch is made.
+   */
+  modelListing?: 'openai-endpoint' | 'none' | undefined;
+  /** Override the model-listing URL (defaults to `${baseURL}/models`). */
+  modelListingUrl?: string | undefined;
+  /**
+   * Fully custom live-listing fetcher for backends whose listing is not an
+   * OpenAI-style GET (e.g. Fireworks' paginated account-management listing).
+   * Takes precedence over `modelListingUrl`.
+   */
+  fetchLiveModels?: (() => Promise<string[]>) | undefined;
+  /** The date the static `models` list was last verified, e.g. '2026-07-12'. */
+  modelsAsOf?: string | undefined;
+  /** On-disk cache path for live-discovered model lists (TTL cached). */
+  modelsCachePath?: string | undefined;
 }
 
 /**
@@ -293,8 +321,18 @@ export interface OpenAICompatOptions {
  */
 export class OpenAICompatProvider implements LLMProvider {
   readonly name: string;
-  readonly models: string[];
   readonly capabilities?: Partial<ProviderCapability> | undefined;
+  readonly modelSource: ProviderModelSource;
+
+  /**
+   * Populated synchronously with the configured static list at construction
+   * (never empty), then replaced by `refreshModels()` with the backend's
+   * live listing when `modelListing` is 'openai-endpoint'. See `modelSource`.
+   */
+  private _models: string[];
+  get models(): string[] {
+    return this._models;
+  }
 
   private client: OpenAI;
   private defaultModel: string;
@@ -314,10 +352,29 @@ export class OpenAICompatProvider implements LLMProvider {
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'>;
   private readonly baseURL: string;
   private readonly endpointHost: string;
+  private readonly apiKey: string;
+  private readonly defaultHeaders: Record<string, string>;
+  private readonly modelListing: 'openai-endpoint' | 'none';
+  private readonly modelListingUrl: string | undefined;
+  private readonly customFetchLiveModels: (() => Promise<string[]>) | undefined;
+  private readonly datedStaticModels: readonly string[];
+  private readonly modelsAsOf: string | undefined;
+  private readonly modelsCachePath: string | undefined;
 
   constructor(opts: OpenAICompatOptions) {
     this.name = opts.name;
-    this.models = opts.models;
+    this._models = [...opts.models];
+    this.datedStaticModels = [...opts.models];
+    this.apiKey = opts.apiKey;
+    this.defaultHeaders = opts.defaultHeaders ?? {};
+    this.modelListing = opts.modelListing ?? 'openai-endpoint';
+    this.modelListingUrl = opts.modelListingUrl;
+    this.customFetchLiveModels = opts.fetchLiveModels;
+    this.modelsAsOf = opts.modelsAsOf;
+    this.modelsCachePath = opts.modelsCachePath;
+    this.modelSource = this.modelListing === 'none'
+      ? { kind: 'dated-static', asOf: opts.modelsAsOf ?? 'unknown' }
+      : { kind: 'live-discovery' };
     this.capabilities = opts.capabilities;
     this.defaultModel = opts.defaultModel;
     this.embeddingModel = opts.embeddingModel ?? opts.defaultModel;
@@ -351,6 +408,39 @@ export class OpenAICompatProvider implements LLMProvider {
 
   isConfigured(): boolean {
     return this.configured || this.anonymousConfigured;
+  }
+
+  /**
+   * Re-check this backend's live model listing. Called at boot (background,
+   * respects the on-disk TTL cache) and on-demand for a picker-open re-check
+   * or an explicit user refresh (`force: true`). Always resolves — falls back
+   * to the on-disk cache, then to the dated-static baseline, and reports the
+   * honest failure reason rather than ever blanking the model list. When the
+   * backend has no listing API (`modelListing: 'none'`, verified per
+   * provider), this reports the dated-static source without a network call.
+   */
+  async refreshModels(force = false): Promise<LiveModelDiscoveryResult> {
+    const result = await runLiveModelRefresh({
+      providerName: this.name,
+      cachePath: this.modelsCachePath,
+      datedStaticModels: this.datedStaticModels,
+      datedStaticAsOf: this.modelsAsOf ?? 'unknown',
+      isConfigured: this.modelListing !== 'none' && this.isConfigured(),
+      fetchLive: () => this.fetchLiveModelIds(),
+      force,
+    });
+    this._models = [...result.models];
+    return result;
+  }
+
+  private async fetchLiveModelIds(): Promise<string[]> {
+    if (this.customFetchLiveModels) return this.customFetchLiveModels();
+    const url = this.modelListingUrl ?? `${this.baseURL.replace(/\/$/, '')}/models`;
+    const headers: Record<string, string> = { ...this.defaultHeaders };
+    if (this.apiKey && this.apiKey !== OPENAI_CLIENT_LOCAL_PLACEHOLDER_API_KEY) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+    return fetchModelIdsFromListing(this.name, url, headers, { filterNonChat: true });
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {

@@ -125,8 +125,12 @@ describe('ProviderRegistry.refreshLiveModelDiscovery — the picker-open re-chec
         expect(providerIds).toContain('anthropic');
         expect(providerIds).toContain('openai');
         expect(providerIds).toContain('gemini');
-        // A provider with no refreshModels() (e.g. a plain openai-compat instance) is skipped, not errored.
-        expect(providerIds).not.toContain('openrouter');
+        // Gateway/compat providers implement refreshModels() too, so the
+        // sweep covers them; with the endpoint offline each reports its
+        // dated-static fallback honestly instead of erroring the sweep.
+        expect(providerIds).toContain('openrouter');
+        const openrouterReport = reports.find((r) => r.providerId === 'openrouter');
+        expect(openrouterReport?.models.length).toBeGreaterThan(0);
       },
     );
   });

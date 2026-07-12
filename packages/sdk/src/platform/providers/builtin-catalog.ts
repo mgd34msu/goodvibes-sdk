@@ -16,6 +16,16 @@ export interface BuiltinOpenAICompatDefinition extends BuiltinProviderDefinition
   readonly baseURL: string;
   readonly defaultModel: string;
   readonly models: readonly string[];
+  /** Date the static `models` list was last verified against the backend. */
+  readonly modelsAsOf: string;
+  /**
+   * 'openai-endpoint' (default) = live discovery from GET {baseURL}/models;
+   * 'none' = the backend has no listing API (each 'none' is verified against
+   * the backend's documentation, never assumed).
+   */
+  readonly modelListing?: 'openai-endpoint' | 'none' | undefined;
+  /** Override the model-listing URL when it is not {baseURL}/models. */
+  readonly modelListingUrl?: string | undefined;
   readonly embeddingModel?: string | undefined;
   readonly reasoningFormat?: OpenAICompatOptions['reasoningFormat'] | undefined;
   readonly suppressedModelRegistryKeys?: readonly string[] | undefined;
@@ -31,6 +41,16 @@ export interface BuiltinAnthropicCompatDefinition extends BuiltinProviderDefinit
   readonly baseURL: string;
   readonly defaultModel: string;
   readonly models: readonly string[];
+  /** Date the static `models` list was last verified against the backend. */
+  readonly modelsAsOf: string;
+  /**
+   * 'anthropic-endpoint' (default) = live discovery from GET {baseURL}/models;
+   * 'none' = the backend has no listing API (each 'none' is verified against
+   * the backend's documentation, never assumed).
+   */
+  readonly modelListing?: 'anthropic-endpoint' | 'none' | undefined;
+  /** Override the model-listing URL when it is not {baseURL}/models. */
+  readonly modelListingUrl?: string | undefined;
   readonly defaultHeaders?: Record<string, string> | undefined;
   readonly authHeaderMode?: AnthropicCompatOptions['authHeaderMode'] | undefined;
   readonly streamProtocol?: string | undefined;
@@ -99,6 +119,7 @@ export function getBuiltinProviderEnvVars(providerId: string): readonly string[]
 export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'deepseek',
     label: 'DeepSeek',
     envVars: getBuiltinProviderEnvVars('deepseek'),
@@ -110,6 +131,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'fireworks',
     label: 'Fireworks',
     envVars: getBuiltinProviderEnvVars('fireworks'),
@@ -124,6 +146,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'microsoft-foundry',
     label: 'Microsoft Foundry',
     envVars: getBuiltinProviderEnvVars('microsoft-foundry'),
@@ -136,7 +159,12 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'anthropic-compat',
+    modelsAsOf: '2026-07-12',
     id: 'minimax',
+    // MiniMax's Anthropic-compatible surface has no models listing, but the
+    // platform documents GET /v1/models on its OpenAI-style surface with the
+    // same API key (platform.minimax.io, verified 2026-07-12).
+    modelListingUrl: 'https://api.minimax.io/v1/models',
     label: 'MiniMax',
     envVars: getBuiltinProviderEnvVars('minimax'),
     serviceNames: ['minimax'],
@@ -147,6 +175,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'moonshot',
     label: 'Moonshot',
     envVars: getBuiltinProviderEnvVars('moonshot'),
@@ -157,7 +186,12 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'qianfan',
+    // Baidu Qianfan's v2 OpenAI-compatible docs describe only
+    // chat/completions-style endpoints; the model catalog is a static
+    // reference page, not a queryable API (verified 2026-07-12).
+    modelListing: 'none',
     label: 'Qianfan',
     envVars: getBuiltinProviderEnvVars('qianfan'),
     serviceNames: ['qianfan'],
@@ -167,7 +201,12 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'qwen',
+    // Alibaba Model Studio's OpenAI-compatibility doc documents only
+    // chat/completions on the compatible-mode surface; the model catalog is a
+    // static reference page, not a queryable API (verified 2026-07-12).
+    modelListing: 'none',
     label: 'Qwen',
     envVars: getBuiltinProviderEnvVars('qwen'),
     serviceNames: ['qwen'],
@@ -178,6 +217,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'sglang',
     label: 'SGLang',
     envVars: getBuiltinProviderEnvVars('sglang'),
@@ -191,7 +231,12 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'stepfun',
+    // StepFun's API reference (platform.stepfun.ai/docs) documents only
+    // chat/completions, files, and audio — no model-listing endpoint
+    // (verified 2026-07-12).
+    modelListing: 'none',
     label: 'StepFun',
     envVars: getBuiltinProviderEnvVars('stepfun'),
     serviceNames: ['stepfun'],
@@ -201,6 +246,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'together',
     label: 'Together AI',
     envVars: getBuiltinProviderEnvVars('together'),
@@ -216,6 +262,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'venice',
     label: 'Venice',
     envVars: getBuiltinProviderEnvVars('venice'),
@@ -226,7 +273,12 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'volcengine',
+    // Volcengine Ark's v3 surface has no models listing: client.models.list()
+    // 404s (volcengine/volc-sdk-python#46, unresolved) and no Ark doc
+    // describes such an endpoint (verified 2026-07-12).
+    modelListing: 'none',
     label: 'Volcengine',
     envVars: getBuiltinProviderEnvVars('volcengine'),
     serviceNames: ['volcengine'],
@@ -237,6 +289,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'xai',
     label: 'xAI',
     envVars: getBuiltinProviderEnvVars('xai'),
@@ -248,7 +301,12 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'xiaomi',
+    // Xiaomi MiMo's docs (mimo.mi.com) document only POST chat/completions
+    // and the Anthropic-style messages endpoint — no model listing
+    // (verified 2026-07-12).
+    modelListing: 'none',
     label: 'Xiaomi MiMo',
     envVars: getBuiltinProviderEnvVars('xiaomi'),
     serviceNames: ['xiaomi'],
@@ -258,7 +316,12 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'zai',
+    // Z.ai's complete doc index (docs.z.ai/llms.txt) enumerates chat, agents,
+    // audio, image, video, tokenizer, and search endpoints — no model-listing
+    // endpoint exists on the paas/v4 surface (verified 2026-07-12).
+    modelListing: 'none',
     label: 'Z.ai',
     envVars: getBuiltinProviderEnvVars('zai'),
     serviceNames: ['zai'],
@@ -269,7 +332,13 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'cloudflare-ai-gateway',
+    // Cloudflare AI Gateway's provider-endpoint docs show only POST
+    // chat/completions and /responses passing through; a GET /models
+    // passthrough is nowhere documented (verified 2026-07-12). The base URL
+    // here is also an account/gateway placeholder until configured.
+    modelListing: 'none',
     label: 'Cloudflare AI Gateway',
     envVars: getBuiltinProviderEnvVars('cloudflare-ai-gateway'),
     serviceNames: ['cloudflare-ai-gateway'],
@@ -280,6 +349,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'vercel-ai-gateway',
     label: 'Vercel AI Gateway',
     envVars: getBuiltinProviderEnvVars('vercel-ai-gateway'),
@@ -291,6 +361,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'litellm',
     label: 'LiteLLM',
     envVars: getBuiltinProviderEnvVars('litellm'),
@@ -304,6 +375,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   },
   {
     kind: 'openai-compat',
+    modelsAsOf: '2026-07-12',
     id: 'copilot-proxy',
     label: 'Copilot Proxy',
     envVars: getBuiltinProviderEnvVars('copilot-proxy'),

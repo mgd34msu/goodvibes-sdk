@@ -10,7 +10,7 @@ import { AmazonBedrockMantleProvider } from './amazon-bedrock-mantle.js';
 import { AnthropicVertexProvider } from './anthropic-vertex.js';
 import { GitHubCopilotProvider } from './github-copilot.js';
 import { BUILTIN_COMPAT_PROVIDERS, type BuiltinCompatDefinition } from './builtin-catalog.js';
-import { getProviderModelsCachePath } from './live-model-discovery.js';
+import { fetchFireworksModelIds, getProviderModelsCachePath } from './live-model-discovery.js';
 import { normalizeFoundryEndpoint } from './microsoft-foundry-shared.js';
 import { SyntheticProvider } from './synthetic.js';
 import type { BenchmarkEntry } from './model-benchmarks.js';
@@ -58,6 +58,8 @@ export function createBuiltinCompatProvider(
   apiKey: string,
   options: {
     readonly cacheHitTracker?: import('./cache-strategy.js').CacheHitTracker | undefined;
+    /** On-disk cache path for this provider's live-discovered model list. */
+    readonly modelsCachePath?: string | undefined;
   },
 ): LLMProvider {
   if (definition.kind === 'anthropic-compat') {
@@ -67,6 +69,10 @@ export function createBuiltinCompatProvider(
       apiKey,
       defaultModel: definition.defaultModel,
       models: [...definition.models],
+      modelsAsOf: definition.modelsAsOf,
+      ...(definition.modelListing ? { modelListing: definition.modelListing } : {}),
+      ...(definition.modelListingUrl ? { modelListingUrl: definition.modelListingUrl } : {}),
+      ...(options.modelsCachePath ? { modelsCachePath: options.modelsCachePath } : {}),
       ...(definition.defaultHeaders ? { defaultHeaders: definition.defaultHeaders } : {}),
       authEnvVars: definition.envVars,
       serviceNames: definition.serviceNames,
@@ -90,6 +96,15 @@ export function createBuiltinCompatProvider(
     authConfigured: Boolean(apiKey),
     defaultModel: definition.defaultModel,
     models: [...definition.models],
+    modelsAsOf: definition.modelsAsOf,
+    ...(definition.modelListing ? { modelListing: definition.modelListing } : {}),
+    ...(definition.modelListingUrl ? { modelListingUrl: definition.modelListingUrl } : {}),
+    // Fireworks' inference surface has no /models listing; its documented
+    // listing lives on the account-management API and needs its own fetcher.
+    ...(definition.id === 'fireworks' && effectiveApiKey
+      ? { fetchLiveModels: () => fetchFireworksModelIds(effectiveApiKey) }
+      : {}),
+    ...(options.modelsCachePath ? { modelsCachePath: options.modelsCachePath } : {}),
     ...(definition.embeddingModel ? { embeddingModel: definition.embeddingModel } : {}),
     ...(definition.defaultHeaders ? { defaultHeaders: definition.defaultHeaders } : {}),
     reasoningFormat: definition.reasoningFormat ?? 'none',
@@ -132,6 +147,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'inceptionlabs',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('inceptionlabs'),
       baseURL: 'https://api.inceptionlabs.ai/v1',
       apiKey: apiKey('inceptionlabs'),
       defaultModel: 'mercury-2',
@@ -146,6 +163,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'openrouter',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('openrouter'),
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: apiKey('openrouter'),
       defaultModel: 'openrouter/free',
@@ -171,6 +190,11 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'aihubmix',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('aihubmix'),
+      // AiHubMix's documented listing lives at /api/v1/models (not
+      // {baseURL}/models) and keys entries by model_id (docs.aihubmix.com).
+      modelListingUrl: 'https://aihubmix.com/api/v1/models',
       baseURL: 'https://aihubmix.com/v1',
       apiKey: apiKey('aihubmix'),
       defaultModel: 'gpt-4.1-free',
@@ -191,6 +215,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'groq',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('groq'),
       baseURL: 'https://api.groq.com/openai/v1',
       apiKey: apiKey('groq'),
       defaultModel: 'qwen/qwen3-32b',
@@ -211,6 +237,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'cerebras',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('cerebras'),
       baseURL: 'https://api.cerebras.ai/v1',
       apiKey: apiKey('cerebras'),
       defaultModel: 'qwen-3-235b-a22b-instruct-2507',
@@ -224,6 +252,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'mistral',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('mistral'),
       baseURL: 'https://api.mistral.ai/v1',
       apiKey: apiKey('mistral'),
       defaultModel: 'mistral-large-latest',
@@ -244,6 +274,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'ollama-cloud',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('ollama-cloud'),
       baseURL: 'https://ollama.com/v1',
       apiKey: apiKey('ollama-cloud'),
       defaultModel: 'deepseek-v3.2',
@@ -275,6 +307,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'huggingface',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('huggingface'),
       baseURL: 'https://router.huggingface.co/v1',
       apiKey: apiKey('huggingface'),
       defaultModel: 'deepseek-ai/DeepSeek-V3.2',
@@ -413,6 +447,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'nvidia',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('nvidia'),
       baseURL: 'https://integrate.api.nvidia.com/v1',
       apiKey: apiKey('nvidia'),
       defaultModel: 'deepseek-ai/deepseek-v3.2',
@@ -542,6 +578,8 @@ export function registerBuiltinProviders(
   registry.register(
     new OpenAICompatProvider({
       name: 'llm7',
+      modelsAsOf: '2026-07-12',
+      modelsCachePath: modelsCachePath('llm7'),
       baseURL: 'https://api.llm7.io/v1',
       apiKey: apiKey('llm7'),
       defaultModel: 'codestral-latest',
@@ -561,7 +599,10 @@ export function registerBuiltinProviders(
   for (const definition of BUILTIN_COMPAT_PROVIDERS) {
     if (hasProvider(definition.id)) continue;
     const resolvedKey = apiKey(definition.id);
-    registry.register(createBuiltinCompatProvider(definition, resolvedKey, options));
+    registry.register(createBuiltinCompatProvider(definition, resolvedKey, {
+      cacheHitTracker: options.cacheHitTracker,
+      modelsCachePath: modelsCachePath(definition.id),
+    }));
   }
 
   registry.register(new AmazonBedrockProvider());

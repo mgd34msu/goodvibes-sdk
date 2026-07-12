@@ -199,6 +199,68 @@ export async function runLiveModelRefresh(opts: LiveModelRefreshOptions): Promis
 /** Chat-capable OpenAI model id — excludes embeddings, audio, image, and moderation endpoints. */
 const OPENAI_NON_CHAT_MODEL_PATTERN = /embedding|whisper|tts|dall-e|davinci|babbage|^ada|moderation|text-search|similarity|transcribe|speech|realtime|image/i;
 
+/**
+ * Fetch a model id list from an OpenAI-style listing endpoint
+ * (GET <url> returning `{ "data": [{ "id": ... }] }`). Shared by every
+ * OpenAI-compatible gateway provider; the same response shape is used by
+ * Anthropic-style listings, so the Anthropic-compat fetcher delegates here
+ * without the chat-capability filter.
+ */
+export async function fetchModelIdsFromListing(
+  providerName: string,
+  url: string,
+  headers: Record<string, string>,
+  options: { readonly filterNonChat?: boolean | undefined } = {},
+): Promise<string[]> {
+  const res = await fetchWithTimeout(url, { headers }, LIVE_FETCH_TIMEOUT_MS, instrumentedFetch);
+  if (!res.ok) {
+    throw new Error(`${providerName} model listing (${url}) returned ${res.status} ${res.statusText}`);
+  }
+  const body = await res.json() as
+    | { data?: Array<{ id?: unknown; model_id?: unknown }> }
+    | Array<{ id?: unknown; model_id?: unknown }>;
+  // Most backends use OpenAI's `{data:[{id}]}`; Together returns a bare array,
+  // and a few aggregators (e.g. AiHubMix) use `model_id` instead of `id`.
+  const entries = Array.isArray(body) ? body : body.data;
+  if (!Array.isArray(entries)) {
+    throw new Error(`${providerName} model listing (${url}) returned no model array`);
+  }
+  let ids = entries
+    .map((entry) => (typeof entry.id === 'string' ? entry.id : typeof entry.model_id === 'string' ? entry.model_id : null))
+    .filter((id): id is string => id !== null);
+  if (options.filterNonChat) {
+    ids = ids.filter((id) => !OPENAI_NON_CHAT_MODEL_PATTERN.test(id));
+  }
+  return ids;
+}
+
+/**
+ * Fetch Fireworks' live model list. Fireworks' OpenAI-compatible inference
+ * surface has no /models listing; the documented listing lives on the
+ * account-management API (GET /v1/accounts/fireworks/models, paginated).
+ * Model resource names there ("accounts/fireworks/models/<id>") are exactly
+ * the ids the chat surface accepts.
+ */
+export async function fetchFireworksModelIds(apiKey: string): Promise<string[]> {
+  const ids: string[] = [];
+  let pageToken = '';
+  do {
+    const url = `https://api.fireworks.ai/v1/accounts/fireworks/models?pageSize=200${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const res = await fetchWithTimeout(url, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    }, LIVE_FETCH_TIMEOUT_MS, instrumentedFetch);
+    if (!res.ok) {
+      throw new Error(`Fireworks model listing (${url}) returned ${res.status} ${res.statusText}`);
+    }
+    const body = await res.json() as { models?: Array<{ name?: unknown }>; nextPageToken?: unknown };
+    for (const model of body.models ?? []) {
+      if (typeof model.name === 'string' && model.name.length > 0) ids.push(model.name);
+    }
+    pageToken = typeof body.nextPageToken === 'string' ? body.nextPageToken : '';
+  } while (pageToken && ids.length < 5000);
+  return ids;
+}
+
 /** Fetch the live model list from Anthropic's GET /v1/models endpoint. */
 export async function fetchAnthropicModelIds(apiKey: string): Promise<string[]> {
   const res = await fetchWithTimeout('https://api.anthropic.com/v1/models?limit=1000', {
@@ -280,7 +342,9 @@ export function buildProviderNativeModelDefinition(providerId: string, modelId: 
     contextWindow: inferFallbackContextWindow(providerId, modelId),
     contextWindowProvenance: 'fallback',
     selectable: true,
-    tier: 'standard',
+    // Gateways mark no-cost models with a 'free' suffix (e.g. openrouter's
+    // ':free' variants and its 'openrouter/free' router id).
+    tier: /[:/-]free$/i.test(modelId) ? 'free' : 'standard',
     reasoningEffort: ['instant', 'low', 'medium', 'high'],
   };
 }

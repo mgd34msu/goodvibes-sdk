@@ -3,9 +3,15 @@ import type {
   ChatRequest,
   ChatResponse,
   ChatStopReason,
+  ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
+import {
+  fetchModelIdsFromListing,
+  runLiveModelRefresh,
+  type LiveModelDiscoveryResult,
+} from './live-model-discovery.js';
 import { applyAnthropicThinking } from './anthropic-stream.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry, type RetryConfig } from '../utils/retry.js';
@@ -60,6 +66,22 @@ export interface AnthropicCompatOptions {
    * sleeps.
    */
   retryConfig?: Partial<RetryConfig> | undefined;
+  /**
+   * How this backend's model list is discovered.
+   *  - 'anthropic-endpoint' (default): live discovery from the backend's
+   *    Anthropic-style GET {baseURL}/models listing, with `models` demoted
+   *    to a dated-static baseline used until the first successful fetch and
+   *    whenever live discovery fails.
+   *  - 'none': the backend has no model-listing API (verified per provider);
+   *    `models` is the complete dated-static list and no live fetch is made.
+   */
+  modelListing?: 'anthropic-endpoint' | 'none' | undefined;
+  /** Override the model-listing URL (defaults to `${baseURL}/models`). */
+  modelListingUrl?: string | undefined;
+  /** The date the static `models` list was last verified, e.g. '2026-07-12'. */
+  modelsAsOf?: string | undefined;
+  /** On-disk cache path for live-discovered model lists (TTL cached). */
+  modelsCachePath?: string | undefined;
 }
 
 /**
@@ -73,7 +95,17 @@ export interface AnthropicCompatOptions {
  */
 export class AnthropicCompatProvider implements LLMProvider {
   readonly name: string;
-  readonly models: string[];
+  readonly modelSource: ProviderModelSource;
+
+  /**
+   * Populated synchronously with the configured static list at construction
+   * (never empty), then replaced by `refreshModels()` with the backend's
+   * live listing when `modelListing` is 'anthropic-endpoint'.
+   */
+  private _models: string[];
+  get models(): string[] {
+    return this._models;
+  }
 
   private baseURL: string;
   private apiKey: string;
@@ -89,10 +121,23 @@ export class AnthropicCompatProvider implements LLMProvider {
   private readonly anonymousConfigured: boolean;
   private readonly anonymousDetail?: string | undefined;
   private readonly retryConfig?: Partial<RetryConfig> | undefined;
+  private readonly modelListing: 'anthropic-endpoint' | 'none';
+  private readonly modelListingUrl: string | undefined;
+  private readonly datedStaticModels: readonly string[];
+  private readonly modelsAsOf: string | undefined;
+  private readonly modelsCachePath: string | undefined;
 
   constructor(opts: AnthropicCompatOptions) {
     this.name = opts.name;
-    this.models = opts.models;
+    this._models = [...opts.models];
+    this.datedStaticModels = [...opts.models];
+    this.modelListing = opts.modelListing ?? 'anthropic-endpoint';
+    this.modelListingUrl = opts.modelListingUrl;
+    this.modelsAsOf = opts.modelsAsOf;
+    this.modelsCachePath = opts.modelsCachePath;
+    this.modelSource = this.modelListing === 'none'
+      ? { kind: 'dated-static', asOf: opts.modelsAsOf ?? 'unknown' }
+      : { kind: 'live-discovery' };
     this.baseURL = opts.baseURL.replace(/\/$/, ''); // strip trailing slash
     this.apiKey = opts.apiKey;
     this.defaultModel = opts.defaultModel;
@@ -111,6 +156,48 @@ export class AnthropicCompatProvider implements LLMProvider {
 
   isConfigured(): boolean {
     return Boolean(this.apiKey) || this.anonymousConfigured;
+  }
+
+  /**
+   * Re-check this backend's live model listing (Anthropic-style GET
+   * {baseURL}/models). Always resolves — falls back to the on-disk cache,
+   * then the dated-static baseline, with the honest failure reason; never
+   * blanks the model list. When the backend has no listing API
+   * (`modelListing: 'none'`, verified per provider), reports the
+   * dated-static source without a network call.
+   */
+  async refreshModels(force = false): Promise<LiveModelDiscoveryResult> {
+    const result = await runLiveModelRefresh({
+      providerName: this.name,
+      cachePath: this.modelsCachePath,
+      datedStaticModels: this.datedStaticModels,
+      datedStaticAsOf: this.modelsAsOf ?? 'unknown',
+      isConfigured: this.modelListing !== 'none' && this.isConfigured(),
+      fetchLive: () => this.fetchLiveModelIds(),
+      force,
+    });
+    this._models = [...result.models];
+    return result;
+  }
+
+  private async fetchLiveModelIds(): Promise<string[]> {
+    const url = this.modelListingUrl ?? `${this.baseURL}/models`;
+    const headers: Record<string, string> = {
+      'anthropic-version': ANTHROPIC_API_VERSION,
+      ...this.defaultHeaders,
+    };
+    if (this.apiKey) {
+      if (this.authHeaderMode === 'bearer') {
+        headers['Authorization'] = `Bearer ${this.apiKey}`;
+      } else {
+        // Listing endpoints on mixed-surface backends (e.g. a listing that
+        // lives on the backend's OpenAI-style surface) may expect bearer
+        // auth; send both — servers ignore the header they don't use.
+        headers['x-api-key'] = this.apiKey;
+        headers['Authorization'] = `Bearer ${this.apiKey}`;
+      }
+    }
+    return fetchModelIdsFromListing(this.name, url, headers);
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
