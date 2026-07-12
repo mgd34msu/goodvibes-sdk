@@ -156,6 +156,8 @@ export { FavoritesStore } from './favorites.js';
 export type { FavoriteEntry, FavoritesData, FavoritesStoreOptions, UsageEntry } from './favorites.js';
 export { ModelLimitsService } from './model-limits.js';
 export type { ModelLimitsServiceOptions } from './model-limits.js';
+export { findClosestModelIds, resolveModelReference } from './model-id-resolution.js';
+export type { ModelIdCandidate, ModelIdResolutionOptions } from './model-id-resolution.js';
 export { ProviderCapabilityRegistry, RouteRejectionCode } from './capabilities.js';
 export type { ProviderCapability, RequestProfile, RouteExplanation, RouteRejectionDetail } from './capabilities.js';
 export { ProviderOptimizer } from './optimizer.js';

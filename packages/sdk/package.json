@@ -357,6 +357,10 @@
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
     },
+    "./platform/runtime/feature-announcements": {
+      "types": "./dist/platform/runtime/feature-announcements.d.ts",
+      "import": "./dist/platform/runtime/feature-announcements.js"
+    },
     "./platform/runtime/feature-flags": {
       "types": "./dist/platform/runtime/feature-flags/index.d.ts",
       "import": "./dist/platform/runtime/feature-flags/index.js"
@@ -368,6 +372,10 @@
     "./platform/runtime/ecosystem": {
       "types": "./dist/platform/runtime/ecosystem/index.d.ts",
       "import": "./dist/platform/runtime/ecosystem/index.js"
+    },
+    "./platform/runtime/permissions/localhost-fetch-approval": {
+      "types": "./dist/platform/runtime/permissions/localhost-fetch-approval.d.ts",
+      "import": "./dist/platform/runtime/permissions/localhost-fetch-approval.js"
     },
     "./platform/runtime/permissions/sandbox-policy": {
       "types": "./dist/platform/runtime/permissions/sandbox-policy.d.ts",

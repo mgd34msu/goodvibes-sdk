@@ -47,6 +47,9 @@ const CONTRACTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/contracts`;
 const REALTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/transport-realtime`;
 const RUNTIME_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime`;
 const RUNTIME_OBSERVABILITY_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/observability`;
+const PROVIDERS_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/providers`;
+const FEATURE_ANNOUNCEMENTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/feature-announcements`;
+const LOCALHOST_FETCH_APPROVAL_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/permissions/localhost-fetch-approval`;
 const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
 const smokeScript = `
@@ -66,6 +69,9 @@ const contracts = await import('${CONTRACTS_ENTRY}');
 const runtimeEvents = await import('${REALTIME_ENTRY}');
 const runtime = await import('${RUNTIME_ENTRY}');
 const runtimeObservability = await import('${RUNTIME_OBSERVABILITY_ENTRY}');
+const providersEntry = await import('${PROVIDERS_ENTRY}');
+const featureAnnouncements = await import('${FEATURE_ANNOUNCEMENTS_ENTRY}');
+const localhostFetchApproval = await import('${LOCALHOST_FETCH_APPROVAL_ENTRY}');
 const contractsPackage = await import('${CONTRACTS_PACKAGE_NAME}');
 const errorsPackage = await import('${ERRORS_PACKAGE_NAME}');
 const daemonSdkPackage = await import('${DAEMON_SDK_PACKAGE_NAME}');
@@ -86,6 +92,13 @@ if (typeof runtimeEvents.createRemoteRuntimeEvents !== 'function') throw new Err
 if (!runtime.observability || !runtime.transport || !runtime.state) throw new Error('runtime namespace seams missing');
 if (typeof runtimeObservability.TimelineBuffer !== 'function') throw new Error('runtime observability state inspector export missing');
 if (!runtimeObservability.GATE_SUITES || typeof runtimeObservability.GATE_SUITES !== 'object') throw new Error('runtime observability GATE_SUITES export missing');
+if (typeof providersEntry.resolveModelReference !== 'function') throw new Error('providers resolveModelReference export missing');
+if (typeof providersEntry.findClosestModelIds !== 'function') throw new Error('providers findClosestModelIds export missing');
+if (typeof featureAnnouncements.FeatureAnnouncementStore !== 'function') throw new Error('feature-announcements store export missing');
+if (typeof featureAnnouncements.collectStartupAnnouncements !== 'function') throw new Error('feature-announcements collectStartupAnnouncements export missing');
+if (typeof featureAnnouncements.createSandboxContainmentAnnouncer !== 'function') throw new Error('feature-announcements sandbox announcer export missing');
+if (typeof featureAnnouncements.featureAnnouncementsPath !== 'function') throw new Error('feature-announcements path helper export missing');
+if (typeof localhostFetchApproval.buildLocalhostFetchApproval !== 'function') throw new Error('localhost-fetch-approval builder export missing');
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');
