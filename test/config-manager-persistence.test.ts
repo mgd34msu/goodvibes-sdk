@@ -38,16 +38,16 @@ describe('ConfigManager persistence', () => {
     mkdirSync(configDir, { recursive: true });
     const manager = new ConfigManager({ configDir });
 
-    manager.mergeCategory('featureFlags', { 'test-flag': 'disabled' } as never);
-    expect((manager.getCategory('featureFlags') as Record<string, string>)['test-flag']).toBe('disabled');
+    manager.mergeCategory('helper', { testEntry: 'disabled' } as never);
+    expect((manager.getCategory('helper') as Record<string, string>)['testEntry']).toBe('disabled');
 
-    manager.removeCategoryKey('featureFlags', 'test-flag');
-    expect('test-flag' in (manager.getCategory('featureFlags') as Record<string, string>)).toBe(false);
+    manager.removeCategoryKey('helper', 'testEntry');
+    expect('testEntry' in (manager.getCategory('helper') as Record<string, string>)).toBe(false);
 
     // The removal must survive a reload from disk — this is the exact path
-    // that silently kept stale flag overrides alive across restarts.
+    // that silently kept stale overrides alive across restarts.
     const reloaded = new ConfigManager({ configDir });
-    expect('test-flag' in (reloaded.getCategory('featureFlags') as Record<string, string>)).toBe(false);
+    expect('testEntry' in (reloaded.getCategory('helper') as Record<string, string>)).toBe(false);
   });
 
   test('removeCategoryKey on an absent key is a no-op and does not throw', () => {
@@ -55,7 +55,7 @@ describe('ConfigManager persistence', () => {
     mkdirSync(configDir, { recursive: true });
     const manager = new ConfigManager({ configDir });
 
-    expect(() => manager.removeCategoryKey('featureFlags', 'never-set')).not.toThrow();
+    expect(() => manager.removeCategoryKey('helper', 'never-set')).not.toThrow();
   });
 
   test('configured system prompt file read failures are surfaced', () => {

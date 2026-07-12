@@ -431,19 +431,23 @@ describe('feature flag safe-default gates', () => {
     }
   });
 
-  test('security settings report explains security-relevant disabled flags', () => {
+  test('security settings report keys on domain settings and reflects live state', () => {
     const manager = createFeatureFlagManager();
     const report = getSecuritySettingsReport(manager);
-    const fetchSetting = report.find((entry) => entry.key === 'featureFlags.fetch-sanitization');
+    const fetchSetting = report.find((entry) => entry.key === 'fetch.sanitizeMode');
 
-    expect(fetchSetting?.key).toBe('featureFlags.fetch-sanitization');
-    expect(fetchSetting?.currentState).toBe('disabled');
-    expect(fetchSetting?.insecureWhen).toMatch(/SSRF-risk hosts/i);
-    expect(fetchSetting?.enablementRequirements).toEqual([
-      'Enable featureFlags.fetch-sanitization in SDK/TUI configuration.',
-      'Add trusted_hosts only for hosts whose raw content is safe to expose to the model.',
-      'Keep sanitize_mode at safe-text or strict unless the target host is explicitly trusted.',
-    ]);
+    expect(fetchSetting?.key).toBe('fetch.sanitizeMode');
+    expect(fetchSetting?.featureId).toBe('fetch-sanitization');
+    expect(fetchSetting?.currentState).toBe('enabled');
+    expect(fetchSetting?.insecureWhen).toMatch(/sanitization/i);
+    expect(fetchSetting?.operationalNotes.join(' ')).toMatch(/metadata endpoints.*always blocked/i);
+    // No entry ever surfaces the dissolved category.
+    for (const entry of report) {
+      const rendered = [entry.key, entry.type, entry.summary, entry.insecureWhen, entry.enablementEffect,
+        ...entry.enablementRequirements, ...entry.operationalNotes].join(' ');
+      expect(rendered.toLowerCase()).not.toContain('feature flag');
+      expect(rendered).not.toContain('featureFlags.');
+    }
   });
 
   test('feature flag config rejects unknown flags instead of ignoring stale config', () => {
@@ -549,7 +553,7 @@ describe('feature flag safe-default gates', () => {
       surfaceKind: 'slack',
       surfaceId: 'T-test',
       externalId: 'U-test',
-    })).rejects.toThrow(/route-binding feature flag is disabled/);
+    })).rejects.toThrow(/route binding is turned off .*integrations\.routeBinding/);
   });
 
   test('route-binding allows durable route writes when feature flag is enabled', async () => {
@@ -1275,7 +1279,7 @@ describe('feature flag safe-default gates', () => {
       source: automationSource({ kind: 'watcher' }) as never,
       intervalMs: 1000,
       run: () => 'ok',
-    })).toThrow(/watcher-framework feature flag is disabled/);
+    })).toThrow(/watcher-framework feature is turned off .*watchers\.enabled/);
 
     const enabled = new WatcherRegistry({
       storePath: join(dir, 'enabled-watchers.json'),
@@ -1305,8 +1309,8 @@ describe('feature flag safe-default gates', () => {
       featureFlags: flags(['service-management']),
     });
 
-    expect(disabled.status().actionError).toMatch(/service-management feature flag is disabled/);
-    expect(() => disabled.install()).toThrow(/service-management feature flag is disabled/);
+    expect(disabled.status().actionError).toMatch(/service management is turned off .*service\.enabled/);
+    expect(() => disabled.install()).toThrow(/service-management feature is turned off .*service\.enabled/);
     expect(enabled.status().actionError).toBeUndefined();
   }));
 
@@ -1347,7 +1351,7 @@ describe('feature flag safe-default gates', () => {
     const disabled = new ControlPlaneGateway({ featureFlags: flags([]) });
     const enabled = new ControlPlaneGateway({ featureFlags: flags(['control-plane-gateway']) });
 
-    expect(disabled.getSnapshot()).toEqual(expect.objectContaining({ disabled: true, featureFlag: 'control-plane-gateway' }));
+    expect(disabled.getSnapshot()).toEqual(expect.objectContaining({ disabled: true, setting: 'controlPlane.gateway' }));
     expect(disabled.createEventStream(new Request('http://localhost/events')).status).toBe(503);
     expect(enabled.getSnapshot()).not.toEqual(expect.objectContaining({ disabled: true }));
   });
@@ -1409,7 +1413,7 @@ describe('feature flag safe-default gates', () => {
     });
 
     expect(disabled.listJobs()).toEqual([]);
-    await expect(disabled.createJob({} as never)).rejects.toThrow(/automation-domain feature flag is disabled/);
+    await expect(disabled.createJob({} as never)).rejects.toThrow(/automation-domain feature is turned off .*automation\.enabled/);
     expect(enabled.listJobs()).toEqual([]);
   }));
 
