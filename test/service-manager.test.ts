@@ -358,12 +358,12 @@ describe('service-management feature gate (launchd)', () => {
 
     const disabledStatus = disabled.status();
     expect(disabledStatus.platform).toBe('launchd');
-    expect(disabledStatus.actionError).toMatch(/service-management feature flag is disabled/);
-    expect(() => disabled.install()).toThrow(/service-management feature flag is disabled/);
-    expect(() => disabled.uninstall()).toThrow(/service-management feature flag is disabled/);
-    expect(() => disabled.start()).toThrow(/service-management feature flag is disabled/);
-    expect(() => disabled.stop()).toThrow(/service-management feature flag is disabled/);
-    expect(() => disabled.restart()).toThrow(/service-management feature flag is disabled/);
+    expect(disabledStatus.actionError).toMatch(/service management is turned off .*service\.enabled/);
+    expect(() => disabled.install()).toThrow(/service-management feature is turned off .*service\.enabled/);
+    expect(() => disabled.uninstall()).toThrow(/service-management feature is turned off .*service\.enabled/);
+    expect(() => disabled.start()).toThrow(/service-management feature is turned off .*service\.enabled/);
+    expect(() => disabled.stop()).toThrow(/service-management feature is turned off .*service\.enabled/);
+    expect(() => disabled.restart()).toThrow(/service-management feature is turned off .*service\.enabled/);
 
     const enabled = new PlatformServiceManager(configManager, {
       workingDirectory: dir,
