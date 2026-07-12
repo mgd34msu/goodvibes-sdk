@@ -228,7 +228,7 @@ export class MemoryStore {
 
   async init(): Promise<void> {
     if (this.ready) return;
-    await this.sqlite.init(createSchema as Parameters<SQLiteStore['init']>[0]);
+    await this.sqlite.init(createSchema as Parameters<SQLiteStore['init']>[0], { storeName: 'memory store', schemaVersion: 1 });
     this.ready = true;
     this.vectorIndex?.init();
     this.rebuildVectorIndex();

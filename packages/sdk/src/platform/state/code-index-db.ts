@@ -47,6 +47,9 @@ export const EMBEDDING_PROVIDER_META_KEY = 'embedding_provider_id';
 export const CHUNK_ROW_COLUMNS =
   'rowid, chunk_id, path, lang, symbol, kind, start_line, end_line, content_hash, mtime, file_hash';
 
+/** Target `PRAGMA user_version` for the code index store. */
+export const CODE_INDEX_SCHEMA_VERSION = 1;
+
 export function createCodeIndexSchema(db: Database): void {
   db.run(`
     CREATE TABLE IF NOT EXISTS code_chunks (
