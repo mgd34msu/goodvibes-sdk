@@ -139,7 +139,7 @@ function userMessageContents(messages: readonly unknown[]): string[] {
     .map((m) => m.content as string);
 }
 
-describe('orchestrator-runner — steer drain (Wave-3, W3.2)', () => {
+describe('orchestrator-runner — steer drain', () => {
   let tmpDir: string | undefined;
 
   afterEach(() => {
@@ -148,7 +148,7 @@ describe('orchestrator-runner — steer drain (Wave-3, W3.2)', () => {
   });
 
   test('a queued steer reaches the conversation verbatim at the next turn top, and communication.consumed fires exactly once', async () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'wo602-steer-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'steer-drain-'));
     const messageBus = new AgentMessageBus();
     const runtimeBus = new RuntimeEventBus();
     const consumedEvents: Array<Extract<CommunicationEvent, { type: 'COMMUNICATION_CONSUMED' }>> = [];
@@ -282,7 +282,7 @@ describe('orchestrator-runner — steer drain (Wave-3, W3.2)', () => {
   });
 
   test('a steer queued after the agent has already begun its final (no-tool-call) turn is never drained and never emits consumed', async () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'wo602-steer-stranded-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'steer-drain-stranded-'));
     const messageBus = new AgentMessageBus();
     const runtimeBus = new RuntimeEventBus();
     const consumedEvents: unknown[] = [];

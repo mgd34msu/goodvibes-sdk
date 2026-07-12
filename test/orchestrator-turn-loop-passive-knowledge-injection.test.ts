@@ -217,7 +217,7 @@ function finalResponseProvider(content = 'done'): LLMProvider {
   };
 }
 
-describe('orchestrator-turn-loop — main-session per-turn passive knowledge injection (Wave-5, wo805)', () => {
+describe('orchestrator-turn-loop — main-session per-turn passive knowledge injection', () => {
   test('a relevant memory record composes onto the sent systemPrompt and is recorded with a numeric tokenCost', async () => {
     const { registry: memoryRegistry } = makeCountingMemoryRegistry([
       makeMemoryRecord({

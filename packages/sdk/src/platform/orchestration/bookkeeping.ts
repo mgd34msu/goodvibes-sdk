@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Post-phase bookkeeping failure classification (DEBT-4 item 1).
+ * Post-phase bookkeeping failure classification.
  *
  * A pipeline phase's terminal verdict is decided by its GATE (phase-runner.ts
  * evaluateGate) and nothing else. Everything that happens AFTER the gate
@@ -15,7 +15,7 @@
  * chain must not be flipped to FAILED by a non-fatal auto-commit fault. The
  * orchestration engine needs the same rule so a work item can never show
  * `failed` while every one of its phases shows `passed` and its scoped commit
- * landed — the contradictory state DEBT-4 item 1 set out to make unrepresentable.
+ * landed — the contradictory state this module exists to make unrepresentable.
  *
  * ── The negating set (deliberately narrow, positive-evidence only) ──────────
  * A bookkeeping failure NEGATES the phase's passed work — and therefore fails

@@ -246,7 +246,7 @@ describe('activeWorkItemAgentId', () => {
   });
 });
 
-describe('DEBT-4 item 2 — mid-phase rollup shows live usage, never n/a; presence is monotone', () => {
+describe('mid-phase rollup shows live usage, never n/a; presence is monotone', () => {
   const liveOverlay = (inputTokens: number, costUsd: number): LiveItemUsage => ({
     usage: { inputTokens, outputTokens: inputTokens / 2, cacheReadTokens: 0, cacheWriteTokens: 0, llmCallCount: 1, turnCount: 1, toolCallCount: 0 },
     costUsd,

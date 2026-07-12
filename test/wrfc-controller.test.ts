@@ -1254,7 +1254,7 @@ describe('WrfcController — escalation', () => {
     h.controller.dispose();
   });
 
-  test('transport-classified child failure retries once before failing the chain (W0.2)', async () => {
+  test('transport-classified child failure retries once before failing the chain', async () => {
     const h = createHarness({ transportRetryLimit: 1, transportRetryDelayMs: 5 });
 
     const ownerRecord = h.addAgent('owner-transport-1', 'task that hits a transport blip');
@@ -1371,7 +1371,7 @@ function makeReviewerOutput(
 }
 
 describe('WrfcController — constraint integration', () => {
-  test('C1: full chain with constraints ending in pass', async () => {
+  test('Full chain with constraints ending in pass', async () => {
     const h = createHarness();
 
     const engRecord = h.addAgent('eng-c1', 'implement with constraints');
@@ -1409,7 +1409,7 @@ describe('WrfcController — constraint integration', () => {
     h.controller.dispose();
   });
 
-  test('C2: full chain without constraints', async () => {
+  test('Full chain without constraints', async () => {
     const h = createHarness();
 
     const engRecord = h.addAgent('eng-c2', 'implement unconstrained feature');

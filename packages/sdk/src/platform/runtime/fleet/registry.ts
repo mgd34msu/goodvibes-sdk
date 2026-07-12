@@ -394,7 +394,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       // Resolve each item's active-agent in-flight usage ONCE up front, keyed
       // by item id, so both the workstream rollup and the per-item nodes show
       // live mid-phase usage instead of n/a until the phase boundary lands
-      // (DEBT-4 item 2). displayWorkItemUsage applies the overlay only while an
+      // displayWorkItemUsage applies the overlay only while an
       // item is 'in-phase', so this never double-counts committed usage.
       const liveByItemId = new Map<string, LiveItemUsage>();
       for (const item of workstream.items) {

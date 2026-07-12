@@ -1,5 +1,5 @@
 /**
- * WO UX-A item 3 — cost trust.
+ * Cost trust.
  *
  * A cold eval: the WRFC owner row showed 284.4k tokens "unpriced" while its
  * children priced fine, and the chain detail read "model unknown". Root cause: the

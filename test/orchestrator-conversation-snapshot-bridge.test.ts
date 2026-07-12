@@ -31,7 +31,7 @@ import type { LLMProvider } from '../packages/sdk/src/platform/providers/interfa
 import type { ConversationMessageSnapshot } from '../packages/sdk/src/platform/core/conversation.js';
 import type { FeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/manager.js';
 
-describe('AgentOrchestrator — conversation-sink wiring (W3.1 Part C6)', () => {
+describe('AgentOrchestrator — conversation-sink wiring', () => {
   test('setConversationSink wires register/release into createRunContext(); unset → both undefined so orchestrator-runner\'s ?.() calls are no-ops', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     // createRunContext() reads this.toolDeps!.providerRegistry! directly —
@@ -156,9 +156,9 @@ function makeMinimalRunContext(overrides: {
   };
 }
 
-describe('runAgentTask — conversation-snapshot bridge call sites (W3.1 Part C6)', () => {
+describe('runAgentTask — conversation-snapshot bridge call sites', () => {
   test('registers a live source right after creating the ConversationManager, then releases exactly once on normal completion', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'wo601-bridge-'));
+    const dir = mkdtempSync(join(tmpdir(), 'snapshot-bridge-'));
     try {
       const registeredIds: string[] = [];
       const releasedIds: string[] = [];
@@ -194,7 +194,7 @@ describe('runAgentTask — conversation-snapshot bridge call sites (W3.1 Part C6
   });
 
   test('releases exactly once even when the agent chat call throws (handleAgentRunFailure path)', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'wo601-bridge-fail-'));
+    const dir = mkdtempSync(join(tmpdir(), 'snapshot-bridge-fail-'));
     try {
       const releasedIds: string[] = [];
       const failingProvider: LLMProvider = {
@@ -221,7 +221,7 @@ describe('runAgentTask — conversation-snapshot bridge call sites (W3.1 Part C6
   });
 
   test('releasing is a no-op call shape when no sink is wired (registerConversationSource/releaseConversationSource undefined)', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'wo601-bridge-unwired-'));
+    const dir = mkdtempSync(join(tmpdir(), 'snapshot-bridge-unwired-'));
     try {
       const context = makeMinimalRunContext({ workingDirectory: dir });
       expect(context.registerConversationSource).toBeUndefined();

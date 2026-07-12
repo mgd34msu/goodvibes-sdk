@@ -55,7 +55,7 @@ describe('schema + DEFAULT_CONFIG: daemon on by default, danger.daemon alias rem
     expect(setting!.default).toBe(true);
   });
 
-  test('danger.daemon is no longer a valid schema key (removed, Wave 6)', () => {
+  test('danger.daemon is no longer a valid schema key (removed)', () => {
     expect(CONFIG_SCHEMA.find((s) => s.key === 'danger.daemon')).toBeUndefined();
     expect(CONFIG_KEYS.has('danger.daemon')).toBe(false);
   });

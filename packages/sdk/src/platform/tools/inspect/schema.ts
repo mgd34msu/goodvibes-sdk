@@ -265,7 +265,7 @@ export interface ApiSyncResult {
 }
 
 // ---------------------------------------------------------------------------
-// Frontend analysis result types (C12)
+// Frontend analysis result types
 // ---------------------------------------------------------------------------
 
 export interface StateVar {

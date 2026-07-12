@@ -257,7 +257,7 @@ async function seedChainWithConstraints(
 // A1: Engineer → review propagation
 // ---------------------------------------------------------------------------
 
-describe('A1: Engineer → review propagation', () => {
+describe('Engineer → review propagation', () => {
   test('constraints captured from engineer report and appear in review task', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -298,7 +298,7 @@ describe('A1: Engineer → review propagation', () => {
 // A2: Review → fix propagation with markers
 // ---------------------------------------------------------------------------
 
-describe('A2: Review → fix propagation with markers', () => {
+describe('Review → fix propagation with markers', () => {
   test('unsatisfied constraint forces hard-fail despite score >= threshold, SATISFIED/UNSATISFIED markers in fix task', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -396,7 +396,7 @@ describe('A2: Review → fix propagation with markers', () => {
 // A3: Fixer continuity enforcement — clean return
 // ---------------------------------------------------------------------------
 
-describe('A3: Fixer continuity — clean return', () => {
+describe('Fixer continuity — clean return', () => {
   test('fixer returns same ids → no synthetic issues injected', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -434,7 +434,7 @@ describe('A3: Fixer continuity — clean return', () => {
 // A4: Fixer continuity — missing id
 // ---------------------------------------------------------------------------
 
-describe('A4: Fixer continuity — id missing', () => {
+describe('Fixer continuity — id missing', () => {
   test('fixer drops c2 → synthetic critical issue injected, authoritative list preserved', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -478,7 +478,7 @@ describe('A4: Fixer continuity — id missing', () => {
 // A5: Fixer continuity — extra id
 // ---------------------------------------------------------------------------
 
-describe('A5: Fixer continuity — id extra', () => {
+describe('Fixer continuity — id extra', () => {
   test('fixer adds c99 → synthetic critical issue injected, authoritative list unchanged', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -576,7 +576,7 @@ describe('A5c: Fixer continuity — malformed constrained fixer report', () => {
 // A6: Synthetic issue consumption (fire-once)
 // ---------------------------------------------------------------------------
 
-describe('A6: Synthetic issue consumption', () => {
+describe('Synthetic issue consumption', () => {
   test('synthetic issues prepended to review task then cleared', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -613,7 +613,7 @@ describe('A6: Synthetic issue consumption', () => {
 // A7: Empty-list no-op — reviewer side
 // ---------------------------------------------------------------------------
 
-describe('A7: Empty-list no-op — reviewer side', () => {
+describe('Empty-list no-op — reviewer side', () => {
   test('constraints:[] → review task has no constraint section', async () => {
     const { h, chain } = await seedChainWithConstraints([]);
 
@@ -634,7 +634,7 @@ describe('A7: Empty-list no-op — reviewer side', () => {
 // A8: Empty-list no-op — fixer side
 // ---------------------------------------------------------------------------
 
-describe('A8: Empty-list no-op — fixer side', () => {
+describe('Empty-list no-op — fixer side', () => {
   test('constraints:[] → fix task has no constraint section', async () => {
     const { h, chain, reviewerAgentId } = await seedChainWithConstraints([], { maxFixAttempts: 3 });
 
@@ -731,7 +731,7 @@ function waitForEvent(bus: RuntimeEventBus, eventType: string): Promise<void> {
   });
 }
 
-describe('A9: Gate retry — same-chain fix', () => {
+describe('Gate retry — same-chain fix', () => {
   test('gate failure keeps owner chain active and sends constraints to the fixer', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a9');
 
@@ -778,7 +778,7 @@ describe('A9: Gate retry — same-chain fix', () => {
 // A10: Gate retry does not create child chains
 // ---------------------------------------------------------------------------
 
-describe('A10: Gate retry — no child chain', () => {
+describe('Gate retry — no child chain', () => {
   test('gate failure does not create a second WRFC chain', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a10');
 
@@ -818,7 +818,7 @@ describe('A10: Gate retry — no child chain', () => {
 // A11: Zero-constraint gate retry
 // ---------------------------------------------------------------------------
 
-describe('A11: Zero-constraint gate retry', () => {
+describe('Zero-constraint gate retry', () => {
   test('same-chain gate fix omits constraint section when no constraints were enumerated', async () => {
     const { bus, controller, agentStore, spawnedRecords } = createGateHarness('always-fail-a11');
 
@@ -850,7 +850,7 @@ describe('A11: Zero-constraint gate retry', () => {
 // A12: Score-vs-constraint conflict matrix (4 cases)
 // ---------------------------------------------------------------------------
 
-describe('A12: Score-vs-constraint conflict matrix', () => {
+describe('Score-vs-constraint conflict matrix', () => {
   test('score 10 + all satisfied → passed:true', async () => {
     const { h, chain, reviewerAgentId } = await seedChainWithConstraints([
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -925,7 +925,7 @@ describe('A12: Score-vs-constraint conflict matrix', () => {
 // A13: WORKFLOW_REVIEW_COMPLETED event payload with / without constraints
 // ---------------------------------------------------------------------------
 
-describe('A13: WORKFLOW_REVIEW_COMPLETED event payload', () => {
+describe('WORKFLOW_REVIEW_COMPLETED event payload', () => {
   test('with constraints → event carries constraintsSatisfied, constraintsTotal, unsatisfiedConstraintIds', async () => {
     const { h, reviewerAgentId } = await seedChainWithConstraints([
       { id: 'c1', text: 'must be pure', source: 'prompt' },
@@ -969,7 +969,7 @@ describe('A13: WORKFLOW_REVIEW_COMPLETED event payload', () => {
 // A14: WORKFLOW_CONSTRAINTS_ENUMERATED emitted exactly once per chain
 // ---------------------------------------------------------------------------
 
-describe('A14: WORKFLOW_CONSTRAINTS_ENUMERATED emitted exactly once', () => {
+describe('WORKFLOW_CONSTRAINTS_ENUMERATED emitted exactly once', () => {
   test('emitted on initial engineer completion, NOT re-emitted on fixer re-runs', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },

@@ -75,7 +75,7 @@ describe('Engineer report — malformed constraints not an array', () => {
   });
 });
 
-describe('D3: Engineer report — mixed well-formed and malformed constraint entries', () => {
+describe('Engineer report — mixed well-formed and malformed constraint entries', () => {
   test('well-formed entries pass through, malformed are filtered out', () => {
     const wellFormed: Constraint = { id: 'c1', text: 'must be pure', source: 'prompt' };
     const malformedCases: Array<Record<string, unknown>> = [
@@ -130,7 +130,7 @@ describe('D3: Engineer report — mixed well-formed and malformed constraint ent
   });
 });
 
-describe('D4: Reviewer report — missing constraintFindings field', () => {
+describe('Reviewer report — missing constraintFindings field', () => {
   test('missing constraintFindings defaults to []', () => {
     const raw = asJsonBlock({ ...BASE_REVIEWER }); // no constraintFindings field
     const result = parseCompletionReport(raw);
@@ -141,7 +141,7 @@ describe('D4: Reviewer report — missing constraintFindings field', () => {
   });
 });
 
-describe('D5: Reviewer report — malformed constraintFindings', () => {
+describe('Reviewer report — malformed constraintFindings', () => {
   test('constraintFindings: string defaults to []', () => {
     const raw = asJsonBlock({ ...BASE_REVIEWER, constraintFindings: 'bad' });
     const result = parseCompletionReport(raw) as ReviewerReport;
@@ -197,7 +197,7 @@ describe('D5: Reviewer report — malformed constraintFindings', () => {
   });
 });
 
-describe('D6: Parser purity — does not mutate caller\'s object', () => {
+describe('Parser purity — does not mutate caller\'s object', () => {
   test('result is a new object — original parsed object is not mutated', () => {
     // We pass raw JSON string; parse it as an object, then check that the
     // field the parser adds (constraints:[]) is NOT on the live object

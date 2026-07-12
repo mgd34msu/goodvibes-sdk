@@ -55,7 +55,7 @@ function sanitizeNone(content: string): SanitizeResult {
 }
 
 /**
- * `safe-text` mode — strips script/style elements and C0/C1 control
+ * `safe-text` mode — strips script/style elements and C0 and C1 control
  * characters (except tab, newline, carriage return).
  *
  * This mode is appropriate for general external content where HTML injection
