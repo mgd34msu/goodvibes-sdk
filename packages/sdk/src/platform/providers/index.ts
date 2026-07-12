@@ -9,11 +9,28 @@ export type {
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
   ProviderMessage,
+  ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
   ProviderUsageCostMetadata,
   StreamDelta,
 } from './interface.js';
+export {
+  verifyProviderModelSource,
+  formatProviderModelSourceRejection,
+} from './model-source-contract.js';
+export type { ModelSourceCheckable, ProviderModelSourceViolation } from './model-source-contract.js';
+export {
+  buildProviderNativeModelDefinition,
+  diffModelIds,
+  fetchAnthropicModelIds,
+  fetchGeminiModelIds,
+  fetchOpenAIModelIds,
+  formatModelDiscoveryReport,
+  getProviderModelsCachePath,
+  runLiveModelRefresh,
+} from './live-model-discovery.js';
+export type { LiveModelDiscoveryResult, LiveModelDiscoverySource, LiveModelRefreshOptions } from './live-model-discovery.js';
 export { REASONING_BUDGET_MAP } from './interface.js';
 export { createProviderApi } from './provider-api.js';
 export type {
@@ -27,6 +44,7 @@ export type {
   ProviderApiFavoritesStore,
   ProviderApiFavoriteState,
   ProviderApiFavoritesSnapshot,
+  ProviderApiLiveModelRefreshReport,
   ProviderApiModelQuery,
   ProviderApiModelRecord,
   ProviderApiModelReference,

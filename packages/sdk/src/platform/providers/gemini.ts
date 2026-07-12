@@ -5,10 +5,16 @@ import type {
   ChatStopReason,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
+  ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { REASONING_BUDGET_MAP } from './interface.js';
+import {
+  fetchGeminiModelIds,
+  runLiveModelRefresh,
+  type LiveModelDiscoveryResult,
+} from './live-model-discovery.js';
 
 import { mapGeminiStopReason } from './stop-reason-maps.js';
 import { parseRateLimitHeaders } from './rate-limit-headers.js';
@@ -33,6 +39,25 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},
 };
 
+/**
+ * Dated fallback model list — used when no API key is configured (so a live
+ * ListModels call isn't possible) and as the offline baseline when a live
+ * call fails with no prior cache. Docs-verified (no Gemini API key was
+ * available in the environment to live-verify) against ai.google.dev model
+ * pages on 2026-07-12; update this list (and the date below) whenever it is
+ * re-verified against a live key or current docs.
+ */
+export const GEMINI_DATED_STATIC_MODELS: readonly string[] = [
+  'gemini-flash-latest',
+  'gemini-3.5-flash',
+  'gemini-pro-latest',
+  'gemini-3-pro',
+  'gemini-3.1-pro-preview',
+  'gemini-3-flash',
+  'gemini-2.0-flash',
+];
+export const GEMINI_DATED_STATIC_MODELS_AS_OF = '2026-07-12';
+
 interface GeminiCandidate {
   content: { parts: GeminiPart[]; role: string };
   finishReason: string;
@@ -55,13 +80,24 @@ interface GeminiResponseBody {
  */
 export class GeminiProvider implements LLMProvider {
   readonly name = 'gemini';
+  readonly modelSource: ProviderModelSource = { kind: 'live-discovery' };
   /** Maps function call name → thoughtSignature for the current turn. */
   private thoughtSignatures = new Map<string, string>();
-  readonly models: string[] = [];
+
+  /**
+   * Populated synchronously with the dated-static baseline at construction
+   * (never empty), then replaced by `refreshModels()` with the live
+   * ListModels result. See `modelSource`.
+   */
+  private _models: string[] = [...GEMINI_DATED_STATIC_MODELS];
+  get models(): string[] {
+    return this._models;
+  }
 
   private readonly apiKey: string;
   private readonly embeddingModel = 'gemini-embedding-001';
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'>;
+  private readonly modelsCachePath: string | undefined;
 
   /** Active cached content resource name (e.g., "cachedContents/abc123") */
   private cachedContentName: string | null = null;
@@ -72,9 +108,36 @@ export class GeminiProvider implements LLMProvider {
   /** Hashes known to be below the 32K cache minimum — skip API call */
   private uncacheableHashes = new Set<string>();
 
-  constructor(apiKey: string, cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'> = NOOP_CACHE_HIT_TRACKER) {
+  constructor(
+    apiKey: string,
+    cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'> = NOOP_CACHE_HIT_TRACKER,
+    modelsCachePath?: string,
+  ) {
     this.apiKey = apiKey;
     this.cacheHitTracker = cacheHitTracker;
+    this.modelsCachePath = modelsCachePath;
+  }
+
+  /**
+   * Re-check Gemini's live model list. Called at boot (background, respects
+   * the on-disk TTL cache) and on-demand for a picker-open re-check or an
+   * explicit user refresh (`force: true`, bypasses the TTL cache). Always
+   * resolves — falls back to the on-disk cache, then to the dated-static
+   * list, and reports the honest reason when live discovery fails rather
+   * than silently keeping stale data with no explanation.
+   */
+  async refreshModels(force = false): Promise<LiveModelDiscoveryResult> {
+    const result = await runLiveModelRefresh({
+      providerName: this.name,
+      cachePath: this.modelsCachePath,
+      datedStaticModels: GEMINI_DATED_STATIC_MODELS,
+      datedStaticAsOf: GEMINI_DATED_STATIC_MODELS_AS_OF,
+      isConfigured: Boolean(this.apiKey),
+      fetchLive: () => fetchGeminiModelIds(this.apiKey),
+      force,
+    });
+    this._models = [...result.models];
+    return result;
   }
 
   private computeCacheHash(

@@ -8,9 +8,15 @@ import type {
   ProviderBatchCreateResult,
   ProviderBatchPollResult,
   ProviderBatchResult,
+  ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
+import {
+  fetchAnthropicModelIds,
+  runLiveModelRefresh,
+  type LiveModelDiscoveryResult,
+} from './live-model-discovery.js';
 import { applyAnthropicThinking } from './anthropic-stream.js';
 import { getCacheCapability } from './cache-capability.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
@@ -35,6 +41,27 @@ import { parseRateLimitHeaders } from './rate-limit-headers.js';
 
 const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 const ANTHROPIC_API_VERSION = '2023-06-01';
+
+/**
+ * Dated fallback model list — used when no API key is configured (so a live
+ * /v1/models call isn't possible) and as the offline baseline when a live
+ * call fails with no prior cache. Live-verified against a real Anthropic
+ * API key's GET /v1/models response on 2026-07-12; update this list (and
+ * the date below) whenever it is re-verified.
+ */
+export const ANTHROPIC_DATED_STATIC_MODELS: readonly string[] = [
+  'claude-sonnet-5',
+  'claude-fable-5',
+  'claude-opus-4-8',
+  'claude-opus-4-7',
+  'claude-sonnet-4-6',
+  'claude-opus-4-6',
+  'claude-opus-4-5-20251101',
+  'claude-haiku-4-5-20251001',
+  'claude-sonnet-4-5-20250929',
+  'claude-opus-4-1-20250805',
+];
+export const ANTHROPIC_DATED_STATIC_MODELS_AS_OF = '2026-07-12';
 
 interface AnthropicResponseBody {
   content: AnthropicContentBlock[];
@@ -72,18 +99,31 @@ function clampMaxTokens(model: string, requested: number): number {
  */
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
-  readonly models: string[] = [];
+  readonly modelSource: ProviderModelSource = { kind: 'live-discovery' };
   readonly batch: ProviderBatchAdapter;
+
+  /**
+   * Populated synchronously with the dated-static baseline at construction
+   * (never empty), then replaced by `refreshModels()` with the live
+   * /v1/models result. See `modelSource`.
+   */
+  private _models: string[] = [...ANTHROPIC_DATED_STATIC_MODELS];
+  get models(): string[] {
+    return this._models;
+  }
 
   private readonly apiKey: string;
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'>;
+  private readonly modelsCachePath: string | undefined;
 
   constructor(
     apiKey: string,
     cacheHitTracker: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'> = NOOP_CACHE_HIT_TRACKER,
+    modelsCachePath?: string,
   ) {
     this.apiKey = apiKey;
     this.cacheHitTracker = cacheHitTracker;
+    this.modelsCachePath = modelsCachePath;
     this.batch = {
       kind: 'provider-batch',
       endpoints: ['/v1/messages/batches'],
@@ -361,6 +401,28 @@ export class AnthropicProvider implements LLMProvider {
 
   isConfigured(): boolean {
     return this.apiKey.trim().length > 0;
+  }
+
+  /**
+   * Re-check Anthropic's live model list. Called at boot (background,
+   * respects the on-disk TTL cache) and on-demand for a picker-open
+   * re-check or an explicit user refresh (`force: true`, bypasses the TTL
+   * cache). Always resolves — falls back to the on-disk cache, then to the
+   * dated-static list, and reports the honest reason when live discovery
+   * fails rather than silently keeping stale data with no explanation.
+   */
+  async refreshModels(force = false): Promise<LiveModelDiscoveryResult> {
+    const result = await runLiveModelRefresh({
+      providerName: this.name,
+      cachePath: this.modelsCachePath,
+      datedStaticModels: ANTHROPIC_DATED_STATIC_MODELS,
+      datedStaticAsOf: ANTHROPIC_DATED_STATIC_MODELS_AS_OF,
+      isConfigured: this.isConfigured(),
+      fetchLive: () => fetchAnthropicModelIds(this.apiKey),
+      force,
+    });
+    this._models = [...result.models];
+    return result;
   }
 
   private async createChatBatch(input: ProviderBatchCreateInput): Promise<ProviderBatchCreateResult> {

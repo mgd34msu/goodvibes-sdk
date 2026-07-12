@@ -387,6 +387,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
   });
   providerRegistry.initCustomProviders();
+  providerRegistry.initProviderModelDiscovery();
   const toolLLM = new ToolLLM({
     configManager,
     providerRegistry,
@@ -419,18 +420,15 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     messageBus: agentMessageBus,
     executor: agentOrchestrator,
     configManager,
+    providerRegistry,
   });
-  // Conversation-snapshot sink bridge: AgentOrchestrator is constructed before
-  // AgentManager exists, so the conversation-snapshot sink is wired here via
-  // setConversationSink rather than as a constructor dependency (same
-  // ordering constraint as setRuntimeBus above).
+  // Conversation-snapshot sink bridge: AgentOrchestrator predates AgentManager, so it's
+  // wired via setConversationSink, not a constructor dep (same ordering constraint as setRuntimeBus above).
   agentOrchestrator.setConversationSink({
     register: (agentId, source) => agentManager.registerConversationSource(agentId, source),
     release: (agentId) => agentManager.releaseConversationSource(agentId),
   });
-  // Cooperative cancellation bridge: same ordering constraint
-  // and setter pattern as setConversationSink above — AgentOrchestrator is
-  // constructed before AgentManager exists.
+  // Cooperative cancellation bridge: same ordering constraint/setter pattern as setConversationSink above.
   agentOrchestrator.setCancellationSource({
     get: (agentId) => agentManager.getCancellationSignal(agentId),
   });
@@ -462,7 +460,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     const record = agentManager.spawn({
       mode: 'spawn',
       task,
-      ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { restrictTools: true }),
+      ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { restrictTools: true, modelCandidates: providerRegistry.listModels() }),
       context: `shared-session:${input.sessionId}`,
     });
     return { agentId: record.id };
@@ -513,6 +511,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
     deliveryManager,
     featureFlags,
+    providerRegistry,
     spawnTask: (input) => {
       const record = agentManager.spawn({
         mode: 'spawn',

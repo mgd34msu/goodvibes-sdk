@@ -1,7 +1,15 @@
 import { AnthropicBedrockMantle } from '@anthropic-ai/bedrock-sdk';
 import { AnthropicSdkProvider } from './anthropic-sdk-provider.js';
 
+// Additive: claude-opus-4-8 / claude-sonnet-5 appended ahead of the existing
+// generation. Bedrock Mantle model rollout typically trails the direct
+// Anthropic API by weeks; these two entries are NOT live-verified against a
+// Bedrock Mantle account (no credentials were available in this environment)
+// — only against the direct Anthropic API's /v1/models. Existing entries are
+// kept unchanged so nothing regresses if the newest generation isn't live yet.
 const BEDROCK_MANTLE_MODELS = [
+  'claude-opus-4-8',
+  'claude-sonnet-5',
   'claude-sonnet-4-6',
   'claude-opus-4-6',
   'claude-haiku-4-5',

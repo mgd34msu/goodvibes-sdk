@@ -10,6 +10,7 @@ import { AmazonBedrockMantleProvider } from './amazon-bedrock-mantle.js';
 import { AnthropicVertexProvider } from './anthropic-vertex.js';
 import { GitHubCopilotProvider } from './github-copilot.js';
 import { BUILTIN_COMPAT_PROVIDERS, type BuiltinCompatDefinition } from './builtin-catalog.js';
+import { getProviderModelsCachePath } from './live-model-discovery.js';
 import { normalizeFoundryEndpoint } from './microsoft-foundry-shared.js';
 import { SyntheticProvider } from './synthetic.js';
 import type { BenchmarkEntry } from './model-benchmarks.js';
@@ -123,8 +124,11 @@ export function registerBuiltinProviders(
     readonly githubCopilotTokenCachePath: string;
     readonly subscriptionManager: Pick<SubscriptionManager, 'get' | 'getPending' | 'saveSubscription' | 'resolveAccessToken'>;
     readonly runtimeBus?: RuntimeEventBus | null | undefined;
+    /** Control-plane persistence root; per-provider live-model-discovery cache paths derive from it. */
+    readonly persistenceRoot: string;
   },
 ): void {
+  const modelsCachePath = (providerId: string) => getProviderModelsCachePath(options.persistenceRoot, providerId);
   registry.register(
     new OpenAICompatProvider({
       name: 'inceptionlabs',
@@ -263,10 +267,10 @@ export function registerBuiltinProviders(
     }),
   );
 
-  registry.register(new OpenAIProvider(apiKey('openai'), options.cacheHitTracker));
-  registry.register(new AnthropicProvider(apiKey('anthropic'), options.cacheHitTracker));
+  registry.register(new OpenAIProvider(apiKey('openai'), options.cacheHitTracker, modelsCachePath('openai')));
+  registry.register(new AnthropicProvider(apiKey('anthropic'), options.cacheHitTracker, modelsCachePath('anthropic')));
   registry.register(new OpenAICodexProvider(options.subscriptionManager));
-  registry.register(new GeminiProvider(apiKey('gemini'), options.cacheHitTracker));
+  registry.register(new GeminiProvider(apiKey('gemini'), options.cacheHitTracker, modelsCachePath('gemini')));
 
   registry.register(
     new OpenAICompatProvider({

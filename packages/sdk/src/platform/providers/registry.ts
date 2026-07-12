@@ -43,18 +43,23 @@ import { getGitHubCopilotTokenCachePath } from './github-copilot.js';
 import { summarizeError } from '../utils/error-display.js';
 import { inferFallbackContextWindow } from './context-window-fallback.js';
 import { ContextWindowOverrideStore, getContextWindowOverridesPath } from './context-window-overrides.js';
-import {
-  splitModelRegistryKey,
-  stableStringify,
-  withRegistryKey,
-} from './registry-helpers.js';
+import { splitModelRegistryKey, withRegistryKey } from './registry-helpers.js';
 import { computeConfiguredProviderIds } from './registry-configured-ids.js';
 import { initProviderCatalog, refreshProviderCatalog } from './registry-catalog-lifecycle.js';
 import {
   buildModelRegistry,
+  diffCustomModels,
   findModelDefinition,
   findModelDefinitionForProvider,
 } from './registry-models.js';
+import { assertProviderModelSource } from './model-source-contract.js';
+import { resolveModelReference } from './model-id-resolution.js';
+import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
+import {
+  applyProviderNativeModelBaseline,
+  removeProviderNativeModels,
+  sweepLiveModelDiscovery,
+} from './registry-live-model-discovery.js';
 import type {
   ModelDefinition,
   ProviderRegistryOptions,
@@ -82,6 +87,8 @@ export class ProviderRegistry {
   private customModels: ModelDefinition[] = [];
   private runtimeModels: ModelDefinition[] = [];
   private discoveredModels: ModelDefinition[] = [];
+  /** Provider-sourced models — see registry-live-model-discovery.ts. */
+  private providerNativeModels: ModelDefinition[] = [];
   private readonly runtimeCatalogSuppressedRegistryKeys = new Map<string, readonly string[]>();
   private _watcher: { close: () => void } | undefined;
   private _readyPromise: Promise<void> | null = null;
@@ -147,6 +154,7 @@ export class ProviderRegistry {
         githubCopilotTokenCachePath: getGitHubCopilotTokenCachePath(this.getPersistenceRoot()),
         subscriptionManager: this.subscriptionManager,
         runtimeBus: this.runtimeBus,
+        persistenceRoot: this.getPersistenceRoot(),
       },
     );
   }
@@ -196,6 +204,7 @@ export class ProviderRegistry {
     this._cachedModelRegistry = buildModelRegistry({
       customModels: this.customModels,
       runtimeModels: this.runtimeModels,
+      providerNativeModels: this.providerNativeModels,
       syntheticModels: this.getSyntheticBuiltins(),
       catalogModels: this.getCatalogBuiltins(),
       discoveredModels: this.discoveredModels,
@@ -211,23 +220,41 @@ export class ProviderRegistry {
     return this._contextWindowOverrideStore;
   }
 
-  /** Register a provider. Overwrites any existing entry with the same name. */
+  /** Register a provider. Overwrites any existing entry with the same name. Fails closed on a dead model source (model-source-contract.ts). */
   register(provider: LLMProvider): void {
+    assertProviderModelSource(provider);
     this.providers.set(provider.name, provider);
+    this.providerNativeModels = applyProviderNativeModelBaseline(this.providerNativeModels, provider);
     this._invalidateModelRegistry();
   }
 
-  /**
-   * Register a runtime/plugin-owned provider and optional model definitions.
-   * Returns an unregister callback so plugin cleanup can remove the provider and
-   * its runtime model/catalog contributions.
-   */
+  /** The picker-open re-check hook (see registry-live-model-discovery.ts): force bypasses each provider's TTL cache. */
+  async refreshLiveModelDiscovery(
+    providerId?: string,
+    options: { force?: boolean } = {},
+  ): Promise<Array<{ providerId: string } & LiveModelDiscoveryResult>> {
+    const { providerNativeModels, reports } = await sweepLiveModelDiscovery(
+      this.providers.values(),
+      this.providerNativeModels,
+      providerId,
+      options,
+    );
+    this.providerNativeModels = providerNativeModels;
+    if (reports.length > 0) this._invalidateModelRegistry();
+    return reports;
+  }
+
+  /** Register a runtime/plugin-owned provider + optional models; returns an unregister callback. */
   registerRuntimeProvider(registration: RuntimeProviderRegistration): () => void {
     const { provider, models = [], suppressCatalogModelRegistryKeys = [], replace = false } = registration;
     if (this.providers.has(provider.name) && !this.runtimeProviderNames.has(provider.name) && !replace) {
       throw new Error(`Provider '${provider.name}' is already registered.`);
     }
+    // A plugin's model source may be the explicit `models` list below (this.runtimeModels)
+    // rather than the LLMProvider's own fields — only contract-check when both are empty.
+    if (models.length === 0) assertProviderModelSource(provider);
     this.providers.set(provider.name, provider);
+    this.providerNativeModels = applyProviderNativeModelBaseline(this.providerNativeModels, provider);
     this.runtimeProviderNames.add(provider.name);
     this.runtimeModels = [
       ...this.runtimeModels.filter((model) => model.provider !== provider.name),
@@ -245,6 +272,7 @@ export class ProviderRegistry {
       this.providers.delete(provider.name);
       this.runtimeProviderNames.delete(provider.name);
       this.runtimeModels = this.runtimeModels.filter((model) => model.provider !== provider.name);
+      this.providerNativeModels = removeProviderNativeModels(this.providerNativeModels, provider.name);
       this.runtimeCatalogSuppressedRegistryKeys.delete(provider.name);
       this.capabilityRegistry.invalidate();
       this._invalidateModelRegistry();
@@ -387,18 +415,14 @@ export class ProviderRegistry {
     return await provider.describeRuntime(this.runtimeMetadataDeps);
   }
 
-  /**
-   * Return the provider responsible for a model. Callers without an explicit
-   * provider must pass a provider-qualified registryKey (`provider:modelId`).
-   */
+  /** Return the provider responsible for a model — a registryKey, or a bare id resolved via the shared resolver. */
   getForModel(modelId: string, provider?: string): LLMProvider {
-    if (!provider && !modelId.includes(':')) {
-      throw new Error(`Model lookup requires a provider-qualified registryKey; received '${modelId}'.`);
-    }
     const registry = this.getModelRegistry();
+    // findModelDefinitionForProvider already resolves bare ids when a provider is given.
+    const resolvedModelId = !provider && !modelId.includes(':') ? resolveModelReference(modelId, registry) : modelId;
     const def = provider
-      ? findModelDefinitionForProvider(modelId, provider, registry, CATALOG_PROVIDER_NAME_ALIASES)
-      : findModelDefinition(modelId, registry);
+      ? findModelDefinitionForProvider(resolvedModelId, provider, registry, CATALOG_PROVIDER_NAME_ALIASES)
+      : findModelDefinition(resolvedModelId, registry);
     if (!def) {
       if (provider) throw new Error(`No model '${modelId}' for provider '${provider}' in registry.`);
       throw new Error(`No model '${modelId}' in registry.`);
@@ -591,11 +615,9 @@ export class ProviderRegistry {
     this._invalidateModelRegistry();
   }
 
-  /** Switch to a different model. Requires the model registryKey (`provider:modelId`). */
-  setCurrentModel(registryKey: string): void {
-    if (!registryKey.includes(':')) {
-      throw new Error(`Model selection requires a provider-qualified registryKey; received '${registryKey}'.`);
-    }
+  /** Switch to a different model. Accepts a registryKey or a bare model id (resolved via the shared resolver). */
+  setCurrentModel(modelReference: string): void {
+    const registryKey = resolveModelReference(modelReference, this.getModelRegistry());
     const def = findModelDefinition(registryKey, this.getModelRegistry());
     if (!def) throw new Error(`Model '${registryKey}' not found.`);
     if (!def.selectable) throw new Error(`Model '${registryKey}' is not selectable.`);
@@ -626,52 +648,22 @@ export class ProviderRegistry {
       ingestContextWindows: this.featureFlags?.isEnabled('local-provider-context-ingestion') ?? false,
       contextIngestion: this.localContextIngestionService,
     });
-    const previousRegistryKeys = new Set(this.customModels.map((model) => withRegistryKey(model).registryKey));
-    const newRegistryKeys = new Set(result.models.map((model) => withRegistryKey(model).registryKey));
+    const diff = diffCustomModels(this.customModels, result.models, this.getCatalogBuiltins());
+    const warnings = [...result.warnings, ...diff.collisionWarnings];
 
-    const added: string[] = [];
-    const removed: string[] = [];
-    const updated: string[] = [];
-
-    for (const registryKey of newRegistryKeys) {
-      if (!previousRegistryKeys.has(registryKey)) {
-        added.push(registryKey);
-      } else {
-        // Only mark as updated if the model definition actually changed
-        const oldModel = this.customModels.find((model) => withRegistryKey(model).registryKey === registryKey);
-        const newModel = result.models.find((model) => withRegistryKey(model).registryKey === registryKey);
-        const oldComparable = oldModel ? withRegistryKey(oldModel) : oldModel;
-        const newComparable = newModel ? withRegistryKey(newModel) : newModel;
-        if (stableStringify(oldComparable) !== stableStringify(newComparable)) {
-          updated.push(registryKey);
-        }
-      }
-    }
-    for (const registryKey of previousRegistryKeys) {
-      if (!newRegistryKeys.has(registryKey)) removed.push(registryKey);
-    }
-
-    // Warn about registry-key collisions with catalog models.
-    const catalogRegistryKeys = new Set(this.getCatalogBuiltins().map((builtin) => withRegistryKey(builtin).registryKey));
-    for (const model of result.models) {
-      const registryKey = withRegistryKey(model).registryKey;
-      if (catalogRegistryKeys.has(registryKey)) {
-        const msg = `[registry] Custom model '${registryKey}' overrides catalog model.`;
-        result.warnings.push(msg);
-        // Warning already added to result.warnings — don't console.warn (corrupts TUI)
-      }
-    }
-
-    // Register provider instances
+    // A single misconfigured provider is skipped with a warning, not an abort of the rest.
     for (const { provider } of result.providers) {
-      this.register(provider);
+      try {
+        this.register(provider);
+      } catch (err) {
+        warnings.push(`[registry] Custom provider '${provider.name}' rejected at registration: ${summarizeError(err)}`);
+      }
     }
 
-    // Swap custom models
     this.customModels = result.models;
     this._invalidateModelRegistry();
 
-    return { warnings: result.warnings, added, removed, updated };
+    return { warnings, added: diff.added, removed: diff.removed, updated: diff.updated };
   }
 
   /**
@@ -739,13 +731,12 @@ export class ProviderRegistry {
 
   /**
    * Resolve the full capability record for a model.
-   * Requires a provider-qualified registryKey.
    *
-   * @param registryKey - Provider-qualified registryKey (`provider:modelId`).
+   * @param modelReference - A provider-qualified registryKey (`provider:modelId`) or a bare model id (resolved via the shared resolver).
    * @returns A fully-resolved, immutable `ProviderCapability`.
    */
-  getCapabilityForModel(registryKey: string): ProviderCapability {
-    const { providerId, resolvedModelId, provider } = this._resolveModelContext(registryKey);
+  getCapabilityForModel(modelReference: string): ProviderCapability {
+    const { providerId, resolvedModelId, provider } = this._resolveModelContext(modelReference);
     return this.capabilityRegistry.getCapability(providerId, resolvedModelId, provider);
   }
 
@@ -753,12 +744,12 @@ export class ProviderRegistry {
    * Check whether a model can handle a request described by `profile`.
    * Fails early with a typed explanation when unsupported — avoids mid-stream errors.
    *
-   * @param registryKey - Provider-qualified registryKey.
+   * @param modelReference - A provider-qualified registryKey or a bare model id (resolved via the shared resolver).
    * @param profile - The capability requirements for this request.
    * @returns A `RouteExplanation` with `accepted` flag, rejections, and capability.
    */
-  explainRoute(registryKey: string, profile: RequestProfile): RouteExplanation {
-    const { providerId, resolvedModelId, provider } = this._resolveModelContext(registryKey);
+  explainRoute(modelReference: string, profile: RequestProfile): RouteExplanation {
+    const { providerId, resolvedModelId, provider } = this._resolveModelContext(modelReference);
     return this.capabilityRegistry.getRouteExplanation(providerId, resolvedModelId, profile, provider);
   }
 
@@ -768,15 +759,13 @@ export class ProviderRegistry {
    *
    * @param registryKey - Provider-qualified registryKey (`provider:modelId`).
    */
-  private _resolveModelContext(registryKey: string): {
+  private _resolveModelContext(modelReference: string): {
     providerId: string;
     resolvedModelId: string;
     provider: LLMProvider | undefined;
   } {
-    if (!registryKey.includes(':')) {
-      throw new Error(`Model capability lookups require a provider-qualified registryKey; received '${registryKey}'.`);
-    }
     const registry = this.getModelRegistry();
+    const registryKey = resolveModelReference(modelReference, registry);
     const def = findModelDefinition(registryKey, registry);
     if (def) {
       return { providerId: def.provider, resolvedModelId: def.id, provider: this.tryGet(def.provider) };
@@ -802,6 +791,12 @@ export class ProviderRegistry {
 
   initCatalog(): void {
     initProviderCatalog(this._catalogLifecycleCtx());
+  }
+
+  /** Background, TTL-respecting live model discovery sweep (never blocks/throws); separate from initCatalog() so tests calling that without mocking a provider API aren't surprised by a live network call. Real callers invoke this once at startup too. */
+  initProviderModelDiscovery(): void {
+    void this.refreshLiveModelDiscovery().catch((err) =>
+      logger.warn('[provider-models] Background live model discovery failed', { error: summarizeError(err) }));
   }
 
   async refreshCatalog(): Promise<void> {

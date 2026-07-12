@@ -165,6 +165,27 @@ export interface ProviderBatchAdapter {
   getResults(providerBatchId: string): Promise<readonly ProviderBatchResult[]>;
 }
 
+/**
+ * Declares where a provider's model list comes from, so the registration-time
+ * contract check (`model-source-contract.ts`) can tell a genuinely-empty,
+ * undated model list (the stale/dead-array anti-pattern) apart from a
+ * provider that is legitimately populated some other way:
+ *
+ * - `live-discovery`  — the provider fetches its own model list from a live
+ *   API (its `models` array may start empty and populate asynchronously;
+ *   see `live-model-discovery.ts` for the shared fetch/cache/diff helpers).
+ * - `dated-static`    — the provider ships a complete, hand-maintained model
+ *   list as of a specific date (`asOf`), because the backend has no
+ *   model-listing API. Must be paired with a non-empty `models` array.
+ * - `catalog-backed`  — the provider's own `models` array is intentionally
+ *   secondary; its real selectable models come from the shared, independently
+ *   refreshed model catalog (e.g. the synthetic failover provider).
+ */
+export type ProviderModelSource =
+  | { readonly kind: 'live-discovery' }
+  | { readonly kind: 'dated-static'; readonly asOf: string }
+  | { readonly kind: 'catalog-backed' };
+
 /** Contract all LLM providers must implement. */
 export interface LLMProvider {
   readonly name: string;
@@ -179,6 +200,14 @@ export interface LLMProvider {
    * their own capabilities and want to participate in explainable routing.
    */
   readonly capabilities?: Partial<ProviderCapability> | undefined;
+  /**
+   * Declares this provider's model source for the registration-time contract
+   * check. Optional for backward compatibility: a provider whose `models`
+   * array is already non-empty at registration time needs no declaration.
+   * A provider whose `models` array is empty at registration time MUST
+   * declare one of the three kinds above, or registration is rejected.
+   */
+  readonly modelSource?: ProviderModelSource | undefined;
   chat(params: ChatRequest): Promise<ChatResponse>;
   embed?(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult>;
   describeRuntime?(deps: ProviderRuntimeMetadataDeps): ProviderRuntimeMetadata | Promise<ProviderRuntimeMetadata>;
