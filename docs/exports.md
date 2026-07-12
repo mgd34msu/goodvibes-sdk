@@ -97,7 +97,9 @@ Runtime-heavy surfaces:
 - `@pellux/goodvibes-sdk/platform/profiles`
 - `@pellux/goodvibes-sdk/platform/providers`
 - `@pellux/goodvibes-sdk/platform/rewind`
+- `@pellux/goodvibes-sdk/platform/runtime/feature-announcements`
 - `@pellux/goodvibes-sdk/platform/runtime/observability`
+- `@pellux/goodvibes-sdk/platform/runtime/permissions/localhost-fetch-approval`
 - `@pellux/goodvibes-sdk/platform/runtime/permissions/sandbox-policy`
 - `@pellux/goodvibes-sdk/platform/runtime/sandbox`
 - `@pellux/goodvibes-sdk/platform/runtime/settings`

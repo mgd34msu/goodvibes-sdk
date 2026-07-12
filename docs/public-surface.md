@@ -262,10 +262,12 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/permissions` | Permission analysis, prompts, briefs, and manager | beta |
 | `platform/plugins` | Plugin API, loader, and manager | beta |
 | `platform/profiles` | Profile manager and profile shape helpers | beta |
-| `platform/providers` | LLM provider registry, catalog, capabilities; includes `inferFallbackContextWindow` and `FALLBACK_CONTEXT_WINDOW` (added in 0.35.0) | beta |
+| `platform/providers` | LLM provider registry, catalog, capabilities; includes `inferFallbackContextWindow` and `FALLBACK_CONTEXT_WINDOW` (added in 0.35.0), plus the shared bare-model-id resolver (`resolveModelReference`, `findClosestModelIds`, `ModelIdCandidate`, `ModelIdResolutionOptions`) so consumers stop vendoring it | beta |
 | `platform/rewind` | Unified message-anchored rewind service (`UnifiedRewindService`) over the existing workspace-checkpoint / conversation / file-undo stores, plus its ports and plan/receipt IO types, so a consumer can construct it and thread the workspace + conversation ports | beta |
 | `platform/runtime` | Curated runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, and UI as namespaces | beta |
+| `platform/runtime/feature-announcements` | One-time feature announcement store (`FeatureAnnouncementStore`), startup announcement collection (`collectStartupAnnouncements`), sandbox-containment announcer (`createSandboxContainmentAnnouncer`), and the shared announcement ids/text — the store path and ids are shared across surfaces so announcements deduplicate everywhere | beta |
 | `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
+| `platform/runtime/permissions/localhost-fetch-approval` | `buildLocalhostFetchApproval`: the config-aware, one-time-approval gate for fetch requests targeting localhost, shared by every surface's fetch tool wiring (`LocalhostFetchApprovalDeps`, `LocalhostFetchApproval`) | beta |
 | `platform/runtime/permissions/sandbox-policy` | The sandbox-aware exec permission input: `decideSandboxedExec` (turns a base "ask" into an "allow" for a command that runs entirely inside the boundary with no host-access need, or into a named-escalation ask) plus its `SandboxPolicyDecision`/`Effect`/`Input` types, so a consumer can wire its approval flow to the sandbox policy | beta |
 | `platform/runtime/sandbox` | Sandbox host status, presets, reviews, and session registry helpers | beta |
 | `platform/runtime/settings` | Managed settings and control-plane settings bundle helpers | beta |
