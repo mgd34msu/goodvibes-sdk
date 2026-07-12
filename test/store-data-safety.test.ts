@@ -76,6 +76,9 @@ describe('every store the platform writes carries PRAGMA user_version', () => {
     const dbPath = join(dir, 'memory.sqlite');
     const store = new SQLiteStore(dbPath);
     await store.init(createMemorySchema as Parameters<SQLiteStore['init']>[0], { storeName: 'memory store', schemaVersion: 1 });
+    // A brand-new store touches disk on first save (the long-standing
+    // contract); the stamped version rides along in that export.
+    await store.save();
     store.close();
     expect(readUserVersion(dbPath)).toBe(1);
 

@@ -1,5 +1,5 @@
 /**
- * w6-c3-core-verb-rename-daemon-wire.test.ts
+ * core-verb-rename-daemon-wire.test.ts
  *
  * bootDaemon-based proof (real HTTP, ephemeral port, isolated home)
  * that the core-verb renames actually work end to end over the wire, not
@@ -36,7 +36,7 @@ function seedFeatureFlags(homeDirectory: string, flagIds: readonly string[]): vo
   writeFileSync(join(dir, 'settings.json'), JSON.stringify({ featureFlags }, null, 2));
 }
 
-const TOKEN = 'w6-c3-test-token';
+const TOKEN = 'core-verb-rename-token';
 let home: string;
 let work: string;
 let daemon: BootedDaemon;
@@ -88,7 +88,7 @@ afterAll(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-describe('W6-C3 — automation.schedules.* (renamed from bare schedules.*)', () => {
+describe('automation.schedules.* (renamed from bare schedules.*)', () => {
   test('automation.schedules.list is invokable and returns an empty collection to start', async () => {
     const result = await invokeVerb('automation.schedules.list');
     expect(result.status).toBe(200);
@@ -96,7 +96,7 @@ describe('W6-C3 — automation.schedules.* (renamed from bare schedules.*)', () 
 
   test('a full schedule lifecycle round-trips: create -> list -> disable -> enable -> run -> delete', async () => {
     const created = await invokeVerb('automation.schedules.create', {
-      prompt: 'w6-c3 schedule lifecycle proof',
+      prompt: 'schedule lifecycle proof',
       kind: 'every',
       every: '1h',
     });
@@ -131,10 +131,10 @@ describe('W6-C3 — automation.schedules.* (renamed from bare schedules.*)', () 
   });
 });
 
-describe('W6-C3 — automation.jobs.update (renamed from automation.jobs.patch)', () => {
+describe('automation.jobs.update (renamed from automation.jobs.patch)', () => {
   test('create then update a durable automation job over HTTP', async () => {
     const created = await invokeVerb('automation.jobs.create', {
-      prompt: 'w6-c3 job update proof',
+      prompt: 'job update proof',
       kind: 'every',
       every: '30m',
     });
@@ -142,9 +142,9 @@ describe('W6-C3 — automation.jobs.update (renamed from automation.jobs.patch)'
     const jobId = created.json.id as string;
     expect(typeof jobId).toBe('string');
 
-    const updated = await invokeVerb('automation.jobs.update', { jobId, name: 'renamed-by-w6-c3' });
+    const updated = await invokeVerb('automation.jobs.update', { jobId, name: 'renamed-by-update-verb' });
     expect(updated.status).toBe(200);
-    expect(updated.json.name).toBe('renamed-by-w6-c3');
+    expect(updated.json.name).toBe('renamed-by-update-verb');
   });
 
   test('automation.jobs.patch is gone from the wire (404)', async () => {
@@ -153,10 +153,10 @@ describe('W6-C3 — automation.jobs.update (renamed from automation.jobs.patch)'
   });
 });
 
-describe('W6-C3 — redundant lifecycle pair retired: automation.jobs.pause/resume gone, enable/disable still work', () => {
+describe('redundant lifecycle pair retired: automation.jobs.pause/resume gone, enable/disable still work', () => {
   test('enable/disable still work on a created job', async () => {
     const created = await invokeVerb('automation.jobs.create', {
-      prompt: 'w6-c3 enable/disable proof',
+      prompt: 'enable/disable proof',
       kind: 'every',
       every: '2h',
     });
@@ -180,7 +180,7 @@ describe('W6-C3 — redundant lifecycle pair retired: automation.jobs.pause/resu
   });
 });
 
-describe('W6-C3 — the other update-verb-split renames (routes.bindings, watchers)', () => {
+describe('the other update-verb-split renames (routes.bindings, watchers)', () => {
   test('routes.bindings.patch and watchers.patch are gone from the wire (404); .update ids are the ones the catalog knows', async () => {
     const routesPatch = await invokeVerb('routes.bindings.patch', { bindingId: 'does-not-matter' });
     expect(routesPatch.status).toBe(404);
@@ -199,7 +199,7 @@ describe('W6-C3 — the other update-verb-split renames (routes.bindings, watche
   });
 });
 
-describe('W6-C3 — the live catalog matches OPERATOR_METHOD_IDS (no drift between the wire and the generated ids)', () => {
+describe('the live catalog matches OPERATOR_METHOD_IDS (no drift between the wire and the generated ids)', () => {
   test('control.methods.list reflects the renames and retirements', async () => {
     const result = await invokeVerb('control.methods.list');
     expect(result.status).toBe(200);

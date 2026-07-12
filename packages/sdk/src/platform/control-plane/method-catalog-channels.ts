@@ -636,14 +636,14 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
    * packages/daemon-sdk/src: channel-routes.ts defines no inbox/routing/
    * drafts handler at all, so there is nothing for a route to call even in
    * principle. These were originally grandfathered into
-   * KNOWN_PRE_EXISTING_ROUTE_DEBT in test/w4-a3-capability-route-reconcile.test.ts
+   * KNOWN_PRE_EXISTING_ROUTE_DEBT in test/capability-route-reconcile.test.ts
    * as an out-of-ownership finding the audit incidentally surfaced; marked
    * `invokable: false` here so the published contract and the live
    * method-dispatch path both say "cataloged, not callable" instead of
    * letting a caller discover the 404 the hard way. Un-mark a method once
    * its real route or handler exists — the route-reconcile regression gate
    * (method-catalog-route-reconcile.ts, exercised in
-   * test/w4-a3-capability-route-reconcile.test.ts) will catch it if this
+   * test/capability-route-reconcile.test.ts) will catch it if this
    * comment goes stale and a route reappears without the flag being
    * cleared.
    */
