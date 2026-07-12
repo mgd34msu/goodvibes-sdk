@@ -10,6 +10,7 @@ import {
   normalizeMemoryEmbeddingVector,
 } from './memory-embeddings.js';
 import { loadSqliteVecExtension, SqliteVecPlatformUnsupportedError } from './sqlite-vec-loader.js';
+import { openVersionedBunSqliteStore } from './store-versioning.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -34,6 +35,9 @@ function bunSqliteDatabase(): typeof import('bun:sqlite').Database {
 // Duplicating the literal here avoids an initialization cycle when state/index.ts
 // re-exports both modules during targeted test imports.
 export const MEMORY_VECTOR_DIMS = 384;
+
+/** Target `PRAGMA user_version` for the memory vector index. */
+export const MEMORY_VECTOR_SCHEMA_VERSION = 1;
 export { embedMemoryText } from './memory-embeddings.js';
 
 export interface MemoryVectorSearchFilter {
@@ -145,6 +149,19 @@ export class SqliteVecMemoryIndex {
       loadSqliteVecExtension(this.db);
       this.available = true;
       this.enabled = true;
+      // Schema versioning: pre-migration snapshot, auto-restore on failure,
+      // and a downgrade guard (an older binary refuses a newer schema).
+      openVersionedBunSqliteStore({
+        storeName: 'memory vector index',
+        dbPath: this.dbPath,
+        db: this.db,
+        targetVersion: MEMORY_VECTOR_SCHEMA_VERSION,
+        migrations: [{ toVersion: MEMORY_VECTOR_SCHEMA_VERSION, migrate: () => this.createSchema() }],
+        closeDb: () => {
+          this.db?.close();
+          this.db = null;
+        },
+      });
       this.createSchema();
     } catch (err) {
       this.close();

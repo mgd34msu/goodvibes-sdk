@@ -45,6 +45,8 @@ import { MemoryRegistry } from '../state/memory-registry.js';
 import { MemoryStore } from '../state/memory-store.js';
 import { CodeIndexStore } from '../state/code-index-store.js';
 import { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
+import { StoreSnapshotScheduler } from '../state/store-snapshots.js';
+import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
 import type { RuntimeEventBus } from './events/index.js';
 import { createDomainDispatch } from './store/index.js';
 import type { DomainDispatch, RuntimeStore } from './store/index.js';
@@ -182,6 +184,8 @@ export interface RuntimeServices {
   readonly codeIndexStore: CodeIndexStore;
   /** Stage B tool-site incremental reindex scheduler (bound to codeIndexStore). */
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
+  /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (same lifecycle posture as processRegistry — hosts that tear down a runtime stop() it themselves). */
+  readonly storeSnapshotScheduler: StoreSnapshotScheduler;
   readonly serviceRegistry: ServiceRegistry;
   readonly secretsManager: SecretsManager;
   /** Relay WebAuthn step-up ceremony service (shared by the stepup.* verbs and the relay gate's verifier). */
@@ -462,6 +466,17 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workingDirectory,
     isEnabled: codeInjectionSettingEnabled,
   });
+  // Data safety with no discipline: a daily snapshot of every SQLite store
+  // this runtime writes, bounded by the retention engine. Timers are unref'd
+  // so an undisposed scheduler cannot pin the event loop.
+  const storeSnapshotScheduler = new StoreSnapshotScheduler({
+    stores: [
+      { name: 'memory store', dbPath: memoryDbPath },
+      { name: 'memory vector index', dbPath: resolveMemoryVectorDbPath(memoryDbPath) },
+      { name: 'code index store', dbPath: codeIndexDbPath },
+    ],
+  });
+  storeSnapshotScheduler.start();
   const deliveryManager = new AutomationDeliveryManager({
     configManager,
     secretsManager,
@@ -848,6 +863,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     memoryRegistry,
     codeIndexStore,
     codeIndexReindexScheduler,
+    storeSnapshotScheduler,
     serviceRegistry,
     secretsManager,
     stepUpService,
