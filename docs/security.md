@@ -108,7 +108,7 @@ Tokens can be revoked by signature via `revoke(tokenSignature)`. Revoked tokens 
 | `managed: true` | Tokens with scope violations or overdue rotation are **blocked** from use |
 | `managed: false` | Violations are reported via `SecurityEvent` emissions but tokens remain usable |
 
-> **Feature-flag gate:** managed-mode blocking only takes effect when the `token-scope-rotation-audit` feature flag is enabled. With the flag off, even `managed: true` instances behave as advisory. See [Feature flags](./feature-flags.md) for flag-management details.
+> **Settings gate:** managed-mode blocking only takes effect while `security.tokenAudit.enabled` is on (its default). With the audit off, even `managed: true` instances behave as advisory. See [Feature settings](./feature-settings.md) for how capabilities are configured.
 
 ```ts
 const auditor = new ApiTokenAuditor({ managed: true });
@@ -178,14 +178,14 @@ The QR pairing flow connects a companion app to the daemon without requiring the
 
 SDK hosts can expose a user-facing explanation of security-relevant settings with:
 
-- `getSecuritySettingsReport(featureFlags)` from the runtime surface
+- `getSecuritySettingsReport(gates)` from the runtime surface
 - `IntegrationHelperService.getSecuritySettingsReport()`
 - daemon `GET /api/security-settings`
 - gateway method `security.settings`
 
-Each report entry includes the setting key, default state, current state, what the setting does, why the disabled state is less restrictive, what enabling it changes, and any operational requirements. This is intended for TUI/onboarding flows where safe-default feature flags remain off unless the user explicitly opts in.
+Each report entry includes the setting key, default state, current state, what the setting does, why the disabled state is less restrictive, what enabling it changes, and any operational requirements. This is intended for TUI/onboarding flows so users see exactly which security-relevant settings are on, off, and why.
 
-The current report covers security-sensitive flags including `fetch-sanitization`, `permissions-policy-engine`, `permissions-simulation`, `permission-divergence-dashboard`, `policy-as-code`, `policy-signing`, `runtime-tools-budget-enforcement`, `shell-ast-normalization`, `token-scope-rotation-audit`, and `tool-contract-verification`.
+The current report covers the security-sensitive settings `fetch.sanitizeMode`, `permissions.engine`, `permissions.simulation`, `permissions.divergenceDashboard`, `policy.registryEnabled`, `policy.requireSignedBundles`, `runtime.toolBudget.enforced`, `permissions.commandParser`, `security.tokenAudit.enabled`, and `tools.contractVerification`.
 
 ### TLS
 
@@ -225,7 +225,7 @@ The remote fetch proxy has explicit SSRF protection via `resolvePrivateHostFetch
 
 If either check fails, the request is rejected with HTTP 403. Do not enable `allowPrivateHosts` unless your deployment specifically requires internal URL resolution.
 
-The `fetch` tool has a separate opt-in protection gate: `featureFlags.fetch-sanitization`. It remains disabled by default so hosts can choose their own browsing posture. When enabled, the fetch tool classifies initial hosts and every redirect target before reading the response, blocks localhost/private/link-local/cloud-metadata targets, applies unknown-host safe-text sanitization by default, and stops reading once `max_content_length` is reached. When disabled, fetch performs the requested network read without this extra SDK sanitization layer; use the security settings report above to surface that tradeoff to users.
+The `fetch` tool sanitizes responses by default (`fetch.sanitizeMode`, default `safe-text`). It classifies initial hosts and every redirect target before reading the response, blocks private/link-local/cloud-metadata targets absolutely, gates localhost dev servers behind a one-tap per-project approval (`fetch.allowLocalhost`), applies unknown-host safe-text sanitization, and stops reading once `max_content_length` is reached. Setting `fetch.sanitizeMode` to `none` skips content sanitization only — host blocking is unaffected.
 
 ---
 

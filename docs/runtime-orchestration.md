@@ -227,7 +227,7 @@ stores. The runtime subtree includes:
 - diagnostics panels
 - ecosystem catalog state
 - event bus and emitters
-- feature flags
+- capability gates (feature settings)
 - health checks
 - idempotency
 - integration status

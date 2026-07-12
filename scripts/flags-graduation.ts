@@ -1,11 +1,12 @@
 /**
- * flags-graduation.ts — the feature-flag graduation release gate.
+ * flags-graduation.ts — the feature-defaults release gate.
  *
- * Prints every feature flag with its graduation state and validation evidence,
- * then enforces the release policy: it exits non-zero when any flag sits in
- * `graduate-candidate` (judged ready but neither flipped on nor given a dated
- * blocker). That is the forcing function — every release, a validated flag
- * either flips on or records why it is being held.
+ * Prints every platform capability with its default-disposition state and
+ * validation evidence, then enforces the release policy: it exits non-zero
+ * when any capability sits in `graduate-candidate` (judged ready but neither
+ * defaulted on nor given a dated blocker). That is the forcing function —
+ * every release, a validated default either flips on or records why it is
+ * being held.
  *
  * Run standalone via `bun run flags:graduation`; wired into `release:verify`.
  */
@@ -19,9 +20,9 @@ function main(): void {
   const gate = evaluateGraduationReleaseGate(report);
 
   const { summary } = report;
-  console.log('Feature-flag graduation report');
+  console.log('Feature defaults report');
   console.log(
-    `  ${summary.total} flags: ${summary.graduated} graduated, ${summary.dark} dark, ` +
+    `  ${summary.total} capabilities: ${summary.graduated} graduated, ${summary.dark} dark, ` +
     `${summary.soaking} soaking, ${summary.graduateCandidate} graduate-candidate, ${summary.blocked} blocked`,
   );
   console.log('');
@@ -35,7 +36,7 @@ function main(): void {
 
   if (!gate.ok) {
     console.error(`FAIL — ${gate.message}`);
-    console.error('Flip each candidate on (set its defaultState) or record a dated blocker annotation.');
+    console.error('Default each candidate on (set its defaultState) or record a dated blocker annotation.');
     process.exit(1);
   }
   console.log(`OK — ${gate.message}`);

@@ -65,7 +65,7 @@ release-history source.
 
 - [Configuration defaults](./defaults.md)
 - [Secret references](./secrets.md)
-- [Feature flags](./feature-flags.md)
+- [Feature settings](./feature-settings.md)
 - [Security](./security.md)
 - [Observability](./observability.md)
 - [Performance and tuning](./performance.md)

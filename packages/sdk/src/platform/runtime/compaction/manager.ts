@@ -152,9 +152,9 @@ export class CompactionManager {
     trigger: CompactionTrigger;
     isPromptTooLong?: boolean | undefined;
   }): Promise<CompactionLifecycleResult | null> {
-    // ── Feature flag gate ────────────────────────────────────────────────────
+    // ── Capability gate ──────────────────────────────────────────────────────
     if (!this._flags.isEnabled('session-compaction')) {
-      logger.debug('[CompactionManager] session-compaction flag disabled; skipping', {
+      logger.debug('[CompactionManager] session compaction is off (behavior.compactionStrategy); skipping', {
         sessionId: this._sessionId,
       });
       return null;
