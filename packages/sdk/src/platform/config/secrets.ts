@@ -14,17 +14,25 @@
  *   - preferred_secure   → prefer secure, allow plaintext fallback with warning
  *   - require_secure     → never read/write plaintext
  *
+ * Encryption keys come from a random keyfile (~/.goodvibes/secrets.key,
+ * 0600 in a 0700 directory), generated on first need — never from host
+ * identity, so stores survive hostname/username changes and machine moves.
+ * Stores written by older SDKs (host-identity key, no version field) are
+ * migrated to the keyfile format on first successful read. A store that
+ * exists but cannot be decrypted is a distinct, surfaced error state — it is
+ * never treated as empty and never overwritten.
+ *
  * Secret values are never logged.
  */
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { dirname, isAbsolute, join, resolve } from 'path';
 import { hostname, userInfo } from 'os';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import type { ConfigManager } from './manager.js';
 import { getSecretRefSource, isSecretRefInput, resolveSecretRef } from './secret-refs.js';
 import { logger } from '../utils/logger.js';
-import { requireSurfaceRoot, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
+import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 
 export type SecretStorageMode = 'plaintext_allowed' | 'preferred_secure' | 'require_secure';
@@ -73,10 +81,41 @@ export interface SecretStorageReview {
   }[];
 }
 
-interface EncryptedStore {
+/**
+ * On-disk envelope for the encrypted store. `version` was introduced together
+ * with keyfile-derived encryption; files without a `version` field are legacy
+ * stores encrypted with a key derived from the machine's hostname + username,
+ * and are migrated to the current format on first successful read.
+ */
+interface EncryptedStoreEnvelope {
+  version?: number;
   iv: string;
   tag: string;
   data: string;
+}
+
+const SECRETS_STORE_FORMAT_VERSION = 2;
+
+type SecureStoreReadResult =
+  | { readonly status: 'ok'; readonly secrets: Record<string, string> }
+  | { readonly status: 'missing' }
+  | { readonly status: 'unreadable'; readonly reason: string };
+
+type PlaintextStoreReadResult =
+  | { readonly status: 'ok'; readonly secrets: Record<string, string> }
+  | { readonly status: 'missing' }
+  | { readonly status: 'unreadable'; readonly reason: string };
+
+/**
+ * Thrown when a secrets store file exists on disk but cannot be read back
+ * (wrong key, tampered content, malformed JSON, or an unknown future format).
+ * Writes to that store are refused so its contents are never overwritten.
+ */
+export class SecretStoreUnreadableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SecretStoreUnreadableError';
+  }
 }
 
 interface PlaintextStore {
@@ -91,6 +130,16 @@ interface SecretStorePath {
   readonly scope: SecretScope;
 }
 
+/**
+ * Identity used only to decrypt legacy stores (written before keyfile-derived
+ * encryption existed). Overridable so tests can simulate stores written on a
+ * machine with a different hostname/username.
+ */
+export interface LegacyStoreIdentity {
+  readonly hostname: string;
+  readonly username: string;
+}
+
 export interface SecretsManagerOptions {
   readonly projectRoot: string;
   readonly globalHome: string;
@@ -101,6 +150,10 @@ export interface SecretsManagerOptions {
   readonly secureUserFilePath?: string | undefined;
   readonly plaintextProjectFilePath?: string | undefined;
   readonly plaintextUserFilePath?: string | undefined;
+  /** Override the keyfile location (defaults to <globalHome>/.goodvibes/secrets.key). */
+  readonly keyFilePath?: string | undefined;
+  /** Override the host identity used to decrypt legacy stores (tests only). */
+  readonly legacyIdentity?: LegacyStoreIdentity | undefined;
 }
 
 function requireAbsoluteOwnedPath(path: string, name: string): string {
@@ -118,20 +171,32 @@ function normalizeOptionalOwnedPath(path: string | undefined, name: string): str
   return path === undefined ? undefined : requireAbsoluteOwnedPath(path, name);
 }
 
-function deriveEncryptionKey(): Buffer {
-  const seed = hostname() + userInfo().username + 'goodvibes-secrets';
+/**
+ * Key derivation used by stores written before keyfile-derived encryption.
+ * Kept solely so those stores can be decrypted once and migrated; never used
+ * for new writes.
+ */
+function deriveLegacyEncryptionKey(identity?: LegacyStoreIdentity): Buffer {
+  const host = identity?.hostname ?? hostname();
+  const user = identity?.username ?? userInfo().username;
+  const seed = host + user + 'goodvibes-secrets';
   return createHash('sha256').update(seed, 'utf8').digest();
 }
 
-function encrypt(plaintext: string, key: Buffer): EncryptedStore {
+function encrypt(plaintext: string, key: Buffer): EncryptedStoreEnvelope {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return { iv: iv.toString('hex'), tag: tag.toString('hex'), data: encrypted.toString('hex') };
+  return {
+    version: SECRETS_STORE_FORMAT_VERSION,
+    iv: iv.toString('hex'),
+    tag: tag.toString('hex'),
+    data: encrypted.toString('hex'),
+  };
 }
 
-function decrypt(store: EncryptedStore, key: Buffer): string {
+function decrypt(store: EncryptedStoreEnvelope, key: Buffer): string {
   const iv = Buffer.from(store.iv, 'hex');
   const tag = Buffer.from(store.tag, 'hex');
   const data = Buffer.from(store.data, 'hex');
@@ -174,12 +239,13 @@ function collectAncestorRoots(start: string): string[] {
 }
 
 export class SecretsManager {
-  private readonly encKey: Buffer;
+  private encKey: Buffer | null = null;
+  private readonly keyFilePath: string;
   private readonly options: SecretsManagerOptions;
   private readonly surfaceRoot: string;
+  private readonly reportedUnreadableStores = new Set<string>();
 
   constructor(options: SecretsManagerOptions) {
-    this.encKey = deriveEncryptionKey();
     this.surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'SecretsManager surfaceRoot');
     this.options = {
       ...options,
@@ -190,6 +256,37 @@ export class SecretsManager {
       plaintextProjectFilePath: normalizeOptionalOwnedPath(options.plaintextProjectFilePath, 'plaintextProjectFilePath'),
       plaintextUserFilePath: normalizeOptionalOwnedPath(options.plaintextUserFilePath, 'plaintextUserFilePath'),
     };
+    this.keyFilePath = normalizeOptionalOwnedPath(options.keyFilePath, 'keyFilePath')
+      ?? resolveSharedDirectory(this.options.globalHome, 'secrets.key');
+  }
+
+  /**
+   * Load the encryption key from the keyfile, generating a fresh random key
+   * on first need. The keyfile is 0600 inside a 0700 directory; the key never
+   * derives from host identity, so a store directory copied to another
+   * machine (or a renamed host/user) keeps decrypting.
+   */
+  private getEncryptionKey(): Buffer {
+    if (this.encKey) return this.encKey;
+    if (existsSync(this.keyFilePath)) {
+      const raw = readFileSync(this.keyFilePath, 'utf-8').trim();
+      if (!/^[0-9a-f]{64}$/i.test(raw)) {
+        throw new SecretStoreUnreadableError(
+          `Secrets keyfile at ${this.keyFilePath} is malformed. Restore it from backup; without the original key, existing encrypted stores cannot be read.`,
+        );
+      }
+      this.encKey = Buffer.from(raw, 'hex');
+      return this.encKey;
+    }
+    const key = randomBytes(32);
+    const keyDir = dirname(this.keyFilePath);
+    mkdirSync(keyDir, { recursive: true, mode: 0o700 });
+    chmodSync(keyDir, 0o700);
+    writeFileSync(this.keyFilePath, `${key.toString('hex')}\n`, { encoding: 'utf-8', mode: 0o600 });
+    chmodSync(this.keyFilePath, 0o600);
+    logger.info('SecretsManager: generated new secrets keyfile', { path: this.keyFilePath });
+    this.encKey = key;
+    return key;
   }
 
   getGlobalHome(): string {
@@ -258,9 +355,7 @@ export class SecretsManager {
     }
 
     const target = this.resolveWriteTarget(scope, medium);
-    const existing = target.secure
-      ? this.readEncryptedFile(target.path) ?? {}
-      : this.readPlaintextFile(target.path) ?? {};
+    const existing = this.readStoreForWrite(target);
     existing[key] = value;
 
     try {
@@ -272,9 +367,9 @@ export class SecretsManager {
       logger.debug('SecretsManager: stored secret', { key, source: target.source });
       return;
     } catch (error) {
-      if (policy === 'preferred_secure' && target.secure) {
+      if (policy === 'preferred_secure' && target.secure && !(error instanceof SecretStoreUnreadableError)) {
         const fallback = this.resolveWriteTarget(scope, 'plaintext');
-        const fallbackExisting = this.readPlaintextFile(fallback.path) ?? {};
+        const fallbackExisting = this.readStoreForWrite(fallback);
         fallbackExisting[key] = value;
         this.writePlaintextFile(fallback.path, fallbackExisting);
         logger.warn('SecretsManager: secure write failed, fell back to plaintext', {
@@ -286,6 +381,23 @@ export class SecretsManager {
       }
       throw error;
     }
+  }
+
+  /**
+   * Load a store's current contents ahead of a write. A missing file is a
+   * legitimately empty store; a file that exists but cannot be read refuses
+   * the write outright — overwriting it would destroy every secret it holds.
+   */
+  private readStoreForWrite(target: SecretStorePath): Record<string, string> {
+    const result = target.secure
+      ? this.readEncryptedStore(target.path)
+      : this.readPlaintextStore(target.path);
+    if (result.status === 'unreadable') {
+      throw new SecretStoreUnreadableError(
+        `Refusing to write to the secrets store at ${target.path}: the file exists but cannot be read (${result.reason}). Overwriting it would destroy its contents; restore or move the file first.`,
+      );
+    }
+    return result.status === 'ok' ? { ...result.secrets } : {};
   }
 
   async list(): Promise<string[]> {
@@ -340,13 +452,22 @@ export class SecretsManager {
     const policy = this.getPolicy();
     const records = await this.listDetailed();
     const storedRecords = records.filter((record) => record.source !== 'env');
-    const locations = uniquePaths(this.getAllCandidateStores()).map((path) => ({
-      source: path.source,
-      path: path.path,
-      exists: existsSync(path.path),
-      readable: (path.secure ? this.readEncryptedFile(path.path) : this.readPlaintextFile(path.path)) !== null,
+    const storeStates = uniquePaths(this.getAllCandidateStores()).map((store) => ({
+      store,
+      result: store.secure ? this.readEncryptedStore(store.path) : this.readPlaintextStore(store.path),
+    }));
+    const locations = storeStates.map(({ store, result }) => ({
+      source: store.source,
+      path: store.path,
+      exists: existsSync(store.path),
+      readable: result.status === 'ok',
     }));
     const warnings: string[] = [];
+    for (const { store, result } of storeStates) {
+      if (result.status === 'unreadable') {
+        warnings.push(`store at ${store.path} exists but cannot be read (${result.reason})`);
+      }
+    }
     if (policy === 'preferred_secure' && storedRecords.some((record) => !record.secure)) {
       warnings.push('plaintext fallback secrets are present');
     }
@@ -504,49 +625,154 @@ export class SecretsManager {
     return policy === 'plaintext_allowed' ? 'plaintext' : 'secure';
   }
 
-  private readEncryptedFile(filePath: string): Record<string, string> | null {
+  /**
+   * Read an encrypted store with three distinct outcomes: `ok` (decrypted),
+   * `missing` (no file — a legitimately empty store), and `unreadable` (a file
+   * exists but cannot be decrypted or parsed). Unreadable is never collapsed
+   * into empty: writes to an unreadable store are refused so its contents are
+   * never destroyed.
+   *
+   * Legacy stores (no `version` field, host-identity key) are migrated in
+   * place on first successful read: decrypted with the legacy key, then
+   * re-encrypted under the keyfile.
+   */
+  private readEncryptedStore(filePath: string): SecureStoreReadResult {
+    let raw: string;
     try {
-      const raw = readFileSync(filePath, 'utf-8');
-      const store: EncryptedStore = JSON.parse(raw);
-      return JSON.parse(decrypt(store, this.encKey)) as Record<string, string>;
+      raw = readFileSync(filePath, 'utf-8');
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') {
-        logger.error('SecretsManager: failed to read encrypted store', { path: filePath });
-      }
-      return null;
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { status: 'missing' };
+      return { status: 'unreadable', reason: summarizeError(err) };
     }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { status: 'unreadable', reason: 'store file is not valid JSON' };
+    }
+    if (!parsed || typeof parsed !== 'object') {
+      return { status: 'unreadable', reason: 'store file has an unrecognized shape' };
+    }
+    const envelope = parsed as Partial<EncryptedStoreEnvelope>;
+    if (typeof envelope.iv !== 'string' || typeof envelope.tag !== 'string' || typeof envelope.data !== 'string') {
+      return { status: 'unreadable', reason: 'store file has an unrecognized shape' };
+    }
+
+    if (envelope.version === undefined) {
+      return this.migrateLegacyStore(filePath, envelope as EncryptedStoreEnvelope);
+    }
+    if (envelope.version !== SECRETS_STORE_FORMAT_VERSION) {
+      return {
+        status: 'unreadable',
+        reason: `store format version ${envelope.version} is not supported by this SDK version`,
+      };
+    }
+
+    try {
+      const secrets = JSON.parse(decrypt(envelope as EncryptedStoreEnvelope, this.getEncryptionKey())) as Record<string, string>;
+      return { status: 'ok', secrets };
+    } catch (err) {
+      return {
+        status: 'unreadable',
+        reason: `cannot decrypt with the current keyfile (${summarizeError(err)})`,
+      };
+    }
+  }
+
+  private migrateLegacyStore(filePath: string, envelope: EncryptedStoreEnvelope): SecureStoreReadResult {
+    let plaintext: string;
+    try {
+      plaintext = decrypt(envelope, deriveLegacyEncryptionKey(this.options.legacyIdentity));
+    } catch {
+      return {
+        status: 'unreadable',
+        reason: 'legacy store cannot be decrypted with this machine\'s hostname and username (they changed since the store was written)',
+      };
+    }
+    let secrets: Record<string, string>;
+    try {
+      secrets = JSON.parse(plaintext) as Record<string, string>;
+    } catch {
+      return { status: 'unreadable', reason: 'legacy store decrypted to malformed content' };
+    }
+    try {
+      this.writeEncryptedFile(filePath, secrets);
+      logger.info('SecretsManager: migrated legacy encrypted secrets store to keyfile encryption', { path: filePath });
+    } catch (error) {
+      logger.warn('SecretsManager: decrypted legacy store but could not rewrite it under the keyfile', {
+        path: filePath,
+        error: summarizeError(error),
+      });
+    }
+    return { status: 'ok', secrets };
+  }
+
+  /**
+   * Lookup-flavored read: returns the secrets when readable, null otherwise.
+   * An unreadable store logs one honest error per file per process; it is
+   * never mistaken for an empty store on the write path (see set/delete).
+   */
+  private readEncryptedFile(filePath: string): Record<string, string> | null {
+    const result = this.readEncryptedStore(filePath);
+    if (result.status === 'ok') return result.secrets;
+    if (result.status === 'unreadable') this.reportUnreadableStore(filePath, result.reason);
+    return null;
+  }
+
+  private reportUnreadableStore(filePath: string, reason: string): void {
+    if (this.reportedUnreadableStores.has(filePath)) return;
+    this.reportedUnreadableStores.add(filePath);
+    logger.error('SecretsManager: store exists but cannot be read; its secrets are unavailable and the file will not be overwritten', {
+      path: filePath,
+      reason,
+    });
   }
 
   private writeEncryptedFile(filePath: string, secrets: Record<string, string>): void {
-    mkdirSync(dirname(filePath), { recursive: true });
-    const plaintext = JSON.stringify(secrets);
-    const store = encrypt(plaintext, this.encKey);
-    writeFileSync(filePath, `${JSON.stringify(store, null, 2)}\n`, 'utf-8');
+    const store = encrypt(JSON.stringify(secrets), this.getEncryptionKey());
+    mkdirSync(dirname(filePath), { recursive: true, mode: 0o700 });
+    writeFileSync(filePath, `${JSON.stringify(store, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 });
+    chmodSync(filePath, 0o600);
+  }
+
+  private readPlaintextStore(filePath: string): PlaintextStoreReadResult {
+    let raw: string;
+    try {
+      raw = readFileSync(filePath, 'utf-8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { status: 'missing' };
+      return { status: 'unreadable', reason: summarizeError(err) };
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { status: 'unreadable', reason: 'store file is not valid JSON' };
+    }
+    if (!parsed || typeof parsed !== 'object') {
+      return { status: 'unreadable', reason: 'store file has an unrecognized shape' };
+    }
+    if ('version' in parsed && 'secrets' in parsed) {
+      const secrets = (parsed as PlaintextStore).secrets;
+      return secrets && typeof secrets === 'object'
+        ? { status: 'ok', secrets }
+        : { status: 'unreadable', reason: 'store file has an unrecognized shape' };
+    }
+    return { status: 'ok', secrets: parsed as Record<string, string> };
   }
 
   private readPlaintextFile(filePath: string): Record<string, string> | null {
-    try {
-      const raw = readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(raw) as unknown;
-      if (!parsed || typeof parsed !== 'object') return null;
-      if ('version' in parsed && 'secrets' in parsed) {
-        const secrets = (parsed as PlaintextStore).secrets;
-        return secrets && typeof secrets === 'object' ? secrets : null;
-      }
-      return parsed as Record<string, string>;
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') {
-        logger.error('SecretsManager: failed to read plaintext store', { path: filePath });
-      }
-      return null;
-    }
+    const result = this.readPlaintextStore(filePath);
+    if (result.status === 'ok') return result.secrets;
+    if (result.status === 'unreadable') this.reportUnreadableStore(filePath, result.reason);
+    return null;
   }
 
   private writePlaintextFile(filePath: string, secrets: Record<string, string>): void {
-    mkdirSync(dirname(filePath), { recursive: true });
+    mkdirSync(dirname(filePath), { recursive: true, mode: 0o700 });
     const payload: PlaintextStore = { version: 1, secrets };
-    writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf-8');
+    writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 });
+    chmodSync(filePath, 0o600);
   }
 }
