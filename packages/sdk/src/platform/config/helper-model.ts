@@ -16,9 +16,12 @@
  *   - Tracks token usage separately from the main model
  */
 
+import { randomUUID } from 'node:crypto';
 import type { ConfigManager } from './manager.js';
 import type { LLMProvider } from '../providers/interface.js';
 import type { ProviderRegistry } from '../providers/registry.js';
+import type { RuntimeEventBus } from '../runtime/events/index.js';
+import { emitLlmResponseReceived } from '../runtime/emitters/turn.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -58,6 +61,15 @@ export interface HelperUsage {
 export interface HelperModelDeps {
   readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
   readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'>;
+  /**
+   * Runtime bus for usage events. When present, every helper-model call
+   * emits LLM_RESPONSE_RECEIVED with its token actuals so the shared
+   * cost-attribution pipeline records the spend under whatever tool/hook/MCP
+   * origin scope the call ran inside.
+   */
+  readonly runtimeBus?: RuntimeEventBus | null | undefined;
+  /** Optional session identity stamped on emitted usage events. */
+  readonly sessionId?: (() => string | undefined) | undefined;
 }
 
 export class HelperModelUnavailableError extends Error {
@@ -212,6 +224,27 @@ export class HelperModel {
       this._usage.inputTokens += response.usage?.inputTokens ?? 0;
       this._usage.outputTokens += response.usage?.outputTokens ?? 0;
       this._usage.calls += 1;
+
+      if (this.deps.runtimeBus) {
+        // Token actuals for helper-model spend. The emitter merges the
+        // ambient cost-origin scope (tool / hook / MCP server), so the
+        // attribution pipeline records this spend under its real cause.
+        emitLlmResponseReceived(this.deps.runtimeBus, {
+          sessionId: this.deps.sessionId?.() ?? '',
+          source: 'helper-model',
+          traceId: randomUUID(),
+        }, {
+          turnId: '',
+          provider: resolved.provider.name,
+          model: resolved.modelId,
+          contentSummary: '',
+          toolCallCount: 0,
+          inputTokens: response.usage?.inputTokens ?? 0,
+          outputTokens: response.usage?.outputTokens ?? 0,
+          cacheReadTokens: response.usage?.cacheReadTokens ?? 0,
+          cacheWriteTokens: response.usage?.cacheWriteTokens ?? 0,
+        });
+      }
 
       logger.debug('HelperModel.chat: success', {
         task,

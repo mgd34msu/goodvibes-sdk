@@ -14,9 +14,12 @@
  *   - ToolLLM.chat() throws request and configuration failures.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { ConfigManager } from './manager.js';
 import type { LLMProvider } from '../providers/interface.js';
 import type { ProviderRegistry } from '../providers/registry.js';
+import type { RuntimeEventBus } from '../runtime/events/index.js';
+import { emitLlmResponseReceived } from '../runtime/emitters/turn.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -30,6 +33,16 @@ export interface ResolvedToolLLM {
 export interface ToolLLMDeps {
   readonly configManager: Pick<ConfigManager, 'get'>;
   readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'>;
+  /**
+   * Runtime bus for usage events. When present, every tool-internal LLM call
+   * emits LLM_RESPONSE_RECEIVED with its token actuals so the shared
+   * cost-attribution pipeline records the spend under whatever tool/hook/MCP
+   * origin scope the call ran inside. Without it, spend from tool-internal
+   * calls never reaches attribution.
+   */
+  readonly runtimeBus?: RuntimeEventBus | null | undefined;
+  /** Optional session identity stamped on emitted usage events. */
+  readonly sessionId?: (() => string | undefined) | undefined;
 }
 
 export class ToolLLMUnavailableError extends Error {
@@ -129,6 +142,27 @@ export class ToolLLM {
         maxTokens: options.maxTokens ?? 1024,
         systemPrompt: options.systemPrompt,
       });
+
+      if (this.deps.runtimeBus) {
+        // Token actuals for tool-internal spend. The emitter merges the
+        // ambient cost-origin scope (tool / hook / MCP server), so the
+        // attribution pipeline records this spend under its real cause.
+        emitLlmResponseReceived(this.deps.runtimeBus, {
+          sessionId: this.deps.sessionId?.() ?? '',
+          source: 'tool-llm',
+          traceId: randomUUID(),
+        }, {
+          turnId: '',
+          provider: provider.name,
+          model: modelId,
+          contentSummary: '',
+          toolCallCount: 0,
+          inputTokens: response.usage?.inputTokens ?? 0,
+          outputTokens: response.usage?.outputTokens ?? 0,
+          cacheReadTokens: response.usage?.cacheReadTokens ?? 0,
+          cacheWriteTokens: response.usage?.cacheWriteTokens ?? 0,
+        });
+      }
 
       if (typeof response.content !== 'string') {
         throw new Error('Tool LLM response did not include string content.');
