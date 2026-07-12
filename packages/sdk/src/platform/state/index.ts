@@ -82,6 +82,7 @@ export {
   getMemoryProjection,
   diffProjectionToProposals,
   applyMemoryProjectionProposals,
+  createMemoryProjectionGit,
 } from './memory-file-projection.js';
 export type {
   MemoryProjectionOptions,

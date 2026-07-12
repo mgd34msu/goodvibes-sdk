@@ -69,14 +69,51 @@ describe('projectMemoryToFiles / readProjectedMemoryFiles', () => {
     expect(files.map((f) => f.id).sort()).toEqual(['mem_p', 'mem_t']);
   });
 
-  test('git seam is invoked when supplied', () => {
+  test('git seam is invoked when supplied; a dir with no repository gets its own initialized first', () => {
     const dir = join(tempDir(), 'memory');
     const calls: string[] = [];
     projectMemoryToFiles([record()], dir, {
       now: 1000,
-      git: { add: () => calls.push('add'), commit: () => calls.push('commit') },
+      git: {
+        resolveToplevel: () => null,
+        init: () => calls.push('init'),
+        add: () => calls.push('add'),
+        commit: () => calls.push('commit'),
+      },
+    });
+    expect(calls).toEqual(['init', 'add', 'commit']);
+  });
+
+  test('a projection dir that is already its own repository root commits without re-initializing', () => {
+    const dir = join(tempDir(), 'memory');
+    const calls: string[] = [];
+    projectMemoryToFiles([record()], dir, {
+      now: 1000,
+      git: {
+        resolveToplevel: (queried) => queried,
+        init: () => calls.push('init'),
+        add: () => calls.push('add'),
+        commit: () => calls.push('commit'),
+      },
     });
     expect(calls).toEqual(['add', 'commit']);
+  });
+
+  test('a projection dir nested inside some other repository never commits into it', () => {
+    const dir = join(tempDir(), 'memory');
+    const calls: string[] = [];
+    projectMemoryToFiles([record()], dir, {
+      now: 1000,
+      git: {
+        // git resolves upward to an enclosing checkout that is NOT ours.
+        resolveToplevel: () => '/home/user/some-foreign-checkout',
+        init: (initDir) => calls.push(`init:${initDir}`),
+        add: (addDir) => calls.push(`add:${addDir}`),
+        commit: (commitDir) => calls.push(`commit:${commitDir}`),
+      },
+    });
+    // The seam is redirected to a repository initialized AT the projection dir.
+    expect(calls).toEqual([`init:${dir}`, `add:${dir}`, `commit:${dir}`]);
   });
 });
 
