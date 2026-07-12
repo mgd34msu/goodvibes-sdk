@@ -363,13 +363,14 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'integration-delivery-slo',
     name: 'Integration Delivery SLO',
     description:
-      'Enables SLO enforcement for integration delivery (Slack, Discord, webhooks). '
-      + 'When enabled, dead-letter events are logged at error level and surfaced in '
-      + 'integration diagnostics. Failures are classified as retryable or terminal '
-      + 'and retried with exponential backoff. Dead-letter entries are exposed via '
-      + '/notify dlq and replayable via /notify replay. '
-      + 'Disable to keep warn-level logging without DLQ tracking.',
-    defaultState: 'disabled',
+      'Enforces delivery service-level objectives for the enabled channel surfaces '
+      + '(Slack, Discord, webhooks): failures are classified as retryable or terminal, '
+      + 'retried with exponential backoff, and dead-letter events are logged at error '
+      + 'level and surfaced in integration diagnostics. Dead-letter entries are exposed '
+      + 'via /notify dlq and replayable via /notify replay. Enabled by default alongside '
+      + 'the channel family it belongs to; disable to keep warn-level logging without '
+      + 'DLQ tracking.',
+    defaultState: 'enabled',
     tier: 6,
     runtimeToggleable: true,
   },
@@ -615,11 +616,12 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'an unguessable rendezvous id so surfaces can reach it from outside the LAN. An end-to-end '
       + 'channel (ECDH P-256 → HKDF → AES-256-GCM) terminates INSIDE the daemon before any application '
       + 'byte, so the relay operator only ever sees ciphertext plus connection metadata; the daemon is '
-      + 'authenticated to surfaces by static-key pinning from the pairing payload. DEFAULT OFF: it '
-      + 'graduates through the flag-graduation machinery — dark until reachability soak evidence earns '
-      + 'it a soaking/candidate state. Also gated by the relay.enabled config switch and a configured '
-      + 'relay.url; disable either to keep the daemon LAN-only.',
-    defaultState: 'disabled',
+      + 'authenticated to surfaces by static-key pinning from the pairing payload. Relay, channel, and '
+      + 'OAuth credentials at rest are encrypted under the random secrets keyfile (never host-derived '
+      + 'identity). No connection is made without explicit configuration: the relay.enabled config '
+      + 'switch and a configured relay.url still gate every connection — leave either unset to keep '
+      + 'the daemon LAN-only.',
+    defaultState: 'enabled',
     tier: 11,
     runtimeToggleable: true,
   },

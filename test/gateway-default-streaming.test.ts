@@ -142,10 +142,14 @@ describe('S2a — control-plane-gateway defaults ON', () => {
     const flags = createFeatureFlagManager();
     expect(flags.isEnabled('control-plane-gateway')).toBe(true);
     // The channel family graduated together once inbound messages became
-    // gated by the per-surface owner allowlist with reply-based approve/deny.
+    // gated by the per-surface owner allowlist with reply-based approve/deny;
+    // the delivery SLO rode the same package, and the outbound relay's
+    // recorded condition (the secrets key-backend migration) landed in the
+    // same release.
     for (const graduated of [
       'route-binding', 'delivery-engine', 'slack-surface', 'discord-surface',
       'ntfy-surface', 'webhook-surface', 'homeassistant-surface',
+      'integration-delivery-slo', 'relay-connect',
     ]) {
       expect(flags.isEnabled(graduated)).toBe(true);
     }

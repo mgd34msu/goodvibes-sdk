@@ -421,9 +421,9 @@ export interface AtRestConfig {
  * Outbound relay reachability. When enabled, the daemon connects OUTBOUND to a
  * self-hostable, zero-knowledge relay and registers under an unguessable
  * rendezvous id so surfaces can reach it from outside the LAN. The relay never
- * sees plaintext — an end-to-end channel terminates inside the daemon. DEFAULT
- * OFF; it graduates through the flag-graduation machinery (the `relay-connect`
- * feature flag) and is gated by both this `relay.enabled` switch and that flag.
+ * sees plaintext — an end-to-end channel terminates inside the daemon. This
+ * `relay.enabled` switch DEFAULTS OFF and, with a configured `relay.url`, gates
+ * every connection (the `relay-connect` flag is the additional registry gate).
  */
 export interface RelayConfig {
   enabled: boolean;
