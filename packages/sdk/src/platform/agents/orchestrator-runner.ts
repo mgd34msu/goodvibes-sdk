@@ -134,7 +134,7 @@ export interface AgentOrchestratorRunContext {
    * defaultTurnKnowledgeBudgetTokens / DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR).
    * Setting passiveKnowledgeInjectionBudgetTokens to 0 is the config-level
    * hard no-op: the feature never runs and the base system prompt is
-   * byte-identical, independent of the feature flag's own state.
+   * byte-identical, independent of the capability gate's own state.
    */
   readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;

@@ -1,8 +1,8 @@
 /**
  * Plugin lifecycle system — barrel export and factory.
  *
- * Gated by the `plugin-lifecycle` feature flag. Import and call
- * `createPluginLifecycleManager()` at startup after the feature flag
+ * Gated by the `plugin-lifecycle` capability gate (runtime.pluginLifecycle). Import and call
+ * `createPluginLifecycleManager()` at startup after the gate
  * manager has been initialised.
  *
  * @example
@@ -72,7 +72,7 @@ export { runHotReload } from './hot-reload.js';
  * createPluginLifecycleManager — Factory function for the PluginLifecycleManager.
  *
  * Intended as the primary entry point for consumers. Respects the
- * `plugin-lifecycle` feature flag — callers should check the flag before
+ * `plugin-lifecycle` capability gate — callers should check the gate before
  * invoking if they want to gate the entire system.
  *
  * @param options - Optional manager configuration.
@@ -83,7 +83,7 @@ export function createPluginLifecycleManager(
   flagManager?: Pick<FeatureFlagManager, 'isEnabled'> | null,
 ): PluginLifecycleManager {
   if (flagManager && !flagManager.isEnabled('plugin-lifecycle')) {
-    throw new Error('Feature flag "plugin-lifecycle" is not enabled');
+    throw new Error('The structured plugin lifecycle is turned off; set runtime.pluginLifecycle to true (restart required), or use the baseline plugin manager.');
   }
   return new PluginLifecycleManager(options);
 }

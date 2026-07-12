@@ -367,7 +367,7 @@ export interface OverflowHandlerConfig {
   retention?: RetentionPolicyConfig | undefined;
   /** Inject a custom backend directly (takes precedence over spillBackend). */
   backend?: SpillBackend | undefined;
-  /** Feature flags gate alternate spill backends when supplied by SDK runtime services. */
+  /** The capability gates control alternate spill backends when supplied by SDK runtime services. */
   featureFlags?: FeatureFlagReader | undefined;
 }
 

@@ -130,8 +130,8 @@ export interface PolicyLoaderOptions {
   throwOnRejection?: boolean | undefined;
 
   /**
-   * Feature flags gate signature validation when supplied by SDK runtime services.
-   * Hosts without runtime feature flags can provide explicit loader options.
+   * The capability gates control signature validation when supplied by SDK runtime services.
+   * Hosts without runtime gates can provide explicit loader options.
    */
   featureFlags?: FeatureFlagReader | undefined;
 }

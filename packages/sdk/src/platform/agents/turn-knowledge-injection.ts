@@ -218,7 +218,7 @@ export interface BuildPerTurnKnowledgeInjectionInput {
   readonly codeIndex?: TurnCodeIndexSource | undefined;
   /**
    * Stage B — resolved code-injection gate for this turn: (the `agent-passive-code-injection`
-   * feature flag, DEFAULT OFF) AND (the embedder's storage.codeIndexEnabled setting). Resolved
+   * gate, off by default via agents.passiveInjection.code) AND (the embedder's storage.codeIndexEnabled setting). Resolved
    * by the caller, not this pure function. Defaults to false — code injection never happens
    * unless the caller explicitly opted in this turn, matching the flag's default-off posture.
    */

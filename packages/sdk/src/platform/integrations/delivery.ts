@@ -162,7 +162,7 @@ export interface DeliveryQueueConfig {
    * error level and metrics are updated. When false, failures are logged at
    * warn level only.
    *
-   * Controlled by the `integration-delivery-slo` feature flag.
+   * Controlled by the integrations.delivery.sloEnforced setting (the `integration-delivery-slo` gate).
    */
   sloEnforced: boolean;
 }
@@ -172,7 +172,7 @@ export interface DeliveryQueueOptions extends Partial<DeliveryQueueConfig> {
   /**
    * Optional config source. When supplied, retry/backoff/DLQ/SLO defaults are read
    * from integrations.delivery.* — explicit option fields still override, and the
-   * feature flag remains the fallback source for sloEnforced.
+   * gate remains the fallback source for sloEnforced.
    */
   readonly configManager?: Pick<ConfigManager, 'get'> | null | undefined;
 }
@@ -225,7 +225,7 @@ interface PendingEntry {
  *
  * Dead-letter entries can be replayed via `replay()` or cleared with `clearDlq()`.
  *
- * Enable SLO enforcement via the `integration-delivery-slo` feature flag to
+ * Enable SLO enforcement via the integrations.delivery.sloEnforced setting to
  * surface dead-letter failures as error-level log entries and expose them in
  * integration diagnostics.
  */

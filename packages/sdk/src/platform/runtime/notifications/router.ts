@@ -11,7 +11,7 @@
  * 4. Burst policy          — collapses rapid domain:level event floods
  * 5. Batch policy          — collapses repeated events within rolling time window
  *
- * The `adaptive-notification-suppression` feature flag gates policies 3 and 4.
+ * The notifications.adaptiveSuppression setting gates policies 3 and 4.
  * When the flag is disabled, only the original policies 1, 2, and 5 are applied.
  */
 
@@ -228,7 +228,7 @@ export class NotificationRouter {
   /**
    * Enable or disable adaptive notification suppression (mode-context + burst policies).
    *
-   * This corresponds to the `adaptive-notification-suppression` feature flag.
+   * This corresponds to the notifications.adaptiveSuppression setting.
    * When disabled, only the base default + quiet-typing + batch policies apply.
    *
    * @param enabled - Whether to activate adaptive suppression.

@@ -884,7 +884,7 @@ export function createExecTool(
      */
     readonly credentialEnvScrub?: CredentialEnvScrubConfig | undefined;
     /**
-     * Per-command exec sandbox wiring. When present AND active (feature flag on,
+     * Per-command exec sandbox wiring. When present AND active (gate on,
      * config enabled, host provides a boundary), each foreground command runs
      * inside a bwrap boundary and its result carries sandbox metadata. Omitted or
      * inactive → every command runs the unchanged non-sandboxed path.

@@ -2,7 +2,7 @@
  * Config-driven policy bundle loading for the policy-as-code feature.
  *
  * Reads policy.bundleSource / policy.bundlePath and, when the policy-as-code
- * feature flag is enabled and a file source is configured, loads that bundle into
+ * gate is on (policy.registryEnabled) and a file source is configured, loads that bundle into
  * the registry as a CANDIDATE at startup — making the config keys live without
  * requiring a /policy command. The bundle is never auto-promoted: promotion still
  * requires simulation evidence and a passing divergence gate. Never throws — a

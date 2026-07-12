@@ -203,7 +203,7 @@ export interface ExecSandboxPlan {
 export interface ResolveSandboxPlanInput {
   readonly config: ExecSandboxConfig;
   readonly availability: SandboxAvailability;
-  /** Whether the graduation-gated feature flag is enabled. */
+  /** Whether the exec-sandbox capability gate is on (sandbox.enabled). */
   readonly featureEnabled: boolean;
   readonly command: string;
   readonly workspaceDir: string;
@@ -231,7 +231,7 @@ function egressAllowed(command: string, egressAllowlist: readonly string[]): boo
 const NOT_SANDBOXED_ARGV: string[] = [];
 
 /**
- * Resolve the per-command sandbox plan. When the feature flag is off, the config
+ * Resolve the per-command sandbox plan. When the capability gate is off, the config
  * switch is off, or the host cannot provide a boundary, returns a not-sandboxed
  * plan (the caller then runs today's unchanged exec path). Otherwise returns the
  * bwrap argv prefix plus honest boundary/network/escalation metadata.

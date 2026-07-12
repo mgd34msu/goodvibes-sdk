@@ -4,7 +4,7 @@
  * Tracks all plugins through the 8-state lifecycle machine, resolves capability
  * manifests on load, and emits PluginEvents at every state transition.
  *
- * Gated by the `plugin-lifecycle` feature flag.
+ * Gated by the `plugin-lifecycle` capability gate (runtime.pluginLifecycle).
  */
 
 import { logger } from '../../utils/logger.js';

@@ -12,7 +12,7 @@
  *
  * @remarks
  * Pre-positioned for feature-flag-gated production integration.
- * When the `diagnostics.divergencePanel` feature flag is enabled, this
+ * When the divergence dashboard is on (permissions.divergenceDashboard), this
  * dashboard is wired into the session emitter pipeline. Until that flag is active, this module
  * is exercised only via `DivergencePanel` in the diagnostics layer.
  */

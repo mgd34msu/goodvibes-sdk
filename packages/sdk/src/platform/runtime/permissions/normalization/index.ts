@@ -46,7 +46,7 @@ import type { CompoundVerdict } from './verdict.js';
  *
  * Uses the Shell AST parser to produce a CompoundVerdict with
  * per-segment classification and denial reasons. Requires the
- * `shell-ast-normalization` feature flag to be enabled; falls back to
+ * `shell-ast-normalization` gate to be on (permissions.commandParser 'ast'); falls back to
  * `normalizeCommand` when the flag is disabled.
  *
  * @param command        - The raw shell command string to evaluate.
