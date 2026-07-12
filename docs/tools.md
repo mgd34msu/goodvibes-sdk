@@ -85,7 +85,7 @@ agents or WRFC chains for ordinary questions or direct environment inspection.
 
 ## Contract Verification
 
-The `tool-contract-verification` feature flag is enabled by default, so built-in
+The `tools.contractVerification` setting is enabled by default, so built-in
 and registered tools are verified at registration time. Hosts can disable the
 flag explicitly, but the safer default is verification on.
 
@@ -139,36 +139,38 @@ For the broader security posture and how these keys interact with secrets, see
   is attached, which is why it is absent from the Built-In Tools table above even
   though `delegate` appears in the permission list.
 
-### Policy engine and tool feature flags
+### Policy engine and tool capability settings
 
-The permissions policy engine, simulation mode, and policy-as-code features add
-stricter policy evaluation when enabled. Several tool-related feature flags are
-defined and default to disabled:
+The permissions policy engine (`permissions.engine`), the shadow simulation
+(`permissions.simulation`, default on), and the policy bundle registry
+(`policy.registryEnabled`) add stricter policy evaluation when enabled.
+Related tool settings:
 
-- `permission-divergence-dashboard` — aggregates permission-simulation divergence
-  by tool/prefix/mode and gates enforce-mode transitions on the divergence rate.
-- `runtime-tools-budget-enforcement` — enforces per-phase wall-clock, token, and
-  cost budgets across tool execution pipelines, terminating on a hard breach.
-- `overflow-spill-backends` — enables pluggable overflow spill backends
-  (`file`, `ledger`, or `diagnostics`); when disabled, overflow uses the file
-  backend.
+- `permissions.divergenceDashboard` (default on) — aggregates
+  permission-simulation divergence by tool/prefix/mode and gates enforce-mode
+  transitions on the divergence rate.
+- `runtime.toolBudget.enforced` (default off) — enforces per-phase wall-clock,
+  token, and cost budgets across tool execution pipelines, terminating on a
+  hard breach.
+- `tools.overflowSpillBackend` — selects the overflow spill backend
+  (`file`, `ledger`, or `diagnostics`); `file` is the stock behavior.
 
-See [Feature Flags](./feature-flags.md) for the full flag catalog.
+See [Feature settings](./feature-settings.md) for the full capability catalog.
 
 ## Fetch Safety
 
-The fetch tool has an opt-in `fetch-sanitization` feature flag. When enabled,
-it classifies initial and redirected hosts, blocks private/localhost/link-local/
-metadata targets, applies safe-text handling for unknown hosts, and enforces
-streaming response-size caps.
-
-When disabled, callers are responsible for their own fetch policy. The security
-settings report exposes that tradeoff to clients.
+The fetch tool sanitizes by default (`fetch.sanitizeMode`, default
+`safe-text`). It classifies initial and redirected hosts, blocks
+private/link-local/metadata targets absolutely, gates localhost dev servers
+behind a one-tap per-project approval (`fetch.allowLocalhost`), applies
+safe-text handling for unknown hosts, and enforces streaming response-size
+caps. `fetch.sanitizeMode: none` skips content sanitization only — host
+blocking is unaffected.
 
 ## Shell Safety
 
-The exec tool runs through `ProcessManager` and can use shell AST normalization
-when the `shell-ast-normalization` feature flag is enabled. AST normalization
+The exec tool runs through `ProcessManager` and uses shell AST normalization
+by default (`permissions.commandParser`, default `ast`). AST normalization
 evaluates compound commands segment-by-segment and gives structured denial
 reasons for unsafe command forms.
 

@@ -134,7 +134,7 @@ The daemon is an HTTP server (built on Bun) that exposes the agent runtime to ex
 
 | Route file | Handles |
 |---|---|
-| `runtime-routes.ts` | Agent runtime state, model selection, feature flags |
+| `runtime-routes.ts` | Agent runtime state, model selection, capability gates |
 | `runtime-session-routes.ts` | Session creation, branching, history, compaction |
 | `control-routes.ts` | Control plane gateway — admin/operator-level operations |
 | `channel-routes.ts` | Channel surface management and message delivery |
@@ -381,7 +381,7 @@ The `RuntimeStore` is a Redux-style store (using a custom reducer + dispatch pat
 | `telemetry` | Telemetry collection state |
 | `git` | Git repository state for the working directory |
 | `discovery` | Plugin and capability discovery results |
-| `intelligence` | Model intelligence / feature flag state |
+| `intelligence` | Model intelligence / capability-gate state |
 | `surfacePerf` | Per-surface rendering performance metrics |
 
 ### Selectors

@@ -97,7 +97,7 @@ Operator methods:
 - `deliveries.list`
 - `deliveries.get`
 
-The `integration-delivery-slo` feature flag adds stricter retry/dead-letter
+The `integrations.delivery.sloEnforced` setting (default on) adds stricter retry/dead-letter
 reporting when enabled.
 
 ## Watchers
@@ -134,5 +134,5 @@ Operator methods:
 ## Next Reads
 
 - [Runtime Orchestration](./runtime-orchestration.md)
-- [Feature Flags](./feature-flags.md)
+- [Feature settings](./feature-settings.md)
 - [Defaults](./defaults.md)

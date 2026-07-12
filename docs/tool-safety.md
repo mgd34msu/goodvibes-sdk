@@ -152,7 +152,7 @@ When the SDK drops a malformed tool call due to a parse error, a log entry is em
 
 Tool contract verification is implemented at registration time. Built-in tool
 registration goes through `registerToolWithContractGate`, and the
-`tool-contract-verification` feature flag is enabled by default when no host
+`tools.contractVerification` setting is enabled by default when no host
 feature manager is supplied.
 
 The verifier checks the registered tool definition and phased-tool metadata

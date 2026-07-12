@@ -6,11 +6,11 @@
   },
   "./auth": {
     "gzip_bytes": 3459,
-    "rationale": "auth surface — SessionManager, TokenStore, PermissionResolver, GoodVibesAuthClient (createMemoryTokenStore, createBrowserTokenStore, createGoodVibesAuthClient); AutoRefreshOptions/AutoRefreshCoordinatorOptions types only (the AutoRefreshCoordinator class and createAutoRefreshMiddleware live in ./client-auth and are NOT re-exported from ./auth). Measured 2882 B gzip @ commit c0e5910; headroom max(ceil(2882*1.2)=3459, 2882+50=2932) → 3459 (1.2x dominates by 527 B)."
+    "rationale": "auth surface \u2014 SessionManager, TokenStore, PermissionResolver, GoodVibesAuthClient (createMemoryTokenStore, createBrowserTokenStore, createGoodVibesAuthClient); AutoRefreshOptions/AutoRefreshCoordinatorOptions types only (the AutoRefreshCoordinator class and createAutoRefreshMiddleware live in ./client-auth and are NOT re-exported from ./auth). Measured 2882 B gzip @ commit c0e5910; headroom max(ceil(2882*1.2)=3459, 2882+50=2932) \u2192 3459 (1.2x dominates by 527 B)."
   },
   "./browser": {
     "gzip_bytes": 1102,
-    "rationale": "companion browser surface with localStorage token store; measured 918 B gzip @ commit 4e5a5e2; headroom max(ceil(918*1.2)=1102, 918+50=968) → 1102 (1.2x dominates by 134 B)"
+    "rationale": "companion browser surface with localStorage token store; measured 918 B gzip @ commit 4e5a5e2; headroom max(ceil(918*1.2)=1102, 918+50=968) \u2192 1102 (1.2x dominates by 134 B)"
   },
   "./browser/agent": {
     "gzip_bytes": 1235,
@@ -26,27 +26,27 @@
   },
   "./client-auth": {
     "gzip_bytes": 213,
-    "rationale": "public facade; measured 163 B gzip @ commit 4e5a5e2; headroom max(ceil(163*1.2)=196, 163+50=213) → 213 (+50 B floor dominates by 17 B)"
+    "rationale": "public facade; measured 163 B gzip @ commit 4e5a5e2; headroom max(ceil(163*1.2)=196, 163+50=213) \u2192 213 (+50 B floor dominates by 17 B)"
   },
   "./contracts": {
     "gzip_bytes": 115,
-    "rationale": "contract re-export entry; measured 65 B gzip @ commit 4e5a5e2; headroom max(ceil(65*1.2)=78, 65+50=115) → 115 (+50 B floor dominates by 37 B)"
+    "rationale": "contract re-export entry; measured 65 B gzip @ commit 4e5a5e2; headroom max(ceil(65*1.2)=78, 65+50=115) \u2192 115 (+50 B floor dominates by 37 B)"
   },
   "./contracts/node": {
     "gzip_bytes": 120,
-    "rationale": "Node-only contract re-export entry; measured 70 B gzip @ commit 4e5a5e2; headroom max(ceil(70*1.2)=84, 70+50=120) → 120 (+50 B floor dominates by 36 B)"
+    "rationale": "Node-only contract re-export entry; measured 70 B gzip @ commit 4e5a5e2; headroom max(ceil(70*1.2)=84, 70+50=120) \u2192 120 (+50 B floor dominates by 36 B)"
   },
   "./daemon": {
     "gzip_bytes": 658,
-    "rationale": "daemon route handler re-export entry; measured 548 B gzip after adding the StepUpService class + its ceremony types (RuntimeServices.stepUpService is required — DaemonServer.start() calls createVerifier() unconditionally — so a consumer composing its own RuntimeServices-compatible object needs the class, not a deep import) alongside the pre-existing relay surface (reachability control + WebAuthn step-up policy hook + LAN certificate minter re-exports for the zero-knowledge relay); headroom max(ceil(548*1.2)=658, 548+50=598) → 658 (1.2x dominates by 60 B)"
+    "rationale": "daemon route handler re-export entry; measured 548 B gzip after adding the StepUpService class + its ceremony types (RuntimeServices.stepUpService is required \u2014 DaemonServer.start() calls createVerifier() unconditionally \u2014 so a consumer composing its own RuntimeServices-compatible object needs the class, not a deep import) alongside the pre-existing relay surface (reachability control + WebAuthn step-up policy hook + LAN certificate minter re-exports for the zero-knowledge relay); headroom max(ceil(548*1.2)=658, 548+50=598) \u2192 658 (1.2x dominates by 60 B)"
   },
   "./errors": {
     "gzip_bytes": 112,
-    "rationale": "error taxonomy re-export entry; measured 62 B gzip @ commit c0e5910; headroom max(ceil(62*1.2)=75, 62+50=112) → 112 (+50 B floor dominates by 37 B)"
+    "rationale": "error taxonomy re-export entry; measured 62 B gzip @ commit c0e5910; headroom max(ceil(62*1.2)=75, 62+50=112) \u2192 112 (+50 B floor dominates by 37 B)"
   },
   "./events": {
     "gzip_bytes": 374,
-    "rationale": "public facade; measured 311 B gzip @ commit 4e5a5e2; headroom max(ceil(311*1.2)=374, 311+50=361) → 374 (1.2x dominates by 13 B)",
+    "rationale": "public facade; measured 311 B gzip @ commit 4e5a5e2; headroom max(ceil(311*1.2)=374, 311+50=361) \u2192 374 (1.2x dominates by 13 B)",
     "domains": [
       "agents",
       "automation",
@@ -191,19 +191,19 @@
   },
   "./expo": {
     "gzip_bytes": 289,
-    "rationale": "Expo with SecureStore helper; measured 239 B gzip @ commit beee912; headroom max(ceil(239*1.2)=287, 239+50=289) → 289 (+50 floor dominates)"
+    "rationale": "Expo with SecureStore helper; measured 239 B gzip @ commit beee912; headroom max(ceil(239*1.2)=287, 239+50=289) \u2192 289 (+50 floor dominates)"
   },
   "./observer": {
     "gzip_bytes": 2231,
-    "rationale": "observer surface; measured 1859 B gzip @ commit c0e5910; headroom max(ceil(1859*1.2)=2231, 1859+50=1909) → 2231 (1.2x dominates by 322 B); dominated by createOpenTelemetryObserver (~700 B), SDKObserver interface + createConsoleObserver (~500 B), OtelTracer/OtelSpan/OtelMeter/OtelCounter/OtelHistogram types (~300 B)"
+    "rationale": "observer surface; measured 1859 B gzip @ commit c0e5910; headroom max(ceil(1859*1.2)=2231, 1859+50=1909) \u2192 2231 (1.2x dominates by 322 B); dominated by createOpenTelemetryObserver (~700 B), SDKObserver interface + createConsoleObserver (~500 B), OtelTracer/OtelSpan/OtelMeter/OtelCounter/OtelHistogram types (~300 B)"
   },
   "./operator": {
     "gzip_bytes": 118,
-    "rationale": "operator SDK client re-export entry; measured 68 B gzip @ commit 4e5a5e2; headroom max(ceil(68*1.2)=82, 68+50=118) → 118 (+50 B floor dominates by 36 B)"
+    "rationale": "operator SDK client re-export entry; measured 68 B gzip @ commit 4e5a5e2; headroom max(ceil(68*1.2)=82, 68+50=118) \u2192 118 (+50 B floor dominates by 36 B)"
   },
   "./peer": {
     "gzip_bytes": 114,
-    "rationale": "peer SDK client re-export entry; measured 64 B gzip @ commit 4e5a5e2; headroom max(ceil(64*1.2)=77, 64+50=114) → 114 (+50 B floor dominates by 37 B)"
+    "rationale": "peer SDK client re-export entry; measured 64 B gzip @ commit 4e5a5e2; headroom max(ceil(64*1.2)=77, 64+50=114) \u2192 114 (+50 B floor dominates by 37 B)"
   },
   "./platform/acp": {
     "gzip_bytes": 214,
@@ -259,7 +259,7 @@
   },
   "./platform/config": {
     "gzip_bytes": 1379,
-    "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, and the W6-C1 daemon-served shared-config tier + admin-scoped credential-status read; measured 1149 B gzip @ v1.0.0 release verification; headroom max(ceil(1149*1.2)=1379, 1149+50=1199) → 1379 (1.2x dominates)"
+    "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, and the W6-C1 daemon-served shared-config tier + admin-scoped credential-status read; measured 1149 B gzip @ v1.0.0 release verification; headroom max(ceil(1149*1.2)=1379, 1149+50=1199) \u2192 1379 (1.2x dominates)"
   },
   "./platform/control-plane": {
     "gzip_bytes": 833,
@@ -267,11 +267,11 @@
   },
   "./platform/core": {
     "gzip_bytes": 342,
-    "rationale": "public platform seam; measured 285 B gzip @ commit 4e5a5e2; headroom max(ceil(285*1.2)=342, 285+50=335) → 342 (1.2x dominates by 7 B)"
+    "rationale": "public platform seam; measured 285 B gzip @ commit 4e5a5e2; headroom max(ceil(285*1.2)=342, 285+50=335) \u2192 342 (1.2x dominates by 7 B)"
   },
   "./platform/daemon": {
     "gzip_bytes": 414,
-    "rationale": "platform daemon facade; measured 345 B gzip @ commit 4e5a5e2; headroom max(ceil(345*1.2)=414, 345+50=395) → 414 (1.2x dominates by 19 B)"
+    "rationale": "platform daemon facade; measured 345 B gzip @ commit 4e5a5e2; headroom max(ceil(345*1.2)=414, 345+50=395) \u2192 414 (1.2x dominates by 19 B)"
   },
   "./platform/discovery": {
     "gzip_bytes": 194,
@@ -283,7 +283,7 @@
   },
   "./platform/git": {
     "gzip_bytes": 109,
-    "rationale": "public facade; measured 59 B gzip @ commit 4e5a5e2; headroom max(ceil(59*1.2)=71, 59+50=109) → 109 (+50 B floor dominates by 38 B)"
+    "rationale": "public facade; measured 59 B gzip @ commit 4e5a5e2; headroom max(ceil(59*1.2)=71, 59+50=109) \u2192 109 (+50 B floor dominates by 38 B)"
   },
   "./platform/hooks": {
     "gzip_bytes": 352,
@@ -291,23 +291,23 @@
   },
   "./platform/integrations": {
     "gzip_bytes": 477,
-    "rationale": "public facade; measured 397 B gzip @ commit 4e5a5e2; headroom max(ceil(397*1.2)=477, 397+50=447) → 477 (1.2x dominates by 30 B)"
+    "rationale": "public facade; measured 397 B gzip @ commit 4e5a5e2; headroom max(ceil(397*1.2)=477, 397+50=447) \u2192 477 (1.2x dominates by 30 B)"
   },
   "./platform/intelligence": {
     "gzip_bytes": 490,
-    "rationale": "public facade; measured 408 B gzip @ commit 4e5a5e2; headroom max(ceil(408*1.2)=490, 408+50=458) → 490 (1.2x dominates by 32 B)"
+    "rationale": "public facade; measured 408 B gzip @ commit 4e5a5e2; headroom max(ceil(408*1.2)=490, 408+50=458) \u2192 490 (1.2x dominates by 32 B)"
   },
   "./platform/knowledge": {
     "gzip_bytes": 1204,
-    "rationale": "public facade; measured 1003 B gzip @ commit 4e5a5e2; headroom max(ceil(1003*1.2)=1204, 1003+50=1053) → 1204 (1.2x dominates by 151 B)"
+    "rationale": "public facade; measured 1003 B gzip @ commit 4e5a5e2; headroom max(ceil(1003*1.2)=1204, 1003+50=1053) \u2192 1204 (1.2x dominates by 151 B)"
   },
   "./platform/knowledge/extensions": {
     "gzip_bytes": 81,
-    "rationale": "public facade; measured 31 B gzip @ commit 4e5a5e2; headroom max(ceil(31*1.2)=38, 31+50=81) → 81 (+50 B floor dominates by 43 B)"
+    "rationale": "public facade; measured 31 B gzip @ commit 4e5a5e2; headroom max(ceil(31*1.2)=38, 31+50=81) \u2192 81 (+50 B floor dominates by 43 B)"
   },
   "./platform/knowledge/home-graph": {
     "gzip_bytes": 411,
-    "rationale": "public facade; grew when the LLM issue-triage loop (triage.ts, reached via HomeGraphService.runRefinement) joined the reachable surface; measured 342 B gzip after adding Home Graph device-issue triage; headroom max(ceil(342*1.2)=411, 342+50=392) → 411 (1.2x dominates)"
+    "rationale": "public facade; grew when the LLM issue-triage loop (triage.ts, reached via HomeGraphService.runRefinement) joined the reachable surface; measured 342 B gzip after adding Home Graph device-issue triage; headroom max(ceil(342*1.2)=411, 342+50=392) \u2192 411 (1.2x dominates)"
   },
   "./platform/mcp": {
     "gzip_bytes": 218,
@@ -323,23 +323,23 @@
   },
   "./platform/multimodal": {
     "gzip_bytes": 116,
-    "rationale": "public facade; measured 66 B gzip @ commit 4e5a5e2; headroom max(ceil(66*1.2)=80, 66+50=116) → 116 (+50 B floor dominates by 36 B)"
+    "rationale": "public facade; measured 66 B gzip @ commit 4e5a5e2; headroom max(ceil(66*1.2)=80, 66+50=116) \u2192 116 (+50 B floor dominates by 36 B)"
   },
   "./platform/node": {
     "gzip_bytes": 342,
-    "rationale": "public facade; measured 285 B gzip @ commit 4e5a5e2; headroom max(ceil(285*1.2)=342, 285+50=335) → 342 (1.2x dominates by 7 B)"
+    "rationale": "public facade; measured 285 B gzip @ commit 4e5a5e2; headroom max(ceil(285*1.2)=342, 285+50=335) \u2192 342 (1.2x dominates by 7 B)"
   },
   "./platform/node/runtime-boundary": {
     "gzip_bytes": 760,
-    "rationale": "public facade; measured 633 B gzip @ commit c0e5910; headroom max(ceil(633*1.2)=760, 633+50=683) → 760 (1.2x dominates by 77 B)"
+    "rationale": "public facade; measured 633 B gzip @ commit c0e5910; headroom max(ceil(633*1.2)=760, 633+50=683) \u2192 760 (1.2x dominates by 77 B)"
   },
   "./platform/orchestration": {
     "gzip_bytes": 650,
-    "rationale": "orchestration engine + best-of-N attempts (coordinator, provider-backed judge, held-merge types); measured 541 B gzip; headroom max(ceil(541*1.2)=650, 541+50=591) → 650 (1.2x dominates by 59 B)"
+    "rationale": "orchestration engine + best-of-N attempts (coordinator, provider-backed judge, held-merge types); measured 541 B gzip; headroom max(ceil(541*1.2)=650, 541+50=591) \u2192 650 (1.2x dominates by 59 B)"
   },
   "./platform/pairing": {
     "gzip_bytes": 238,
-    "rationale": "public facade; measured 188 B gzip @ commit 4e5a5e2; headroom max(ceil(188*1.2)=226, 188+50=238) → 238 (+50 B floor dominates by 12 B)"
+    "rationale": "public facade; measured 188 B gzip @ commit 4e5a5e2; headroom max(ceil(188*1.2)=226, 188+50=238) \u2192 238 (+50 B floor dominates by 12 B)"
   },
   "./platform/permissions": {
     "gzip_bytes": 157,
@@ -355,27 +355,27 @@
   },
   "./platform/providers": {
     "gzip_bytes": 1206,
-    "rationale": "provider registry surface; measured 1005 B gzip @ commit 4e5a5e2; headroom max(ceil(1005*1.2)=1206, 1005+50=1055) → 1206 (1.2x dominates by 151 B); dominated by ProviderRegistry + autoRegisterProviders (~450 B), LLMProvider/ChatRequest/ChatResponse/ProviderApi types (~300 B), AnthropicCompatProvider + createProviderApi (~250 B)"
+    "rationale": "provider registry surface; measured 1005 B gzip @ commit 4e5a5e2; headroom max(ceil(1005*1.2)=1206, 1005+50=1055) \u2192 1206 (1.2x dominates by 151 B); dominated by ProviderRegistry + autoRegisterProviders (~450 B), LLMProvider/ChatRequest/ChatResponse/ProviderApi types (~300 B), AnthropicCompatProvider + createProviderApi (~250 B)"
   },
   "./platform/rewind": {
     "gzip_bytes": 374,
-    "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types); measured 311 B gzip; headroom max(ceil(311*1.2)=374, 311+50=361) → 374 (1.2x dominates by 13 B)"
+    "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types); measured 311 B gzip; headroom max(ceil(311*1.2)=374, 311+50=361) \u2192 374 (1.2x dominates by 13 B)"
   },
   "./platform/runtime": {
     "gzip_bytes": 192,
-    "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) → 192 (+50 B floor dominates by 21 B)"
+    "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) \u2192 192 (+50 B floor dominates by 21 B)"
   },
   "./platform/runtime/fleet": {
     "gzip_bytes": 336,
-    "rationale": "new public entrypoint (fleet process registry, 0.38.0 Wave 2); measured 280 B gzip @ v0.38.0; headroom max(ceil(280*1.2)=336, 280+50=330) → 336 (1.2x dominates by 6 B)"
+    "rationale": "new public entrypoint (fleet process registry, 0.38.0 Wave 2); measured 280 B gzip @ v0.38.0; headroom max(ceil(280*1.2)=336, 280+50=330) \u2192 336 (1.2x dominates by 6 B)"
   },
   "./platform/runtime/memory-spine": {
     "gzip_bytes": 675,
-    "rationale": "public runtime seam for the daemon-owned memory service; full-detach 1.2.0 added the extended verb catalog (list/searchSemantic/update/link/linksFor/reviewQueue/export/import/vectorStats/doctor) plus the freshness-stamped recall snapshot seam (recall-snapshot.ts); measured 562 B gzip; headroom max(ceil(562*1.2)=675, 562+50=612) → 675 (1.2x dominates by 63 B); bumped from 443 to 675 for the widened surface"
+    "rationale": "public runtime seam for the daemon-owned memory service; full-detach 1.2.0 added the extended verb catalog (list/searchSemantic/update/link/linksFor/reviewQueue/export/import/vectorStats/doctor) plus the freshness-stamped recall snapshot seam (recall-snapshot.ts); measured 562 B gzip; headroom max(ceil(562*1.2)=675, 562+50=612) \u2192 675 (1.2x dominates by 63 B); bumped from 443 to 675 for the widened surface"
   },
   "./platform/runtime/observability": {
     "gzip_bytes": 1371,
-    "rationale": "public runtime seam; added snapshotMetrics + RuntimeMetricsSnapshot/RuntimeMetricsBucket/ToolFormatFailureClass re-exports (the runtime.metrics.get operator method's underlying accessor and types) @ commit d468ef66; measured 1142 B gzip; headroom max(ceil(1142*1.2)=1371, 1142+50=1192) → 1371 (1.2x dominates by 179 B); budget bumped from 1265 to 1371"
+    "rationale": "public runtime seam; added snapshotMetrics + RuntimeMetricsSnapshot/RuntimeMetricsBucket/ToolFormatFailureClass re-exports (the runtime.metrics.get operator method's underlying accessor and types) @ commit d468ef66; measured 1142 B gzip; headroom max(ceil(1142*1.2)=1371, 1142+50=1192) \u2192 1371 (1.2x dominates by 179 B); budget bumped from 1265 to 1371"
   },
   "./embed": {
     "gzip_bytes": 1152,
@@ -394,8 +394,8 @@
     "rationale": "new public entrypoint (the typed runtime-event emitter wrappers barrel, e.g. emitPermissionModeChanged, previously reachable only by deep-importing platform/runtime/emitters/*.js; a consumer composing its own RuntimeServices-compatible object needs these to emit the same typed events the daemon does); measured 214 B gzip; headroom max(ceil(214*1.2)=257, 214+50=264) -> 264 (+50 B floor dominates)"
   },
   "./platform/runtime/feature-flags": {
-    "gzip_bytes": 525,
-    "rationale": "new public entrypoint (the feature-flag barrel — FEATURE_FLAG_CONFIG/getFeatureFlagConfig/FEATURE_FLAGS/FeatureFlagManager — previously reachable only by deep-importing dist/platform/runtime/feature-flags/*.js; a consumer such as webui settings needs FEATURE_FLAG_CONFIG/getFeatureFlagConfig to render each feature's flag toggle alongside its tuning config keys); measured 437 B gzip; headroom max(ceil(437*1.2)=525, 437+50=487) -> 525 (1.2x dominates by 38 B)"
+    "gzip_bytes": 725,
+    "rationale": "the capability-gates barrel: FEATURE_SETTINGS (per-feature domain/enablement-shape/option-keys metadata surfaces render), the enablement bindings + derivation helpers, the gate manager, and the gate helpers; measured 604 B gzip after the settings dissolution; headroom max(ceil(604*1.2)=725, 604+50=654) -> 725 (1.2x dominates)"
   },
   "./platform/runtime/permissions/sandbox-policy": {
     "gzip_bytes": 2106,
@@ -407,15 +407,15 @@
   },
   "./platform/runtime/state": {
     "gzip_bytes": 423,
-    "rationale": "public runtime seam; measured 352 B gzip @ commit 4e5a5e2; headroom max(ceil(352*1.2)=423, 352+50=402) → 423 (1.2x dominates by 21 B)"
+    "rationale": "public runtime seam; measured 352 B gzip @ commit 4e5a5e2; headroom max(ceil(352*1.2)=423, 352+50=402) \u2192 423 (1.2x dominates by 21 B)"
   },
   "./platform/runtime/store": {
     "gzip_bytes": 1371,
-    "rationale": "public runtime seam; measured 1142 B gzip @ commit 4e5a5e2; headroom max(ceil(1142*1.2)=1371, 1142+50=1192) → 1371 (1.2x dominates by 179 B)"
+    "rationale": "public runtime seam; measured 1142 B gzip @ commit 4e5a5e2; headroom max(ceil(1142*1.2)=1371, 1142+50=1192) \u2192 1371 (1.2x dominates by 179 B)"
   },
   "./platform/runtime/ui": {
     "gzip_bytes": 834,
-    "rationale": "public runtime seam; measured 695 B gzip @ commit c0e5910; headroom max(ceil(695*1.2)=834, 695+50=745) → 834 (1.2x dominates by 89 B)"
+    "rationale": "public runtime seam; measured 695 B gzip @ commit c0e5910; headroom max(ceil(695*1.2)=834, 695+50=745) \u2192 834 (1.2x dominates by 89 B)"
   },
   "./platform/scheduler": {
     "gzip_bytes": 102,
@@ -443,7 +443,7 @@
   },
   "./platform/tools": {
     "gzip_bytes": 3435,
-    "rationale": "tool registry surface; re-measured 2862 B gzip after the per-command exec sandbox landed (sandbox.ts runner reachable from runtime.ts via the plan/metadata helpers, plus detectSandboxAvailability/probeSandboxHost used to wire the sandbox in registerAllTools); headroom max(ceil(2862*1.2)=3435, 2862+50=2912) → 3435 (1.2x dominates); dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B), ToolRegistry type imports (~300 B)"
+    "rationale": "tool registry surface; re-measured 2862 B gzip after the per-command exec sandbox landed (sandbox.ts runner reachable from runtime.ts via the plan/metadata helpers, plus detectSandboxAvailability/probeSandboxHost used to wire the sandbox in registerAllTools); headroom max(ceil(2862*1.2)=3435, 2862+50=2912) \u2192 3435 (1.2x dominates); dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B), ToolRegistry type imports (~300 B)"
   },
   "./platform/tools/exec/sandbox": {
     "gzip_bytes": 4294,
@@ -455,11 +455,11 @@
   },
   "./platform/utils": {
     "gzip_bytes": 277,
-    "rationale": "public platform seam; measured 227 B gzip @ commit 4e5a5e2; headroom max(ceil(227*1.2)=273, 227+50=277) → 277 (+50 B floor dominates by 4 B)"
+    "rationale": "public platform seam; measured 227 B gzip @ commit 4e5a5e2; headroom max(ceil(227*1.2)=273, 227+50=277) \u2192 277 (+50 B floor dominates by 4 B)"
   },
   "./platform/voice": {
     "gzip_bytes": 309,
-    "rationale": "public facade; grew when the spoken-turn (live TTS) policy engine was hoisted into platform/voice and re-exported here; measured 257 B gzip @ wo/tts-hoist; headroom max(ceil(257*1.2)=309, 257+50=307) → 309 (1.2x multiplier dominates)"
+    "rationale": "public facade; grew when the spoken-turn (live TTS) policy engine was hoisted into platform/voice and re-exported here; measured 257 B gzip @ wo/tts-hoist; headroom max(ceil(257*1.2)=309, 257+50=307) \u2192 309 (1.2x multiplier dominates)"
   },
   "./platform/watchers": {
     "gzip_bytes": 182,
@@ -479,30 +479,30 @@
   },
   "./react-native": {
     "gzip_bytes": 1601,
-    "rationale": "RN/Hermes companion surface; measured 1334 B gzip @ commit c0e5910; headroom max(ceil(1334*1.2)=1601, 1334+50=1384) → 1601 (1.2x dominates by 217 B)"
+    "rationale": "RN/Hermes companion surface; measured 1334 B gzip @ commit c0e5910; headroom max(ceil(1334*1.2)=1601, 1334+50=1384) \u2192 1601 (1.2x dominates by 217 B)"
   },
   "./transport-core": {
     "gzip_bytes": 118,
-    "rationale": "shared transport types + observer re-export entry; measured 68 B gzip @ commit 4e5a5e2; headroom max(ceil(68*1.2)=82, 68+50=118) → 118 (+50 B floor dominates by 36 B)"
+    "rationale": "shared transport types + observer re-export entry; measured 68 B gzip @ commit 4e5a5e2; headroom max(ceil(68*1.2)=82, 68+50=118) \u2192 118 (+50 B floor dominates by 36 B)"
   },
   "./transport-direct": {
     "gzip_bytes": 141,
-    "rationale": "SDK direct-transport facade backed by transport-core; measured 91 B gzip @ commit 4e5a5e2; headroom max(ceil(91*1.2)=110, 91+50=141) → 141 (+50 B floor dominates by 31 B)"
+    "rationale": "SDK direct-transport facade backed by transport-core; measured 91 B gzip @ commit 4e5a5e2; headroom max(ceil(91*1.2)=110, 91+50=141) \u2192 141 (+50 B floor dominates by 31 B)"
   },
   "./transport-http": {
     "gzip_bytes": 118,
-    "rationale": "HTTP client primitives re-export entry; measured 68 B gzip @ commit 4e5a5e2; headroom max(ceil(68*1.2)=82, 68+50=118) → 118 (+50 B floor dominates by 36 B)"
+    "rationale": "HTTP client primitives re-export entry; measured 68 B gzip @ commit 4e5a5e2; headroom max(ceil(68*1.2)=82, 68+50=118) \u2192 118 (+50 B floor dominates by 36 B)"
   },
   "./transport-realtime": {
     "gzip_bytes": 122,
-    "rationale": "SSE + WebSocket connectors re-export entry; measured 72 B gzip @ commit 4e5a5e2; headroom max(ceil(72*1.2)=87, 72+50=122) → 122 (+50 B floor dominates by 35 B)"
+    "rationale": "SSE + WebSocket connectors re-export entry; measured 72 B gzip @ commit 4e5a5e2; headroom max(ceil(72*1.2)=87, 72+50=122) \u2192 122 (+50 B floor dominates by 35 B)"
   },
   "./web": {
     "gzip_bytes": 252,
-    "rationale": "Workers-compat companion surface; measured 202 B gzip @ commit beee912; headroom max(ceil(202*1.2)=243, 202+50=252) → 252 (+50 floor dominates)"
+    "rationale": "Workers-compat companion surface; measured 202 B gzip @ commit beee912; headroom max(ceil(202*1.2)=243, 202+50=252) \u2192 252 (+50 floor dominates)"
   },
   "./workers": {
     "gzip_bytes": 3681,
-    "rationale": "Cloudflare Workers surface; measured 3067 B gzip @ commit c0e5910; headroom max(ceil(3067*1.2)=3681, 3067+50=3117) → 3681 (1.2x dominates by 564 B); budget bumped from 3095 (only 28 B headroom) to 3681 per re-anchor; dominated by createGoodVibesCloudflareWorker (~1200 B), readTextBodyWithinLimit + proxyDaemonBatch + proxyDaemonJson (~600 B), GoodVibesCloudflareWorkerEnv/Options/Worker interfaces + requireWorkerAuth (~400 B)"
+    "rationale": "Cloudflare Workers surface; measured 3067 B gzip @ commit c0e5910; headroom max(ceil(3067*1.2)=3681, 3067+50=3117) \u2192 3681 (1.2x dominates by 564 B); budget bumped from 3095 (only 28 B headroom) to 3681 per re-anchor; dominated by createGoodVibesCloudflareWorker (~1200 B), readTextBodyWithinLimit + proxyDaemonBatch + proxyDaemonJson (~600 B), GoodVibesCloudflareWorkerEnv/Options/Worker interfaces + requireWorkerAuth (~400 B)"
   }
 }

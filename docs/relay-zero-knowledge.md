@@ -144,14 +144,14 @@ credential**: whoever holds one can reach the daemon through the relay.
 
 ## Enabling it
 
-Reaching the daemon over the relay is **OFF by default** and triple-gated:
+No relay connection is ever made without explicit configuration:
 
-1. `relay.enabled` config (default `false`),
-2. the graduating `relay-connect` feature flag (default disabled), and
-3. a configured `relay.url`.
+1. `relay.enabled` (default `true` — the capability is ready), and
+2. a configured `relay.url` (default empty — nothing to dial).
 
-All three must agree before the daemon opens an outbound registration; otherwise
-the relay path is byte-for-byte inert and the daemon stays LAN-only.
+Both must agree before the daemon opens an outbound registration; with no URL
+configured the relay path is byte-for-byte inert and the daemon stays LAN-only.
+Set `relay.enabled` to `false` to switch the capability off entirely.
 
 Run your own relay with the bundled server:
 

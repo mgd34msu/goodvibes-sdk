@@ -5,14 +5,10 @@ custom integration lives in a separate project, but it should treat the daemon
 as the source of truth for pairing, prompts, tool catalogs, agent tools, replies,
 and Home Assistant REST-backed operations.
 
-The SDK defaults this surface off. Hosts must enable both the feature flag and
-the surface config before Home Assistant ingress or delivery is active:
+The adapter stays inactive until its surface settings enable and configure it:
 
 ```json
 {
-  "featureFlags": {
-    "homeassistant-surface": "enabled"
-  },
   "surfaces": {
     "homeassistant": {
       "enabled": true
@@ -37,10 +33,11 @@ References:
 
 ## SDK Contract
 
-### Feature Flag
+### Enablement
 
-`homeassistant-surface` gates the Home Assistant surface. It is disabled by
-default and must be enabled explicitly by hosts that expose Home Assistant.
+`surfaces.homeassistant.enabled` switches the Home Assistant surface on. It is
+off by default and must be enabled (with an instance URL and access token)
+by hosts that expose Home Assistant.
 
 ### Config Keys
 
