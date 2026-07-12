@@ -58,6 +58,12 @@ interface ControlRouteContext {
   readonly requireAdmin: (req: Request) => Response | null;
   readonly requireAuthenticatedSession: (req: Request) => { username: string; roles: readonly string[] } | null;
   readonly login?: ((req: Request) => Promise<Response> | Response) | undefined;
+  /**
+   * Undelivered daemon receipts ("updated from X to Y at HH:MM",
+   * "restarted after a crash at HH:MM") surfaced to the first /status
+   * reader after the event; the provider marks them delivered.
+   */
+  readonly collectReceipts?: (() => readonly { id: string; text: string; at: number }[]) | undefined;
 }
 
 type GatewayInvokeBody = {
@@ -96,6 +102,7 @@ export function createDaemonControlRouteHandlers(
       return Response.json({
         status: 'running',
         version: context.version,
+        ...(context.collectReceipts ? { receipts: context.collectReceipts() } : {}),
       });
     },
     getCurrentAuth: (req) => {

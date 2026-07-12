@@ -33,6 +33,12 @@ export interface ManagedServiceStatus {
   readonly suggestedCommands: readonly string[];
   readonly lastAction?: 'install' | 'uninstall' | 'start' | 'stop' | 'restart' | 'status' | undefined;
   readonly actionError?: string | undefined;
+  /**
+   * One honest line about login lingering after an install on systemd:
+   * verified-on means the daemon starts at boot; anything else names the
+   * exact command the user can run once themselves.
+   */
+  readonly lingerNote?: string | undefined;
 }
 
 export interface ManagedServiceActionResult {
@@ -115,21 +121,63 @@ function resolveLogPath(
   return resolveScopedDirectory(workingDirectory, surfaceRoot, 'service', `${platform}.log`);
 }
 
-function renderSystemdUnit(definition: ManagedServiceDefinition): string {
+/**
+ * Escalating restart delays (RestartSteps=/RestartMaxDelaySec=) landed in
+ * systemd 254. On older systemd — or when the version cannot be read — the
+ * unit degrades to the flat RestartSec retry, which StartLimitIntervalSec=0
+ * already keeps retrying forever instead of tombstoning.
+ */
+export function systemdSupportsRestartSteps(majorVersion: number | null): boolean {
+  return majorVersion !== null && majorVersion >= 254;
+}
+
+/** First line of `systemctl --version` is "systemd NNN (...)"; returns NNN or null. */
+export function parseSystemdMajorVersion(versionOutput: string | undefined): number | null {
+  const firstLine = (versionOutput ?? '').split('\n')[0] ?? '';
+  const match = firstLine.match(/^systemd (\d+)/);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[1]!, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * Survival contract for a restartOnFailure unit: StartLimitIntervalSec=0
+ * disables the start-rate limiter, so a crashing daemon keeps retrying
+ * (spaced by the delays below) instead of landing in the permanent
+ * "start-limit-hit" failed state that only a manual reset-failed clears. On
+ * systemd 254+ the retry delay escalates from RestartSec up to
+ * RestartMaxDelaySec across RestartSteps attempts; on older systemd those
+ * two directives are omitted (they would be ignored with a warning) and the
+ * flat RestartSec applies to every retry.
+ */
+export function renderSystemdUnit(
+  definition: ManagedServiceDefinition,
+  systemdMajorVersion: number | null = null,
+): string {
   const envLines = Object.entries(definition.env)
     .filter(([, value]) => value.length > 0)
     .map(([key, value]) => `Environment=${key}=${value.replace(/"/g, '\\"')}`);
+  const restartLines = definition.restartOnFailure
+    ? [
+        'Restart=on-failure',
+        'RestartSec=2',
+        ...(systemdSupportsRestartSteps(systemdMajorVersion)
+          ? ['RestartSteps=8', 'RestartMaxDelaySec=300']
+          : []),
+      ]
+    : ['Restart=no'];
   return [
     '[Unit]',
     `Description=${definition.description}`,
     'After=network-online.target',
+    ...(definition.restartOnFailure ? ['StartLimitIntervalSec=0'] : []),
     '',
     '[Service]',
     'Type=simple',
     `WorkingDirectory=${definition.workingDirectory}`,
     `ExecStart=${[definition.command, ...definition.args].join(' ')}`,
     ...envLines,
-    `Restart=${definition.restartOnFailure ? 'on-failure' : 'no'}`,
+    ...restartLines,
     '',
     '[Install]',
     'WantedBy=default.target',
@@ -319,7 +367,7 @@ export class PlatformServiceManager {
     const definition = this.resolveDefinition();
     const path = definitionPath(platform, serviceName, this.getPaths(), this.surfaceRoot);
     const contents = platform === 'systemd'
-      ? renderSystemdUnit(definition)
+      ? renderSystemdUnit(definition, this.detectSystemdMajorVersion())
       : platform === 'launchd'
         ? renderLaunchdPlist(definition)
         : platform === 'windows'
@@ -327,10 +375,46 @@ export class PlatformServiceManager {
           : [definition.command, ...definition.args].join(' ');
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, `${contents}\n`, 'utf-8');
+    const lingerNote = platform === 'systemd' ? this.ensureLinger() : undefined;
     return {
       ...this.status(),
       lastAction: 'install',
+      ...(lingerNote ? { lingerNote } : {}),
     };
+  }
+
+  /** systemd major version via the injected runner, or null when unreadable. */
+  private detectSystemdMajorVersion(): number | null {
+    const result = this.runQuery('systemctl', ['--version']);
+    if (result.status !== 0) return null;
+    return parseSystemdMajorVersion(result.stdout);
+  }
+
+  /**
+   * A user unit with WantedBy=default.target only starts when its user logs
+   * in. Lingering starts the user's systemd instance at boot, so the daemon
+   * comes up on a machine nobody has logged into. `loginctl enable-linger`
+   * can exit 0 without taking effect in some polkit setups, so the
+   * show-user property readback is the source of truth, checked before and
+   * after enabling. Returns exactly one honest line either way.
+   */
+  private ensureLinger(): string {
+    const user = process.env.USER ?? process.env.LOGNAME ?? '';
+    if (!user) {
+      return 'lingering: could not determine the current user — the daemon starts at login rather than at boot. Enable it once yourself with: loginctl enable-linger <user>';
+    }
+    const lingerEnabled = (): boolean => {
+      const readback = this.runQuery('loginctl', ['show-user', user, '--property=Linger']);
+      return readback.status === 0 && (readback.stdout ?? '').trim() === 'Linger=yes';
+    };
+    if (lingerEnabled()) {
+      return `lingering: already enabled for ${user} — the daemon starts at boot.`;
+    }
+    this.runQuery('loginctl', ['enable-linger', user]);
+    if (lingerEnabled()) {
+      return `lingering: enabled for ${user} — the daemon starts at boot.`;
+    }
+    return `lingering: could not be enabled (polkit may require an interactive session) — the daemon starts at login rather than at boot. Enable it once yourself with: loginctl enable-linger ${user}`;
   }
 
   uninstall(): ManagedServiceStatus {

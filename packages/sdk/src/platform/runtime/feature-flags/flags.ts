@@ -594,6 +594,18 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     tier: 10,
     runtimeToggleable: true,
   },
+  {
+    id: 'daemon-auto-update',
+    name: 'Daemon Auto-Update',
+    description:
+      'The daemon checks for a new release hourly, downloads and checksum-verifies it, swaps '
+      + 'binaries at a no-active-work moment (never mid-turn), keeps the previous binary for '
+      + 'one-command rollback, and restarts via the service manager. On by default per the '
+      + 'owner directive; update.auto turns it off, update.intervalMinutes tunes the cadence.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
 
   // ── Execution Isolation ────────────────────────────────────────────────────
   {

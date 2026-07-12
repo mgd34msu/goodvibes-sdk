@@ -9,6 +9,7 @@ import { learningConfigDefaults, learningConfigSettings } from './schema-domain-
 import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-surfaces.js';
 import { featureConfigDefaults, featureConfigSettings } from './schema-domain-features.js';
 import { featureControlSettings } from './schema-domain-feature-controls.js';
+import { updateConfigDefaults, updateConfigSettings } from './schema-domain-update.js';
 import type { ConfigKey, ConfigSetting, GoodVibesConfig, SurfacesConfig } from './schema-types.js';
 
 export * from './schema-types.js';
@@ -34,6 +35,7 @@ export const DEFAULT_CONFIG = {
   surfaces: surfaceConfigDefaults as SurfacesConfig,
   watchers: runtimeConfigDefaults.watchers,
   service: runtimeConfigDefaults.service,
+  update: updateConfigDefaults.update,
   network: runtimeConfigDefaults.network,
   relay: runtimeConfigDefaults.relay,
   runtime: runtimeConfigDefaults.runtime,
@@ -64,6 +66,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...learningConfigSettings,
   ...surfaceConfigSettings,
   ...runtimeSecondaryConfigSettings,
+  ...updateConfigSettings,
   ...coreTailConfigSettings,
   ...featureConfigSettings,
   ...featureControlSettings,
