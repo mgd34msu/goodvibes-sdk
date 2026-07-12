@@ -458,6 +458,7 @@ export function createDaemonFacadeCollaborators(
     surfaceDeliveryEnabled: options.surfaceDeliveryEnabled,
     signWebhookPayload: options.signWebhookPayload,
     handleApprovalAction: options.handleApprovalAction,
+    approvalBroker: runtime.approvalBroker,
     resolveDefaultProviderModel: options.resolveDefaultProviderModel,
   });
   const controlPlaneHelper = new DaemonControlPlaneHelper({

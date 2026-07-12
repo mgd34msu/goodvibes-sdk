@@ -447,8 +447,11 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     // rate limiters are unchanged. It remains runtimeToggleable, so an operator who wants a
     // request/response-only daemon can turn it back off via config
     // (`flags: { 'control-plane-gateway': 'disabled' }`), which the manager honours over
-    // this default. Do NOT generalise this to the other tier-10 siblings (slack/discord/web
-    // surfaces, delivery-engine, etc.) — they stay OFF until individually validated.
+    // this default. The channel family (route-binding, delivery-engine, the chat surfaces,
+    // homeassistant-surface) graduated together once inbound channel messages became gated
+    // by the per-surface owner allowlist (unknown senders ignored) with reply-based
+    // approve/deny wired to the shared approval broker. web-surface, watcher-framework, and
+    // service-management stay OFF pending their own separately-recorded conditions.
     id: 'control-plane-gateway',
     name: 'Control-Plane Gateway',
     description:
@@ -464,7 +467,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     description:
       'Enables durable binding and resolution of external conversation routes, thread contexts, '
       + 'and reply targets across surfaces.',
-    defaultState: 'disabled',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -474,7 +477,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     description:
       'Enables first-class delivery tracking for automation results, retries, dead letters, and '
       + 'surface-specific delivery outcomes.',
-    defaultState: 'disabled',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -483,8 +486,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'Slack Surface',
     description:
       'Enables the Slack client adapter for interactive command ingress, threaded replies, and '
-      + 'notification delivery.',
-    defaultState: 'disabled',
+      + 'notification delivery. Inbound messages are gated by the per-surface owner allowlist '
+      + '(seeded from the first identified sender; unknown senders are ignored).',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -493,8 +497,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'Discord Surface',
     description:
       'Enables the Discord client adapter for interaction handling, message replies, and '
-      + 'notification delivery.',
-    defaultState: 'disabled',
+      + 'notification delivery. Inbound messages are gated by the per-surface owner allowlist '
+      + '(seeded from the first identified sender; unknown senders are ignored).',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -503,8 +508,9 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'ntfy Surface',
     description:
       'Enables the ntfy notification surface for push-style delivery and deep links back into the '
-      + 'control-plane UI.',
-    defaultState: 'disabled',
+      + 'control-plane UI. Inbound messages are gated by the per-surface owner allowlist when the '
+      + 'sender carries an identity (unknown senders are ignored).',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -512,8 +518,10 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'webhook-surface',
     name: 'Webhook Surface',
     description:
-      'Enables the generic webhook surface for machine-to-machine ingress and egress.',
-    defaultState: 'disabled',
+      'Enables the generic webhook surface for machine-to-machine ingress and egress. '
+      + 'Ingress requires the configured webhook verification; sender-identified messages are '
+      + 'additionally gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },
@@ -522,8 +530,10 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     name: 'Home Assistant Surface',
     description:
       'Enables the Home Assistant surface for daemon/device integration, Home Assistant '
-      + 'event delivery, service-call tools, and Home Assistant-originated prompts.',
-    defaultState: 'disabled',
+      + 'event delivery, service-call tools, and Home Assistant-originated prompts. Inbound '
+      + 'prompts are gated by the per-surface owner allowlist when the sender carries an '
+      + 'identity (unknown senders are ignored).',
+    defaultState: 'enabled',
     tier: 10,
     runtimeToggleable: true,
   },

@@ -138,10 +138,19 @@ describe('S2a — control-plane-gateway defaults ON', () => {
     expect(flags.getState(FLAG)).toBe('disabled');
   });
 
-  test('only control-plane-gateway flips; sibling tier-10 surfaces stay OFF', () => {
+  test('gateway is on; the channel family graduated with the owner gate; the rest stay OFF', () => {
     const flags = createFeatureFlagManager();
     expect(flags.isEnabled('control-plane-gateway')).toBe(true);
-    for (const sibling of ['slack-surface', 'discord-surface', 'web-surface', 'automation-domain']) {
+    // The channel family graduated together once inbound messages became
+    // gated by the per-surface owner allowlist with reply-based approve/deny.
+    for (const graduated of [
+      'route-binding', 'delivery-engine', 'slack-surface', 'discord-surface',
+      'ntfy-surface', 'webhook-surface', 'homeassistant-surface',
+    ]) {
+      expect(flags.isEnabled(graduated)).toBe(true);
+    }
+    // These wait on their own separately-recorded conditions.
+    for (const sibling of ['web-surface', 'automation-domain', 'watcher-framework', 'service-management']) {
       expect(flags.isEnabled(sibling)).toBe(false);
     }
   });
