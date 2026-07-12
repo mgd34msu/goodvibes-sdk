@@ -1,5 +1,5 @@
 /**
- * WO UX-A item 2 — an operator kill is CANCELLED, not FAILED.
+ * An operator kill is CANCELLED, not FAILED.
  *
  * A cold eval: K on a chain cancelled its running leaf, which routed through
  * failChain and flipped the whole chain + owner to "✗ failed" while the cohort

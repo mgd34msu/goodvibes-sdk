@@ -588,7 +588,7 @@ describe('primitive reuse', () => {
   });
 });
 
-describe('DEBT-4 item 1 — dual-outcome: post-gate bookkeeping never contradicts a passed phase', () => {
+describe('dual-outcome: post-gate bookkeeping never contradicts a passed phase', () => {
   /** A worktree whose commit always throws with the given error — exercises the post-gate commit-failure paths. */
   function throwingWorktree(error: Error): () => WrfcWorktreeOps {
     return () => ({
@@ -695,7 +695,7 @@ describe('DEBT-4 item 1 — dual-outcome: post-gate bookkeeping never contradict
     expect(results.some((r) => r.gate.passed === false)).toBe(true);
   });
 
-  test('usage rollup is MONOTONE in presence across a usage event stream WITH GAPS (DEBT-4 item 2 engine fold)', () => {
+  test('usage rollup is MONOTONE in presence across a usage event stream WITH GAPS (engine fold)', () => {
     // Model the engine folding each completed phase's usage into item.usage
     // (mergeWorkItemUsage). Some phases report empty usage (a gap — no usage
     // event landed); assert presence, once real, never regresses to n/a.

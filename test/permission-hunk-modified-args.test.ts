@@ -14,7 +14,7 @@ import { createEditTool } from '../packages/sdk/src/platform/tools/edit/index.js
 function makePermissionConfigReader(mode: 'prompt' | 'custom' | 'allow-all' = 'prompt'): PermissionConfigReader {
   return {
     isAutoApproveEnabled: () => false,
-    getWorkingDirectory: () => '/tmp/wo402-permission-tests',
+    getWorkingDirectory: () => '/tmp/permission-tests',
     getSnapshot: () => ({
       permissions: {
         mode,
@@ -63,7 +63,7 @@ describe('PermissionManager.checkDetailed threads modifiedArgs', () => {
   test('is undefined for auto-approve/read paths that never reach the user prompt', async () => {
     const configReader: PermissionConfigReader = {
       isAutoApproveEnabled: () => true,
-      getWorkingDirectory: () => '/tmp/wo402-permission-tests',
+      getWorkingDirectory: () => '/tmp/permission-tests',
       getSnapshot: () => ({ permissions: { mode: 'prompt', tools: {} } }),
     } as unknown as PermissionConfigReader;
     const manager = new PermissionManager(
@@ -201,7 +201,7 @@ describe('executeToolCalls uses modifiedArgs for execution but not for emitted e
 
 describe('edit tool executes a partial edits array and FileUndoManager round-trips it', () => {
   test('applying only 2 of 3 edits leaves the 3rd substring untouched, and undo restores the original file', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'wo402-edit-partial-'));
+    const dir = mkdtempSync(join(tmpdir(), 'edit-partial-'));
     try {
       const filePath = join(dir, 'file.txt');
       const original = 'alpha\nbeta\ngamma\n';

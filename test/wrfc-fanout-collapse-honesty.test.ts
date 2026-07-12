@@ -1,5 +1,5 @@
 /**
- * WO UX-A item 1 — batch-collapse guard honesty.
+ * Batch-collapse guard honesty.
  *
  * When the topology guard collapses a requested multi-agent fan-out into one
  * WRFC owner chain, the parallelism/spawn-count constraints the collapse itself

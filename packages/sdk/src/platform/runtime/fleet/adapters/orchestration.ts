@@ -19,7 +19,7 @@ import { workItemNodeId } from './agent.js';
 
 /**
  * Live in-flight usage of a work-item's currently-active agent, read from that
- * agent's fleet node at snapshot time (DEBT-4 item 2). Overlaid onto the
+ * agent's fleet node at snapshot time. Overlaid onto the
  * item's phase-boundary-committed `item.usage` so a RUNNING phase shows real,
  * growing numbers instead of n/a until it completes.
  */
@@ -79,7 +79,7 @@ function liveOverlayUsage(live: LiveItemUsage | undefined): WorkItemUsage | unde
  * runItemPhase), so committed + live never double-counts and the two hand off
  * atomically at the phase boundary. Because both operands only ever grow and
  * merge through {@link mergeWorkItemUsage}, presence is MONOTONE: once usage
- * has appeared for an item it never blinks back to n/a (DEBT-4 item 2).
+ * has appeared for an item it never blinks back to n/a.
  */
 export function displayWorkItemUsage(item: WorkItem, live: LiveItemUsage | undefined): WorkItemUsage {
   const overlay = item.state === 'in-phase' ? liveOverlayUsage(live) : undefined;
@@ -174,7 +174,7 @@ function phaseState(workstream: Workstream, phase: Phase): ProcessState {
  * handled separately — see aggregateWorkItemCost). Takes resolved display
  * usages (committed + any live overlay) rather than raw items so the workstream
  * total reflects live in-flight work, not just phase-boundary snapshots
- * (DEBT-4 item 2).
+ * (the live-usage overlay contract).
  */
 function sumWorkItemUsage(usages: readonly WorkItemUsage[]): ProcessUsage | undefined {
   if (usages.length === 0) return undefined;
@@ -228,7 +228,7 @@ function aggregateWorkItemCost(usages: readonly WorkItemUsage[]): { costUsd: num
  * WorkItem -> ProcessNode. Delegates interruptible/killable/steerable to its
  * currently-active agent, mirroring adaptSubtask. `opts.live` supplies the
  * currently-active agent's in-flight usage so a running phase shows real,
- * growing numbers instead of n/a until it completes (DEBT-4 item 2); omit it
+ * growing numbers instead of n/a until it completes; omit it
  * (or pass undefined) for the committed-only view.
  */
 export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: string, opts: { steerable: boolean; live?: LiveItemUsage | undefined }): ProcessNode {
@@ -334,7 +334,7 @@ export function adaptPhase(phase: Phase, workstream: Workstream): ProcessNode {
  * usage/cost (committed total + any live in-flight overlay, resolved once per
  * item) exactly once — never through an intermediate phase bucket (see
  * adaptPhase) — so this total can never double-count and never shows n/a while
- * an item is actively producing usage (DEBT-4 item 2). `liveByItemId` supplies
+ * an item is actively producing usage. `liveByItemId` supplies
  * the active agents' in-flight usage keyed by item id; omit it for the
  * committed-only view.
  */

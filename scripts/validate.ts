@@ -20,6 +20,7 @@ run('bun', ['run', 'line:check'], 'line:check');
 run('bun', ['run', 'changelog:check'], 'changelog:check');
 run('bun', ['run', 'version:check'], 'version:check');
 run('bun', ['run', 'todo:check'], 'todo:check');
+run('bun', ['run', 'internal-id:check'], 'internal-id:check');
 run('bun', ['run', 'test-skip:check'], 'test-skip:check');
 run('bun', ['run', 'platform-console:check'], 'platform-console:check');
 run('bun', ['run', 'build'], 'build');

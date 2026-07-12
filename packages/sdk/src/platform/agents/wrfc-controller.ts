@@ -1197,7 +1197,7 @@ export class WrfcController {
     // that a fan-out collapse invalidated) are removed from the rubric BEFORE
     // accounting: they can never be counted as unsatisfied and can never force a
     // failure, because no fix agent can satisfy a constraint whose precondition the
-    // system itself removed. This is the un-loopable guarantee (WO UX-A item 1c).
+    // system itself removed. This is the un-loopable guarantee.
     const excluded = systemUnsatisfiableIds.length > 0 ? new Set(systemUnsatisfiableIds) : null;
     const constraints = excluded
       ? allConstraints.filter((constraint) => !excluded.has(constraint.id))

@@ -89,7 +89,7 @@ async function waitForEvent(events: CapturedEvent[], name: string, tries = 50): 
 // C1: cancel mid-stream — honest partial + terminal turn.cancelled
 // ---------------------------------------------------------------------------
 
-describe('C1: cancel mid-stream', () => {
+describe('Cancel mid-stream', () => {
   test('persists the partial with deliveryState cancelled and emits terminal turn.cancelled', async () => {
     const events: CapturedEvent[] = [];
     const gate = makeGate();
@@ -131,7 +131,7 @@ describe('C1: cancel mid-stream', () => {
 // C2: the next turn is unaffected (per-turn controller, not session-level)
 // ---------------------------------------------------------------------------
 
-describe('C2: next turn after a cancel', () => {
+describe('Next turn after a cancel', () => {
   test('a fresh turn completes normally after a cancelled one', async () => {
     const events: CapturedEvent[] = [];
     const gate = makeGate();
@@ -170,7 +170,7 @@ describe('C2: next turn after a cancel', () => {
 // C3: refusal semantics
 // ---------------------------------------------------------------------------
 
-describe('C3: refusals are honest machine codes', () => {
+describe('Refusals are honest machine codes', () => {
   test('no turn in flight → 404 NO_ACTIVE_TURN', async () => {
     const events: CapturedEvent[] = [];
     const manager = makeManager(makeGatedProvider(makeGate(), [{ type: 'done' }]), events);
@@ -236,7 +236,7 @@ describe('C3: refusals are honest machine codes', () => {
 // C4: cancel with no content yet
 // ---------------------------------------------------------------------------
 
-describe('C4: cancel before any content', () => {
+describe('Cancel before any content', () => {
   test('no phantom assistant message; terminal event still emitted', async () => {
     const events: CapturedEvent[] = [];
     const gate = makeGate();
@@ -265,7 +265,7 @@ describe('C4: cancel before any content', () => {
 // C5: dangling tool calls are closed before the terminal event
 // ---------------------------------------------------------------------------
 
-describe('C5: announced-but-unresolved tool calls', () => {
+describe('Announced-but-unresolved tool calls', () => {
   test('get a synthetic error turn.tool_result before turn.cancelled', async () => {
     const events: CapturedEvent[] = [];
     const gate = makeGate();
@@ -300,7 +300,7 @@ describe('C5: announced-but-unresolved tool calls', () => {
 // C6: session close mid-turn
 // ---------------------------------------------------------------------------
 
-describe('C6: session close mid-turn', () => {
+describe('Session close mid-turn', () => {
   test('finalizes the turn as stoppedBy session-closed', async () => {
     const events: CapturedEvent[] = [];
     const gate = makeGate();
@@ -323,7 +323,7 @@ describe('C6: session close mid-turn', () => {
 // C7: the interrupted partial is visible to the model on later turns
 // ---------------------------------------------------------------------------
 
-describe('C7: partial-in-history', () => {
+describe('Partial-in-history', () => {
   test('the next turn sees the interrupted partial plus the interruption note', async () => {
     const events: CapturedEvent[] = [];
     const gate = makeGate();

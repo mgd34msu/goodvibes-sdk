@@ -385,7 +385,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
 
   /**
    * Record a NON-FATAL bookkeeping note on an item without touching its
-   * terminal status (DEBT-4 item 1). Used for post-gate faults that do not
+   * terminal status. Used for post-gate faults that do not
    * negate the phase's passed work — e.g. a scoped commit that could not
    * complete. The item still passes/advances; the warning rides along on
    * `item.warnings` and, for a terminal pass, in the `item-passed` event, so a
@@ -451,7 +451,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     // negating set (bookkeeping.ts). A bookkeeping fault becomes a warning on a
     // passed item (warnItem), never a failure — that is what makes "item failed
     // while every phase passed and the commit landed" unrepresentable
-    // (DEBT-4 item 1). A throw BEFORE this point — inside runPhase, e.g. a gate
+    // (the dual-outcome bookkeeping contract). A throw BEFORE this point — inside runPhase, e.g. a gate
     // subprocess that never yielded a verdict — legitimately reaches tick()'s
     // catch and fails the item, because there is then no phase outcome to
     // stand on.
@@ -583,7 +583,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
           // failure, so failing the item is honest. Post-outcome bookkeeping
           // faults never reach here: runItemPhase converts them to warnings on
           // a passed item (or, for the negating set, an explicit failItem) —
-          // see its bookkeeping region (DEBT-4 item 1).
+          // see its bookkeeping region.
           logger.error('orchestration engine: phase run threw before producing an outcome', {
             workstreamId, itemId: item.id, phaseId: phase.id, error: summarizeError(error),
           });

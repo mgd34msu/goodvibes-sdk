@@ -375,7 +375,7 @@ export function evaluateWrfcBatchPolicy(input: AgentInput): WrfcBatchPolicyDecis
       return { kind: 'independent' };
     }
 
-    // Ruling (WO UX-A item 1): an explicit parallel / per-unit fan-out request is
+    // Owner ruling: an explicit parallel / per-unit fan-out request is
     // user intent, exactly like userProhibitsDelegation. When the user explicitly
     // asked for separate agents in parallel and the batch is a set of independent
     // implementation deliverables (NOT role-fragmentation — that branch is handled

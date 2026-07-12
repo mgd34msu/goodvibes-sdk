@@ -34,7 +34,7 @@ function makeRegistry(records: MemoryRecord[]) {
   return { getAll: () => records };
 }
 
-describe('knowledge-injection.ts — selectKnowledgeForTaskScored sibling (W5.1)', () => {
+describe('knowledge-injection.ts — selectKnowledgeForTaskScored sibling', () => {
   test('selectKnowledgeForTask output is unchanged: same ids, order, and limit as before extraction', () => {
     const records = [
       makeRecord({ id: 'mem_a', summary: 'auth module uses JWT tokens', tags: ['auth'], reviewState: 'reviewed', confidence: 70 }),

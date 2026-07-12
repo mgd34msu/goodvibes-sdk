@@ -75,7 +75,7 @@ export interface ShellPlanManagerService {
   toMarkdown(plan: ExecutionPlan): string;
   create(title: string, items: Omit<PlanItem, 'id' | 'status'>[], sessionId?: string): ExecutionPlan;
   save(plan: ExecutionPlan): void;
-  /** Archive the active plan (DEBT-3). See ExecutionPlanManager.dismiss. */
+  /** Archive the active plan. See ExecutionPlanManager.dismiss. */
   dismiss(sessionId?: string): DismissPlanResult;
 }
 

@@ -2,7 +2,7 @@
  * project-planning-answer.test.ts
  *
  * ProjectPlanningService.answerQuestion() — the real answer path behind
- * /plan answer (DEBT-3).
+ * /plan answer.
  *
  * Under test:
  *   - Answer by questionId → moves open → answered, records text/answeredAt.

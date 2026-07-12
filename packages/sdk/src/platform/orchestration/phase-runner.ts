@@ -292,7 +292,7 @@ interface CommitPhaseWorkResult {
  * is bookkeeping: a failure surfaces to the engine as a warning on a passed
  * item (or, for the narrow negating set — workspace corruption, see
  * bookkeeping.ts — as an item failure), never as a silent no-op that lets the
- * fleet imply a commit happened when it did not (DEBT-4 item 1).
+ * fleet imply a commit happened when it did not.
  */
 async function commitPhaseWork(
   item: WorkItem,

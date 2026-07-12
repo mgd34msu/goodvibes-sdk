@@ -31,7 +31,7 @@ function createTmpRoot(prefix: string): string {
 function createPlanningService(): ProjectPlanningService {
   const root = createTmpRoot('plan-integration-');
   const store = new KnowledgeStore({ dbPath: join(root, 'knowledge.sqlite') });
-  return new ProjectPlanningService(store, { defaultProjectId: 'wo702-project' });
+  return new ProjectPlanningService(store, { defaultProjectId: 'planning-project' });
 }
 
 function buildProposal() {
@@ -61,7 +61,7 @@ function buildProposal() {
 describe('proposal -> planning-state approval seam (readiness gate)', () => {
   test('needs-user-input (unapproved) before approval, executable after — mirrors /plan approve', async () => {
     const service = createPlanningService();
-    const projectId = 'wo702-project';
+    const projectId = 'planning-project';
     const proposal = buildProposal();
     const partialState = planProposalToPlanningState(proposal);
 

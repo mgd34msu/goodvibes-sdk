@@ -1,7 +1,7 @@
 /**
  * companion-token-rotation.test.ts
  *
- * The rotation verb behind /qrcode regenerate (DEBT-3).
+ * The rotation verb behind /qrcode regenerate.
  *
  * regenerateCompanionToken re-keys the SAME operator-token store
  * (<daemonHomeDir>/operator-tokens.json): it issues a fresh token + peerId and

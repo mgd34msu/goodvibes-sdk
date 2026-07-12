@@ -3,7 +3,7 @@
  *
  * ExecutionPlanManager.dismiss() — the archive verb behind /plan dismiss.
  *
- * Rulings under test (DEBT-3):
+ * Rulings under test:
  *   - No active plan            → { outcome: 'no-active-plan' }, nothing written.
  *   - Proposal/awaiting-approval → archived: retained with status 'dismissed'
  *                                  + dismissedAt/dismissedFrom, active pointer cleared.

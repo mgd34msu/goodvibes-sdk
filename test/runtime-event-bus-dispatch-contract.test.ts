@@ -1,5 +1,5 @@
 /**
- * DEBT-4 item 3 — RuntimeEventBus dispatch ordering contract.
+ * RuntimeEventBus dispatch ordering contract.
  *
  * Pins the guarantee documented on the RuntimeEventBus class doc: emit() NEVER
  * invokes a subscriber synchronously — every handler is deferred to its own
@@ -25,7 +25,7 @@ function agentEnvelope(agentId: string): ReturnType<typeof createEventEnvelope> 
   );
 }
 
-describe('RuntimeEventBus dispatch ordering contract (DEBT-4 item 3)', () => {
+describe('RuntimeEventBus dispatch ordering contract', () => {
   test('a subscriber can never observe state mid-mutation — emit dispatches after the mutating call completes', async () => {
     const bus = new RuntimeEventBus();
     const state = { phase: 'initial' as 'initial' | 'mutating' | 'settled' };

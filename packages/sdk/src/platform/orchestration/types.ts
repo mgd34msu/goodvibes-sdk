@@ -152,7 +152,7 @@ export function emptyWorkItemUsage(): WorkItemUsage {
  * presence: every count is summed (counts only grow) and a cost is retained
  * via `??` whenever either operand carries one, so once a real token or cost
  * value has appeared the merged result can never regress to absent/`null`
- * (DEBT-4 item 2 — "updating" is a state, never a data wipe).
+ * ("updating" is a state, never a data wipe).
  *
  * Cost state stays honest rather than optimistic: 'priced' only when BOTH
  * operands are priced; 'unpriced' only when NEITHER carries a cost; any mix is
@@ -219,7 +219,7 @@ export interface WorkItem {
   blockedReason?: string | undefined;
   /**
    * Non-fatal bookkeeping notes accrued while the item PASSED its phases — e.g.
-   * a scoped commit that could not complete (DEBT-4 item 1). Warnings NEVER
+   * a scoped commit that could not complete. Warnings NEVER
    * change the item's terminal status (that derives only from phase outcomes
    * plus the explicit negating set, see bookkeeping.ts); they make a
    * passed-with-caveats outcome legible instead of hiding it — or, worse,
@@ -446,7 +446,7 @@ export interface CommitExclusion {
  * passed — the gate already did that — it only reports what happened to the
  * working tree afterward, so the fleet and transcript can state "committed
  * <hash>" or "commit skipped/failed" without ever contradicting the phase
- * verdict (DEBT-4 item 1). Present on a PhaseResult only when the gate passed
+ * verdict. Present on a PhaseResult only when the gate passed
  * and a commit was therefore attempted or deliberately skipped.
  */
 export interface PhaseCommitOutcome {
@@ -482,7 +482,7 @@ export interface PhaseResult {
   /** Present only when a scoped commit excluded launch-dirty residue (see CommitExclusion). */
   readonly commitExclusion?: CommitExclusion | undefined;
   /**
-   * Outcome of the post-gate scoped-commit step (DEBT-4 item 1). Present only
+   * Outcome of the post-gate scoped-commit step. Present only
    * when this phase's gate passed and a commit was attempted or deliberately
    * skipped; absent for a failed/cancelled phase (no commit is reached).
    */

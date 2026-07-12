@@ -112,7 +112,7 @@ describe('R2 — isolated home', () => {
   });
 });
 
-describe('D6 — operator provider/account snapshots serve JSON, never 500 HTML', () => {
+describe('Operator provider/account snapshots serve JSON, never 500 HTML', () => {
   // Regression: under bootDaemon's fresh isolated home the pricing catalog has
   // not hydrated yet. The configured default model ('openrouter:openrouter/free')
   // now resolves anyway via ProviderRegistry.buildConfiguredModelFallback(), a

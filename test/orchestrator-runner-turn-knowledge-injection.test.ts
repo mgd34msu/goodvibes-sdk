@@ -193,7 +193,7 @@ function makeRegistryDeps(record: AgentRecord, messageBus: Pick<AgentMessageBus,
   };
 }
 
-describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, W5.1)', () => {
+describe('orchestrator-runner — per-turn passive knowledge injection', () => {
   let tmpDir: string | undefined;
 
   afterEach(() => {
@@ -202,7 +202,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
   });
 
   test('a steer surfaces a record the frozen task alone would miss; records the turn, dedupes against the spawn baseline', async () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'wo801-turn-knowledge-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'turn-knowledge-'));
     const messageBus = new AgentMessageBus();
     const runtimeBus = new RuntimeEventBus();
     const record = makeRecord({ id: 'ag-turn-knowledge-1' });
@@ -269,7 +269,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
   });
 
   test('turns without new input reuse the prior block: the ranking pipeline is not re-invoked', async () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'wo801-turn-knowledge-reuse-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'turn-knowledge-reuse-'));
     const messageBus = new AgentMessageBus();
     const runtimeBus = new RuntimeEventBus();
     const record = makeRecord({ id: 'ag-turn-knowledge-2', task: 'fix the rate limiting bug' });
@@ -324,7 +324,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
   });
 
   test('flag disabled: base system prompt is byte-identical across every turn, steer included (no compounding)', async () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'wo801-turn-knowledge-flagoff-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'turn-knowledge-flagoff-'));
     const messageBus = new AgentMessageBus();
     const runtimeBus = new RuntimeEventBus();
     const record = makeRecord({ id: 'ag-turn-knowledge-flagoff' });
@@ -370,7 +370,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
   });
 
   test('config budget of 0 is a hard no-op even with the flag enabled and a matching steer', async () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'wo801-turn-knowledge-budget0-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'turn-knowledge-budget0-'));
     const messageBus = new AgentMessageBus();
     const runtimeBus = new RuntimeEventBus();
     const record = makeRecord({ id: 'ag-turn-knowledge-budget0' });
@@ -418,7 +418,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection (Wave-5, 
   });
 
   test('compaction interaction: a tight context window never lets base+block exceed the 85% threshold', async () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'wo801-turn-knowledge-threshold-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'turn-knowledge-threshold-'));
     const messageBus = new AgentMessageBus();
     const runtimeBus = new RuntimeEventBus();
     // Reuse the "deployment docs" frozen task from the first test: the 3 fillers occupy
