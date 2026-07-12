@@ -6,11 +6,11 @@
  *   4. Each promoted feature maps to the exact keys it was promoted for.
  */
 import { describe, expect, test } from 'bun:test';
+import { FEATURE_FLAGS } from '../packages/sdk/src/platform/runtime/feature-flags/flags.js';
 import {
-  FEATURE_FLAGS,
   FEATURE_FLAG_CONFIG,
   getFeatureFlagConfig,
-} from '../packages/sdk/src/platform/runtime/feature-flags/index.js';
+} from '../packages/sdk/src/platform/runtime/feature-flags/flag-config-map.js';
 import { CONFIG_KEYS } from '../packages/sdk/src/platform/config/schema.js';
 
 describe('FEATURE_FLAG_CONFIG completeness', () => {
@@ -50,6 +50,7 @@ describe('FEATURE_FLAG_CONFIG completeness', () => {
       'fetch.sanitizeMode',
       'fetch.trustedHosts',
       'fetch.blockedHosts',
+      'fetch.allowLocalhost',
     ]);
     expect(getFeatureFlagConfig('overflow-spill-backends').configKeys).toEqual([
       'tools.overflowSpillBackend',

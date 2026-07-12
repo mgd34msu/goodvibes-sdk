@@ -61,7 +61,10 @@ function formatAge(ts: number | undefined): string {
 
 export function evaluateSessionMaintenance(input: SessionMaintenanceInput): SessionMaintenanceStatus {
   const guidanceMode = getGuidanceMode(input.configManager);
-  const thresholdPct = Math.max(0, Number(input.configManager.get('behavior.autoCompactThreshold') ?? 0));
+  const compactionOff = input.configManager.get('behavior.compactionStrategy') === 'off';
+  const thresholdPct = compactionOff
+    ? 0
+    : Math.max(0, Number(input.configManager.get('behavior.autoCompactThreshold') ?? 0));
   const autoCompactEnabled = thresholdPct > 0;
   const currentTokens = Math.max(0, input.currentTokens);
   const contextWindow = Math.max(0, input.contextWindow);

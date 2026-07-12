@@ -14893,7 +14893,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "settings": [
         {
           "key": "sample",
-          "type": "feature-flag",
+          "type": "setting",
+          "featureId": "sample",
           "defaultState": "sample",
           "currentState": "sample",
           "securityRelevant": false,

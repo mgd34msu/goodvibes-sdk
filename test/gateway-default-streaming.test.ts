@@ -153,9 +153,11 @@ describe('S2a — control-plane-gateway defaults ON', () => {
     ]) {
       expect(flags.isEnabled(graduated)).toBe(true);
     }
-    // These wait on their own separately-recorded conditions.
+    // Their separately-recorded conditions were later ruled met (2026-07-11
+    // rulings): the whole reachability tier now defaults on, with the web
+    // surface bound to loopback.
     for (const sibling of ['web-surface', 'automation-domain', 'watcher-framework', 'service-management']) {
-      expect(flags.isEnabled(sibling)).toBe(false);
+      expect(flags.isEnabled(sibling)).toBe(true);
     }
   });
 });
@@ -216,22 +218,22 @@ describe('S2a — honest degraded mode when the flag is explicitly OFF', () => {
   test('getSnapshot() returns the webui-actionable disabled shell', () => {
     const snapshot = makeDisabledGateway().getSnapshot() as {
       disabled?: boolean;
-      featureFlag?: string;
+      setting?: string;
       totals?: { clients: number };
     };
     expect(snapshot.disabled).toBe(true);
-    expect(snapshot.featureFlag).toBe(FLAG);
+    expect(snapshot.setting).toBe('controlPlane.gateway');
     expect(snapshot.totals?.clients).toBe(0);
   });
 
-  test('createEventStream returns 503 with an ACTIONABLE body naming the flag', async () => {
+  test('createEventStream returns 503 with an ACTIONABLE body naming the setting', async () => {
     const res = makeDisabledGateway().createEventStream(new Request('http://localhost/stream'));
     expect(res.status).toBe(503);
-    const body = await res.json() as { error: string; featureFlag: string; hint: string };
-    expect(body.featureFlag).toBe(FLAG);
-    expect(body.error).toContain(FLAG);
-    // Actionable: names the flag AND tells the operator how to restore streaming.
-    expect(body.hint).toContain(FLAG);
+    const body = await res.json() as { error: string; setting: string; hint: string };
+    expect(body.setting).toBe('controlPlane.gateway');
+    expect(body.error).toContain('controlPlane.gateway');
+    // Actionable: names the setting AND tells the operator how to restore streaming.
+    expect(body.hint).toContain('controlPlane.gateway');
     expect(body.hint.toLowerCase()).toContain('disabled');
   });
 });

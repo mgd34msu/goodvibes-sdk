@@ -135,7 +135,8 @@ export const SETTINGS_SNAPSHOT_SCHEMA: Record<string, unknown> = {
 
 const SECURITY_SETTING_REPORT_SCHEMA = objectSchema({
   key: STRING_SCHEMA,
-  type: enumSchema(['feature-flag', 'configuration']),
+  type: enumSchema(['setting', 'configuration']),
+  featureId: STRING_SCHEMA,
   defaultState: STRING_SCHEMA,
   currentState: STRING_SCHEMA,
   securityRelevant: BOOLEAN_SCHEMA,
@@ -147,6 +148,7 @@ const SECURITY_SETTING_REPORT_SCHEMA = objectSchema({
 }, [
   'key',
   'type',
+  'featureId',
   'defaultState',
   'currentState',
   'securityRelevant',

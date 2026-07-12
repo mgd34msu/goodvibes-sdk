@@ -290,7 +290,7 @@ export class PlatformServiceManager {
         commandPreview: [definition.command, ...definition.args].join(' '),
         suggestedCommands: [],
         lastAction: 'status',
-        actionError: 'service-management feature flag is disabled',
+        actionError: 'service management is turned off (see the service.enabled setting)',
       };
     }
     const installed = existsSync(path);

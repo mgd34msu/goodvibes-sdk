@@ -120,7 +120,7 @@ export class RouteBindingManager {
 
   private requireEnabled(operation: string): void {
     if (this.isEnabled()) return;
-    throw new Error(`route-binding feature flag is disabled; cannot ${operation}`);
+    throw new Error(`route binding is turned off (see the integrations.routeBinding setting); cannot ${operation}`);
   }
 
   attachRuntime(config: {

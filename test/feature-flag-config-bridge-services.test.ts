@@ -1,13 +1,14 @@
 /**
  * feature-flag-config-bridge-services.test.ts
  *
- * End-to-end coverage for the live config -> flag-manager bridge wired in
+ * End-to-end coverage for the live settings -> gate-manager bridge wired in
  * createRuntimeServices() (platform/runtime/services.ts): a real
- * ConfigManager.set('featureFlags.<id>', ...) call, after RuntimeServices is
- * already constructed, must reach the internally-created FeatureFlagManager
- * without a restart — for runtime-toggleable flags only. A startup-gated
- * flag must show up as pending-restart on the manager's snapshot instead of
- * silently doing nothing or faking a live apply.
+ * ConfigManager.set on a capability's domain settings key (behavior.hitlMode,
+ * permissions.engine, ...), after RuntimeServices is already constructed,
+ * must reach the internally-created FeatureFlagManager without a restart —
+ * for runtime-toggleable gates only. A startup-gated capability must show up
+ * as pending-restart on the manager's snapshot instead of silently doing
+ * nothing or faking a live apply.
  */
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,7 +22,9 @@ import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/i
 import { createFeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/manager.js';
 
 const TOGGLEABLE_FLAG_ID = 'hitl-ux-modes';
+const TOGGLEABLE_KEY = 'behavior.hitlMode' as ConfigKey;
 const STARTUP_GATED_FLAG_ID = 'permissions-policy-engine';
+const STARTUP_GATED_KEY = 'permissions.engine' as ConfigKey;
 
 const tmpRoots: string[] = [];
 
@@ -54,17 +57,18 @@ function buildServices() {
   return { configManager, runtimeServices };
 }
 
-describe('createRuntimeServices — live featureFlags config bridge', () => {
+describe('createRuntimeServices — live feature-settings bridge', () => {
   test('config.set on a runtime-toggleable flag applies live and notifies subscribers', () => {
     const { configManager, runtimeServices } = buildServices();
     const seen: Array<{ flagId: string; state: string }> = [];
     runtimeServices.featureFlags.subscribe((flagId, state) => seen.push({ flagId, state }));
 
-    expect(runtimeServices.featureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(false);
-    configManager.setDynamic(`featureFlags.${TOGGLEABLE_FLAG_ID}` as ConfigKey, 'enabled');
-
+    // behavior.hitlMode defaults 'balanced', so the notification-mode system is on.
     expect(runtimeServices.featureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(true);
-    expect(seen).toEqual([{ flagId: TOGGLEABLE_FLAG_ID, state: 'enabled' }]);
+    configManager.setDynamic(TOGGLEABLE_KEY, 'off');
+
+    expect(runtimeServices.featureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(false);
+    expect(seen).toEqual([{ flagId: TOGGLEABLE_FLAG_ID, state: 'disabled' }]);
   });
 
   test('config.set on a startup-gated flag does not change effective state but is visible as pending-restart', () => {
@@ -73,7 +77,7 @@ describe('createRuntimeServices — live featureFlags config bridge', () => {
     runtimeServices.featureFlags.subscribe((flagId, state) => seen.push({ flagId, state }));
 
     expect(runtimeServices.featureFlags.isEnabled(STARTUP_GATED_FLAG_ID)).toBe(false);
-    configManager.setDynamic(`featureFlags.${STARTUP_GATED_FLAG_ID}` as ConfigKey, 'enabled');
+    configManager.setDynamic(STARTUP_GATED_KEY, 'policy-engine');
 
     // No live apply — the runtime must not fake a startup-only flag as active.
     expect(runtimeServices.featureFlags.isEnabled(STARTUP_GATED_FLAG_ID)).toBe(false);
@@ -110,11 +114,12 @@ describe('createRuntimeServices — live featureFlags config bridge', () => {
     });
     expect(runtimeServices.featureFlags).toBe(injectedFeatureFlags);
 
-    configManager.setDynamic(`featureFlags.${TOGGLEABLE_FLAG_ID}` as ConfigKey, 'enabled');
+    configManager.setDynamic(TOGGLEABLE_KEY, 'off');
     // The composition root only bridges the manager it created itself
     // (mirrors the options.featureFlags === undefined guard around the boot
     // loadFromConfig call) — an injected manager is the caller's to bridge.
-    expect(injectedFeatureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(false);
+    // The injected manager keeps its registry default (enabled) untouched.
+    expect(injectedFeatureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(true);
   });
 
   test('boot load still seeds effective state from persisted config at construction (unchanged)', () => {
@@ -129,10 +134,9 @@ describe('createRuntimeServices — live featureFlags config bridge', () => {
       workingDir,
       surfaceRoot: 'goodvibes-test',
     });
-    // Persist a flag override BEFORE RuntimeServices is constructed — this is
-    // the pre-existing boot-load path (loadFromConfig at construction), which
-    // must remain exactly as before.
-    configManager.setDynamic(`featureFlags.${TOGGLEABLE_FLAG_ID}` as ConfigKey, 'enabled');
+    // Persist a settings choice BEFORE RuntimeServices is constructed — the
+    // boot path derives gate states from the domain keys at construction.
+    configManager.setDynamic(TOGGLEABLE_KEY, 'off');
 
     const runtimeServices = createRuntimeServices({
       configManager,
@@ -142,6 +146,6 @@ describe('createRuntimeServices — live featureFlags config bridge', () => {
       workingDir,
       homeDirectory,
     });
-    expect(runtimeServices.featureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(true);
+    expect(runtimeServices.featureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(false);
   });
 });
