@@ -153,6 +153,35 @@ function makeSubscriptionRuntime(providerId = 'openai'): ProviderRuntimeMetadata
 // ---------------------------------------------------------------------------
 
 describe('GET /api/models', () => {
+  test('a list read triggers the TTL-respecting live-discovery re-check without blocking the response', async () => {
+    const m1 = makeModel('inception', 'mercury-2');
+    const { context } = makeContext({ models: [m1], currentModel: m1 });
+    let refreshCalls = 0;
+    let refreshArgs: unknown[] = [];
+    // A refresh that NEVER resolves: the response must not wait on it.
+    (context.providerRegistry as unknown as { refreshLiveModelDiscovery: (...args: unknown[]) => Promise<never> }).refreshLiveModelDiscovery =
+      (...args: unknown[]) => { refreshCalls += 1; refreshArgs = args; return new Promise<never>(() => {}); };
+
+    const res = await dispatchModelRoutes(makeRequest('GET', 'http://localhost/api/models'), context);
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(200);
+    expect(refreshCalls).toBe(1);
+    // TTL-respecting: never a forced refetch (no force option passed).
+    expect(refreshArgs).toEqual([]);
+  });
+
+  test('a failing live-discovery refresh never fails the list response', async () => {
+    const m1 = makeModel('inception', 'mercury-2');
+    const { context } = makeContext({ models: [m1], currentModel: m1 });
+    (context.providerRegistry as unknown as { refreshLiveModelDiscovery: () => Promise<never> }).refreshLiveModelDiscovery =
+      () => Promise.reject(new Error('provider endpoint down'));
+
+    const res = await dispatchModelRoutes(makeRequest('GET', 'http://localhost/api/models'), context);
+    expect(res!.status).toBe(200);
+    const body = await res!.json() as { providers: unknown[] };
+    expect(body.providers).toBeInstanceOf(Array);
+  });
+
   test('returns provider list with models and configured flags', async () => {
     const m1 = makeModel('inception', 'mercury-2');
     const m2 = makeModel('venice', 'llama-3.3-70b');

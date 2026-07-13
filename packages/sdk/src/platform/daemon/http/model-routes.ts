@@ -335,6 +335,15 @@ export async function dispatchModelRoutes(
 async function handleListProviderModels(context: ModelRouteContext): Promise<Response> {
   const { providerRegistry, secretsManager } = context;
 
+  // Remote pickers get the same freshness as the TUI's picker-open hook: a
+  // GET triggers the TTL-respecting live-discovery re-check. Fire-and-forget
+  // — the response serves the current list immediately (fresher on the next
+  // read) so a slow provider can never block it, and the TTL keeps repeat
+  // GETs cheap (no forced refetch storms).
+  void providerRegistry.refreshLiveModelDiscovery?.().catch((error) => {
+    logger.warn('[models] live-discovery refresh on list failed', { error: error instanceof Error ? error.message : String(error) });
+  });
+
   // Pre-resolve which secret keys are stored (one async batch, then sync logic below)
   const secretKeys = await resolveSecretKeys(secretsManager);
 
