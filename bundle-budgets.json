@@ -374,8 +374,8 @@
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) \u2192 192 (+50 B floor dominates by 21 B)"
   },
   "./platform/runtime/fleet": {
-    "gzip_bytes": 336,
-    "rationale": "new public entrypoint (fleet process registry, 0.38.0 Wave 2); measured 280 B gzip @ v0.38.0; headroom max(ceil(280*1.2)=336, 280+50=330) \u2192 336 (1.2x dominates by 6 B)"
+    "gzip_bytes": 452,
+    "rationale": "fleet process registry entrypoint; re-measured 376 B gzip after the headline + stall-tell read-model projections landed (headlines.ts HeadlineTable/deriveStallTell + their barrel exports); headroom max(ceil(376*1.2)=452, 376+50=426) -> 452 (1.2x dominates)"
   },
   "./platform/runtime/memory-spine": {
     "gzip_bytes": 675,
@@ -450,8 +450,8 @@
     "rationale": "new public package export budget; measured 50 B gzip @ v0.33.0 release verification; headroom max(ceil(50*1.2)=60, 50+50=100) -> 100 (+50 B floor dominates)"
   },
   "./platform/tools": {
-    "gzip_bytes": 3435,
-    "rationale": "tool registry surface; re-measured 2862 B gzip after the per-command exec sandbox landed (sandbox.ts runner reachable from runtime.ts via the plan/metadata helpers, plus detectSandboxAvailability/probeSandboxHost used to wire the sandbox in registerAllTools); headroom max(ceil(2862*1.2)=3435, 2862+50=2912) \u2192 3435 (1.2x dominates); dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B), ToolRegistry type imports (~300 B)"
+    "gzip_bytes": 4209,
+    "rationale": "tool registry surface; re-measured 3507 B gzip after the exec PTY prompt-answer path landed (interactive.ts runner + detection reachable from runtime.ts, detectPtyAvailability/probePtyHost wired in registerAllTools); headroom max(ceil(3507*1.2)=4209, 3507+50=3557) -> 4209 (1.2x dominates); previously dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B)"
   },
   "./platform/tools/exec/sandbox": {
     "gzip_bytes": 4294,
