@@ -103,6 +103,8 @@ export interface BootDaemonOptions {
     readonly port?: number | undefined;
     readonly serveFactory?: typeof Bun.serve | undefined;
     readonly token?: string | undefined;
+    // Warning: (ae-forgotten-export) The symbol "DaemonUpdateArtifact" needs to be exported by the entry point embed.d.ts
+    readonly updateArtifact?: DaemonUpdateArtifact | undefined;
     readonly workingDir: string;
 }
 

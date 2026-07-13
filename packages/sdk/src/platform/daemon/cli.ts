@@ -6,6 +6,7 @@ import { createRuntimeStore } from '../runtime/store/index.js';
 import { createRuntimeServices } from '../runtime/services.js';
 import { DaemonServer } from './server.js';
 import { HttpListener } from './http-listener.js';
+import { VERSION } from '../version.js';
 import { logger } from '../utils/logger.js';
 import { GlobalNetworkTransportInstaller } from '../runtime/network/index.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -98,7 +99,10 @@ async function main(): Promise<void> {
     rerootStores: (newDir: string) => runtimeServices.rerootStores(newDir),
   });
 
-  const daemon = new DaemonServer({ runtimeBus, userAuth, runtimeServices, swapManager });
+  // The daemon CLI IS the SDK-released artifact, so its update identity is
+  // the SDK release version and the running executable. Embedders never get
+  // this default — they pass their own artifact identity (or none).
+  const daemon = new DaemonServer({ runtimeBus, userAuth, runtimeServices, swapManager, updateArtifact: { version: VERSION } });
   const listener = new HttpListener({
     hookDispatcher: runtimeServices.hookDispatcher,
     userAuth,

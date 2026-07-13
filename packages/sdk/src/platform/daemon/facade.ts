@@ -228,6 +228,7 @@ export class DaemonServer {
       configManager: this.configManager,
       platformServiceManager: this.platformServiceManager,
       isIdle: () => this.sessionBroker.countBusySessions() === 0,
+      updateArtifact: this.config.updateArtifact, // absent = host-managed updates (see DaemonUpdateArtifact)
     });
     // /status surfaces undelivered daemon receipts (updates, crash restarts).
     this.httpRouter.setDaemonReceiptsProvider(() => this.collectDaemonReceipts());

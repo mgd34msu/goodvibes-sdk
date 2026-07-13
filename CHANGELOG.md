@@ -55,8 +55,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   `hasFreshSurfaceParticipant` + `SURFACE_ROUTE_FRESHNESS_MS`, so surfaces
   derive spawn routing and surface presence from the SDK instead of
   re-implementing them.
+- **Update lifecycle export paths:** `platform/runtime/self-update` (release
+  artifact resolution, checksum verification, version banding),
+  `platform/daemon/auto-updater` (DaemonAutoUpdater), and
+  `platform/daemon/receipts` (DaemonReceiptStore) — with an export-map
+  resolution test that imports every new subpath through the package name,
+  proving each against the committed manifest rather than just compilation.
 
 ### Changed
+
+- **The auto-update loop takes the HOST artifact's identity.** The daemon
+  facade previously compared the SDK package version against release tags
+  and swapped `process.execPath` — wrong whenever the daemon is embedded in
+  a host binary with its own version and release line. `DaemonConfig` (and
+  `bootDaemon`) now accept `updateArtifact: { version, execPath? }`; the
+  SDK's own daemon CLI passes its release version (behavior unchanged for
+  the SDK-shipped artifact), while the embedded default — no artifact
+  identity — means the host manages updates and no loop starts. An
+  embedder's version is never compared against SDK release tags.
 
 - **Priced values carry their provenance.** Every gateway verb that serves
   dollars now also says where the rates came from and how fresh they are, so

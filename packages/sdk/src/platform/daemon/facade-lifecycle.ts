@@ -13,7 +13,6 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
-import { VERSION } from '../version.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { PlatformServiceManager } from './service-manager.js';
 import { DaemonAutoUpdater } from './auto-updater.js';
@@ -74,11 +73,29 @@ export function registerDaemonHeartbeatWatcher(
   watcherRegistry.startWatcher('daemon-heartbeat');
 }
 
+/**
+ * Identity of the RUNNING artifact for the auto-update loop. The daemon
+ * facade must never assume the SDK package is the shipped artifact: an
+ * embedding host names its own version (what release tags are compared
+ * against) and, optionally, the executable the swap replaces. Absent — the
+ * embedded default — means the HOST manages updates: the loop stays off,
+ * because comparing the SDK's package version against a host's release tags
+ * is meaningless and the swap would target the wrong binary.
+ */
+export interface DaemonUpdateArtifact {
+  /** The running artifact's own version — compared against release tags. */
+  readonly version: string;
+  /** The executable the verified swap replaces. Defaults to process.execPath. */
+  readonly execPath?: string | undefined;
+}
+
 export interface DaemonLifecycleRuntimeOptions {
   readonly configManager: ConfigManager;
   readonly platformServiceManager: PlatformServiceManager;
   /** The daemon's real activity signal: true only when NO work is in flight. */
   readonly isIdle: () => boolean;
+  /** Absent = host-managed updates (the safe embedded default): no auto-update loop. */
+  readonly updateArtifact?: DaemonUpdateArtifact | undefined;
 }
 
 export class DaemonLifecycleRuntime {
@@ -151,6 +168,16 @@ export class DaemonLifecycleRuntime {
     if (this.autoUpdater) return;
     const { configManager } = this.options;
     if (configManager.get('update.auto') !== true) return;
+    const artifact = this.options.updateArtifact;
+    if (!artifact) {
+      // No artifact identity was provided (the embedded default): the host
+      // manages its own updates. Never fall back to the SDK package version —
+      // comparing it against the host's release tags would be meaningless and
+      // the swap would replace the wrong executable. Logged so an operator
+      // who set update.auto sees why no loop is running.
+      logger.info('DaemonServer: auto-update loop off — no update artifact identity provided (host-managed updates)');
+      return;
+    }
     const releasesUrl = String(configManager.get('update.releasesUrl') ?? '').trim();
     if (!releasesUrl) return;
     const intervalMinutes = Number(configManager.get('update.intervalMinutes') ?? 60);
@@ -164,8 +191,8 @@ export class DaemonLifecycleRuntime {
       }
     };
     this.autoUpdater = new DaemonAutoUpdater({
-      currentVersion: VERSION,
-      execPath: process.execPath,
+      currentVersion: artifact.version,
+      execPath: artifact.execPath ?? process.execPath,
       platform: process.platform,
       arch: process.arch,
       releasesLatestUrl: releasesUrl,
