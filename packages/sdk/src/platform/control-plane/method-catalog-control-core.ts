@@ -18,6 +18,7 @@ import {
 import {
   APPROVAL_ACTION_INPUT_SCHEMA,
   APPROVAL_APPROVE_INPUT_SCHEMA,
+  APPROVAL_DENY_INPUT_SCHEMA,
   APPROVAL_ACTION_OUTPUT_SCHEMA,
   APPROVAL_SNAPSHOT_SCHEMA,
   CONTROL_AUTH_CURRENT_RESPONSE_SCHEMA,
@@ -733,7 +734,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'approvals.approve',
     title: 'Approve Approval',
-    description: 'Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval\'s own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400.',
+    description: 'Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval\'s own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval — e.g. the typed answer to a command\'s terminal prompt — to the waiting call (selectedHunks supersedes it when both are present). The response\'s recorded block reports what the broker actually recorded.',
     category: 'approvals',
     scopes: ['write:approvals'],
     http: { method: 'POST', path: '/api/approvals/{approvalId}/approve' },
@@ -743,11 +744,11 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'approvals.deny',
     title: 'Deny Approval',
-    description: 'Deny a pending approval.',
+    description: 'Deny a pending approval. rememberTier generalizes the denial (a generalizing tier persists a durable deny rule and sweeps queued asks it covers); reason is the user\'s free-text feedback, which rides the structured declined result so the model adapts instead of guessing. The response\'s recorded block reports what the broker actually recorded.',
     category: 'approvals',
     scopes: ['write:approvals'],
     http: { method: 'POST', path: '/api/approvals/{approvalId}/deny' },
-    inputSchema: APPROVAL_ACTION_INPUT_SCHEMA,
+    inputSchema: APPROVAL_DENY_INPUT_SCHEMA,
     outputSchema: APPROVAL_ACTION_OUTPUT_SCHEMA,
   }),
   methodDescriptor({

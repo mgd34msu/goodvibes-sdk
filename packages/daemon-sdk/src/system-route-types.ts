@@ -119,6 +119,16 @@ export interface WatcherRegistryLike {
   runWatcherNow(watcherId: string): Promise<WatcherRecord | null>;
 }
 
+/**
+ * How far an approval decision reaches. Mirrors the broker's remember-tier
+ * union (a generalizing tier persists a durable rule and sweeps queued asks
+ * it covers; 'session' is the classic in-memory cache). Kept in sync with
+ * the operator contract's rememberTier enum.
+ */
+export type ApprovalRememberTier = 'session' | 'exact' | 'command-class' | 'path' | 'tool';
+
+export const APPROVAL_REMEMBER_TIERS: readonly ApprovalRememberTier[] = ['session', 'exact', 'command-class', 'path', 'tool'];
+
 export interface ApprovalBrokerLike {
   claimApproval(approvalId: string, actor: string, actorSurface: string, note?: string): Promise<unknown | null>;
   cancelApproval(approvalId: string, actor: string, actorSurface: string, note?: string): Promise<unknown | null>;
@@ -137,6 +147,15 @@ export interface ApprovalBrokerLike {
        * route layer converts to an HTTP 400.
        */
       readonly selectedHunks?: readonly number[] | undefined;
+      /** How far this decision reaches; a generalizing tier persists a durable rule. */
+      readonly rememberTier?: ApprovalRememberTier | undefined;
+      /** User free-text; on deny it rides the structured declined result. */
+      readonly reason?: string | undefined;
+      /**
+       * Argument-modifying approval payload (e.g. the typed answer to a
+       * command's terminal prompt). selectedHunks, when present, supersedes it.
+       */
+      readonly modifiedArgs?: Record<string, unknown> | undefined;
     },
   ): Promise<unknown | null>;
 }

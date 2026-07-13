@@ -227,6 +227,12 @@ function renderType(schema: Record<string, unknown>): string {
       const other = branches.find((b) => b.type !== 'null')!;
       return `null | ${renderType(other)}`;
     }
+    // A general (e.g. discriminated) union: branches in declaration order,
+    // each rendered by the same rules, joined with ' | '. Needed for the
+    // approval request's attribution union (approvals.* entries).
+    if (branches.length > 0) {
+      return branches.map((branch) => renderType(branch)).join(' | ');
+    }
     throw new Error(`Unsupported anyOf shape: ${JSON.stringify(schema)}`);
   }
 
@@ -293,6 +299,12 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
   // Daemon status + explicit receipt consumption (receipts=consume flag):
   { methodId: 'control.status', ...descriptorSchemas('control.status') },
+  // Approval actions (decision fields travel over HTTP: rememberTier, deny
+  // reason, modifiedArgs; responses carry the recorded block):
+  { methodId: 'approvals.claim', ...descriptorSchemas('approvals.claim') },
+  { methodId: 'approvals.approve', ...descriptorSchemas('approvals.approve') },
+  { methodId: 'approvals.deny', ...descriptorSchemas('approvals.deny') },
+  { methodId: 'approvals.cancel', ...descriptorSchemas('approvals.cancel') },
   // Session-scoped permission mode (get/set) + context-usage exposure:
   { methodId: 'sessions.permissionMode.get', ...descriptorSchemas('sessions.permissionMode.get') },
   // Durable permission rules settings surface:

@@ -150,6 +150,12 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },
@@ -226,6 +232,12 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },
@@ -302,6 +314,12 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },
@@ -378,6 +396,12 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },

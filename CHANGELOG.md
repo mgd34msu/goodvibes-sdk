@@ -72,6 +72,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Fixed
 
+- **The HTTP approval route forwards the full decision, not just
+  note/remember.** `POST /api/approvals/{id}/approve|deny` now carries
+  `rememberTier` (tier grants mint durable rules and sweep queued asks they
+  cover), the deny `reason` (rides the structured declined result so the
+  model adapts), and `modifiedArgs` (an argument-modifying approval — e.g.
+  the typed answer to a command's terminal prompt — reaches the waiting
+  call; `selectedHunks`, when present, supersedes it). Previously these
+  worked in-process only: over HTTP, tier grants minted nothing, deny
+  reasons vanished beyond the audit note, and an exec-prompt answer never
+  reached the waiting command. Responses now include a `recorded` block
+  derived from the broker's returned record (never echoed from the request)
+  reporting what was actually recorded; malformed decision fields are
+  honest 400s. Surfaces already sending the forward-compatible body take
+  effect with no change on their side.
+
 - Absent-from-catalog models no longer look free: the models.dev transform
   kept a missing cost as null instead of coercing to $0 (catalog cache
   bumped to v2 so stale zero-coerced caches refetch).
