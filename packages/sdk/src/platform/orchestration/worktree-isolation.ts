@@ -197,17 +197,37 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
 
   async function removeWorktree(workstream: Workstream, item: WorkItem, instance: IsolatedWorktree, evicted: boolean): Promise<void> {
     const path = instance.path;
-    try {
-      await instance.remove();
-    } catch (error) {
-      logger.warn('worktree-isolation: worktree removal did not complete', { itemId: item.id, path, error: summarizeError(error) });
+    let preservedCommit: string | null = null;
+    if (evicted) {
+      // Cap eviction never destroys work: uncommitted state is committed onto
+      // the item branch first, only the directory is removed, and the branch
+      // is KEPT (see IsolatedWorktree.evict). If preservation fails, the
+      // directory is left in place — an over-cap directory beats lost work —
+      // and the tree stays kept/attributed rather than falsely announced gone.
+      try {
+        preservedCommit = (await instance.evict()).preservedCommit;
+      } catch (error) {
+        logger.error('worktree-isolation: eviction preservation failed; worktree left on disk', {
+          itemId: item.id, path, branch: instance.branch, error: summarizeError(error),
+        });
+        return;
+      }
+    } else {
+      try {
+        await instance.remove();
+      } catch (error) {
+        logger.warn('worktree-isolation: worktree removal did not complete', { itemId: item.id, path, error: summarizeError(error) });
+      }
     }
     instances.delete(item.id);
     item.worktreePath = undefined;
     item.worktreeKept = false;
     deps.emit(
       evicted
-        ? { type: 'item-worktree-evicted', workstreamId: workstream.id, itemId: item.id, path }
+        ? {
+            type: 'item-worktree-evicted', workstreamId: workstream.id, itemId: item.id, path,
+            branch: instance.branch, ...(preservedCommit ? { preservedCommit } : {}),
+          }
         : { type: 'item-worktree-removed', workstreamId: workstream.id, itemId: item.id, path },
     );
   }
