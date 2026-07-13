@@ -40,7 +40,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   started session's id reaches surfaces: on the verb result for auto-start
   watches, and via a follow-up channel notification (a machine-readable
   sessionId line) on both the auto and accepted-offer paths, so a surface
-  can open or attach the session.
+  can open or attach the session. When the acceptance came from an approval
+  card, the started id is ALSO stamped onto the resolved approval record
+  (`fixSessionId`, published live through the broker), so the surface that
+  accepted has an in-process handle to jump straight to the session —
+  denied offers are never stamped.
 - **Feature announcements reach surfaces.** Announce-once lines (the web
   surface URL, the first contained exec run) now queue for delivery and
   ride the explicitly-consuming daemon status receipts read, so a surface

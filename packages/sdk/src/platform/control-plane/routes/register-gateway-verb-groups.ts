@@ -128,6 +128,14 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   /** The approval broker — the real event source push fans out from. */
   readonly approvalBroker: ApprovalSource;
   /**
+   * Optional: stamp the session an accepted ci fix-this offer spawned onto
+   * its RESOLVED approval record (ApprovalBroker.stampFixSession). Present
+   * when the real broker is wired (the runtime composition root); absent in
+   * narrower compositions — the id then travels only via the channel
+   * notification.
+   */
+  readonly stampFixSessionOnApproval?: ((offerCallId: string, fixSessionId: string) => Promise<unknown>) | undefined;
+  /**
    * Optional: raise an ask through the shared approval broker. When present,
    * a watched CI run going red produces a "fix this?" offer whose acceptance
    * starts the fix-session. Absent → red runs only notify.
@@ -331,13 +339,21 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     // "Fix this?" on a red run: the offer rides the SAME approval broker as a
     // permission ask, so every surface's attention machinery renders it;
     // acceptance starts the fix-session seeded with the failing jobs' logs.
+    // The accepted offer's started session id is stamped back onto the
+    // RESOLVED approval record (broker seam, published live) so the surface
+    // that accepted has an in-process handle — the offerCallId returned below
+    // is what ties the started session to its approval record.
+    ...(deps.stampFixSessionOnApproval
+      ? { stampFixSession: deps.stampFixSessionOnApproval }
+      : {}),
     ...(deps.requestApproval
       ? {
-        fixSessionOffer: async (brief: FixSessionBrief): Promise<boolean> => {
+        fixSessionOffer: async (brief: FixSessionBrief): Promise<{ accepted: boolean; offerCallId: string }> => {
           const where = brief.prNumber !== undefined ? `PR #${brief.prNumber}` : (brief.ref ?? 'watched ref');
+          const offerCallId = `ci-fix-${randomUUID().slice(0, 8)}`;
           const decision = await deps.requestApproval!({
             request: {
-              callId: `ci-fix-${randomUUID().slice(0, 8)}`,
+              callId: offerCallId,
               tool: 'ci:fix-session',
               args: {
                 repo: brief.repo,
@@ -360,7 +376,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
             },
             metadata: { source: 'ci-watch', repo: brief.repo },
           });
-          return decision.approved;
+          return { accepted: decision.approved, offerCallId };
         },
       }
       : {}),

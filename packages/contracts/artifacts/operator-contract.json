@@ -943,6 +943,9 @@
                   ],
                   "additionalProperties": false
                 },
+                "fixSessionId": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1444,6 +1447,9 @@
                   ],
                   "additionalProperties": false
                 },
+                "fixSessionId": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1938,6 +1944,9 @@
                     "approved"
                   ],
                   "additionalProperties": false
+                },
+                "fixSessionId": {
+                  "type": "string"
                 },
                 "metadata": {
                   "type": "object",
@@ -2452,6 +2461,9 @@
                     "approved"
                   ],
                   "additionalProperties": false
+                },
+                "fixSessionId": {
+                  "type": "string"
                 },
                 "metadata": {
                   "type": "object",
@@ -3072,6 +3084,9 @@
                       "approved"
                     ],
                     "additionalProperties": false
+                  },
+                  "fixSessionId": {
+                    "type": "string"
                   },
                   "metadata": {
                     "type": "object",

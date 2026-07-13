@@ -39,6 +39,13 @@ export interface CiWatchServiceDeps {
    * red runs on non-opted-in watches only notify (today's behavior).
    */
   readonly fixSessionOffer?: FixSessionOffer | undefined;
+  /**
+   * Stamps the started fix-session's id onto the accepted offer's RESOLVED
+   * approval record (broker seam) and publishes the update, so the surface
+   * that accepted gets a live in-process handle. Absent → the id is still
+   * delivered via the channel notification only.
+   */
+  readonly stampFixSession?: ((offerCallId: string, fixSessionId: string) => Promise<unknown>) | undefined;
   readonly now?: (() => number) | undefined;
 }
 
@@ -174,10 +181,20 @@ export class CiWatchService {
           const starter = this.deps.fixSessionStarter;
           void (async () => {
             try {
-              const accepted = await offer(brief);
+              const outcome = await offer(brief);
+              const accepted = typeof outcome === 'boolean' ? outcome : outcome.accepted;
+              const offerCallId = typeof outcome === 'boolean' ? undefined : outcome.offerCallId;
               if (!accepted) return;
               const startedId = await starter(brief);
-              if (startedId) await this.notifyFixSessionStarted(subscription, report, startedId);
+              if (!startedId) return;
+              // The accepting surface is attached NOW: stamp the started id
+              // onto the resolved approval record (published live through the
+              // broker) so it has an in-process handle to open the session —
+              // the channel notification below stays for paired channels.
+              if (offerCallId && this.deps.stampFixSession) {
+                await this.deps.stampFixSession(offerCallId, startedId);
+              }
+              await this.notifyFixSessionStarted(subscription, report, startedId);
             } catch (error) {
               logger.warn('[ci-watch] fix-session offer did not complete', {
                 repo: subscription.repo, error: summarizeError(error),

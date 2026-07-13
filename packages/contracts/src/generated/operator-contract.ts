@@ -945,6 +945,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   ],
                   "additionalProperties": false
                 },
+                "fixSessionId": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1446,6 +1449,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   ],
                   "additionalProperties": false
                 },
+                "fixSessionId": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1940,6 +1946,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "approved"
                   ],
                   "additionalProperties": false
+                },
+                "fixSessionId": {
+                  "type": "string"
                 },
                 "metadata": {
                   "type": "object",
@@ -2454,6 +2463,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "approved"
                   ],
                   "additionalProperties": false
+                },
+                "fixSessionId": {
+                  "type": "string"
                 },
                 "metadata": {
                   "type": "object",
@@ -3074,6 +3086,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "approved"
                     ],
                     "additionalProperties": false
+                  },
+                  "fixSessionId": {
+                    "type": "string"
                   },
                   "metadata": {
                     "type": "object",
