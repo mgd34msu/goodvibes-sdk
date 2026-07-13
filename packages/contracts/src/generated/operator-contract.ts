@@ -763,6 +763,36 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "additionalProperties": false
                         }
                       ]
+                    },
+                    "rememberOptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "session",
+                              "exact",
+                              "command-class",
+                              "path",
+                              "tool"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "tier",
+                          "label",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -800,6 +830,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "rememberTier": {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
                     },
                     "modifiedArgs": {
                       "type": "object",
@@ -1183,6 +1226,36 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "additionalProperties": false
                         }
                       ]
+                    },
+                    "rememberOptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "session",
+                              "exact",
+                              "command-class",
+                              "path",
+                              "tool"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "tier",
+                          "label",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -1220,6 +1293,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "rememberTier": {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
                     },
                     "modifiedArgs": {
                       "type": "object",
@@ -1597,6 +1683,36 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "additionalProperties": false
                         }
                       ]
+                    },
+                    "rememberOptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "session",
+                              "exact",
+                              "command-class",
+                              "path",
+                              "tool"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "tier",
+                          "label",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -1634,6 +1750,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "rememberTier": {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
                     },
                     "modifiedArgs": {
                       "type": "object",
@@ -2017,6 +2146,36 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "additionalProperties": false
                         }
                       ]
+                    },
+                    "rememberOptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "session",
+                              "exact",
+                              "command-class",
+                              "path",
+                              "tool"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "tier",
+                          "label",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -2054,6 +2213,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "remember": {
                       "type": "boolean"
+                    },
+                    "rememberTier": {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
                     },
                     "modifiedArgs": {
                       "type": "object",
@@ -2269,6 +2441,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "session_cached_approval",
                     "session_cached_denial",
                     "safety_guardrail",
+                    "user_rule_allow",
+                    "user_rule_deny",
                     "user_approved",
                     "user_denied"
                   ]
@@ -2281,6 +2455,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "runtime_mode",
                     "session_override",
                     "safety_check",
+                    "user_rule",
                     "user_prompt"
                   ]
                 },
@@ -2553,6 +2728,36 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                             "additionalProperties": false
                           }
                         ]
+                      },
+                      "rememberOptions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "tier": {
+                              "type": "string",
+                              "enum": [
+                                "session",
+                                "exact",
+                                "command-class",
+                                "path",
+                                "tool"
+                              ]
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "detail": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "tier",
+                            "label",
+                            "detail"
+                          ],
+                          "additionalProperties": false
+                        }
                       }
                     },
                     "required": [
@@ -2590,6 +2795,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       },
                       "remember": {
                         "type": "boolean"
+                      },
+                      "rememberTier": {
+                        "type": "string",
+                        "enum": [
+                          "session",
+                          "exact",
+                          "command-class",
+                          "path",
+                          "tool"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string"
                       },
                       "modifiedArgs": {
                         "type": "object",
@@ -63686,6 +63904,118 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "permissions.rules.delete",
+        "title": "Delete a Durable Permission Rule",
+        "description": "Delete one durable user-origin permission rule by id. The matching asks prompt again afterwards — deleting a grant is how a remembered decision is revoked. deleted:false when no rule with that id exists (an honest miss, not an error).",
+        "category": "permissions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "ruleId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ruleId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "deleted"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "permissions.rules.list",
+        "title": "List Durable Permission Rules",
+        "description": "List the durable user-origin permission rules written by remembered approval decisions (exact command / command class / path scope / whole tool), newest first — the persistent grants and denials the permission manager consults before ever prompting. Project-scoped.",
+        "category": "permissions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "effect": {
+                    "type": "string",
+                    "enum": [
+                      "allow",
+                      "deny"
+                    ]
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "exact",
+                      "command-class",
+                      "path",
+                      "tool"
+                    ]
+                  },
+                  "tool": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "effect",
+                  "tier",
+                  "tool",
+                  "createdAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "rules"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "principals.create",
         "title": "Create Principal",
         "description": "Create a named principal from a name, kind, and optional channel identities. Fails with a conflict when any identity is already mapped to a different principal.",
@@ -87870,10 +88200,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 384,
-      "typedInputs": 384,
+      "methods": 386,
+      "typedInputs": 386,
       "genericInputs": 0,
-      "typedOutputs": 384,
+      "typedOutputs": 386,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -87882,8 +88212,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 384,
-      "validated": 382,
+      "methods": 386,
+      "validated": 384,
       "skippedGeneric": 0,
       "skippedUntyped": 2
     }

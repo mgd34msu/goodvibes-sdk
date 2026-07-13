@@ -109,7 +109,14 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -120,6 +127,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -176,7 +185,14 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -187,6 +203,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -243,7 +261,14 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -254,6 +279,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -310,7 +337,14 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -321,6 +355,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -398,7 +434,14 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "kind": "background-agent",
               "agentId": "sample",
               "template": "sample"
-            }
+            },
+            "rememberOptions": [
+              {
+                "tier": "session",
+                "label": "sample",
+                "detail": "sample"
+              }
+            ]
           },
           "createdAt": 0,
           "updatedAt": 0,
@@ -409,6 +452,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "decision": {
             "approved": false,
             "remember": false,
+            "rememberTier": "session",
+            "reason": "sample",
             "modifiedArgs": {}
           },
           "metadata": {},
@@ -11839,6 +11884,31 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "opened": false,
       "id": "sample",
       "pane": "top"
+    }
+  },
+  "permissions.rules.delete": {
+    "methodId": "permissions.rules.delete",
+    "http": null,
+    "status": 200,
+    "body": {
+      "deleted": false
+    }
+  },
+  "permissions.rules.list": {
+    "methodId": "permissions.rules.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "rules": [
+        {
+          "id": "sample",
+          "effect": "allow",
+          "tier": "exact",
+          "tool": "sample",
+          "description": "sample",
+          "createdAt": 0
+        }
+      ]
     }
   },
   "principals.create": {

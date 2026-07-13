@@ -2,6 +2,10 @@ import { getConfigSnapshot, isAutoApproveEnabled } from '../config/index.js';
 import type { PermissionAction, PermissionsToolConfig, PermissionMode, BackgroundAgentsMode } from '../config/schema.js';
 import type { PermissionAttribution, PermissionRequestHandler } from './prompt.js';
 import { analyzePermissionRequest } from './analysis.js';
+import { buildDurableRuleForDecision, buildRememberOptions, commandClassOf, matchDurableRules } from './approval-rules.js';
+import type { UserPermissionRuleStore } from './user-rule-store.js';
+import { extractCommandArgs } from '../runtime/permissions/rules/prefix.js';
+import { extractPathArgs } from '../runtime/permissions/rules/path-scope.js';
 import type { PolicyRuntimeState } from '../runtime/permissions/policy-runtime.js';
 import { LayeredPolicyEvaluator } from '../runtime/permissions/evaluator.js';
 import type { PermissionDecision as LayeredPermissionDecision } from '../runtime/permissions/types.js';
@@ -111,6 +115,7 @@ export class PermissionManager {
   private readonly hookDispatcher: Pick<HookDispatcher, 'fire'> | null;
   private readonly policyRuntimeState: Pick<PolicyRuntimeState, 'recordPermissionRequest' | 'recordPermissionDecision' | 'getRegistry'>;
   private readonly featureFlags: Pick<FeatureFlagManager, 'isEnabled'> | null;
+  private readonly userRuleStore: Pick<UserPermissionRuleStore, 'rules' | 'add'> | null;
 
   constructor(
     requestPermission: PermissionRequestHandler = async () => ({ approved: false, remember: false }),
@@ -118,12 +123,14 @@ export class PermissionManager {
     policyRuntimeState: Pick<PolicyRuntimeState, 'recordPermissionRequest' | 'recordPermissionDecision' | 'getRegistry'>,
     hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null,
     featureFlags: Pick<FeatureFlagManager, 'isEnabled'> | null = null,
+    userRuleStore: Pick<UserPermissionRuleStore, 'rules' | 'add'> | null = null,
   ) {
     this.requestPermission = requestPermission;
     this.configReader = configReader;
     this.policyRuntimeState = policyRuntimeState;
     this.hookDispatcher = hookDispatcher;
     this.featureFlags = featureFlags;
+    this.userRuleStore = userRuleStore;
   }
 
   /**
@@ -222,7 +229,7 @@ export class PermissionManager {
       }
     }
 
-    // 5. Check session approval cache
+    // 5. Check session approval cache (an in-memory layer over the durable rules)
     const key = this.getApprovalKey(toolName, args);
     if (this.sessionApprovals.has(key)) {
       const approved = this.sessionApprovals.get(key)!;
@@ -231,6 +238,25 @@ export class PermissionManager {
         true,
         'session_override',
         approved ? 'session_cached_allow' : 'session_cached_deny',
+        analysis,
+      ));
+    }
+
+    // 5a. Durable user-origin rules — remembered decisions that survive
+    // restart. Consulted with the policy-engine flag on OR off, so the tenth
+    // `git commit` never re-asks once "git commands" was granted.
+    const durable = this.userRuleStore
+      ? matchDurableRules(this.userRuleStore.rules(), toolName, args, {
+        projectRoot: this.configReader.getWorkingDirectory() ?? undefined,
+      })
+      : null;
+    if (durable) {
+      this.sessionApprovals.set(key, durable.effect === 'allow');
+      return this.emitAndReturn(callId, toolName, category, this.result(
+        durable.effect === 'allow',
+        true,
+        'user_rule',
+        durable.effect === 'allow' ? 'user_rule_allow' : 'user_rule_deny',
         analysis,
       ));
     }
@@ -246,6 +272,7 @@ export class PermissionManager {
         analysis,
         workingDirectory: this.configReader.getWorkingDirectory() ?? undefined,
         ...(attribution ? { attribution } : {}),
+        rememberOptions: buildRememberOptions(toolName, args),
       });
     } catch (error) {
       void this.fireHook('Fail:permission:request', 'Fail', 'permission', 'request', {
@@ -257,16 +284,31 @@ export class PermissionManager {
       });
       throw error;
     }
-    if (decision.remember) {
+    const tier = decision.rememberTier ?? (decision.remember ? 'session' : undefined);
+    if (tier) {
       this.sessionApprovals.set(key, decision.approved);
+      if (tier !== 'session' && this.userRuleStore) {
+        const rule = buildDurableRuleForDecision({
+          toolName,
+          args,
+          tier,
+          effect: decision.approved ? 'allow' : 'deny',
+        });
+        if (rule) {
+          // Await: the grant must be durable before the call proceeds, or a
+          // crash right after approval silently forgets the decision.
+          await this.userRuleStore.add({ rule, createdAt: Date.now(), tier, tool: toolName });
+        }
+      }
     }
     return this.emitAndReturn(callId, toolName, category, this.result(
       decision.approved,
-      Boolean(decision.remember),
+      Boolean(tier),
       'user_prompt',
       decision.approved ? 'user_approved' : 'user_denied',
       analysis,
       decision.modifiedArgs,
+      decision.reason,
     ));
   }
 
@@ -355,8 +397,17 @@ export class PermissionManager {
    * Includes the most meaningful argument to distinguish different invocations.
    */
   private getApprovalKey(toolName: string, args: Record<string, unknown>): string {
-    if (typeof args['path'] === 'string') {
-      return `${toolName}:${args['path']}`;
+    // exec: key by command CLASS (git, npm, ...) so a remembered decision
+    // covers the class, not one unique command string. edit/write: key by the
+    // set of touched paths so one path's approval never blankets the tool.
+    const commands = extractCommandArgs(args);
+    if (toolName === 'exec' && commands.length > 0) {
+      const classes = [...new Set(commands.map(commandClassOf).filter((cls) => cls.length > 0))].sort();
+      if (classes.length > 0) return `${toolName}:class:${classes.join('+')}`;
+    }
+    const paths = extractPathArgs(args);
+    if (paths.length > 0) {
+      return `${toolName}:path:${[...new Set(paths)].sort().join('|')}`;
     }
     if (typeof args['command'] === 'string') {
       return `${toolName}:${args['command']}`;
@@ -372,6 +423,7 @@ export class PermissionManager {
     reasonCode: PermissionDecisionReasonCode,
     analysis: ReturnType<typeof analyzePermissionRequest>,
     modifiedArgs?: Record<string, unknown>,
+    userReason?: string,
   ): PermissionCheckResult {
     return {
       approved,
@@ -380,6 +432,7 @@ export class PermissionManager {
       reasonCode,
       analysis,
       modifiedArgs,
+      userReason,
     };
   }
 
@@ -416,6 +469,7 @@ export class PermissionManager {
     // registry's rules. User-origin rules are evaluated before managed rules by
     // the evaluator, so a user allow-rule still wins over these defaults.
     const rules = [
+      ...(this.userRuleStore?.rules() ?? []),
       ...(this.policyRuntimeState.getRegistry().getCurrent()?.rules ?? []),
       ...SHIPPED_CREDENTIAL_READ_RULES,
     ];

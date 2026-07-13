@@ -51,7 +51,7 @@ export async function gateBackgroundToolCall(
   if (result.approved) {
     return result.modifiedArgs ? { approved: true, modifiedArgs: result.modifiedArgs } : { approved: true };
   }
-  const source = { reasonCode: result.reasonCode, sourceLayer: result.sourceLayer };
+  const source = { reasonCode: result.reasonCode, sourceLayer: result.sourceLayer, userReason: result.userReason };
   return {
     approved: false,
     error: buildDenialErrorMessage(toolName, source),

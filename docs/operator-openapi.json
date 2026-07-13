@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.7.1",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 384 cataloged methods: 353 with dedicated REST bindings, 31 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 386 cataloged methods: 353 with dedicated REST bindings, 33 reachable only through the generic invoke endpoint. 99 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -503,6 +503,36 @@
                                   "additionalProperties": false
                                 }
                               ]
+                            },
+                            "rememberOptions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "tier": {
+                                    "type": "string",
+                                    "enum": [
+                                      "session",
+                                      "exact",
+                                      "command-class",
+                                      "path",
+                                      "tool"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "tier",
+                                  "label",
+                                  "detail"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [
@@ -540,6 +570,19 @@
                             },
                             "remember": {
                               "type": "boolean"
+                            },
+                            "rememberTier": {
+                              "type": "string",
+                              "enum": [
+                                "session",
+                                "exact",
+                                "command-class",
+                                "path",
+                                "tool"
+                              ]
+                            },
+                            "reason": {
+                              "type": "string"
                             },
                             "modifiedArgs": {
                               "type": "object",
@@ -957,6 +1000,36 @@
                                   "additionalProperties": false
                                 }
                               ]
+                            },
+                            "rememberOptions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "tier": {
+                                    "type": "string",
+                                    "enum": [
+                                      "session",
+                                      "exact",
+                                      "command-class",
+                                      "path",
+                                      "tool"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "tier",
+                                  "label",
+                                  "detail"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [
@@ -994,6 +1067,19 @@
                             },
                             "remember": {
                               "type": "boolean"
+                            },
+                            "rememberTier": {
+                              "type": "string",
+                              "enum": [
+                                "session",
+                                "exact",
+                                "command-class",
+                                "path",
+                                "tool"
+                              ]
+                            },
+                            "reason": {
+                              "type": "string"
                             },
                             "modifiedArgs": {
                               "type": "object",
@@ -1405,6 +1491,36 @@
                                   "additionalProperties": false
                                 }
                               ]
+                            },
+                            "rememberOptions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "tier": {
+                                    "type": "string",
+                                    "enum": [
+                                      "session",
+                                      "exact",
+                                      "command-class",
+                                      "path",
+                                      "tool"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "tier",
+                                  "label",
+                                  "detail"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [
@@ -1442,6 +1558,19 @@
                             },
                             "remember": {
                               "type": "boolean"
+                            },
+                            "rememberTier": {
+                              "type": "string",
+                              "enum": [
+                                "session",
+                                "exact",
+                                "command-class",
+                                "path",
+                                "tool"
+                              ]
+                            },
+                            "reason": {
+                              "type": "string"
                             },
                             "modifiedArgs": {
                               "type": "object",
@@ -1847,6 +1976,36 @@
                                   "additionalProperties": false
                                 }
                               ]
+                            },
+                            "rememberOptions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "tier": {
+                                    "type": "string",
+                                    "enum": [
+                                      "session",
+                                      "exact",
+                                      "command-class",
+                                      "path",
+                                      "tool"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "tier",
+                                  "label",
+                                  "detail"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [
@@ -1884,6 +2043,19 @@
                             },
                             "remember": {
                               "type": "boolean"
+                            },
+                            "rememberTier": {
+                              "type": "string",
+                              "enum": [
+                                "session",
+                                "exact",
+                                "command-class",
+                                "path",
+                                "tool"
+                              ]
+                            },
+                            "reason": {
+                              "type": "string"
                             },
                             "modifiedArgs": {
                               "type": "object",
@@ -2140,6 +2312,8 @@
                             "session_cached_approval",
                             "session_cached_denial",
                             "safety_guardrail",
+                            "user_rule_allow",
+                            "user_rule_deny",
                             "user_approved",
                             "user_denied"
                           ]
@@ -2152,6 +2326,7 @@
                             "runtime_mode",
                             "session_override",
                             "safety_check",
+                            "user_rule",
                             "user_prompt"
                           ]
                         },
@@ -2424,6 +2599,36 @@
                                     "additionalProperties": false
                                   }
                                 ]
+                              },
+                              "rememberOptions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "tier": {
+                                      "type": "string",
+                                      "enum": [
+                                        "session",
+                                        "exact",
+                                        "command-class",
+                                        "path",
+                                        "tool"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "detail": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "tier",
+                                    "label",
+                                    "detail"
+                                  ],
+                                  "additionalProperties": false
+                                }
                               }
                             },
                             "required": [
@@ -2461,6 +2666,19 @@
                               },
                               "remember": {
                                 "type": "boolean"
+                              },
+                              "rememberTier": {
+                                "type": "string",
+                                "enum": [
+                                  "session",
+                                  "exact",
+                                  "command-class",
+                                  "path",
+                                  "tool"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
                               },
                               "modifiedArgs": {
                                 "type": "object",
@@ -88502,6 +88720,8 @@
           "fleet.list",
           "fleet.snapshot",
           "fleet.unarchive",
+          "permissions.rules.delete",
+          "permissions.rules.list",
           "push.subscriptions.create",
           "push.subscriptions.delete",
           "push.subscriptions.list",
@@ -88711,7 +88931,7 @@
       "queryParameters": []
     }
   },
-  "x-untyped-client-io-count": 97,
+  "x-untyped-client-io-count": 99,
   "x-operator-methods": [
     {
       "id": "accounts.snapshot",
@@ -91158,6 +91378,24 @@
       "access": "authenticated",
       "rest": "POST /api/panels/open",
       "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "permissions.rules.delete",
+      "category": "permissions",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": false,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "permissions.rules.list",
+      "category": "permissions",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": false,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },

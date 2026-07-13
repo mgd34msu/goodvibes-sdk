@@ -59,6 +59,18 @@ export const PERMISSION_ATTRIBUTION_SCHEMA: Record<string, unknown> = {
   ],
 };
 
+// Remember tiers: how far an approval decision reaches. The ask carries the
+// offerable tiers (rememberOptions) so every surface renders the same choices;
+// the decision answers with rememberTier. A generalizing tier persists a
+// durable user-origin rule; 'session' is the classic in-memory cache.
+export const PERMISSION_REMEMBER_TIER_SCHEMA = enumSchema(['session', 'exact', 'command-class', 'path', 'tool']);
+
+export const PERMISSION_REMEMBER_TIER_OPTION_SCHEMA = objectSchema({
+  tier: PERMISSION_REMEMBER_TIER_SCHEMA,
+  label: STRING_SCHEMA,
+  detail: STRING_SCHEMA,
+}, ['tier', 'label', 'detail'], { additionalProperties: false });
+
 export const PERMISSION_PROMPT_REQUEST_SCHEMA = objectSchema({
   callId: STRING_SCHEMA,
   tool: STRING_SCHEMA,
@@ -67,17 +79,44 @@ export const PERMISSION_PROMPT_REQUEST_SCHEMA = objectSchema({
   analysis: PERMISSION_PROMPT_REQUEST_ANALYSIS_SCHEMA,
   workingDirectory: STRING_SCHEMA,
   attribution: PERMISSION_ATTRIBUTION_SCHEMA,
+  rememberOptions: arraySchema(PERMISSION_REMEMBER_TIER_OPTION_SCHEMA),
 }, ['callId', 'tool', 'args', 'category', 'analysis'], { additionalProperties: false });
 
 export const PERMISSION_PROMPT_DECISION_SCHEMA = objectSchema({
   approved: BOOLEAN_SCHEMA,
   remember: BOOLEAN_SCHEMA,
+  rememberTier: PERMISSION_REMEMBER_TIER_SCHEMA,
+  // Optional user free-text; on deny it rides the structured "user declined"
+  // tool result so the model adapts instead of guessing.
+  reason: STRING_SCHEMA,
   // Present when a per-hunk (or otherwise argument-modifying) approval replaced
   // the tool call's original args — e.g. the edit-tool `edits` array filtered to
   // the approved hunks. Computed server-side by the approval broker so every
   // surface sees the same modified args on the resolved decision.
   modifiedArgs: TOOL_ARGUMENTS_SCHEMA,
 }, ['approved'], { additionalProperties: false });
+
+// One durable user-origin permission rule as the settings surface lists it.
+export const PERMISSION_USER_RULE_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  effect: enumSchema(['allow', 'deny']),
+  tier: enumSchema(['exact', 'command-class', 'path', 'tool']),
+  tool: STRING_SCHEMA,
+  description: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+}, ['id', 'effect', 'tier', 'tool', 'createdAt'], { additionalProperties: false });
+
+export const PERMISSION_RULES_LIST_INPUT_SCHEMA = objectSchema({}, []);
+export const PERMISSION_RULES_LIST_OUTPUT_SCHEMA = objectSchema({
+  rules: arraySchema(PERMISSION_USER_RULE_SCHEMA),
+}, ['rules'], { additionalProperties: false });
+
+export const PERMISSION_RULES_DELETE_INPUT_SCHEMA = objectSchema({
+  ruleId: STRING_SCHEMA,
+}, ['ruleId']);
+export const PERMISSION_RULES_DELETE_OUTPUT_SCHEMA = objectSchema({
+  deleted: BOOLEAN_SCHEMA,
+}, ['deleted'], { additionalProperties: false });
 
 export const PERMISSION_MODE_SCHEMA = enumSchema([
   'default',
@@ -102,6 +141,7 @@ export const PERMISSION_SOURCE_LAYER_SCHEMA = enumSchema([
   'runtime_mode',
   'session_override',
   'safety_check',
+  'user_rule',
   'user_prompt',
 ]);
 export const PERMISSION_DECISION_REASON_SCHEMA = enumSchema([
@@ -116,6 +156,8 @@ export const PERMISSION_DECISION_REASON_SCHEMA = enumSchema([
   'session_cached_approval',
   'session_cached_denial',
   'safety_guardrail',
+  'user_rule_allow',
+  'user_rule_deny',
   'user_approved',
   'user_denied',
 ]);

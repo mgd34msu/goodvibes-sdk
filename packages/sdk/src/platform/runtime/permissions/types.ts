@@ -338,10 +338,18 @@ export interface PrefixRule extends BaseRule {
   /** Tool name(s) this rule applies to. Use `'*'` for any tool. */
   toolPattern: string | string[];
   /**
-   * Prefix pattern(s) matched against the first string argument of the call.
-   * If omitted, the rule matches any call to the specified tool(s).
+   * Prefix pattern(s) matched against the call's command string(s).
+   * If omitted (and no exactCommands), the rule matches any call to the
+   * specified tool(s).
    */
   commandPrefixes?: string[] | undefined;
+  /**
+   * Full-command match(es): a command must equal one of these strings
+   * (trimmed, case-insensitive) — the "this exact command" approval tier.
+   * `<command> && rm -rf x` never matches an exactCommands entry of
+   * `<command>`, unlike a prefix.
+   */
+  exactCommands?: string[] | undefined;
 }
 
 /**

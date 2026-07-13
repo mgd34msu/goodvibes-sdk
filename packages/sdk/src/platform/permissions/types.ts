@@ -10,6 +10,8 @@ export type PermissionDecisionSource =
   | 'safety_check'
   | 'runtime_mode'
   | 'session_override'
+  // A durable user-origin rule written by a remembered approval decision
+  | 'user_rule'
   | 'user_prompt';
 
 export type PermissionDecisionReasonCode =
@@ -26,6 +28,9 @@ export type PermissionDecisionReasonCode =
   | 'mode_accept_edits'
   | 'session_cached_allow'
   | 'session_cached_deny'
+  // Durable user rule matched (allow/deny) — the persistent form of a remembered decision
+  | 'user_rule_allow'
+  | 'user_rule_deny'
   | 'user_approved'
   | 'user_denied';
 
@@ -58,4 +63,10 @@ export interface PermissionCheckResult {
    * populated via the user-prompt approval path (`sourceLayer: 'user_prompt'`).
    */
   readonly modifiedArgs?: Record<string, unknown> | undefined;
+  /**
+   * The user's free-text note from the prompt decision (most useful on a
+   * denial — it rides the structured "user declined" tool result so the model
+   * can adapt). Only ever populated via the user-prompt approval path.
+   */
+  readonly userReason?: string | undefined;
 }

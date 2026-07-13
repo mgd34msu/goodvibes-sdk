@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { PersistentStore } from '../state/persistent-store.js';
 import type { PermissionPromptDecision, PermissionPromptRequest, PermissionRequestHandler } from '../permissions/prompt.js';
+import { buildDurableRuleForDecision, matchDurableRules, type RememberTier } from '../permissions/approval-rules.js';
 import type { ControlPlaneSurfaceMessage } from './types.js';
 import { logger } from '../utils/logger.js';
 import { isRecord } from '../utils/record-coerce.js';
@@ -196,11 +197,28 @@ function buildAudit(action: SharedApprovalAuditRecord['action'], actor: string, 
   };
 }
 
+/** Deterministic JSON for coalescing — object keys sorted at every level. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${JSON.stringify(k)}:${stableJson(v)}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+/** Identical concurrent asks coalesce on this key: one prompt answers all. */
+function approvalCoalesceKey(sessionId: string | undefined, tool: string, args: Record<string, unknown>): string {
+  return `${sessionId ?? ''}|${tool}|${stableJson(args)}`;
+}
+
 export class ApprovalBroker {
   private readonly store: PersistentStore<SharedApprovalStoreSnapshot>;
   private readonly approvals = new Map<string, SharedApprovalRecord>();
   private readonly pendingResolvers = new Map<string, {
-    resolve: (decision: PermissionPromptDecision) => void;
+    resolvers: Array<(decision: PermissionPromptDecision) => void>;
     timer?: ReturnType<typeof setTimeout> | undefined;
   }>();
   private readonly listeners = new Set<ApprovalListener>();
@@ -253,6 +271,23 @@ export class ApprovalBroker {
   async requestApproval(input: RequestSharedApprovalInput): Promise<PermissionPromptDecision> {
     await this.start();
     const now = Date.now();
+
+    // Duplicate in-flight asks coalesce on (session, tool, args): the second
+    // identical ask attaches to the first's pending record — ONE prompt, and
+    // one decision resolves both. No second record, no second local prompt.
+    const coalesceKey = approvalCoalesceKey(input.sessionId, input.request.tool, input.request.args);
+    for (const existing of this.approvals.values()) {
+      if ((existing.status === 'pending' || existing.status === 'claimed')
+        && approvalCoalesceKey(existing.sessionId, existing.request.tool, existing.request.args) === coalesceKey) {
+        const pending = this.pendingResolvers.get(existing.id);
+        if (pending) {
+          return new Promise<PermissionPromptDecision>((resolve) => {
+            pending.resolvers.push(resolve);
+          });
+        }
+      }
+    }
+
     const approval: SharedApprovalRecord = {
       id: `approval-${randomUUID().slice(0, 8)}`,
       callId: input.request.callId,
@@ -277,7 +312,7 @@ export class ApprovalBroker {
           }, input.timeoutMs)
         : undefined;
       timer?.unref?.();
-      this.pendingResolvers.set(approval.id, { resolve, timer });
+      this.pendingResolvers.set(approval.id, { resolvers: [resolve], timer });
     });
     this.approvals.set(approval.id, approval);
     try {
@@ -298,6 +333,8 @@ export class ApprovalBroker {
         .then((decision) => this.resolveApproval(approval.id, {
           approved: decision.approved,
           remember: decision.remember,
+          rememberTier: decision.rememberTier,
+          reason: decision.reason,
           modifiedArgs: decision.modifiedArgs,
           actor: 'tui-local',
           actorSurface: 'tui',
@@ -347,6 +384,14 @@ export class ApprovalBroker {
        * session guard's honest-4xx shape.
        */
       readonly selectedHunks?: readonly number[] | undefined;
+      /**
+       * How far this decision reaches (see PermissionPromptDecision). A
+       * generalizing tier also SWEEPS queued asks the remembered decision
+       * covers — one answer resolves them all.
+       */
+      readonly rememberTier?: RememberTier | undefined;
+      /** Optional user free-text; on deny it rides the structured result. */
+      readonly reason?: string | undefined;
       readonly actor: string;
       readonly actorSurface?: string | undefined;
       readonly note?: string | undefined;
@@ -381,6 +426,8 @@ export class ApprovalBroker {
       decision: {
         approved: input.approved,
         ...(input.remember !== undefined ? { remember: input.remember } : {}),
+        ...(input.rememberTier !== undefined ? { rememberTier: input.rememberTier } : {}),
+        ...(input.reason !== undefined ? { reason: input.reason } : {}),
         ...(modifiedArgs !== undefined ? { modifiedArgs } : {}),
       },
       audit: [
@@ -392,13 +439,60 @@ export class ApprovalBroker {
     await this.persist();
     this.publish(updated);
 
-    const pending = this.pendingResolvers.get(approvalId);
-    if (pending) {
-      if (pending.timer) clearTimeout(pending.timer);
-      pending.resolve(updated.decision ?? { approved: input.approved });
-      this.pendingResolvers.delete(approvalId);
+    this.resolvePending(approvalId, updated.decision ?? { approved: input.approved });
+
+    // A generalizing remember tier answers more than this one ask: sweep every
+    // queued pending ask the remembered decision covers (same rule match) and
+    // resolve it with the same verdict. modifiedArgs are call-specific and
+    // never propagate to swept asks.
+    if (input.rememberTier && input.rememberTier !== 'session') {
+      const rule = buildDurableRuleForDecision({
+        toolName: approval.request.tool,
+        args: approval.request.args,
+        tier: input.rememberTier,
+        effect: input.approved ? 'allow' : 'deny',
+      });
+      if (rule) {
+        for (const candidate of [...this.approvals.values()]) {
+          if (candidate.id === approvalId) continue;
+          if (candidate.status !== 'pending' && candidate.status !== 'claimed') continue;
+          const covered = matchDurableRules([rule], candidate.request.tool, candidate.request.args, {
+            projectRoot: candidate.request.workingDirectory,
+          });
+          if (!covered) continue;
+          const swept: SharedApprovalRecord = {
+            ...candidate,
+            status: input.approved ? 'approved' : 'denied',
+            updatedAt: Date.now(),
+            resolvedAt: Date.now(),
+            resolvedBy: input.actor,
+            decision: {
+              approved: input.approved,
+              ...(input.reason !== undefined ? { reason: input.reason } : {}),
+            },
+            audit: [
+              ...candidate.audit,
+              buildAudit(input.approved ? 'approved' : 'denied', input.actor, input.actorSurface,
+                `covered by remembered ${input.rememberTier} decision on ${approvalId}`),
+            ],
+          };
+          this.approvals.set(candidate.id, swept);
+          this.publish(swept);
+          this.resolvePending(candidate.id, swept.decision ?? { approved: input.approved });
+        }
+        await this.persist();
+      }
     }
     return updated;
+  }
+
+  /** Resolve every waiter attached to an approval (coalesced asks share one record). */
+  private resolvePending(approvalId: string, decision: PermissionPromptDecision): void {
+    const pending = this.pendingResolvers.get(approvalId);
+    if (!pending) return;
+    if (pending.timer) clearTimeout(pending.timer);
+    for (const resolve of pending.resolvers) resolve(decision);
+    this.pendingResolvers.delete(approvalId);
   }
 
   async recordRemoteUpdate(
@@ -447,12 +541,7 @@ export class ApprovalBroker {
     this.approvals.set(approvalId, updated);
     await this.persist();
     this.publish(updated);
-    const pending = this.pendingResolvers.get(approvalId);
-    if (pending) {
-      if (pending.timer) clearTimeout(pending.timer);
-      pending.resolve({ approved: false, remember: false });
-      this.pendingResolvers.delete(approvalId);
-    }
+    this.resolvePending(approvalId, { approved: false, remember: false });
     return updated;
   }
 
@@ -472,12 +561,7 @@ export class ApprovalBroker {
     this.approvals.set(approvalId, updated);
     await this.persist();
     this.publish(updated);
-    const pending = this.pendingResolvers.get(approvalId);
-    if (pending) {
-      if (pending.timer) clearTimeout(pending.timer);
-      pending.resolve({ approved: false, remember: false });
-      this.pendingResolvers.delete(approvalId);
-    }
+    this.resolvePending(approvalId, { approved: false, remember: false });
   }
 
   /**

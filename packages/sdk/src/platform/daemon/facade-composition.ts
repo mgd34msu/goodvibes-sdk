@@ -340,6 +340,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
       runtimeServices.policyRuntimeState,
       runtimeServices.hookDispatcher,
       runtimeServices.featureFlags,
+      runtimeServices.userPermissionRuleStore,
     ),
     hookDispatcher: runtimeServices.hookDispatcher,
     runtimeBus,
