@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.7.1",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 386 cataloged methods: 353 with dedicated REST bindings, 33 reachable only through the generic invoke endpoint. 99 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 386 cataloged methods: 353 with dedicated REST bindings, 33 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -88959,7 +88959,7 @@
       "queryParameters": []
     }
   },
-  "x-untyped-client-io-count": 99,
+  "x-untyped-client-io-count": 97,
   "x-operator-methods": [
     {
       "id": "accounts.snapshot",
@@ -91414,7 +91414,7 @@
       "category": "permissions",
       "access": "authenticated",
       "rest": null,
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -91423,7 +91423,7 @@
       "category": "permissions",
       "access": "authenticated",
       "rest": null,
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
