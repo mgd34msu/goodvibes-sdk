@@ -43,6 +43,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   `platform/runtime/feature-announcements`,
   `platform/runtime/permissions/localhost-fetch-approval`, and the shared
   bare-model-id resolver via `platform/providers`.
+- **More public export paths consumers were fork-mirroring or casting
+  around:** `platform/state/store-snapshots` (StoreSnapshotScheduler +
+  snapshot/restore/list helpers, with the RetentionPolicy / SnapshotPruner /
+  RetentionClass pieces they compose) and
+  `platform/runtime/permissions/exec-prompt-wiring`
+  (buildExecPromptAnswerHandler + its ask/answer/deps types). The
+  `platform/control-plane` barrel now also exports
+  `buildSharedSessionAgentSpawnRoutingInput` (+ its
+  `SharedSessionAgentSpawnRoutingInput` type) and
+  `hasFreshSurfaceParticipant` + `SURFACE_ROUTE_FRESHNESS_MS`, so surfaces
+  derive spawn routing and surface presence from the SDK instead of
+  re-implementing them.
+
+### Changed
+
+- **`/status` receipt consumption is now explicit.** Daemon receipts
+  (update/crash/migration notices) were delivered destructively to the FIRST
+  authenticated `/status` reader — including identity probes and keepalives
+  that parse only status/version — so a receipt could be eaten before any
+  rendering surface saw it. Now a plain `GET /status` never returns or
+  consumes receipts; a reader that wants them passes `?receipts=consume`
+  (typed on the operator client as `control.status` input
+  `{ receipts?: "consume" }`) and receives undelivered receipts exactly once.
+  Consumers: probes and keepalives stop eating receipts with no change on
+  their side; rendering readers must now pass the explicit flag to receive
+  receipts.
 
 ### Fixed
 

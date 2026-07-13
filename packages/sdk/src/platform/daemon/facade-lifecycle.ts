@@ -101,7 +101,11 @@ export class DaemonLifecycleRuntime {
     return join(this.options.configManager.getControlPlaneConfigDir(), 'control-plane', 'daemon-lifecycle.json');
   }
 
-  /** Undelivered receipts for /status (marked delivered once served). */
+  /**
+   * Undelivered receipts for a consuming /status read (`?receipts=consume`);
+   * marked delivered once served. The route only calls this when the reader
+   * passed the explicit flag — plain status reads are receipt-neutral.
+   */
   collectReceipts(): readonly { id: string; text: string; at: number }[] {
     return this.receiptStore().consumeUndelivered().map(({ id, text, at }) => ({ id, text, at }));
   }

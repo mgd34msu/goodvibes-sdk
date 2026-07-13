@@ -28132,7 +28132,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "control.status",
         "title": "Daemon Status",
-        "description": "Return daemon status and version.",
+        "description": "Return daemon status and version. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.",
         "category": "control-plane",
         "source": "builtin",
         "access": "authenticated",
@@ -28149,7 +28149,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         },
         "inputSchema": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "receipts": {
+              "type": "string",
+              "enum": [
+                "consume"
+              ],
+              "description": "Set to \"consume\" to receive undelivered daemon receipts and mark them delivered. Omit for a read that never consumes receipts."
+            }
+          },
           "additionalProperties": false
         },
         "outputSchema": {
@@ -28160,6 +28168,29 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "version": {
               "type": "string"
+            },
+            "receipts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "text",
+                  "at"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [

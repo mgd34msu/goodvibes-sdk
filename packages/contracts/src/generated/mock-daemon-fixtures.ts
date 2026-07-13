@@ -5054,7 +5054,14 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "status": 200,
     "body": {
       "status": "sample",
-      "version": "sample"
+      "version": "sample",
+      "receipts": [
+        {
+          "id": "sample",
+          "text": "sample",
+          "at": 0
+        }
+      ]
     }
   },
   "control.web": {

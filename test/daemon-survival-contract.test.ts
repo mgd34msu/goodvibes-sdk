@@ -25,6 +25,7 @@ import {
   type LifecycleMarkerIo,
 } from '../packages/sdk/src/platform/daemon/lifecycle-marker.js';
 import { DaemonReceiptStore, formatReceiptTime } from '../packages/sdk/src/platform/daemon/receipts.js';
+import { createDaemonControlRouteHandlers } from '../packages/daemon-sdk/dist/index.js';
 
 const definition: ManagedServiceDefinition = {
   name: 'goodvibes',
@@ -191,6 +192,92 @@ describe('clean-shutdown marker + crash receipt', () => {
     files.set('/state/daemon-lifecycle.json', 'not json at all');
     const result = recordDaemonStart('/state/daemon-lifecycle.json', { io, now: () => 1000 });
     expect(result.crashed).toBe(false);
+  });
+});
+
+/** The facade-lifecycle wiring in miniature: a status route backed by a real receipt store. */
+function statusHandlersOverStore(store: DaemonReceiptStore) {
+  return createDaemonControlRouteHandlers({
+    authToken: 'shared-token',
+    version: '0.0.0-test',
+    sessionCookieName: 'goodvibes_session',
+    controlPlaneGateway: {
+      getSnapshot: () => ({}),
+      renderWebUi: () => new Response('', { status: 200 }),
+      listRecentEvents: () => [],
+      listSurfaceMessages: () => [],
+      listClients: () => [],
+      createEventStream: () => new Response('', { status: 200 }),
+    },
+    extractAuthToken: () => 'token',
+    resolveAuthenticatedPrincipal: () => ({
+      principalId: 'tester',
+      principalKind: 'user',
+      admin: true,
+      scopes: ['read:control-plane'],
+    }),
+    gatewayMethods: { list: () => [], listEvents: () => [], get: () => null },
+    getOperatorContract: () => ({}),
+    invokeGatewayMethodCall: async () => ({ status: 200, ok: true, body: {} }),
+    parseOptionalJsonBody: async () => null,
+    requireAdmin: () => null,
+    requireAuthenticatedSession: () => ({ username: 'tester', roles: ['admin'] }),
+    collectReceipts: () => store.consumeUndelivered().map(({ id, text, at }) => ({ id, text, at })),
+  });
+}
+
+describe('/status receipt consumption is explicit (receipts=consume)', () => {
+  test('a plain /status read never receives or consumes receipts; the consuming reader still gets them exactly once', async () => {
+    const scratch = mkdtempSync(join(tmpdir(), 'daemon-receipts-route-'));
+    try {
+      const store = new DaemonReceiptStore(join(scratch, 'daemon-receipts.json'));
+      store.record('updated from 1.0.0 to 1.1.0 at 09:05');
+      const handlers = statusHandlersOverStore(store);
+
+      // Identity probe / keepalive shape: no flag. Receipts must be absent
+      // from the payload AND still undelivered afterwards.
+      const probe = await handlers.getStatus(new Request('http://127.0.0.1/status'));
+      expect(probe.status).toBe(200);
+      const probeBody = await probe.json() as Record<string, unknown>;
+      expect(probeBody.status).toBe('running');
+      expect(probeBody.version).toBe('0.0.0-test');
+      expect('receipts' in probeBody).toBe(false);
+
+      // The rendering surface consumes explicitly and gets the receipt.
+      const consume = await handlers.getStatus(new Request('http://127.0.0.1/status?receipts=consume'));
+      const consumeBody = await consume.json() as { receipts: readonly { text: string }[] };
+      expect(consumeBody.receipts).toHaveLength(1);
+      expect(consumeBody.receipts[0]!.text).toBe('updated from 1.0.0 to 1.1.0 at 09:05');
+
+      // Exactly-once: a second consuming read gets nothing.
+      const again = await handlers.getStatus(new Request('http://127.0.0.1/status?receipts=consume'));
+      const againBody = await again.json() as { receipts: readonly unknown[] };
+      expect(againBody.receipts).toEqual([]);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('any number of probe reads before the consuming read leave the receipt intact', async () => {
+    const scratch = mkdtempSync(join(tmpdir(), 'daemon-receipts-route-'));
+    try {
+      const store = new DaemonReceiptStore(join(scratch, 'daemon-receipts.json'));
+      store.record('restarted after a crash at 03:20');
+      const handlers = statusHandlersOverStore(store);
+
+      for (let i = 0; i < 3; i += 1) {
+        await handlers.getStatus(new Request('http://127.0.0.1/status'));
+      }
+      // An unrelated query value is not consumption either.
+      await handlers.getStatus(new Request('http://127.0.0.1/status?receipts=peek'));
+
+      const consume = await handlers.getStatus(new Request('http://127.0.0.1/status?receipts=consume'));
+      const body = await consume.json() as { receipts: readonly { text: string }[] };
+      expect(body.receipts).toHaveLength(1);
+      expect(body.receipts[0]!.text).toBe('restarted after a crash at 03:20');
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
   });
 });
 
