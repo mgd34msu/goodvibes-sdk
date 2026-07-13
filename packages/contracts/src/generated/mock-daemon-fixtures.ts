@@ -5109,6 +5109,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "dimension": "agent",
       "totalCostUsd": 0,
       "costState": "priced",
+      "costSource": "user",
+      "pricingAsOf": "sample",
       "pricedRecordCount": 0,
       "unpricedRecordCount": 0,
       "tokens": {
@@ -5122,6 +5124,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "key": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "pricedRecordCount": 0,
           "unpricedRecordCount": 0,
           "tokens": {
@@ -5351,6 +5355,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "provider": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "currentActivity": {
             "kind": "tool",
             "text": "sample",
@@ -5426,7 +5432,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
                 "turnCount": 0,
                 "toolCallCount": 0,
                 "costUsd": 0,
-                "costState": "priced"
+                "costState": "priced",
+                "costSource": "user",
+                "pricingAsOf": "sample"
               },
               "failureReason": "sample",
               "diff": {
@@ -5494,6 +5502,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "provider": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "currentActivity": {
             "kind": "tool",
             "text": "sample",
@@ -5553,6 +5563,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "provider": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "currentActivity": {
             "kind": "tool",
             "text": "sample",
@@ -12186,7 +12198,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "pricing": {
             "inputPerMillionTokens": 0,
             "outputPerMillionTokens": 0,
-            "currency": "USD"
+            "currency": "USD",
+            "source": "user",
+            "asOf": "sample"
           }
         }
       ]
@@ -12295,7 +12309,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "pricing": {
                 "inputPerMillionTokens": 0,
                 "outputPerMillionTokens": 0,
-                "currency": "USD"
+                "currency": "USD",
+                "source": "user",
+                "asOf": "sample"
               }
             }
           ]
@@ -12314,7 +12330,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "providerId": "sample",
       "active": false,
       "currentModelRegistryKey": "sample",
-      "pricingSource": "catalog",
+      "pricingSource": "user",
+      "pricingAsOf": "sample",
       "models": [
         {
           "id": "sample",
@@ -12326,7 +12343,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "pricing": {
             "inputPerMillionTokens": 0,
             "outputPerMillionTokens": 0,
-            "currency": "USD"
+            "currency": "USD",
+            "source": "user",
+            "asOf": "sample"
           }
         }
       ],

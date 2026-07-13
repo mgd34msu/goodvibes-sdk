@@ -56,12 +56,25 @@ export interface CostTokenTotals {
   readonly cacheWriteTokens: number;
 }
 
+/**
+ * Where an aggregate's priced dollars came from: the resolver's source when
+ * every priced contributor shared one ('user' = a manually configured or
+ * registration price, 'provider' = the provider's own served rates,
+ * 'catalog' = the dated pricing catalog), 'mixed' when priced contributors
+ * disagree, or null when nothing was priced. Lets a surface render "your
+ * price" vs "catalog price, as of <date>" without deriving it client-side.
+ */
+export type CostAttributionSource = 'user' | 'provider' | 'catalog' | 'mixed' | null;
+
 /** One row of the attribution breakdown. */
 export interface CostAttributionRow {
   /** The dimension value (e.g. an agentId, a model id, a provider name), or '(unattributed)' when a record lacked the queried dimension. */
   readonly key: string;
   readonly costUsd: number | null;
   readonly costState: CostAttributionState;
+  readonly costSource: CostAttributionSource;
+  /** Oldest ISO date (YYYY-MM-DD) among the dated (catalog/provider) pricing snapshots that contributed; null when none carried a date. */
+  readonly pricingAsOf: string | null;
   readonly pricedRecordCount: number;
   readonly unpricedRecordCount: number;
   readonly tokens: CostTokenTotals;
@@ -75,6 +88,9 @@ export interface CostAttributionResult {
   /** Sum of priced contributors, or null when every contributor is unpriced. */
   readonly totalCostUsd: number | null;
   readonly costState: CostAttributionState;
+  readonly costSource: CostAttributionSource;
+  /** Oldest ISO date (YYYY-MM-DD) among the dated (catalog/provider) pricing snapshots that contributed; null when none carried a date. */
+  readonly pricingAsOf: string | null;
   readonly pricedRecordCount: number;
   readonly unpricedRecordCount: number;
   readonly tokens: CostTokenTotals;
@@ -93,6 +109,10 @@ export type ResolvePricing = (model: string | undefined, provider?: string | und
   readonly output: number;
   readonly cacheRead?: number | undefined;
   readonly cacheWrite?: number | undefined;
+  /** Where the rates came from ('user' manual/registration, 'provider' served, 'catalog'); absent when the wiring predates provenance. */
+  readonly source?: 'user' | 'provider' | 'catalog' | undefined;
+  /** ISO date (YYYY-MM-DD) of the catalog/provider pricing snapshot; absent for user prices. */
+  readonly asOf?: string | undefined;
 } | null;
 
 /**
@@ -145,16 +165,26 @@ interface AccumulatorState {
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+  /** Distinct pricing sources among priced contributors. */
+  sources: Set<'user' | 'provider' | 'catalog'>;
+  /** Oldest ISO date among dated pricing snapshots that contributed. */
+  oldestAsOf: string | null;
 }
 
 function emptyAccumulator(): AccumulatorState {
-  return { costUsd: 0, hasPriced: false, priced: 0, unpriced: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+  return { costUsd: 0, hasPriced: false, priced: 0, unpriced: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, sources: new Set(), oldestAsOf: null };
 }
 
 function resolveState(acc: Pick<AccumulatorState, 'priced' | 'unpriced'>): CostAttributionState {
   if (acc.unpriced === 0) return 'priced';
   if (acc.priced === 0) return 'unpriced';
   return 'estimated';
+}
+
+function resolveSource(acc: Pick<AccumulatorState, 'sources'>): CostAttributionSource {
+  if (acc.sources.size === 0) return null;
+  if (acc.sources.size > 1) return 'mixed';
+  return [...acc.sources][0]!;
 }
 
 export interface CostAttributionServiceOptions {
@@ -187,7 +217,12 @@ export class CostAttributionService {
   }
 
   /** Price one record with cache-aware rates, honestly unpriced when the model is unknown. */
-  priceRecord(rec: CostUsageRecord): { costUsd: number | null; state: 'priced' | 'unpriced' } {
+  priceRecord(rec: CostUsageRecord): {
+    costUsd: number | null;
+    state: 'priced' | 'unpriced';
+    source?: 'user' | 'provider' | 'catalog' | undefined;
+    asOf?: string | undefined;
+  } {
     const pricing = this.resolvePricing(rec.model, rec.provider);
     if (!pricing) return { costUsd: null, state: 'unpriced' };
     const mult = cacheMultipliers(rec.provider);
@@ -201,7 +236,7 @@ export class CostAttributionService {
         rec.cacheWriteTokens * cacheWriteRate +
         rec.outputTokens * pricing.output) /
       1_000_000;
-    return { costUsd, state: 'priced' };
+    return { costUsd, state: 'priced', source: pricing.source, asOf: pricing.asOf };
   }
 
   /** Aggregate cost + tokens over a window, grouped by `dimension`. */
@@ -214,7 +249,7 @@ export class CostAttributionService {
 
     for (const rec of this.records) {
       if (rec.at < windowStartMs) continue;
-      const { costUsd, state } = this.priceRecord(rec);
+      const { costUsd, state, source, asOf } = this.priceRecord(rec);
       const key = keyOf(rec) ?? UNATTRIBUTED;
       let group = groups.get(key);
       if (!group) {
@@ -230,6 +265,11 @@ export class CostAttributionService {
           acc.costUsd += costUsd;
           acc.hasPriced = true;
           acc.priced += 1;
+          if (source !== undefined) acc.sources.add(source);
+          // Oldest wins: "priced with data at least as fresh as <date>".
+          if (asOf !== undefined && (acc.oldestAsOf === null || asOf < acc.oldestAsOf)) {
+            acc.oldestAsOf = asOf;
+          }
         } else {
           acc.unpriced += 1;
         }
@@ -241,6 +281,8 @@ export class CostAttributionService {
         key,
         costUsd: acc.hasPriced ? acc.costUsd : null,
         costState: resolveState(acc),
+        costSource: resolveSource(acc),
+        pricingAsOf: acc.oldestAsOf,
         pricedRecordCount: acc.priced,
         unpricedRecordCount: acc.unpriced,
         tokens: this.tokensOf(acc),
@@ -253,6 +295,8 @@ export class CostAttributionService {
       dimension,
       totalCostUsd: total.hasPriced ? total.costUsd : null,
       costState: resolveState(total),
+      costSource: resolveSource(total),
+      pricingAsOf: total.oldestAsOf,
       pricedRecordCount: total.priced,
       unpricedRecordCount: total.unpriced,
       tokens: this.tokensOf(total),

@@ -66,7 +66,7 @@ import type { CancellationRegistry } from './cancellation.js';
 import { excludeUntouchedLaunchResidue, type DirtyLaunchSnapshot } from './dirty-guard.js';
 import { classifyBookkeepingFailure } from './bookkeeping.js';
 import { mergeWorkItemUsage } from './types.js';
-import type { CommitExclusion, GateOutcome, Phase, PhaseCommitOutcome, PhaseResult, WorkItem, WorkItemUsage, Workstream } from './types.js';
+import type { CommitExclusion, GateOutcome, Phase, PhaseCommitOutcome, PhaseResult, PriceProvenanceFn, WorkItem, WorkItemUsage, Workstream } from './types.js';
 
 /** Narrow structural pick — testable with stubs, mirrors AgentManagerLike (wrfc-config.ts). */
 export type PhaseRunnerAgentManagerLike = Pick<
@@ -105,6 +105,8 @@ export interface PhaseRunnerDeps {
   readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
   readonly cancellation: CancellationRegistry;
   readonly priceUsage?: ((model: string | undefined, usage: WorkItemUsage) => number | null) | undefined;
+  /** Provenance for the same resolution priceUsage prices with — stamped onto the committed usage record at pricing time. */
+  readonly priceProvenance?: PriceProvenanceFn | undefined;
   readonly skipClaimVerification?: boolean | undefined;
   /**
    * The dirty-tree snapshot taken synchronously at engine launch (see
@@ -175,6 +177,7 @@ function awaitAgentTermination(
 function usageFromRecord(
   record: AgentRecord | null,
   priceUsage: PhaseRunnerDeps['priceUsage'],
+  priceProvenance: PhaseRunnerDeps['priceProvenance'],
 ): WorkItemUsage {
   const u = record?.usage;
   const base = {
@@ -189,18 +192,26 @@ function usageFromRecord(
   };
   let costUsd: number | null = null;
   let costState: WorkItemUsage['costState'] = 'unpriced';
+  let provenance: ReturnType<PriceProvenanceFn> = null;
   if (u && priceUsage) {
     try {
       const priced = priceUsage(record?.model, { ...base, costUsd: null, costState: 'unpriced' });
       if (priced !== null) {
         costUsd = priced;
         costState = 'priced';
+        // Same resolution instant as the dollars — never re-derived later.
+        provenance = priceProvenance?.(record?.model) ?? null;
       }
     } catch {
       // stays unpriced — never fabricate a cost from a throwing pricer.
     }
   }
-  return { ...base, costUsd, costState };
+  return {
+    ...base,
+    costUsd,
+    costState,
+    ...(provenance ? { costSource: provenance.source, pricingAsOf: provenance.asOf } : {}),
+  };
 }
 
 /**
@@ -429,7 +440,7 @@ export async function runPhase(
     deps.cancellation.release(item.id);
   }
 
-  const usage = usageFromRecord(outcome.record, deps.priceUsage);
+  const usage = usageFromRecord(outcome.record, deps.priceUsage, deps.priceProvenance);
 
   if (outcome.status === 'cancelled') {
     await worktree.cleanup(record.id).catch(() => undefined);

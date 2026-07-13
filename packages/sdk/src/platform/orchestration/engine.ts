@@ -40,6 +40,7 @@ import {
   type Phase,
   type PhaseResult,
   type PhaseSpec,
+  type PriceProvenanceFn,
   type WorkItem,
   type WorkItemSpec,
   type WorkItemUsage,
@@ -66,6 +67,8 @@ export interface OrchestrationEngineDeps {
   readonly sessionId?: string | undefined;
   readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
   readonly priceUsage?: ((model: string | undefined, usage: WorkItemUsage) => number | null) | undefined;
+  /** Provenance for the same resolution priceUsage prices with — stamped onto committed usage records at pricing time. */
+  readonly priceProvenance?: PriceProvenanceFn | undefined;
   readonly skipClaimVerification?: boolean | undefined;
   /** Bounds re-review cycles through a dynamically-inserted fix phase. Default 5 (mirrors WrfcController's default maxFixAttempts). */
   readonly maxPhaseVisits?: number | undefined;
@@ -438,6 +441,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       createWorktree: deps.createWorktree,
       cancellation,
       priceUsage: deps.priceUsage,
+      priceProvenance: deps.priceProvenance,
       skipClaimVerification: deps.skipClaimVerification,
       launchDirtySnapshot,
       itemWorktree,

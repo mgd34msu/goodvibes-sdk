@@ -87,7 +87,7 @@ import { FavoritesStore } from '../providers/favorites.js';
 import { BenchmarkStore } from '../providers/model-benchmarks.js';
 import { ModelLimitsService } from '../providers/model-limits.js';
 import { UserPermissionRuleStore } from '../permissions/user-rule-store.js';
-import { computeUsageCostUsd } from '../providers/model-pricing.js';
+import { buildPricingSeams } from './cost/pricing-seams.js';
 import { SessionMemoryStore } from '../core/session-memory.js';
 import { SessionLineageTracker } from '../core/session-lineage.js';
 import { SessionChangeTracker } from '../sessions/change-tracker.js';
@@ -796,10 +796,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workflowServices: workflow,
   });
 
-  // Honest-unpriced: usage prices through the ONE model pricing resolver (manual -> registration ->
-  // provider-served -> catalog -> unknown; any resolvable model). Unknown/subscription yields null
-  // (costState 'unpriced'), never $0. SHARED by fleet + orchestration so totals never double-count.
-  const priceUsage = (model: string | undefined, usage: { inputTokens: number; outputTokens: number }): number | null => (model ? computeUsageCostUsd(providerRegistry.resolveModelPricing(model), usage) : null);
+  // Honest-unpriced dollars + their provenance, both over the ONE model
+  // pricing resolver, SHARED by fleet + orchestration (see pricing-seams.ts).
+  const { priceUsage, priceProvenance } = buildPricingSeams(providerRegistry);
 
   // Orchestration engine — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
   const orchestrationEngine = createOrchestrationEngine({
@@ -807,7 +806,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
     runtimeBus: options.runtimeBus,
     projectRoot: workingDirectory,
-    priceUsage, judgeAttempts: createProviderBackedAttemptJudge(providerRegistry), // best-of-N judge (fleet.attempts.judge); never auto-picks unless opted in
+    priceUsage, priceProvenance, judgeAttempts: createProviderBackedAttemptJudge(providerRegistry), // best-of-N judge (fleet.attempts.judge); never auto-picks unless opted in
   });
 
   // Live process registry — narrow structural deps only, constructed
@@ -830,6 +829,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     sessionBroker,
     runtimeBus: options.runtimeBus,
     priceUsage,
+    priceProvenance,
     codeIndexService: codeIndexStore,
   }));
 

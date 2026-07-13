@@ -352,6 +352,14 @@ export const OTLP_METRIC_DOCUMENT_SCHEMA = objectSchema({
 
 const COST_STATE_SCHEMA = enumSchema(['priced', 'estimated', 'unpriced']);
 
+// Where an aggregate's priced dollars came from: 'user' (manual/registration
+// price — "your price"), 'provider' (provider-served rates), 'catalog' (the
+// dated pricing catalog), 'mixed' (priced contributors disagree), or null
+// (nothing priced). pricingAsOf is the oldest ISO date (YYYY-MM-DD) among the
+// dated catalog/provider snapshots that contributed — null when none carried
+// a date (user prices are undated).
+const COST_SOURCE_SCHEMA = nullableSchema(enumSchema(['user', 'provider', 'catalog', 'mixed']));
+
 const COST_TOKENS_SCHEMA = objectSchema({
   inputTokens: NUMBER_SCHEMA,
   outputTokens: NUMBER_SCHEMA,
@@ -363,10 +371,12 @@ const COST_ATTRIBUTION_ROW_SCHEMA = objectSchema({
   key: STRING_SCHEMA,
   costUsd: nullableSchema(NUMBER_SCHEMA),
   costState: COST_STATE_SCHEMA,
+  costSource: COST_SOURCE_SCHEMA,
+  pricingAsOf: nullableSchema(STRING_SCHEMA),
   pricedRecordCount: NUMBER_SCHEMA,
   unpricedRecordCount: NUMBER_SCHEMA,
   tokens: COST_TOKENS_SCHEMA,
-}, ['key', 'costUsd', 'costState', 'pricedRecordCount', 'unpricedRecordCount', 'tokens']);
+}, ['key', 'costUsd', 'costState', 'costSource', 'pricingAsOf', 'pricedRecordCount', 'unpricedRecordCount', 'tokens']);
 
 export const COST_ATTRIBUTION_GET_INPUT_SCHEMA = objectSchema({
   window: enumSchema(['24h', '7d']),
@@ -385,11 +395,13 @@ export const COST_ATTRIBUTION_GET_OUTPUT_SCHEMA = objectSchema({
   dimension: enumSchema(['agent', 'tool', 'hook', 'mcp', 'model', 'provider', 'session']),
   totalCostUsd: nullableSchema(NUMBER_SCHEMA),
   costState: COST_STATE_SCHEMA,
+  costSource: COST_SOURCE_SCHEMA,
+  pricingAsOf: nullableSchema(STRING_SCHEMA),
   pricedRecordCount: NUMBER_SCHEMA,
   unpricedRecordCount: NUMBER_SCHEMA,
   tokens: COST_TOKENS_SCHEMA,
   rows: arraySchema(COST_ATTRIBUTION_ROW_SCHEMA),
-}, ['window', 'windowStartMs', 'dimension', 'totalCostUsd', 'costState', 'pricedRecordCount', 'unpricedRecordCount', 'tokens', 'rows']);
+}, ['window', 'windowStartMs', 'dimension', 'totalCostUsd', 'costState', 'costSource', 'pricingAsOf', 'pricedRecordCount', 'unpricedRecordCount', 'tokens', 'rows']);
 
 // ── Quota window / pre-fan-out warning ────────────────────────────────────────
 

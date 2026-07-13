@@ -1,6 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 import type { WrfcChain, WrfcSubtask } from '../../../agents/wrfc-types.js';
+import { mergeCostSource, mergePricingAsOf } from '../../../orchestration/types.js';
 import type { ProcessNode, ProcessState, ProcessUsage } from '../types.js';
 import { chainNodeId, subtaskNodeId } from './agent.js';
 
@@ -143,13 +144,17 @@ function sumUsage(nodes: readonly ProcessNode[]): ProcessUsage | undefined {
  * its AgentRecord.usage is populated FROM the phase children at completion
  * time, so including it would double-count.
  */
-function aggregateCost(members: readonly ProcessNode[]): { costUsd: number | null; costState: ProcessNode['costState'] } {
+function aggregateCost(members: readonly ProcessNode[]): { costUsd: number | null; costState: ProcessNode['costState']; costSource: ProcessNode['costSource']; pricingAsOf: string | undefined } {
   const withUsage = members.filter((node) => node.usage !== undefined);
-  if (withUsage.length === 0) return { costUsd: null, costState: 'unpriced' };
+  if (withUsage.length === 0) return { costUsd: null, costState: 'unpriced', costSource: undefined, pricingAsOf: undefined };
   const priced = withUsage.filter((node) => node.costState === 'priced' && typeof node.costUsd === 'number');
-  if (priced.length === 0) return { costUsd: null, costState: 'unpriced' };
+  if (priced.length === 0) return { costUsd: null, costState: 'unpriced', costSource: undefined, pricingAsOf: undefined };
   const total = priced.reduce((sum, node) => sum + (node.costUsd as number), 0);
-  return { costUsd: total, costState: priced.length === withUsage.length ? 'priced' : 'estimated' };
+  // Provenance folds through the shared merge rules: one shared source
+  // reports itself, disagreement is 'mixed', the OLDEST as-of date wins.
+  const costSource = priced.reduce<ProcessNode['costSource']>((merged, node) => mergeCostSource(merged, node.costSource), undefined);
+  const pricingAsOf = priced.reduce<string | undefined>((merged, node) => mergePricingAsOf(merged, node.pricingAsOf), undefined);
+  return { costUsd: total, costState: priced.length === withUsage.length ? 'priced' : 'estimated', costSource, pricingAsOf };
 }
 
 /**
@@ -187,6 +192,9 @@ export function repriceWrfcOwnerNode(ownerNode: ProcessNode, chainNode: ProcessN
     ...ownerNode,
     costUsd: chainNode.costUsd,
     costState: chainNode.costState,
+    // Adopted cost keeps its provenance — the dollars and their source travel together.
+    ...(chainNode.costSource !== undefined ? { costSource: chainNode.costSource } : {}),
+    ...(chainNode.pricingAsOf !== undefined ? { pricingAsOf: chainNode.pricingAsOf } : {}),
     model: ownerNode.model ?? chainNode.model,
   };
 }
@@ -245,7 +253,7 @@ export function adaptSubtask(subtask: WrfcSubtask, chain: WrfcChain, opts: { ste
  */
 export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[], now: number): ProcessNode {
   const { state, phase } = chainState(chain, memberNodes);
-  const { costUsd, costState } = aggregateCost(memberNodes);
+  const { costUsd, costState, costSource, pricingAsOf } = aggregateCost(memberNodes);
   const killable = state !== 'done' && state !== 'failed' && state !== 'killed';
   // chain.completedAt is authoritative when WrfcController set it (the
   // 'passed'/'failed' clean-terminal cases). `state === 'killed'` is only
@@ -268,6 +276,8 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
     model: chainModelDescriptor(memberNodes),
     costUsd,
     costState,
+    ...(costSource !== undefined ? { costSource } : {}),
+    ...(pricingAsOf !== undefined ? { pricingAsOf } : {}),
     // Silent source: anchored to createdAt (no phase-transition timestamp).
     currentActivity: phase ? { kind: 'phase', text: phase, at: chain.createdAt } : undefined,
     // A wrfc-chain is an FSM coordinating member agents; it has no

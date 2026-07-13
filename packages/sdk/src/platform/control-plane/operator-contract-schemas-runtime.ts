@@ -470,7 +470,13 @@ const PROVIDER_MODEL_SNAPSHOT_SCHEMA = objectSchema({
     inputPerMillionTokens: NUMBER_SCHEMA,
     outputPerMillionTokens: NUMBER_SCHEMA,
     currency: enumSchema(['USD']),
-  }, ['inputPerMillionTokens', 'outputPerMillionTokens', 'currency']),
+    // Provenance of the served rates: 'user' (manual/registration — "your
+    // price"), 'provider' (provider-served), 'catalog' (dated catalog).
+    // asOf is the ISO date of the catalog/provider snapshot; user prices
+    // are undated.
+    source: enumSchema(['user', 'provider', 'catalog']),
+    asOf: STRING_SCHEMA,
+  }, ['inputPerMillionTokens', 'outputPerMillionTokens', 'currency', 'source']),
 }, ['id', 'registryKey', 'displayName', 'selectable', 'contextWindow'], { additionalProperties: true });
 
 export const PROVIDER_RUNTIME_SNAPSHOT_SCHEMA = objectSchema({
@@ -485,7 +491,11 @@ export const PROVIDER_USAGE_SNAPSHOT_SCHEMA = objectSchema({
   providerId: STRING_SCHEMA,
   active: BOOLEAN_SCHEMA,
   currentModelRegistryKey: STRING_SCHEMA,
-  pricingSource: enumSchema(['catalog', 'provider', 'none']),
+  // A single source when every priced model agrees, 'mixed' when they
+  // disagree, 'none' when no model carries pricing. pricingAsOf is the
+  // oldest dated (catalog/provider) snapshot served; absent when undated.
+  pricingSource: enumSchema(['user', 'catalog', 'provider', 'mixed', 'none']),
+  pricingAsOf: STRING_SCHEMA,
   models: arraySchema(PROVIDER_MODEL_SNAPSHOT_SCHEMA),
   usage: objectSchema({
     streaming: BOOLEAN_SCHEMA,

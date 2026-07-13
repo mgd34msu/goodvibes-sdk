@@ -129,6 +129,14 @@ export interface ProcessSessionRef {
 export type ProcessCostState = 'priced' | 'unpriced' | 'estimated';
 
 /**
+ * Where a node's priced dollars came from: 'user' (manual/registration price —
+ * "your price"), 'provider' (provider-served rates), 'catalog' (the dated
+ * pricing catalog), or 'mixed' when priced contributors disagree (aggregate
+ * nodes). Absent when nothing was priced.
+ */
+export type ProcessCostSource = 'user' | 'provider' | 'catalog' | 'mixed';
+
+/**
  * Why a node needs a human's attention.
  * - 'approval' — a tool call on this node is blocked waiting for an
  *   approve/deny decision (derived from a pending shared approval).
@@ -171,6 +179,9 @@ export interface ProcessNode {
   readonly provider?: string | undefined;
   readonly costUsd?: number | null | undefined;
   readonly costState: ProcessCostState;
+  readonly costSource?: ProcessCostSource | undefined;
+  /** Oldest ISO date (YYYY-MM-DD) among the dated (catalog/provider) pricing snapshots that contributed to costUsd; absent when none carried a date. */
+  readonly pricingAsOf?: string | undefined;
   readonly currentActivity?: ProcessActivity | undefined;
   readonly capabilities: ProcessCapabilities;
   /**

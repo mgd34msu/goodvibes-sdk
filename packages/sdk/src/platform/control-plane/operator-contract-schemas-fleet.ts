@@ -50,6 +50,11 @@ const PROCESS_STATE_SCHEMA = enumSchema([
   'paused',
 ]);
 const PROCESS_COST_STATE_SCHEMA = enumSchema(['priced', 'unpriced', 'estimated']);
+// Where priced dollars came from: 'user' (manual/registration — "your price"),
+// 'provider' (provider-served rates), 'catalog' (dated catalog), 'mixed'
+// (aggregate whose priced contributors disagree). Absent when nothing priced.
+// pricingAsOf is the oldest ISO date among the dated snapshots that contributed.
+const PROCESS_COST_SOURCE_SCHEMA = enumSchema(['user', 'provider', 'catalog', 'mixed']);
 
 const PROCESS_USAGE_SCHEMA = objectSchema({
   inputTokens: NUMBER_SCHEMA,
@@ -102,6 +107,8 @@ export const PROCESS_NODE_SCHEMA = objectSchema({
   provider: STRING_SCHEMA,
   costUsd: nullableSchema(NUMBER_SCHEMA),
   costState: PROCESS_COST_STATE_SCHEMA,
+  costSource: PROCESS_COST_SOURCE_SCHEMA,
+  pricingAsOf: STRING_SCHEMA,
   currentActivity: PROCESS_ACTIVITY_SCHEMA,
   capabilities: PROCESS_CAPABILITIES_SCHEMA,
   needsAttention: PROCESS_ATTENTION_SCHEMA,
@@ -359,6 +366,10 @@ const ATTEMPT_USAGE_SCHEMA = objectSchema({
   toolCallCount: NUMBER_SCHEMA,
   costUsd: nullableSchema(NUMBER_SCHEMA),
   costState: enumSchema(['priced', 'unpriced', 'estimated']),
+  // Provenance stamped at pricing time (absent on records committed before
+  // provenance stamping existed — honest absence, never back-filled).
+  costSource: PROCESS_COST_SOURCE_SCHEMA,
+  pricingAsOf: STRING_SCHEMA,
 }, ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'llmCallCount', 'turnCount', 'toolCallCount', 'costUsd', 'costState']);
 
 const ATTEMPT_CANDIDATE_SCHEMA = objectSchema({

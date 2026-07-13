@@ -12,8 +12,8 @@
  * the WRFC-subtask analogue: it delegates interrupt/kill/steer to its
  * current live agent when it has one.
  */
-import { mergeWorkItemUsage } from '../../../orchestration/types.js';
-import type { Phase, WorkItem, WorkItemUsage, Workstream } from '../../../orchestration/types.js';
+import { mergeCostSource, mergePricingAsOf, mergeWorkItemUsage } from '../../../orchestration/types.js';
+import type { Phase, WorkItem, WorkItemCostSource, WorkItemUsage, Workstream } from '../../../orchestration/types.js';
 import type { ProcessCostState, ProcessNode, ProcessState, ProcessUsage } from '../types.js';
 import { workItemNodeId } from './agent.js';
 
@@ -27,6 +27,8 @@ export interface LiveItemUsage {
   readonly usage?: ProcessUsage | undefined;
   readonly costUsd?: number | null | undefined;
   readonly costState?: ProcessCostState | undefined;
+  readonly costSource?: WorkItemCostSource | undefined;
+  readonly pricingAsOf?: string | undefined;
 }
 
 /** True once a ProcessUsage carries any non-zero count worth surfacing. */
@@ -67,6 +69,8 @@ function liveOverlayUsage(live: LiveItemUsage | undefined): WorkItemUsage | unde
     toolCallCount: u?.toolCallCount ?? 0,
     costUsd: live.costUsd ?? null,
     costState: live.costState ?? (hasCost ? 'priced' : 'unpriced'),
+    costSource: live.costSource,
+    pricingAsOf: live.pricingAsOf,
   };
 }
 
@@ -88,6 +92,34 @@ export function displayWorkItemUsage(item: WorkItem, live: LiveItemUsage | undef
   // whole truth — don't let the empty 'unpriced' placeholder degrade it.
   if (isEmptyCommittedUsage(item.usage)) return overlay;
   return mergeWorkItemUsage(item.usage, overlay);
+}
+
+/**
+ * Resolve each item's active-agent in-flight usage ONCE, keyed by item id, so
+ * the workstream rollup and the per-item nodes share one overlay resolution.
+ * displayWorkItemUsage applies the overlay only while an item is 'in-phase',
+ * so this never double-counts committed usage. Cost provenance travels with
+ * the live cost — the dollars and their source are copied together.
+ */
+export function collectLiveItemUsage(
+  workstream: Workstream,
+  agentNodeById: ReadonlyMap<string, ProcessNode>,
+): Map<string, LiveItemUsage> {
+  const liveByItemId = new Map<string, LiveItemUsage>();
+  for (const item of workstream.items) {
+    const activeAgentId = activeWorkItemAgentId(item);
+    const activeAgentNode = activeAgentId ? agentNodeById.get(activeAgentId) : undefined;
+    if (activeAgentNode) {
+      liveByItemId.set(item.id, {
+        usage: activeAgentNode.usage,
+        costUsd: activeAgentNode.costUsd ?? null,
+        costState: activeAgentNode.costState,
+        costSource: activeAgentNode.costSource,
+        pricingAsOf: activeAgentNode.pricingAsOf,
+      });
+    }
+  }
+  return liveByItemId;
 }
 
 /** Workstream node ids are namespaced to avoid colliding with agent/process ids. */
@@ -214,14 +246,16 @@ function sumWorkItemUsage(usages: readonly WorkItemUsage[]): ProcessUsage | unde
   };
 }
 
-/** Honest cost rollup: all-priced -> 'priced'; none -> null/'unpriced'; mixed -> summed subset, 'estimated'. Mirrors adapters/wrfc.ts aggregateCost. Operates on resolved display usages (committed + live overlay). */
-function aggregateWorkItemCost(usages: readonly WorkItemUsage[]): { costUsd: number | null; costState: ProcessNode['costState'] } {
+/** Honest cost rollup: all-priced -> 'priced'; none -> null/'unpriced'; mixed -> summed subset, 'estimated'. Mirrors adapters/wrfc.ts aggregateCost. Operates on resolved display usages (committed + live overlay). Provenance folds through the shared merge rules (single source or 'mixed'; oldest as-of date). */
+function aggregateWorkItemCost(usages: readonly WorkItemUsage[]): { costUsd: number | null; costState: ProcessNode['costState']; costSource: ProcessNode['costSource']; pricingAsOf: string | undefined } {
   const withUsage = usages.filter((usage) => usage.costState !== 'unpriced' || usage.inputTokens > 0 || usage.outputTokens > 0);
-  if (withUsage.length === 0) return { costUsd: null, costState: 'unpriced' };
+  if (withUsage.length === 0) return { costUsd: null, costState: 'unpriced', costSource: undefined, pricingAsOf: undefined };
   const priced = withUsage.filter((usage) => usage.costState === 'priced' && usage.costUsd !== null);
-  if (priced.length === 0) return { costUsd: null, costState: 'unpriced' };
+  if (priced.length === 0) return { costUsd: null, costState: 'unpriced', costSource: undefined, pricingAsOf: undefined };
   const total = priced.reduce((sum, usage) => sum + (usage.costUsd as number), 0);
-  return { costUsd: total, costState: priced.length === withUsage.length ? 'priced' : 'estimated' };
+  const costSource = priced.reduce<WorkItemCostSource | undefined>((merged, usage) => mergeCostSource(merged, usage.costSource), undefined);
+  const pricingAsOf = priced.reduce<string | undefined>((merged, usage) => mergePricingAsOf(merged, usage.pricingAsOf), undefined);
+  return { costUsd: total, costState: priced.length === withUsage.length ? 'priced' : 'estimated', costSource, pricingAsOf };
 }
 
 /**
@@ -260,6 +294,8 @@ export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: st
       : undefined,
     costUsd: usage.costUsd,
     costState: usage.costState,
+    ...(usage.costSource !== undefined ? { costSource: usage.costSource } : {}),
+    ...(usage.pricingAsOf !== undefined ? { pricingAsOf: usage.pricingAsOf } : {}),
     // Blocked items surface their reason (set/cleared by the engine alongside
     // the state transition, types.ts WorkItem.blockedReason) in place of the
     // bare phase id — the phase id alone doesn't tell an operator WHY the item
@@ -348,7 +384,7 @@ export function adaptWorkstream(workstream: Workstream, now: number, liveByItemI
       )
     : undefined;
   const displayUsages = workstream.items.map((item) => displayWorkItemUsage(item, liveByItemId?.get(item.id)));
-  const { costUsd, costState } = aggregateWorkItemCost(displayUsages);
+  const { costUsd, costState, costSource, pricingAsOf } = aggregateWorkItemCost(displayUsages);
   return {
     id: workstreamNodeId(workstream.id),
     kind: 'workstream',
@@ -361,6 +397,8 @@ export function adaptWorkstream(workstream: Workstream, now: number, liveByItemI
     usage: sumWorkItemUsage(displayUsages),
     costUsd,
     costState,
+    ...(costSource !== undefined ? { costSource } : {}),
+    ...(pricingAsOf !== undefined ? { pricingAsOf } : {}),
     currentActivity: undefined,
     // A workstream is an FSM coordinating work-items, not itself a
     // conversation loop — steer a work-item instead (mirrors wrfc-chain).
