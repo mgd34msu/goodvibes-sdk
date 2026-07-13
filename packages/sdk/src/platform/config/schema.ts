@@ -10,6 +10,7 @@ import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-su
 import { featureConfigDefaults, featureConfigSettings } from './schema-domain-features.js';
 import { featureControlSettings } from './schema-domain-feature-controls.js';
 import { updateConfigDefaults, updateConfigSettings } from './schema-domain-update.js';
+import { pricingConfigDefaults, pricingConfigSettings } from './schema-domain-pricing.js';
 import type { ConfigKey, ConfigSetting, GoodVibesConfig, SurfacesConfig } from './schema-types.js';
 
 export * from './schema-types.js';
@@ -57,6 +58,7 @@ export const DEFAULT_CONFIG = {
   integrations: featureConfigDefaults.integrations,
   policy: featureConfigDefaults.policy,
   agents: featureConfigDefaults.agents,
+  pricing: pricingConfigDefaults.pricing,
 } as GoodVibesConfig;
 
 export const CONFIG_SCHEMA: ConfigSetting[] = [
@@ -70,6 +72,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...coreTailConfigSettings,
   ...featureConfigSettings,
   ...featureControlSettings,
+  ...pricingConfigSettings,
 ] as ConfigSetting[];
 
 /** Set of all valid config keys for runtime validation. */

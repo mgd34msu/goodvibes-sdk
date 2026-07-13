@@ -65,6 +65,7 @@ function makeToolLLM(bus: RuntimeEventBus, provider: LLMProvider): ToolLLM {
     providerRegistry: {
       getCurrentModel: () => ({ registryKey: 'fake-provider:fake-model', provider: 'fake-provider', id: 'fake-model' }),
       getForModel: () => provider,
+      resolveModelPricing: () => ({ status: 'unknown' }),
     } as never,
     runtimeBus: bus,
     sessionId: () => 'session-1',
@@ -145,6 +146,7 @@ describe('per-dimension cost actuals from real emit sites', () => {
       providerRegistry: {
         getCurrentModel: () => ({ registryKey: 'fake-provider:fake-model', provider: 'fake-provider', id: 'fake-model' }),
         getForModel: () => provider,
+        resolveModelPricing: () => ({ status: 'unknown' }),
       } as never,
       runtimeBus: bus,
       sessionId: () => 'session-2',
@@ -166,6 +168,7 @@ describe('per-dimension cost actuals from real emit sites', () => {
       providerRegistry: {
         getCurrentModel: () => ({ registryKey: 'fake-provider:fake-model', provider: 'fake-provider', id: 'fake-model' }),
         getForModel: () => provider,
+        resolveModelPricing: () => ({ status: 'unknown' }),
       } as never,
     });
     expect(await toolLLM.chat('plain')).toBe('ok');

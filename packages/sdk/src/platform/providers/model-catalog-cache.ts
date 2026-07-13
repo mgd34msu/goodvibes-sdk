@@ -6,11 +6,6 @@ import { summarizeError } from '../utils/error-display.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
 import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
-interface CatalogModelPricing {
-  input: number;
-  output: number;
-}
-
 interface CatalogProviderShape {
   id: string;
   name: string;
@@ -20,7 +15,7 @@ interface CatalogProviderShape {
 }
 
 interface CatalogCacheFile {
-  version: 1;
+  version: typeof CATALOG_CACHE_VERSION;
   fetchedAt: number;
   ttlMs: number;
   models: CatalogModel[];
@@ -29,6 +24,8 @@ interface CatalogCacheFile {
 interface ModelsDevModelCost {
   input?: number | undefined;
   output?: number | undefined;
+  cache_read?: number | undefined;
+  cache_write?: number | undefined;
 }
 
 interface ModelsDevModelLimit {
@@ -52,6 +49,12 @@ type ModelsDevResponse = Record<string, CatalogProviderShape>;
 
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 const CATALOG_FETCH_TIMEOUT_MS = 30_000;
+/**
+ * Version 2: `pricing` became nullable — a model whose catalog entry carries
+ * no cost is honestly unpriced instead of coerced to $0. Version-1 caches
+ * (which baked in the $0 coercion) are discarded and refetched.
+ */
+const CATALOG_CACHE_VERSION = 2;
 
 export function getCatalogCachePath(cacheDir: string): string {
   return join(cacheDir, 'model-catalog.json');
@@ -131,8 +134,16 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
       const limit = modelData.limit;
       const supportsReasoning = modelData.reasoning === true;
 
-      const inputCost = typeof cost?.input === 'number' ? cost.input : 0;
-      const outputCost = typeof cost?.output === 'number' ? cost.output : 0;
+      // Honest pricing: a missing cost stays null (unpriced). Coercing to $0
+      // made absent-from-catalog models look free downstream.
+      const pricing = typeof cost?.input === 'number' && typeof cost?.output === 'number'
+        ? {
+          input: cost.input,
+          output: cost.output,
+          ...(typeof cost.cache_read === 'number' ? { cacheRead: cost.cache_read } : {}),
+          ...(typeof cost.cache_write === 'number' ? { cacheWrite: cost.cache_write } : {}),
+        }
+        : null;
       const contextWindow = typeof limit?.context === 'number' && limit.context > 0 ? limit.context : undefined;
 
       let tier: 'free' | 'paid' | 'subscription';
@@ -153,7 +164,7 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
         provider: providerName,
         providerId,
         providerEnvVars: getStringArray(providerData.env),
-        pricing: { input: inputCost, output: outputCost },
+        pricing,
         tier,
         contextWindow,
         maxOutputTokens,
@@ -174,7 +185,7 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
 }
 
 function validateCatalogCache(value: unknown): { cache: CatalogCacheFile | null; reason?: string } {
-  return validateTtlCacheEnvelope<CatalogCacheFile>(value, 'models', 'array');
+  return validateTtlCacheEnvelope<CatalogCacheFile>(value, 'models', 'array', CATALOG_CACHE_VERSION);
 }
 
 function loadCatalogCache(cachePath: string): CatalogCacheFile | null {
@@ -202,7 +213,7 @@ function saveCatalogCache(models: CatalogModel[], cachePath: string, tmpPath: st
   try {
     fs.mkdirSync(dirname(cachePath), { recursive: true });
     const payload: CatalogCacheFile = {
-      version: 1,
+      version: CATALOG_CACHE_VERSION,
       fetchedAt: Date.now(),
       ttlMs: TTL_24H_MS,
       models,

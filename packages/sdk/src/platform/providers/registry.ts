@@ -3,10 +3,7 @@ import { ProviderNotFoundError } from './provider-not-found-error.js';
 import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import {
-  ProviderCapabilityRegistry,
-  type ProviderCapability,
-  type RequestProfile,
-  type RouteExplanation,
+  ProviderCapabilityRegistry, type ProviderCapability, type RequestProfile, type RouteExplanation,
 } from './capabilities.js';
 import type { DiscoveredServer } from '../discovery/scanner.js';
 import { createDiscoveredProvider, getDiscoveredReasoningFormat } from './discovered-factory.js';
@@ -16,19 +13,14 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitProvidersChanged, emitProviderWarning, emitModelChanged } from '../runtime/emitters/index.js';
 import { loadCustomProviders, watchCustomProviders } from './custom-loader.js';
 import {
-  buildSyntheticCanonicalModels,
-  getCatalogCachePath,
-  getCatalogModelDefinitionsFrom,
-  getCatalogTmpPath,
-  getCostFromPricingCatalog,
-  getSyntheticBackendModelIds,
-  getSyntheticModelDefinitions,
-  getSyntheticModelInfo,
-  type CatalogModel,
-  type CatalogProvider,
-  type MinimalModelDefinition,
-  type PricingCatalog,
+  buildSyntheticCanonicalModels, getCatalogCachePath, getCatalogModelDefinitionsFrom, getCatalogTmpPath,
+  getCostFromPricingCatalog, getSyntheticBackendModelIds, getSyntheticModelDefinitions, getSyntheticModelInfo,
+  type CatalogModel, type CatalogModelPricing, type CatalogProvider, type MinimalModelDefinition, type PricingCatalog,
 } from './model-catalog.js';
+import {
+  resolveModelPricing as resolveModelPricingFromDeps, type ModelPricingDeps, type ResolvedModelPricing,
+} from './model-pricing.js';
+import { GatewayPricingService } from './gateway-pricing.js';
 import { registerBuiltinProviders, CATALOG_PROVIDER_NAME_ALIASES } from './builtin-registry.js';
 import type { CacheHitTracker } from './cache-strategy.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -47,32 +39,19 @@ import { splitModelRegistryKey, withRegistryKey } from './registry-helpers.js';
 import { computeConfiguredProviderIds } from './registry-configured-ids.js';
 import { initProviderCatalog, refreshProviderCatalog } from './registry-catalog-lifecycle.js';
 import {
-  buildModelRegistry,
-  diffCustomModels,
-  findModelDefinition,
-  findModelDefinitionForProvider,
+  buildModelRegistry, diffCustomModels, findModelDefinition, findModelDefinitionForProvider,
 } from './registry-models.js';
 import { assertProviderModelSource } from './model-source-contract.js';
 import { resolveModelReference } from './model-id-resolution.js';
 import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
 import {
-  applyProviderNativeModelBaseline,
-  removeProviderNativeModels,
-  sweepLiveModelDiscovery,
+  applyProviderNativeModelBaseline, removeProviderNativeModels, sweepLiveModelDiscovery,
 } from './registry-live-model-discovery.js';
 import type {
-  ModelDefinition,
-  ProviderRegistryOptions,
-  RuntimeProviderRegistration,
-  TokenLimits,
+  ModelDefinition, ProviderRegistryOptions, RuntimeProviderRegistration, TokenLimits,
 } from './registry-types.js';
 export type {
-  ContextWindowProvenance,
-  ModelDefinition,
-  ModelTier,
-  ProviderRegistryOptions,
-  RuntimeProviderRegistration,
-  TokenLimits,
+  ContextWindowProvenance, ModelDefinition, ModelTier, ProviderRegistryOptions, RuntimeProviderRegistration, TokenLimits,
 } from './registry-types.js';
 
 /**
@@ -100,6 +79,7 @@ export class ProviderRegistry {
   private readonly favoritesStore: Pick<FavoritesStore, 'load'>;
   private readonly benchmarkStore: Pick<BenchmarkStore, 'getBenchmarks' | 'getTopBenchmarkModelIds'>;
   private readonly modelLimitsService: ModelLimitsService;
+  private readonly gatewayPricing: GatewayPricingService;
   private readonly runtimeMetadataDeps: ProviderRuntimeMetadataDeps;
   private readonly runtimeBus: RuntimeEventBus | null;
   private readonly localContextIngestionService = new LocalContextIngestionService();
@@ -118,13 +98,11 @@ export class ProviderRegistry {
     this.cacheHitTracker = options.cacheHitTracker;
     this.favoritesStore = options.favoritesStore;
     this.benchmarkStore = options.benchmarkStore;
-    this.modelLimitsService = options.modelLimitsService ?? new ModelLimitsService({
-      cachePath: getModelLimitsCachePath(this.getPersistenceRoot()),
-    });
+    this.modelLimitsService = options.modelLimitsService
+      ?? new ModelLimitsService({ cachePath: getModelLimitsCachePath(this.getPersistenceRoot()) });
+    this.gatewayPricing = new GatewayPricingService({ cacheDir: this.getPersistenceRoot() });
     this.runtimeMetadataDeps = {
-      secretsManager: options.secretsManager,
-      serviceRegistry: options.serviceRegistry,
-      subscriptionManager: options.subscriptionManager,
+      secretsManager: options.secretsManager, serviceRegistry: options.serviceRegistry, subscriptionManager: options.subscriptionManager,
     };
     this.featureFlags = options.featureFlags ?? null;
     this.runtimeBus = options.runtimeBus ?? null;
@@ -142,21 +120,16 @@ export class ProviderRegistry {
 
   private registerBuiltins(): void {
     const apiKey = (name: string): string => getConfiguredApiKeys()[name] ?? '';
-    registerBuiltinProviders(
-      this,
-      (name) => this.providers.has(name),
-      apiKey,
-      {
-        cacheHitTracker: this.cacheHitTracker,
-        resolveProvider: (providerName) => this.require(providerName),
-        getCatalogModels: () => this.syntheticCanonicalModels,
-        getBenchmarks: (modelId) => this.benchmarkStore.getBenchmarks(modelId),
-        githubCopilotTokenCachePath: getGitHubCopilotTokenCachePath(this.getPersistenceRoot()),
-        subscriptionManager: this.subscriptionManager,
-        runtimeBus: this.runtimeBus,
-        persistenceRoot: this.getPersistenceRoot(),
-      },
-    );
+    registerBuiltinProviders(this, (name) => this.providers.has(name), apiKey, {
+      cacheHitTracker: this.cacheHitTracker,
+      resolveProvider: (providerName) => this.require(providerName),
+      getCatalogModels: () => this.syntheticCanonicalModels,
+      getBenchmarks: (modelId) => this.benchmarkStore.getBenchmarks(modelId),
+      githubCopilotTokenCachePath: getGitHubCopilotTokenCachePath(this.getPersistenceRoot()),
+      subscriptionManager: this.subscriptionManager,
+      runtimeBus: this.runtimeBus,
+      persistenceRoot: this.getPersistenceRoot(),
+    });
   }
 
   private getPersistenceRoot(): string {
@@ -175,13 +148,9 @@ export class ProviderRegistry {
     };
   }
 
-  private getCatalogBuiltins(): ModelDefinition[] {
-    return getCatalogModelDefinitionsFrom(this.catalogModels) as ModelDefinition[];
-  }
+  private getCatalogBuiltins(): ModelDefinition[] { return getCatalogModelDefinitionsFrom(this.catalogModels) as ModelDefinition[]; }
 
-  private getSyntheticBuiltins(): ModelDefinition[] {
-    return getSyntheticModelDefinitions(this.catalogModels, this.syntheticCanonicalModels) as ModelDefinition[];
-  }
+  private getSyntheticBuiltins(): ModelDefinition[] { return getSyntheticModelDefinitions(this.catalogModels, this.syntheticCanonicalModels) as ModelDefinition[]; }
 
   private updateCatalogState(models: readonly CatalogModel[], fetchedAt = Date.now()): void {
     this.catalogModels = [...models];
@@ -435,12 +404,42 @@ export class ProviderRegistry {
     return this.getModelRegistry();
   }
 
-  getCostFromCatalog(modelId: string): { input: number; output: number } {
-    return getCostFromPricingCatalog(
-      modelId,
-      this.pricingCatalog ?? { fetchedAt: Date.now(), models: this.catalogModels },
-      this.modelLimitsService,
-    );
+  /** Legacy string-keyed catalog lookup — null when unpriced. Prefer resolveModelPricing. */
+  getCostFromCatalog(modelId: string): CatalogModelPricing | null {
+    return getCostFromPricingCatalog(modelId, this.pricingCatalog ?? { fetchedAt: Date.now(), models: this.catalogModels }, this.modelLimitsService);
+  }
+
+  /**
+   * Resolve the price for a model with the platform-wide precedence:
+   * manual config price ('user') -> registration-supplied price ('user') ->
+   * the provider's own machine-readable pricing ('provider', dated) ->
+   * models.dev catalog entry ('catalog', dated) -> subscription -> honest
+   * unknown (never $0, never inferred-free). Manual prices are read from
+   * config on every call, so edits apply live with no restart.
+   */
+  resolveModelPricing(modelRef: string, providerId?: string): ResolvedModelPricing {
+    return resolveModelPricingFromDeps(this.modelPricingDeps(), modelRef, providerId);
+  }
+
+  private modelPricingDeps(): ModelPricingDeps {
+    return {
+      getManualPrices: () => this.configManager.get('pricing.modelPrices'),
+      getRegisteredPrice: (provider, modelId) =>
+        this.getModelRegistry().find((def) => def.id === modelId && (!provider || def.provider === provider))?.pricing ?? null,
+      getProviderServedPricing: (provider, modelId) => {
+        if (provider === 'openrouter') {
+          const served = this.modelLimitsService.getPricingForModel(modelId, provider);
+          return served ? { ...served, fetchedAt: this.modelLimitsService.getPricingFetchedAt() ?? undefined } : null;
+        }
+        return this.gatewayPricing.getPricing(provider, modelId);
+      },
+      getCatalog: () => this.pricingCatalog ?? { fetchedAt: 0, models: this.catalogModels },
+      providerMatchesCatalogId: (provider, catalogId) => provider === catalogId
+        || CATALOG_PROVIDER_NAME_ALIASES[catalogId] === provider
+        || CATALOG_PROVIDER_NAME_ALIASES[provider] === catalogId
+        || (provider === 'gemini' && catalogId === 'google'),
+      isKnownProviderId: (id) => this.providers.has(id) || this.catalogModels.some((model) => model.providerId === id),
+    };
   }
 
   getContextWindowForModel(modelDef: ModelDefinition): number {

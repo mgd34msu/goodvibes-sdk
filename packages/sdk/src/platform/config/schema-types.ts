@@ -446,11 +446,25 @@ export interface GoodVibesConfig {
   atRest: AtRestConfig;
   batch: BatchConfig;
   cloudflare: CloudflareConfig;
+  pricing: PricingConfig;
+}
+
+/** One user-set manual model price, USD per 1M tokens. */
+export interface ManualModelPriceConfig {
+  input: number;
+  output: number;
+  cacheRead?: number | undefined;
+  cacheWrite?: number | undefined;
+}
+
+/** Pricing domain — manual model prices keyed `provider:model`. */
+export interface PricingConfig {
+  modelPrices: Record<string, ManualModelPriceConfig>;
 }
 
 export interface ConfigSetting {
   key: ConfigKey;
-  type: 'boolean' | 'number' | 'string' | 'enum';
+  type: 'boolean' | 'number' | 'string' | 'enum' | 'object';
   default: unknown;
   description: string;
   enumValues?: string[] | undefined;
@@ -813,7 +827,8 @@ export type ConfigKey =
   | 'agents.passiveInjection.relevanceFloor'
   | 'agents.passiveInjection.codeLimit'
   | 'agents.contextWindowGuard'
-  | 'agents.contextCompactThreshold';
+  | 'agents.contextCompactThreshold'
+  | 'pricing.modelPrices';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -1170,4 +1185,5 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'agents.passiveInjection.codeLimit' ? number :
   K extends 'agents.contextWindowGuard' ? boolean :
   K extends 'agents.contextCompactThreshold' ? number :
+  K extends 'pricing.modelPrices' ? Record<string, ManualModelPriceConfig> :
   never;

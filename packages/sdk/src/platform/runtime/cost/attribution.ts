@@ -81,8 +81,19 @@ export interface CostAttributionResult {
   readonly rows: readonly CostAttributionRow[];
 }
 
-/** Fresh input/output rate per 1M tokens, or null when the model is unpriced. Wire from providerRegistry.getCostFromCatalog gated by the same known-model honesty check as services.ts. */
-export type ResolvePricing = (model: string | undefined) => { readonly input: number; readonly output: number } | null;
+/**
+ * Rates per 1M tokens, or null when the model is unpriced. Wire from
+ * providerRegistry.resolveModelPricing (the one pricing resolver: manual ->
+ * registration -> provider-served -> catalog -> honest null). Explicit
+ * cacheRead/cacheWrite rates, when the source carried them, take precedence
+ * over the CACHE_MULTIPLIERS fallback in priceRecord.
+ */
+export type ResolvePricing = (model: string | undefined, provider?: string | undefined) => {
+  readonly input: number;
+  readonly output: number;
+  readonly cacheRead?: number | undefined;
+  readonly cacheWrite?: number | undefined;
+} | null;
 
 /**
  * Published per-provider cache ratios relative to the fresh input rate. Keyed by
@@ -177,13 +188,17 @@ export class CostAttributionService {
 
   /** Price one record with cache-aware rates, honestly unpriced when the model is unknown. */
   priceRecord(rec: CostUsageRecord): { costUsd: number | null; state: 'priced' | 'unpriced' } {
-    const pricing = this.resolvePricing(rec.model);
+    const pricing = this.resolvePricing(rec.model, rec.provider);
     if (!pricing) return { costUsd: null, state: 'unpriced' };
     const mult = cacheMultipliers(rec.provider);
+    // Source-carried cache rates win; the published ratio table is the
+    // fallback when the pricing feed had no cache-specific rates.
+    const cacheReadRate = pricing.cacheRead ?? pricing.input * mult.read;
+    const cacheWriteRate = pricing.cacheWrite ?? pricing.input * mult.write;
     const costUsd =
       (rec.inputTokens * pricing.input +
-        rec.cacheReadTokens * pricing.input * mult.read +
-        rec.cacheWriteTokens * pricing.input * mult.write +
+        rec.cacheReadTokens * cacheReadRate +
+        rec.cacheWriteTokens * cacheWriteRate +
         rec.outputTokens * pricing.output) /
       1_000_000;
     return { costUsd, state: 'priced' };

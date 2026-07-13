@@ -8,6 +8,7 @@ import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 import type { FavoritesStore } from './favorites.js';
 import type { BenchmarkStore } from './model-benchmarks.js';
 import type { ModelLimitsService } from './model-limits.js';
+import type { ManualModelPrice } from './model-pricing.js';
 
 /** Model capability tier — controls system prompt verbosity. */
 export type ModelTier = 'free' | 'standard' | 'premium' | 'subscription';
@@ -43,6 +44,14 @@ export interface ModelDefinition {
   reasoningEffort?: string[] | undefined;
   tier?: ModelTier | undefined;
   tokenLimits?: TokenLimits | undefined;
+  /**
+   * Registration-supplied rates (USD per 1M tokens) — set by custom
+   * provider/model files or runtime registration. Resolves as a user-origin
+   * price, outranked only by a manual config price. Absent means the
+   * registration stated no price (NOT free): pricing falls through to
+   * provider/catalog sources or honest unknown.
+   */
+  pricing?: ManualModelPrice | undefined;
 }
 
 export interface RuntimeProviderRegistration {

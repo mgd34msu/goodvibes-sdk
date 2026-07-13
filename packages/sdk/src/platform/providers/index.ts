@@ -158,6 +158,24 @@ export { ModelLimitsService } from './model-limits.js';
 export type { ModelLimitsServiceOptions } from './model-limits.js';
 export { findClosestModelIds, resolveModelReference } from './model-id-resolution.js';
 export type { ModelIdCandidate, ModelIdResolutionOptions } from './model-id-resolution.js';
+export {
+  computeUsageCostUsd,
+  computeUsageCostUsdCents,
+  resolveModelPricing,
+  usageCostSource,
+  validateManualModelPrices,
+  UNKNOWN_MODEL_PRICING,
+} from './model-pricing.js';
+export type {
+  ManualModelPrice,
+  ModelPricingDeps,
+  ModelPricingRates,
+  ModelPricingSource,
+  ProviderServedPricing,
+  ResolvedModelPricing,
+  UsageCostSource,
+  UsageTokenCounts,
+} from './model-pricing.js';
 export { ProviderCapabilityRegistry, RouteRejectionCode } from './capabilities.js';
 export type { ProviderCapability, RequestProfile, RouteExplanation, RouteRejectionDetail } from './capabilities.js';
 export { ProviderOptimizer } from './optimizer.js';

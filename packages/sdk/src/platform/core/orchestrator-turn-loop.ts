@@ -26,6 +26,7 @@ import {
   emitTurnError,
 } from '../runtime/emitters/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
+import { computeUsageCostUsdCents, usageCostSource } from '../providers/model-pricing.js';
 import { HelperModel } from '../config/helper-model.js';
 import type { ModelDefinition } from '../providers/registry.js';
 import type { FavoritesStore } from '../providers/favorites.js';
@@ -85,7 +86,7 @@ export interface OrchestratorTurnLoopContext {
   readonly runtimeBus: RuntimeEventBus | null;
   readonly agentManager: Pick<AgentManager, 'list' | 'spawn'>;
   readonly configManager: Pick<ConfigManager, 'get'>;
-  readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel' | 'getTokenLimitsForModel' | 'getContextWindowForModel' | 'recordContextWindowRejection' | 'reconcileObservedContextWindow'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'require' | 'getCurrentModel' | 'getForModel' | 'getTokenLimitsForModel' | 'getContextWindowForModel' | 'recordContextWindowRejection' | 'reconcileObservedContextWindow' | 'resolveModelPricing'>;
   readonly favoritesStore?: Pick<FavoritesStore, 'recordUsage'> | undefined;
   readonly cacheHitTracker: Pick<CacheHitTracker, 'getMetrics'>;
   readonly helperModel: HelperModel;
@@ -560,6 +561,11 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     context.providerRegistry.reconcileObservedContextWindow(model.registryKey, realInputTokens);
 
     if (context.runtimeBus) {
+      // Actuals-only cost attribution: usage x resolved price at the emit
+      // site. Unknown pricing emits costSource 'unknown' with NO costUsdCents
+      // — an explicit unpriced marker, never a silent $0.
+      const resolvedPricing = context.providerRegistry.resolveModelPricing(model.id, model.provider);
+      const costUsdCents = computeUsageCostUsdCents(resolvedPricing, response.usage, model.provider);
       emitLlmResponseReceived(context.runtimeBus, context.emitterContext(context.turnId), {
         turnId: context.turnId,
         provider: model.provider,
@@ -572,6 +578,8 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         cacheWriteTokens: response.usage.cacheWriteTokens,
         durationMs: Date.now() - chatStartedAt,
         retries: chatRetries,
+        ...(costUsdCents === null ? {} : { costUsdCents }),
+        costSource: usageCostSource(resolvedPricing),
         ...(response.rateLimit ? { rateLimit: response.rateLimit } : {}),
       });
     }

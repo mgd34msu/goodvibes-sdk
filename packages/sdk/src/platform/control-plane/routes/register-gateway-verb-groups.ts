@@ -420,19 +420,22 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   }
 
   // Cost attribution + quota-window tracking over the platform's own LLM usage
-  // records. Pricing uses the provider registry's catalog with the same
-  // honest-unpriced gate as services.ts (unknown model -> unpriced, never a
-  // fabricated cost); absent registry -> everything unpriced. The verbs are
+  // records. Pricing goes through the ONE model pricing resolver (manual
+  // config price -> registration price -> provider-served -> catalog ->
+  // honest unknown); an unknown or subscription model stays unpriced, never a
+  // fabricated cost; absent registry -> everything unpriced. The verbs are
   // always registered; ingestion is wired only when the runtime bus is present.
-  const resolvePricing: ResolvePricing = (model) => {
+  const resolvePricing: ResolvePricing = (model, provider) => {
     const registry = deps.providerRegistry;
     if (!model || !registry) return null;
-    const known = registry.getRawCatalogModels().some(
-      (entry) => model === entry.id || model.startsWith(entry.id) || model.includes(entry.id),
-    );
-    if (!known && !model.endsWith(':free')) return null;
-    const pricing = registry.getCostFromCatalog(model);
-    return { input: pricing.input, output: pricing.output };
+    const resolved = registry.resolveModelPricing(model, provider);
+    if (resolved.status !== 'priced') return null;
+    return {
+      input: resolved.rates.inputPerMTok,
+      output: resolved.rates.outputPerMTok,
+      cacheRead: resolved.rates.cacheReadPerMTok,
+      cacheWrite: resolved.rates.cacheWritePerMTok,
+    };
   };
   const costAttribution = new CostAttributionService({ resolvePricing });
   const quotaWindow = new QuotaWindowTracker();

@@ -85,6 +85,7 @@ import { CacheHitTracker } from '../providers/cache-strategy.js';
 import { FavoritesStore } from '../providers/favorites.js';
 import { BenchmarkStore } from '../providers/model-benchmarks.js';
 import { ModelLimitsService } from '../providers/model-limits.js';
+import { computeUsageCostUsd } from '../providers/model-pricing.js';
 import { SessionMemoryStore } from '../core/session-memory.js';
 import { SessionLineageTracker } from '../core/session-lineage.js';
 import { SessionChangeTracker } from '../sessions/change-tracker.js';
@@ -777,20 +778,16 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workflowServices: workflow,
   });
 
-  // Honest-unpriced: only price models the catalog actually knows; an
-  // unknown model yields null (costState 'unpriced'), never a fabricated $0.
-  // SHARED between the fleet registry and the orchestration engine — the
-  // single cost source of truth so budget checks and fleet cost totals can
-  // never double-count against each other.
+  // Honest-unpriced: usage prices through the ONE model pricing resolver
+  // (manual config price -> registration price -> provider-served -> catalog
+  // -> unknown). An unknown or subscription-priced model yields null
+  // (costState 'unpriced'), never a fabricated $0. SHARED between the fleet
+  // registry and the orchestration engine — the single cost source of truth
+  // so budget checks and fleet cost totals can never double-count against
+  // each other. Works for ANY resolvable model, not only frontier ones.
   const priceUsage = (model: string | undefined, usage: { inputTokens: number; outputTokens: number }): number | null => {
     if (!model) return null;
-    const catalogModels = providerRegistry.getRawCatalogModels();
-    const known = catalogModels.some(
-      (entry) => model === entry.id || model.startsWith(entry.id) || model.includes(entry.id),
-    );
-    if (!known && !model.endsWith(':free')) return null;
-    const pricing = providerRegistry.getCostFromCatalog(model);
-    return (usage.inputTokens * pricing.input + usage.outputTokens * pricing.output) / 1_000_000;
+    return computeUsageCostUsd(providerRegistry.resolveModelPricing(model), usage);
   };
 
   // Orchestration engine — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.

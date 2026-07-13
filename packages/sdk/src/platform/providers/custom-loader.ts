@@ -53,6 +53,17 @@ export interface CustomProviderConfig {
     reasoningEffort?: string[] | undefined;
     /** Model capability tier — controls system prompt verbosity. */
     tier?: 'free' | 'standard' | 'premium' | undefined;
+    /**
+     * Optional rates in USD per 1M tokens. Omitting it means this model's
+     * price is UNKNOWN (not free): cost surfaces report its usage as
+     * unpriced unless a manual config price or catalog entry covers it.
+     */
+    pricing?: {
+      input: number;
+      output: number;
+      cacheRead?: number | undefined;
+      cacheWrite?: number | undefined;
+    } | undefined;
   }>;
 }
 
@@ -151,6 +162,24 @@ function validateCustomProvider(data: unknown): { valid: boolean; errors: string
         for (const cap of ['toolCalling', 'codeEditing', 'reasoning', 'multimodal']) {
           if (typeof caps[cap] !== 'boolean') {
             errors.push(`models[${i}]: capabilities.${cap} must be a boolean`);
+          }
+        }
+      }
+      if (model['pricing'] !== undefined) {
+        const pricing = model['pricing'];
+        if (typeof pricing !== 'object' || pricing === null || Array.isArray(pricing)) {
+          errors.push(`models[${i}]: "pricing" must be an object with input/output rates (USD per 1M tokens)`);
+        } else {
+          const rates = pricing as Record<string, unknown>;
+          for (const field of ['input', 'output']) {
+            if (typeof rates[field] !== 'number' || !Number.isFinite(rates[field] as number) || (rates[field] as number) < 0) {
+              errors.push(`models[${i}]: pricing.${field} must be a finite number >= 0 (USD per 1M tokens)`);
+            }
+          }
+          for (const field of ['cacheRead', 'cacheWrite']) {
+            if (rates[field] !== undefined && (typeof rates[field] !== 'number' || !Number.isFinite(rates[field] as number) || (rates[field] as number) < 0)) {
+              errors.push(`models[${i}]: pricing.${field} must be a finite number >= 0 (USD per 1M tokens) when present`);
+            }
           }
         }
       }
@@ -344,6 +373,7 @@ export async function loadCustomProviders(
         },
         ...(m.reasoningEffort ? { reasoningEffort: m.reasoningEffort } : {}),
         ...(m.tier ? { tier: m.tier } : {}),
+        ...(m.pricing ? { pricing: m.pricing } : {}),
       };
     });
 
