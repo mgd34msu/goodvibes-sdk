@@ -91,12 +91,12 @@ function installServiceAndExit(config: ConfigManager, workingDir: string, homeDi
   });
   try {
     const result = manager.install();
-    console.log(`service unit installed: ${result.path} (${result.serviceName}, ${result.platform})`);
-    for (const command of result.suggestedCommands) console.log(`  next: ${command}`);
-    if (result.lingerNote) console.log(result.lingerNote);
+    process.stdout.write(`service unit installed: ${result.path} (${result.serviceName}, ${result.platform})\n`);
+    for (const command of result.suggestedCommands) process.stdout.write(`  next: ${command}\n`);
+    if (result.lingerNote) process.stdout.write(`${result.lingerNote}\n`);
     process.exit(0);
   } catch (error) {
-    console.error(`service install failed: ${summarizeError(error)}`);
+    process.stderr.write(`service install failed: ${summarizeError(error)}\n`);
     process.exit(1);
   }
 }
