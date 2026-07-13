@@ -138,6 +138,8 @@ export interface WatchersConfig {
   pollIntervalMs: number;
   heartbeatIntervalMs: number;
   recoveryWindowMinutes: number;
+  /** Cadence (ms) for the daemon's recurring CI-watch poll (floor 15s at the poller). */
+  ciPollIntervalMs: number;
 }
 
 export interface ServiceConfig {
@@ -729,6 +731,7 @@ export type ConfigKey =
   | 'watchers.pollIntervalMs'
   | 'watchers.heartbeatIntervalMs'
   | 'watchers.recoveryWindowMinutes'
+  | 'watchers.ciPollIntervalMs'
   | 'service.enabled'
   | 'service.autostart'
   | 'service.restartOnFailure'
@@ -1089,6 +1092,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'watchers.pollIntervalMs' ? number :
   K extends 'watchers.heartbeatIntervalMs' ? number :
   K extends 'watchers.recoveryWindowMinutes' ? number :
+  K extends 'watchers.ciPollIntervalMs' ? number :
   K extends 'service.enabled' ? boolean :
   K extends 'service.autostart' ? boolean :
   K extends 'service.restartOnFailure' ? boolean :

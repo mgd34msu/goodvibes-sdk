@@ -48,7 +48,9 @@ import type { AutomationManager } from '../../automation/index.js';
 import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
-import { CiWatchService, CiWatchStore, createGhCliCiSource, type FixSessionBrief } from '../../ci-watch/index.js';
+import { CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief } from '../../ci-watch/index.js';
+import { randomUUID } from 'node:crypto';
+import type { PermissionPromptDecision, PermissionPromptRequest } from '../../permissions/prompt.js';
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
 import { registerRuntimeMetricsGatewayMethods } from './runtime-metrics.js';
 import { registerStepUpGatewayMethods, type StepUpGatewayService } from './stepup.js';
@@ -124,6 +126,21 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly secretsManager: VapidSecretStore;
   /** The approval broker — the real event source push fans out from. */
   readonly approvalBroker: ApprovalSource;
+  /**
+   * Optional: raise an ask through the shared approval broker. When present,
+   * a watched CI run going red produces a "fix this?" offer whose acceptance
+   * starts the fix-session. Absent → red runs only notify.
+   */
+  readonly requestApproval?: ((input: {
+    readonly request: PermissionPromptRequest;
+    readonly metadata?: Record<string, unknown> | undefined;
+  }) => Promise<PermissionPromptDecision>) | undefined;
+  /**
+   * Optional: the daemon's watcher registry — the recurring-poll host. When
+   * present, registered CI watches are polled on the watchers.ciPollIntervalMs
+   * cadence instead of standing still until a manual ci.watches.run.
+   */
+  readonly watcherRegistry?: CiPollingHost | undefined;
   /**
    * Optional: the durable user-origin permission rule store (remembered
    * approval decisions). When present, the permissions.rules.* settings verbs
@@ -310,8 +327,54 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     ...(deps.automationManager
       ? { fixSessionStarter: (brief) => startCiFixSession(deps.automationManager!, brief) }
       : {}),
+    // "Fix this?" on a red run: the offer rides the SAME approval broker as a
+    // permission ask, so every surface's attention machinery renders it;
+    // acceptance starts the fix-session seeded with the failing jobs' logs.
+    ...(deps.requestApproval
+      ? {
+        fixSessionOffer: async (brief: FixSessionBrief): Promise<boolean> => {
+          const where = brief.prNumber !== undefined ? `PR #${brief.prNumber}` : (brief.ref ?? 'watched ref');
+          const decision = await deps.requestApproval!({
+            request: {
+              callId: `ci-fix-${randomUUID().slice(0, 8)}`,
+              tool: 'ci:fix-session',
+              args: {
+                repo: brief.repo,
+                ...(brief.ref ? { ref: brief.ref } : {}),
+                ...(brief.prNumber !== undefined ? { prNumber: brief.prNumber } : {}),
+                failingJobs: [...brief.failingJobs],
+              },
+              category: 'delegate',
+              analysis: {
+                classification: 'ci-fix-session',
+                riskLevel: 'medium',
+                summary: `CI went red on ${brief.repo} (${where}) — start a fix session for ${brief.failingJobs.join(', ') || 'the failing jobs'}?`,
+                reasons: [
+                  `The watched CI run on ${brief.repo} reached a failed verdict.`,
+                  'Accepting starts an isolated fix session seeded with the failing jobs\' logs; declining leaves the red run untouched.',
+                ],
+                surface: 'orchestration',
+                blastRadius: 'delegated',
+              },
+            },
+            metadata: { source: 'ci-watch', repo: brief.repo },
+          });
+          return decision.approved;
+        },
+      }
+      : {}),
   });
   registerCiGatewayMethods(catalog, ciWatchService);
+  // The daemon polls registered watches on the watchers.ciPollIntervalMs
+  // cadence (15s floor, sequential passes, overlap-guarded) via the existing
+  // watcher-registry polling machinery — a standing watch no longer stands
+  // still until someone runs the manual verb.
+  if (deps.watcherRegistry) {
+    const configuredCadence = (deps.configManager.get as unknown as (k: string) => unknown)('watchers.ciPollIntervalMs');
+    registerCiWatchPolling(deps.watcherRegistry, ciWatchService, {
+      ...(typeof configuredCadence === 'number' ? { intervalMs: configuredCadence } : {}),
+    });
+  }
 
   // channels.test.send — live per-channel test-message probe over the daemon's
   // delivery router. Registered only when the router is wired; absent, the verb
