@@ -86,6 +86,16 @@ export const FEATURE_SETTINGS_BINDINGS: readonly FeatureSettingsBinding[] = [
   { featureId: 'ntfy-surface', key: 'surfaces.ntfy.enabled', kind: 'constant' },
   { featureId: 'webhook-surface', key: 'surfaces.webhook.enabled', kind: 'constant' },
   { featureId: 'homeassistant-surface', key: 'surfaces.homeassistant.enabled', kind: 'constant' },
+  { featureId: 'telegram-surface', key: 'surfaces.telegram.enabled', kind: 'constant' },
+  { featureId: 'whatsapp-surface', key: 'surfaces.whatsapp.enabled', kind: 'constant' },
+  { featureId: 'signal-surface', key: 'surfaces.signal.enabled', kind: 'constant' },
+  { featureId: 'msteams-surface', key: 'surfaces.msteams.enabled', kind: 'constant' },
+  { featureId: 'matrix-surface', key: 'surfaces.matrix.enabled', kind: 'constant' },
+  { featureId: 'mattermost-surface', key: 'surfaces.mattermost.enabled', kind: 'constant' },
+  { featureId: 'imessage-surface', key: 'surfaces.imessage.enabled', kind: 'constant' },
+  { featureId: 'bluebubbles-surface', key: 'surfaces.bluebubbles.enabled', kind: 'constant' },
+  { featureId: 'google-chat-surface', key: 'surfaces.googleChat.enabled', kind: 'constant' },
+  { featureId: 'telephony-surface', key: 'surfaces.telephony.enabled', kind: 'constant' },
   { featureId: 'web-surface', key: 'web.enabled', kind: 'boolean' },
   { featureId: 'watcher-framework', key: 'watchers.enabled', kind: 'boolean' },
   { featureId: 'service-management', key: 'service.enabled', kind: 'boolean' },
@@ -101,6 +111,23 @@ const BINDINGS_BY_ID: ReadonlyMap<string, FeatureSettingsBinding> = new Map(
 
 export function getFeatureSettingsBinding(featureId: string): FeatureSettingsBinding | null {
   return BINDINGS_BY_ID.get(featureId) ?? null;
+}
+
+/**
+ * Registry-membership check: composition fails LOUDLY when a gate id it
+ * references has no FEATURE_SETTINGS binding. This is the defect class where
+ * a never-registered id silently reads as "disabled" forever — no settings
+ * key could ever turn it on, so the gated capability ships dead. Called by
+ * the gates helpers (gates.ts) on every referenced id.
+ */
+export function assertFeatureGateIdRegistered(flagId: string, context: string): void {
+  if (BINDINGS_BY_ID.has(flagId)) return;
+  throw new Error(
+    `[feature-settings] unknown feature gate id "${flagId}" referenced by ${context}: ` +
+    `it is not in FEATURE_SETTINGS, so no setting could ever enable it and the gated ` +
+    `capability would ship dead. Register the flag in flags.ts with a binding in ` +
+    `FEATURE_SETTINGS_BINDINGS, or remove the reference.`,
+  );
 }
 
 /** Derive one feature's state from a settings value per its binding. */

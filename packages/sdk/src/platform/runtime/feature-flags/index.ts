@@ -34,6 +34,7 @@ export {
   FEATURE_SETTINGS,
   FEATURE_SETTINGS_BINDINGS,
   getFeatureSettingsBinding,
+  assertFeatureGateIdRegistered,
   deriveFeatureState,
   deriveFeatureStates,
   bindFeatureSettingsBridge,
