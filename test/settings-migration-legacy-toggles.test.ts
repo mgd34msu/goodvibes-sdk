@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { migrateLegacyFeatureToggles } from '../packages/sdk/src/platform/config/migrations.js';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../packages/sdk/src/platform/runtime/feature-announcements.js';
 
 const tmpRoots: string[] = [];
 afterEach(() => {
@@ -177,6 +178,30 @@ describe('ConfigManager.load() — invisible migration on first start', () => {
     manager2.load();
     expect(manager2.get('behavior.hitlMode')).toBe('off');
     expect(migrateLegacyFeatureToggles(onDisk).migrated).toBe(false);
+  });
+
+  test('the migration receipt reaches the surface-delivery queue exactly once — not only the activity log', () => {
+    const root = mkdtempSync(join(tmpdir(), 'gv-legacy-migration-receipt-'));
+    tmpRoots.push(root);
+    const configDir = join(root, 'config');
+    writeConfig(configDir, { featureFlags: { 'hitl-ux-modes': 'disabled' } });
+
+    const manager = new ConfigManager({ configDir });
+    manager.load();
+
+    // The receipt sits in the announce-once pending queue the consuming
+    // status receipts read drains at attach.
+    const store = new FeatureAnnouncementStore(featureAnnouncementsPath(manager));
+    const pending = store.drainPending();
+    const receipt = pending.find((entry) => entry.id.startsWith('settings-migration-feature-toggles:'));
+    expect(receipt).toBeDefined();
+    expect(receipt!.text).toContain('Settings migrated');
+    expect(receipt!.text).toContain('behavior.hitlMode');
+
+    // Exactly once: a second load of the already-migrated file queues nothing.
+    const manager2 = new ConfigManager({ configDir });
+    manager2.load();
+    expect(new FeatureAnnouncementStore(featureAnnouncementsPath(manager2)).drainPending()).toEqual([]);
   });
 
   test('a fresh config without legacy keys loads untouched', () => {

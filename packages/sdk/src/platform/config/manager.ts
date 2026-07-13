@@ -10,6 +10,7 @@ import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { toRecord } from '../utils/record-coerce.js';
+import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
 import { migrateDangerDaemonAlias, migrateLegacyFeatureToggles } from './migrations.js';
 import {
   SHARED_CONFIG_KEYS,
@@ -590,9 +591,20 @@ export class ConfigManager {
       logger.warn(`Settings migration could not be persisted to ${sourcePath}: ${summarizeError(err)}`);
     }
     const keyList = result.changedKeys.length > 0 ? result.changedKeys.join(', ') : 'no value changes';
-    logger.info(
-      `Settings migrated: legacy featureFlags entries now live on their domain settings keys (${keyList}) in ${sourcePath}.`,
-    );
+    const receiptText = `Settings migrated: legacy featureFlags entries now live on their domain settings keys (${keyList}) in ${sourcePath}.`;
+    logger.info(receiptText);
+    // The migration receipt reaches surfaces, not only the activity log: it
+    // rides the announce-once pending queue the consuming status receipts
+    // read drains at attach — exactly once per migrated file (the id is
+    // per-source-path, matching the migration's own exactly-once semantics).
+    try {
+      new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(
+        `settings-migration-feature-toggles:${sourcePath}`,
+        receiptText,
+      );
+    } catch (err) {
+      logger.warn(`Settings-migration receipt could not be queued: ${summarizeError(err)}`);
+    }
     if (result.unknownIds.length > 0) {
       logger.warn(`Settings migration dropped unknown legacy entries: ${result.unknownIds.join(', ')} (${sourcePath}).`);
     }
