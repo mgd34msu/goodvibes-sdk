@@ -13,7 +13,7 @@
  *   with bounded retention through the existing retention engine
  *   (RetentionPolicy + SnapshotPruner deleting real files).
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, utimesSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -72,6 +72,18 @@ export function snapshotStoreFile(
     if (existsSync(`${dbPath}${sidecar}`)) {
       copyFileSync(`${dbPath}${sidecar}`, `${snapshotPath}${sidecar}`);
     }
+  }
+  // Stamp the snapshot's mtime with its LOGICAL creation time: listStoreSnapshots
+  // reads createdAt from the filesystem mtime while the scheduler dedups on the
+  // injectable clock, so under an injected time the wall-clock mtime would make
+  // the day-boundary comparison misfire. A no-op in production (now IS the wall
+  // clock); under injection the two clocks agree. Stamping failure is non-fatal —
+  // the copy is already safe, only dedup precision degrades.
+  try {
+    const atSeconds = at / 1000;
+    utimesSync(snapshotPath, atSeconds, atSeconds);
+  } catch (error) {
+    logger.warn('store snapshot mtime stamp failed', { snapshotPath, error: summarizeError(error) });
   }
   logger.info('store snapshot written', { store: basename(dbPath), reason, snapshotPath });
   return snapshotPath;

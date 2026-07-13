@@ -252,7 +252,11 @@ function findAutomationJob(context: DaemonRuntimeRouteContext, id: string) {
 function handleGetAutomationJobs(context: DaemonRuntimeRouteContext, url: URL | undefined): Response {
   const jobs = context.automationManager.listJobs();
   if (!url || !hasPaginationParams(url)) {
-    return Response.json({ jobs });
+    // While automation is enabled with zero routines, the response carries
+    // the how-to-create-your-first-routine empty state so surfaces render a
+    // usable starting point instead of a bare empty list.
+    const emptyState = jobs.length === 0 ? context.automationEmptyState?.() ?? null : null;
+    return Response.json({ jobs, ...(emptyState ? { emptyState } : {}) });
   }
   const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), DEFAULT_AUTOMATION_LIST_LIMIT, MAX_AUTOMATION_LIST_LIMIT);
   const rawCursor = url.searchParams.get('cursor');

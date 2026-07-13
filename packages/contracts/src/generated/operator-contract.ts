@@ -7537,6 +7537,22 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 ],
                 "additionalProperties": true
               }
+            },
+            "emptyState": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "body"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [

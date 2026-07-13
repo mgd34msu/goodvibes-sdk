@@ -240,6 +240,42 @@ describe('daily snapshots with bounded retention', () => {
     scheduler.stop();
   }));
 
+  test('dedup runs on the LOGICAL clock: injected same-day times never double-snapshot, a logical day later does', async () => withScratch(async (dir) => {
+    const dbPath = join(dir, 'store.sqlite');
+    writeFileSync(dbPath, 'state-bytes');
+    // An injected clock deliberately NOT the wall clock, anchored early on
+    // the SAME real calendar day (the consumer's failing scenario): the
+    // snapshot's mtime is stamped with the LOGICAL creation time, so the
+    // day-boundary comparison sees the injected clock, never the real
+    // filesystem time. (Kept near today so the default retention policy —
+    // which runs on the real clock — never prunes the fresh snapshot.)
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 30, 0, 0);
+    let logicalNow = startOfToday.getTime();
+    const scheduler = new StoreSnapshotScheduler({
+      stores: [{ name: 'store', dbPath }],
+      now: () => logicalNow,
+      setTimer: () => 0 as unknown as ReturnType<typeof setTimeout>,
+      clearTimer: () => {},
+    });
+
+    await scheduler.tick();
+    expect(listStoreSnapshots(dbPath).filter((s) => s.reason === 'daily')).toHaveLength(1);
+    // The persisted createdAt IS the logical time (stamped, not wall-clock).
+    expect(Math.abs(listStoreSnapshots(dbPath)[0]!.createdAt - logicalNow)).toBeLessThan(1000);
+
+    // Same logical day, hours later: no second snapshot.
+    logicalNow += 6 * 60 * 60 * 1000;
+    await scheduler.tick();
+    expect(listStoreSnapshots(dbPath).filter((s) => s.reason === 'daily')).toHaveLength(1);
+
+    // A full logical day later: the sweep takes a fresh one.
+    logicalNow += 24 * 60 * 60 * 1000;
+    await scheduler.tick();
+    expect(listStoreSnapshots(dbPath).filter((s) => s.reason === 'daily')).toHaveLength(2);
+    scheduler.stop();
+  }));
+
   test('retention stays bounded: old daily snapshots are pruned from disk', async () => withScratch(async (dir) => {
     const dbPath = join(dir, 'store.sqlite');
     writeFileSync(dbPath, 'state-bytes');

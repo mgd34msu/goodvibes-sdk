@@ -2,6 +2,7 @@ import type { ConfigManager } from '../../config/manager.js';
 import type { ServiceRegistry } from '../../config/service-registry.js';
 import { isValidConfigKey } from '../../config/schema.js';
 import { createCredentialStatusProvider } from '../../config/credential-status.js';
+import { buildAutomationEmptyState } from '../../runtime/feature-announcements.js';
 import type { UserAuthManager } from '../../security/user-auth.js';
 import { buildOperatorSessionCookie, OPERATOR_SESSION_COOKIE_NAME } from '../../security/http-auth.js';
 import type { AgentManager } from '../../tools/agent/index.js';
@@ -527,10 +528,9 @@ export class DaemonHttpRouter {
         recordApiResponse: (request, path, response) => this.recordApiResponse(request, path, response),
         requireAdmin: (request) => this.context.requireAdmin(request),
         sessionBroker: buildRouterSessionBrokerAdapter(this.context.sessionBroker),
-        agentManager: {
-          getStatus: (agentId) => this.context.agentManager.getStatus(agentId),
-          cancel: (agentId) => this.context.agentManager.cancel(agentId),
-        },
+        agentManager: { getStatus: (agentId) => this.context.agentManager.getStatus(agentId), cancel: (agentId) => this.context.agentManager.cancel(agentId) },
+        // SDK-owned empty-state copy, served while automation is enabled with zero routines (see feature-announcements).
+        automationEmptyState: () => buildAutomationEmptyState({ enabled: this.getConfigValue('automation.enabled') === true, routineCount: this.context.automationManager.listJobs().length }),
         automationManager: {
           listJobs: () => this.context.automationManager.listJobs(),
           listRuns: () => this.context.automationManager.listRuns(),

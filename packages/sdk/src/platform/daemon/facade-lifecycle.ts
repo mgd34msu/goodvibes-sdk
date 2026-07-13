@@ -17,6 +17,7 @@ import type { ConfigManager } from '../config/manager.js';
 import type { PlatformServiceManager } from './service-manager.js';
 import { DaemonAutoUpdater } from './auto-updater.js';
 import { DaemonReceiptStore, formatReceiptTime } from './receipts.js';
+import { FeatureAnnouncementStore, collectStartupAnnouncements, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
 import { recordDaemonCleanShutdown, recordDaemonStart } from './lifecycle-marker.js';
 import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
 
@@ -122,9 +123,25 @@ export class DaemonLifecycleRuntime {
    * Undelivered receipts for a consuming /status read (`?receipts=consume`);
    * marked delivered once served. The route only calls this when the reader
    * passed the explicit flag — plain status reads are receipt-neutral.
+   *
+   * Fired announce-once feature lines (web surface URL, first contained run)
+   * ride the same exactly-once feed: they are drained from the announcement
+   * store's pending queue here, so a surface reading receipts at attach
+   * renders them instead of them dead-ending in the daemon log.
    */
   collectReceipts(): readonly { id: string; text: string; at: number }[] {
-    return this.receiptStore().consumeUndelivered().map(({ id, text, at }) => ({ id, text, at }));
+    const receipts = this.receiptStore().consumeUndelivered().map(({ id, text, at }) => ({ id, text, at }));
+    const announcements = this.announcementStore().drainPending().map(({ id, text, at }) => ({
+      id: `announcement-${id}`,
+      text,
+      at,
+    }));
+    return [...receipts, ...announcements];
+  }
+
+  /** The shared announce-once store (same file the runtime's announcers write). */
+  private announcementStore(): FeatureAnnouncementStore {
+    return new FeatureAnnouncementStore(featureAnnouncementsPath(this.options.configManager));
   }
 
   /**
@@ -140,6 +157,20 @@ export class DaemonLifecycleRuntime {
       }
     } catch (error) {
       logger.warn('DaemonServer: could not record the lifecycle marker', { error: summarizeError(error) });
+    }
+    // Announce-once lines due at daemon start (e.g. the web surface URL):
+    // recorded here for EVERY daemon construction path (CLI, boot factory,
+    // embedded). Each fired line is logged AND queued for surface delivery
+    // through the consuming /status receipts read.
+    try {
+      for (const announcement of collectStartupAnnouncements({
+        configManager: this.options.configManager,
+        store: this.announcementStore(),
+      })) {
+        logger.info(announcement.text, { announcement: announcement.id });
+      }
+    } catch (error) {
+      logger.warn('DaemonServer: startup announcements could not be collected', { error: summarizeError(error) });
     }
     this.startAutoUpdater();
   }
