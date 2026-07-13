@@ -152,6 +152,7 @@ export const runtimeConfigDefaults = {
     pollIntervalMs: 60_000,
     heartbeatIntervalMs: 15_000,
     recoveryWindowMinutes: 10,
+    ciPollIntervalMs: 60_000,
   },
   service: {
     enabled: true,
@@ -477,6 +478,13 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     default: 15_000,
     description: 'Heartbeat interval for watcher services in milliseconds',
     ...intRange(1_000, 60 * 60 * 1000),
+  },
+  {
+    key: 'watchers.ciPollIntervalMs',
+    type: 'number',
+    default: 60_000,
+    description: 'Cadence (ms) for the daemon\'s recurring CI-watch poll; the poller enforces a 15s floor to respect the status source\'s rate limits',
+    ...intRange(1_000, 24 * 60 * 60 * 1000),
   },
   {
     key: 'watchers.recoveryWindowMinutes',

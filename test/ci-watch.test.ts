@@ -97,10 +97,24 @@ describe('CiWatchService', () => {
     expect(briefs[0]!.failingJobs).toEqual(['build']);
     expect(briefs[0]!.logs).toContain('logs for build');
 
-    // Second check, same terminal verdict -> no duplicate notification.
-    const second = await service.checkWatch(watch.id);
-    expect(second.notified).toBe(false);
+    // The verdict was delivered — the watch's job is done: it RETIRES, which
+    // is the strongest form of never-notify-twice.
+    expect(first.retired).toBe(true);
+    expect(await service.listWatches()).toHaveLength(0);
+    await expect(service.checkWatch(watch.id)).rejects.toThrow(/No CI watch/);
     expect(notes).toHaveLength(1);
+  });
+
+  test('without a notifier the verdict is NOT delivered, so the watch stays (honest fire-once)', async () => {
+    const service = new CiWatchService({
+      source: fakeSource([job('build', 'failure')]),
+      store: new CiWatchStore(':memory:'),
+    });
+    const watch = await service.createWatch({ repo: 'o/r', ref: 'main', deliveryChannel: 'slack' });
+    const result = await service.checkWatch(watch.id);
+    expect(result.notified).toBe(false);
+    expect(result.retired).toBeUndefined();
+    expect(await service.listWatches()).toHaveLength(1);
   });
 
   test('a watch that did NOT opt in never starts a fix-session, even on failure', async () => {

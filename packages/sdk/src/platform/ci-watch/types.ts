@@ -91,6 +91,14 @@ export interface FixSessionBrief {
 /** Starts a fix-session pre-briefed with the failing jobs' context; returns a session/job id. */
 export type FixSessionStarter = (brief: FixSessionBrief) => Promise<string | undefined>;
 
+/**
+ * The "fix this?" offer for a red run on a watch that did NOT opt into
+ * auto-start: surfaced through the approval/attention machinery (wired at the
+ * composition root to the approval broker). Resolves true when the operator
+ * accepts — the service then starts the fix-session with the SAME brief.
+ */
+export type FixSessionOffer = (brief: FixSessionBrief) => Promise<boolean>;
+
 /** Delivers a channel notification; returns a delivery id when known. */
 export type CiNotifier = (channel: string, title: string, body: string) => Promise<string | undefined>;
 
