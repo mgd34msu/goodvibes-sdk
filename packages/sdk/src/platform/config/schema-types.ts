@@ -53,6 +53,12 @@ export interface NotificationsConfig {
   pushNeedsInput: boolean;
   /** Device-push fan-out for finished tracked runs (task/turn completion). ON by default. */
   pushCompletion: boolean;
+  /** Grace (ms) a block waits for a human before a device push escalates past an attached surface. */
+  blockedEscalationGraceMs: number;
+  /** Interval (ms) between bounded follow-up reminders after the first blocked-too-long escalation. */
+  blockedEscalationFollowUpMs: number;
+  /** Upper bound on follow-up reminders after the first escalation (0 = escalate once). */
+  blockedEscalationMaxFollowUps: number;
 }
 
 export interface TtsConfig {
@@ -814,6 +820,9 @@ export type ConfigKey =
   | 'notifications.pushApproval'
   | 'notifications.pushNeedsInput'
   | 'notifications.pushCompletion'
+  | 'notifications.blockedEscalationGraceMs'
+  | 'notifications.blockedEscalationFollowUpMs'
+  | 'notifications.blockedEscalationMaxFollowUps'
   | 'fetch.sanitizeMode'
   | 'fetch.trustedHosts'
   | 'fetch.blockedHosts'
@@ -1175,6 +1184,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'notifications.pushApproval' ? boolean :
   K extends 'notifications.pushNeedsInput' ? boolean :
   K extends 'notifications.pushCompletion' ? boolean :
+  K extends 'notifications.blockedEscalationGraceMs' ? number :
+  K extends 'notifications.blockedEscalationFollowUpMs' ? number :
+  K extends 'notifications.blockedEscalationMaxFollowUps' ? number :
   K extends 'fetch.sanitizeMode' ? 'none' | 'safe-text' | 'strict' :
   K extends 'fetch.trustedHosts' ? string :
   K extends 'fetch.blockedHosts' ? string :

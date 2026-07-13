@@ -167,6 +167,9 @@ export const coreConfigDefaults = {
     pushApproval: true,
     pushNeedsInput: true,
     pushCompletion: true,
+    blockedEscalationGraceMs: 5 * 60 * 1000,
+    blockedEscalationFollowUpMs: 5 * 60 * 1000,
+    blockedEscalationMaxFollowUps: 2,
   },
 };
 

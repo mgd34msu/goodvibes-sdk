@@ -132,6 +132,7 @@ import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
 import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
 import {
+  DEFAULT_PUSH_ESCALATION,
   PushService,
   PushSubscriptionStore,
   VapidManager,
@@ -529,6 +530,21 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
           ? 'notifications.pushNeedsInput'
           : 'notifications.pushCompletion';
       return (deps.configManager?.get as unknown as ((k: string) => unknown) | undefined)?.(key) !== false;
+    },
+    // Blocked-too-long escalation policy, read LIVE at each block so a config
+    // change takes effect for the next block without a restart. An escalated
+    // push fires regardless of an attached surface once the grace elapses.
+    escalation: () => {
+      const read = deps.configManager?.get as unknown as ((k: string) => unknown) | undefined;
+      const num = (key: string, fallback: number): number => {
+        const value = read?.(key);
+        return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+      };
+      return {
+        blockedGraceMs: num('notifications.blockedEscalationGraceMs', DEFAULT_PUSH_ESCALATION.blockedGraceMs),
+        followUpIntervalMs: num('notifications.blockedEscalationFollowUpMs', DEFAULT_PUSH_ESCALATION.followUpIntervalMs),
+        maxFollowUps: num('notifications.blockedEscalationMaxFollowUps', DEFAULT_PUSH_ESCALATION.maxFollowUps),
+      };
     },
   });
   // Relay WebAuthn step-up ceremony verbs (register a credential, mint a

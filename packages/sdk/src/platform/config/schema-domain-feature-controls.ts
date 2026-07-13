@@ -189,4 +189,28 @@ export const featureControlSettings: ConfigSetting[] = [
     description:
       'Device-push fan-out for the completion class: a tracked run reaching a terminal state (done/failed/killed) pushes to every paired push target. On by default with zero setup; the toggle only silences. Read live per event.',
   },
+  {
+    key: 'notifications.blockedEscalationGraceMs',
+    type: 'number',
+    default: 5 * 60 * 1000,
+    description:
+      'How long a fleet node blocked on the operator may wait for a HUMAN response before a device push is sent REGARDLESS of an attached surface. Presence (an open TUI, a heartbeat) suppresses only the immediate push, never this escalation — a process being attended is not a human answer. A real interaction that clears the block cancels the escalation. Read live when a block is first tracked.',
+    ...intRange(0, 24 * 60 * 60 * 1000),
+  },
+  {
+    key: 'notifications.blockedEscalationFollowUpMs',
+    type: 'number',
+    default: 5 * 60 * 1000,
+    description:
+      'Interval between the bounded follow-up reminders that fire after the first blocked-too-long escalation, while the block remains unanswered. Read live per reminder.',
+    ...intRange(0, 24 * 60 * 60 * 1000),
+  },
+  {
+    key: 'notifications.blockedEscalationMaxFollowUps',
+    type: 'number',
+    default: 2,
+    description:
+      'Upper bound on follow-up reminders after the first blocked-too-long escalation (0 = escalate exactly once, no reminders). Keeps a long-unanswered block from becoming an unbounded stream of pushes.',
+    ...intRange(0, 100),
+  },
 ];
