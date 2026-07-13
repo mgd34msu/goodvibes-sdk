@@ -53,7 +53,13 @@ export function snapshotStoreFile(
   const at = (options.now ?? Date.now)();
   const dir = storeSnapshotDir(dbPath);
   mkdirSync(dir, { recursive: true });
-  const snapshotPath = join(dir, `${timestampSlug(at)}.${reason}${SNAPSHOT_SUFFIX}`);
+  // Timestamp slugs are millisecond-granular: two snapshots requested within
+  // the same millisecond (fast successive sweeps on tmpfs) must not silently
+  // overwrite each other — uniquify instead of clobbering.
+  let snapshotPath = join(dir, `${timestampSlug(at)}.${reason}${SNAPSHOT_SUFFIX}`);
+  for (let counter = 1; existsSync(snapshotPath); counter += 1) {
+    snapshotPath = join(dir, `${timestampSlug(at)}-${counter}.${reason}${SNAPSHOT_SUFFIX}`);
+  }
   copyFileSync(dbPath, snapshotPath);
   for (const sidecar of ['-wal', '-shm']) {
     if (existsSync(`${dbPath}${sidecar}`)) {
