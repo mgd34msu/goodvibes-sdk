@@ -4,6 +4,54 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+### Added
+
+- **Model pricing is tracked, current, and actually used.** One pricing
+  resolver per (provider, model): a user-set manual price
+  (`pricing.modelPrices` config key, applied live) always wins, then a
+  registration-supplied price on custom providers/models, then the
+  provider's own machine-readable pricing (OpenRouter, aihubmix, and the
+  Vercel AI gateway serve rates in their /models payloads — fetched on the
+  same 24h TTL discipline as model lists, cache read/write rates included),
+  then the models.dev catalog entry for that exact provider+model (dated),
+  then honest UNKNOWN — never $0, never inferred-free. `costUsdCents` (plus
+  a `costSource` stamp) is now computed from actuals at every
+  LLM_RESPONSE_RECEIVED emit site; `priceUsage`, the cost-attribution verbs,
+  and orchestration dollar budgets all price through the same resolver, so a
+  dollar budget triggers on ANY resolvable model's actuals and reports its
+  unpriced blind spot.
+- **Approval decisions persist and generalize; deny is feedback.** Every ask
+  carries remember-tier options (exact command / command class / edits under
+  a path / whole tool / session). A generalizing decision writes a durable
+  user-origin rule consulted before ever prompting (and folded into the
+  policy engine); rules survive restart and are listable/deletable via the
+  new `permissions.rules.list` / `permissions.rules.delete` verbs. Duplicate
+  in-flight asks coalesce to one prompt; a remembered decision sweeps queued
+  asks it covers. A denial resolves the tool call with the structured
+  user-declined result — including the user's optional reason — in a
+  continuing turn.
+- **One request-time credential chain with live re-registration.** Provider
+  keys resolve env → secrets store → subscription accounts; writing,
+  rotating, or deleting a secret re-registers the affected providers in the
+  same process (no restart anywhere). Every provider must declare its
+  credential authority at registration (fail-closed, like the model-source
+  contract), and provider-account `recommendedActions` are now structured
+  `{ description, command? }` objects a surface can execute directly.
+- **Public export paths for consumer-vendored modules:**
+  `platform/runtime/feature-announcements`,
+  `platform/runtime/permissions/localhost-fetch-approval`, and the shared
+  bare-model-id resolver via `platform/providers`.
+
+### Fixed
+
+- Absent-from-catalog models no longer look free: the models.dev transform
+  kept a missing cost as null instead of coercing to $0 (catalog cache
+  bumped to v2 so stale zero-coerced caches refetch).
+- Two store snapshots requested within the same millisecond no longer
+  overwrite each other (filenames uniquify).
+
 ## [1.7.1] - 2026-07-11
 
 **1.7.0 broke local-provider discovery in production. Consumers on 1.7.0 should

@@ -74,6 +74,35 @@ catalog (for example `stepfun`, `together`, `deepseek`, `fireworks`,
 likewise reported by `GET /api/models`. The `synthetic` provider is local and
 needs no API key. A few native voice and media providers (such as the `microsoft` voice provider) are also enumerated by the same endpoint. Treat `GET /api/models` as the authoritative, live source.
 
+## Model pricing
+
+Every (provider, model) pair resolves through ONE pricing resolver
+(`ProviderRegistry.resolveModelPricing`), with this precedence:
+
+1. **Your manual price** — the `pricing.modelPrices` config key, keyed
+   `provider:model`, rates in USD per 1M tokens
+   (`{ input, output, cacheRead?, cacheWrite? }`). Always wins when present
+   (negotiated or self-hosted rates outrank every catalog) and applies live —
+   no restart.
+2. **Registration-supplied price** — a custom provider/model file may carry an
+   optional `pricing` block per model. Omitting it means the price is UNKNOWN
+   (not free).
+3. **The provider's own machine-readable pricing** — OpenRouter, aihubmix, and
+   the Vercel AI gateway serve rates in their /models payloads; fetched on the
+   same 24h TTL discipline as model lists, cache read/write rates included,
+   and stamped with the fetch date. A failed refresh degrades to the cached
+   rates with their date — never to zero.
+4. **The models.dev catalog entry** for that exact provider+model, dated.
+5. **Honest UNKNOWN** — a distinct state. Unpriced usage is reported as
+   unpriced ("N tokens unpriced"), never as $0; subscription surfaces resolve
+   as `subscription` with no fake per-token price.
+
+The resolved price carries its source (`'user' | 'provider' | 'catalog'` with
+an as-of date, or `unknown`/`subscription`), so surfaces can render "your
+price" vs "catalog price, as of <date>". Cost actuals (`costUsdCents` +
+`costSource` on `LLM_RESPONSE_RECEIVED`), the cost-attribution verbs, and
+orchestration dollar budgets all compute from this same resolver.
+
 ## Related
 
 - [Provider & Model API Reference](./provider-model-api.md)

@@ -65,6 +65,20 @@ and other daemon-owned integration credentials.
 Store secret refs in config; store the secret values in the backing secret
 provider.
 
+## Live provider credentials
+
+Provider API keys resolve through one request-time chain: environment
+variable → secrets store → subscription accounts. Writing, rotating, or
+deleting a key in the secrets store re-registers the affected providers in
+the same process (`SecretsManager.onDidChange` →
+`ProviderRegistry.refreshProviderCredentials()`), so a provider becomes
+usable the moment its key is stored — no restart anywhere. Status badges,
+the model picker, and chat all read the same refreshed provider instances,
+so status can never be green while chat fails auth. Every registered
+provider must declare how its credentials are obtained
+(`credentialAuthority: 'resolver' | 'anonymous' | 'subscription' | 'oauth'`);
+registration is refused otherwise.
+
 ## Related
 
 This page is the canonical reference for the secret sources and `goodvibes://` URI syntax. For how secret refs and the `SecretsManager` storage layers fit the daemon security model, see [Security Best Practices](./security.md).
