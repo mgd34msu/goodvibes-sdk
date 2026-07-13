@@ -168,4 +168,25 @@ export const featureControlSettings: ConfigSetting[] = [
       'Cooldown (ms) after a domain:level group trips the burst detector before it can trip again. Applied at NotificationRouter construction.',
     ...intRange(0, 60 * 60 * 1000),
   },
+  {
+    key: 'notifications.pushApproval',
+    type: 'boolean',
+    default: true,
+    description:
+      'Device-push fan-out for the approval class: a pending approval pushes to every paired push target. On by default — the toggle exists to silence the class, never as a prerequisite for it to work. Read live per event.',
+  },
+  {
+    key: 'notifications.pushNeedsInput',
+    type: 'boolean',
+    default: true,
+    description:
+      'Device-push fan-out for the needs-input class: a fleet node blocked on the operator pushes to every paired push target (presence-suppressed when a surface is attached). On by default; the toggle only silences. Read live per event.',
+  },
+  {
+    key: 'notifications.pushCompletion',
+    type: 'boolean',
+    default: true,
+    description:
+      'Device-push fan-out for the completion class: a tracked run reaching a terminal state (done/failed/killed) pushes to every paired push target. On by default with zero setup; the toggle only silences. Read live per event.',
+  },
 ];

@@ -47,6 +47,12 @@ export interface NotificationsConfig {
   burstThreshold: number;
   /** Cooldown (ms) after a burst before a domain:level group can trip again. */
   burstCooldownMs: number;
+  /** Device-push fan-out for pending approvals. ON by default; a toggle to silence, never a working prerequisite. */
+  pushApproval: boolean;
+  /** Device-push fan-out for fleet nodes blocked on the operator. ON by default. */
+  pushNeedsInput: boolean;
+  /** Device-push fan-out for finished tracked runs (task/turn completion). ON by default. */
+  pushCompletion: boolean;
 }
 
 export interface TtsConfig {
@@ -802,6 +808,9 @@ export type ConfigKey =
   | 'notifications.burstWindowMs'
   | 'notifications.burstThreshold'
   | 'notifications.burstCooldownMs'
+  | 'notifications.pushApproval'
+  | 'notifications.pushNeedsInput'
+  | 'notifications.pushCompletion'
   | 'fetch.sanitizeMode'
   | 'fetch.trustedHosts'
   | 'fetch.blockedHosts'
@@ -1159,6 +1168,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'notifications.burstWindowMs' ? number :
   K extends 'notifications.burstThreshold' ? number :
   K extends 'notifications.burstCooldownMs' ? number :
+  K extends 'notifications.pushApproval' ? boolean :
+  K extends 'notifications.pushNeedsInput' ? boolean :
+  K extends 'notifications.pushCompletion' ? boolean :
   K extends 'fetch.sanitizeMode' ? 'none' | 'safe-text' | 'strict' :
   K extends 'fetch.trustedHosts' ? string :
   K extends 'fetch.blockedHosts' ? string :

@@ -164,6 +164,9 @@ export const coreConfigDefaults = {
     burstWindowMs: 1_000,
     burstThreshold: 3,
     burstCooldownMs: 3_000,
+    pushApproval: true,
+    pushNeedsInput: true,
+    pushCompletion: true,
   },
 };
 
