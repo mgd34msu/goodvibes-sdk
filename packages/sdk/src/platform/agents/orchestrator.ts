@@ -138,6 +138,13 @@ type AgentOrchestratorToolDeps = {
   readonly localhostFetchApproval?: ((input: { url: string; host: string }) => Promise<boolean>) | undefined;
   /** Reports each contained (sandboxed) command run for the announce-once containment receipt. */
   readonly onSandboxedRun?: (() => void) | undefined;
+  /**
+   * Broker an exec PTY terminal-prompt answer through the approval broker
+   * while the command keeps running. Threaded to registerAllTools so the exec
+   * tool can answer prompts (host-key confirmations, credential asks) instead
+   * of hanging to timeout. Omitted → the PTY path is not engaged.
+   */
+  readonly execPromptAnswerHandler?: ((ask: import('../tools/exec/interactive.js').ExecPromptAsk) => Promise<import('../tools/exec/interactive.js').ExecPromptAnswer>) | undefined;
 };
 
 /**

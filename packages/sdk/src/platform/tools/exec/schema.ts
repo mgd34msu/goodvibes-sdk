@@ -124,6 +124,14 @@ export const EXEC_TOOL_SCHEMA = {
               'Stream stdout lines to a pollable progress file at .goodvibes/.overflow/{id}-progress.txt.'
               + ' Auto-enabled when timeout_ms > 30000. The result includes a progress_file path.',
           },
+          interactive: {
+            type: 'boolean',
+            description:
+              'Run under a PTY so terminal prompts (host-key confirmations, credential asks) can be'
+              + ' detected and answered instead of hanging. Auto-engages for prompt-prone commands'
+              + ' (ssh/scp/sftp/sudo/su/passwd) when a PTY backend is available; set false to force the'
+              + ' plain pipe path. PTY output merges stderr into stdout (result notes pty: true).',
+          },
         },
         // cmd or cmd_base64 required — validated at runtime
       },
@@ -270,6 +278,12 @@ export interface ExecCommandInput {
   until?: ExecUntil | undefined;
   /** Stream stdout to a pollable progress file. Auto-enabled when timeout_ms > 30000. */
   progress?: boolean | undefined;
+  /**
+   * Run under a PTY with the prompt-answer path (see exec/interactive.ts).
+   * true forces it (when the host has a PTY backend), false forces the plain
+   * pipe path, undefined auto-engages for prompt-prone base commands only.
+   */
+  interactive?: boolean | undefined;
 }
 
 export interface ExecInput {
@@ -339,6 +353,22 @@ export interface ExecCommandResult {
   sandbox_network?: 'disabled' | 'enabled' | 'unknown' | undefined;
   /** Named host-access escalations granted to this sandboxed run (network, writable extras). */
   sandbox_escalations?: string[] | undefined;
+  /**
+   * Whether this command ran under the PTY prompt-answer path. Present only on
+   * interactive runs; the PTY merges stderr into stdout, so `stdout` carries
+   * the full terminal transcript and `stderr` is empty.
+   */
+  pty?: boolean | undefined;
+  /** Number of terminal prompts answered through the approval machinery. */
+  prompts_answered?: number | undefined;
+  /**
+   * The detected-but-unanswered terminal prompt at the moment the run ended
+   * (timeout, decline, or cancellation) — the honest diagnosis of what the
+   * child was waiting on.
+   */
+  pending_prompt?: string | undefined;
+  /** Set when the surfaced prompt ask was declined and the run was stopped. */
+  prompt_declined?: boolean | undefined;
 }
 
 // BackgroundProcess is defined in shared/process-manager and re-exported here for consumers of this schema module.

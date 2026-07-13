@@ -24,6 +24,11 @@ import {
   brokerSandboxEscalation,
   type ExecSandboxRuntime,
 } from './sandbox.js';
+import {
+  shouldRunInteractive,
+  runInteractiveCommand,
+  type ExecInteractionRuntime,
+} from './interactive.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const PROGRESS_AUTO_THRESHOLD_MS = 30_000;
@@ -253,6 +258,7 @@ async function runCommand(
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
   sandbox: ExecSandboxRuntime | null,
+  interaction: ExecInteractionRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   // Class risk (kill/rm/docker/sudo…) is the permission layer's decision and
@@ -305,6 +311,17 @@ async function runCommand(
     return withheldEnv.length > 0 ? { ...withMeta, withheld_env: withheldEnv } : withMeta;
   };
   const startTime = Date.now();
+
+  // PTY prompt-answer path: prompt-prone or explicitly-interactive commands
+  // run under a PTY nested INSIDE the sandbox argv (the boundary, when active,
+  // wraps the PTY allocation). Detected prompts ride the approval machinery
+  // via the interaction seam; the runner + detection live in interactive.ts.
+  if (shouldRunInteractive(interaction, cmdInput, cmdStr)) {
+    return attachWithheld(await runInteractiveCommand({
+      cmdStr, cwd, env: mergedEnv, timeoutMs, startTime, sandboxArgv,
+      interaction: interaction!, signal,
+    }));
+  }
 
   // Cooperative cancellation is wired for the foreground and
   // progress-streamed paths (the common cases — progress auto-engages once
@@ -713,10 +730,11 @@ async function runWithRetry(
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
   sandbox: ExecSandboxRuntime | null,
+  interaction: ExecInteractionRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   if (!cmdInput.retry) {
-    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
+    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
   }
 
   const maxRetries = Math.min(cmdInput.retry.max ?? 3, 10);
@@ -727,7 +745,7 @@ async function runWithRetry(
   let lastResult: ExecCommandResult | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
+    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
     if (lastResult.success) {
       return { ...lastResult, retries: attempt };
     }
@@ -756,6 +774,7 @@ async function executeResolvedCommand(
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
   sandbox: ExecSandboxRuntime | null,
+  interaction: ExecInteractionRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   const bgSpecial = handleBgSpecialCommand(processManager, cmdStr);
@@ -768,7 +787,7 @@ async function executeResolvedCommand(
     // detached process when this tool call ends, defeating the detach.
     return spawnBackground(processManager, cmdStr, resolveCwd(cmdInput.cwd, workingDirectory), cmdInput.env, scrub);
   }
-  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
+  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
 }
 
 async function executeResolvedCommands(
@@ -782,6 +801,7 @@ async function executeResolvedCommands(
   failFast: boolean,
   scrub: ResolvedCredentialEnvScrub,
   sandbox: ExecSandboxRuntime | null,
+  interaction: ExecInteractionRuntime | null,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult[]> {
   if (parallel) {
@@ -789,7 +809,7 @@ async function executeResolvedCommands(
       resolvedCmds,
       MAX_PARALLEL_EXEC_COMMANDS,
       ({ cmdStr, cmdInput }) =>
-        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal),
+        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal),
     );
   }
 
@@ -801,7 +821,7 @@ async function executeResolvedCommands(
       continue;
     }
 
-    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, signal);
+    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
     results.push(result);
     if (failFast && !result.success) {
       stopped = true;
@@ -835,6 +855,8 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         ...(result.progress_file && { progress_file: result.progress_file }),
         ...(result.warnings && { warnings: result.warnings }),
         ...(result.withheld_env && result.withheld_env.length > 0 && { withheld_env: result.withheld_env }),
+        ...(result.pending_prompt && { pending_prompt: result.pending_prompt }),
+        ...(result.prompt_declined && { prompt_declined: true }),
       };
     }
     case 'verbose':
@@ -857,6 +879,10 @@ function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Reco
         ...(result.progress_file && { progress_file: result.progress_file }),
         ...(result.warnings && { warnings: result.warnings }),
         ...(result.withheld_env && result.withheld_env.length > 0 && { withheld_env: result.withheld_env }),
+        ...(result.pty && { pty: true }),
+        ...(result.prompts_answered !== undefined && { prompts_answered: result.prompts_answered }),
+        ...(result.pending_prompt && { pending_prompt: result.pending_prompt }),
+        ...(result.prompt_declined && { prompt_declined: true }),
       };
   }
 }
@@ -890,6 +916,13 @@ export function createExecTool(
      * inactive → every command runs the unchanged non-sandboxed path.
      */
     readonly sandbox?: ExecSandboxRuntime | null | undefined;
+    /**
+     * PTY prompt-answer wiring. When present AND the host has a PTY backend,
+     * prompt-prone / explicitly-interactive commands run under a PTY and
+     * detected prompts ride the approval machinery through its seam. Omitted
+     * or unavailable → every command runs the unchanged pipe-based path.
+     */
+    readonly interaction?: ExecInteractionRuntime | null | undefined;
   } = {},
 ): Tool {
   if (!options.overflowHandler) {
@@ -899,6 +932,7 @@ export function createExecTool(
   const featureFlags = options.featureFlags ?? null;
   const credentialEnvScrub = resolveCredentialEnvScrub(options.credentialEnvScrub);
   const sandbox = options.sandbox ?? null;
+  const interaction = options.interaction ?? null;
 
   return {
     definition: {
@@ -960,6 +994,7 @@ export function createExecTool(
           failFast,
           credentialEnvScrub,
           sandbox,
+          interaction,
           opts?.signal,
         );
         const formatted = results.map((r) => formatResult(r, verbosity));

@@ -69,6 +69,7 @@ import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
 import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
 import { buildSandboxEscalationHandler } from './permissions/sandbox-escalation-wiring.js';
+import { buildExecPromptAnswerHandler } from './permissions/exec-prompt-wiring.js';
 import { buildLocalhostFetchApproval } from './permissions/localhost-fetch-approval.js';
 import { applyProviderOptimizerConfigMode, bindProviderOptimizerFeatureFlag } from './provider-optimizer-wiring.js';
 import {
@@ -739,6 +740,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     configManager,
     featureFlags,
   });
+  // An exec command blocked on a terminal prompt (host-key confirmation,
+  // credential ask) rides the same broker: the pending prompt surfaces through
+  // every surface's approval machinery and the typed answer feeds the same
+  // continuing run. (Wiring lives in permissions/exec-prompt-wiring.ts.)
+  const execPromptAnswerHandler = buildExecPromptAnswerHandler({
+    requestApproval: (input) => approvalBroker.requestApproval(input),
+  });
   // Localhost dev-server fetches ride the same broker: ask once, one-tap
   // "allow for this project", persisted as fetch.allowLocalhost.
   const localhostFetchApproval = buildLocalhostFetchApproval({
@@ -753,6 +761,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   agentOrchestrator.setDependencies({
     sandboxEscalationHandler,
+    execPromptAnswerHandler,
     localhostFetchApproval,
     onSandboxedRun,
     permissionManager: backgroundPermissionManager,
