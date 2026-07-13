@@ -948,6 +948,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "fixSessionId": {
                   "type": "string"
                 },
+                "fixSessionError": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1452,6 +1455,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "fixSessionId": {
                   "type": "string"
                 },
+                "fixSessionError": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1948,6 +1954,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "additionalProperties": false
                 },
                 "fixSessionId": {
+                  "type": "string"
+                },
+                "fixSessionError": {
                   "type": "string"
                 },
                 "metadata": {
@@ -2465,6 +2474,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "additionalProperties": false
                 },
                 "fixSessionId": {
+                  "type": "string"
+                },
+                "fixSessionError": {
                   "type": "string"
                 },
                 "metadata": {
@@ -3088,6 +3100,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "additionalProperties": false
                   },
                   "fixSessionId": {
+                    "type": "string"
+                  },
+                  "fixSessionError": {
                     "type": "string"
                   },
                   "metadata": {
@@ -24204,6 +24219,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "fixSessionId": {
               "type": "string"
+            },
+            "fixSessionError": {
+              "type": "string"
+            },
+            "fixSessionOffered": {
+              "type": "boolean"
+            },
+            "retired": {
+              "type": "boolean"
             }
           },
           "required": [

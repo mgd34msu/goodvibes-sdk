@@ -48,7 +48,8 @@ import type { AutomationManager } from '../../automation/index.js';
 import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
-import { CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief } from '../../ci-watch/index.js';
+import { CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief, type FixSessionStartOutcome } from '../../ci-watch/index.js';
+import { summarizeError } from '../../utils/error-display.js';
 import { randomUUID } from 'node:crypto';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../../permissions/prompt.js';
 import { logger } from '../../utils/logger.js';
@@ -76,11 +77,24 @@ function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
   };
 }
 
-/** Start a one-shot fix-session (an isolated automation job) pre-briefed with the failing CI jobs. */
-async function startCiFixSession(
-  automation: Pick<AutomationManager, 'createJob'>,
+/**
+ * Start a one-shot fix-session pre-briefed with the failing CI jobs, and
+ * return the REAL spawned session's id — the id session attach/resume
+ * resolves. The automation job id ('auto-…') is a scheduling handle no
+ * attach can resolve and must never be surfaced as the fix session; this is
+ * pinned by test (job-id vs session-id confusion).
+ *
+ * Mechanics: the job is created DISABLED (the scheduler can never race a
+ * second run) and executed immediately via runNow, whose returned run
+ * carries the spawned ids. The job targets a pinned FRESH shared session
+ * (never the operator's own preferred session), so the fix work lives in a
+ * real attachable session with the spawned agent bound to it. A start that
+ * produces no attachable session is an honest error outcome, never a dead id.
+ */
+export async function startCiFixSession(
+  automation: Pick<AutomationManager, 'createJob' | 'runNow'>,
   brief: FixSessionBrief,
-): Promise<string | undefined> {
+): Promise<FixSessionStartOutcome> {
   const target = brief.prNumber !== undefined ? `PR #${brief.prNumber}` : (brief.ref ?? 'the default branch');
   const prompt = [
     `CI failed for ${brief.repo} (${target}).`,
@@ -95,14 +109,22 @@ async function startCiFixSession(
       name: `Fix CI: ${brief.repo}`,
       prompt,
       schedule: { kind: 'at', at: Date.now() },
-      target: { kind: 'isolated', createIfMissing: true },
-      enabled: true,
+      target: {
+        kind: 'main',
+        sessionId: `ci-fix-${randomUUID().slice(0, 10)}`,
+        surfaceKind: 'service',
+        createIfMissing: true,
+      },
+      enabled: false,
       deleteAfterRun: true,
     });
-    return job.id;
-  } catch {
-    // Automation subsystem disabled — the fix-session cannot start this round.
-    return undefined;
+    const run = await automation.runNow(job.id);
+    if (run.sessionId) return { sessionId: run.sessionId };
+    return { error: `the fix run started without an attachable session (run ${run.id}, status ${run.status})` };
+  } catch (error) {
+    // Automation subsystem disabled, concurrency ceiling, or spawn failure —
+    // the honest failure travels instead of a dead id.
+    return { error: summarizeError(error) };
   }
 }
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
@@ -134,7 +156,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * narrower compositions — the id then travels only via the channel
    * notification.
    */
-  readonly stampFixSessionOnApproval?: ((offerCallId: string, fixSessionId: string) => Promise<unknown>) | undefined;
+  readonly stampFixSessionOnApproval?: ((offerCallId: string, outcome: FixSessionStartOutcome) => Promise<unknown>) | undefined;
   /**
    * Optional: raise an ask through the shared approval broker. When present,
    * a watched CI run going red produces a "fix this?" offer whose acceptance
@@ -195,7 +217,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly channelDeliveryRouter?: Pick<ChannelDeliveryRouter, 'deliver'> | undefined;
   readonly providerRegistry?: ProviderRegistry | undefined;
   readonly automationManager?:
-    | Pick<AutomationManager, 'listJobs' | 'createJob' | 'updateJob' | 'setEnabled' | 'attachCheckinEvaluator' | 'listRuns'>
+    | Pick<AutomationManager, 'listJobs' | 'createJob' | 'updateJob' | 'setEnabled' | 'attachCheckinEvaluator' | 'listRuns' | 'runNow'>
     | undefined;
   /** A read-only session lister for the check-in briefing (the full SharedSessionBroker satisfies it). */
   readonly sessionLister?: { listSessions(limit?: number): readonly CheckinSessionView[] } | undefined;

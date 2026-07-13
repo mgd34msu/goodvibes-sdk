@@ -742,6 +742,9 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
         "fixSessionId": {
           "type": "string"
         },
+        "fixSessionError": {
+          "type": "string"
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -1250,6 +1253,9 @@ Cancel a pending approval.
         "fixSessionId": {
           "type": "string"
         },
+        "fixSessionError": {
+          "type": "string"
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -1750,6 +1756,9 @@ Claim a pending approval for operator handling.
           "additionalProperties": false
         },
         "fixSessionId": {
+          "type": "string"
+        },
+        "fixSessionError": {
           "type": "string"
         },
         "metadata": {
@@ -2271,6 +2280,9 @@ Deny a pending approval. rememberTier generalizes the denial (a generalizing tie
           "additionalProperties": false
         },
         "fixSessionId": {
+          "type": "string"
+        },
+        "fixSessionError": {
           "type": "string"
         },
         "metadata": {
@@ -2898,6 +2910,9 @@ Return pending and historical approval records.
             "additionalProperties": false
           },
           "fixSessionId": {
+            "type": "string"
+          },
+          "fixSessionError": {
             "type": "string"
           },
           "metadata": {
@@ -24390,6 +24405,15 @@ Poll a standing watch immediately: returns the per-job report, whether a complet
     },
     "fixSessionId": {
       "type": "string"
+    },
+    "fixSessionError": {
+      "type": "string"
+    },
+    "fixSessionOffered": {
+      "type": "boolean"
+    },
+    "retired": {
+      "type": "boolean"
     }
   },
   "required": [

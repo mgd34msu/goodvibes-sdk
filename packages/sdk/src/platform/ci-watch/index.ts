@@ -33,5 +33,7 @@ export {
   type CiNotifier,
   type FixSessionBrief,
   type FixSessionOffer,
+  type FixSessionOfferOutcome,
+  type FixSessionStartOutcome,
   type FixSessionStarter,
 } from './types.js';

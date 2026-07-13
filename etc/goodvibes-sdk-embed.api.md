@@ -82,7 +82,11 @@ export class ApprovalBroker {
     //
     // (undocumented)
     setPublisher(publisher: ApprovalPublisher | null): void;
-    stampFixSession(callId: string, fixSessionId: string): Promise<SharedApprovalRecord | null>;
+    stampFixSession(callId: string, outcome: {
+        readonly sessionId: string;
+    } | {
+        readonly error: string;
+    }): Promise<SharedApprovalRecord | null>;
     // (undocumented)
     start(): Promise<void>;
     // Warning: (ae-forgotten-export) The symbol "ApprovalListener" needs to be exported by the entry point embed.d.ts
@@ -416,8 +420,8 @@ export interface SubmitSharedSessionMessageInput {
 
 // Warnings were encountered during analysis:
 //
-// packages/sdk/src/platform/control-plane/approval-broker.ts:238:7 - (ae-forgotten-export) The symbol "PersistentStore" needs to be exported by the entry point embed.d.ts
-// packages/sdk/src/platform/control-plane/approval-broker.ts:238:7 - (ae-forgotten-export) The symbol "SharedApprovalStoreSnapshot" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/approval-broker.ts:246:7 - (ae-forgotten-export) The symbol "PersistentStore" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/approval-broker.ts:246:7 - (ae-forgotten-export) The symbol "SharedApprovalStoreSnapshot" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:110:5 - (ae-forgotten-export) The symbol "SharedSessionStoreSnapshot" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:112:5 - (ae-forgotten-export) The symbol "RouteBindingManager" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:113:5 - (ae-forgotten-export) The symbol "SharedSessionAgentStatusProvider" needs to be exported by the entry point embed.d.ts

@@ -34,13 +34,21 @@ export interface SharedApprovalRecord {
   readonly resolvedBy?: string | undefined;
   readonly decision?: PermissionPromptDecision | undefined;
   /**
-   * The session an ACCEPTED ask spawned, when acceptance starts one (e.g. the
-   * CI fix-session a "fix this?" offer starts). Stamped after the spawn via
-   * {@link ApprovalBroker.stampFixSession} and published as a record update,
-   * so the surface that accepted — attached right now — gets an in-process
-   * handle to jump to the session. Never present on denied records.
+   * The REAL session an ACCEPTED ask spawned, when acceptance starts one
+   * (e.g. the CI fix-session a "fix this?" offer starts) — always an id
+   * session attach/resume resolves, never a scheduling handle. Stamped at
+   * the moment the session exists via {@link ApprovalBroker.stampFixSession}
+   * and published as a record update, so the surface that accepted —
+   * attached right now — gets an in-process handle to jump to the session.
+   * Never present on denied records; mutually exclusive with fixSessionError.
    */
   readonly fixSessionId?: string | undefined;
+  /**
+   * The honest failure when an accepted ask's spawn did NOT produce an
+   * attachable session — recorded instead of a dead id. Mutually exclusive
+   * with fixSessionId; never present on denied records.
+   */
+  readonly fixSessionError?: string | undefined;
   readonly metadata: Record<string, unknown>;
   readonly audit: readonly SharedApprovalAuditRecord[];
 }
@@ -376,21 +384,37 @@ export class ApprovalBroker {
   }
 
   /**
-   * Stamp the session an ACCEPTED ask spawned (e.g. the CI fix-session an
+   * Stamp the outcome of an ACCEPTED ask's spawn (e.g. the CI fix-session an
    * accepted "fix this?" offer started) onto the resolved approval record for
    * `callId`, and publish the update so already-attached subscribers see the
    * record change live. This is deliberately the broker seam, not the receipts
    * queue: receipts deliver at the NEXT attach, but the accepting surface is
    * attached right now and needs an in-process handle to open the session.
-   * Returns the updated record, or null when no APPROVED record with that
-   * callId exists — a denied offer is never stamped.
+   *
+   * The success outcome carries the REAL spawned session id (attach/resume-
+   * resolvable — never a scheduling handle); the failure outcome records the
+   * honest error instead of a dead id. Returns the updated record, or null
+   * when no APPROVED record with that callId exists — a denied offer is
+   * never stamped.
    */
-  async stampFixSession(callId: string, fixSessionId: string): Promise<SharedApprovalRecord | null> {
+  async stampFixSession(
+    callId: string,
+    outcome: { readonly sessionId: string } | { readonly error: string },
+  ): Promise<SharedApprovalRecord | null> {
     await this.start();
     const existing = [...this.approvals.values()].find((approval) => approval.callId === callId);
     if (!existing || existing.status !== 'approved') return null;
-    if (existing.fixSessionId === fixSessionId) return existing;
-    const updated: SharedApprovalRecord = { ...existing, fixSessionId, updatedAt: Date.now() };
+    const patch: Pick<SharedApprovalRecord, 'fixSessionId' | 'fixSessionError'> = 'sessionId' in outcome
+      ? { fixSessionId: outcome.sessionId, fixSessionError: undefined }
+      : { fixSessionId: undefined, fixSessionError: outcome.error };
+    if (existing.fixSessionId === patch.fixSessionId && existing.fixSessionError === patch.fixSessionError) {
+      return existing;
+    }
+    const updated: SharedApprovalRecord = {
+      ...existing,
+      ...('sessionId' in outcome ? { fixSessionId: outcome.sessionId } : { fixSessionError: outcome.error }),
+      updatedAt: Date.now(),
+    };
     this.approvals.set(updated.id, updated);
     await this.persist();
     this.publish(updated);

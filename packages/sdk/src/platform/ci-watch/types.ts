@@ -88,8 +88,18 @@ export interface FixSessionBrief {
   readonly logs: string;
 }
 
-/** Starts a fix-session pre-briefed with the failing jobs' context; returns a session/job id. */
-export type FixSessionStarter = (brief: FixSessionBrief) => Promise<string | undefined>;
+/**
+ * The starter's outcome: the REAL spawned session's id (the id session
+ * attach/resume resolves — never a scheduling handle like an automation job
+ * id), or the honest failure. The legacy bare string/undefined forms remain
+ * accepted and are normalized by the service.
+ */
+export type FixSessionStartOutcome =
+  | { readonly sessionId: string }
+  | { readonly error: string };
+
+/** Starts a fix-session pre-briefed with the failing jobs' context. */
+export type FixSessionStarter = (brief: FixSessionBrief) => Promise<FixSessionStartOutcome | string | undefined>;
 
 /**
  * The offer's outcome. The object form carries the approval ask's callId so

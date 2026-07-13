@@ -140,6 +140,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -223,6 +224,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -306,6 +308,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -389,6 +392,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -493,6 +497,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "modifiedArgs": {}
           },
           "fixSessionId": "sample",
+          "fixSessionError": "sample",
           "metadata": {},
           "audit": [
             {
@@ -4208,7 +4213,10 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "notified": false,
       "notificationId": "sample",
       "fixSessionTriggered": false,
-      "fixSessionId": "sample"
+      "fixSessionId": "sample",
+      "fixSessionError": "sample",
+      "fixSessionOffered": false,
+      "retired": false
     }
   },
   "companion.chat.events.stream": {
