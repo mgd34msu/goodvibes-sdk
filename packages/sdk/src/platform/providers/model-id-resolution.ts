@@ -105,6 +105,27 @@ function buildUnknownModelMessage(
 }
 
 /**
+ * Resolve the CONFIGURED model (the `provider.model` key) through the shared
+ * resolver, wrapping any failure with the accepted forms plus a concrete
+ * valid example — never the retired abstract format lecture. Unique bare ids
+ * auto-qualify; ambiguous ids list their real candidate registryKeys;
+ * unknown ids carry closest-match suggestions.
+ */
+export function resolveConfiguredModelKey(
+  configured: string,
+  candidates: readonly ModelIdCandidate[],
+): string {
+  try {
+    return resolveModelReference(configured, candidates);
+  } catch (error) {
+    throw new Error(
+      `provider.model '${configured}' could not be resolved: ${error instanceof Error ? error.message : String(error)} ` +
+        `Accepted forms: a provider-qualified registryKey (e.g. '${candidates[0]?.registryKey ?? 'openrouter:openrouter/free'}') or a bare model id that is unique across registered providers.`,
+    );
+  }
+}
+
+/**
  * Closest model ids by Levenshtein edit distance, nearest first. No fuzzy-
  * match helper existed anywhere in the SDK before this — this is that small
  * new function, scoped to model-id "did you mean" suggestions.
