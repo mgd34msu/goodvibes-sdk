@@ -35,6 +35,13 @@ export type PushTransport = (
 
 const DEFAULT_TTL_SECONDS = 24 * 60 * 60;
 const GONE_STATUSES = new Set([404, 410]);
+/**
+ * Bounded retries before a dead endpoint that never answers 404/410 is pruned.
+ * A push service that keeps returning 5xx/timeouts is treated as gone once the
+ * consecutive-failure counter crosses this bound, reported as an honest `pruned`
+ * receipt rather than an endless string of `failed`s.
+ */
+export const DELIVERY_FAILURE_PRUNE_THRESHOLD = 5;
 
 function defaultTransport(): PushTransport {
   return async (url, init) => {
@@ -99,13 +106,9 @@ export async function deliverToSubscription(
     });
     httpStatus = result.status;
   } catch (error) {
-    await deps.store.recordOutcome(subscription.id, 'failed');
-    return {
-      subscriptionId: subscription.id,
-      endpointOrigin: origin,
-      outcome: 'failed',
-      detail: `delivery request failed: ${error instanceof Error ? error.message : String(error)}`,
-    };
+    const failures = await deps.store.recordOutcome(subscription.id, 'failed');
+    const reason = `delivery request failed: ${error instanceof Error ? error.message : String(error)}`;
+    return prunedOrFailed(subscription, origin, deps, failures, reason);
   }
 
   if (httpStatus >= 200 && httpStatus < 300) {
@@ -126,13 +129,39 @@ export async function deliverToSubscription(
     };
   }
 
-  await deps.store.recordOutcome(subscription.id, 'failed');
+  const failures = await deps.store.recordOutcome(subscription.id, 'failed');
+  return prunedOrFailed(subscription, origin, deps, failures, `push service returned ${httpStatus}`, httpStatus);
+}
+
+/**
+ * A non-gone delivery failure: report `failed` while the bounded retries remain,
+ * but once the consecutive-failure counter crosses the threshold, prune the
+ * dead endpoint (delete means delete) and report an honest `pruned` receipt.
+ */
+async function prunedOrFailed(
+  subscription: StoredPushSubscription,
+  origin: string,
+  deps: DeliveryDeps,
+  failures: number,
+  reason: string,
+  httpStatus?: number,
+): Promise<PushDeliveryReceipt> {
+  if (failures >= DELIVERY_FAILURE_PRUNE_THRESHOLD) {
+    await deps.store.remove(subscription.id);
+    return {
+      subscriptionId: subscription.id,
+      endpointOrigin: origin,
+      outcome: 'pruned',
+      ...(httpStatus !== undefined ? { httpStatus } : {}),
+      detail: `${reason}; pruned after ${failures} consecutive delivery failures`,
+    };
+  }
   return {
     subscriptionId: subscription.id,
     endpointOrigin: origin,
     outcome: 'failed',
-    httpStatus,
-    detail: `push service returned ${httpStatus}`,
+    ...(httpStatus !== undefined ? { httpStatus } : {}),
+    detail: `${reason} (failure ${failures} of ${DELIVERY_FAILURE_PRUNE_THRESHOLD} before prune)`,
   };
 }
 

@@ -21,7 +21,7 @@ import { readInvocationParams } from './invocation-params.js';
 /** The narrow slice of PushService these verbs need. */
 export type PushGatewayService = Pick<
   PushService,
-  'getPublicKey' | 'subscribe' | 'listSubscriptions' | 'unsubscribe' | 'verify'
+  'getPublicKey' | 'subscribe' | 'reconcile' | 'listSubscriptions' | 'unsubscribe' | 'verify'
 >;
 
 function requirePrincipal(invocation: GatewayMethodInvocation): string {
@@ -68,14 +68,32 @@ function createVapidGetHandler(service: PushGatewayService): GatewayMethodHandle
   return async () => ({ publicKey: await service.getPublicKey() });
 }
 
+function optionalDeviceId(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return requireString(value, 'deviceId');
+}
+
 function createSubscribeHandler(service: PushGatewayService): GatewayMethodHandler {
   return async (invocation) => {
     const principalId = requirePrincipal(invocation);
     const params = readInvocationParams(invocation);
     const endpoint = requireHttpsEndpoint(params.endpoint);
     const keys = requireKeys(params.keys);
-    const subscription = await service.subscribe({ principalId, endpoint, keys });
+    const deviceId = optionalDeviceId(params.deviceId);
+    const subscription = await service.subscribe({ principalId, deviceId, endpoint, keys });
     return { subscription };
+  };
+}
+
+function createReconcileHandler(service: PushGatewayService): GatewayMethodHandler {
+  return async (invocation) => {
+    const principalId = requirePrincipal(invocation);
+    const params = readInvocationParams(invocation);
+    const endpoint = requireHttpsEndpoint(params.endpoint);
+    const keys = requireKeys(params.keys);
+    const deviceId = requireString(params.deviceId, 'deviceId');
+    const { subscription, drift } = await service.reconcile({ principalId, deviceId, endpoint, keys });
+    return { subscription, drift };
   };
 }
 
@@ -115,6 +133,7 @@ function createVerifyHandler(service: PushGatewayService): GatewayMethodHandler 
 const PUSH_HANDLER_FACTORIES: Readonly<Record<string, (service: PushGatewayService) => GatewayMethodHandler>> = {
   'push.vapid.get': createVapidGetHandler,
   'push.subscriptions.create': createSubscribeHandler,
+  'push.subscriptions.reconcile': createReconcileHandler,
   'push.subscriptions.list': createListHandler,
   'push.subscriptions.delete': createDeleteHandler,
   'push.subscriptions.verify': createVerifyHandler,

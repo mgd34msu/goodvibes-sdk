@@ -285,6 +285,7 @@ export const OPERATOR_METHOD_IDS = [
   "push.subscriptions.create",
   "push.subscriptions.delete",
   "push.subscriptions.list",
+  "push.subscriptions.reconcile",
   "push.subscriptions.verify",
   "push.vapid.get",
   "quota.fanout.get",

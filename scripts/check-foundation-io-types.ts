@@ -44,6 +44,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { builtinGatewayControlCompanionMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-companion.ts';
+import { builtinGatewayPushMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-push.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
@@ -204,6 +205,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCompanionMethodDescriptors,
   ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
+  ...builtinGatewayPushMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -377,6 +379,8 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'workspaces.registrations.add', input: WORKSPACES_REGISTRATIONS_ADD_INPUT_SCHEMA, output: WORKSPACES_REGISTRATIONS_ADD_OUTPUT_SCHEMA },
   { methodId: 'workspaces.registrations.remove', input: WORKSPACES_REGISTRATIONS_REMOVE_INPUT_SCHEMA, output: WORKSPACES_REGISTRATIONS_REMOVE_OUTPUT_SCHEMA },
   { methodId: 'workspaces.resolve', input: WORKSPACES_RESOLVE_INPUT_SCHEMA, output: WORKSPACES_RESOLVE_OUTPUT_SCHEMA },
+  // Browser-push reconcile-on-open (device-identity self-heal, drift-reported):
+  { methodId: 'push.subscriptions.reconcile', ...descriptorSchemas('push.subscriptions.reconcile') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 386 total, 353 REST-routed, 33 ws-only invoke.
+ * Methods: 387 total, 353 REST-routed, 34 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1480,6 +1480,7 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "push.subscriptions.create",
   "push.subscriptions.delete",
   "push.subscriptions.list",
+  "push.subscriptions.reconcile",
   "push.subscriptions.verify",
   "push.vapid.get",
   "quota.fanout.get",
@@ -1779,6 +1780,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "push.subscriptions.create": "ws-invoke",
   "push.subscriptions.delete": "ws-invoke",
   "push.subscriptions.list": "ws-invoke",
+  "push.subscriptions.reconcile": "ws-invoke",
   "push.subscriptions.verify": "ws-invoke",
   "push.vapid.get": "ws-invoke",
   "quota.fanout.get": "ws-invoke",
@@ -14697,17 +14699,20 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "keys": {
         "p256dh": "sample",
         "auth": "sample"
-      }
+      },
+      "deviceId": "sample"
     },
     "output": {
       "subscription": {
         "id": "sample",
         "principalId": "sample",
+        "deviceId": "sample",
         "endpointOrigin": "sample",
         "endpointHash": "sample",
         "createdAt": 0,
         "lastDeliveryAt": 0,
-        "lastOutcome": "sample"
+        "lastOutcome": "sample",
+        "consecutiveFailures": 0
       }
     }
   },
@@ -14727,13 +14732,39 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         {
           "id": "sample",
           "principalId": "sample",
+          "deviceId": "sample",
           "endpointOrigin": "sample",
           "endpointHash": "sample",
           "createdAt": 0,
           "lastDeliveryAt": 0,
-          "lastOutcome": "sample"
+          "lastOutcome": "sample",
+          "consecutiveFailures": 0
         }
       ]
+    }
+  },
+  "push.subscriptions.reconcile": {
+    "input": {
+      "deviceId": "sample",
+      "endpoint": "sample",
+      "keys": {
+        "p256dh": "sample",
+        "auth": "sample"
+      }
+    },
+    "output": {
+      "subscription": {
+        "id": "sample",
+        "principalId": "sample",
+        "deviceId": "sample",
+        "endpointOrigin": "sample",
+        "endpointHash": "sample",
+        "createdAt": 0,
+        "lastDeliveryAt": 0,
+        "lastOutcome": "sample",
+        "consecutiveFailures": 0
+      },
+      "drift": "sample"
     }
   },
   "push.subscriptions.verify": {

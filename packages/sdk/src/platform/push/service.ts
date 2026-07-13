@@ -24,6 +24,7 @@ import type {
   PushDeliveryReceipt,
   PushMessage,
   PushNotificationCategory,
+  PushReconcileDrift,
   SubscriptionKeyMaterial,
 } from './types.js';
 
@@ -162,8 +163,16 @@ export interface PushServiceDeps {
 
 export interface SubscribeInput {
   readonly principalId: string;
+  /** Stable device identity; when present the record reconciles on it, not the endpoint. */
+  readonly deviceId?: string | undefined;
   readonly endpoint: string;
   readonly keys: SubscriptionKeyMaterial;
+}
+
+/** The result a reconcile-on-open hands back: the redacted record plus what drifted. */
+export interface ReconcileOutput {
+  readonly subscription: PublicPushSubscription;
+  readonly drift: PushReconcileDrift;
 }
 
 export class PushService {
@@ -201,6 +210,16 @@ export class PushService {
   async subscribe(input: SubscribeInput): Promise<PublicPushSubscription> {
     const record = await this.store.register(input);
     return toPublicSubscription(record);
+  }
+
+  /**
+   * Reconcile-on-open: store the client's CURRENT endpoint/keys for its device
+   * identity, healing a stale record in place, and report what drifted so the
+   * client learns whether the daemon had held an out-of-date endpoint.
+   */
+  async reconcile(input: SubscribeInput): Promise<ReconcileOutput> {
+    const { record, drift } = await this.store.reconcile(input);
+    return { subscription: toPublicSubscription(record), drift };
   }
 
   listSubscriptions(principalId: string): Promise<PublicPushSubscription[]> {

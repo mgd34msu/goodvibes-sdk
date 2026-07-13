@@ -303,6 +303,7 @@ export interface OperatorMethodInputMap {
   "workspaces.resolve": { path: string; mainWorktreeRoot?: string; };
   "worktrees.setup.run": { path: string; };
   "worktrees.snapshot": {  };
+  "push.subscriptions.reconcile": { deviceId: string; endpoint: string; keys: { p256dh: string; auth: string; }; };
 }
 
 export interface OperatorMethodOutputMap {
@@ -595,6 +596,7 @@ export interface OperatorMethodOutputMap {
   "workspaces.resolve": { path: string; status: "covered" | "declined" | "unknown"; coveredBy: null | string; declinedRoot: null | string; viaWorktreeLink: boolean; reason: string; };
   "worktrees.setup.run": { path: string; setup: { state: "failed" | "skipped" | "succeeded"; startedAt: number; completedAt: number; steps: readonly ({ kind: "carry-over" | "command"; label: string; ok: boolean; exitCode?: number; output: string; })[]; error?: string; }; };
   "worktrees.snapshot": { summary: { total: number; active: number; paused: number; kept: number; discard: number; pendingCleanup: number; sessionAttached: number; taskAttached: number; agentOwned: number; orchestratorOwned: number; manualOwned: number; }; records: readonly ({ path: string; kind: "agent" | "manual" | "orchestrator"; state: "active" | "discard" | "kept" | "paused" | "pending-cleanup"; ownerId?: string; sessionId?: string; taskId?: string; setup?: { state: "failed" | "skipped" | "succeeded"; startedAt: number; completedAt: number; steps: readonly ({ kind: "carry-over" | "command"; label: string; ok: boolean; exitCode?: number; output: string; })[]; error?: string; }; updatedAt: number; })[]; };
+  "push.subscriptions.reconcile": { subscription: { id: string; principalId: string; deviceId?: string; endpointOrigin: string; endpointHash: string; createdAt: number; lastDeliveryAt?: number; lastOutcome?: string; consecutiveFailures?: number; }; drift: string; };
 }
 
 export interface OperatorEventPayloadMap {
