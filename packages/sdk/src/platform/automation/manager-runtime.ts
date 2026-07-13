@@ -1,4 +1,5 @@
 import { ConfigManager } from '../config/manager.js';
+import { logger } from '../utils/logger.js';
 import { createDomainDispatch } from '../runtime/store/index.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -67,6 +68,7 @@ import {
   syncAutomationRuntimeSnapshot,
 } from './manager-runtime-sync.js';
 import { reconcileAutomationActiveRuns } from './manager-runtime-reconcile.js';
+import { recordAutomationMissedRun } from './manager-runtime-missed.js';
 import { summarizeError } from '../utils/error-display.js';
 import {
   createAutomationJobRecord,
@@ -148,6 +150,8 @@ export class AutomationManager {
   private running = false;
   private startPromise: Promise<void> | null = null;
   private reconcileTimer: ReturnType<typeof setInterval> | null = null;
+  // Jobs already logged as having no reachable failure-notice target (reported once per job).
+  private readonly warnedDeliveryGapJobs = new Set<string>();
 
   constructor(config: AutomationManagerConfig) {
     this.configManager = config.configManager;
@@ -248,9 +252,7 @@ export class AutomationManager {
           this.reconcileActiveRuns();
         }, 2_000);
         this.reconcileTimer.unref?.();
-        for (const job of this.jobs.values()) {
-          this.scheduleJob(job);
-        }
+        this.reconcileSchedules();
       })
       .finally(() => {
         this.startPromise = null;
@@ -582,7 +584,31 @@ export class AutomationManager {
       activeRunCount: () => this.activeRunCount(),
       maxConcurrentRuns: () => this.maxConcurrentRuns(),
       executeJob: (scheduledJob, trigger, dueRun, attempt) => this.executeJob(scheduledJob, trigger, dueRun, attempt),
+      recordMissedRun: (missedJob, plannedRunAt) => this.recordMissedRun(missedJob, plannedRunAt),
     }, job);
+  }
+
+  private recordMissedRun(job: AutomationJob, plannedRunAt: number): void {
+    recordAutomationMissedRun({
+      runs: this.runs,
+      saveRuns: () => this.saveRuns(),
+      syncRunToRuntime: (run, source) => this.syncRunToRuntime(run, source),
+      deliverFailureNotice: (deliveryJob, run) => this.maybeDeliverFailureNotice(deliveryJob, run),
+      pruneRunHistory: (jobId) => this.pruneRunHistory(jobId),
+    }, job, plannedRunAt);
+  }
+
+  /**
+   * Reconcile every live job's schedule against the wall clock: mint a `missed`
+   * run for any occurrence that slipped past the catch-up window, and (re)arm
+   * each timer. Runs at daemon boot and on the reachability heartbeat so drift
+   * renders as recorded outcomes, not a user chore. Idempotent per occurrence.
+   */
+  reconcileSchedules(): void {
+    if (!this.running) return;
+    for (const job of this.jobs.values()) {
+      this.scheduleJob(job);
+    }
   }
 
   private cancelTimer(jobId: string): void {
@@ -712,7 +738,11 @@ export class AutomationManager {
   }
 
   private maybeDeliverFailureNotice(job: AutomationJob, run: AutomationRun): void {
-    maybeDeliverAutomationFailureNotice(this.deliveryManager, job, run);
+    maybeDeliverAutomationFailureNotice(this.deliveryManager, job, run, (gapJob, gapRun) => {
+      if (this.warnedDeliveryGapJobs.has(gapJob.id)) return;
+      this.warnedDeliveryGapJobs.add(gapJob.id);
+      logger.warn('AutomationManager: failure notice has no delivery target', { jobId: gapJob.id, jobName: gapJob.name, runId: gapRun.id, status: gapRun.status });
+    });
   }
 
   private syncRuntimeSnapshot(): void {

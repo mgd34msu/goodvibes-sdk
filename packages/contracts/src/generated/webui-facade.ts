@@ -3734,7 +3734,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   "automation.runs.list": {
     "input": {
       "limit": 0,
-      "cursor": "sample"
+      "cursor": "sample",
+      "since": 0
     },
     "output": {
       "runs": [

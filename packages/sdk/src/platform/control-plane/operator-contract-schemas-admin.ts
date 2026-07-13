@@ -120,7 +120,7 @@ export const CREDENTIALS_SNAPSHOT_SCHEMA = objectSchema({
 }, ['available', 'credentials']);
 
 const AUTOMATION_JOB_STATUS_SCHEMA = enumSchema(['enabled', 'paused', 'error', 'archived']);
-const AUTOMATION_RUN_STATUS_SCHEMA = enumSchema(['queued', 'running', 'completed', 'failed', 'cancelled']);
+const AUTOMATION_RUN_STATUS_SCHEMA = enumSchema(['queued', 'running', 'completed', 'failed', 'cancelled', 'missed']);
 const AUTOMATION_RUN_TRIGGER_SCHEMA = enumSchema([
   'scheduled',
   'manual',

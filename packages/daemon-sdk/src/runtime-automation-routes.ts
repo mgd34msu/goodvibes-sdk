@@ -268,6 +268,26 @@ function handleGetAutomationJobs(context: DaemonRuntimeRouteContext, url: URL | 
 }
 
 /**
+ * Apply an optional `?since=<epoch-ms>` filter to the run list.
+ *
+ * A run is kept when it was active on or after `since` — queued at/after it, or
+ * ended at/after it (a run that started earlier but finished during the window).
+ * This is the host-side source an away-digest reads to report the runs that
+ * fired, failed, were missed, or delivered since the operator was last present.
+ * An absent or non-numeric `since` leaves the list untouched.
+ */
+function filterRunsSince<T extends { readonly queuedAt: number; readonly endedAt?: number | undefined }>(
+  runs: readonly T[],
+  url: URL | undefined,
+): T[] {
+  const raw = url?.searchParams.get('since');
+  if (raw === null || raw === undefined) return [...runs];
+  const since = Number(raw);
+  if (!Number.isFinite(since)) return [...runs];
+  return runs.filter((run) => run.queuedAt >= since || (run.endedAt !== undefined && run.endedAt >= since));
+}
+
+/**
  * Handle GET /api/automation/runs.
  *
  * Without pagination params (`?limit=` / `?cursor=`): returns `{ runs: [...] }` (backward compat).
@@ -281,7 +301,7 @@ function handleGetAutomationJobs(context: DaemonRuntimeRouteContext, url: URL | 
  * `descending: true` is passed to `paginateItems` for correct recovery.
  */
 function handleGetAutomationRuns(context: DaemonRuntimeRouteContext, url: URL | undefined): Response {
-  const runs = context.automationManager.listRuns();
+  const runs = filterRunsSince(context.automationManager.listRuns(), url);
   if (!url || !hasPaginationParams(url)) {
     return Response.json({ runs });
   }
