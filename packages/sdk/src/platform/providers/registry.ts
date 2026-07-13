@@ -43,7 +43,7 @@ import {
 } from './registry-models.js';
 import { assertProviderModelSource } from './model-source-contract.js';
 import { assertProviderCredentialAuthority } from './credential-authority-contract.js';
-import { resolveModelReference } from './model-id-resolution.js';
+import { resolveConfiguredModelKey, resolveModelReference } from './model-id-resolution.js';
 import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
 import {
   applyProviderNativeModelBaseline, removeProviderNativeModels, sweepLiveModelDiscovery,
@@ -107,8 +107,8 @@ export class ProviderRegistry {
     };
     this.featureFlags = options.featureFlags ?? null;
     this.runtimeBus = options.runtimeBus ?? null;
+    this.registerBuiltins(); // builtins register BEFORE the configured model is read: a bare id resolves against the real registry
     this.currentModelRegistryKey = this.readConfiguredModelRegistryKey();
-    this.registerBuiltins();
   }
 
   private readConfiguredModelRegistryKey(): string {
@@ -116,7 +116,7 @@ export class ProviderRegistry {
     const configuredModel = typeof rawConfiguredModel === 'string' ? rawConfiguredModel.trim() : '';
     if (!configuredModel) return 'openrouter:openrouter/free';
     if (configuredModel.includes(':')) return configuredModel;
-    throw new Error(`provider.model must be a provider-qualified registryKey; received '${configuredModel}'.`);
+    return resolveConfiguredModelKey(configuredModel, this.listModels().map((m) => ({ id: m.id, provider: m.provider, registryKey: m.registryKey })));
   }
 
   private registerBuiltins(resolvedKeys?: Record<string, string>): void {

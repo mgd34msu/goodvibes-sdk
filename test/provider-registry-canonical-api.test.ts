@@ -287,10 +287,24 @@ describe('ProviderRegistry model catalog cache', () => {
     );
   });
 
-  test('configured bare model requires explicit provider identity', () => {
+  test('a configured AMBIGUOUS bare model names the real candidate keys and the accepted forms — never a format lecture', () => {
+    // 'gpt-5.4' exists on several providers' baselines: the construction-time
+    // error routes through the shared resolver, listing the actual candidate
+    // registryKeys plus the accepted forms with a concrete example.
     expect(() => makeRegistry('/tmp/test-registry', { 'provider.model': 'gpt-5.4' })).toThrow(
-      "provider.model must be a provider-qualified registryKey; received 'gpt-5.4'.",
+      /provider\.model 'gpt-5\.4' could not be resolved: Model id 'gpt-5\.4' is ambiguous.*openai:gpt-5\.4.*Accepted forms: a provider-qualified registryKey \(e\.g\. '.+:.+'\)/,
     );
+  });
+
+  test('a configured UNKNOWN bare model gets closest-match suggestions plus a concrete valid example', () => {
+    expect(() => makeRegistry('/tmp/test-registry', { 'provider.model': 'gpt-5x4' })).toThrow(
+      /provider\.model 'gpt-5x4' could not be resolved: Unknown model 'gpt-5x4'\. Did you mean: .+\. Accepted forms/,
+    );
+  });
+
+  test('a configured UNIQUE bare model id auto-qualifies at construction through the shared resolver', () => {
+    const registry = makeRegistry('/tmp/test-registry', { 'provider.model': 'openrouter/free' });
+    expect(registry.getCurrentModel().registryKey).toBe('openrouter:openrouter/free');
   });
 
   // 'gpt-5.4' is a real model id that now appears in more than one provider's
