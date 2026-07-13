@@ -21,6 +21,13 @@ import { RetentionPolicy } from '../runtime/retention/policy.js';
 import { SnapshotPruner } from '../runtime/retention/pruner.js';
 import type { RetentionClass } from '../runtime/retention/types.js';
 
+// Composition surface: a consumer composing the scheduler with its own
+// retention bounds needs the engine pieces this module builds on, so they
+// travel with this entry point instead of forcing a behavioral re-implementation.
+export { RetentionPolicy } from '../runtime/retention/policy.js';
+export { SnapshotPruner } from '../runtime/retention/pruner.js';
+export type { RetentionClass } from '../runtime/retention/types.js';
+
 export const STORE_SNAPSHOT_DIR = 'snapshots';
 const SNAPSHOT_SUFFIX = '.snapshot';
 const DAY_MS = 24 * 60 * 60 * 1000;

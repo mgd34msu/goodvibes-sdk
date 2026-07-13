@@ -15,6 +15,10 @@ import { randomUUID } from 'node:crypto';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../../permissions/prompt.js';
 import type { ExecPromptAsk, ExecPromptAnswer } from '../../tools/exec/interactive.js';
 
+// The ask/answer shapes the handler mediates, re-exported so this entry point
+// is self-sufficient for consumers wiring the seam.
+export type { ExecPromptAsk, ExecPromptAnswer } from '../../tools/exec/interactive.js';
+
 /** The prompt-answer handler the exec tool's interactive runner invokes. */
 export type ExecPromptAnswerHandler = (ask: ExecPromptAsk) => Promise<ExecPromptAnswer>;
 

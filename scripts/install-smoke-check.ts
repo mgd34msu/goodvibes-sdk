@@ -50,6 +50,9 @@ const RUNTIME_OBSERVABILITY_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/obs
 const PROVIDERS_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/providers`;
 const FEATURE_ANNOUNCEMENTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/feature-announcements`;
 const LOCALHOST_FETCH_APPROVAL_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/permissions/localhost-fetch-approval`;
+const EXEC_PROMPT_WIRING_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/permissions/exec-prompt-wiring`;
+const STORE_SNAPSHOTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/state/store-snapshots`;
+const CONTROL_PLANE_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/control-plane`;
 const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
 const smokeScript = `
@@ -72,6 +75,9 @@ const runtimeObservability = await import('${RUNTIME_OBSERVABILITY_ENTRY}');
 const providersEntry = await import('${PROVIDERS_ENTRY}');
 const featureAnnouncements = await import('${FEATURE_ANNOUNCEMENTS_ENTRY}');
 const localhostFetchApproval = await import('${LOCALHOST_FETCH_APPROVAL_ENTRY}');
+const execPromptWiring = await import('${EXEC_PROMPT_WIRING_ENTRY}');
+const storeSnapshots = await import('${STORE_SNAPSHOTS_ENTRY}');
+const controlPlane = await import('${CONTROL_PLANE_ENTRY}');
 const contractsPackage = await import('${CONTRACTS_PACKAGE_NAME}');
 const errorsPackage = await import('${ERRORS_PACKAGE_NAME}');
 const daemonSdkPackage = await import('${DAEMON_SDK_PACKAGE_NAME}');
@@ -99,6 +105,14 @@ if (typeof featureAnnouncements.collectStartupAnnouncements !== 'function') thro
 if (typeof featureAnnouncements.createSandboxContainmentAnnouncer !== 'function') throw new Error('feature-announcements sandbox announcer export missing');
 if (typeof featureAnnouncements.featureAnnouncementsPath !== 'function') throw new Error('feature-announcements path helper export missing');
 if (typeof localhostFetchApproval.buildLocalhostFetchApproval !== 'function') throw new Error('localhost-fetch-approval builder export missing');
+if (typeof execPromptWiring.buildExecPromptAnswerHandler !== 'function') throw new Error('exec-prompt-wiring builder export missing');
+if (typeof storeSnapshots.StoreSnapshotScheduler !== 'function') throw new Error('store-snapshots scheduler export missing');
+if (typeof storeSnapshots.RetentionPolicy !== 'function') throw new Error('store-snapshots RetentionPolicy export missing');
+if (typeof storeSnapshots.SnapshotPruner !== 'function') throw new Error('store-snapshots SnapshotPruner export missing');
+if (typeof storeSnapshots.defaultStoreSnapshotRetention !== 'function') throw new Error('store-snapshots default retention export missing');
+if (typeof controlPlane.buildSharedSessionAgentSpawnRoutingInput !== 'function') throw new Error('control-plane spawn-routing builder export missing');
+if (typeof controlPlane.hasFreshSurfaceParticipant !== 'function') throw new Error('control-plane surface-presence helper export missing');
+if (typeof controlPlane.SURFACE_ROUTE_FRESHNESS_MS !== 'number') throw new Error('control-plane surface freshness window export missing');
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');
