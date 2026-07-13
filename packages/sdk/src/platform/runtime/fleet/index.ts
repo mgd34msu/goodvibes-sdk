@@ -13,6 +13,8 @@ export type {
   ProcessCostState,
   ProcessAttention,
   ProcessAttentionReason,
+  ProcessHeadline,
+  ProcessStallTell,
   ProcessNode,
   FleetSnapshot,
   FleetQueryFilter,
@@ -27,6 +29,13 @@ export {
   DEFAULT_TICK_INTERVAL_MS,
   STEER_TTL_MS,
 } from './registry.js';
+export {
+  HEADLINE_MAX_CHARS,
+  DEFAULT_STALL_TELL_MS,
+  headlineSource,
+  deriveStallTell,
+  HeadlineTable,
+} from './headlines.js';
 export { withFleetArchive } from './archive.js';
 export { attachFleetEmitBridge } from './emit-bridge.js';
 export type { FleetEmitBridgeDeps } from './emit-bridge.js';
