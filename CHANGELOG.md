@@ -216,6 +216,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Fixed
 
+- **Glob matching for scoped rules is built in a single pass, so `**` keeps
+  matching under heavy use.** Path-scope approval rules (an "allow edits under
+  this directory" grant), host/network-scope rules, and the credential-read
+  defaults converted their glob patterns to regexes by round-tripping the `**`
+  wildcard through a placeholder sentinel via repeated global `String.replace`.
+  On engines that let a `/g`-flagged regex carry `lastIndex` state into a later
+  `replace`, the sentinel-restore step could be skipped after many calls,
+  leaving the placeholder in the pattern so a `**` rule silently stopped
+  matching — a directory-scoped approval would then re-ask for a sibling file
+  it had already covered. The conversion now runs as a single forward character
+  scan that holds no state and cannot mis-fire, and the shared matcher's `**/`
+  prefix expansion is fixed as well.
 - **The HTTP approval route forwards the full decision, not just
   note/remember.** `POST /api/approvals/{id}/approve|deny` now carries
   `rememberTier` (tier grants mint durable rules and sweep queued asks they

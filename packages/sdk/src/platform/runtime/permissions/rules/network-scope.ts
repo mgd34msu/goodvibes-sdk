@@ -16,6 +16,7 @@ import {
   type HostTrustTier,
   type TrustTierConfig,
 } from '../../../tools/fetch/trust-tiers.js';
+import { globBodyToRegexSource } from '../../../utils/glob-to-regex.js';
 
 /**
  * Re-export host trust tier types from the network scope module for
@@ -90,12 +91,9 @@ function extractHostAndPort(
  *   - `**` — matches any sequence including dots (crosses subdomain boundaries)
  */
 function hostGlobToRegex(pattern: string): RegExp {
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '\u0001DS\u0001')
-    .replace(/\*/g, '[^.]*')
-    .replace(/\u0001DS\u0001/g, '.*');
-  return new RegExp(`^${escaped}$`, 'i');
+  // `*` matches one non-dot segment; `**` crosses dots. Single forward pass
+  // (see globBodyToRegexSource) — no lastIndex-prone `/g` sentinel round-trip.
+  return new RegExp(`^${globBodyToRegexSource(pattern, '[^.]*', '.*')}$`, 'i');
 }
 
 /**

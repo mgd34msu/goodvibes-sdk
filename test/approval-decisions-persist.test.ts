@@ -17,9 +17,7 @@ import { PermissionManager } from '../packages/sdk/src/platform/permissions/mana
 import type { PermissionConfigReader } from '../packages/sdk/src/platform/permissions/manager.js';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../packages/sdk/src/platform/permissions/prompt.js';
 import { UserPermissionRuleStore } from '../packages/sdk/src/platform/permissions/user-rule-store.js';
-import { buildRememberOptions, matchDurableRules } from '../packages/sdk/src/platform/permissions/approval-rules.js';
-import { evaluatePathScopeRule, extractPathArgs } from '../packages/sdk/src/platform/runtime/permissions/rules/path-scope.js';
-import { normalize as pathNormalize } from 'node:path';
+import { buildRememberOptions } from '../packages/sdk/src/platform/permissions/approval-rules.js';
 import { buildDenialErrorMessage, buildToolDenial } from '../packages/sdk/src/platform/permissions/denial.js';
 import { ApprovalBroker } from '../packages/sdk/src/platform/control-plane/approval-broker.js';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
@@ -135,53 +133,6 @@ describe('durable approval rules', () => {
       const sameDir = await manager.checkDetailed('edit', {
         edits: [{ path: `${WORKSPACE}/src/b.ts`, find: 'x', replace: 'y' }],
       });
-      if (prompts !== 1) {
-        // TEMP CI DIAGNOSTIC — remove after root-causing the CI-only re-ask.
-        const bArgs = { edits: [{ path: `${WORKSPACE}/src/b.ts`, find: 'x', replace: 'y' }] };
-        const rulesNow = store.rules();
-        const directMatch = matchDurableRules(rulesNow, 'edit', bArgs, { projectRoot: WORKSPACE });
-        const pathScopeResults = rulesNow.map((r) =>
-          r.type === 'path-scope' ? evaluatePathScopeRule(r, 'edit', bArgs, WORKSPACE) : { skipped: r.type });
-        // Inline copy of the platform globToRegex to capture the exact regex.
-        const glob = (pattern: string): RegExp => new RegExp('^' + pattern
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*\*/g, ' DOUBLESTAR ')
-          .replace(/\*/g, '[^/]*')
-          .replace(/\?/g, '[^/]')
-          .replace(/ DOUBLESTAR /g, '.*') + '$');
-        const bPath = `${WORKSPACE}/src/b.ts`;
-        const pat = (rulesNow[0]?.type === 'path-scope' ? rulesNow[0].pathPatterns[0] : '') ?? '';
-        const rx = glob(pat);
-        const normB = pathNormalize(bPath);
-        const extracted = extractPathArgs(bArgs);
-        const mkRule = (patterns: string[]) => ({
-          type: 'path-scope' as const, id: 'diag', origin: 'user' as const,
-          effect: 'allow' as const, toolPattern: ['edit', 'write'], pathPatterns: patterns,
-        });
-        const probeExact = evaluatePathScopeRule(mkRule([bPath]), 'edit', bArgs, WORKSPACE).matched;
-        const probeStar = evaluatePathScopeRule(mkRule([`${WORKSPACE}/src/*`]), 'edit', bArgs, WORKSPACE).matched;
-        const probeStarStar = evaluatePathScopeRule(mkRule([`${WORKSPACE}/src/**`]), 'edit', bArgs, WORKSPACE).matched;
-        console.error('[DIAG] same-dir re-ask', JSON.stringify({
-          prompts,
-          firstReason: first.reasonCode,
-          sameDirReason: sameDir.reasonCode,
-          rulesNowCount: rulesNow.length,
-          directMatch,
-          pathScopeMatched: pathScopeResults.map((r) => (r as { matched?: boolean }).matched),
-          regexSource: rx.source,
-          regexTestB_raw: rx.test(bPath),
-          regexTestB_normalized: rx.test(normB),
-          normB,
-          normBEqualsRaw: normB === bPath,
-          extracted,
-          extractedEqualsRaw: extracted.length === 1 && extracted[0] === bPath,
-          probeExact,
-          probeStar,
-          probeStarStar,
-          evalFnSource: evaluatePathScopeRule.toString().slice(0, 1400),
-          tmpdir: tmpdir(),
-        }, null, 2));
-      }
       expect(sameDir.approved).toBe(true);
       expect(prompts).toBe(1);
 
