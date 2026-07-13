@@ -18660,13 +18660,17 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   "workspaces.registrations.add": {
     "input": {
       "root": "sample",
-      "label": "sample"
+      "label": "sample",
+      "origin": "sample",
+      "checkpointEligible": false
     },
     "output": {
       "workspace": {
         "root": "sample",
         "registeredAt": "sample",
-        "label": "sample"
+        "label": "sample",
+        "origin": "sample",
+        "checkpointEligible": false
       },
       "alreadyRegistered": false
     }
@@ -18678,7 +18682,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         {
           "root": "sample",
           "registeredAt": "sample",
-          "label": "sample"
+          "label": "sample",
+          "origin": "sample",
+          "checkpointEligible": false
         }
       ],
       "declines": [

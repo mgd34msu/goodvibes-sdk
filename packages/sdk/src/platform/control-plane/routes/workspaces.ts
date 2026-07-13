@@ -54,8 +54,18 @@ function createAddHandler(service: WorkspacesGatewayService): GatewayMethodHandl
     const params = readInvocationParams(invocation);
     const root = requireString(params.root, 'root');
     const label = optionalString(params.label);
+    // Provenance: which surface/flow wrote the record, and whether this root
+    // is in scope for the automatic checkpoint boundary (absent = false, so
+    // a plain self-recording never widens another consumer's checkpoint scope).
+    const origin = optionalString(params.origin);
+    const checkpointEligible = params.checkpointEligible === true ? true : undefined;
     try {
-      const result = await service.add(root, label !== undefined ? { label } : undefined);
+      const opts = {
+        ...(label !== undefined ? { label } : {}),
+        ...(origin !== undefined ? { origin } : {}),
+        ...(checkpointEligible !== undefined ? { checkpointEligible } : {}),
+      };
+      const result = await service.add(root, Object.keys(opts).length > 0 ? opts : undefined);
       return { workspace: result.record, alreadyRegistered: result.alreadyRegistered };
     } catch (error) {
       rethrowAsVerbError(error);

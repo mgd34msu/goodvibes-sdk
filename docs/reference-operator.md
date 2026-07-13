@@ -87837,6 +87837,12 @@ Register a workspace root so the whole subtree beneath it is covered. Refuses an
     },
     "label": {
       "type": "string"
+    },
+    "origin": {
+      "type": "string"
+    },
+    "checkpointEligible": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -87863,6 +87869,12 @@ Register a workspace root so the whole subtree beneath it is covered. Refuses an
         },
         "label": {
           "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "checkpointEligible": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -87926,6 +87938,12 @@ Return every registered workspace root (coverage flows down each root's subtree)
           },
           "label": {
             "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "checkpointEligible": {
+            "type": "boolean"
           }
         },
         "required": [

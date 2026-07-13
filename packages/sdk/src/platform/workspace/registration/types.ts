@@ -23,6 +23,21 @@ export interface RegisteredWorkspaceRecord {
   readonly registeredAt: string;
   /** Optional human label. */
   readonly label?: string;
+  /**
+   * Which surface/flow wrote this record (e.g. a TUI self-recording, an
+   * operator verb, an agent boot stamp). Absent on records written before
+   * provenance existed — honest absence, never back-filled.
+   */
+  readonly origin?: string;
+  /**
+   * Whether this root is in scope for the automatic checkpoint boundary.
+   * ABSENT MEANS FALSE: one surface's self-recording must never silently
+   * widen another consumer's checkpoint scope. Existing records (including
+   * those migrated from the agent's explicit list, which are not
+   * distinguishable after the fact) default to not-eligible; the consumer
+   * that owns checkpointing re-stamps its own roots on boot.
+   */
+  readonly checkpointEligible?: boolean;
 }
 
 /**

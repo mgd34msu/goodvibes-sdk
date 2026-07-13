@@ -86481,6 +86481,12 @@
             },
             "label": {
               "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "checkpointEligible": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -86502,6 +86508,12 @@
                 },
                 "label": {
                   "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "checkpointEligible": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -86561,6 +86573,12 @@
                   },
                   "label": {
                     "type": "string"
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "checkpointEligible": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

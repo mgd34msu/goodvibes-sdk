@@ -210,6 +210,35 @@ describe('WorkspaceRegistrationStore — persistence + broad-root guard', () => 
     expect((await s.snapshot()).declines).toHaveLength(0);
   });
 
+  test('provenance: origin and checkpointEligible persist; absent means NOT checkpoint-eligible', async () => {
+    const s = store();
+    const stamped = await s.add('/home/dev/proj', { origin: 'agent-boot', checkpointEligible: true });
+    expect(stamped.record.origin).toBe('agent-boot');
+    expect(stamped.record.checkpointEligible).toBe(true);
+
+    // A plain self-recording carries no provenance and is NOT eligible —
+    // one surface's recording must never widen another consumer's checkpoint scope.
+    const plain = await s.add('/home/dev/other');
+    expect(plain.record.origin).toBeUndefined();
+    expect(plain.record.checkpointEligible).toBeUndefined();
+  });
+
+  test('provenance upgrade: re-adding an existing root stamps eligibility; a plain re-add never strips it', async () => {
+    const s = store();
+    // A pre-provenance record (e.g. migrated from the explicit list): no stamp.
+    await s.add('/home/dev/proj');
+    // The checkpoint-owning consumer stamps its root on boot.
+    const upgraded = await s.add('/home/dev/proj', { origin: 'agent-boot', checkpointEligible: true });
+    expect(upgraded.alreadyRegistered).toBe(true);
+    expect(upgraded.record.checkpointEligible).toBe(true);
+    expect(upgraded.record.origin).toBe('agent-boot');
+    // A later plain self-recording of the same root does NOT demote the stamp.
+    const replain = await s.add('/home/dev/proj');
+    expect(replain.record.checkpointEligible).toBe(true);
+    expect(replain.record.origin).toBe('agent-boot');
+    expect((await s.snapshot()).workspaces).toHaveLength(1);
+  });
+
   test('remove returns an honest boolean', async () => {
     const s = store();
     await s.add('/home/dev/proj');

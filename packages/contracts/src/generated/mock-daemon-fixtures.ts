@@ -16279,7 +16279,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "workspace": {
         "root": "sample",
         "registeredAt": "sample",
-        "label": "sample"
+        "label": "sample",
+        "origin": "sample",
+        "checkpointEligible": false
       },
       "alreadyRegistered": false
     }
@@ -16296,7 +16298,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         {
           "root": "sample",
           "registeredAt": "sample",
-          "label": "sample"
+          "label": "sample",
+          "origin": "sample",
+          "checkpointEligible": false
         }
       ],
       "declines": [
