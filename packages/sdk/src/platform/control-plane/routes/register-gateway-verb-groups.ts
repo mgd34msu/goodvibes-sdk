@@ -51,6 +51,7 @@ import { registerCiGatewayMethods } from './ci.js';
 import { CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief } from '../../ci-watch/index.js';
 import { randomUUID } from 'node:crypto';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../../permissions/prompt.js';
+import { logger } from '../../utils/logger.js';
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
 import { registerRuntimeMetricsGatewayMethods } from './runtime-metrics.js';
 import { registerStepUpGatewayMethods, type StepUpGatewayService } from './stepup.js';
@@ -368,12 +369,23 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // The daemon polls registered watches on the watchers.ciPollIntervalMs
   // cadence (15s floor, sequential passes, overlap-guarded) via the existing
   // watcher-registry polling machinery — a standing watch no longer stands
-  // still until someone runs the manual verb.
-  if (deps.watcherRegistry) {
+  // still until someone runs the manual verb. When the watcher framework is
+  // turned off (watchers.enabled false) the poll is honestly skipped: the
+  // manual ci.watches.run verb still works, so nothing is silently faked.
+  const watchersEnabled = (deps.configManager.get as unknown as (k: string) => unknown)('watchers.enabled') !== false;
+  if (deps.watcherRegistry && watchersEnabled) {
     const configuredCadence = (deps.configManager.get as unknown as (k: string) => unknown)('watchers.ciPollIntervalMs');
-    registerCiWatchPolling(deps.watcherRegistry, ciWatchService, {
-      ...(typeof configuredCadence === 'number' ? { intervalMs: configuredCadence } : {}),
-    });
+    try {
+      registerCiWatchPolling(deps.watcherRegistry, ciWatchService, {
+        ...(typeof configuredCadence === 'number' ? { intervalMs: configuredCadence } : {}),
+      });
+    } catch (error) {
+      // A gated/refusing watcher registry must never fail daemon composition —
+      // CI watches degrade to the manual verb, stated honestly in the log.
+      logger.warn('[ci-watch] recurring poll not registered; watches run via the manual verb only', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   // channels.test.send — live per-channel test-message probe over the daemon's
