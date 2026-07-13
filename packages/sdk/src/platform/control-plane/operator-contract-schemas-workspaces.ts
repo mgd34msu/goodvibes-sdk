@@ -22,6 +22,14 @@ const REGISTERED_WORKSPACE_SCHEMA = objectSchema(
     root: STRING_SCHEMA,
     registeredAt: STRING_SCHEMA,
     label: STRING_SCHEMA,
+    // Provenance: which surface/flow wrote the record. Absent on records
+    // written before provenance existed.
+    origin: STRING_SCHEMA,
+    // Whether this root is in scope for the automatic checkpoint boundary.
+    // ABSENT MEANS FALSE: a plain self-recording never widens another
+    // consumer's checkpoint scope; the checkpoint-owning consumer stamps its
+    // own roots (re-adding an existing root with this flag upgrades it).
+    checkpointEligible: BOOLEAN_SCHEMA,
   },
   ['root', 'registeredAt'],
 );
@@ -49,6 +57,8 @@ export const WORKSPACES_REGISTRATIONS_ADD_INPUT_SCHEMA = objectSchema(
   {
     root: STRING_SCHEMA,
     label: STRING_SCHEMA,
+    origin: STRING_SCHEMA,
+    checkpointEligible: BOOLEAN_SCHEMA,
   },
   ['root'],
 );

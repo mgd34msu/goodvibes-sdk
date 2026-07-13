@@ -86483,6 +86483,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "label": {
               "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "checkpointEligible": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -86504,6 +86510,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "label": {
                   "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "checkpointEligible": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -86563,6 +86575,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "label": {
                     "type": "string"
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "checkpointEligible": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

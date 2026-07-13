@@ -87,17 +87,47 @@ export class WorkspaceRegistrationStore {
     return { workspaces: state.workspaces, declines: state.declines };
   }
 
-  /** Register a root, refusing an empty or absurdly broad one. Idempotent on the normalized root. */
-  async add(root: string, opts?: { readonly label?: string }): Promise<RegisterWorkspaceResult> {
+  /**
+   * Register a root, refusing an empty or absurdly broad one. Idempotent on
+   * the normalized root — but provenance UPGRADES: re-adding an existing root
+   * with `origin`/`checkpointEligible` stamps those fields (this is how the
+   * checkpoint-owning consumer marks its roots on boot, including records
+   * migrated before provenance existed). Absent options never strip an
+   * existing stamp — one surface's plain self-recording cannot demote another
+   * consumer's eligibility.
+   */
+  async add(
+    root: string,
+    opts?: { readonly label?: string; readonly origin?: string; readonly checkpointEligible?: boolean },
+  ): Promise<RegisterWorkspaceResult> {
     const target = this.requireRegistrableRoot(root);
     const state = await this.read();
     const existing = state.workspaces.find((w) => w.root === target);
-    if (existing) return { record: existing, alreadyRegistered: true };
+    if (existing) {
+      const origin = opts?.origin?.trim();
+      const wantsUpgrade =
+        (origin !== undefined && origin !== '' && existing.origin !== origin)
+        || (opts?.checkpointEligible === true && existing.checkpointEligible !== true);
+      if (!wantsUpgrade) return { record: existing, alreadyRegistered: true };
+      const upgraded: RegisteredWorkspaceRecord = {
+        ...existing,
+        ...(origin ? { origin } : {}),
+        ...(opts?.checkpointEligible === true ? { checkpointEligible: true } : {}),
+      };
+      await this.store.persist({
+        version: 1,
+        workspaces: state.workspaces.map((w) => (w.root === target ? upgraded : w)),
+        declines: state.declines,
+      });
+      return { record: upgraded, alreadyRegistered: true };
+    }
 
     const record: RegisteredWorkspaceRecord = {
       root: target,
       registeredAt: new Date().toISOString(),
       ...(opts?.label?.trim() ? { label: opts.label.trim() } : {}),
+      ...(opts?.origin?.trim() ? { origin: opts.origin.trim() } : {}),
+      ...(opts?.checkpointEligible === true ? { checkpointEligible: true } : {}),
     };
     // Registering a root clears any remembered decline at exactly that root.
     const declines = state.declines.filter((d) => d.root !== target);

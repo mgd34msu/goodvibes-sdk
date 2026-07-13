@@ -4802,6 +4802,8 @@ export interface OperatorMethodInputMap {
     "workspaces.registrations.add": {
         root: string;
         label?: string;
+        origin?: string;
+        checkpointEligible?: boolean;
     };
     // (undocumented)
     "workspaces.registrations.list": {};
@@ -14959,6 +14961,8 @@ export interface OperatorMethodOutputMap {
             root: string;
             registeredAt: string;
             label?: string;
+            origin?: string;
+            checkpointEligible?: boolean;
         };
         alreadyRegistered: boolean;
     };
@@ -14968,6 +14972,8 @@ export interface OperatorMethodOutputMap {
             root: string;
             registeredAt: string;
             label?: string;
+            origin?: string;
+            checkpointEligible?: boolean;
         })[];
         declines: readonly ({
             root: string;
