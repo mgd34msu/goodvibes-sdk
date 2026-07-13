@@ -739,6 +739,9 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
           ],
           "additionalProperties": false
         },
+        "fixSessionId": {
+          "type": "string"
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -1244,6 +1247,9 @@ Cancel a pending approval.
           ],
           "additionalProperties": false
         },
+        "fixSessionId": {
+          "type": "string"
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -1742,6 +1748,9 @@ Claim a pending approval for operator handling.
             "approved"
           ],
           "additionalProperties": false
+        },
+        "fixSessionId": {
+          "type": "string"
         },
         "metadata": {
           "type": "object",
@@ -2260,6 +2269,9 @@ Deny a pending approval. rememberTier generalizes the denial (a generalizing tie
             "approved"
           ],
           "additionalProperties": false
+        },
+        "fixSessionId": {
+          "type": "string"
         },
         "metadata": {
           "type": "object",
@@ -2884,6 +2896,9 @@ Return pending and historical approval records.
               "approved"
             ],
             "additionalProperties": false
+          },
+          "fixSessionId": {
+            "type": "string"
           },
           "metadata": {
             "type": "object",

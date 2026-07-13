@@ -50,6 +50,11 @@ export const SHARED_APPROVAL_RECORD_SCHEMA = objectSchema({
   resolvedAt: NUMBER_SCHEMA,
   resolvedBy: STRING_SCHEMA,
   decision: PERMISSION_PROMPT_DECISION_SCHEMA,
+  // The session an ACCEPTED ask spawned, when acceptance starts one (e.g.
+  // the CI fix-session a "fix this?" offer starts) — stamped after the spawn
+  // and published as a record update so an attached surface can open the
+  // session live. Never present on denied records.
+  fixSessionId: STRING_SCHEMA,
   metadata: METADATA_SCHEMA,
   audit: arraySchema(SHARED_APPROVAL_AUDIT_SCHEMA),
 }, ['id', 'callId', 'status', 'request', 'createdAt', 'updatedAt', 'metadata', 'audit']);

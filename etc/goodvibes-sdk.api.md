@@ -4925,6 +4925,7 @@ export interface OperatorMethodOutputMap {
                 reason?: string;
                 modifiedArgs?: {};
             };
+            fixSessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -5003,6 +5004,7 @@ export interface OperatorMethodOutputMap {
                 reason?: string;
                 modifiedArgs?: {};
             };
+            fixSessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -5081,6 +5083,7 @@ export interface OperatorMethodOutputMap {
                 reason?: string;
                 modifiedArgs?: {};
             };
+            fixSessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -5159,6 +5162,7 @@ export interface OperatorMethodOutputMap {
                 reason?: string;
                 modifiedArgs?: {};
             };
+            fixSessionId?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;

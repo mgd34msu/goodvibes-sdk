@@ -2017,6 +2017,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "reason": "sample",
           "modifiedArgs": {}
         },
+        "fixSessionId": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2098,6 +2099,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "reason": "sample",
           "modifiedArgs": {}
         },
+        "fixSessionId": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2177,6 +2179,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "reason": "sample",
           "modifiedArgs": {}
         },
+        "fixSessionId": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2260,6 +2263,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "reason": "sample",
           "modifiedArgs": {}
         },
+        "fixSessionId": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2358,6 +2362,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "reason": "sample",
             "modifiedArgs": {}
           },
+          "fixSessionId": "sample",
           "metadata": {},
           "audit": [
             {
