@@ -644,11 +644,13 @@ export type OrchestrationEvent =
    */
   | { readonly type: 'item-worktree-kept'; readonly workstreamId: string; readonly itemId: string; readonly path: string; readonly reason: string }
   /**
-   * A KEPT worktree was evicted (removed) to stay under the kept-worktree cap —
-   * oldest-first, and always announced (never a silent sweep). `path` is what
-   * was removed.
+   * A KEPT worktree was evicted to stay under the kept-worktree cap —
+   * oldest-first, and always announced (never a silent sweep). Eviction bounds
+   * DISK usage, never work: any uncommitted state was first committed onto the
+   * item branch (`preservedCommit` when such a commit was created), only the
+   * directory at `path` was removed, and `branch` is KEPT for recovery.
    */
-  | { readonly type: 'item-worktree-evicted'; readonly workstreamId: string; readonly itemId: string; readonly path: string }
+  | { readonly type: 'item-worktree-evicted'; readonly workstreamId: string; readonly itemId: string; readonly path: string; readonly branch: string; readonly preservedCommit?: string | undefined }
   /**
    * Reconciliation of an orphaned `ws/*` worktree found at import (a crash
    * artifact from a prior process). `disposition` is `'adopted'` when the

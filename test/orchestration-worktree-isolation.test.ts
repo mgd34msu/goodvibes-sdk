@@ -513,10 +513,30 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
       { timeoutMs: 20_000 },
     );
 
-    // 'one' was evicted — its worktree is gone and its bookkeeping cleared.
+    // 'one' was evicted — its worktree DIRECTORY is gone and bookkeeping cleared.
     expect(existsSync(onePath)).toBe(false);
     expect(one.worktreePath).toBeUndefined();
     expect(one.worktreeKept).toBeFalsy();
+
+    // ZERO DATA LOSS: eviction bounds disk usage, never work. The dirty state
+    // was committed onto the item branch BEFORE the directory was removed, the
+    // branch was KEPT (no `branch -D` on the eviction path), and the event
+    // names the branch + preservation commit so the work is discoverable.
+    const evictedEvent = events.find(
+      (e): e is Extract<OrchestrationEvent, { type: 'item-worktree-evicted' }> =>
+        e.type === 'item-worktree-evicted' && e.itemId === 'item-one',
+    )!;
+    expect(evictedEvent.branch).toBe(one.worktreeBranch!);
+    expect(evictedEvent.preservedCommit).toBeTruthy();
+    // The branch survives eviction …
+    expect(runGit(root, ['branch', '--list', evictedEvent.branch]).trim()).not.toBe('');
+    // … its tip is the preservation commit …
+    expect(runGit(root, ['rev-parse', evictedEvent.branch]).trim()).toBe(evictedEvent.preservedCommit!);
+    // … and the uncommitted work is byte-for-byte recoverable from it.
+    expect(runGit(root, ['show', `${evictedEvent.branch}:wip.txt`])).toBe('wip-one\n');
+    const recovered = join(root, 'recovered-after-eviction');
+    runGit(root, ['worktree', 'add', recovered, evictedEvent.branch]);
+    expect(readFileSync(join(recovered, 'wip.txt'), 'utf8')).toBe('wip-one\n');
 
     // 'two' is still kept — under the cap now that 'one' was evicted.
     expect(existsSync(twoPath)).toBe(true);
@@ -525,6 +545,51 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
 
     rmSync(root, { recursive: true, force: true });
   }, 30_000);
+
+  test('evicting a CONFLICTED kept worktree preserves both its commits and its dirty state on the kept branch', async () => {
+    // Direct IsolatedWorktree-level proof (no engine): a branch with a real
+    // commit AND uncommitted follow-up edits goes past the cap; after evict()
+    // the directory is gone but every byte is on the branch.
+    root = freshRoot();
+    const { IsolatedWorktree } = await import('../packages/sdk/src/platform/agents/worktree.js');
+    const wtPath = join(root, '.goodvibes', '.worktrees', 'ws', 'x', 'y');
+    const wt = new IsolatedWorktree(root, wtPath, 'ws/x/y', 'main');
+    await wt.create();
+    writeFileSync(join(wtPath, 'committed.txt'), 'committed-work\n');
+    runGit(wtPath, ['add', '-A']);
+    runGit(wtPath, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-m', 'item work']);
+    // Dirty follow-up: one modified tracked file, one untracked file.
+    writeFileSync(join(wtPath, 'committed.txt'), 'committed-work EDITED\n');
+    writeFileSync(join(wtPath, 'untracked.txt'), 'untracked-work\n');
+
+    const { preservedCommit } = await wt.evict();
+
+    expect(preservedCommit).toBeTruthy();
+    expect(existsSync(wtPath)).toBe(false);
+    // Branch kept; tip is the preservation commit on top of the item commit.
+    expect(runGit(root, ['branch', '--list', 'ws/x/y']).trim()).not.toBe('');
+    expect(runGit(root, ['rev-parse', 'ws/x/y']).trim()).toBe(preservedCommit!);
+    expect(runGit(root, ['show', 'ws/x/y:committed.txt'])).toBe('committed-work EDITED\n');
+    expect(runGit(root, ['show', 'ws/x/y:untracked.txt'])).toBe('untracked-work\n');
+    expect(runGit(root, ['show', 'ws/x/y~1:committed.txt'])).toBe('committed-work\n');
+
+    rmSync(root, { recursive: true, force: true });
+  }, 15_000);
+
+  test('evict() on an already-clean kept worktree removes only the directory and keeps the branch', async () => {
+    root = freshRoot();
+    const { IsolatedWorktree } = await import('../packages/sdk/src/platform/agents/worktree.js');
+    const wtPath = join(root, '.goodvibes', '.worktrees', 'ws', 'c', 'd');
+    const wt = new IsolatedWorktree(root, wtPath, 'ws/c/d', 'main');
+    await wt.create();
+
+    const { preservedCommit } = await wt.evict();
+
+    expect(preservedCommit).toBeNull();
+    expect(existsSync(wtPath)).toBe(false);
+    expect(runGit(root, ['branch', '--list', 'ws/c/d']).trim()).not.toBe('');
+    rmSync(root, { recursive: true, force: true });
+  }, 15_000);
 });
 
 describe('WorktreeIsolationManager — cold-start setup hook', () => {

@@ -497,20 +497,62 @@ export class IsolatedWorktree {
   /** Remove the worktree directory and delete the item branch (post-merge, or a clean tree after fail/kill). */
   async remove(): Promise<void> {
     logger.debug('IsolatedWorktree.remove', { path: this.path, branch: this.branch });
-    if (existsSync(this.path)) {
-      try {
-        await this.rootGit.worktreeRemove(this.path);
-      } catch (err) {
-        logger.debug('IsolatedWorktree.remove: first attempt failed, retrying with --force', { path: this.path, error: summarizeError(err) });
-        const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
-        await wgit.raw(['worktree', 'remove', '--force', this.path]);
-      }
-    }
+    await this.removeDirectory();
     try {
       const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
       await wgit.raw(['branch', '-D', this.branch]);
     } catch (err) {
       logger.warn('IsolatedWorktree.remove: branch delete did not complete', { branch: this.branch, error: summarizeError(err) });
+    }
+  }
+
+  /**
+   * Evict this worktree under the kept-worktree cap. Eviction bounds DISK
+   * usage, never work: any uncommitted state (modified AND untracked files,
+   * unfiltered — preservation must be exact) is first committed onto the item
+   * branch, then ONLY the directory is removed. The branch is deliberately
+   * KEPT, so a conflicted/dirty tree evicted past the cap stays recoverable
+   * with `git worktree add <path> <branch>` / `git show <branch>:<file>`.
+   *
+   * When the preservation commit cannot be created, the directory is NOT
+   * removed (the error propagates) — leaving an over-cap directory on disk is
+   * always preferred over destroying uncommitted work.
+   *
+   * @returns the preservation commit hash, or null when the tree was already
+   *          clean (nothing needed preserving).
+   */
+  async evict(): Promise<{ preservedCommit: string | null }> {
+    logger.debug('IsolatedWorktree.evict', { path: this.path, branch: this.branch });
+    let preservedCommit: string | null = null;
+    if (existsSync(this.path) && !(await this.isClean())) {
+      const wgit = simpleGit({ baseDir: this.path });
+      await wgit.raw(['add', '-A']);
+      const message = 'preserve uncommitted work at kept-cap eviction';
+      try {
+        await wgit.raw(['commit', '--no-verify', '-m', message]);
+      } catch (err) {
+        // Most common cause: no committer identity configured in this
+        // environment. Preservation must not depend on host config — retry
+        // with an explicit fallback identity rather than lose the tree.
+        logger.debug('IsolatedWorktree.evict: commit failed, retrying with fallback identity', { path: this.path, error: summarizeError(err) });
+        await wgit.raw(['-c', 'user.email=goodvibes@localhost', '-c', 'user.name=goodvibes-eviction', 'commit', '--no-verify', '-m', message]);
+      }
+      preservedCommit = (await wgit.raw(['rev-parse', 'HEAD'])).trim();
+    }
+    await this.removeDirectory();
+    // The branch is KEPT deliberately — no `branch -D` on the eviction path.
+    return { preservedCommit };
+  }
+
+  /** Remove the worktree directory (plain remove, then a --force retry). */
+  private async removeDirectory(): Promise<void> {
+    if (!existsSync(this.path)) return;
+    try {
+      await this.rootGit.worktreeRemove(this.path);
+    } catch (err) {
+      logger.debug('IsolatedWorktree.removeDirectory: first attempt failed, retrying with --force', { path: this.path, error: summarizeError(err) });
+      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      await wgit.raw(['worktree', 'remove', '--force', this.path]);
     }
   }
 }
