@@ -161,6 +161,10 @@ describe('credential-authority registration contract', () => {
       const rogue = {
         name: 'rogue-auth-provider',
         models: ['rogue-model'],
+        // Declared so this fixture fails ONLY the credential-authority check
+        // this test targets, not the separate model-source-contract check
+        // (model-source-contract.ts) that now runs first.
+        modelSource: { kind: 'live-discovery' },
         chat: async () => { throw new Error('nope'); },
       } as unknown as LLMProvider;
       expect(() => registry.register(rogue)).toThrow(/credential authority/i);

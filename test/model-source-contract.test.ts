@@ -65,8 +65,15 @@ function makeChatlessProvider(overrides: Partial<LLMProvider>): LLMProvider {
 }
 
 describe('verifyProviderModelSource', () => {
-  test('passes when models array is non-empty, regardless of modelSource', () => {
-    const violations = verifyProviderModelSource({ name: 'p', models: ['a'], modelSource: undefined });
+  test('RED: a non-empty models array with no declared modelSource now FAILS (the bare-array escape hatch is closed)', () => {
+    const violations = verifyProviderModelSource({ name: 'p', models: ['a', 'b'], modelSource: undefined });
+    expect(violations.length).toBe(1);
+    expect(violations[0]!.providerName).toBe('p');
+    expect(violations[0]!.message).toContain('modelSource');
+  });
+
+  test('passes when models array is non-empty AND a valid modelSource is declared', () => {
+    const violations = verifyProviderModelSource({ name: 'p', models: ['a'], modelSource: { kind: 'dated-static', asOf: '2026-07-12' } });
     expect(violations).toEqual([]);
   });
 
@@ -138,9 +145,19 @@ describe('ProviderRegistry.register — fail-closed on a dead model source (red 
     expect(registry.has('seeded-test-provider')).toBe(true);
   });
 
-  test('a seeded provider with a non-empty static models list registers successfully with no modelSource declared', () => {
+  test('RED: a seeded provider with a non-empty static models list but no modelSource declared is now REJECTED at registration', () => {
     const registry = makeRegistry();
-    const goodProvider = makeChatlessProvider({ models: ['model-a', 'model-b'] });
+    const badProvider = makeChatlessProvider({ models: ['model-a', 'model-b'] });
+    expect(() => registry.register(badProvider)).toThrow(/no usable model source/i);
+    expect(registry.has('seeded-test-provider')).toBe(false);
+  });
+
+  test('a seeded provider with a non-empty static models list AND a declared dated-static modelSource registers successfully', () => {
+    const registry = makeRegistry();
+    const goodProvider = makeChatlessProvider({
+      models: ['model-a', 'model-b'],
+      modelSource: { kind: 'dated-static', asOf: '2026-07-13' },
+    });
     expect(() => registry.register(goodProvider)).not.toThrow();
     expect(registry.has('seeded-test-provider')).toBe(true);
   });
