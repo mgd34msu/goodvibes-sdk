@@ -8,6 +8,54 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Chat channels are owner-gated, and the owner's reply resolves pending
+  asks.** Each chat surface keeps a per-surface owner allowlist that seeds
+  itself: the first identified sender becomes the owner (pairing the channel
+  proves it by messaging first); unknown senders are denied before any route
+  binding or session submit, with one log line per ignored message. A paired
+  owner can approve, deny, or steer a pending permission ask by replying
+  with an explicit verb (approve/yes/allow, deny/no/reject) — the reply
+  resolves through the same approval broker every surface uses, the
+  trailing text is delivered to the model as the decision's reason (deny
+  guidance steers instead of behaving as a bare deny; approve text steers
+  the running turn), non-verb text flows through as a normal message, and
+  ambiguous multi-ask situations are left alone rather than guessed.
+- **The chat-channel family defaults on behind that gate.** With the owner
+  allowlist in place, route binding, the delivery engine, and the Slack,
+  Discord, ntfy, webhook, and Home Assistant surfaces enable by default
+  (each remains a real per-surface setting that can be turned off); the web
+  surface, automation domain, watcher framework, and service management
+  keep their separately-conditioned defaults.
+- **Live model discovery for Amazon Bedrock, Anthropic Vertex, and GitHub
+  Copilot.** The last three statically-listed providers now fetch their
+  model lists live using their already-configured credentials (Bedrock's
+  foundation-model listing via the same signing path as chat; Vertex's
+  publisher-model listing via the same ADC path; Copilot's models listing
+  on the chat host — its previous "no listing endpoint" claim was verified
+  false for this auth mode). The packaged lists remain as dated offline
+  fallbacks; a failed fetch logs and falls back, never breaks the provider.
+- **CI fix-sessions start with the real logs and announce their id.** A red
+  watch's fix-session brief now contains the failing jobs' actual log text
+  (tail-bounded per job, capped in job count) instead of a pointer, and the
+  started session's id reaches surfaces: on the verb result for auto-start
+  watches, and via a follow-up channel notification (a machine-readable
+  sessionId line) on both the auto and accepted-offer paths, so a surface
+  can open or attach the session.
+- **Feature announcements reach surfaces.** Announce-once lines (the web
+  surface URL, the first contained exec run) now queue for delivery and
+  ride the explicitly-consuming daemon status receipts read, so a surface
+  attaching later renders them instead of them living only in the daemon
+  log — still exactly once per install. The automation
+  create-your-first-routine copy now actually ships: the jobs list carries
+  an emptyState block while automation is enabled with zero routines.
+- **Workspace registrations carry provenance.** Each registered root can
+  record which surface/flow wrote it (`origin`) and whether it is in scope
+  for automatic checkpoints (`checkpointEligible` — absent means NO), so
+  one surface registering a workspace never silently widens another
+  consumer's checkpoint scope. Re-registering an existing root with the
+  flag upgrades it (how the checkpoint-owning consumer stamps its roots on
+  boot); a plain re-registration never strips a stamp.
+
 - **Model pricing is tracked, current, and actually used.** One pricing
   resolver per (provider, model): a user-set manual price
   (`pricing.modelPrices` config key, applied live) always wins, then a
@@ -128,6 +176,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   bumped to v2 so stale zero-coerced caches refetch).
 - Two store snapshots requested within the same millisecond no longer
   overwrite each other (filenames uniquify).
+- Daily store-snapshot dedup runs on the scheduler's own clock: each
+  snapshot's file time is stamped with its logical creation time (a
+  production no-op), so the once-per-day check and the listed creation
+  times agree under an injected clock instead of misfiring against the
+  wall clock.
 
 ## [1.7.1] - 2026-07-11
 
