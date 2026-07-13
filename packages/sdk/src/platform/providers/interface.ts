@@ -81,7 +81,7 @@ export interface ProviderRuntimeMetadata {
 }
 
 export interface ProviderRuntimeMetadataDeps {
-  readonly secretsManager: Pick<SecretsManager, 'listDetailed'>;
+  readonly secretsManager: Pick<SecretsManager, 'listDetailed' | 'get'>;
   readonly serviceRegistry: Pick<ServiceRegistry, 'getAll' | 'inspect'>;
   readonly subscriptionManager: Pick<SubscriptionManager, 'get' | 'getPending'>;
 }
@@ -208,6 +208,21 @@ export interface LLMProvider {
    * declare one of the three kinds above, or registration is rejected.
    */
   readonly modelSource?: ProviderModelSource | undefined;
+  /**
+   * How this provider's credentials are obtained — the registration-time
+   * contract behind the one request-time credential resolver (env -> secrets
+   * store -> subscription accounts):
+   *   - 'resolver'     — API key flows from the shared resolver chain; a key
+   *                      written to the secrets store re-registers the
+   *                      provider live (no restart anywhere).
+   *   - 'anonymous'    — local/keyless endpoints (ollama, lm-studio, ...).
+   *   - 'subscription' — OAuth subscription tokens resolved per request.
+   *   - 'oauth'        — service-OAuth flows outside the subscription store.
+   * ProviderRegistry.register() REFUSES a provider that declares none (same
+   * fail-closed mechanism as the model-source contract): an auth path the
+   * resolver cannot see would let status say green while chat 401s.
+   */
+  readonly credentialAuthority?: 'resolver' | 'anonymous' | 'subscription' | 'oauth' | undefined;
   chat(params: ChatRequest): Promise<ChatResponse>;
   embed?(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult>;
   describeRuntime?(deps: ProviderRuntimeMetadataDeps): ProviderRuntimeMetadata | Promise<ProviderRuntimeMetadata>;

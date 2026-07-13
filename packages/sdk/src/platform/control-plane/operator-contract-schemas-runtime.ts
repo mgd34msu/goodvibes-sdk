@@ -595,7 +595,7 @@ const PROVIDER_ACCOUNT_RECORD_SCHEMA = objectSchema({
   notes: STRING_LIST_SCHEMA,
   usageWindows: arraySchema(PROVIDER_USAGE_WINDOW_SCHEMA),
   issues: STRING_LIST_SCHEMA,
-  recommendedActions: STRING_LIST_SCHEMA,
+  recommendedActions: arraySchema(objectSchema({ description: STRING_SCHEMA, command: objectSchema({ name: STRING_SCHEMA, args: arraySchema(STRING_SCHEMA) }, ['name', 'args'], { additionalProperties: false }) }, ['description'], { additionalProperties: false })),
   routeRecords: arraySchema(PROVIDER_ROUTE_RECORD_SCHEMA),
 }, ['providerId', 'active', 'modelCount', 'configured', 'oauthReady', 'pendingLogin', 'availableRoutes', 'preferredRoute', 'activeRoute', 'activeRouteReason', 'authFreshness', 'notes', 'usageWindows', 'issues', 'recommendedActions', 'routeRecords'], { additionalProperties: true });
 

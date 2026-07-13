@@ -58,6 +58,7 @@ export interface LlamaCppProviderOptions extends OpenAICompatOptions {
 
 export class LlamaCppProvider implements LLMProvider {
   readonly name: string;
+  readonly credentialAuthority = 'anonymous' as const;
   readonly models: string[];
   readonly capabilities?: Partial<ProviderCapability> | undefined;
 

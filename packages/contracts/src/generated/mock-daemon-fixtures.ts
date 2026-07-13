@@ -50,7 +50,15 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "sample"
           ],
           "recommendedActions": [
-            "sample"
+            {
+              "description": "sample",
+              "command": {
+                "name": "sample",
+                "args": [
+                  "sample"
+                ]
+              }
+            }
           ],
           "routeRecords": [
             {

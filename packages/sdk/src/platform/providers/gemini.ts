@@ -80,6 +80,7 @@ interface GeminiResponseBody {
  */
 export class GeminiProvider implements LLMProvider {
   readonly name = 'gemini';
+  readonly credentialAuthority = 'resolver' as const;
   readonly modelSource: ProviderModelSource = { kind: 'live-discovery' };
   /** Maps function call name → thoughtSignature for the current turn. */
   private thoughtSignatures = new Map<string, string>();

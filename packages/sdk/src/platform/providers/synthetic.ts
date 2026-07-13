@@ -226,6 +226,7 @@ const COOLDOWN_BUFFER_MS = 100;
 
 export class SyntheticProvider implements LLMProvider {
   readonly name = 'synthetic';
+  readonly credentialAuthority = 'anonymous' as const;
   private readonly getCatalogModels: SyntheticCatalogAccessor;
   private readonly getBenchmarks: BenchmarkLookup;
   private readonly runtimeBus: RuntimeEventBus | null;

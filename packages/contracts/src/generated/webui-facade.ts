@@ -1923,7 +1923,15 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "sample"
           ],
           "recommendedActions": [
-            "sample"
+            {
+              "description": "sample",
+              "command": {
+                "name": "sample",
+                "args": [
+                  "sample"
+                ]
+              }
+            }
           ],
           "routeRecords": [
             {

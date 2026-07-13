@@ -363,8 +363,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     featureFlags,
     runtimeBus: options.runtimeBus,
   });
-  providerRegistry.initCustomProviders();
-  providerRegistry.initProviderModelDiscovery();
+  providerRegistry.initCustomProviders(); providerRegistry.initProviderModelDiscovery();
+  // ONE credential chain (env -> secrets -> subscription): boot applies secrets-backed keys; every secrets write/delete re-registers builtins LIVE (no restart); badges/picker/chat read the same instances.
+  secretsManager.onDidChange(() => void providerRegistry.refreshProviderCredentials().catch((error) => logger.warn('live credential refresh failed', { error: summarizeError(error) })));
+  void providerRegistry.refreshProviderCredentials().catch((error) => logger.warn('boot credential refresh failed', { error: summarizeError(error) }));
   const toolLLM = new ToolLLM({
     configManager,
     providerRegistry,
@@ -785,12 +787,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workflowServices: workflow,
   });
 
-  // Honest-unpriced: usage prices through the ONE model pricing resolver (manual -> registration
-  // -> provider-served -> catalog -> unknown; any resolvable model, not only frontier ones); an
-  // unknown/subscription model yields null (costState 'unpriced'), never a fabricated $0. SHARED
-  // between fleet registry and orchestration engine so cost totals never double-count.
-  const priceUsage = (model: string | undefined, usage: { inputTokens: number; outputTokens: number }): number | null =>
-    model ? computeUsageCostUsd(providerRegistry.resolveModelPricing(model), usage) : null;
+  // Honest-unpriced: usage prices through the ONE model pricing resolver (manual -> registration ->
+  // provider-served -> catalog -> unknown; any resolvable model). Unknown/subscription yields null
+  // (costState 'unpriced'), never $0. SHARED by fleet + orchestration so totals never double-count.
+  const priceUsage = (model: string | undefined, usage: { inputTokens: number; outputTokens: number }): number | null => (model ? computeUsageCostUsd(providerRegistry.resolveModelPricing(model), usage) : null);
 
   // Orchestration engine — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
   const orchestrationEngine = createOrchestrationEngine({

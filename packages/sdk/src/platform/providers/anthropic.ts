@@ -99,6 +99,7 @@ function clampMaxTokens(model: string, requested: number): number {
  */
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
+  readonly credentialAuthority = 'resolver' as const;
   readonly modelSource: ProviderModelSource = { kind: 'live-discovery' };
   readonly batch: ProviderBatchAdapter;
 

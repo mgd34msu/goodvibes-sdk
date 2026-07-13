@@ -23,6 +23,16 @@ export interface ProviderRouteRecord {
   readonly issues: readonly string[];
 }
 
+/**
+ * One recommended repair action. `description` states what and why;
+ * `command` (when present) is the machine-executable form — a surface runs
+ * it directly instead of asking the user to retype a sentence.
+ */
+export interface ProviderRecommendedAction {
+  readonly description: string;
+  readonly command?: { readonly name: string; readonly args: readonly string[] } | undefined;
+}
+
 export interface ProviderAccountRecord {
   readonly providerId: string;
   readonly active: boolean;
@@ -42,7 +52,7 @@ export interface ProviderAccountRecord {
   readonly notes: readonly string[];
   readonly usageWindows: readonly ProviderUsageWindow[];
   readonly issues: readonly string[];
-  readonly recommendedActions: readonly string[];
+  readonly recommendedActions: readonly ProviderRecommendedAction[];
   readonly routeRecords: readonly ProviderRouteRecord[];
 }
 
@@ -169,7 +179,7 @@ export async function buildProviderAccountSnapshot(
       });
       const issues: string[] = [];
       const notes: string[] = [];
-      const recommendedActions: string[] = [];
+      const recommendedActions: ProviderRecommendedAction[] = [];
       const routeRecords: ProviderRouteRecord[] = [];
       const preferredRoute = determineActiveRoute(routes);
       const activeRoute = determineActiveRoute(usableRoutes);
@@ -221,31 +231,31 @@ export async function buildProviderAccountSnapshot(
 
       if (routes.includes('subscription') && routes.includes('api-key')) {
         issues.push('Provider has both subscription and API-key auth paths; routing must remain explicit.');
-        recommendedActions.push('Review provider routing before switching models or auth paths.');
+        recommendedActions.push({ description: 'Review provider routing before switching models or auth paths.' });
       }
       if (subscriptionFreshness === 'expired') {
         issues.push('Stored subscription session is expired and needs refresh.');
-        recommendedActions.push(`Refresh or replace the ${providerId} subscription session before relying on it.`);
+        recommendedActions.push({ description: `Refresh or replace the ${providerId} subscription session before relying on it.`, command: { name: 'subscription', args: ['login', providerId, 'start'] } });
       } else if (subscriptionFreshness === 'expiring') {
         issues.push('Stored subscription session is nearing expiry.');
-        recommendedActions.push(`Renew or verify the ${providerId} subscription session soon to avoid route drift.`);
+        recommendedActions.push({ description: `Renew or verify the ${providerId} subscription session soon to avoid route drift.`, command: { name: 'subscription', args: ['login', providerId, 'start'] } });
       }
       if (pending) {
         issues.push('Provider has a pending OAuth login that has not been completed yet.');
-        recommendedActions.push(`Finish /subscription login ${providerId} finish <code> or clear the pending login.`);
+        recommendedActions.push({ description: `Finish the pending ${providerId} subscription login (or clear it).`, command: { name: 'subscription', args: ['login', providerId, 'finish'] } });
       }
       if (serviceOauth?.configured && !serviceOauth.usable) {
         issues.push('Service OAuth is configured but missing a usable credential.');
-        recommendedActions.push(`Repair service OAuth credentials for ${providerId} in /services or /settings.`);
+        recommendedActions.push({ description: `Repair service OAuth credentials for ${providerId}.`, command: { name: 'services', args: [providerId] } });
       }
       if (!routes.includes('api-key') && !routes.includes('subscription') && !routes.includes('service-oauth')) {
-        recommendedActions.push(`Configure an API key or OAuth-backed route for ${providerId}.`);
+        recommendedActions.push({ description: `Configure an API key or OAuth-backed route for ${providerId}.`, command: { name: 'secrets', args: ['set', ...(runtimeMetadata?.auth?.envVars?.slice(0, 1) ?? [])] } });
       } else if (activeRoute === 'unconfigured') {
-        recommendedActions.push(`No currently usable auth path exists for ${providerId}; repair the preferred route.`);
+        recommendedActions.push({ description: `No currently usable auth path exists for ${providerId}; repair the preferred route.` });
       }
       if (preferredRoute !== 'unconfigured' && activeRoute !== preferredRoute && activeRoute !== 'unconfigured') {
         issues.push(`Preferred ${preferredRoute} path is unavailable; current usable route is ${activeRoute}.`);
-        recommendedActions.push(`Review why ${providerId} fell back from ${preferredRoute} to ${activeRoute}.`);
+        recommendedActions.push({ description: `Review why ${providerId} fell back from ${preferredRoute} to ${activeRoute}.` });
       }
       if (jwtPayload && typeof jwtPayload['iss'] === 'string') {
         notes.push(`issuer=${jwtPayload['iss']}`);
@@ -262,13 +272,13 @@ export async function buildProviderAccountSnapshot(
       if (builtinSubscriptionProviders.has(providerId)) {
         notes.push('Built-in subscription adapter available.');
         if (!subscription && !pending) {
-          recommendedActions.push(`Start /subscription login ${providerId} start to enable the built-in subscription path.`);
+          recommendedActions.push({ description: `Start a ${providerId} subscription login to enable the built-in subscription path.`, command: { name: 'subscription', args: ['login', providerId, 'start'] } });
         }
       }
       for (const route of runtimeMetadata?.auth?.routes ?? []) {
         if (!route.usable || !route.configured) {
           for (const hint of route.repairHints ?? []) {
-            recommendedActions.push(hint);
+            recommendedActions.push({ description: hint });
           }
         }
       }
@@ -321,7 +331,7 @@ export async function buildProviderAccountSnapshot(
         notes,
         usageWindows: builtinWindowsForProvider(providerId),
         issues,
-        recommendedActions: [...new Set(recommendedActions)],
+        recommendedActions: [...new Map(recommendedActions.map((action) => [JSON.stringify(action), action])).values()],
         routeRecords,
       }) satisfies ProviderAccountRecord;
     }));

@@ -177,6 +177,7 @@ function usesAnthropicTransport(model: string): boolean {
 
 export class GitHubCopilotProvider implements LLMProvider {
   readonly name = 'github-copilot';
+  readonly credentialAuthority = 'subscription' as const;
   /**
    * Dated-static: GitHub Copilot's chat completions proxy has no public
    * model-listing endpoint. Docs-verified against the direct Anthropic API's

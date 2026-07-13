@@ -436,6 +436,7 @@ export async function chatWithOpenAICodex(
 
 export class OpenAICodexProvider implements LLMProvider {
   readonly name = OPENAI_CODEX_PROVIDER_NAME;
+  readonly credentialAuthority = 'subscription' as const;
   readonly modelSource: ProviderModelSource = {
     kind: 'dated-static',
     asOf: OPENAI_CODEX_DATED_STATIC_MODELS_AS_OF,
