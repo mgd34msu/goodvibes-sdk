@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `384`
+- Methods: `386`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -197,7 +197,35 @@ Return provider account posture.
           "recommendedActions": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "args"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "description"
+              ],
+              "additionalProperties": false
             }
           },
           "routeRecords": {
@@ -557,6 +585,36 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
                   "additionalProperties": false
                 }
               ]
+            },
+            "rememberOptions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "session",
+                      "exact",
+                      "command-class",
+                      "path",
+                      "tool"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tier",
+                  "label",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [
@@ -594,6 +652,19 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
             },
             "remember": {
               "type": "boolean"
+            },
+            "rememberTier": {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            "reason": {
+              "type": "string"
             },
             "modifiedArgs": {
               "type": "object",
@@ -981,6 +1052,36 @@ Cancel a pending approval.
                   "additionalProperties": false
                 }
               ]
+            },
+            "rememberOptions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "session",
+                      "exact",
+                      "command-class",
+                      "path",
+                      "tool"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tier",
+                  "label",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [
@@ -1018,6 +1119,19 @@ Cancel a pending approval.
             },
             "remember": {
               "type": "boolean"
+            },
+            "rememberTier": {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            "reason": {
+              "type": "string"
             },
             "modifiedArgs": {
               "type": "object",
@@ -1399,6 +1513,36 @@ Claim a pending approval for operator handling.
                   "additionalProperties": false
                 }
               ]
+            },
+            "rememberOptions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "session",
+                      "exact",
+                      "command-class",
+                      "path",
+                      "tool"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tier",
+                  "label",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [
@@ -1436,6 +1580,19 @@ Claim a pending approval for operator handling.
             },
             "remember": {
               "type": "boolean"
+            },
+            "rememberTier": {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            "reason": {
+              "type": "string"
             },
             "modifiedArgs": {
               "type": "object",
@@ -1823,6 +1980,36 @@ Deny a pending approval.
                   "additionalProperties": false
                 }
               ]
+            },
+            "rememberOptions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "session",
+                      "exact",
+                      "command-class",
+                      "path",
+                      "tool"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tier",
+                  "label",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [
@@ -1860,6 +2047,19 @@ Deny a pending approval.
             },
             "remember": {
               "type": "boolean"
+            },
+            "rememberTier": {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            "reason": {
+              "type": "string"
             },
             "modifiedArgs": {
               "type": "object",
@@ -2079,6 +2279,8 @@ Return pending and historical approval records.
             "session_cached_approval",
             "session_cached_denial",
             "safety_guardrail",
+            "user_rule_allow",
+            "user_rule_deny",
             "user_approved",
             "user_denied"
           ]
@@ -2091,6 +2293,7 @@ Return pending and historical approval records.
             "runtime_mode",
             "session_override",
             "safety_check",
+            "user_rule",
             "user_prompt"
           ]
         },
@@ -2363,6 +2566,36 @@ Return pending and historical approval records.
                     "additionalProperties": false
                   }
                 ]
+              },
+              "rememberOptions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tier": {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tier",
+                    "label",
+                    "detail"
+                  ],
+                  "additionalProperties": false
+                }
               }
             },
             "required": [
@@ -2400,6 +2633,19 @@ Return pending and historical approval records.
               },
               "remember": {
                 "type": "boolean"
+              },
+              "rememberTier": {
+                "type": "string",
+                "enum": [
+                  "session",
+                  "exact",
+                  "command-class",
+                  "path",
+                  "tool"
+                ]
+              },
+              "reason": {
+                "type": "string"
               },
               "modifiedArgs": {
                 "type": "object",
@@ -64591,6 +64837,138 @@ Request that a panel be opened in the current TUI session.
     "opened",
     "id",
     "pane"
+  ],
+  "additionalProperties": false
+}
+```
+
+### permissions
+
+#### `permissions.rules.delete`
+
+Delete one durable user-origin permission rule by id. The matching asks prompt again afterwards — deleting a grant is how a remembered decision is revoked. deleted:false when no rule with that id exists (an honest miss, not an error).
+
+- Title: `Delete a Durable Permission Rule`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ruleId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ruleId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `permissions.rules.list`
+
+List the durable user-origin permission rules written by remembered approval decisions (exact command / command class / path scope / whole tool), newest first — the persistent grants and denials the permission manager consults before ever prompting. Project-scoped.
+
+- Title: `List Durable Permission Rules`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "deny"
+            ]
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "command-class",
+              "path",
+              "tool"
+            ]
+          },
+          "tool": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "effect",
+          "tier",
+          "tool",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "rules"
   ],
   "additionalProperties": false
 }
