@@ -21,6 +21,7 @@
 
 import { normalize, resolve } from 'node:path';
 import type { PolicyRule } from '../runtime/permissions/types.js';
+import { globBodyToRegexSource } from '../utils/glob-to-regex.js';
 
 /**
  * Absolute-anchored glob patterns for unambiguous credential stores. Anchored at
@@ -61,13 +62,8 @@ export const SHIPPED_CREDENTIAL_READ_RULES: readonly PolicyRule[] = [
 
 /** Minimal glob → RegExp (mirrors the path-scope evaluator's semantics). */
 function credentialGlobToRegex(pattern: string): RegExp {
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, ' DOUBLESTAR ')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\?/g, '[^/]')
-    .replace(/ DOUBLESTAR /g, '.*');
-  return new RegExp(`^${escaped}$`);
+  // Mirrors the path-scope evaluator's semantics via a single forward pass.
+  return new RegExp(`^${globBodyToRegexSource(pattern, '[^/]*', '.*', '[^/]')}$`);
 }
 
 export interface CredentialReadMatchOptions {

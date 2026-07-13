@@ -15,17 +15,14 @@
  * @param pattern - Glob pattern (e.g. `*.example.com`, `**`).
  * @returns       True when the host matches the pattern.
  */
+import { globBodyToRegexSource } from '../../utils/glob-to-regex.js';
+
 const _globRegexCache = new Map<string, RegExp>();
 
 function getGlobRegex(pattern: string): RegExp {
   let re = _globRegexCache.get(pattern);
   if (!re) {
-    const escaped = pattern
-      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*\*/g, '\u0001')
-      .replace(/\*/g, '[^.]*')
-      .replace(/\u0001/g, '.*');
-    re = new RegExp(`^${escaped}$`, 'i');
+    re = new RegExp(`^${globBodyToRegexSource(pattern, '[^.]*', '.*')}$`, 'i');
     if (_globRegexCache.size > 100) _globRegexCache.clear(); // simple eviction
     _globRegexCache.set(pattern, re);
   }
