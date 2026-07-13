@@ -233,6 +233,31 @@ export interface LLMProvider {
    * Optional — providers that don't implement this are assumed configured.
    */
   isConfigured?(): boolean;
+  /**
+   * The provider's registration-time auth state, exposed synchronously so
+   * keyless-readiness derivations (onboarding copy, default-model pairing
+   * checks — see keyless-default.ts) read the SAME state that decides
+   * {@link isConfigured} instead of restating it. Optional — providers that
+   * don't implement it are treated per {@link isConfigured} alone.
+   */
+  describeAuthState?(): ProviderAuthState;
+}
+
+/**
+ * A provider's registration-time auth state — the single source keyless-UX
+ * derivations read (see keyless-default.ts). `anonymousReady` means the
+ * provider genuinely works RIGHT NOW without a stored credential; a "no API
+ * key needed" promise may only ever be generated from that field.
+ */
+export interface ProviderAuthState {
+  /** An explicit credential (API key / auth token) is present. */
+  readonly configured: boolean;
+  /** The provider may in principle operate without a stored credential. */
+  readonly allowAnonymous: boolean;
+  /** The provider genuinely works right now without a stored credential. */
+  readonly anonymousReady: boolean;
+  /** Env vars the provider accepts a key from (for honest ask-for-key copy). */
+  readonly authEnvVars: readonly string[];
 }
 
 /** Incremental tool call data received during streaming. */

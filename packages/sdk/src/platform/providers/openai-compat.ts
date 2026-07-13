@@ -4,6 +4,7 @@ import type {
   ChatRequest,
   ChatResponse,
   ChatStopReason,
+  ProviderAuthState,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
   ProviderModelSource,
@@ -411,6 +412,31 @@ export class OpenAICompatProvider implements LLMProvider {
     return this.configured || this.anonymousConfigured;
   }
 
+  describeAuthState(): ProviderAuthState {
+    return {
+      configured: this.configured,
+      allowAnonymous: this.allowAnonymous,
+      anonymousReady: this.anonymousConfigured,
+      authEnvVars: this.authEnvVars,
+    };
+  }
+
+  /**
+   * No dead-end 401: an unconfigured provider refuses the request BEFORE it
+   * hits the wire, with copy that names the key it needs. A key written to
+   * env/secrets re-registers the provider (credentialAuthority 'resolver'),
+   * so this state is never stale across a key being added.
+   */
+  private assertConfiguredForChat(model: string | undefined): void {
+    if (this.isConfigured()) return;
+    const keyHint = this.authEnvVars.length > 0
+      ? `set ${this.authEnvVars.join(' or ')}, or store a key for "${this.name}"`
+      : `configure credentials for "${this.name}"`;
+    throw new ProviderError(
+      `Provider "${this.name}" has no API key configured — the request for model "${model ?? this.defaultModel}" was not sent. To use this provider, ${keyHint}.`,
+    );
+  }
+
   /**
    * Re-check this backend's live model listing. Called at boot (background,
    * respects the on-disk TTL cache) and on-demand for a picker-open re-check
@@ -457,6 +483,7 @@ export class OpenAICompatProvider implements LLMProvider {
       onDelta,
       onRetry,
     } = params;
+    this.assertConfiguredForChat(model);
 
     return (await instrumentedLlmCall(() => withRetry(async () => {
       const allowReasoningStream = this.reasoningFormat !== 'none';
