@@ -357,6 +357,14 @@
     "gzip_bytes": 1500,
     "rationale": "provider registry surface; measured 1250 B gzip after the model pricing resolver + bare-model-id resolver joined the barrel (resolveModelPricing/computeUsageCostUsd/resolveModelReference + types); headroom max(ceil(1250*1.2)=1500, 1250+50=1300) \u2192 1500 (1.2x dominates); previously 1005 B @ commit 4e5a5e2"
   },
+  "./platform/runtime/feature-announcements": {
+    "gzip_bytes": 2585,
+    "rationale": "one-time feature announcement store + startup announcement collection (FeatureAnnouncementStore, collectStartupAnnouncements, sandbox containment announcer); measured 2154 B gzip at first export; headroom max(ceil(2154*1.2)=2585, 2154+50=2204) -> 2585 (1.2x dominates)"
+  },
+  "./platform/runtime/permissions/localhost-fetch-approval": {
+    "gzip_bytes": 1574,
+    "rationale": "buildLocalhostFetchApproval one-time localhost fetch gate; measured 1311 B gzip at first export; headroom max(ceil(1311*1.2)=1574, 1311+50=1361) -> 1574 (1.2x dominates)"
+  },
   "./platform/rewind": {
     "gzip_bytes": 374,
     "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types); measured 311 B gzip; headroom max(ceil(311*1.2)=374, 311+50=361) \u2192 374 (1.2x dominates by 13 B)"
