@@ -49,6 +49,7 @@ export type {
   PermissionPromptRequest,
   PermissionPromptDecision,
 } from './platform/permissions/prompt.js';
+export type { RememberTier, RememberTierOption } from './platform/permissions/approval-rules.js';
 
 // ── Session + approval brokers (the submit + permission seams) ────────────────
 export type { ApprovalBroker, SharedSessionBroker } from './platform/control-plane/index.js';

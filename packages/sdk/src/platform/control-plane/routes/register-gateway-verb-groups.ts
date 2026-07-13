@@ -24,6 +24,8 @@ import { registerWorktreeSetupGatewayMethods } from './worktree-setup.js';
 import { WorktreeRegistry } from '../../runtime/worktree/registry.js';
 import { resolveWorktreeSetupConfig } from '../../runtime/worktree/setup.js';
 import { registerCostGatewayMethods } from './cost.js';
+import { registerPermissionRulesGatewayMethods } from './permission-rules.js';
+import type { UserPermissionRuleStore } from '../../permissions/user-rule-store.js';
 import { registerMemoryProjectionsGatewayMethods, type MemoryProjectionSource } from './memory-projections.js';
 import { CostAttributionService, type ResolvePricing } from '../../runtime/cost/attribution.js';
 import { QuotaWindowTracker } from '../../runtime/cost/quota-window.js';
@@ -122,6 +124,12 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly secretsManager: VapidSecretStore;
   /** The approval broker — the real event source push fans out from. */
   readonly approvalBroker: ApprovalSource;
+  /**
+   * Optional: the durable user-origin permission rule store (remembered
+   * approval decisions). When present, the permissions.rules.* settings verbs
+   * are registered over it; absent, they stay cataloged-but-unhandled.
+   */
+  readonly userPermissionRuleStore?: Pick<UserPermissionRuleStore, 'list' | 'delete'> | undefined;
   /** Home-scoped path service; the subscription store file resolves under it. */
   readonly shellPaths: { resolveUserPath(...segments: string[]): string };
   /** Optional VAPID JWT `sub` contact. */
@@ -440,6 +448,12 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   const costAttribution = new CostAttributionService({ resolvePricing });
   const quotaWindow = new QuotaWindowTracker();
   registerCostGatewayMethods(catalog, { costAttribution, quotaWindow });
+
+  // Durable permission rules settings surface (list/delete) — registered only
+  // when the composition root wires the store, like every optional group here.
+  if (deps.userPermissionRuleStore) {
+    registerPermissionRulesGatewayMethods(catalog, { userRuleStore: deps.userPermissionRuleStore });
+  }
 
   // Memory projection read verbs (memory.projections.list/get) over the canonical
   // memory registry. Registered only when the memory store is wired; absent, the

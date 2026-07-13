@@ -254,6 +254,8 @@ export const OPERATOR_METHOD_IDS = [
   "multimodal.writeback",
   "panels.list",
   "panels.open",
+  "permissions.rules.delete",
+  "permissions.rules.list",
   "principals.create",
   "principals.delete",
   "principals.get",

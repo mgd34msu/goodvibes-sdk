@@ -1,4 +1,5 @@
 import type { PermissionCategory, PermissionRequestAnalysis } from './types.js';
+import type { RememberTier, RememberTierOption } from './approval-rules.js';
 
 /**
  * Attribution for a permission ask that did NOT originate from the foreground
@@ -79,11 +80,31 @@ export interface PermissionPromptRequest {
    * Undefined for foreground asks.
    */
   attribution?: PermissionAttribution | undefined;
+  /**
+   * The remember tiers this ask can offer (exact command / command class /
+   * path scope / whole tool / session), most specific first — computed by
+   * PermissionManager so EVERY surface (TUI, webui, companion) renders the
+   * same options. A decision answers with `rememberTier`.
+   */
+  rememberOptions?: readonly RememberTierOption[] | undefined;
 }
 
 export interface PermissionPromptDecision {
   approved: boolean;
+  /** Legacy session-only remember; equivalent to rememberTier 'session'. */
   remember?: boolean | undefined;
+  /**
+   * How far this decision reaches. A generalizing tier writes a durable
+   * user-origin rule (survives restart, suppresses re-asks); 'session' only
+   * caches in memory. Absent = one-time decision.
+   */
+  rememberTier?: RememberTier | undefined;
+  /**
+   * Optional free-text from the user, most useful on deny: it rides the
+   * structured "user declined" tool result so the model can adapt instead of
+   * guessing why.
+   */
+  reason?: string | undefined;
   /**
    * When present, replaces the tool call's original arguments for execution
    * (e.g. a per-hunk-filtered `edits` array for the `edit` tool). Never

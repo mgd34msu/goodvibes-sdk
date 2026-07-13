@@ -49,6 +49,8 @@ export interface ToolDenial {
   readonly denied: true;
   readonly reason: string;
   readonly scope: string;
+  /** Optional user free-text (e.g. why a call was declined) for the model to adapt to. */
+  readonly detail?: string | undefined;
 }
 
 /** The outcome of executing a tool. */

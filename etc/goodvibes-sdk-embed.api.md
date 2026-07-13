@@ -72,6 +72,8 @@ export class ApprovalBroker {
         readonly remember?: boolean | undefined;
         readonly modifiedArgs?: Record<string, unknown> | undefined;
         readonly selectedHunks?: readonly number[] | undefined;
+        readonly rememberTier?: RememberTier | undefined;
+        readonly reason?: string | undefined;
         readonly actor: string;
         readonly actorSurface?: string | undefined;
         readonly note?: string | undefined;
@@ -194,8 +196,9 @@ export interface PermissionPromptDecision {
     // (undocumented)
     approved: boolean;
     modifiedArgs?: Record<string, unknown> | undefined;
-    // (undocumented)
+    reason?: string | undefined;
     remember?: boolean | undefined;
+    rememberTier?: RememberTier | undefined;
 }
 
 // @public (undocumented)
@@ -214,6 +217,7 @@ export interface PermissionPromptRequest {
     //
     // (undocumented)
     category: PermissionCategory;
+    rememberOptions?: readonly RememberTierOption[] | undefined;
     // (undocumented)
     tool: string;
     // (undocumented)
@@ -222,6 +226,17 @@ export interface PermissionPromptRequest {
 
 // @public (undocumented)
 export type PermissionRequestHandler = (request: PermissionPromptRequest) => Promise<PermissionPromptDecision>;
+
+// @public
+export type RememberTier = 'session' | 'exact' | 'command-class' | 'path' | 'tool';
+
+// @public
+export interface RememberTierOption {
+    readonly detail: string;
+    readonly label: string;
+    // (undocumented)
+    readonly tier: RememberTier;
+}
 
 // @public
 export class RuntimeEventBus {
@@ -398,8 +413,8 @@ export interface SubmitSharedSessionMessageInput {
 
 // Warnings were encountered during analysis:
 //
-// packages/sdk/src/platform/control-plane/approval-broker.ts:212:7 - (ae-forgotten-export) The symbol "PersistentStore" needs to be exported by the entry point embed.d.ts
-// packages/sdk/src/platform/control-plane/approval-broker.ts:212:7 - (ae-forgotten-export) The symbol "SharedApprovalStoreSnapshot" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/approval-broker.ts:230:7 - (ae-forgotten-export) The symbol "PersistentStore" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/approval-broker.ts:230:7 - (ae-forgotten-export) The symbol "SharedApprovalStoreSnapshot" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:110:5 - (ae-forgotten-export) The symbol "SharedSessionStoreSnapshot" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:112:5 - (ae-forgotten-export) The symbol "RouteBindingManager" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:113:5 - (ae-forgotten-export) The symbol "SharedSessionAgentStatusProvider" needs to be exported by the entry point embed.d.ts

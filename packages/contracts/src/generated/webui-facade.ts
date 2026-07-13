@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.7.1
- * Methods: 384 total, 353 REST-routed, 31 ws-only invoke.
+ * Methods: 386 total, 353 REST-routed, 33 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1475,6 +1475,8 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "fleet.list",
   "fleet.snapshot",
   "fleet.unarchive",
+  "permissions.rules.delete",
+  "permissions.rules.list",
   "push.subscriptions.create",
   "push.subscriptions.delete",
   "push.subscriptions.list",
@@ -1763,6 +1765,8 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "memory.vector.stats": "rest",
   "panels.list": "rest",
   "panels.open": "rest",
+  "permissions.rules.delete": "ws-invoke",
+  "permissions.rules.list": "ws-invoke",
   "principals.create": "rest",
   "principals.delete": "rest",
   "principals.get": "rest",
@@ -1980,7 +1984,14 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -1991,6 +2002,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -2046,7 +2059,14 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -2057,6 +2077,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -2110,7 +2132,14 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -2121,6 +2150,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -2176,7 +2207,14 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "kind": "background-agent",
             "agentId": "sample",
             "template": "sample"
-          }
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
         },
         "createdAt": 0,
         "updatedAt": 0,
@@ -2187,6 +2225,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "decision": {
           "approved": false,
           "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
           "modifiedArgs": {}
         },
         "metadata": {},
@@ -2259,7 +2299,14 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "kind": "background-agent",
               "agentId": "sample",
               "template": "sample"
-            }
+            },
+            "rememberOptions": [
+              {
+                "tier": "session",
+                "label": "sample",
+                "detail": "sample"
+              }
+            ]
           },
           "createdAt": 0,
           "updatedAt": 0,
@@ -2270,6 +2317,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "decision": {
             "approved": false,
             "remember": false,
+            "rememberTier": "session",
+            "reason": "sample",
             "modifiedArgs": {}
           },
           "metadata": {},
@@ -14149,6 +14198,29 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "opened": false,
       "id": "sample",
       "pane": "top"
+    }
+  },
+  "permissions.rules.delete": {
+    "input": {
+      "ruleId": "sample"
+    },
+    "output": {
+      "deleted": false
+    }
+  },
+  "permissions.rules.list": {
+    "input": {},
+    "output": {
+      "rules": [
+        {
+          "id": "sample",
+          "effect": "allow",
+          "tier": "exact",
+          "tool": "sample",
+          "description": "sample",
+          "createdAt": 0
+        }
+      ]
     }
   },
   "principals.create": {

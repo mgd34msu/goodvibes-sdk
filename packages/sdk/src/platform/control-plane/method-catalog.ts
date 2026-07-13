@@ -11,6 +11,9 @@ import {
   builtinGatewayCostMethodDescriptors,
 } from './method-catalog-cost.js';
 import {
+  builtinGatewayPermissionRuleMethodDescriptors,
+} from './method-catalog-permission-rules.js';
+import {
   builtinGatewayControlMethodDescriptors,
 } from './method-catalog-control.js';
 import {
@@ -103,6 +106,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayChannelMethodDescriptors,
   ...builtinGatewayChannelTestMethodDescriptors,
   ...builtinGatewayCostMethodDescriptors,
+  ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayEmailMethodDescriptors,
   ...builtinGatewayCalendarMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,

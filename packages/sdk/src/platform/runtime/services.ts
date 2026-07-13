@@ -85,6 +85,7 @@ import { CacheHitTracker } from '../providers/cache-strategy.js';
 import { FavoritesStore } from '../providers/favorites.js';
 import { BenchmarkStore } from '../providers/model-benchmarks.js';
 import { ModelLimitsService } from '../providers/model-limits.js';
+import { UserPermissionRuleStore } from '../permissions/user-rule-store.js';
 import { computeUsageCostUsd } from '../providers/model-pricing.js';
 import { SessionMemoryStore } from '../core/session-memory.js';
 import { SessionLineageTracker } from '../core/session-lineage.js';
@@ -160,6 +161,7 @@ export interface RuntimeServices {
   readonly channelDeliveryRouter: ChannelDeliveryRouter;
   readonly watcherRegistry: WatcherRegistry;
   readonly approvalBroker: ApprovalBroker;
+  readonly userPermissionRuleStore: UserPermissionRuleStore; // durable user-origin permission rules (remembered approvals); permissions.rules.* surface
   readonly sessionBroker: SharedSessionBroker;
   readonly deliveryManager: AutomationDeliveryManager;
   readonly automationManager: AutomationManager;
@@ -691,6 +693,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     subscriptionManager,
     secretsManager,
   });
+  // Durable user-origin permission rules (remembered approvals): one store per project, shared by
+  // every PermissionManager here; permissions.rules.* lists/deletes. Background init is fail-safe.
+  const userPermissionRuleStore = new UserPermissionRuleStore(join(configManager.getControlPlaneConfigDir(), 'permission-rules.json'));
+  void userPermissionRuleStore.init().catch((error) => logger.warn('user permission rule store init failed; asks will prompt', { error: summarizeError(error) }));
   // Background/subagent tool calls are brokered through the SAME session
   // permission mode as the foreground turn loop. The ask handler is the shared
   // approval broker, so a background ask surfaces through the same blocked-on-
@@ -714,6 +720,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     policyRuntimeState,
     hookDispatcher,
     featureFlags,
+    userPermissionRuleStore,
   );
   // The interactive session binds its Orchestrator-backed source onto this holder
   // after construction; passing it through here registers the context_accounting
@@ -778,17 +785,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workflowServices: workflow,
   });
 
-  // Honest-unpriced: usage prices through the ONE model pricing resolver
-  // (manual config price -> registration price -> provider-served -> catalog
-  // -> unknown). An unknown or subscription-priced model yields null
-  // (costState 'unpriced'), never a fabricated $0. SHARED between the fleet
-  // registry and the orchestration engine — the single cost source of truth
-  // so budget checks and fleet cost totals can never double-count against
-  // each other. Works for ANY resolvable model, not only frontier ones.
-  const priceUsage = (model: string | undefined, usage: { inputTokens: number; outputTokens: number }): number | null => {
-    if (!model) return null;
-    return computeUsageCostUsd(providerRegistry.resolveModelPricing(model), usage);
-  };
+  // Honest-unpriced: usage prices through the ONE model pricing resolver (manual -> registration
+  // -> provider-served -> catalog -> unknown; any resolvable model, not only frontier ones); an
+  // unknown/subscription model yields null (costState 'unpriced'), never a fabricated $0. SHARED
+  // between fleet registry and orchestration engine so cost totals never double-count.
+  const priceUsage = (model: string | undefined, usage: { inputTokens: number; outputTokens: number }): number | null =>
+    model ? computeUsageCostUsd(providerRegistry.resolveModelPricing(model), usage) : null;
 
   // Orchestration engine — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
   const orchestrationEngine = createOrchestrationEngine({
@@ -829,7 +831,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
   };
   const stepUpService = new StepUpService({ secrets: secretsManager });
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,
@@ -847,6 +849,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     channelDeliveryRouter,
     watcherRegistry,
     approvalBroker,
+    userPermissionRuleStore,
     sessionBroker,
     deliveryManager,
     automationManager,

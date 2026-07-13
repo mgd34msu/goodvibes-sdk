@@ -29,8 +29,9 @@ function deniedPhaseResult(
   reason: string,
   scope: string,
   start: number,
+  userReason?: string,
 ): PhaseResult {
-  const source = { reasonCode: reason, sourceLayer: scope };
+  const source = { reasonCode: reason, sourceLayer: scope, userReason };
   return {
     phase: 'permissioned',
     success: false,
@@ -118,12 +119,12 @@ export async function permissionPhase(
       });
 
       if (!analysis.approved) {
-        return deniedPhaseResult(call.name, analysis.reasonCode, analysis.sourceLayer, start);
+        return deniedPhaseResult(call.name, analysis.reasonCode, analysis.sourceLayer, start, analysis.userReason);
       }
     } else {
       const analysis = await resolvePermissionResult();
       if (!analysis.approved) {
-        return deniedPhaseResult(call.name, analysis.reasonCode, analysis.sourceLayer, start);
+        return deniedPhaseResult(call.name, analysis.reasonCode, analysis.sourceLayer, start, analysis.userReason);
       }
     }
 
