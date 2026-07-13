@@ -18,7 +18,8 @@ import type { PermissionConfigReader } from '../packages/sdk/src/platform/permis
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../packages/sdk/src/platform/permissions/prompt.js';
 import { UserPermissionRuleStore } from '../packages/sdk/src/platform/permissions/user-rule-store.js';
 import { buildRememberOptions, matchDurableRules } from '../packages/sdk/src/platform/permissions/approval-rules.js';
-import { evaluatePathScopeRule } from '../packages/sdk/src/platform/runtime/permissions/rules/path-scope.js';
+import { evaluatePathScopeRule, extractPathArgs } from '../packages/sdk/src/platform/runtime/permissions/rules/path-scope.js';
+import { normalize as pathNormalize } from 'node:path';
 import { buildDenialErrorMessage, buildToolDenial } from '../packages/sdk/src/platform/permissions/denial.js';
 import { ApprovalBroker } from '../packages/sdk/src/platform/control-plane/approval-broker.js';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
@@ -151,6 +152,8 @@ describe('durable approval rules', () => {
         const bPath = `${WORKSPACE}/src/b.ts`;
         const pat = (rulesNow[0]?.type === 'path-scope' ? rulesNow[0].pathPatterns[0] : '') ?? '';
         const rx = glob(pat);
+        const normB = pathNormalize(bPath);
+        const extracted = extractPathArgs(bArgs);
         console.error('[DIAG] same-dir re-ask', JSON.stringify({
           prompts,
           firstReason: first.reasonCode,
@@ -159,11 +162,12 @@ describe('durable approval rules', () => {
           directMatch,
           pathScopeMatched: pathScopeResults.map((r) => (r as { matched?: boolean }).matched),
           regexSource: rx.source,
-          regexTestB: rx.test(bPath),
-          patLen: pat.length,
-          patCodes: [...pat].map((c) => c.charCodeAt(0)),
-          bPathLen: bPath.length,
-          bPathCodes: [...bPath].map((c) => c.charCodeAt(0)),
+          regexTestB_raw: rx.test(bPath),
+          regexTestB_normalized: rx.test(normB),
+          normB,
+          normBEqualsRaw: normB === bPath,
+          extracted,
+          extractedEqualsRaw: extracted.length === 1 && extracted[0] === bPath,
           tmpdir: tmpdir(),
         }, null, 2));
       }
