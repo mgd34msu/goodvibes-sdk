@@ -464,6 +464,7 @@ export function createDaemonFacadeCollaborators(
   });
   const controlPlaneHelper = new DaemonControlPlaneHelper({
     authToken: options.authToken,
+    pairingTokens: runtime.runtimeServices.pairingTokens,
     userAuth: runtime.userAuth,
     agentManager: runtime.agentManager,
     controlPlaneGateway: runtime.controlPlaneGateway,

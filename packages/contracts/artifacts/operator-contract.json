@@ -64210,6 +64210,510 @@
         "invokable": true
       },
       {
+        "id": "pairing.handoff.complete",
+        "title": "Complete Pairing Hand-off",
+        "description": "Apply the surface's per-offer decisions in ONE pass: an accepted notifications offer registers the browser push subscription (endpoint + keys, optional deviceId), an accepted passkey offer registers the WebAuthn credential, an accepted relay offer is acknowledged. Each offer returns an honest per-offer result (completed / declined / unavailable / failed); an omitted or false offer is reported as declined, never silently half-applied.",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "accept": {
+              "type": "object",
+              "properties": {
+                "notifications": {
+                  "type": "object",
+                  "properties": {
+                    "endpoint": {
+                      "type": "string"
+                    },
+                    "keys": {
+                      "type": "object",
+                      "properties": {
+                        "p256dh": {
+                          "type": "string"
+                        },
+                        "auth": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "p256dh",
+                        "auth"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "deviceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "endpoint",
+                    "keys"
+                  ],
+                  "additionalProperties": false
+                },
+                "relay": {
+                  "type": "boolean"
+                },
+                "passkey": {
+                  "type": "object",
+                  "properties": {
+                    "rpId": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "type": "string"
+                    },
+                    "credentialId": {
+                      "type": "string"
+                    },
+                    "publicKeyCose": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "rpId",
+                    "origin",
+                    "credentialId",
+                    "publicKeyCose"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "results"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "pairing.handoff.create",
+        "title": "Create Pairing Hand-off",
+        "description": "Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), and a full deep link when a web origin is configured. The token secret is returned exactly once. Each offer is independently declinable at completion.",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "offers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "token": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "token",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            },
+            "offers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "available": {
+                    "type": "boolean"
+                  },
+                  "vapidPublicKey": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "available"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "fragment": {
+              "type": "string"
+            },
+            "deepLink": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "token",
+            "offers",
+            "fragment"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "pairing.tokens.create",
+        "title": "Mint Paired Device Token",
+        "description": "Mint a new named per-device operator token and return its plaintext secret EXACTLY ONCE (for a QR / pairing hand-off). Only a hash is persisted; the secret is never listed or returned again. The name is user-visible and editable.",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "token": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "token",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "pairing.tokens.delete",
+        "title": "Revoke Paired Device Token",
+        "description": "Revoke (permanently delete) one paired device token. Revocation is immediate: the token fails the very next request with a 401, and every OTHER paired device keeps working. An unknown id is a 404 PAIRING_TOKEN_NOT_FOUND, never a 200-noop.",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "revoked": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "revoked"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "pairing.tokens.list",
+        "title": "List Paired Device Tokens",
+        "description": "List the per-pairing operator tokens (paired devices/browsers) as redacted views: id, user-visible name, created timestamp, and last-seen timestamp. The token secret is never stored in listable form and is never returned.",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:control-plane"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "tokens": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "lastSeenAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "createdAt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "legacySharedRevoked": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "tokens",
+            "legacySharedRevoked"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "pairing.tokens.migrate",
+        "title": "Migrate Off The Shared Token",
+        "description": "A client currently authenticated with the legacy single shared token mints its OWN named per-device token and receives the plaintext secret once — the honest migration path. This does NOT revoke the shared token; that is a separate explicit step (pairing.tokens.revokeShared).",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "token": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "token",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "pairing.tokens.rename",
+        "title": "Rename Paired Device Token",
+        "description": "Change the user-visible name of a paired device token. An unknown id is a 404 PAIRING_TOKEN_NOT_FOUND.",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "renamed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "renamed"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "pairing.tokens.revokeShared",
+        "title": "Revoke The Legacy Shared Token",
+        "description": "Turn off the legacy single shared operator token. After this, only per-device pairing tokens (and user sessions) authenticate; the shared token stops working immediately. Idempotent.",
+        "category": "pairing",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "legacySharedRevoked": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "legacySharedRevoked"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "panels.list",
         "title": "List Panels",
         "description": "Return integration panel descriptors.",
@@ -88805,10 +89309,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 387,
-      "typedInputs": 387,
+      "methods": 395,
+      "typedInputs": 395,
       "genericInputs": 0,
-      "typedOutputs": 387,
+      "typedOutputs": 395,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -88817,10 +89321,10 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 387,
-      "validated": 385,
+      "methods": 395,
+      "validated": 391,
       "skippedGeneric": 0,
-      "skippedUntyped": 2
+      "skippedUntyped": 4
     }
   },
   "peer": {

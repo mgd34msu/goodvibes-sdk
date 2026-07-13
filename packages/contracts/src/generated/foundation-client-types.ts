@@ -304,6 +304,14 @@ export interface OperatorMethodInputMap {
   "worktrees.setup.run": { path: string; };
   "worktrees.snapshot": {  };
   "push.subscriptions.reconcile": { deviceId: string; endpoint: string; keys: { p256dh: string; auth: string; }; };
+  "pairing.tokens.list": {  };
+  "pairing.tokens.create": { name: string; };
+  "pairing.tokens.migrate": { name: string; };
+  "pairing.tokens.rename": { id: string; name: string; };
+  "pairing.tokens.delete": { id: string; };
+  "pairing.tokens.revokeShared": {  };
+  "pairing.handoff.create": { name: string; offers?: readonly string[]; };
+  "pairing.handoff.complete": { accept?: { notifications?: { endpoint: string; keys: { p256dh: string; auth: string; }; deviceId?: string; }; relay?: boolean; passkey?: { rpId: string; origin: string; credentialId: string; publicKeyCose: string; }; }; };
 }
 
 export interface OperatorMethodOutputMap {
@@ -597,6 +605,14 @@ export interface OperatorMethodOutputMap {
   "worktrees.setup.run": { path: string; setup: { state: "failed" | "skipped" | "succeeded"; startedAt: number; completedAt: number; steps: readonly ({ kind: "carry-over" | "command"; label: string; ok: boolean; exitCode?: number; output: string; })[]; error?: string; }; };
   "worktrees.snapshot": { summary: { total: number; active: number; paused: number; kept: number; discard: number; pendingCleanup: number; sessionAttached: number; taskAttached: number; agentOwned: number; orchestratorOwned: number; manualOwned: number; }; records: readonly ({ path: string; kind: "agent" | "manual" | "orchestrator"; state: "active" | "discard" | "kept" | "paused" | "pending-cleanup"; ownerId?: string; sessionId?: string; taskId?: string; setup?: { state: "failed" | "skipped" | "succeeded"; startedAt: number; completedAt: number; steps: readonly ({ kind: "carry-over" | "command"; label: string; ok: boolean; exitCode?: number; output: string; })[]; error?: string; }; updatedAt: number; })[]; };
   "push.subscriptions.reconcile": { subscription: { id: string; principalId: string; deviceId?: string; endpointOrigin: string; endpointHash: string; createdAt: number; lastDeliveryAt?: number; lastOutcome?: string; consecutiveFailures?: number; }; drift: string; };
+  "pairing.tokens.list": { tokens: readonly ({ id: string; name: string; createdAt: number; lastSeenAt?: number; })[]; legacySharedRevoked: boolean; };
+  "pairing.tokens.create": { token: { id: string; name: string; token: string; createdAt: number; }; };
+  "pairing.tokens.migrate": { token: { id: string; name: string; token: string; createdAt: number; }; };
+  "pairing.tokens.rename": { id: string; renamed: boolean; };
+  "pairing.tokens.delete": { id: string; revoked: boolean; };
+  "pairing.tokens.revokeShared": { legacySharedRevoked: boolean; };
+  "pairing.handoff.create": { token: { id: string; name: string; token: string; createdAt: number; }; offers: readonly ({ kind: string; available: boolean; vapidPublicKey?: string; })[]; fragment: string; deepLink?: string; };
+  "pairing.handoff.complete": { results: readonly ({ kind: string; status: string; detail?: string; })[]; };
 }
 
 export interface OperatorEventPayloadMap {

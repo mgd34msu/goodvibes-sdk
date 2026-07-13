@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 387 total, 353 REST-routed, 34 ws-only invoke.
+ * Methods: 395 total, 353 REST-routed, 42 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1475,6 +1475,14 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "fleet.list",
   "fleet.snapshot",
   "fleet.unarchive",
+  "pairing.handoff.complete",
+  "pairing.handoff.create",
+  "pairing.tokens.create",
+  "pairing.tokens.delete",
+  "pairing.tokens.list",
+  "pairing.tokens.migrate",
+  "pairing.tokens.rename",
+  "pairing.tokens.revokeShared",
   "permissions.rules.delete",
   "permissions.rules.list",
   "push.subscriptions.create",
@@ -1764,6 +1772,14 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "memory.review-queue": "rest",
   "memory.vector.rebuild": "rest",
   "memory.vector.stats": "rest",
+  "pairing.handoff.complete": "ws-invoke",
+  "pairing.handoff.create": "ws-invoke",
+  "pairing.tokens.create": "ws-invoke",
+  "pairing.tokens.delete": "ws-invoke",
+  "pairing.tokens.list": "ws-invoke",
+  "pairing.tokens.migrate": "ws-invoke",
+  "pairing.tokens.rename": "ws-invoke",
+  "pairing.tokens.revokeShared": "ws-invoke",
   "panels.list": "rest",
   "panels.open": "rest",
   "permissions.rules.delete": "ws-invoke",
@@ -14251,6 +14267,126 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "error": "sample",
         "platformLimitReason": "sample"
       }
+    }
+  },
+  "pairing.handoff.complete": {
+    "input": {
+      "accept": {
+        "notifications": {
+          "endpoint": "sample",
+          "keys": {
+            "p256dh": "sample",
+            "auth": "sample"
+          },
+          "deviceId": "sample"
+        },
+        "relay": false,
+        "passkey": {
+          "rpId": "sample",
+          "origin": "sample",
+          "credentialId": "sample",
+          "publicKeyCose": "sample"
+        }
+      }
+    },
+    "output": {
+      "results": [
+        {
+          "kind": "sample",
+          "status": "sample",
+          "detail": "sample"
+        }
+      ]
+    }
+  },
+  "pairing.handoff.create": {
+    "input": {
+      "name": "sample",
+      "offers": [
+        "sample"
+      ]
+    },
+    "output": {
+      "token": {
+        "id": "sample",
+        "name": "sample",
+        "token": "sample",
+        "createdAt": 0
+      },
+      "offers": [
+        {
+          "kind": "sample",
+          "available": false,
+          "vapidPublicKey": "sample"
+        }
+      ],
+      "fragment": "sample",
+      "deepLink": "sample"
+    }
+  },
+  "pairing.tokens.create": {
+    "input": {
+      "name": "sample"
+    },
+    "output": {
+      "token": {
+        "id": "sample",
+        "name": "sample",
+        "token": "sample",
+        "createdAt": 0
+      }
+    }
+  },
+  "pairing.tokens.delete": {
+    "input": {
+      "id": "sample"
+    },
+    "output": {
+      "id": "sample",
+      "revoked": false
+    }
+  },
+  "pairing.tokens.list": {
+    "input": null,
+    "output": {
+      "tokens": [
+        {
+          "id": "sample",
+          "name": "sample",
+          "createdAt": 0,
+          "lastSeenAt": 0
+        }
+      ],
+      "legacySharedRevoked": false
+    }
+  },
+  "pairing.tokens.migrate": {
+    "input": {
+      "name": "sample"
+    },
+    "output": {
+      "token": {
+        "id": "sample",
+        "name": "sample",
+        "token": "sample",
+        "createdAt": 0
+      }
+    }
+  },
+  "pairing.tokens.rename": {
+    "input": {
+      "id": "sample",
+      "name": "sample"
+    },
+    "output": {
+      "id": "sample",
+      "renamed": false
+    }
+  },
+  "pairing.tokens.revokeShared": {
+    "input": null,
+    "output": {
+      "legacySharedRevoked": false
     }
   },
   "panels.list": {

@@ -34,6 +34,9 @@ import {
 import {
   builtinGatewayPushMethodDescriptors,
 } from './method-catalog-push.js';
+import {
+  builtinGatewayPairingMethodDescriptors,
+} from './method-catalog-pairing.js';
 import type {
   GatewayEventDescriptor,
   GatewayEventListOptions,
@@ -114,6 +117,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayMediaMethodDescriptors,
   ...builtinGatewayAdminMethodDescriptors,
   ...builtinGatewayPushMethodDescriptors,
+  ...builtinGatewayPairingMethodDescriptors,
   ...builtinGatewaySkillsMethodDescriptors,
   ...builtinGatewayPrincipalsMethodDescriptors,
   ...builtinGatewayChannelProfilesMethodDescriptors,

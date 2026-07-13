@@ -11922,6 +11922,110 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "pairing.handoff.complete": {
+    "methodId": "pairing.handoff.complete",
+    "http": null,
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "kind": "sample",
+          "status": "sample",
+          "detail": "sample"
+        }
+      ]
+    }
+  },
+  "pairing.handoff.create": {
+    "methodId": "pairing.handoff.create",
+    "http": null,
+    "status": 200,
+    "body": {
+      "token": {
+        "id": "sample",
+        "name": "sample",
+        "token": "sample",
+        "createdAt": 0
+      },
+      "offers": [
+        {
+          "kind": "sample",
+          "available": false,
+          "vapidPublicKey": "sample"
+        }
+      ],
+      "fragment": "sample",
+      "deepLink": "sample"
+    }
+  },
+  "pairing.tokens.create": {
+    "methodId": "pairing.tokens.create",
+    "http": null,
+    "status": 200,
+    "body": {
+      "token": {
+        "id": "sample",
+        "name": "sample",
+        "token": "sample",
+        "createdAt": 0
+      }
+    }
+  },
+  "pairing.tokens.delete": {
+    "methodId": "pairing.tokens.delete",
+    "http": null,
+    "status": 200,
+    "body": {
+      "id": "sample",
+      "revoked": false
+    }
+  },
+  "pairing.tokens.list": {
+    "methodId": "pairing.tokens.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "tokens": [
+        {
+          "id": "sample",
+          "name": "sample",
+          "createdAt": 0,
+          "lastSeenAt": 0
+        }
+      ],
+      "legacySharedRevoked": false
+    }
+  },
+  "pairing.tokens.migrate": {
+    "methodId": "pairing.tokens.migrate",
+    "http": null,
+    "status": 200,
+    "body": {
+      "token": {
+        "id": "sample",
+        "name": "sample",
+        "token": "sample",
+        "createdAt": 0
+      }
+    }
+  },
+  "pairing.tokens.rename": {
+    "methodId": "pairing.tokens.rename",
+    "http": null,
+    "status": 200,
+    "body": {
+      "id": "sample",
+      "renamed": false
+    }
+  },
+  "pairing.tokens.revokeShared": {
+    "methodId": "pairing.tokens.revokeShared",
+    "http": null,
+    "status": 200,
+    "body": {
+      "legacySharedRevoked": false
+    }
+  },
   "panels.list": {
     "methodId": "panels.list",
     "http": {
