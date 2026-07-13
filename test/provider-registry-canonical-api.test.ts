@@ -28,10 +28,13 @@ function makeProvider(name: string, models: readonly string[] = []): LLMProvider
   return {
     name,
     models: [...models],
-    // A test double with an empty models array needs a declared modelSource
-    // to pass the registration-time contract check (model-source-contract.ts)
-    // — same as any real provider whose list starts empty (e.g. Anthropic).
-    ...(models.length === 0 ? { modelSource: { kind: 'live-discovery' } } : {}),
+    // Every provider — whether its models array starts empty or already
+    // populated — needs a declared modelSource to pass the registration-time
+    // contract check (model-source-contract.ts): a non-empty array is no
+    // longer accepted by itself now that the bare-array escape hatch is
+    // closed, so this test double always declares 'live-discovery', the same
+    // as any real provider whose list starts empty (e.g. Anthropic).
+    modelSource: { kind: 'live-discovery' },
     // Registration-time credential contract: doubles declare 'anonymous'.
     credentialAuthority: 'anonymous',
     chat: async () => { throw new Error('not implemented'); },

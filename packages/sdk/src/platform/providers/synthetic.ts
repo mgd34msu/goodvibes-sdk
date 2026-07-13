@@ -1,4 +1,4 @@
-import type { LLMProvider, ChatRequest, ChatResponse } from './interface.js';
+import type { LLMProvider, ChatRequest, ChatResponse, ProviderModelSource } from './interface.js';
 import { ProviderError, isRateLimitOrQuotaError } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 import type { BenchmarkEntry } from './model-benchmarks.js';
@@ -227,6 +227,15 @@ const COOLDOWN_BUFFER_MS = 100;
 export class SyntheticProvider implements LLMProvider {
   readonly name = 'synthetic';
   readonly credentialAuthority = 'anonymous' as const;
+  /**
+   * The `models` getter below is intentionally secondary — this provider's
+   * real selectable models are sourced from the shared, independently
+   * refreshed model catalog (`getCatalogModels`) plus the `best-free` alias,
+   * exactly the `catalog-backed` case the model-source contract
+   * (`model-source-contract.ts`) documents this provider as the canonical
+   * example of.
+   */
+  readonly modelSource: ProviderModelSource = { kind: 'catalog-backed' };
   private readonly getCatalogModels: SyntheticCatalogAccessor;
   private readonly getBenchmarks: BenchmarkLookup;
   private readonly runtimeBus: RuntimeEventBus | null;

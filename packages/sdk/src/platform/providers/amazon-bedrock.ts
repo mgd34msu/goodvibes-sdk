@@ -71,8 +71,14 @@ interface BedrockListFoundationModelsResponse {
  * AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or, failing those, the AWS
  * credential provider chain (profile, IAM role, etc.) — no new credential
  * source, no new env vars.
+ *
+ * Exported so `amazon-bedrock-mantle.ts` can reuse this exact control-plane
+ * call instead of duplicating the signing/fetch/filter logic: Mantle uses the
+ * same AWS account's Bedrock control plane (`bedrock.<region>.amazonaws.com`
+ * ListFoundationModels), just a different runtime data-plane host, so one
+ * live-discovery fetcher serves both providers.
  */
-async function fetchBedrockModelIds(): Promise<string[]> {
+export async function fetchBedrockModelIds(): Promise<string[]> {
   const region = resolveBedrockRegion();
   const url = `https://bedrock.${region}.amazonaws.com/foundation-models`;
   const bearerToken = process.env['AWS_BEARER_TOKEN_BEDROCK']?.trim();

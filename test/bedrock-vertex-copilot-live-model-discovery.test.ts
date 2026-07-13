@@ -5,6 +5,13 @@
  * provider-live-model-discovery.test.ts, extended to the three providers
  * whose static lists previously had no live-refresh path at all.
  *
+ * AmazonBedrockMantleProvider reuses `AmazonBedrockProvider`'s exported
+ * `fetchBedrockModelIds` directly (same `bedrock.<region>.amazonaws.com`
+ * ListFoundationModels control-plane call, same SigV4/bearer-token auth
+ * resolution) rather than duplicating it, so its live-discovery tests below
+ * exercise the identical mocked-fetch/auth-header assertions as
+ * AmazonBedrockProvider's, just against `AmazonBedrockMantleProvider`.
+ *
  * AnthropicVertexProvider's live fetch needs a resolved Google `AuthClient`,
  * which normally comes from ADC/metadata-server discovery — unavailable in
  * this environment (and, more importantly, unsafe to race against: many
@@ -30,6 +37,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AmazonBedrockProvider, BEDROCK_DATED_STATIC_MODELS } from '../packages/sdk/src/platform/providers/amazon-bedrock.js';
+import { AmazonBedrockMantleProvider, BEDROCK_MANTLE_DATED_STATIC_MODELS } from '../packages/sdk/src/platform/providers/amazon-bedrock-mantle.js';
 import { AnthropicVertexProvider, VERTEX_DATED_STATIC_MODELS } from '../packages/sdk/src/platform/providers/anthropic-vertex.js';
 import { GitHubCopilotProvider, COPILOT_DATED_STATIC_MODELS } from '../packages/sdk/src/platform/providers/github-copilot.js';
 
@@ -242,6 +250,164 @@ describe('AmazonBedrockProvider.refreshModels', () => {
             expect(result.source).toBe('dated-static');
             expect(result.error).toBeDefined();
             expect(provider.models).toEqual([...BEDROCK_DATED_STATIC_MODELS]);
+          },
+        ),
+    ));
+});
+
+describe('AmazonBedrockMantleProvider.refreshModels', () => {
+  test('declares modelSource live-discovery and falls back to the dated-static list synchronously at construction with no AWS credentials configured', () =>
+    withEnvVars(
+      { AWS_BEARER_TOKEN_BEDROCK: undefined, AWS_ACCESS_KEY_ID: undefined, AWS_SECRET_ACCESS_KEY: undefined, AWS_PROFILE: undefined },
+      () => {
+        const provider = new AmazonBedrockMantleProvider();
+        expect(provider.models).toEqual([...BEDROCK_MANTLE_DATED_STATIC_MODELS]);
+        expect(provider.modelSource).toEqual({ kind: 'live-discovery' });
+      },
+    ));
+
+  test('with no credentials, refreshModels() reports the dated-static source honestly', () =>
+    withEnvVars(
+      { AWS_BEARER_TOKEN_BEDROCK: undefined, AWS_ACCESS_KEY_ID: undefined, AWS_SECRET_ACCESS_KEY: undefined, AWS_PROFILE: undefined },
+      async () => {
+        const provider = new AmazonBedrockMantleProvider();
+        const result = await provider.refreshModels();
+        expect(result.source).toBe('dated-static');
+        expect(provider.models).toEqual([...BEDROCK_MANTLE_DATED_STATIC_MODELS]);
+      },
+    ));
+
+  test('with static AWS keys configured, a mocked ListFoundationModels response (the same control-plane endpoint AmazonBedrockProvider uses) replaces the model list, filtering to active Anthropic text/streaming models', () =>
+    withEnvVars(
+      {
+        AWS_BEARER_TOKEN_BEDROCK: undefined,
+        AWS_ACCESS_KEY_ID: 'AKIAFAKEFAKEFAKEFAKE',
+        AWS_SECRET_ACCESS_KEY: 'fakefakefakefakefakefakefakefakefakefake',
+        AWS_PROFILE: undefined,
+        AWS_REGION: 'us-east-1',
+      },
+      () =>
+        withTempDir(async (dir) => {
+          let seenAuth: string | null = null;
+          await withMockedFetch(
+            (url, init) => {
+              expect(url).toBe('https://bedrock.us-east-1.amazonaws.com/foundation-models');
+              seenAuth = headerValue(init, 'authorization');
+              return new Response(
+                JSON.stringify({
+                  modelSummaries: [
+                    {
+                      modelId: 'anthropic.claude-sonnet-4-6-20260501-v1:0',
+                      providerName: 'Anthropic',
+                      outputModalities: ['TEXT'],
+                      responseStreamingSupported: true,
+                      modelLifecycle: { status: 'ACTIVE' },
+                    },
+                    {
+                      modelId: 'anthropic.claude-brand-new-20260601-v1:0',
+                      providerName: 'Anthropic',
+                      outputModalities: ['TEXT'],
+                      responseStreamingSupported: true,
+                      modelLifecycle: { status: 'ACTIVE' },
+                    },
+                    {
+                      modelId: 'anthropic.claude-legacy-v1',
+                      providerName: 'Anthropic',
+                      outputModalities: ['TEXT'],
+                      responseStreamingSupported: true,
+                      modelLifecycle: { status: 'LEGACY' },
+                    },
+                    {
+                      modelId: 'amazon.titan-text-v1',
+                      providerName: 'Amazon',
+                      outputModalities: ['TEXT'],
+                      responseStreamingSupported: true,
+                      modelLifecycle: { status: 'ACTIVE' },
+                    },
+                    {
+                      modelId: 'anthropic.claude-embed-v1',
+                      providerName: 'Anthropic',
+                      outputModalities: ['EMBEDDING'],
+                      responseStreamingSupported: false,
+                      modelLifecycle: { status: 'ACTIVE' },
+                    },
+                  ],
+                }),
+                { status: 200, headers: { 'content-type': 'application/json' } },
+              );
+            },
+            async () => {
+              const provider = new AmazonBedrockMantleProvider(join(dir, 'amazon-bedrock-mantle.json'));
+              const result = await provider.refreshModels();
+              expect(result.source).toBe('live');
+              expect(provider.models).toEqual([
+                'anthropic.claude-sonnet-4-6-20260501-v1:0',
+                'anthropic.claude-brand-new-20260601-v1:0',
+              ]);
+              expect(result.added).toContain('anthropic.claude-brand-new-20260601-v1:0');
+              expect(provider.models).not.toContain('anthropic.claude-legacy-v1');
+              expect(provider.models).not.toContain('amazon.titan-text-v1');
+              expect(provider.models).not.toContain('anthropic.claude-embed-v1');
+            },
+          );
+          // Confirms auth came from the provider's existing configured-credential
+          // resolution (the same SigV4 signer AmazonBedrockProvider uses via
+          // getAuthHeaders), not a new/duplicated signing path.
+          expect(seenAuth).toContain('AWS4-HMAC-SHA256');
+          expect(seenAuth).toContain('/us-east-1/bedrock/aws4_request');
+        }),
+    ));
+
+  test('with the bearer token set, the request uses a Bearer Authorization header instead of SigV4', () =>
+    withEnvVars(
+      { AWS_BEARER_TOKEN_BEDROCK: 'bedrock-bearer-abc', AWS_ACCESS_KEY_ID: undefined, AWS_SECRET_ACCESS_KEY: undefined, AWS_PROFILE: undefined },
+      () =>
+        withTempDir(async (dir) => {
+          let seenAuth: string | null = null;
+          await withMockedFetch(
+            (_url, init) => {
+              seenAuth = headerValue(init, 'authorization');
+              return new Response(
+                JSON.stringify({
+                  modelSummaries: [
+                    {
+                      modelId: 'anthropic.claude-sonnet-4-6-v1:0',
+                      providerName: 'Anthropic',
+                      outputModalities: ['TEXT'],
+                      responseStreamingSupported: true,
+                      modelLifecycle: { status: 'ACTIVE' },
+                    },
+                  ],
+                }),
+                { status: 200 },
+              );
+            },
+            async () => {
+              const provider = new AmazonBedrockMantleProvider(join(dir, 'amazon-bedrock-mantle.json'));
+              await provider.refreshModels();
+            },
+          );
+          expect(seenAuth).toBe('Bearer bedrock-bearer-abc');
+        }),
+    ));
+
+  test('a live fetch failure with no cache falls back to the dated-static list and surfaces the honest reason, never throwing', () =>
+    withEnvVars(
+      {
+        AWS_BEARER_TOKEN_BEDROCK: undefined,
+        AWS_ACCESS_KEY_ID: 'AKIAFAKEFAKEFAKEFAKE',
+        AWS_SECRET_ACCESS_KEY: 'fakefakefakefakefakefakefakefakefakefake',
+        AWS_PROFILE: undefined,
+      },
+      () =>
+        withMockedFetch(
+          () => new Response('server error', { status: 500, statusText: 'Internal Server Error' }),
+          async () => {
+            const provider = new AmazonBedrockMantleProvider();
+            const result = await provider.refreshModels();
+            expect(result.source).toBe('dated-static');
+            expect(result.error).toBeDefined();
+            expect(provider.models).toEqual([...BEDROCK_MANTLE_DATED_STATIC_MODELS]);
           },
         ),
     ));

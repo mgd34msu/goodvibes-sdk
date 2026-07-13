@@ -202,10 +202,15 @@ export interface LLMProvider {
   readonly capabilities?: Partial<ProviderCapability> | undefined;
   /**
    * Declares this provider's model source for the registration-time contract
-   * check. Optional for backward compatibility: a provider whose `models`
-   * array is already non-empty at registration time needs no declaration.
-   * A provider whose `models` array is empty at registration time MUST
-   * declare one of the three kinds above, or registration is rejected.
+   * check (`model-source-contract.ts`). Optional at the type level only for
+   * providers that go through a registration path the contract doesn't gate
+   * (e.g. `ProviderRegistry.registerRuntimeProvider` with an explicit
+   * non-empty `models` list, or `registerDiscoveredProviders`, whose local
+   * network-scanned providers never pass through the check at all). Every
+   * provider registered via `ProviderRegistry.register()` MUST declare one
+   * of the three kinds above regardless of whether its `models` array is
+   * currently empty or populated — a non-empty array with no declared
+   * source is rejected exactly like an empty one, or registration throws.
    */
   readonly modelSource?: ProviderModelSource | undefined;
   /**
