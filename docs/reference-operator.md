@@ -3983,7 +3983,8 @@ Process automation jobs queued for the next heartbeat.
               "running",
               "completed",
               "failed",
-              "cancelled"
+              "cancelled",
+              "missed"
             ]
           },
           "agentId": {
@@ -8855,7 +8856,8 @@ Cancel an active automation run.
             "running",
             "completed",
             "failed",
-            "cancelled"
+            "cancelled",
+            "missed"
           ]
         },
         "agentId": {
@@ -9849,7 +9851,8 @@ Return a single automation run record.
             "running",
             "completed",
             "failed",
-            "cancelled"
+            "cancelled",
+            "missed"
           ]
         },
         "agentId": {
@@ -10879,7 +10882,7 @@ Return a single automation run record.
 
 #### `automation.runs.list`
 
-Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.
+Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set) — the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.
 
 - Title: `List Automation Runs`
 - Source: `builtin`
@@ -10902,6 +10905,9 @@ Return automation run history. Without ?limit/?cursor returns { runs: [...] } (b
     },
     "cursor": {
       "type": "string"
+    },
+    "since": {
+      "type": "number"
     }
   },
   "additionalProperties": false
@@ -10944,7 +10950,8 @@ Return automation run history. Without ?limit/?cursor returns { runs: [...] } (b
               "running",
               "completed",
               "failed",
-              "cancelled"
+              "cancelled",
+              "missed"
             ]
           },
           "agentId": {
@@ -11939,7 +11946,8 @@ Retry a completed or failed automation run.
             "running",
             "completed",
             "failed",
-            "cancelled"
+            "cancelled",
+            "missed"
           ]
         },
         "agentId": {
@@ -15036,7 +15044,8 @@ Return schedule records.
               "running",
               "completed",
               "failed",
-              "cancelled"
+              "cancelled",
+              "missed"
             ]
           },
           "agentId": {

@@ -60,6 +60,7 @@ type AutomationRunLike = {
   readonly agentId?: string | undefined;
   readonly status: string;
   readonly startedAt?: number | undefined;
+  readonly endedAt?: number | undefined;
   readonly queuedAt: number;
   readonly continuationMode?: string | undefined;
 };

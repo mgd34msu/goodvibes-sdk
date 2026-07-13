@@ -55,6 +55,7 @@ export function registerDaemonHeartbeatWatcher(
     startWatcher(id: string): void;
   },
   configManager: ConfigManager,
+  onBeat?: () => void,
 ): void {
   watcherRegistry.registerPollingWatcher({
     id: 'daemon-heartbeat',
@@ -69,7 +70,19 @@ export function registerDaemonHeartbeatWatcher(
       metadata: {},
     },
     intervalMs: Number(configManager.get('watchers.heartbeatIntervalMs') ?? 30_000),
-    run: () => new Date().toISOString(),
+    run: () => {
+      // The reachability heartbeat is also when schedule drift is reconciled:
+      // a host that slept while the daemon kept running catches its missed
+      // occurrences here, not only at boot. Never let a beat throw.
+      if (onBeat) {
+        try {
+          onBeat();
+        } catch (error) {
+          logger.warn('Daemon heartbeat reconcile hook failed', { error: summarizeError(error) });
+        }
+      }
+      return new Date().toISOString();
+    },
   });
   watcherRegistry.startWatcher('daemon-heartbeat');
 }

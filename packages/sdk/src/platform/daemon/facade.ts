@@ -430,7 +430,7 @@ export class DaemonServer {
       }
       this.surfaceRegistry.syncConfiguredSurfaces();
       if (this.configManager.get('watchers.enabled')) {
-        registerDaemonHeartbeatWatcher(this.watcherRegistry, this.configManager);
+        registerDaemonHeartbeatWatcher(this.watcherRegistry, this.configManager, () => this.automationManager.reconcileSchedules());
       }
       this.controlPlaneGateway.setServerState({ enabled: true, host: this.host, port: this.port });
       this._attachControlPlaneConfigWatcher();

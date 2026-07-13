@@ -8,7 +8,7 @@
 import type { TransportSurfaceKind } from '../../events/surfaces.js';
 
 export type AutomationJobStatus = 'enabled' | 'paused' | 'error' | 'archived';
-export type AutomationRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type AutomationRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'missed';
 export type AutomationRunTrigger =
   | 'scheduled'
   | 'manual'

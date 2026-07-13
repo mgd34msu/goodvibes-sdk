@@ -28,6 +28,14 @@ interface AutomationSchedulingContext {
   readonly activeRunCount: () => number;
   readonly maxConcurrentRuns: () => number;
   readonly executeJob: (job: AutomationJob, trigger: AutomationRunTrigger, dueRun: boolean, attempt?: number) => Promise<AutomationRun>;
+  /**
+   * Record that a scheduled occurrence was missed — the planned run time is now
+   * further in the past than the catch-up window, so the run never fired (the
+   * daemon was down, or the host was asleep). Optional so callers that only
+   * (re)schedule live jobs need not wire it. When present it is invoked with the
+   * planned-but-missed run time before the next occurrence is recomputed.
+   */
+  readonly recordMissedRun?: ((job: AutomationJob, plannedRunAt: number) => void) | undefined;
 }
 
 function saveJobsAsync(context: Pick<AutomationSchedulingContext, 'saveJobs'>, reason: string, jobId?: string): void {
@@ -44,10 +52,20 @@ export function scheduleAutomationJob(context: AutomationSchedulingContext, job:
   cancelAutomationTimer(context.timers, job.id);
   if (!context.running() || !job.enabled) return;
 
+  const now = Date.now();
   const catchUpWindowMs = Number(context.configManager.get('automation.catchUpWindowMinutes') ?? 30) * 60_000;
-  const nextRunAtCandidate = job.nextRunAt ?? computeNextRun(job.schedule, Date.now(), job.id);
-  const nextRunAt = nextRunAtCandidate !== undefined && nextRunAtCandidate < (Date.now() - catchUpWindowMs)
-    ? computeNextRun(job.schedule, Date.now(), job.id)
+  const nextRunAtCandidate = job.nextRunAt ?? computeNextRun(job.schedule, now, job.id);
+  // A planned occurrence older than the catch-up window never fired. Record it
+  // as a missed run (a first-class outcome that flows the same delivery path as
+  // a failure) instead of silently recomputing the next occurrence.
+  const missedPlannedRunAt = nextRunAtCandidate !== undefined && nextRunAtCandidate < (now - catchUpWindowMs)
+    ? nextRunAtCandidate
+    : undefined;
+  if (missedPlannedRunAt !== undefined) {
+    context.recordMissedRun?.(job, missedPlannedRunAt);
+  }
+  const nextRunAt = missedPlannedRunAt !== undefined
+    ? computeNextRun(job.schedule, now, job.id)
     : nextRunAtCandidate;
   if (nextRunAt === undefined) return;
 

@@ -195,13 +195,14 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'automation.runs.list',
     title: 'List Automation Runs',
-    description: 'Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400.',
+    description: 'Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set) — the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.',
     category: 'automation',
     scopes: ['read:automation'],
     http: { method: 'GET', path: '/api/automation/runs' },
     inputSchema: objectSchema({
       limit: NUMBER_SCHEMA,
       cursor: STRING_SCHEMA,
+      since: NUMBER_SCHEMA,
     }),
     outputSchema: AUTOMATION_RUNS_OUTPUT_SCHEMA,
   }),
