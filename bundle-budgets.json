@@ -262,8 +262,8 @@
     "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, and the W6-C1 daemon-served shared-config tier + admin-scoped credential-status read; measured 1149 B gzip @ v1.0.0 release verification; headroom max(ceil(1149*1.2)=1379, 1149+50=1199) \u2192 1379 (1.2x dominates)"
   },
   "./platform/control-plane": {
-    "gzip_bytes": 833,
-    "rationale": "measured 694 B gzip after the skills.* verb group joined the exported verb-group registrar (registerGatewayVerbGroups now transitively pulls in the canonical skill service + its store) and control-plane re-exports registerSkillsGatewayMethods; headroom max(ceil(694*1.2)=833, 694+50=744) -> 833 (1.2x dominates)"
+    "gzip_bytes": 1208,
+    "rationale": "measured 1006 B gzip after the shared-session spawn-routing builder (buildSharedSessionAgentSpawnRoutingInput) and the surface-presence helper (hasFreshSurfaceParticipant + SURFACE_ROUTE_FRESHNESS_MS) joined the barrel for consumer composition; headroom max(ceil(1006*1.2)=1208, 1006+50=1056) -> 1208 (1.2x dominates)"
   },
   "./platform/core": {
     "gzip_bytes": 342,
@@ -405,6 +405,10 @@
     "gzip_bytes": 725,
     "rationale": "the capability-gates barrel: FEATURE_SETTINGS (per-feature domain/enablement-shape/option-keys metadata surfaces render), the enablement bindings + derivation helpers, the gate manager, and the gate helpers; measured 604 B gzip after the settings dissolution; headroom max(ceil(604*1.2)=725, 604+50=654) -> 725 (1.2x dominates)"
   },
+  "./platform/runtime/permissions/exec-prompt-wiring": {
+    "gzip_bytes": 1425,
+    "rationale": "buildExecPromptAnswerHandler + the ask/answer types: routes a running command's terminal prompt through the approval broker as an execute-category ask; measured 1187 B gzip at first export; headroom max(ceil(1187*1.2)=1425, 1187+50=1237) -> 1425 (1.2x dominates)"
+  },
   "./platform/runtime/permissions/sandbox-policy": {
     "gzip_bytes": 2106,
     "rationale": "sandbox-aware exec permission input (decideSandboxedExec + SandboxPolicyDecision/Effect/Input types) exposed so consumers can wire approval flows to the sandbox policy; measured 1755 B gzip @ commit 01b2cf4c; headroom max(ceil(1755*1.2)=2106, 1755+50=1805) -> 2106 (1.2x dominates); dominated by the command-normalization import decideSandboxedExec reasons over"
@@ -444,6 +448,10 @@
   "./platform/state": {
     "gzip_bytes": 1179,
     "rationale": "measured 982 B gzip @ the memory-file-projection + temporal-validity landing, v1.6.1 line (with the hoisted memory consolidation/usage policy: new memory-file-projection, memory-temporal, memory-consolidation, memory-usage-detection/stats exports on the state barrel); headroom max(ceil(982*1.2)=1179, 982+50=1032) -> 1179 (1.2x dominates)"
+  },
+  "./platform/state/store-snapshots": {
+    "gzip_bytes": 3485,
+    "rationale": "StoreSnapshotScheduler + snapshot/restore/list helpers with the retention engine pieces they compose (RetentionPolicy, SnapshotPruner, RetentionClass) so consumers stop fork-mirroring the scheduler; measured 2904 B gzip at first export; headroom max(ceil(2904*1.2)=3485, 2904+50=2954) -> 3485 (1.2x dominates)"
   },
   "./platform/templates": {
     "gzip_bytes": 100,

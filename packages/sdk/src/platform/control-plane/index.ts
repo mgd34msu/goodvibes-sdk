@@ -42,6 +42,7 @@ export type {
   SubmitSharedSessionMessageInput,
 } from './session-types.js';
 export type {
+  SharedSessionAgentSpawnRoutingInput,
   SharedSessionCompletion,
   SharedSessionContinuationRequest,
   SharedSessionContinuationResult,
@@ -51,6 +52,14 @@ export type {
   SharedSessionInputState,
   SharedSessionRoutingIntent,
 } from './session-intents.js';
+// The one shared normalizer from a session's routing intent to an agent-spawn
+// routing input — public so every surface derives spawn routing identically
+// instead of re-implementing the model/provider/fallback rules.
+export { buildSharedSessionAgentSpawnRoutingInput } from './session-intents.js';
+// Surface-presence check plus the freshness window the daemon itself applies:
+// lets a consumer compose the same "is a live surface attached?" answer the
+// broker uses for steer/follow-up routing.
+export { hasFreshSurfaceParticipant, SURFACE_ROUTE_FRESHNESS_MS } from './session-broker-sessions.js';
 export { SharedSessionBroker } from './session-broker.js';
 export {
   discoverLegacySessionSources,
