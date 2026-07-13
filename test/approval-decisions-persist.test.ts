@@ -154,6 +154,13 @@ describe('durable approval rules', () => {
         const rx = glob(pat);
         const normB = pathNormalize(bPath);
         const extracted = extractPathArgs(bArgs);
+        const mkRule = (patterns: string[]) => ({
+          type: 'path-scope' as const, id: 'diag', origin: 'user' as const,
+          effect: 'allow' as const, toolPattern: ['edit', 'write'], pathPatterns: patterns,
+        });
+        const probeExact = evaluatePathScopeRule(mkRule([bPath]), 'edit', bArgs, WORKSPACE).matched;
+        const probeStar = evaluatePathScopeRule(mkRule([`${WORKSPACE}/src/*`]), 'edit', bArgs, WORKSPACE).matched;
+        const probeStarStar = evaluatePathScopeRule(mkRule([`${WORKSPACE}/src/**`]), 'edit', bArgs, WORKSPACE).matched;
         console.error('[DIAG] same-dir re-ask', JSON.stringify({
           prompts,
           firstReason: first.reasonCode,
@@ -168,6 +175,10 @@ describe('durable approval rules', () => {
           normBEqualsRaw: normB === bPath,
           extracted,
           extractedEqualsRaw: extracted.length === 1 && extracted[0] === bPath,
+          probeExact,
+          probeStar,
+          probeStarStar,
+          evalFnSource: evaluatePathScopeRule.toString().slice(0, 1400),
           tmpdir: tmpdir(),
         }, null, 2));
       }
