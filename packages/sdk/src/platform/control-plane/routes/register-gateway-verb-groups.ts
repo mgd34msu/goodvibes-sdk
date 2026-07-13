@@ -223,6 +223,8 @@ function toFleetNotice(event: FleetEvent): FleetNotice {
     ...('label' in event && event.label ? { label: event.label } : {}),
     ...('reason' in event && event.reason ? { reason: event.reason } : {}),
     ...('sessionId' in event && event.sessionId ? { sessionId: event.sessionId } : {}),
+    ...('kind' in event && event.kind ? { kind: event.kind } : {}),
+    ...('state' in event && event.state ? { state: event.state } : {}),
   };
 }
 
@@ -401,6 +403,16 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     store: new PushSubscriptionStore(
       deps.shellPaths.resolveUserPath('control-plane', 'push-subscriptions.json'),
     ),
+    // Per-class silencing toggles (notifications.push*), read live per event.
+    // Every class defaults ON — the toggles only ever turn a class OFF.
+    isCategoryEnabled: (category) => {
+      const key = category === 'approval'
+        ? 'notifications.pushApproval'
+        : category === 'needs-input'
+          ? 'notifications.pushNeedsInput'
+          : 'notifications.pushCompletion';
+      return (deps.configManager.get as unknown as (k: string) => unknown)(key) !== false;
+    },
   });
   // Relay WebAuthn step-up ceremony verbs (register a credential, mint a
   // challenge). Registered only when the composition root threads the shared
@@ -425,6 +437,10 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       subscribe: (listener) => bus.onDomain('fleet', (envelope) => listener(toFleetNotice(envelope.payload))),
     };
     pushService.attachFleetNeedsInputSource(source, deps.sessionPresence);
+    // Third event source: a tracked run reaching a terminal state -> a
+    // 'completion' push, by default with zero setup (the
+    // notifications.pushCompletion toggle only silences the class).
+    pushService.attachCompletionSource(source);
   }
 
   // Cost attribution + quota-window tracking over the platform's own LLM usage

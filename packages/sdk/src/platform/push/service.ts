@@ -23,6 +23,7 @@ import type {
   PublicPushSubscription,
   PushDeliveryReceipt,
   PushMessage,
+  PushNotificationCategory,
   SubscriptionKeyMaterial,
 } from './types.js';
 
@@ -50,6 +51,10 @@ export interface FleetNotice {
   readonly label?: string | undefined;
   readonly reason?: 'approval' | 'input' | undefined;
   readonly sessionId?: string | undefined;
+  /** Node kind (agent, chain, workstream, …) — the completion source's scope filter. */
+  readonly kind?: string | undefined;
+  /** Terminal state on a FLEET_NODE_FINISHED notice (done/failed/killed). */
+  readonly state?: string | undefined;
 }
 
 /** The slice of a fleet event stream the needs-input push source subscribes to. */
@@ -67,6 +72,13 @@ export interface PushServiceDeps {
   readonly store: PushSubscriptionStore;
   /** Overridable delivery transport; production uses the built-in fetch. */
   readonly transport?: PushTransport | undefined;
+  /**
+   * Per-class silencing toggle, read LIVE at each event (the composition root
+   * wires it to the notifications.push* config keys). Absent ⇒ every class is
+   * on — the toggles exist to turn classes OFF, never as a prerequisite for
+   * the fan-out to work.
+   */
+  readonly isCategoryEnabled?: ((category: PushNotificationCategory) => boolean) | undefined;
 }
 
 export interface SubscribeInput {
@@ -83,11 +95,15 @@ export class PushService {
   private readonly notifiedApprovals = new Set<string>();
   /** Fleet node ids already pushed as needs-input, cleared when they unblock/finish. */
   private readonly notifiedNeedsInput = new Set<string>();
+  /** Fleet node ids already pushed as completed — a terminal state fires once. */
+  private readonly notifiedCompletions = new Set<string>();
+  private readonly isCategoryEnabled: (category: PushNotificationCategory) => boolean;
 
   constructor(deps: PushServiceDeps) {
     this.vapid = deps.vapid;
     this.store = deps.store;
     this.transport = deps.transport;
+    this.isCategoryEnabled = deps.isCategoryEnabled ?? ((): boolean => true);
   }
 
   /** The public VAPID key clients subscribe with. */
@@ -141,6 +157,7 @@ export class PushService {
   attachApprovalSource(source: ApprovalSource): () => void {
     return source.subscribe((approval) => {
       if (approval.status !== 'pending') return;
+      if (!this.isCategoryEnabled('approval')) return;
       if (this.notifiedApprovals.has(approval.id)) return;
       this.notifiedApprovals.add(approval.id);
       const tool = approval.request?.tool ?? 'a tool';
@@ -177,6 +194,7 @@ export class PushService {
         return;
       }
       if (notice.type !== 'FLEET_NODE_BLOCKED_ON_USER') return;
+      if (!this.isCategoryEnabled('needs-input')) return;
       if (this.notifiedNeedsInput.has(notice.nodeId)) return;
       // Presence suppression: an operator is actively attached to this session,
       // so they will see the block in-surface — do not also push to a device.
@@ -196,6 +214,51 @@ export class PushService {
         urgency: 'high',
       }).catch((error) => {
         logger.warn('PushService: needs-input fan-out failed', {
+          nodeId: notice.nodeId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    });
+  }
+
+  /**
+   * Wire the completion source: a tracked run reaching a terminal state (a
+   * FLEET_NODE_FINISHED notice) pushes a 'completion' notification to every
+   * paired target — by DEFAULT, with zero configuration; the
+   * notifications.pushCompletion toggle exists only to silence the class.
+   * Scoped to run-level kinds (agent/chain/workstream/workflow/automation-job)
+   * so a chain finishing does not also fan out one push per subtask/work-item
+   * child; the FINISHED event itself fires only on an OBSERVED terminal
+   * transition (emit-bridge honesty), so nothing is inferred. One push per
+   * node id. Returns an unsubscribe handle.
+   */
+  attachCompletionSource(source: FleetNoticeSource): () => void {
+    const RUN_KINDS = new Set(['agent', 'chain', 'workstream', 'workflow', 'automation-job']);
+    return source.subscribe((notice) => {
+      if (notice.type !== 'FLEET_NODE_FINISHED') return;
+      if (notice.kind !== undefined && !RUN_KINDS.has(notice.kind)) return;
+      if (!this.isCategoryEnabled('completion')) return;
+      if (this.notifiedCompletions.has(notice.nodeId)) return;
+      this.notifiedCompletions.add(notice.nodeId);
+      const label = notice.label ?? 'A tracked run';
+      const outcome = notice.state === 'done'
+        ? 'completed'
+        : notice.state === 'failed'
+          ? 'failed'
+          : notice.state === 'killed'
+            ? 'was killed'
+            : 'finished';
+      void this.deliver({
+        title: notice.state === 'done' ? 'Run completed' : 'Run finished',
+        body: `${label} ${outcome}.`,
+        data: {
+          kind: 'completion',
+          ...(notice.sessionId ? { sessionId: notice.sessionId } : {}),
+          nodeId: notice.nodeId,
+        },
+        urgency: 'normal',
+      }).catch((error) => {
+        logger.warn('PushService: completion fan-out failed', {
           nodeId: notice.nodeId,
           error: error instanceof Error ? error.message : String(error),
         });

@@ -69,7 +69,8 @@ export type PushUrgency = 'very-low' | 'low' | 'normal' | 'high';
  * - 'approval'    — an approval decision is waiting (deep link: approvalId).
  * - 'needs-input' — a fleet node is blocked waiting on the operator (deep link:
  *   sessionId/nodeId).
- * - 'completion'  — a tracked run finished (reserved; no fan-out wired yet).
+ * - 'completion'  — a tracked run reached a terminal state (deep link:
+ *   sessionId/nodeId; fan-out via attachCompletionSource).
  */
 export type PushNotificationCategory = 'approval' | 'needs-input' | 'completion';
 
@@ -83,9 +84,9 @@ export interface PushNotificationData {
   readonly kind: PushNotificationCategory;
   /** Approval deep link (category 'approval'). */
   readonly approvalId?: string | undefined;
-  /** Session deep link (category 'needs-input'). */
+  /** Session deep link (categories 'needs-input' and 'completion'). */
   readonly sessionId?: string | undefined;
-  /** Fleet-node deep link (category 'needs-input'). */
+  /** Fleet-node deep link (categories 'needs-input' and 'completion'). */
   readonly nodeId?: string | undefined;
 }
 
