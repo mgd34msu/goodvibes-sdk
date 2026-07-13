@@ -17,7 +17,8 @@ import { PermissionManager } from '../packages/sdk/src/platform/permissions/mana
 import type { PermissionConfigReader } from '../packages/sdk/src/platform/permissions/manager.js';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../packages/sdk/src/platform/permissions/prompt.js';
 import { UserPermissionRuleStore } from '../packages/sdk/src/platform/permissions/user-rule-store.js';
-import { buildRememberOptions } from '../packages/sdk/src/platform/permissions/approval-rules.js';
+import { buildRememberOptions, matchDurableRules } from '../packages/sdk/src/platform/permissions/approval-rules.js';
+import { evaluatePathScopeRule } from '../packages/sdk/src/platform/runtime/permissions/rules/path-scope.js';
 import { buildDenialErrorMessage, buildToolDenial } from '../packages/sdk/src/platform/permissions/denial.js';
 import { ApprovalBroker } from '../packages/sdk/src/platform/control-plane/approval-broker.js';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
@@ -135,15 +136,20 @@ describe('durable approval rules', () => {
       });
       if (prompts !== 1) {
         // TEMP CI DIAGNOSTIC — remove after root-causing the CI-only re-ask.
+        const bArgs = { edits: [{ path: `${WORKSPACE}/src/b.ts`, find: 'x', replace: 'y' }] };
+        const rulesNow = store.rules();
+        const directMatch = matchDurableRules(rulesNow, 'edit', bArgs, { projectRoot: WORKSPACE });
+        const pathScopeResults = rulesNow.map((r) =>
+          r.type === 'path-scope' ? evaluatePathScopeRule(r, 'edit', bArgs, WORKSPACE) : { skipped: r.type });
         console.error('[DIAG] same-dir re-ask', JSON.stringify({
           prompts,
           workspace: WORKSPACE,
           firstReason: first.reasonCode,
-          firstApproved: first.approved,
           sameDirReason: sameDir.reasonCode,
-          sameDirApproved: sameDir.approved,
-          sameDirPersisted: sameDir.persisted,
-          storedRules: store.list(),
+          rulesNowCount: rulesNow.length,
+          directMatch,
+          pathScopeResults,
+          firstRulePattern: rulesNow[0]?.type === 'path-scope' ? rulesNow[0].pathPatterns : null,
           tmpdir: tmpdir(),
         }, null, 2));
       }
