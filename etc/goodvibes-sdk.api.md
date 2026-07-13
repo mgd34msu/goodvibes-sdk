@@ -3977,6 +3977,12 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "permissions.rules.delete": {
+        ruleId: string;
+    };
+    // (undocumented)
+    "permissions.rules.list": {};
+    // (undocumented)
     "principals.create": {
         name: string;
         kind: "bot" | "service" | "token" | "user";
@@ -11093,6 +11099,21 @@ export interface OperatorMethodOutputMap {
         opened: boolean;
         id: string;
         pane: "bottom" | "top";
+    };
+    // (undocumented)
+    "permissions.rules.delete": {
+        deleted: boolean;
+    };
+    // (undocumented)
+    "permissions.rules.list": {
+        rules: readonly ({
+            id: string;
+            effect: "allow" | "deny";
+            tier: "command-class" | "exact" | "path" | "tool";
+            tool: string;
+            description?: string;
+            createdAt: number;
+        })[];
     };
     // (undocumented)
     "principals.create": {

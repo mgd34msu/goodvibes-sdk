@@ -44,6 +44,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { builtinGatewayControlCompanionMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-companion.ts';
+import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import {
   EMPTY_OBJECT_SCHEMA,
@@ -200,6 +201,7 @@ const FOUNDATION_TYPES_PATH = resolve(
 const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCoreMethodDescriptors,
   ...builtinGatewayControlCompanionMethodDescriptors,
+  ...builtinGatewayPermissionRuleMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -291,6 +293,9 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
   // Session-scoped permission mode (get/set) + context-usage exposure:
   { methodId: 'sessions.permissionMode.get', ...descriptorSchemas('sessions.permissionMode.get') },
+  // Durable permission rules settings surface:
+  { methodId: 'permissions.rules.list', ...descriptorSchemas('permissions.rules.list') },
+  { methodId: 'permissions.rules.delete', ...descriptorSchemas('permissions.rules.delete') },
   { methodId: 'sessions.permissionMode.set', ...descriptorSchemas('sessions.permissionMode.set') },
   { methodId: 'sessions.contextUsage.get', ...descriptorSchemas('sessions.contextUsage.get') },
   // Delete-honesty verbs (landed after this check's first cut; covered
