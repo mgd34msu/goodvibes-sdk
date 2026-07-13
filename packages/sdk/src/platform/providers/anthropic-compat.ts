@@ -3,6 +3,7 @@ import type {
   ChatRequest,
   ChatResponse,
   ChatStopReason,
+  ProviderAuthState,
   ProviderModelSource,
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
@@ -159,6 +160,30 @@ export class AnthropicCompatProvider implements LLMProvider {
     return Boolean(this.apiKey) || this.anonymousConfigured;
   }
 
+  describeAuthState(): ProviderAuthState {
+    return {
+      configured: Boolean(this.apiKey),
+      allowAnonymous: this.allowAnonymous,
+      anonymousReady: this.anonymousConfigured,
+      authEnvVars: this.authEnvVars,
+    };
+  }
+
+  /**
+   * No dead-end 401: an unconfigured provider refuses the request BEFORE it
+   * hits the wire, with copy that names the key it needs (mirrors
+   * OpenAICompatProvider.assertConfiguredForChat).
+   */
+  private assertConfiguredForChat(model: string | undefined): void {
+    if (this.isConfigured()) return;
+    const keyHint = this.authEnvVars.length > 0
+      ? `set ${this.authEnvVars.join(' or ')}, or store a key for "${this.name}"`
+      : `configure credentials for "${this.name}"`;
+    throw new ProviderError(
+      `Provider "${this.name}" has no API key configured — the request for model "${model ?? this.defaultModel}" was not sent. To use this provider, ${keyHint}.`,
+    );
+  }
+
   /**
    * Re-check this backend's live model listing (Anthropic-style GET
    * {baseURL}/models). Always resolves — falls back to the on-disk cache,
@@ -203,6 +228,7 @@ export class AnthropicCompatProvider implements LLMProvider {
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
     const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry, reasoningEffort } = params;
+    this.assertConfiguredForChat(model);
 
     return (await instrumentedLlmCall(
       () => withRetry(async () => {

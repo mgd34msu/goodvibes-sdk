@@ -5,6 +5,7 @@ export type {
   LLMProvider,
   PartialToolCall,
   ProviderAuthRouteDescriptor,
+  ProviderAuthState,
   ProviderDeclaredAuthRoute,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResult,
@@ -15,6 +16,16 @@ export type {
   ProviderUsageCostMetadata,
   StreamDelta,
 } from './interface.js';
+export {
+  resolveDefaultModelReadiness,
+  buildOnboardingModelCopy,
+  assertKeylessDefaultPairing,
+} from './keyless-default.js';
+export type {
+  DefaultModelReadiness,
+  ModelProviderSource,
+  OnboardingModelCopy,
+} from './keyless-default.js';
 export {
   verifyProviderModelSource,
   formatProviderModelSourceRejection,
