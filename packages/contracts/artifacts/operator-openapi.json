@@ -66739,12 +66739,24 @@
                                 "enum": [
                                   "USD"
                                 ]
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "user",
+                                  "provider",
+                                  "catalog"
+                                ]
+                              },
+                              "asOf": {
+                                "type": "string"
                               }
                             },
                             "required": [
                               "inputPerMillionTokens",
                               "outputPerMillionTokens",
-                              "currency"
+                              "currency",
+                              "source"
                             ],
                             "additionalProperties": false
                           }
@@ -67093,12 +67105,24 @@
                                       "enum": [
                                         "USD"
                                       ]
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "enum": [
+                                        "user",
+                                        "provider",
+                                        "catalog"
+                                      ]
+                                    },
+                                    "asOf": {
+                                      "type": "string"
                                     }
                                   },
                                   "required": [
                                     "inputPerMillionTokens",
                                     "outputPerMillionTokens",
-                                    "currency"
+                                    "currency",
+                                    "source"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -67176,10 +67200,15 @@
                     "pricingSource": {
                       "type": "string",
                       "enum": [
+                        "user",
                         "catalog",
                         "provider",
+                        "mixed",
                         "none"
                       ]
+                    },
+                    "pricingAsOf": {
+                      "type": "string"
                     },
                     "models": {
                       "type": "array",
@@ -67218,12 +67247,24 @@
                                 "enum": [
                                   "USD"
                                 ]
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "user",
+                                  "provider",
+                                  "catalog"
+                                ]
+                              },
+                              "asOf": {
+                                "type": "string"
                               }
                             },
                             "required": [
                               "inputPerMillionTokens",
                               "outputPerMillionTokens",
-                              "currency"
+                              "currency",
+                              "source"
                             ],
                             "additionalProperties": false
                           }

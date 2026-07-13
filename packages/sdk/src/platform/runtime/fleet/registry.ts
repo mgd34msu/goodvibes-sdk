@@ -52,10 +52,10 @@ import {
   adaptPhase,
   adaptWorkItem,
   adaptWorkstream,
+  collectLiveItemUsage,
   phaseNodeId,
   workItemNodeId,
   workstreamNodeId,
-  type LiveItemUsage,
 } from './adapters/orchestration.js';
 import type { CodeIndexProcessSource } from './adapters/code-index.js';
 import { adaptCodeIndex } from './adapters/code-index.js';
@@ -147,6 +147,8 @@ export interface ProcessRegistryDeps {
   readonly runtimeBus?: RuntimeEventBus | undefined;
   /** Optional: honest cost pricing. Return null when the model is unknown — NEVER fabricate. */
   readonly priceUsage?: ((model: string | undefined, usage: ProcessUsage) => number | null) | undefined;
+  /** Optional: provenance for the same resolution priceUsage prices with (costSource + as-of date on priced nodes). */
+  readonly priceProvenance?: ((model: string | undefined) => { readonly source: 'user' | 'provider' | 'catalog'; readonly asOf?: string | undefined } | null) | undefined;
   readonly now?: (() => number) | undefined;
   readonly stalledThresholdMs?: number | undefined;
   /** Stall-tell threshold: a live node quiet this long gains the marker (default 5 min). */
@@ -349,6 +351,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       agentIdByOrchestrationNodeId,
       agentIds,
       priceUsage: deps.priceUsage,
+      priceProvenance: deps.priceProvenance,
       messageBusPresent: deps.messageBus !== undefined,
     };
 
@@ -398,23 +401,10 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     }
 
     for (const workstream of workstreams) {
-      // Resolve each item's active-agent in-flight usage ONCE up front, keyed
-      // by item id, so both the workstream rollup and the per-item nodes show
-      // live mid-phase usage instead of n/a until the phase boundary lands
-      // displayWorkItemUsage applies the overlay only while an
-      // item is 'in-phase', so this never double-counts committed usage.
-      const liveByItemId = new Map<string, LiveItemUsage>();
-      for (const item of workstream.items) {
-        const activeAgentId = activeWorkItemAgentId(item);
-        const activeAgentNode = activeAgentId ? agentNodeById.get(activeAgentId) : undefined;
-        if (activeAgentNode) {
-          liveByItemId.set(item.id, {
-            usage: activeAgentNode.usage,
-            costUsd: activeAgentNode.costUsd ?? null,
-            costState: activeAgentNode.costState,
-          });
-        }
-      }
+      // Each item's active-agent in-flight usage, resolved ONCE up front (see
+      // collectLiveItemUsage) so the workstream rollup and the per-item nodes
+      // show live mid-phase usage instead of n/a until the phase boundary.
+      const liveByItemId = collectLiveItemUsage(workstream, agentNodeById);
       nodes.push(adaptWorkstream(workstream, capturedAt, liveByItemId));
       for (const phase of workstream.phases) {
         nodes.push(adaptPhase(phase, workstream));

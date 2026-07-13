@@ -28530,6 +28530,32 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "unpriced"
               ]
             },
+            "costSource": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "provider",
+                    "catalog",
+                    "mixed"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pricingAsOf": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "pricedRecordCount": {
               "type": "number"
             },
@@ -28586,6 +28612,32 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "unpriced"
                     ]
                   },
+                  "costSource": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "user",
+                          "provider",
+                          "catalog",
+                          "mixed"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "pricedRecordCount": {
                     "type": "number"
                   },
@@ -28621,6 +28673,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "key",
                   "costUsd",
                   "costState",
+                  "costSource",
+                  "pricingAsOf",
                   "pricedRecordCount",
                   "unpricedRecordCount",
                   "tokens"
@@ -28635,6 +28689,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "dimension",
             "totalCostUsd",
             "costState",
+            "costSource",
+            "pricingAsOf",
             "pricedRecordCount",
             "unpricedRecordCount",
             "tokens",
@@ -29651,6 +29707,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "estimated"
                     ]
                   },
+                  "costSource": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "provider",
+                      "catalog",
+                      "mixed"
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "type": "string"
+                  },
                   "currentActivity": {
                     "type": "object",
                     "properties": {
@@ -29990,6 +30058,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                                 "unpriced",
                                 "estimated"
                               ]
+                            },
+                            "costSource": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "provider",
+                                "catalog",
+                                "mixed"
+                              ]
+                            },
+                            "pricingAsOf": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -30358,6 +30438,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "estimated"
                     ]
                   },
+                  "costSource": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "provider",
+                      "catalog",
+                      "mixed"
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "type": "string"
+                  },
                   "currentActivity": {
                     "type": "object",
                     "properties": {
@@ -30624,6 +30716,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "unpriced",
                       "estimated"
                     ]
+                  },
+                  "costSource": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "provider",
+                      "catalog",
+                      "mixed"
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "type": "string"
                   },
                   "currentActivity": {
                     "type": "object",
@@ -65364,12 +65468,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "enum": [
                           "USD"
                         ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "user",
+                          "provider",
+                          "catalog"
+                        ]
+                      },
+                      "asOf": {
+                        "type": "string"
                       }
                     },
                     "required": [
                       "inputPerMillionTokens",
                       "outputPerMillionTokens",
-                      "currency"
+                      "currency",
+                      "source"
                     ],
                     "additionalProperties": false
                   }
@@ -65702,12 +65818,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "enum": [
                                 "USD"
                               ]
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "provider",
+                                "catalog"
+                              ]
+                            },
+                            "asOf": {
+                              "type": "string"
                             }
                           },
                           "required": [
                             "inputPerMillionTokens",
                             "outputPerMillionTokens",
-                            "currency"
+                            "currency",
+                            "source"
                           ],
                           "additionalProperties": false
                         }
@@ -65786,10 +65914,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "pricingSource": {
               "type": "string",
               "enum": [
+                "user",
                 "catalog",
                 "provider",
+                "mixed",
                 "none"
               ]
+            },
+            "pricingAsOf": {
+              "type": "string"
             },
             "models": {
               "type": "array",
@@ -65828,12 +65961,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "enum": [
                           "USD"
                         ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "user",
+                          "provider",
+                          "catalog"
+                        ]
+                      },
+                      "asOf": {
+                        "type": "string"
                       }
                     },
                     "required": [
                       "inputPerMillionTokens",
                       "outputPerMillionTokens",
-                      "currency"
+                      "currency",
+                      "source"
                     ],
                     "additionalProperties": false
                   }

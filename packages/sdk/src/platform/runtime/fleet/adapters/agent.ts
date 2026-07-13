@@ -60,6 +60,8 @@ export interface AgentAdapterContext {
   /** All agent ids present in this snapshot. */
   readonly agentIds: ReadonlySet<string>;
   readonly priceUsage?: ((model: string | undefined, usage: ProcessUsage) => number | null) | undefined;
+  /** Provenance for the same resolution priceUsage prices with — stamped onto the node at pricing time. */
+  readonly priceProvenance?: ((model: string | undefined) => { readonly source: 'user' | 'provider' | 'catalog'; readonly asOf?: string | undefined } | null) | undefined;
   /**
    * True when the registry was constructed with a `messageBus` dep — gates
    * `steerable`. Without it, steering has no delivery mechanism, so every
@@ -185,6 +187,8 @@ export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): Proce
 
   let costUsd: number | null = null;
   let costState: ProcessNode['costState'] = 'unpriced';
+  let costSource: ProcessNode['costSource'];
+  let pricingAsOf: string | undefined;
   if (usage && ctx.priceUsage) {
     let priced: number | null = null;
     try {
@@ -195,6 +199,12 @@ export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): Proce
     if (priced !== null) {
       costUsd = priced;
       costState = 'priced';
+      // Same resolution instant as the dollars — never re-derived later.
+      const provenance = ctx.priceProvenance?.(record.model) ?? null;
+      if (provenance) {
+        costSource = provenance.source;
+        pricingAsOf = provenance.asOf;
+      }
     }
   }
 
@@ -216,6 +226,8 @@ export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): Proce
     provider: record.provider,
     costUsd,
     costState,
+    ...(costSource !== undefined ? { costSource } : {}),
+    ...(pricingAsOf !== undefined ? { pricingAsOf } : {}),
     currentActivity: entry?.activity,
     capabilities: { interruptible: active, killable: active, pausable: false, resumable: false, steerable: active && ctx.messageBusPresent },
     ...(deriveNeedsAttention(state) ? { needsAttention: deriveNeedsAttention(state) } : {}),

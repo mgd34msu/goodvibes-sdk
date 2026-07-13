@@ -8975,6 +8975,8 @@ export interface OperatorMethodOutputMap {
         dimension: "agent" | "hook" | "mcp" | "model" | "provider" | "session" | "tool";
         totalCostUsd: null | number;
         costState: "estimated" | "priced" | "unpriced";
+        costSource: null | "catalog" | "mixed" | "provider" | "user";
+        pricingAsOf: null | string;
         pricedRecordCount: number;
         unpricedRecordCount: number;
         tokens: {
@@ -8987,6 +8989,8 @@ export interface OperatorMethodOutputMap {
             key: string;
             costUsd: null | number;
             costState: "estimated" | "priced" | "unpriced";
+            costSource: null | "catalog" | "mixed" | "provider" | "user";
+            pricingAsOf: null | string;
             pricedRecordCount: number;
             unpricedRecordCount: number;
             tokens: {
@@ -9116,6 +9120,8 @@ export interface OperatorMethodOutputMap {
             provider?: string;
             costUsd?: null | number;
             costState: "estimated" | "priced" | "unpriced";
+            costSource?: "catalog" | "mixed" | "provider" | "user";
+            pricingAsOf?: string;
             currentActivity?: {
                 kind: "output-line" | "phase" | "tool";
                 text: string;
@@ -9177,6 +9183,8 @@ export interface OperatorMethodOutputMap {
                     toolCallCount: number;
                     costUsd: null | number;
                     costState: "estimated" | "priced" | "unpriced";
+                    costSource?: "catalog" | "mixed" | "provider" | "user";
+                    pricingAsOf?: string;
                 };
                 failureReason: null | string;
                 diff: null | {
@@ -9227,6 +9235,8 @@ export interface OperatorMethodOutputMap {
             provider?: string;
             costUsd?: null | number;
             costState: "estimated" | "priced" | "unpriced";
+            costSource?: "catalog" | "mixed" | "provider" | "user";
+            pricingAsOf?: string;
             currentActivity?: {
                 kind: "output-line" | "phase" | "tool";
                 text: string;
@@ -9282,6 +9292,8 @@ export interface OperatorMethodOutputMap {
             provider?: string;
             costUsd?: null | number;
             costState: "estimated" | "priced" | "unpriced";
+            costSource?: "catalog" | "mixed" | "provider" | "user";
+            pricingAsOf?: string;
             currentActivity?: {
                 kind: "output-line" | "phase" | "tool";
                 text: string;
@@ -11400,6 +11412,8 @@ export interface OperatorMethodOutputMap {
                 inputPerMillionTokens: number;
                 outputPerMillionTokens: number;
                 currency: "USD";
+                source: "catalog" | "provider" | "user";
+                asOf?: string;
             };
         } & {
             readonly [key: string]: unknown;
@@ -11489,6 +11503,8 @@ export interface OperatorMethodOutputMap {
                     inputPerMillionTokens: number;
                     outputPerMillionTokens: number;
                     currency: "USD";
+                    source: "catalog" | "provider" | "user";
+                    asOf?: string;
                 };
             } & {
                 readonly [key: string]: unknown;
@@ -11500,7 +11516,8 @@ export interface OperatorMethodOutputMap {
         providerId: string;
         active: boolean;
         currentModelRegistryKey?: string;
-        pricingSource: "catalog" | "none" | "provider";
+        pricingSource: "catalog" | "mixed" | "none" | "provider" | "user";
+        pricingAsOf?: string;
         models: readonly (({
             id: string;
             registryKey: string;
@@ -11512,6 +11529,8 @@ export interface OperatorMethodOutputMap {
                 inputPerMillionTokens: number;
                 outputPerMillionTokens: number;
                 currency: "USD";
+                source: "catalog" | "provider" | "user";
+                asOf?: string;
             };
         } & {
             readonly [key: string]: unknown;

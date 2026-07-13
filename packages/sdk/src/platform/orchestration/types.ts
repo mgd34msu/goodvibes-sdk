@@ -115,6 +115,15 @@ export type WorkItemState =
    */
   | 'held-merge';
 
+/**
+ * Where a usage rollup's priced dollars came from: 'user' (manual/registration
+ * price), 'provider' (provider-served rates), 'catalog' (the dated pricing
+ * catalog), or 'mixed' when priced contributors disagree. Absent when nothing
+ * was priced — or on records committed before provenance stamping existed
+ * (honest absence, never back-filled).
+ */
+export type WorkItemCostSource = 'user' | 'provider' | 'catalog' | 'mixed';
+
 /** Token/cost usage rolled up across every agent this work-item has ever spawned. */
 export interface WorkItemUsage {
   readonly inputTokens: number;
@@ -127,6 +136,9 @@ export interface WorkItemUsage {
   readonly toolCallCount: number;
   readonly costUsd: number | null;
   readonly costState: 'priced' | 'unpriced' | 'estimated';
+  readonly costSource?: WorkItemCostSource | undefined;
+  /** Oldest ISO date (YYYY-MM-DD) among the dated (catalog/provider) pricing snapshots that contributed; absent when none carried a date. */
+  readonly pricingAsOf?: string | undefined;
 }
 
 export function emptyWorkItemUsage(): WorkItemUsage {
@@ -173,8 +185,39 @@ export function mergeWorkItemUsage(a: WorkItemUsage, b: WorkItemUsage): WorkItem
     toolCallCount: a.toolCallCount + b.toolCallCount,
     costUsd: a.costUsd !== null && b.costUsd !== null ? a.costUsd + b.costUsd : (a.costUsd ?? b.costUsd),
     costState: bothPriced ? 'priced' : neitherPriced ? 'unpriced' : 'estimated',
+    costSource: mergeCostSource(a.costSource, b.costSource),
+    pricingAsOf: mergePricingAsOf(a.pricingAsOf, b.pricingAsOf),
   };
 }
+
+/** One shared source reports itself; disagreement is 'mixed'; absence never overrides presence. */
+export function mergeCostSource(a: WorkItemCostSource | undefined, b: WorkItemCostSource | undefined): WorkItemCostSource | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return a === b ? a : 'mixed';
+}
+
+/** Oldest date wins: "priced with data at least as fresh as <date>". */
+export function mergePricingAsOf(a: string | undefined, b: string | undefined): string | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return a < b ? a : b;
+}
+
+/**
+ * Provenance of one model's resolved price, stamped at the same instant the
+ * dollars are computed (same resolver call), never re-derived later. Threaded
+ * alongside `priceUsage` wherever usage is priced (the phase-runner, the
+ * fleet agent adapter) so every priced value a verb serves can say where its
+ * rates came from and, for dated sources, how fresh they are.
+ */
+export interface PricingProvenance {
+  readonly source: 'user' | 'provider' | 'catalog';
+  /** ISO date (YYYY-MM-DD) of the catalog/provider pricing snapshot; absent for user prices. */
+  readonly asOf?: string | undefined;
+}
+
+export type PriceProvenanceFn = (model: string | undefined) => PricingProvenance | null;
 
 /**
  * One unit of pipeline work. `visits` bounds re-review cycles the same way

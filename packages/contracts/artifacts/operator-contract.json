@@ -28528,6 +28528,32 @@
                 "unpriced"
               ]
             },
+            "costSource": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "provider",
+                    "catalog",
+                    "mixed"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pricingAsOf": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "pricedRecordCount": {
               "type": "number"
             },
@@ -28584,6 +28610,32 @@
                       "unpriced"
                     ]
                   },
+                  "costSource": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "user",
+                          "provider",
+                          "catalog",
+                          "mixed"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "pricedRecordCount": {
                     "type": "number"
                   },
@@ -28619,6 +28671,8 @@
                   "key",
                   "costUsd",
                   "costState",
+                  "costSource",
+                  "pricingAsOf",
                   "pricedRecordCount",
                   "unpricedRecordCount",
                   "tokens"
@@ -28633,6 +28687,8 @@
             "dimension",
             "totalCostUsd",
             "costState",
+            "costSource",
+            "pricingAsOf",
             "pricedRecordCount",
             "unpricedRecordCount",
             "tokens",
@@ -29649,6 +29705,18 @@
                       "estimated"
                     ]
                   },
+                  "costSource": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "provider",
+                      "catalog",
+                      "mixed"
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "type": "string"
+                  },
                   "currentActivity": {
                     "type": "object",
                     "properties": {
@@ -29988,6 +30056,18 @@
                                 "unpriced",
                                 "estimated"
                               ]
+                            },
+                            "costSource": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "provider",
+                                "catalog",
+                                "mixed"
+                              ]
+                            },
+                            "pricingAsOf": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -30356,6 +30436,18 @@
                       "estimated"
                     ]
                   },
+                  "costSource": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "provider",
+                      "catalog",
+                      "mixed"
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "type": "string"
+                  },
                   "currentActivity": {
                     "type": "object",
                     "properties": {
@@ -30622,6 +30714,18 @@
                       "unpriced",
                       "estimated"
                     ]
+                  },
+                  "costSource": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "provider",
+                      "catalog",
+                      "mixed"
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "type": "string"
                   },
                   "currentActivity": {
                     "type": "object",
@@ -65362,12 +65466,24 @@
                         "enum": [
                           "USD"
                         ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "user",
+                          "provider",
+                          "catalog"
+                        ]
+                      },
+                      "asOf": {
+                        "type": "string"
                       }
                     },
                     "required": [
                       "inputPerMillionTokens",
                       "outputPerMillionTokens",
-                      "currency"
+                      "currency",
+                      "source"
                     ],
                     "additionalProperties": false
                   }
@@ -65700,12 +65816,24 @@
                               "enum": [
                                 "USD"
                               ]
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "provider",
+                                "catalog"
+                              ]
+                            },
+                            "asOf": {
+                              "type": "string"
                             }
                           },
                           "required": [
                             "inputPerMillionTokens",
                             "outputPerMillionTokens",
-                            "currency"
+                            "currency",
+                            "source"
                           ],
                           "additionalProperties": false
                         }
@@ -65784,10 +65912,15 @@
             "pricingSource": {
               "type": "string",
               "enum": [
+                "user",
                 "catalog",
                 "provider",
+                "mixed",
                 "none"
               ]
+            },
+            "pricingAsOf": {
+              "type": "string"
             },
             "models": {
               "type": "array",
@@ -65826,12 +65959,24 @@
                         "enum": [
                           "USD"
                         ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "user",
+                          "provider",
+                          "catalog"
+                        ]
+                      },
+                      "asOf": {
+                        "type": "string"
                       }
                     },
                     "required": [
                       "inputPerMillionTokens",
                       "outputPerMillionTokens",
-                      "currency"
+                      "currency",
+                      "source"
                     ],
                     "additionalProperties": false
                   }

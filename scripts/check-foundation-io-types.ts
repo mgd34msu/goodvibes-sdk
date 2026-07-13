@@ -46,6 +46,7 @@ import { fileURLToPath } from 'node:url';
 import { builtinGatewayControlCompanionMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-companion.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
+import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
 import {
   EMPTY_OBJECT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-shared.ts';
@@ -202,6 +203,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCoreMethodDescriptors,
   ...builtinGatewayControlCompanionMethodDescriptors,
   ...builtinGatewayPermissionRuleMethodDescriptors,
+  ...builtinGatewayRuntimeMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -356,6 +358,10 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'ci.watches.run', input: CI_WATCHES_RUN_INPUT_SCHEMA, output: CI_WATCHES_RUN_OUTPUT_SCHEMA },
   // Cost attribution + quota-window pre-fan-out warning:
   { methodId: 'cost.attribution.get', input: COST_ATTRIBUTION_GET_INPUT_SCHEMA, output: COST_ATTRIBUTION_GET_OUTPUT_SCHEMA },
+  // Provider pricing provenance (costSource + as-of date on served prices):
+  { methodId: 'providers.usage.get', ...descriptorSchemas('providers.usage.get') },
+  { methodId: 'providers.get', ...descriptorSchemas('providers.get') },
+  { methodId: 'providers.list', ...descriptorSchemas('providers.list') },
   { methodId: 'quota.fanout.get', input: QUOTA_FANOUT_GET_INPUT_SCHEMA, output: QUOTA_FANOUT_GET_OUTPUT_SCHEMA },
   { methodId: 'quota.snapshot.get', input: QUOTA_SNAPSHOT_GET_INPUT_SCHEMA, output: QUOTA_SNAPSHOT_GET_OUTPUT_SCHEMA },
   // Memory projection read verbs (standing records as markdown):

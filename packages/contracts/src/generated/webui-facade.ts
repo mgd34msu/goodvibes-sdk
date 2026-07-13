@@ -7066,6 +7066,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "dimension": "agent",
       "totalCostUsd": 0,
       "costState": "priced",
+      "costSource": "user",
+      "pricingAsOf": "sample",
       "pricedRecordCount": 0,
       "unpricedRecordCount": 0,
       "tokens": {
@@ -7079,6 +7081,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "key": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "pricedRecordCount": 0,
           "unpricedRecordCount": 0,
           "tokens": {
@@ -7294,6 +7298,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "provider": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "currentActivity": {
             "kind": "tool",
             "text": "sample",
@@ -7367,7 +7373,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
                 "turnCount": 0,
                 "toolCallCount": 0,
                 "costUsd": 0,
-                "costState": "priced"
+                "costState": "priced",
+                "costSource": "user",
+                "pricingAsOf": "sample"
               },
               "failureReason": "sample",
               "diff": {
@@ -7443,6 +7451,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "provider": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "currentActivity": {
             "kind": "tool",
             "text": "sample",
@@ -7500,6 +7510,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "provider": "sample",
           "costUsd": 0,
           "costState": "priced",
+          "costSource": "user",
+          "pricingAsOf": "sample",
           "currentActivity": {
             "kind": "tool",
             "text": "sample",
@@ -14500,7 +14512,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "pricing": {
             "inputPerMillionTokens": 0,
             "outputPerMillionTokens": 0,
-            "currency": "USD"
+            "currency": "USD",
+            "source": "user",
+            "asOf": "sample"
           }
         }
       ]
@@ -14604,7 +14618,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "pricing": {
                 "inputPerMillionTokens": 0,
                 "outputPerMillionTokens": 0,
-                "currency": "USD"
+                "currency": "USD",
+                "source": "user",
+                "asOf": "sample"
               }
             }
           ]
@@ -14620,7 +14636,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "providerId": "sample",
       "active": false,
       "currentModelRegistryKey": "sample",
-      "pricingSource": "catalog",
+      "pricingSource": "user",
+      "pricingAsOf": "sample",
       "models": [
         {
           "id": "sample",
@@ -14632,7 +14649,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "pricing": {
             "inputPerMillionTokens": 0,
             "outputPerMillionTokens": 0,
-            "currency": "USD"
+            "currency": "USD",
+            "source": "user",
+            "asOf": "sample"
           }
         }
       ],

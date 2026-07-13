@@ -58,6 +58,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Changed
 
+- **Priced values carry their provenance.** Every gateway verb that serves
+  dollars now also says where the rates came from and how fresh they are, so
+  a surface renders "your price" vs "catalog price, as of <date>" without
+  deriving it client-side:
+  - `cost.attribution.get`: rows and the aggregate gain `costSource`
+    (`user` | `provider` | `catalog` | `mixed` | null) and `pricingAsOf`
+    (oldest ISO date among the dated pricing snapshots that contributed;
+    null when undated/unpriced).
+  - `providers.usage.get` / `providers.get` / `providers.list`: every model's
+    served price now resolves through the one pricing resolver (manual price
+    wins — the price shown is the price charged) and carries
+    `pricing.source` + `pricing.asOf`; the usage snapshot's `pricingSource`
+    widens to `user | catalog | provider | mixed | none` plus `pricingAsOf`.
+  - Fleet verbs (`fleet.snapshot` / `fleet.list` / `fleet.archived.list` /
+    `fleet.attempts.*`): nodes and attempt usage gain optional `costSource`
+    and `pricingAsOf`, stamped at pricing time and folded through aggregates
+    (one shared source reports itself, disagreement is `mixed`, the oldest
+    date wins). Usage records committed before this change report no
+    provenance — honest absence, never back-filled.
+
 - **`/status` receipt consumption is now explicit.** Daemon receipts
   (update/crash/migration notices) were delivered destructively to the FIRST
   authenticated `/status` reader — including identity probes and keepalives

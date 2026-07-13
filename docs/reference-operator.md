@@ -28843,6 +28843,32 @@ Return windowed (24h/7d) cost attribution over observed LLM usage, grouped by a 
         "unpriced"
       ]
     },
+    "costSource": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "user",
+            "provider",
+            "catalog",
+            "mixed"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pricingAsOf": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "pricedRecordCount": {
       "type": "number"
     },
@@ -28899,6 +28925,32 @@ Return windowed (24h/7d) cost attribution over observed LLM usage, grouped by a 
               "unpriced"
             ]
           },
+          "costSource": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "provider",
+                  "catalog",
+                  "mixed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pricingAsOf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pricedRecordCount": {
             "type": "number"
           },
@@ -28934,6 +28986,8 @@ Return windowed (24h/7d) cost attribution over observed LLM usage, grouped by a 
           "key",
           "costUsd",
           "costState",
+          "costSource",
+          "pricingAsOf",
           "pricedRecordCount",
           "unpricedRecordCount",
           "tokens"
@@ -28948,6 +29002,8 @@ Return windowed (24h/7d) cost attribution over observed LLM usage, grouped by a 
     "dimension",
     "totalCostUsd",
     "costState",
+    "costSource",
+    "pricingAsOf",
     "pricedRecordCount",
     "unpricedRecordCount",
     "tokens",
@@ -30018,6 +30074,18 @@ Return the session-archived process nodes (same node shape as fleet.snapshot; st
               "estimated"
             ]
           },
+          "costSource": {
+            "type": "string",
+            "enum": [
+              "user",
+              "provider",
+              "catalog",
+              "mixed"
+            ]
+          },
+          "pricingAsOf": {
+            "type": "string"
+          },
           "currentActivity": {
             "type": "object",
             "properties": {
@@ -30384,6 +30452,18 @@ Return the best-of-N attempt groups whose siblings ran in isolated worktrees and
                         "unpriced",
                         "estimated"
                       ]
+                    },
+                    "costSource": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "provider",
+                        "catalog",
+                        "mixed"
+                      ]
+                    },
+                    "pricingAsOf": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -30769,6 +30849,18 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
               "estimated"
             ]
           },
+          "costSource": {
+            "type": "string",
+            "enum": [
+              "user",
+              "provider",
+              "catalog",
+              "mixed"
+            ]
+          },
+          "pricingAsOf": {
+            "type": "string"
+          },
           "currentActivity": {
             "type": "object",
             "properties": {
@@ -31044,6 +31136,18 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
               "unpriced",
               "estimated"
             ]
+          },
+          "costSource": {
+            "type": "string",
+            "enum": [
+              "user",
+              "provider",
+              "catalog",
+              "mixed"
+            ]
+          },
+          "pricingAsOf": {
+            "type": "string"
           },
           "currentActivity": {
             "type": "object",
@@ -66326,12 +66430,24 @@ Return runtime metadata for a single provider.
                 "enum": [
                   "USD"
                 ]
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "provider",
+                  "catalog"
+                ]
+              },
+              "asOf": {
+                "type": "string"
               }
             },
             "required": [
               "inputPerMillionTokens",
               "outputPerMillionTokens",
-              "currency"
+              "currency",
+              "source"
             ],
             "additionalProperties": false
           }
@@ -66668,12 +66784,24 @@ Return runtime provider metadata, policy hooks, and priced model summaries.
                       "enum": [
                         "USD"
                       ]
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "provider",
+                        "catalog"
+                      ]
+                    },
+                    "asOf": {
+                      "type": "string"
                     }
                   },
                   "required": [
                     "inputPerMillionTokens",
                     "outputPerMillionTokens",
-                    "currency"
+                    "currency",
+                    "source"
                   ],
                   "additionalProperties": false
                 }
@@ -66756,10 +66884,15 @@ Return usage and pricing posture for a single provider.
     "pricingSource": {
       "type": "string",
       "enum": [
+        "user",
         "catalog",
         "provider",
+        "mixed",
         "none"
       ]
+    },
+    "pricingAsOf": {
+      "type": "string"
     },
     "models": {
       "type": "array",
@@ -66798,12 +66931,24 @@ Return usage and pricing posture for a single provider.
                 "enum": [
                   "USD"
                 ]
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "provider",
+                  "catalog"
+                ]
+              },
+              "asOf": {
+                "type": "string"
               }
             },
             "required": [
               "inputPerMillionTokens",
               "outputPerMillionTokens",
-              "currency"
+              "currency",
+              "source"
             ],
             "additionalProperties": false
           }

@@ -538,6 +538,10 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       output: resolved.rates.outputPerMTok,
       cacheRead: resolved.rates.cacheReadPerMTok,
       cacheWrite: resolved.rates.cacheWritePerMTok,
+      // Provenance rides with the rates so attribution can report costSource
+      // ("your price" vs "catalog price") and the pricing's as-of date.
+      source: resolved.source,
+      asOf: resolved.asOf,
     };
   };
   const costAttribution = new CostAttributionService({ resolvePricing });
