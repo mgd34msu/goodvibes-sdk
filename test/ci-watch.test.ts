@@ -79,12 +79,12 @@ describe('CiWatchService', () => {
   });
 
   test('checkWatch notifies once on transition and triggers an opted-in fix-session on failure', async () => {
-    const notes: Array<{ channel: string; title: string }> = [];
+    const notes: Array<{ channel: string; title: string; body: string }> = [];
     const briefs: FixSessionBrief[] = [];
     const service = new CiWatchService({
       source: fakeSource([job('build', 'failure')]),
       store: new CiWatchStore(':memory:'),
-      notifier: async (channel, title) => { notes.push({ channel, title }); return 'note-1'; },
+      notifier: async (channel, title, body) => { notes.push({ channel, title, body }); return 'note-1'; },
       fixSessionStarter: async (brief) => { briefs.push(brief); return 'fix-1'; },
     });
     const watch = await service.createWatch({ repo: 'o/r', ref: 'main', deliveryChannel: 'slack:C1', triggerFixSession: true });
@@ -102,7 +102,37 @@ describe('CiWatchService', () => {
     expect(first.retired).toBe(true);
     expect(await service.listWatches()).toHaveLength(0);
     await expect(service.checkWatch(watch.id)).rejects.toThrow(/No CI watch/);
-    expect(notes).toHaveLength(1);
+    // The failure verdict + the started fix-session (with its id in the
+    // payload so a surface can open/attach the session).
+    expect(notes).toHaveLength(2);
+    expect(notes[1]!.title).toBe('CI fix session started — o/r');
+    expect(notes[1]!.body).toContain('sessionId: fix-1');
+  });
+
+  test('the accepted "fix this?" offer delivers the started session id through the channel payload', async () => {
+    const notes: Array<{ title: string; body: string }> = [];
+    let resolveOffer: ((accepted: boolean) => void) | undefined;
+    const offerAnswered = new Promise<boolean>((resolve) => { resolveOffer = resolve; });
+    const service = new CiWatchService({
+      source: fakeSource([job('build', 'failure')]),
+      store: new CiWatchStore(':memory:'),
+      notifier: async (_channel, title, body) => { notes.push({ title, body }); return 'note-1'; },
+      fixSessionOffer: async () => offerAnswered,
+      fixSessionStarter: async () => 'fix-offer-77',
+    });
+    const watch = await service.createWatch({ repo: 'o/r', ref: 'main', deliveryChannel: 'slack:C1' });
+
+    const result = await service.checkWatch(watch.id);
+    expect(result.fixSessionOffered).toBe(true);
+    // The verb result returned before the human decided — the id arrives via
+    // the notification payload once the offer is accepted.
+    expect(result.fixSessionId).toBeUndefined();
+
+    resolveOffer!(true);
+    await Bun.sleep(5);
+    const started = notes.find((note) => note.title === 'CI fix session started — o/r');
+    expect(started).toBeDefined();
+    expect(started!.body).toContain('sessionId: fix-offer-77');
   });
 
   test('without a notifier the verdict is NOT delivered, so the watch stays (honest fire-once)', async () => {

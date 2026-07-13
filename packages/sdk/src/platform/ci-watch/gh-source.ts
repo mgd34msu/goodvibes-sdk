@@ -21,10 +21,25 @@ import type { CiJob, CiStatusSource } from './types.js';
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 interface GhCheckRun {
+  readonly id?: number;
   readonly name?: string;
   readonly status?: string;
   readonly conclusion?: string | null;
   readonly html_url?: string;
+}
+
+/** Bound the seeded brief: at most this many failing jobs' logs... */
+const MAX_LOG_JOBS = 5;
+/** ...and at most this many bytes of each job's log, tailed (failures live at the end). */
+const MAX_JOB_LOG_BYTES = 16 * 1024;
+
+/** The tail of a job log, bounded and cut on a line boundary. */
+function tailLog(raw: string): string {
+  const trimmed = raw.trimEnd();
+  if (trimmed.length <= MAX_JOB_LOG_BYTES) return trimmed;
+  const tail = trimmed.slice(-MAX_JOB_LOG_BYTES);
+  const firstNewline = tail.indexOf('\n');
+  return `… (truncated to the last ${MAX_JOB_LOG_BYTES} bytes)\n${firstNewline > -1 ? tail.slice(firstNewline + 1) : tail}`;
 }
 
 function runGh(args: readonly string[], timeoutMs: number): Promise<string> {
@@ -88,13 +103,48 @@ export function createGhCliCiSource(options: GhCliCiSourceOptions = {}): CiStatu
       return runs.map(toCiJob);
     },
     fetchFailureLogs: async ({ repo, ref, prNumber, jobNames }): Promise<string> => {
-      // The check-runs API does not return raw logs; provide a real, bounded brief
-      // (the failing job names + the run URL) that a fix-session can expand via gh.
+      // Seed the fix-session with the ACTUAL failing logs, bounded: the
+      // check-run id doubles as the Actions job id, whose log endpoint
+      // (repos/{repo}/actions/jobs/{id}/logs) serves the raw text. Each log is
+      // tailed (failures live at the end) and the job count is capped so the
+      // brief stays a brief. Any per-job fetch failure degrades to an honest
+      // pointer line for that job — never a fabricated log, never fatal.
       const target = prNumber !== undefined ? `PR #${prNumber}` : (ref ?? 'the ref');
       logger.info('ci-watch: composing failure brief', { repo, target, jobCount: jobNames.length });
-      return [
+      const header = [
         `CI failed for ${repo} (${target}).`,
         `Failing jobs: ${jobNames.join(', ') || 'unknown'}.`,
+      ];
+      try {
+        const resolvedRef = await resolveRef(repo, ref, prNumber);
+        const out = await runGh(
+          ['api', `repos/${repo}/commits/${resolvedRef}/check-runs`, '--paginate', '--jq', '.check_runs'],
+          timeoutMs,
+        );
+        const chunks = out.trim().split('\n').filter((line) => line.trim().length > 0);
+        const runs = chunks.flatMap((chunk) => JSON.parse(chunk) as GhCheckRun[]);
+        const wanted = new Set(jobNames);
+        const failingRuns = runs.filter((run) => run.id !== undefined && run.name !== undefined && wanted.has(run.name));
+        const sections: string[] = [];
+        for (const run of failingRuns.slice(0, MAX_LOG_JOBS)) {
+          try {
+            const raw = await runGh(['api', `repos/${repo}/actions/jobs/${run.id}/logs`], timeoutMs);
+            sections.push(`--- ${run.name} (log tail) ---\n${tailLog(raw)}`);
+          } catch (error) {
+            sections.push(`--- ${run.name}: log fetch failed (${summarizeError(error)}); expand with: gh run view --log-failed (in a clone of ${repo}) ---`);
+          }
+        }
+        if (failingRuns.length > MAX_LOG_JOBS) {
+          sections.push(`(+${failingRuns.length - MAX_LOG_JOBS} more failing jobs — logs omitted to keep the brief bounded)`);
+        }
+        if (sections.length > 0) return [...header, '', ...sections].join('\n');
+      } catch (error) {
+        logger.warn('ci-watch: failing-job log fetch failed; seeding the pointer brief instead', {
+          repo, target, error: summarizeError(error),
+        });
+      }
+      return [
+        ...header,
         `Fetch full logs with: gh run view --log-failed (in a clone of ${repo}).`,
       ].join('\n');
     },
