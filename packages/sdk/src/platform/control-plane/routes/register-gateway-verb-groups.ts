@@ -372,9 +372,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // still until someone runs the manual verb. When the watcher framework is
   // turned off (watchers.enabled false) the poll is honestly skipped: the
   // manual ci.watches.run verb still works, so nothing is silently faked.
-  const watchersEnabled = (deps.configManager.get as unknown as (k: string) => unknown)('watchers.enabled') !== false;
+  // Defensive config access: some conformance/composition callers pass a
+  // partial deps object at runtime (see terminal-shell's ws-only attachment).
+  const readConfig = (key: string): unknown =>
+    (deps.configManager?.get as unknown as ((k: string) => unknown) | undefined)?.(key);
+  const watchersEnabled = readConfig('watchers.enabled') !== false;
   if (deps.watcherRegistry && watchersEnabled) {
-    const configuredCadence = (deps.configManager.get as unknown as (k: string) => unknown)('watchers.ciPollIntervalMs');
+    const configuredCadence = readConfig('watchers.ciPollIntervalMs');
     try {
       registerCiWatchPolling(deps.watcherRegistry, ciWatchService, {
         ...(typeof configuredCadence === 'number' ? { intervalMs: configuredCadence } : {}),
@@ -486,7 +490,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
         : category === 'needs-input'
           ? 'notifications.pushNeedsInput'
           : 'notifications.pushCompletion';
-      return (deps.configManager.get as unknown as (k: string) => unknown)(key) !== false;
+      return (deps.configManager?.get as unknown as ((k: string) => unknown) | undefined)?.(key) !== false;
     },
   });
   // Relay WebAuthn step-up ceremony verbs (register a credential, mint a
