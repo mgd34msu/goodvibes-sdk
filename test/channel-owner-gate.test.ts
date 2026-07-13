@@ -221,9 +221,43 @@ describe('owner channel reply resolves a pending permission ask', () => {
 
     const decision = await decisionPromise;
     expect(decision.approved).toBe(false);
+    // The guidance is MODEL-VISIBLE: it rides the structured declined decision
+    // delivered to the waiting tool call as `reason` — not only the audit note —
+    // so the model adapts ("use the staging database instead") instead of
+    // seeing a bare deny.
+    expect(decision.reason).toBe('use the staging database instead');
     const record = broker.listApprovals(10)[0]!;
     expect(record.status).toBe('denied');
+    expect(record.decision?.reason).toBe('use the staging database instead');
     expect(record.audit.some((entry) => entry.note === 'use the staging database instead')).toBe(true);
+  });
+
+  test('an approve reply with trailing text delivers that steer to the running turn as the decision reason', async () => {
+    const policy = makePolicyManager();
+    const broker = new ApprovalBroker({ storePath: ':memory:' });
+    await policy.evaluateIngress({ surface: 'slack', userId: 'U-OWNER', conversationKind: 'direct', text: 'hi' });
+    const helper = makeHelper({ policy, broker, bindingSurface: 'slack' });
+
+    const decisionPromise = broker.requestApproval({
+      request: makeAskRequest('call-approve-steer-1'),
+      routeId: 'route-1',
+    });
+    await Bun.sleep(5);
+
+    const ingress = await helper.authorizeSurfaceIngress({
+      surface: 'slack',
+      userId: 'U-OWNER',
+      conversationKind: 'direct',
+      text: 'approve, but only touch the migrations directory',
+    });
+    expect(ingress.allowed).toBe(false);
+    expect(ingress.reason).toBe('approval-reply-consumed');
+
+    const decision = await decisionPromise;
+    expect(decision.approved).toBe(true);
+    expect(decision.reason).toBe('but only touch the migrations directory');
+    const record = broker.listApprovals(10)[0]!;
+    expect(record.decision?.reason).toBe('but only touch the migrations directory');
   });
 
   test('an unknown sender reply never touches the pending ask', async () => {

@@ -77,7 +77,12 @@ export async function tryResolveApprovalReplyFromChannel(
     approved: verb.approved,
     actor: input.userId,
     actorSurface: input.surface,
-    ...(verb.note ? { note: verb.note } : {}),
+    // The reply's trailing text is model-visible guidance, not just an audit
+    // note: as `reason` it rides the structured declined/approved decision to
+    // the waiting tool call (the same field the in-process deny-with-reason
+    // path uses), so "deny — use the staging database instead" steers the
+    // model instead of behaving as a bare deny. `note` keeps the audit trail.
+    ...(verb.note ? { note: verb.note, reason: verb.note } : {}),
   });
   logger.info('Pending approval resolved from a channel reply', {
     surface: input.surface,
