@@ -2,24 +2,36 @@ import { BaseAnthropic, type ClientOptions } from '@anthropic-ai/sdk/client';
 import * as Resources from '@anthropic-ai/sdk/resources/index';
 import { AuthClient, GoogleAuth } from 'google-auth-library';
 import { AnthropicSdkProvider } from './anthropic-sdk-provider.js';
+import type { ProviderModelSource } from './interface.js';
+import { runLiveModelRefresh, type LiveModelDiscoveryResult } from './live-model-discovery.js';
+import { fetchWithTimeout, instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { isRecord } from '../utils/record-coerce.js';
 
 const DEFAULT_VERSION = 'vertex-2023-10-16';
 const MODEL_ENDPOINTS = new Set(['/v1/messages', '/v1/messages?beta=true']);
+const VERTEX_LIVE_FETCH_TIMEOUT_MS = 15_000;
+const VERTEX_MODEL_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 
-// Additive: claude-opus-4-8 / claude-sonnet-5 appended ahead of the existing
-// generation. Vertex AI model rollout typically trails the direct Anthropic
-// API by weeks; these two entries are NOT live-verified against a Vertex AI
-// project (no Google Cloud credentials were available in this environment)
-// — only against the direct Anthropic API's /v1/models. Existing entries are
-// kept unchanged so nothing regresses if the newest generation isn't live yet.
-const VERTEX_MODELS = [
+/**
+ * Dated fallback model list — used when no Google Cloud credentials are
+ * configured (so a live publisher-model listing call isn't possible) and as
+ * the offline baseline when a live call fails with no prior cache. Re-dated
+ * 2026-07-13 when live discovery (below) was wired up; the entries
+ * themselves are still only cross-checked against the direct Anthropic
+ * API's /v1/models response, not against a live Vertex AI project's actual
+ * publisher-model listing (no Google Cloud credentials were available in
+ * this environment to verify against). `refreshModels()` replaces this list
+ * with the project's real available model ids the first time it runs
+ * successfully against real credentials.
+ */
+export const VERTEX_DATED_STATIC_MODELS: readonly string[] = [
   'claude-opus-4-8',
   'claude-sonnet-5',
   'claude-sonnet-4-6',
   'claude-opus-4-6',
   'claude-haiku-4-5',
 ];
+export const VERTEX_DATED_STATIC_MODELS_AS_OF = '2026-07-13';
 
 interface AnthropicVertexClientOptions extends ClientOptions {
   readonly projectId?: string | null | undefined;
@@ -203,14 +215,78 @@ function hasVertexCredentials(): boolean {
   );
 }
 
+interface VertexPublisherModelSummary {
+  readonly name?: unknown;
+}
+
+interface VertexListPublisherModelsResponse {
+  readonly publisherModels?: readonly VertexPublisherModelSummary[];
+}
+
+/**
+ * Fetch Vertex AI's live Anthropic publisher-model list: GET
+ * /publishers/anthropic/models on the same regional aiplatform host (via
+ * `resolveVertexBaseUrl`) the runtime `AnthropicVertexClient` already talks
+ * to. Auth reuses the exact same mechanism `AnthropicVertexClient.
+ * prepareOptions` uses for every chat request: a fresh `GoogleAuth` client
+ * with the same cloud-platform scope, `getRequestHeaders()` for the
+ * Authorization header — no new credential source, no new env vars. Each
+ * publisher model's resource name looks like
+ * `publishers/anthropic/models/claude-sonnet-4-6` (sometimes with an
+ * `@<version>` suffix for a pinned version); only the bare model id after
+ * the last path segment is kept, matching the ids this provider's `models`
+ * list already uses.
+ *
+ * `authClient` is an injection seam mirroring `AnthropicVertexClientOptions.
+ * authClient` (the same override the runtime chat client already accepts):
+ * production code leaves it unset and a fresh `GoogleAuth` client is built;
+ * callers that already hold a resolved `AuthClient` (or a test double) can
+ * pass one in directly instead of triggering a new ADC/ metadata-server
+ * lookup.
+ */
+async function fetchVertexModelIds(authClient?: Pick<AuthClient, 'getRequestHeaders'>): Promise<string[]> {
+  const region = process.env['GOOGLE_CLOUD_LOCATION'] ?? process.env['CLOUD_ML_REGION'] ?? 'global';
+  const url = `${resolveVertexBaseUrl(region)}/publishers/anthropic/models`;
+  const client = authClient ?? await new GoogleAuth({ scopes: VERTEX_MODEL_SCOPE }).getClient();
+  const authHeaders = await client.getRequestHeaders();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  authHeaders.forEach((value, key) => {
+    headers[key] = value;
+  });
+  const res = await fetchWithTimeout(url, { headers }, VERTEX_LIVE_FETCH_TIMEOUT_MS, instrumentedFetch);
+  if (!res.ok) {
+    throw new Error(`Vertex publisher model listing (${url}) returned ${res.status} ${res.statusText}`);
+  }
+  const body = await res.json() as VertexListPublisherModelsResponse;
+  const ids = (body.publisherModels ?? [])
+    .map((summary) => {
+      if (typeof summary.name !== 'string' || summary.name.length === 0) return null;
+      const bareName = summary.name.replace(/^publishers\/anthropic\/models\//, '');
+      return bareName.replace(/@.*$/, '');
+    })
+    .filter((id): id is string => id !== null && id.length > 0);
+  // De-dup: a versioned pin ("claude-sonnet-4-6@20250514") and its bare
+  // alias ("claude-sonnet-4-6") both reduce to the same id above.
+  return Array.from(new Set(ids));
+}
+
 export class AnthropicVertexProvider extends AnthropicSdkProvider {
-  constructor() {
+  readonly modelSource: ProviderModelSource = { kind: 'live-discovery' };
+  private readonly modelsCachePath: string | undefined;
+  private readonly discoveryAuthClient: Pick<AuthClient, 'getRequestHeaders'> | undefined;
+
+  /**
+   * @param discoveryAuthClient Optional override for the `AuthClient` used
+   * by `refreshModels()`'s live publisher-model listing (see
+   * `fetchVertexModelIds`). Production callers leave this unset.
+   */
+  constructor(modelsCachePath?: string, discoveryAuthClient?: Pick<AuthClient, 'getRequestHeaders'>) {
     const configured = hasVertexCredentials();
     super({
       name: 'anthropic-vertex',
       label: 'Anthropic Vertex',
       defaultModel: 'claude-sonnet-4-6',
-      models: VERTEX_MODELS,
+      models: [...VERTEX_DATED_STATIC_MODELS],
       createClient: () => new AnthropicVertexClient({
         projectId: resolveVertexProjectId(),
         region: process.env['GOOGLE_CLOUD_LOCATION'] ?? process.env['CLOUD_ML_REGION'] ?? 'global',
@@ -237,5 +313,35 @@ export class AnthropicVertexProvider extends AnthropicSdkProvider {
       streamProtocol: 'anthropic-sdk-stream',
       notes: ['Anthropic Vertex is backed by Google ADC / Vertex auth rather than a provider API key.'],
     });
+    this.modelsCachePath = modelsCachePath;
+    this.discoveryAuthClient = discoveryAuthClient;
+  }
+
+  isConfigured(): boolean {
+    return hasVertexCredentials();
+  }
+
+  /**
+   * Re-check Vertex's live Anthropic publisher-model list. Called at boot
+   * (background, respects the on-disk TTL cache) and on-demand for a
+   * picker-open re-check or an explicit user refresh (`force: true`,
+   * bypasses the TTL cache). Always resolves — falls back to the on-disk
+   * cache, then to the dated-static list, and reports the honest reason
+   * when live discovery fails rather than silently keeping stale data with
+   * no explanation.
+   */
+  async refreshModels(force = false): Promise<LiveModelDiscoveryResult> {
+    const result = await runLiveModelRefresh({
+      providerName: this.name,
+      cachePath: this.modelsCachePath,
+      datedStaticModels: VERTEX_DATED_STATIC_MODELS,
+      datedStaticAsOf: VERTEX_DATED_STATIC_MODELS_AS_OF,
+      isConfigured: this.isConfigured(),
+      fetchLive: () => fetchVertexModelIds(this.discoveryAuthClient),
+      force,
+    });
+    this.models.length = 0;
+    this.models.push(...result.models);
+    return result;
   }
 }
