@@ -61,6 +61,7 @@ import type { CodeIndexProcessSource } from './adapters/code-index.js';
 import { adaptCodeIndex } from './adapters/code-index.js';
 import type { WorkItem, Workstream } from '../../orchestration/types.js';
 import type { OrchestrationEngine } from '../../orchestration/engine.js';
+import { DEFAULT_STALL_TELL_MS, HeadlineTable, deriveStallTell } from './headlines.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 
@@ -148,6 +149,8 @@ export interface ProcessRegistryDeps {
   readonly priceUsage?: ((model: string | undefined, usage: ProcessUsage) => number | null) | undefined;
   readonly now?: (() => number) | undefined;
   readonly stalledThresholdMs?: number | undefined;
+  /** Stall-tell threshold: a live node quiet this long gains the marker (default 5 min). */
+  readonly stallTellMs?: number | undefined;
   readonly tickIntervalMs?: number | undefined;
   readonly timers?: RegistryTimers | undefined;
 }
@@ -204,11 +207,15 @@ function snapshotSignature(nodes: readonly ProcessNode[]): string {
 export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistry {
   const now = deps.now ?? ((): number => Date.now());
   const stalledThresholdMs = deps.stalledThresholdMs ?? DEFAULT_STALLED_THRESHOLD_MS;
+  const stallTellMs = deps.stallTellMs ?? DEFAULT_STALL_TELL_MS;
   const tickIntervalMs = deps.tickIntervalMs ?? DEFAULT_TICK_INTERVAL_MS;
   const timers = deps.timers ?? defaultTimers;
 
   // ── Activity side-table (the only liveness mechanism, registry-owned) ─────
   const activity = new Map<string, AgentActivityEntry>();
+  // Headline side-table: task/phase-identity-keyed, replaced in place on
+  // transitions only (see headlines.ts — the anti-feed contract lives there).
+  const headlines = new HeadlineTable();
   const busUnsubscribers: Array<() => void> = [];
   let disposed = false;
 
@@ -451,10 +458,22 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       nodes.push(adaptCodeIndex(deps.codeIndexService, capturedAt));
     }
 
-    if (ownerNodeOverrides.size > 0) {
-      return { capturedAt, nodes: nodes.map((node) => ownerNodeOverrides.get(node.id) ?? node) };
-    }
-    return { capturedAt, nodes };
+    const withOverrides = ownerNodeOverrides.size > 0
+      ? nodes.map((node) => ownerNodeOverrides.get(node.id) ?? node)
+      : nodes;
+    // Read-model projections every surface inherits: the per-node headline
+    // (task/phase identity only, replaced in place — never a feed) and the
+    // stall tell (pure timestamp comparison, no generated text).
+    const liveIds = new Set<string>();
+    const finalNodes = withOverrides.map((node) => {
+      liveIds.add(node.id);
+      const headline = headlines.derive(node, capturedAt);
+      const stall = deriveStallTell(node, capturedAt, stallTellMs);
+      if (!headline && !stall) return node;
+      return { ...node, ...(headline ? { headline } : {}), ...(stall ? { stall } : {}) };
+    });
+    headlines.prune(liveIds);
+    return { capturedAt, nodes: finalNodes };
   }
 
   function query(filter?: FleetQueryFilter): FleetSnapshot {

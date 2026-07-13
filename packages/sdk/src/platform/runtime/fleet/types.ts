@@ -181,6 +181,20 @@ export interface ProcessNode {
   readonly needsAttention?: ProcessAttention | undefined;
   readonly sessionRef?: ProcessSessionRef | undefined;
   /**
+   * One-line headline for this node, derived from its task/phase identity at
+   * the read-model (see headlines.ts). Regenerated ONLY on task/phase
+   * transitions and replaced in place — while the identity is unchanged the
+   * same object (same `updatedAt`) is returned, so it can never behave as a
+   * streaming feed. Length-capped at the read-model (HEADLINE_MAX_CHARS).
+   */
+  readonly headline?: ProcessHeadline | undefined;
+  /**
+   * Quiet marker — present only on a live node whose last observed activity
+   * is older than the stall-tell threshold. Pure timestamp comparison, no
+   * generated text; see headlines.ts deriveStallTell.
+   */
+  readonly stall?: ProcessStallTell | undefined;
+  /**
    * Best-of-N grouping — present only on a work-item node that is one sibling
    * attempt of a group (see attempts.ts). Lets the fleet surface render the N
    * siblings as one group and know which are candidates for a winner pick.
@@ -189,6 +203,24 @@ export interface ProcessNode {
   readonly attemptGroup?: ProcessAttemptGroup | undefined;
   /** Opaque source record (AgentRecord, WrfcChain, …) for drill-downs. */
   readonly raw?: unknown;
+}
+
+/**
+ * A node's one-line headline. `updatedAt` moves only when the headline text
+ * is regenerated (a task/phase transition) — a stable headline keeps its
+ * original timestamp across snapshots.
+ */
+export interface ProcessHeadline {
+  readonly text: string;
+  readonly updatedAt: number;
+}
+
+/** The quiet marker: how long a live node has been silent, from timestamps only. */
+export interface ProcessStallTell {
+  /** Epoch ms of the node's last observed activity. */
+  readonly since: number;
+  /** now - since at snapshot time. */
+  readonly quietForMs: number;
 }
 
 /** A work-item node's best-of-N sibling grouping, surfaced on the wire. */
