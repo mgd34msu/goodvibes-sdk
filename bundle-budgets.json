@@ -354,8 +354,8 @@
     "rationale": "new public package export budget; measured 60 B gzip @ v0.33.0 release verification; headroom max(ceil(60*1.2)=72, 60+50=110) -> 110 (+50 B floor dominates)"
   },
   "./platform/providers": {
-    "gzip_bytes": 1206,
-    "rationale": "provider registry surface; measured 1005 B gzip @ commit 4e5a5e2; headroom max(ceil(1005*1.2)=1206, 1005+50=1055) \u2192 1206 (1.2x dominates by 151 B); dominated by ProviderRegistry + autoRegisterProviders (~450 B), LLMProvider/ChatRequest/ChatResponse/ProviderApi types (~300 B), AnthropicCompatProvider + createProviderApi (~250 B)"
+    "gzip_bytes": 1500,
+    "rationale": "provider registry surface; measured 1250 B gzip after the model pricing resolver + bare-model-id resolver joined the barrel (resolveModelPricing/computeUsageCostUsd/resolveModelReference + types); headroom max(ceil(1250*1.2)=1500, 1250+50=1300) \u2192 1500 (1.2x dominates); previously 1005 B @ commit 4e5a5e2"
   },
   "./platform/rewind": {
     "gzip_bytes": 374,
