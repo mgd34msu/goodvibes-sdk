@@ -60,8 +60,11 @@ interface ControlRouteContext {
   readonly login?: ((req: Request) => Promise<Response> | Response) | undefined;
   /**
    * Undelivered daemon receipts ("updated from X to Y at HH:MM",
-   * "restarted after a crash at HH:MM") surfaced to the first /status
-   * reader after the event; the provider marks them delivered.
+   * "restarted after a crash at HH:MM"). Invoked ONLY when a /status reader
+   * explicitly opts in with `?receipts=consume`; the provider marks the
+   * returned receipts delivered, so consumption stays exactly-once across
+   * consuming readers. A plain /status read (identity probe, keepalive,
+   * version poll) neither receives nor consumes receipts.
    */
   readonly collectReceipts?: (() => readonly { id: string; text: string; at: number }[]) | undefined;
 }
@@ -99,10 +102,16 @@ export function createDaemonControlRouteHandlers(
     getStatus: (req) => {
       const principal = context.resolveAuthenticatedPrincipal(req);
       if (!principal) return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
+      // Receipt consumption is explicit: only a reader that passes
+      // ?receipts=consume receives undelivered receipts (and marks them
+      // delivered — exactly once). Every other /status read is
+      // receipt-neutral, so an identity probe or keepalive that parses only
+      // status/version can never eat a receipt before a rendering surface.
+      const consumeReceipts = new URL(req.url).searchParams.get('receipts') === 'consume';
       return Response.json({
         status: 'running',
         version: context.version,
-        ...(context.collectReceipts ? { receipts: context.collectReceipts() } : {}),
+        ...(consumeReceipts && context.collectReceipts ? { receipts: context.collectReceipts() } : {}),
       });
     },
     getCurrentAuth: (req) => {

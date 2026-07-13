@@ -291,6 +291,8 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'sessions.search', input: SESSIONS_SEARCH_INPUT_SCHEMA, output: SESSIONS_SEARCH_OUTPUT_SCHEMA },
   { methodId: 'sessions.changes.get', input: SESSIONS_CHANGES_GET_INPUT_SCHEMA, output: SESSIONS_CHANGES_GET_OUTPUT_SCHEMA },
   { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
+  // Daemon status + explicit receipt consumption (receipts=consume flag):
+  { methodId: 'control.status', ...descriptorSchemas('control.status') },
   // Session-scoped permission mode (get/set) + context-usage exposure:
   { methodId: 'sessions.permissionMode.get', ...descriptorSchemas('sessions.permissionMode.get') },
   // Durable permission rules settings surface:

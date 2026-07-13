@@ -133,11 +133,13 @@ class ChannelsToolsSurfaceListOutput(TypedDict, total=True):
     tools: list[Mapping[str, Any]]
 
 # control.status
-ControlStatusInput = Mapping[str, Any]
+class ControlStatusInput(TypedDict, total=True):
+    receipts: NotRequired[Literal["consume"]]
 
 class ControlStatusOutput(TypedDict, total=True):
     status: str
     version: str
+    receipts: NotRequired[list[Mapping[str, Any]]]
 
 # homeassistant.homeGraph.askHomeGraph
 class HomeassistantHomeGraphAskHomeGraphInput(TypedDict, total=True):

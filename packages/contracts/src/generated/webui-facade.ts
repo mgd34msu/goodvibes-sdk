@@ -7005,10 +7005,19 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     }
   },
   "control.status": {
-    "input": {},
+    "input": {
+      "receipts": "consume"
+    },
     "output": {
       "status": "sample",
-      "version": "sample"
+      "version": "sample",
+      "receipts": [
+        {
+          "id": "sample",
+          "text": "sample",
+          "at": 0
+        }
+      ]
     }
   },
   "control.web": {

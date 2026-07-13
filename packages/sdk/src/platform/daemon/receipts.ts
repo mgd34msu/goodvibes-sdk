@@ -4,9 +4,11 @@
  * HH:MM", "restarted after a crash at HH:MM").
  *
  * Each receipt is written to the daemon log the moment it is recorded, and
- * persisted so the NEXT surface to connect sees it exactly once: the /status
- * payload includes undelivered receipts and marks them delivered when the
- * response includes them.
+ * persisted so the NEXT surface that explicitly consumes sees it exactly
+ * once: a /status read that passes `?receipts=consume` receives undelivered
+ * receipts and marks them delivered. A plain /status read (identity probe,
+ * keepalive, version poll) neither receives nor consumes receipts, so a
+ * non-rendering reader can never eat one before a rendering surface.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -91,8 +93,10 @@ export class DaemonReceiptStore {
   }
 
   /**
-   * Undelivered receipts for a /status payload; marks them delivered so a
-   * receipt is surfaced to the first connecting surface exactly once.
+   * Undelivered receipts for a consuming /status read (`?receipts=consume`);
+   * marks them delivered so a receipt is surfaced to the first CONSUMING
+   * reader exactly once. Callers serving a non-consuming read must not call
+   * this — that is what keeps identity probes receipt-neutral.
    */
   consumeUndelivered(): readonly DaemonReceipt[] {
     const undelivered = this.receipts.filter((receipt) => receipt.deliveredAt === undefined);

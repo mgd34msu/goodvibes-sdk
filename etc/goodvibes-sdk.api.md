@@ -3336,7 +3336,9 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "control.snapshot": {};
     // (undocumented)
-    "control.status": {};
+    "control.status": {
+        receipts?: "consume";
+    };
     // (undocumented)
     "control.web": {};
     // (undocumented)
@@ -8862,6 +8864,11 @@ export interface OperatorMethodOutputMap {
     "control.status": {
         status: string;
         version: string;
+        receipts?: readonly ({
+            id: string;
+            text: string;
+            at: number;
+        })[];
     };
     // (undocumented)
     "control.web": {
