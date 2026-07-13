@@ -8,6 +8,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Interactive commands answer their own terminal prompts through the
+  approval flow.** A running command that stops on a terminal prompt (the
+  "Ok to proceed?" class) now surfaces that prompt through the same approval
+  machinery as a permission ask: your typed answer feeds the still-running
+  command, and an unanswered prompt times out honestly with the prompt text
+  on the result — no more silently wedged interactive commands.
+- **Fleet nodes carry a headline and a stall tell.** Every fleet node
+  exposes a one-line headline derived from its task/phase identity (never
+  model output) and a quiet-too-long stall marker computed from timestamps,
+  so every surface renders the same at-a-glance state without deriving it.
+- **Finished work pushes by default.** Terminal fleet transitions
+  (run-level kinds) push a completion notification to every paired target
+  with zero setup, de-duped per node; per-class notification toggles
+  (approval / needs-input / completion, default on, read live) exist only
+  to silence a class.
+- **CI watches poll themselves and offer the fix.** Registered CI watches
+  are polled by the daemon on a configurable cadence (15s floor, overlap
+  guarded); a red run raises a "fix this?" offer through the approval
+  machinery whose acceptance starts a fix session seeded with the failing
+  jobs' logs, and a watch retires once its terminal verdict is delivered.
+- **A one-command service install.** `goodvibes-daemon --install-service`
+  writes the service unit and prints the follow-up commands — and
+  standalone spawned daemons now promote themselves to a supervised
+  service at their first idle moment (`service.enabled=false` keeps them
+  session-only), so the survives-reboots step stops being homework.
+
 - **Chat channels are owner-gated, and the owner's reply resolves pending
   asks.** Each chat surface keeps a per-surface owner allowlist that seeds
   itself: the first identified sender becomes the owner (pairing the channel
@@ -116,6 +142,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Changed
 
+- **The keyless default is honest.** Provider readiness is derived from the
+  registered auth state, onboarding copy is generated from that state (a
+  false "works without a key" promise is structurally unwritable), keyless
+  claims on auth-required providers are red-flagged, and an unconfigured
+  compat provider refuses chat before the wire instead of dead-ending in a
+  401.
+- **Worktree eviction never destroys work.** When the kept-worktree cap
+  evicts an orchestration item's worktree, dirty state is committed onto
+  the item's branch first and the branch survives — only the directory is
+  removed, and the eviction event names the branch and preservation commit.
+- **Bare configured model ids resolve instead of lecturing.** A bare
+  `provider.model` value now resolves through the same shared resolver as
+  every other entry point (unique ids auto-qualify; ambiguous ids list the
+  real candidate keys; unknown ids get closest-match suggestions plus a
+  concrete valid example).
+- **Remote model pickers stay fresh.** Reading the models list triggers the
+  same TTL-respecting live-discovery re-check the TUI's picker uses,
+  without ever blocking the response on a slow provider.
+- **Amazon Bedrock Mantle discovers models live** (same control-plane
+  listing as Amazon Bedrock, dated offline fallback), and the provider
+  contract now requires every provider to declare its model source — a
+  bare hardcoded model array no longer passes.
+- **CI fix sessions hand you a real session id.** The id on the approval
+  record, the verb result, and the channel notification is the actual
+  spawned session (attachable/resumable) — previously it was an internal
+  scheduling handle that resolved to "Session not found". A failed start
+  records the honest failure instead of a dead id.
+- **The settings-migration receipt reaches your surface** via the same
+  attach-time receipts feed as other daemon notices, exactly once — it no
+  longer lives only in the activity log.
 - **The auto-update loop takes the HOST artifact's identity.** The daemon
   facade previously compared the SDK package version against release tags
   and swapped `process.execPath` — wrong whenever the daemon is embedded in
