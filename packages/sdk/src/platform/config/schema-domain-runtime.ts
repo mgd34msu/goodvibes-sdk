@@ -497,7 +497,7 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     key: 'service.enabled',
     type: 'boolean',
     default: true,
-    description: 'Enable service-install and daemon-management features (install/start/stop/status/autostart verbs). Default on: nothing is installed or started until explicitly requested.',
+    description: 'Enable service-install and daemon-management features (install/start/stop/status/autostart verbs), including the standalone daemon\'s boot-time self-promotion to a supervised service at its first idle moment. Set false to keep spawned daemons session-only (nothing installed or promoted).',
   },
   {
     key: 'service.autostart',

@@ -6,6 +6,7 @@ import { createRuntimeStore } from '../runtime/store/index.js';
 import { createRuntimeServices } from '../runtime/services.js';
 import { DaemonServer } from './server.js';
 import { HttpListener } from './http-listener.js';
+import { PlatformServiceManager } from './service-manager.js';
 import { VERSION } from '../version.js';
 import { logger } from '../utils/logger.js';
 import { GlobalNetworkTransportInstaller } from '../runtime/network/index.js';
@@ -72,9 +73,40 @@ function readDaemonCliTokens(env: NodeJS.ProcessEnv): DaemonCliTokens {
   };
 }
 
+/**
+ * The one-command service install: `goodvibes-daemon --install-service`
+ * writes the service unit (with the survival contract) and reports the
+ * follow-up commands — no raw HTTP call, no admin-token juggling. This is
+ * what the detached-spawn hint names for setups where the daemon could not
+ * promote itself.
+ */
+function installServiceAndExit(config: ConfigManager, workingDir: string, homeDirectory: string): never {
+  const manager = new PlatformServiceManager(config, {
+    workingDirectory: workingDir,
+    homeDirectory,
+    surfaceRoot: 'goodvibes',
+    binaryBaseName: 'goodvibes',
+    defaultServiceName: 'goodvibes',
+    defaultServiceDescription: 'goodvibes omnichannel daemon host',
+  });
+  try {
+    const result = manager.install();
+    console.log(`service unit installed: ${result.path} (${result.serviceName}, ${result.platform})`);
+    for (const command of result.suggestedCommands) console.log(`  next: ${command}`);
+    if (result.lingerNote) console.log(result.lingerNote);
+    process.exit(0);
+  } catch (error) {
+    console.error(`service install failed: ${summarizeError(error)}`);
+    process.exit(1);
+  }
+}
+
 async function main(): Promise<void> {
   const { workingDirectory: workingDir, homeDirectory, daemonHomeDir } = resolveDaemonCliPaths(process.env);
   const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: 'goodvibes' });
+  if (process.argv.includes('--install-service')) {
+    installServiceAndExit(config, workingDir, homeDirectory);
+  }
   new GlobalNetworkTransportInstaller().install(config);
   const runtimeBus = new RuntimeEventBus();
 

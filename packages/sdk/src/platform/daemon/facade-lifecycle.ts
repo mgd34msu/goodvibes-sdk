@@ -15,7 +15,7 @@ import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { PlatformServiceManager } from './service-manager.js';
-import { DaemonAutoUpdater } from './auto-updater.js';
+import { DaemonAutoUpdater, type AutoUpdateServiceActions } from './auto-updater.js';
 import { DaemonReceiptStore, formatReceiptTime } from './receipts.js';
 import { FeatureAnnouncementStore, collectStartupAnnouncements, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
 import { recordDaemonCleanShutdown, recordDaemonStart } from './lifecycle-marker.js';
@@ -95,13 +95,18 @@ export interface DaemonLifecycleRuntimeOptions {
   readonly platformServiceManager: PlatformServiceManager;
   /** The daemon's real activity signal: true only when NO work is in flight. */
   readonly isIdle: () => boolean;
-  /** Absent = host-managed updates (the safe embedded default): no auto-update loop. */
+  /** Absent = host-managed updates (the safe embedded default): no auto-update loop AND no boot promotion. */
   readonly updateArtifact?: DaemonUpdateArtifact | undefined;
+  /** Injectable process exit (boot promotion hands over by exiting); tests observe instead of dying. */
+  readonly exitProcess?: ((code: number) => void) | undefined;
+  /** Boot-promotion idle recheck cadence. Default 60s; floored at 1s. */
+  readonly promotionRetryMs?: number | undefined;
 }
 
 export class DaemonLifecycleRuntime {
   private autoUpdater: DaemonAutoUpdater | null = null;
   private store: DaemonReceiptStore | null = null;
+  private promotionTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly options: DaemonLifecycleRuntimeOptions) {}
 
@@ -173,6 +178,7 @@ export class DaemonLifecycleRuntime {
       logger.warn('DaemonServer: startup announcements could not be collected', { error: summarizeError(error) });
     }
     this.startAutoUpdater();
+    this.promoteToServiceAtBoot();
   }
 
   /**
@@ -183,6 +189,10 @@ export class DaemonLifecycleRuntime {
   onStopping(restarting: boolean): void {
     this.autoUpdater?.stop();
     this.autoUpdater = null;
+    if (this.promotionTimer) {
+      clearInterval(this.promotionTimer);
+      this.promotionTimer = null;
+    }
     if (restarting) return;
     try {
       recordDaemonCleanShutdown(this.markerPath());
@@ -212,15 +222,6 @@ export class DaemonLifecycleRuntime {
     const releasesUrl = String(configManager.get('update.releasesUrl') ?? '').trim();
     if (!releasesUrl) return;
     const intervalMinutes = Number(configManager.get('update.intervalMinutes') ?? 60);
-    const serviceName = String(configManager.get('service.serviceName') ?? 'goodvibes').trim() || 'goodvibes';
-    const spawnDetached = (argv: readonly string[]): void => {
-      try {
-        const child = spawn(argv[0]!, argv.slice(1), { detached: true, stdio: 'ignore' });
-        child.unref();
-      } catch (error) {
-        logger.warn('DaemonServer: service-manager command failed to spawn', { argv, error: summarizeError(error) });
-      }
-    };
     this.autoUpdater = new DaemonAutoUpdater({
       currentVersion: artifact.version,
       execPath: artifact.execPath ?? process.execPath,
@@ -230,45 +231,102 @@ export class DaemonLifecycleRuntime {
       checkIntervalMs: Math.max(5, intervalMinutes) * 60 * 1000,
       isIdle: this.options.isIdle,
       receipts: this.receiptStore(),
-      serviceActions: {
-        isSupervised: () => {
-          try {
-            const status = this.options.platformServiceManager.status();
-            return status.installed && status.running;
-          } catch {
-            return false;
-          }
-        },
-        adoptIntoService: () => {
-          // Adoption: write the unit (with the survival contract) and enqueue
-          // a start. The old process exits right after; if the first start
-          // races the dying listener, Restart=on-failure retries until the
-          // port is free.
-          try {
-            const installed = this.options.platformServiceManager.install();
-            if (installed.lingerNote) logger.info(`DaemonServer: ${installed.lingerNote}`);
-          } catch (error) {
-            logger.warn('DaemonServer: service unit install failed during update adoption', { error: summarizeError(error) });
-            return;
-          }
-          if (process.platform === 'linux') {
-            spawnDetached(['systemctl', '--user', 'daemon-reload']);
-            spawnDetached(['systemctl', '--user', '--no-block', 'enable', '--now', `${serviceName}.service`]);
-          }
-        },
-        restartService: () => {
-          if (process.platform === 'linux') {
-            // Non-blocking: the restart job outlives this process, which
-            // systemd stops as part of the restart.
-            spawnDetached(['systemctl', '--user', '--no-block', 'restart', `${serviceName}.service`]);
-            return;
-          }
-          // launchd (KeepAlive=true) and manual supervision both respawn the
-          // (already-swapped) binary when this process exits cleanly.
-          process.exit(0);
-        },
-      },
+      serviceActions: this.buildServiceActions(),
     });
     this.autoUpdater.start();
+  }
+
+  /** The service-manager actions shared by the update swap and boot promotion. */
+  private buildServiceActions(): AutoUpdateServiceActions {
+    const serviceName = String(this.options.configManager.get('service.serviceName') ?? 'goodvibes').trim() || 'goodvibes';
+    const spawnDetached = (argv: readonly string[]): void => {
+      try {
+        const child = spawn(argv[0]!, argv.slice(1), { detached: true, stdio: 'ignore' });
+        child.unref();
+      } catch (error) {
+        logger.warn('DaemonServer: service-manager command failed to spawn', { argv, error: summarizeError(error) });
+      }
+    };
+    return {
+      isSupervised: () => {
+        try {
+          const status = this.options.platformServiceManager.status();
+          return status.installed && status.running;
+        } catch {
+          return false;
+        }
+      },
+      adoptIntoService: () => {
+        // Adoption: write the unit (with the survival contract) and enqueue
+        // a start. The old process exits right after; if the first start
+        // races the dying listener, Restart=on-failure retries until the
+        // port is free.
+        try {
+          const installed = this.options.platformServiceManager.install();
+          if (installed.lingerNote) logger.info(`DaemonServer: ${installed.lingerNote}`);
+        } catch (error) {
+          logger.warn('DaemonServer: service unit install failed during adoption', { error: summarizeError(error) });
+          return;
+        }
+        if (process.platform === 'linux') {
+          spawnDetached(['systemctl', '--user', 'daemon-reload']);
+          spawnDetached(['systemctl', '--user', '--no-block', 'enable', '--now', `${serviceName}.service`]);
+        }
+      },
+      restartService: () => {
+        if (process.platform === 'linux') {
+          // Non-blocking: the restart job outlives this process, which
+          // systemd stops as part of the restart.
+          spawnDetached(['systemctl', '--user', '--no-block', 'restart', `${serviceName}.service`]);
+          return;
+        }
+        // launchd (KeepAlive=true) and manual supervision both respawn the
+        // (already-swapped) binary when this process exits cleanly.
+        process.exit(0);
+      },
+    };
+  }
+
+  /**
+   * Boot-edge service promotion, independent of updates: a STANDALONE
+   * unsupervised daemon (spawned detached by a surface) installs its service
+   * unit and hands over to the supervised instance at its first idle moment
+   * — a freshly-spawned daemon at the latest version no longer stays
+   * unref()'d forever waiting for an update swap to promote it. Embedded
+   * daemons (no updateArtifact identity) never self-promote: exiting would
+   * kill the host process. service.enabled=false opts out; a platform
+   * without a service manager is left alone.
+   */
+  private promoteToServiceAtBoot(): void {
+    if (!this.options.updateArtifact) return;
+    if (this.options.configManager.get('service.enabled') === false) return;
+    let status: { installed: boolean; running: boolean };
+    try {
+      status = this.options.platformServiceManager.status();
+    } catch {
+      return; // no service manager on this platform — nothing to promote into
+    }
+    if (status.installed && status.running) return; // already supervised
+    const actions = this.buildServiceActions();
+    const exitProcess = this.options.exitProcess ?? ((code: number) => process.exit(code));
+    const attempt = (): boolean => {
+      if (!this.options.isIdle()) return false;
+      logger.info('DaemonServer: unsupervised daemon — installing the service unit and handing over (boot promotion)');
+      actions.adoptIntoService();
+      exitProcess(0);
+      return true;
+    };
+    if (attempt()) return;
+    // Busy at boot (e.g. sessions reconnected immediately): keep checking for
+    // the same idle moment the update swap waits for. The timer never keeps
+    // the process alive and stops with the lifecycle.
+    const retryMs = Math.max(1_000, this.options.promotionRetryMs ?? 60_000);
+    this.promotionTimer = setInterval(() => {
+      if (attempt() && this.promotionTimer) {
+        clearInterval(this.promotionTimer);
+        this.promotionTimer = null;
+      }
+    }, retryMs);
+    (this.promotionTimer as { unref?: () => void }).unref?.();
   }
 }

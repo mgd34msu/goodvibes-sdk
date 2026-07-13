@@ -53,9 +53,16 @@ export interface DetachedDaemonChild {
   once?(event: 'error' | 'exit', listener: (arg: unknown) => void): void;
 }
 
-/** One-time hint surfaced ONCE by the TUI after a successful detached spawn. */
+/**
+ * One-time hint surfaced ONCE by the TUI after a successful detached spawn.
+ * The daemon promotes itself to a supervised service at its first idle
+ * moment when a service manager is available (see the facade lifecycle's
+ * boot promotion), so this mostly narrates what happens on its own; where
+ * promotion is not possible, it names the one-command path — never a raw
+ * HTTP instruction.
+ */
 export const DETACHED_DAEMON_INSTALL_HINT =
-  'daemon started for this session — install it as a service so it survives reboots: POST /api/service/install on the daemon HTTP API (admin token required)';
+  'daemon started for this session — it installs itself as a system service at its first idle moment when the platform supports it; if it stays session-only, run: goodvibes-daemon --install-service';
 
 interface ServiceFactories {
   createDaemonServer?: (
