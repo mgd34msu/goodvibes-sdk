@@ -154,15 +154,20 @@ export class CiWatchService {
       }
       if (report.overall === 'failed') {
         if (subscription.triggerFixSession) {
-          // The auto-start opt-in: no offer, straight to the fix-session.
+          // The auto-start opt-in: no offer, straight to the fix-session. The
+          // started session's id rides the verb result AND a follow-up channel
+          // notification so a surface can open/attach it.
           fixSessionTriggered = true;
           if (this.deps.fixSessionStarter) {
             fixSessionId = await this.deps.fixSessionStarter(await this.composeFixBrief(subscription, report));
+            if (fixSessionId) await this.notifyFixSessionStarted(subscription, report, fixSessionId);
           }
         } else if (this.deps.fixSessionOffer && this.deps.fixSessionStarter) {
           // "Fix this?" — an actionable offer through the approval/attention
           // machinery. Fire-and-forget: a human decision must never block the
-          // poll loop or the manual verb; acceptance starts the seeded session.
+          // poll loop or the manual verb; acceptance starts the seeded session,
+          // and the started id is delivered via the channel notification (the
+          // verb result has already returned by then).
           fixSessionOffered = true;
           const brief = await this.composeFixBrief(subscription, report);
           const offer = this.deps.fixSessionOffer;
@@ -170,7 +175,9 @@ export class CiWatchService {
           void (async () => {
             try {
               const accepted = await offer(brief);
-              if (accepted) await starter(brief);
+              if (!accepted) return;
+              const startedId = await starter(brief);
+              if (startedId) await this.notifyFixSessionStarted(subscription, report, startedId);
             } catch (error) {
               logger.warn('[ci-watch] fix-session offer did not complete', {
                 repo: subscription.repo, error: summarizeError(error),
@@ -202,6 +209,30 @@ export class CiWatchService {
       ...(fixSessionOffered ? { fixSessionOffered } : {}),
       ...(retired ? { retired } : {}),
     };
+  }
+
+  /**
+   * Deliver the started fix-session's id to the watch's channel so a surface
+   * can open/attach the session. The id is the payload's machine-readable
+   * tail line (sessionId: <id>), mirroring how surfaces parse other
+   * structured notification lines. Failure to notify never fails the start.
+   */
+  private async notifyFixSessionStarted(subscription: CiWatchSubscription, report: CiReport, sessionId: string): Promise<void> {
+    if (!this.deps.notifier) return;
+    try {
+      await this.deps.notifier(
+        subscription.deliveryChannel,
+        `CI fix session started — ${report.repo}`,
+        [
+          `A fix session is working on the failing jobs (${failingJobNames(report).join(', ') || 'unknown'}).`,
+          `sessionId: ${sessionId}`,
+        ].join('\n'),
+      );
+    } catch (error) {
+      logger.warn('[ci-watch] fix-session start notification failed', {
+        repo: subscription.repo, sessionId, error: summarizeError(error),
+      });
+    }
   }
 
   /** The failing-jobs brief (names + logs) shared by the auto-start and offer paths. */
