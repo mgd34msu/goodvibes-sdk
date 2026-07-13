@@ -22,6 +22,7 @@ import type { LLMProvider } from '../providers/interface.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitLlmResponseReceived } from '../runtime/emitters/turn.js';
+import { computeUsageCostUsdCents, usageCostSource } from '../providers/model-pricing.js';
 import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -60,7 +61,7 @@ export interface HelperUsage {
 
 export interface HelperModelDeps {
   readonly configManager: Pick<ConfigManager, 'get' | 'getCategory'>;
-  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel'>;
+  readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'resolveModelPricing'>;
   /**
    * Runtime bus for usage events. When present, every helper-model call
    * emits LLM_RESPONSE_RECEIVED with its token actuals so the shared
@@ -229,6 +230,16 @@ export class HelperModel {
         // Token actuals for helper-model spend. The emitter merges the
         // ambient cost-origin scope (tool / hook / MCP server), so the
         // attribution pipeline records this spend under its real cause.
+        // Cost is usage x resolved price; unknown pricing stays honestly
+        // unpriced (costSource 'unknown', no costUsdCents).
+        const usage = {
+          inputTokens: response.usage?.inputTokens ?? 0,
+          outputTokens: response.usage?.outputTokens ?? 0,
+          cacheReadTokens: response.usage?.cacheReadTokens ?? 0,
+          cacheWriteTokens: response.usage?.cacheWriteTokens ?? 0,
+        };
+        const resolvedPricing = this.deps.providerRegistry.resolveModelPricing(resolved.modelId, resolved.provider.name);
+        const costUsdCents = computeUsageCostUsdCents(resolvedPricing, usage, resolved.provider.name);
         emitLlmResponseReceived(this.deps.runtimeBus, {
           sessionId: this.deps.sessionId?.() ?? '',
           source: 'helper-model',
@@ -239,10 +250,9 @@ export class HelperModel {
           model: resolved.modelId,
           contentSummary: '',
           toolCallCount: 0,
-          inputTokens: response.usage?.inputTokens ?? 0,
-          outputTokens: response.usage?.outputTokens ?? 0,
-          cacheReadTokens: response.usage?.cacheReadTokens ?? 0,
-          cacheWriteTokens: response.usage?.cacheWriteTokens ?? 0,
+          ...usage,
+          ...(costUsdCents === null ? {} : { costUsdCents }),
+          costSource: usageCostSource(resolvedPricing),
         });
       }
 

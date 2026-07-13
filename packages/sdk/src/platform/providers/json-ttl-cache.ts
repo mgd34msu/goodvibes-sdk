@@ -14,7 +14,7 @@ export const TTL_24H_MS = 86_400_000;
 
 /** Base envelope fields shared by all on-disk TTL caches. */
 export interface TtlCacheEnvelope {
-  version: 1;
+  version: number;
   fetchedAt: number;
   ttlMs: number;
 }
@@ -38,12 +38,13 @@ export function validateTtlCacheEnvelope<T>(
   value: unknown,
   payloadKey: string,
   payloadKind: 'object' | 'array',
+  expectedVersion = 1,
 ): { cache: T | null; reason?: string } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return { cache: null, reason: 'root value is not an object' };
   }
   const parsed = value as Record<string, unknown>;
-  if (parsed['version'] !== 1) return { cache: null, reason: 'unsupported cache version' };
+  if (parsed['version'] !== expectedVersion) return { cache: null, reason: 'unsupported cache version' };
   if (typeof parsed['fetchedAt'] !== 'number' || !Number.isFinite(parsed['fetchedAt'] as number)) {
     return { cache: null, reason: 'fetchedAt must be a finite number' };
   }

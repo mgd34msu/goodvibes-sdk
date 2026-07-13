@@ -114,6 +114,7 @@ export function emitLlmResponseReceived(
     durationMs?: number | undefined;
     retries?: number | undefined;
     costUsdCents?: number | undefined;
+    costSource?: 'user' | 'provider' | 'catalog' | 'subscription' | 'unknown' | undefined;
     finishReason?: string | undefined;
     providerRequestId?: string | undefined;
     originTool?: string | undefined;

@@ -34,11 +34,14 @@ export function diffCatalogs(
       const format = (value?: number) => (value != null ? `${Math.round(value / 1024)}K` : 'unknown');
       changes.push(`context ${format(oldModel.contextWindow)} -> ${format(nextModel.contextWindow)}`);
     }
-    if (oldModel.pricing.input !== nextModel.pricing.input) {
-      changes.push(`input price $${oldModel.pricing.input} -> $${nextModel.pricing.input} per 1M tokens`);
+    // Null pricing means the catalog carries no cost for the model — render
+    // it as 'unpriced' in change notices, never as $0.
+    const rate = (value: number | undefined): string => (value === undefined ? 'unpriced' : `$${value}`);
+    if (oldModel.pricing?.input !== nextModel.pricing?.input) {
+      changes.push(`input price ${rate(oldModel.pricing?.input)} -> ${rate(nextModel.pricing?.input)} per 1M tokens`);
     }
-    if (oldModel.pricing.output !== nextModel.pricing.output) {
-      changes.push(`output price $${oldModel.pricing.output} -> $${nextModel.pricing.output} per 1M tokens`);
+    if (oldModel.pricing?.output !== nextModel.pricing?.output) {
+      changes.push(`output price ${rate(oldModel.pricing?.output)} -> ${rate(nextModel.pricing?.output)} per 1M tokens`);
     }
     if (oldModel.tier !== nextModel.tier) {
       changes.push(`tier ${oldModel.tier} -> ${nextModel.tier}`);

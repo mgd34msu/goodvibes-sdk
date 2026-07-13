@@ -84,7 +84,21 @@ export type TurnEvent =
     /** LLM request enrichments */
     durationMs?: number | undefined;
     retries?: number | undefined;
+    /**
+     * usage x resolved price, in USD cents — actuals only. Absent when the
+     * model's price is unknown or the surface is subscription-priced; the
+     * absence is deliberate (an explicit unpriced marker via costSource),
+     * never a silent $0.
+     */
     costUsdCents?: number | undefined;
+    /**
+     * Where the price behind costUsdCents came from: a user-set manual
+     * price ('user'), the provider's own machine-readable pricing
+     * ('provider'), a dated catalog entry ('catalog'), a subscription
+     * surface (no per-token price), or 'unknown' (unpriced usage —
+     * downstream sums must report it, never $0 it).
+     */
+    costSource?: 'user' | 'provider' | 'catalog' | 'subscription' | 'unknown' | undefined;
     finishReason?: string | undefined;
     providerRequestId?: string | undefined;
     /**

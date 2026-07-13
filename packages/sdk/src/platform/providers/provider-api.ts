@@ -9,7 +9,9 @@ import {
   type ModelBenchmarks,
   type QualityTier,
 } from './model-benchmarks.js';
-import type { MinimalModelDefinition, SyntheticModelInfo } from './model-catalog.js';
+import type { CatalogModelPricing, MinimalModelDefinition, SyntheticModelInfo } from './model-catalog.js';
+import type { ProviderModelPricing } from './model-limits.js';
+import type { ResolvedModelPricing } from './model-pricing.js';
 import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
 import { resolveModelReference } from './model-id-resolution.js';
 import type { FavoritesData, FavoritesStore } from './favorites.js';
@@ -166,8 +168,9 @@ export interface ProviderApi {
 export interface ProviderApiRegistry {
   describeRuntime(name: string): Promise<ProviderRuntimeMetadata | null>;
   findAlternativeModel(currentRegistryKey: string): ModelDefinition | null;
-  getCostFromCatalog(modelId: string): { input: number; output: number };
-  getPricingForModel(modelId: string, provider: string): { prompt: number; completion: number } | null;
+  getCostFromCatalog(modelId: string): CatalogModelPricing | null;
+  getPricingForModel(modelId: string, provider: string): ProviderModelPricing | null;
+  resolveModelPricing(modelRef: string, providerId?: string): ResolvedModelPricing;
   getCatalogModelDefinitions(): readonly MinimalModelDefinition[];
   has(id: string): boolean;
   get?(id: string): LLMProvider | undefined;

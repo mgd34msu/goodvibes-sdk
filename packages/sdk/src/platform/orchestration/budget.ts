@@ -18,6 +18,28 @@ import type { WorkItem, Workstream } from './types.js';
 export interface BudgetCheck {
   readonly allowed: boolean;
   readonly reason?: string | undefined;
+  /**
+   * A dollar budget's honest blind spot: usage the ceiling could not see
+   * because its model resolved to no price. Present whenever the workstream
+   * carries a maxCostUsd budget, so callers can state "N tokens unpriced"
+   * instead of implying the ceiling covered everything.
+   */
+  readonly unpricedTokens?: number | undefined;
+  readonly unpricedItems?: number | undefined;
+}
+
+/** Tokens/items whose spend a dollar ceiling cannot see (model resolved to no price). */
+export function budgetBlindSpot(workstream: Workstream): { unpricedTokens: number; unpricedItems: number } {
+  let unpricedTokens = 0;
+  let unpricedItems = 0;
+  for (const item of workstream.items) {
+    const tokens = item.usage.inputTokens + item.usage.outputTokens;
+    if (item.usage.costUsd === null && tokens > 0) {
+      unpricedTokens += tokens;
+      unpricedItems += 1;
+    }
+  }
+  return { unpricedTokens, unpricedItems };
 }
 
 function totalTokens(workstream: Workstream): number {
@@ -61,9 +83,14 @@ export function checkBudget(workstream: Workstream, item?: WorkItem): BudgetChec
 
   if (budget.maxCostUsd !== undefined) {
     const cost = totalCostUsd(workstream);
+    const blindSpot = budgetBlindSpot(workstream);
     if (cost !== null && cost >= budget.maxCostUsd) {
-      return { allowed: false, reason: `workstream cost ($${cost.toFixed(4)}) has reached the $${budget.maxCostUsd} ceiling` };
+      const blind = blindSpot.unpricedTokens > 0
+        ? ` (${blindSpot.unpricedTokens} tokens across ${blindSpot.unpricedItems} item(s) were unpriced and not counted)`
+        : '';
+      return { allowed: false, reason: `workstream cost ($${cost.toFixed(4)}) has reached the $${budget.maxCostUsd} ceiling${blind}`, ...blindSpot };
     }
+    return { allowed: true, ...blindSpot };
   }
 
   return { allowed: true };

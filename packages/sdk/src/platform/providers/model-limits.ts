@@ -17,6 +17,8 @@ interface OpenRouterModelData {
   pricing?: {
     prompt: string;
     completion: string;
+    input_cache_read?: string | undefined;
+    input_cache_write?: string | undefined;
   } | undefined;
 }
 
@@ -32,8 +34,16 @@ interface ModelLimitsCache {
     contextLength: number;
     maxOutputTokens: number | null;
     supportedParameters: string[];
-    pricing?: { prompt: number; completion: number } | undefined;
+    pricing?: { prompt: number; completion: number; cacheRead?: number | undefined; cacheWrite?: number | undefined } | undefined;
   }>;
+}
+
+/** Per-token USD rates served by the provider's own /models payload. */
+export interface ProviderModelPricing {
+  prompt: number;
+  completion: number;
+  cacheRead?: number | undefined;
+  cacheWrite?: number | undefined;
 }
 
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
@@ -154,7 +164,12 @@ function buildOrMap(cache: ModelLimitsCache): Map<string, OpenRouterModelData> {
       top_provider: { max_completion_tokens: entry.maxOutputTokens },
       supported_parameters: entry.supportedParameters,
       pricing: entry.pricing
-        ? { prompt: String(entry.pricing.prompt), completion: String(entry.pricing.completion) }
+        ? {
+          prompt: String(entry.pricing.prompt),
+          completion: String(entry.pricing.completion),
+          input_cache_read: entry.pricing.cacheRead === undefined ? undefined : String(entry.pricing.cacheRead),
+          input_cache_write: entry.pricing.cacheWrite === undefined ? undefined : String(entry.pricing.cacheWrite),
+        }
         : undefined,
     });
   }
@@ -203,7 +218,7 @@ export class ModelLimitsService {
     return result;
   }
 
-  getPricingForModel(modelId: string, provider: string): { prompt: number; completion: number } | null {
+  getPricingForModel(modelId: string, provider: string): ProviderModelPricing | null {
     const orMap = this.ensureOpenRouterMap();
     if (!orMap) return null;
     const match = findOpenRouterMatch(modelId, provider, orMap);
@@ -211,7 +226,19 @@ export class ModelLimitsService {
     const prompt = parseFloat(match.pricing.prompt);
     const completion = parseFloat(match.pricing.completion);
     if (Number.isNaN(prompt) || Number.isNaN(completion)) return null;
-    return { prompt, completion };
+    const cacheRead = match.pricing.input_cache_read === undefined ? Number.NaN : parseFloat(match.pricing.input_cache_read);
+    const cacheWrite = match.pricing.input_cache_write === undefined ? Number.NaN : parseFloat(match.pricing.input_cache_write);
+    return {
+      prompt,
+      completion,
+      ...(Number.isNaN(cacheRead) ? {} : { cacheRead }),
+      ...(Number.isNaN(cacheWrite) ? {} : { cacheWrite }),
+    };
+  }
+
+  /** Epoch ms of the fetch behind the current pricing/limits cache, or null when no cache is loaded. */
+  getPricingFetchedAt(): number | null {
+    return this.cachedData?.fetchedAt ?? null;
   }
 
   getTokenLimitsForModel(modelDef: ModelDefinition): Required<TokenLimits> {
@@ -257,12 +284,19 @@ export class ModelLimitsService {
     const orModels = await fetchOpenRouterModels();
     const models: ModelLimitsCache['models'] = {};
     for (const [id, model] of orModels) {
-      let pricing: { prompt: number; completion: number } | undefined;
+      let pricing: ModelLimitsCache['models'][string]['pricing'];
       if (model.pricing?.prompt != null && model.pricing?.completion != null) {
         const prompt = parseFloat(model.pricing.prompt);
         const completion = parseFloat(model.pricing.completion);
         if (!Number.isNaN(prompt) && !Number.isNaN(completion)) {
-          pricing = { prompt, completion };
+          const cacheRead = model.pricing.input_cache_read === undefined ? Number.NaN : parseFloat(model.pricing.input_cache_read);
+          const cacheWrite = model.pricing.input_cache_write === undefined ? Number.NaN : parseFloat(model.pricing.input_cache_write);
+          pricing = {
+            prompt,
+            completion,
+            ...(Number.isNaN(cacheRead) ? {} : { cacheRead }),
+            ...(Number.isNaN(cacheWrite) ? {} : { cacheWrite }),
+          };
         }
       }
       models[id] = {

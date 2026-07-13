@@ -12,9 +12,12 @@ export interface CatalogProvider {
   requiresKey?: boolean | undefined;
 }
 
+/** Catalog rates, USD per 1M tokens. Cache rates present only when the feed carried them. */
 export interface CatalogModelPricing {
   input: number;
   output: number;
+  cacheRead?: number | undefined;
+  cacheWrite?: number | undefined;
 }
 
 export interface CatalogModel {
@@ -24,7 +27,8 @@ export interface CatalogModel {
   provider: string;
   providerId: string;
   providerEnvVars: string[];
-  pricing: CatalogModelPricing;
+  /** Null when the catalog carried no cost for this model — honestly unpriced, never $0. */
+  pricing: CatalogModelPricing | null;
   tier: 'free' | 'paid' | 'subscription';
   contextWindow?: number | undefined;
   maxOutputTokens?: number | undefined;
@@ -36,24 +40,31 @@ export interface PricingCatalog {
   models: CatalogModel[];
 }
 
+/**
+ * Legacy string-keyed catalog price lookup. Returns null when the model is
+ * absent from the catalog or its entry carries no cost — absent must never
+ * look free. Prefer ProviderRegistry.resolveModelPricing (model-pricing.ts),
+ * which resolves per (provider, model) with manual/provider/catalog
+ * precedence and an explicit source.
+ */
 export function getCostFromPricingCatalog(
   modelId: string,
   catalog: Pick<PricingCatalog, 'models'>,
   modelLimitsService?: Pick<ModelLimitsService, 'getPricingForModel'>,
   opts: { debug?: boolean } = {},
-): CatalogModelPricing {
+): CatalogModelPricing | null {
   if (modelId.endsWith(':free')) {
     return { input: 0, output: 0 };
   }
   const exact = catalog.models.find((model) => model.id === modelId);
   if (exact) {
     if (exact.tier === 'free') return { input: 0, output: 0 };
-    return { input: exact.pricing.input, output: exact.pricing.output };
+    return exact.pricing ? { ...exact.pricing } : null;
   }
   for (const model of catalog.models) {
     if (modelId.startsWith(model.id) || modelId.includes(model.id)) {
       if (model.tier === 'free') return { input: 0, output: 0 };
-      return { input: model.pricing.input, output: model.pricing.output };
+      return model.pricing ? { ...model.pricing } : null;
     }
   }
   if (catalog.models.length === 0) {
@@ -67,7 +78,7 @@ export function getCostFromPricingCatalog(
   if (opts.debug) {
     logger.debug('[cost-tracker] model not in catalog', { modelId });
   }
-  return { input: 0, output: 0 };
+  return null;
 }
 
 export function normalizeModelId(modelId: string): string {
@@ -186,7 +197,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
         : inferFallbackContextWindow(model.provider, model.id),
       ...(!hasCatalogContextWindow ? { contextWindowProvenance: 'fallback' as const } : {}),
       selectable: true,
-      tier: model.tier === 'subscription' ? 'subscription' : isFree ? 'free' : model.pricing.input >= 3 ? 'premium' : 'standard',
+      tier: model.tier === 'subscription' ? 'subscription' : isFree ? 'free' : (model.pricing?.input ?? 0) >= 3 ? 'premium' : 'standard',
       ...(hasReasoning ? { reasoningEffort: ['instant', 'low', 'medium', 'high'] } : {}),
     };
   });
