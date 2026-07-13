@@ -53,6 +53,9 @@ const LOCALHOST_FETCH_APPROVAL_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/
 const EXEC_PROMPT_WIRING_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/permissions/exec-prompt-wiring`;
 const STORE_SNAPSHOTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/state/store-snapshots`;
 const CONTROL_PLANE_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/control-plane`;
+const SELF_UPDATE_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/runtime/self-update`;
+const AUTO_UPDATER_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/daemon/auto-updater`;
+const RECEIPTS_ENTRY = `${PUBLIC_PACKAGE_NAME}/platform/daemon/receipts`;
 const REGISTRY = getPublishRegistryOverride() || 'https://registry.npmjs.org';
 
 const smokeScript = `
@@ -78,6 +81,9 @@ const localhostFetchApproval = await import('${LOCALHOST_FETCH_APPROVAL_ENTRY}')
 const execPromptWiring = await import('${EXEC_PROMPT_WIRING_ENTRY}');
 const storeSnapshots = await import('${STORE_SNAPSHOTS_ENTRY}');
 const controlPlane = await import('${CONTROL_PLANE_ENTRY}');
+const selfUpdate = await import('${SELF_UPDATE_ENTRY}');
+const autoUpdater = await import('${AUTO_UPDATER_ENTRY}');
+const daemonReceipts = await import('${RECEIPTS_ENTRY}');
 const contractsPackage = await import('${CONTRACTS_PACKAGE_NAME}');
 const errorsPackage = await import('${ERRORS_PACKAGE_NAME}');
 const daemonSdkPackage = await import('${DAEMON_SDK_PACKAGE_NAME}');
@@ -113,6 +119,10 @@ if (typeof storeSnapshots.defaultStoreSnapshotRetention !== 'function') throw ne
 if (typeof controlPlane.buildSharedSessionAgentSpawnRoutingInput !== 'function') throw new Error('control-plane spawn-routing builder export missing');
 if (typeof controlPlane.hasFreshSurfaceParticipant !== 'function') throw new Error('control-plane surface-presence helper export missing');
 if (typeof controlPlane.SURFACE_ROUTE_FRESHNESS_MS !== 'number') throw new Error('control-plane surface freshness window export missing');
+if (typeof selfUpdate.compareVersions !== 'function') throw new Error('self-update compareVersions export missing');
+if (typeof selfUpdate.verifyChecksum !== 'function') throw new Error('self-update verifyChecksum export missing');
+if (typeof autoUpdater.DaemonAutoUpdater !== 'function') throw new Error('auto-updater DaemonAutoUpdater export missing');
+if (typeof daemonReceipts.DaemonReceiptStore !== 'function') throw new Error('daemon receipts store export missing');
 if (typeof root.createGoodVibesSdk !== 'function') throw new Error('umbrella sdk export missing');
 if (typeof webEntry.createWebGoodVibesSdk !== 'function') throw new Error('web sdk export missing');
 if (typeof nativeEntry.createReactNativeGoodVibesSdk !== 'function') throw new Error('react-native sdk export missing');

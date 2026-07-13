@@ -261,6 +261,14 @@
       "types": "./dist/platform/daemon/index.d.ts",
       "import": "./dist/platform/daemon/index.js"
     },
+    "./platform/daemon/auto-updater": {
+      "types": "./dist/platform/daemon/auto-updater.d.ts",
+      "import": "./dist/platform/daemon/auto-updater.js"
+    },
+    "./platform/daemon/receipts": {
+      "types": "./dist/platform/daemon/receipts.d.ts",
+      "import": "./dist/platform/daemon/receipts.js"
+    },
     "./platform/discovery": {
       "types": "./dist/platform/discovery/index.d.ts",
       "import": "./dist/platform/discovery/index.js"
@@ -396,6 +404,10 @@
     "./platform/runtime/settings": {
       "types": "./dist/platform/runtime/settings.d.ts",
       "import": "./dist/platform/runtime/settings.js"
+    },
+    "./platform/runtime/self-update": {
+      "types": "./dist/platform/runtime/self-update.d.ts",
+      "import": "./dist/platform/runtime/self-update.js"
     },
     "./platform/scheduler": {
       "types": "./dist/platform/scheduler/index.d.ts",

@@ -273,6 +273,14 @@
     "gzip_bytes": 414,
     "rationale": "platform daemon facade; measured 345 B gzip @ commit 4e5a5e2; headroom max(ceil(345*1.2)=414, 345+50=395) \u2192 414 (1.2x dominates by 19 B)"
   },
+  "./platform/daemon/auto-updater": {
+    "gzip_bytes": 3321,
+    "rationale": "DaemonAutoUpdater hourly self-update loop + defaultDownloadBaseUrl, exported for embedders that host the update lifecycle; measured 2767 B gzip at first export; headroom max(ceil(2767*1.2)=3321, 2767+50=2817) -> 3321 (1.2x dominates)"
+  },
+  "./platform/daemon/receipts": {
+    "gzip_bytes": 1787,
+    "rationale": "DaemonReceiptStore persisted update/crash receipts + formatReceiptTime, exported so embedders compose the same receipt lifecycle the facade uses; measured 1489 B gzip at first export; headroom max(ceil(1489*1.2)=1787, 1489+50=1539) -> 1787 (1.2x dominates)"
+  },
   "./platform/discovery": {
     "gzip_bytes": 194,
     "rationale": "new public package export budget; measured 144 B gzip @ v0.33.0 release verification; headroom max(ceil(144*1.2)=173, 144+50=194) -> 194 (+50 B floor dominates)"
@@ -412,6 +420,10 @@
   "./platform/runtime/permissions/sandbox-policy": {
     "gzip_bytes": 2106,
     "rationale": "sandbox-aware exec permission input (decideSandboxedExec + SandboxPolicyDecision/Effect/Input types) exposed so consumers can wire approval flows to the sandbox policy; measured 1755 B gzip @ commit 01b2cf4c; headroom max(ceil(1755*1.2)=2106, 1755+50=1805) -> 2106 (1.2x dominates); dominated by the command-normalization import decideSandboxedExec reasons over"
+  },
+  "./platform/runtime/self-update": {
+    "gzip_bytes": 4541,
+    "rationale": "release artifact resolution + checksum verification + version banding helpers (compareVersions, resolveLatestReleaseTag, resolveArtifactNames, verifyChecksum) for hosts that manage their own update swap; measured 3784 B gzip at first export; headroom max(ceil(3784*1.2)=4541, 3784+50=3834) -> 4541 (1.2x dominates)"
   },
   "./platform/runtime/settings": {
     "gzip_bytes": 125,
