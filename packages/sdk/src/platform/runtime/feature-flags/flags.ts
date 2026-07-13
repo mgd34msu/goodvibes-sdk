@@ -559,6 +559,121 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     tier: 10,
     runtimeToggleable: true,
   },
+  // Every remaining channel adapter carries its own surface gate entry, bound
+  // (constant kind) to its surfaces.<x>.enabled domain key — the honest
+  // user-facing switch. The capability is always present; activation needs
+  // the enabled key + credentials. Ids match the surface strings the channel
+  // plugin registry registers (see channels/builtin/plugins.ts).
+  {
+    id: 'telegram-surface',
+    name: 'Telegram Surface',
+    description:
+      'Enables the Telegram client adapter for command ingress, threaded replies, and '
+      + 'notification delivery. Activation needs surfaces.telegram.enabled plus bot '
+      + 'credentials; inbound messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'whatsapp-surface',
+    name: 'WhatsApp Surface',
+    description:
+      'Enables the WhatsApp client adapter for command ingress, interactive actions, and '
+      + 'notification delivery. Activation needs surfaces.whatsapp.enabled plus API '
+      + 'credentials; inbound messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'signal-surface',
+    name: 'Signal Surface',
+    description:
+      'Enables the Signal client adapter for command ingress and notification delivery. '
+      + 'Activation needs surfaces.signal.enabled plus a linked signal-cli endpoint; inbound '
+      + 'messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'msteams-surface',
+    name: 'Microsoft Teams Surface',
+    description:
+      'Enables the Microsoft Teams client adapter for command ingress, threaded replies, and '
+      + 'notification delivery. Activation needs surfaces.msteams.enabled plus bot '
+      + 'credentials; inbound messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'matrix-surface',
+    name: 'Matrix Surface',
+    description:
+      'Enables the Matrix client adapter for command ingress, threaded replies, and '
+      + 'notification delivery. Activation needs surfaces.matrix.enabled plus homeserver '
+      + 'credentials; inbound messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'mattermost-surface',
+    name: 'Mattermost Surface',
+    description:
+      'Enables the Mattermost client adapter for command ingress, threaded replies, and '
+      + 'notification delivery. Activation needs surfaces.mattermost.enabled plus server '
+      + 'credentials; inbound messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'imessage-surface',
+    name: 'iMessage Surface',
+    description:
+      'Enables the iMessage client adapter for command ingress and notification delivery. '
+      + 'Activation needs surfaces.imessage.enabled plus a bridge endpoint; inbound messages '
+      + 'are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'bluebubbles-surface',
+    name: 'BlueBubbles Surface',
+    description:
+      'Enables the BlueBubbles client adapter for iMessage command ingress and notification '
+      + 'delivery via a BlueBubbles server. Activation needs surfaces.bluebubbles.enabled '
+      + 'plus server credentials; inbound messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'google-chat-surface',
+    name: 'Google Chat Surface',
+    description:
+      'Enables the Google Chat client adapter for command ingress, threaded replies, and '
+      + 'notification delivery. Activation needs surfaces.googleChat.enabled plus app '
+      + 'credentials; inbound messages are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
+  {
+    id: 'telephony-surface',
+    name: 'Telephony Surface',
+    description:
+      'Enables the telephony adapter for delivery-oriented voice/SMS notification egress and '
+      + 'webhook ingress. Activation needs surfaces.telephony.enabled plus provider '
+      + 'credentials; inbound events are gated by the per-surface owner allowlist.',
+    defaultState: 'enabled',
+    tier: 10,
+    runtimeToggleable: true,
+  },
   {
     id: 'web-surface',
     name: 'Web Surface',
