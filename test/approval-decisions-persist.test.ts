@@ -133,6 +133,20 @@ describe('durable approval rules', () => {
       const sameDir = await manager.checkDetailed('edit', {
         edits: [{ path: `${WORKSPACE}/src/b.ts`, find: 'x', replace: 'y' }],
       });
+      if (prompts !== 1) {
+        // TEMP CI DIAGNOSTIC — remove after root-causing the CI-only re-ask.
+        console.error('[DIAG] same-dir re-ask', JSON.stringify({
+          prompts,
+          workspace: WORKSPACE,
+          firstReason: first.reasonCode,
+          firstApproved: first.approved,
+          sameDirReason: sameDir.reasonCode,
+          sameDirApproved: sameDir.approved,
+          sameDirPersisted: sameDir.persisted,
+          storedRules: store.list(),
+          tmpdir: tmpdir(),
+        }, null, 2));
+      }
       expect(sameDir.approved).toBe(true);
       expect(prompts).toBe(1);
 
