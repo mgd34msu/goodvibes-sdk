@@ -5,7 +5,7 @@
  * third-party catalog knows about yet becomes selectable immediately after the check — the
  * root problem this item exists to fix.
  */
-import { describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -70,6 +70,23 @@ async function withMockedFetch<T>(
 }
 
 describe('ProviderRegistry.refreshLiveModelDiscovery — the picker-open re-check hook', () => {
+  // These tests assert on what the anthropic provider does when its live
+  // /v1/models call is mocked — a brand-new model appears, a 503 surfaces an
+  // honest error. The provider only attempts that call when it is configured
+  // with a key, so pin a deterministic test key for the whole file rather than
+  // inheriting whatever ANTHROPIC_API_KEY the ambient environment happens to
+  // carry (present on a dev box, absent in CI — the difference that made the
+  // 503 case pass locally and fail in CI).
+  let ambientAnthropicKey: string | undefined;
+  beforeAll(() => {
+    ambientAnthropicKey = process.env['ANTHROPIC_API_KEY'];
+    process.env['ANTHROPIC_API_KEY'] = 'sk-test-key';
+  });
+  afterAll(() => {
+    if (ambientAnthropicKey === undefined) delete process.env['ANTHROPIC_API_KEY'];
+    else process.env['ANTHROPIC_API_KEY'] = ambientAnthropicKey;
+  });
+
   test('a brand-new model from a mocked Anthropic /v1/models response becomes selectable', async () => {
     const originalKey = process.env['ANTHROPIC_API_KEY'];
     process.env['ANTHROPIC_API_KEY'] = 'sk-test-key';
