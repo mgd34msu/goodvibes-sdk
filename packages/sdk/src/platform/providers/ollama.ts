@@ -53,6 +53,7 @@ export interface OllamaProviderOptions extends OpenAICompatOptions {
 
 export class OllamaProvider implements LLMProvider {
   readonly name: string;
+  readonly credentialAuthority = 'anonymous' as const;
   readonly models: string[];
   readonly capabilities?: Partial<ProviderCapability> | undefined;
 

@@ -35,7 +35,10 @@ const ProviderSnapshotSchema = z.object({
   notes: z.array(z.string()),
   usageWindows: z.array(UsageWindowSchema),
   issues: z.array(z.string()),
-  recommendedActions: z.array(z.string()),
+  recommendedActions: z.array(z.object({
+    description: z.string(),
+    command: z.object({ name: z.string(), args: z.array(z.string()) }).optional(),
+  })),
   routeRecords: z.array(ProviderRouteRecordSchema),
 }).strict();
 

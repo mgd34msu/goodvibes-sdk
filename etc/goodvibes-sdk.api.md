@@ -62,7 +62,13 @@ export const AccountsSnapshotResponseSchema: z.ZodObject<{
             detail: z.ZodString;
         }, z.core.$strict>>;
         issues: z.ZodArray<z.ZodString>;
-        recommendedActions: z.ZodArray<z.ZodString>;
+        recommendedActions: z.ZodArray<z.ZodObject<{
+            description: z.ZodString;
+            command: z.ZodOptional<z.ZodObject<{
+                name: z.ZodString;
+                args: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
         routeRecords: z.ZodArray<z.ZodObject<{
             route: z.ZodEnum<{
                 "api-key": "api-key";

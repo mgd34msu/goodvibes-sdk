@@ -321,6 +321,7 @@ export interface OpenAICompatOptions {
  */
 export class OpenAICompatProvider implements LLMProvider {
   readonly name: string;
+  readonly credentialAuthority = 'resolver' as const;
   readonly capabilities?: Partial<ProviderCapability> | undefined;
   readonly modelSource: ProviderModelSource;
 

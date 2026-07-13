@@ -70,6 +70,7 @@ export const OPENAI_DATED_STATIC_MODELS_AS_OF = '2026-07-12';
  */
 export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
+  readonly credentialAuthority = 'resolver' as const;
   readonly modelSource: ProviderModelSource = { kind: 'live-discovery' };
 
   /**

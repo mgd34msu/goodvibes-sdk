@@ -50,6 +50,7 @@ export interface LMStudioProviderOptions extends OpenAICompatOptions {
 
 export class LMStudioProvider implements LLMProvider {
   readonly name: string;
+  readonly credentialAuthority = 'anonymous' as const;
   readonly models: string[];
   readonly capabilities?: Partial<ProviderCapability> | undefined;
 

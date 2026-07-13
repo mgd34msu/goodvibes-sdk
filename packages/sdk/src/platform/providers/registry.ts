@@ -8,7 +8,7 @@ import {
 import type { DiscoveredServer } from '../discovery/scanner.js';
 import { createDiscoveredProvider, getDiscoveredReasoningFormat } from './discovered-factory.js';
 import { getDiscoveredTraits } from './discovered-traits.js';
-import { getConfiguredApiKeys, getConfiguredModelId } from '../config/index.js';
+import { getConfiguredApiKeys, getConfiguredModelId, resolveApiKeys } from '../config/index.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitProvidersChanged, emitProviderWarning, emitModelChanged } from '../runtime/emitters/index.js';
 import { loadCustomProviders, watchCustomProviders } from './custom-loader.js';
@@ -18,7 +18,7 @@ import {
   type CatalogModel, type CatalogModelPricing, type CatalogProvider, type MinimalModelDefinition, type PricingCatalog,
 } from './model-catalog.js';
 import {
-  resolveModelPricing as resolveModelPricingFromDeps, type ModelPricingDeps, type ResolvedModelPricing,
+  buildRegistryModelPricingDeps, resolveModelPricing as resolveModelPricingFromDeps, type ResolvedModelPricing,
 } from './model-pricing.js';
 import { GatewayPricingService } from './gateway-pricing.js';
 import { registerBuiltinProviders, CATALOG_PROVIDER_NAME_ALIASES } from './builtin-registry.js';
@@ -42,6 +42,7 @@ import {
   buildModelRegistry, diffCustomModels, findModelDefinition, findModelDefinitionForProvider,
 } from './registry-models.js';
 import { assertProviderModelSource } from './model-source-contract.js';
+import { assertProviderCredentialAuthority } from './credential-authority-contract.js';
 import { resolveModelReference } from './model-id-resolution.js';
 import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
 import {
@@ -118,9 +119,10 @@ export class ProviderRegistry {
     throw new Error(`provider.model must be a provider-qualified registryKey; received '${configuredModel}'.`);
   }
 
-  private registerBuiltins(): void {
-    const apiKey = (name: string): string => getConfiguredApiKeys()[name] ?? '';
-    registerBuiltinProviders(this, (name) => this.providers.has(name), apiKey, {
+  private registerBuiltins(resolvedKeys?: Record<string, string>): void {
+    // Construction: env keys (sync). Refresh: resolver map (env -> secrets), force-overwriting builtins.
+    const apiKey = (name: string): string => resolvedKeys?.[name] ?? getConfiguredApiKeys()[name] ?? '';
+    registerBuiltinProviders(this, (name) => (resolvedKeys ? false : this.providers.has(name)), apiKey, {
       cacheHitTracker: this.cacheHitTracker,
       resolveProvider: (providerName) => this.require(providerName),
       getCatalogModels: () => this.syntheticCanonicalModels,
@@ -130,6 +132,20 @@ export class ProviderRegistry {
       runtimeBus: this.runtimeBus,
       persistenceRoot: this.getPersistenceRoot(),
     });
+  }
+
+  /**
+   * Live credential refresh: re-resolves every builtin key (env -> secrets
+   * store) and force re-registers builtins, so a key written to the secrets
+   * store is usable in the SAME process. Runs at boot and on secrets changes.
+   */
+  async refreshProviderCredentials(): Promise<void> {
+    const resolved = await resolveApiKeys(this.runtimeMetadataDeps.secretsManager);
+    this.registerBuiltins(resolved);
+    this._invalidateModelRegistry();
+    if (this.runtimeBus) {
+      emitProvidersChanged(this.runtimeBus, { sessionId: 'system', traceId: `providers:credentials:${Date.now()}`, source: 'provider-registry' }, { added: [], removed: [], updated: [...this.providers.keys()] });
+    }
   }
 
   private getPersistenceRoot(): string {
@@ -192,6 +208,7 @@ export class ProviderRegistry {
   /** Register a provider. Overwrites any existing entry with the same name. Fails closed on a dead model source (model-source-contract.ts). */
   register(provider: LLMProvider): void {
     assertProviderModelSource(provider);
+    assertProviderCredentialAuthority(provider);
     this.providers.set(provider.name, provider);
     this.providerNativeModels = applyProviderNativeModelBaseline(this.providerNativeModels, provider);
     this._invalidateModelRegistry();
@@ -410,36 +427,25 @@ export class ProviderRegistry {
   }
 
   /**
-   * Resolve the price for a model with the platform-wide precedence:
-   * manual config price ('user') -> registration-supplied price ('user') ->
-   * the provider's own machine-readable pricing ('provider', dated) ->
-   * models.dev catalog entry ('catalog', dated) -> subscription -> honest
-   * unknown (never $0, never inferred-free). Manual prices are read from
-   * config on every call, so edits apply live with no restart.
+   * ONE pricing resolution per (provider, model): manual config price ('user')
+   * -> registration price ('user') -> provider-served ('provider', dated) ->
+   * catalog ('catalog', dated) -> subscription -> honest unknown (never $0).
+   * Manual prices are read live on every call — no restart.
    */
   resolveModelPricing(modelRef: string, providerId?: string): ResolvedModelPricing {
-    return resolveModelPricingFromDeps(this.modelPricingDeps(), modelRef, providerId);
-  }
-
-  private modelPricingDeps(): ModelPricingDeps {
-    return {
+    return resolveModelPricingFromDeps(buildRegistryModelPricingDeps({
       getManualPrices: () => this.configManager.get('pricing.modelPrices'),
-      getRegisteredPrice: (provider, modelId) =>
+      findModelPricing: (provider, modelId) =>
         this.getModelRegistry().find((def) => def.id === modelId && (!provider || def.provider === provider))?.pricing ?? null,
-      getProviderServedPricing: (provider, modelId) => {
-        if (provider === 'openrouter') {
-          const served = this.modelLimitsService.getPricingForModel(modelId, provider);
-          return served ? { ...served, fetchedAt: this.modelLimitsService.getPricingFetchedAt() ?? undefined } : null;
-        }
-        return this.gatewayPricing.getPricing(provider, modelId);
+      openRouterPricing: (modelId) => {
+        const served = this.modelLimitsService.getPricingForModel(modelId, 'openrouter');
+        return served ? { ...served, fetchedAt: this.modelLimitsService.getPricingFetchedAt() ?? undefined } : null;
       },
+      gatewayPricing: (provider, modelId) => this.gatewayPricing.getPricing(provider, modelId),
       getCatalog: () => this.pricingCatalog ?? { fetchedAt: 0, models: this.catalogModels },
-      providerMatchesCatalogId: (provider, catalogId) => provider === catalogId
-        || CATALOG_PROVIDER_NAME_ALIASES[catalogId] === provider
-        || CATALOG_PROVIDER_NAME_ALIASES[provider] === catalogId
-        || (provider === 'gemini' && catalogId === 'google'),
+      providerAliases: CATALOG_PROVIDER_NAME_ALIASES,
       isKnownProviderId: (id) => this.providers.has(id) || this.catalogModels.some((model) => model.providerId === id),
-    };
+    }), modelRef, providerId);
   }
 
   getContextWindowForModel(modelDef: ModelDefinition): number {

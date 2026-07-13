@@ -299,3 +299,30 @@ export function resolveModelPricing(
 
   return resolveFromCatalog(deps, provider, modelId);
 }
+
+/** Narrow accessors a registry hands the resolver — keeps the registry glue tiny. */
+export interface RegistryModelPricingInput {
+  readonly getManualPrices: ModelPricingDeps['getManualPrices'];
+  readonly findModelPricing: (providerId: string | undefined, modelId: string) => ManualModelPrice | null;
+  readonly openRouterPricing: (modelId: string) => ProviderServedPricing | null;
+  readonly gatewayPricing: (providerId: string, modelId: string) => ProviderServedPricing | null;
+  readonly getCatalog: ModelPricingDeps['getCatalog'];
+  readonly providerAliases: Readonly<Record<string, string>>;
+  readonly isKnownProviderId: (providerId: string) => boolean;
+}
+
+/** Assemble ModelPricingDeps from registry accessors (alias-aware provider matching included). */
+export function buildRegistryModelPricingDeps(input: RegistryModelPricingInput): ModelPricingDeps {
+  return {
+    getManualPrices: input.getManualPrices,
+    getRegisteredPrice: input.findModelPricing,
+    getProviderServedPricing: (provider, modelId) =>
+      provider === 'openrouter' ? input.openRouterPricing(modelId) : input.gatewayPricing(provider, modelId),
+    getCatalog: input.getCatalog,
+    providerMatchesCatalogId: (provider, catalogId) => provider === catalogId
+      || input.providerAliases[catalogId] === provider
+      || input.providerAliases[provider] === catalogId
+      || (provider === 'gemini' && catalogId === 'google'),
+    isKnownProviderId: input.isKnownProviderId,
+  };
+}

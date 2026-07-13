@@ -57,6 +57,8 @@ function makeChatlessProvider(overrides: Partial<LLMProvider>): LLMProvider {
   return {
     name: 'seeded-test-provider',
     models: [],
+    // Registration-time credential contract: doubles declare 'anonymous'.
+    credentialAuthority: 'anonymous',
     chat: async () => { throw new Error('not implemented'); },
     ...overrides,
   } as LLMProvider;

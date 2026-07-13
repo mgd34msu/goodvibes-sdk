@@ -239,6 +239,23 @@ function collectAncestorRoots(start: string): string[] {
 }
 
 export class SecretsManager {
+  /** Change listeners — fired after a successful set() or delete() so credential consumers (e.g. the provider registry) re-resolve LIVE, no restart. */
+  private readonly changeListeners = new Set<(key: string) => void>();
+
+  /** Subscribe to secret writes/deletes. Returns an unsubscribe function. */
+  onDidChange(listener: (key: string) => void): () => void {
+    this.changeListeners.add(listener);
+    return () => { this.changeListeners.delete(listener); };
+  }
+
+  private notifyChanged(key: string): void {
+    for (const listener of [...this.changeListeners]) {
+      try { listener(key); } catch (error) {
+        logger.warn('SecretsManager: change listener failed', { key, error: summarizeError(error) });
+      }
+    }
+  }
+
   private encKey: Buffer | null = null;
   private readonly keyFilePath: string;
   private readonly options: SecretsManagerOptions;
@@ -365,6 +382,7 @@ export class SecretsManager {
         this.writePlaintextFile(target.path, existing);
       }
       logger.debug('SecretsManager: stored secret', { key, source: target.source });
+      this.notifyChanged(key);
       return;
     } catch (error) {
       if (policy === 'preferred_secure' && target.secure && !(error instanceof SecretStoreUnreadableError)) {
@@ -377,6 +395,7 @@ export class SecretsManager {
           path: fallback.path,
           error: summarizeError(error),
         });
+        this.notifyChanged(key);
         return;
       }
       throw error;
@@ -494,6 +513,7 @@ export class SecretsManager {
       return true;
     });
 
+    let removed = false;
     for (const store of stores) {
       const values = store.secure
         ? this.readEncryptedFile(store.path)
@@ -504,7 +524,9 @@ export class SecretsManager {
       if (store.secure) this.writeEncryptedFile(store.path, values);
       else this.writePlaintextFile(store.path, values);
       logger.debug('SecretsManager: deleted secret', { key, source: store.source });
+      removed = true;
     }
+    if (removed) this.notifyChanged(key);
   }
 
   private getPolicy(): SecretStorageMode {

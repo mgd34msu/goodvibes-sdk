@@ -81,6 +81,7 @@ export interface AnthropicSdkProviderOptions {
 
 export class AnthropicSdkProvider implements LLMProvider {
   readonly name: string;
+  readonly credentialAuthority = 'resolver' as const;
   readonly models: string[];
 
   constructor(private readonly options: AnthropicSdkProviderOptions) {
