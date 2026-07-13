@@ -15,6 +15,8 @@
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import { registerFleetCheckpointsSearchGatewayMethods, type FleetCheckpointsSearchGatewayDeps } from './register-fleet-checkpoints-search.js';
 import { registerPushGatewayMethods } from './push.js';
+import { registerPairingGatewayMethods, type PairingGatewayService } from './pairing.js';
+import { registerPairingHandoffGatewayMethods } from './pairing-handoff.js';
 import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
@@ -197,6 +199,16 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * pushes.
    */
   readonly sessionPresence?: NeedsInputPresence | undefined;
+  /**
+   * Per-pairing token manager. When present, the pairing.tokens.* verbs
+   * (list/create/rename/delete/migrate/revokeShared) are registered over it;
+   * absent → those verbs stay cataloged-but-unhandled (graceful degrade).
+   */
+  readonly pairingTokens?: PairingGatewayService | undefined;
+  /** Whether the rendezvous relay is available ⇒ the pairing hand-off offers a relay step. */
+  readonly relayAvailable?: (() => boolean) | undefined;
+  /** The configured web-app origin the pairing QR points at ⇒ hand-off returns a full deep link. */
+  readonly pairingWebOrigin?: (() => string | undefined) | undefined;
   /**
    * Config surface backing the session-scoped permission-mode verbs
    * (sessions.permissionMode.get/set): the daemon's own `permissions.mode`
@@ -555,6 +567,21 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   }
 
   registerPushGatewayMethods(catalog, pushService);
+  // Per-pairing token verbs (list/mint/rename/revoke/migrate/revoke-shared),
+  // over the daemon's PairingTokenManager. Only when the composition root
+  // threads it (a graceful degrade for narrower embeds).
+  if (deps.pairingTokens) {
+    registerPairingGatewayMethods(catalog, deps.pairingTokens);
+    // Pairing hand-off bundle: one exchange carries the notifications/relay/
+    // passkey offer set for a surface to complete in one pass, each declinable.
+    registerPairingHandoffGatewayMethods(catalog, {
+      tokens: deps.pairingTokens,
+      push: pushService,
+      ...(deps.stepUpService ? { stepUp: deps.stepUpService } : {}),
+      relayAvailable: deps.relayAvailable ?? ((): boolean => false),
+      ...(deps.pairingWebOrigin ? { webOrigin: deps.pairingWebOrigin } : {}),
+    });
+  }
   // Real event source: approvals-needed -> push to every registered device.
   // The unsubscribe handle is intentionally not retained — the subscription
   // lives for the daemon's lifetime, exactly like the fleet/checkpoint verb

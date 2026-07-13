@@ -1,10 +1,12 @@
 import type { AgentManager } from '../tools/agent/index.js';
 import type { UserAuthManager } from '../security/user-auth.js';
+import { pairingPrincipalId } from '../pairing/pairing-token-store.js';
 import {
   authenticateOperatorRequest,
   authenticateOperatorToken,
   extractOperatorAuthToken,
   isOperatorAdmin,
+  type PairingTokenAuthenticator,
 } from '../security/http-auth.js';
 import type { ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
 import type { GatewayMethodCatalog, GatewayMethodDescriptor } from '../control-plane/index.js';
@@ -56,6 +58,12 @@ export interface ControlPlaneWebSocketData {
 
 export interface DaemonControlPlaneContext {
   readonly authToken: () => string | null;
+  /**
+   * Per-pairing token authenticator. When present, a named per-device token is
+   * checked (and its revocation honored) before the legacy shared token; absent
+   * ⇒ only the shared token / user sessions authenticate.
+   */
+  readonly pairingTokens?: PairingTokenAuthenticator | undefined;
   readonly userAuth: UserAuthManager;
   readonly agentManager: AgentManager;
   readonly controlPlaneGateway: ControlPlaneGateway;
@@ -84,18 +92,25 @@ export class DaemonControlPlaneHelper {
     return extractOperatorAuthToken(req);
   }
 
-  checkAuth(req: Request): boolean {
-    return authenticateOperatorRequest(req, {
+  /** The shared operator-auth context: shared token + per-pairing tokens + user sessions. */
+  private authContext(): {
+    readonly sharedToken: string | null;
+    readonly userAuth: UserAuthManager;
+    readonly pairingTokens: PairingTokenAuthenticator | undefined;
+  } {
+    return {
       sharedToken: this.context.authToken(),
       userAuth: this.context.userAuth,
-    }) !== null;
+      pairingTokens: this.context.pairingTokens,
+    };
+  }
+
+  checkAuth(req: Request): boolean {
+    return authenticateOperatorRequest(req, this.authContext()) !== null;
   }
 
   requireAuthenticatedSession(req: Request): { username: string; roles: readonly string[] } | null {
-    const authenticated = authenticateOperatorRequest(req, {
-      sharedToken: this.context.authToken(),
-      userAuth: this.context.userAuth,
-    });
+    const authenticated = authenticateOperatorRequest(req, this.authContext());
     if (!authenticated || authenticated.kind !== 'session') return null;
     return {
       username: authenticated.username,
@@ -104,10 +119,7 @@ export class DaemonControlPlaneHelper {
   }
 
   requireAdmin(req: Request): Response | null {
-    const authenticated = authenticateOperatorRequest(req, {
-      sharedToken: this.context.authToken(),
-      userAuth: this.context.userAuth,
-    });
+    const authenticated = authenticateOperatorRequest(req, this.authContext());
     if (!authenticated) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (!isOperatorAdmin(authenticated)) {
       return Response.json({ error: 'Admin role required' }, { status: 403 });
@@ -131,14 +143,22 @@ export class DaemonControlPlaneHelper {
   }
 
   describeAuthenticatedPrincipal(token: string): AuthenticatedPrincipal | null {
-    const authenticated = authenticateOperatorToken(token, {
-      sharedToken: this.context.authToken(),
-      userAuth: this.context.userAuth,
-    });
+    const authenticated = authenticateOperatorToken(token, this.authContext());
     if (!authenticated) return null;
     if (authenticated.kind === 'shared-token') {
       return {
         principalId: 'shared-token',
+        principalKind: 'token',
+        admin: true,
+        scopes: this.getGrantedGatewayScopes(true),
+      };
+    }
+    if (authenticated.kind === 'pairing-token') {
+      // A paired device is a distinct, per-token principal (`pairing:<id>`) with
+      // full operator authority — so step-up credentials key per token and a
+      // revoked device drops out cleanly.
+      return {
+        principalId: pairingPrincipalId(authenticated.tokenId),
         principalKind: 'token',
         admin: true,
         scopes: this.getGrantedGatewayScopes(true),

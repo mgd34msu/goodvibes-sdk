@@ -65,6 +65,7 @@ import { SessionManager } from '../sessions/manager.js';
 import { CrossSessionTaskRegistry } from '../sessions/orchestration/index.js';
 import { ApiTokenAuditor } from '../security/token-audit.js';
 import { UserAuthManager } from '../security/user-auth.js';
+import { PairingTokenManager } from '../pairing/pairing-token-store.js';
 import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
 import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
@@ -195,6 +196,8 @@ export interface RuntimeServices {
   /** Relay WebAuthn step-up ceremony service (shared by the stepup.* verbs and the relay gate's verifier). */
   readonly stepUpService: StepUpService;
   readonly subscriptionManager: SubscriptionManager;
+  /** Per-pairing named revocable operator tokens (device-scoped). */
+  readonly pairingTokens: PairingTokenManager;
   readonly localUserAuthManager: UserAuthManager;
   readonly profileManager: ProfileManager;
   readonly bookmarkManager: BookmarkManager;
@@ -337,9 +340,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     surfaceRoot,
     configManager,
   });
-  const subscriptionManager = new SubscriptionManager(
-    shellPaths.resolveUserPath(surfaceRoot, 'subscriptions.json'),
-  );
+  const subscriptionManager = new SubscriptionManager(shellPaths.resolveUserPath(surfaceRoot, 'subscriptions.json'));
   const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(surfaceRoot, 'services.json'), {
     secretsManager,
     subscriptionManager,
@@ -373,16 +374,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     providerRegistry,
     runtimeBus: options.runtimeBus,
   });
-  const localUserAuthManager = new UserAuthManager({
-    bootstrapFilePath: shellPaths.resolveUserPath(surfaceRoot, 'auth-users.json'),
-    bootstrapCredentialPath: shellPaths.resolveUserPath(surfaceRoot, 'auth-bootstrap.txt'),
-  });
+  const localUserAuthManager = new UserAuthManager({ bootstrapFilePath: shellPaths.resolveUserPath(surfaceRoot, 'auth-users.json'), bootstrapCredentialPath: shellPaths.resolveUserPath(surfaceRoot, 'auth-bootstrap.txt') });
+  // Per-pairing named revocable operator tokens (device-scoped); consulted by the operator-auth path.
+  const pairingTokens = new PairingTokenManager(shellPaths.resolveUserPath('control-plane', 'pairing-tokens.json'));
   const profileManager = new ProfileManager(shellPaths.resolveUserPath(surfaceRoot, 'profiles'));
   const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(surfaceRoot, 'bookmarks'));
   const sessionManager = new SessionManager(workingDirectory, { surfaceRoot });
-  const sessionOrchestration = new CrossSessionTaskRegistry(
-    shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'),
-  );
+  const sessionOrchestration = new CrossSessionTaskRegistry(shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'));
   const hookActivityTracker = new HookActivityTracker();
   const watcherRegistry = new WatcherRegistry({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'watchers.json'),
@@ -840,7 +838,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
   };
   const stepUpService = new StepUpService({ secrets: secretsManager });
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,
@@ -878,6 +876,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     stepUpService,
     subscriptionManager,
     localUserAuthManager,
+    pairingTokens,
     profileManager,
     bookmarkManager,
     sessionManager,

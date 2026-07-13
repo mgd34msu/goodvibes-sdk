@@ -9,11 +9,31 @@ export type AuthenticatedOperatorRequest =
       readonly token: string;
     }
   | {
+      readonly kind: 'pairing-token';
+      readonly token: string;
+      /** The per-pairing token's id (for `pairing:<id>` principal derivation). */
+      readonly tokenId: string;
+      /** The user-visible device name for this token. */
+      readonly name: string;
+    }
+  | {
       readonly kind: 'session';
       readonly token: string;
       readonly username: string;
       readonly roles: readonly string[];
     };
+
+/**
+ * The synchronous per-pairing token authenticator the operator-auth path
+ * consults BEFORE the legacy shared token. A revoked token misses here, so
+ * revocation is honored on the very next request. Absent ⇒ no per-pairing
+ * tokens are configured (only the shared token / user sessions authenticate).
+ */
+export interface PairingTokenAuthenticator {
+  authenticate(token: string): { readonly id: string; readonly name: string } | null;
+  /** Whether the legacy single shared token has been revoked. */
+  isLegacyRevoked(): boolean;
+}
 
 interface SessionCookieOptions {
   readonly req: Request;
@@ -84,15 +104,27 @@ export function authenticateOperatorToken(
   context: {
     readonly sharedToken?: string | null | undefined;
     readonly userAuth: Pick<UserAuthManager, 'validateSession' | 'getUser'>;
+    readonly pairingTokens?: PairingTokenAuthenticator | undefined;
   },
 ): AuthenticatedOperatorRequest | null {
   const normalized = token.trim();
   if (!normalized) return null;
 
-  // Try shared-token first. If present and it matches, grant shared-token access.
-  // A non-match must still be checked as a user session so session cookies
-  // remain valid when operator tooling also uses a bearer token.
-  if (context.sharedToken && matchesSharedToken(normalized, context.sharedToken)) {
+  // Try per-pairing tokens first. A named, individually-revocable device token
+  // matches here; a revoked one misses (revocation honored on the next request).
+  const pairing = context.pairingTokens?.authenticate(normalized);
+  if (pairing) {
+    return { kind: 'pairing-token', token: normalized, tokenId: pairing.id, name: pairing.name };
+  }
+
+  // Then the legacy shared token — unless it has been revoked. A non-match must
+  // still be checked as a user session so session cookies remain valid when
+  // operator tooling also uses a bearer token.
+  if (
+    context.sharedToken &&
+    context.pairingTokens?.isLegacyRevoked() !== true &&
+    matchesSharedToken(normalized, context.sharedToken)
+  ) {
     return { kind: 'shared-token', token: normalized };
   }
 
@@ -113,6 +145,7 @@ export function authenticateOperatorRequest(
   context: {
     readonly sharedToken?: string | null | undefined;
     readonly userAuth: Pick<UserAuthManager, 'validateSession' | 'getUser'>;
+    readonly pairingTokens?: PairingTokenAuthenticator | undefined;
   },
 ): AuthenticatedOperatorRequest | null {
   return authenticateOperatorToken(extractOperatorAuthToken(req), context);
@@ -120,7 +153,9 @@ export function authenticateOperatorRequest(
 
 export function isOperatorAdmin(authenticated: AuthenticatedOperatorRequest | null): boolean {
   if (!authenticated) return false;
-  return authenticated.kind === 'shared-token' || authenticated.roles.includes('admin');
+  // A paired device holds the same operator authority as the shared token.
+  if (authenticated.kind === 'shared-token' || authenticated.kind === 'pairing-token') return true;
+  return authenticated.roles.includes('admin');
 }
 
 export function buildOperatorSessionCookie(token: string, options: SessionCookieOptions): string {

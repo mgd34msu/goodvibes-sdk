@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 387 cataloged methods: 353 with dedicated REST bindings, 34 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 395 cataloged methods: 353 with dedicated REST bindings, 42 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -89118,6 +89118,14 @@
           "fleet.list",
           "fleet.snapshot",
           "fleet.unarchive",
+          "pairing.handoff.complete",
+          "pairing.handoff.create",
+          "pairing.tokens.create",
+          "pairing.tokens.delete",
+          "pairing.tokens.list",
+          "pairing.tokens.migrate",
+          "pairing.tokens.rename",
+          "pairing.tokens.revokeShared",
           "permissions.rules.delete",
           "permissions.rules.list",
           "push.subscriptions.create",
@@ -91760,6 +91768,78 @@
       "rest": "GET /api/memory/vector",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.handoff.complete",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.handoff.create",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.tokens.create",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.tokens.delete",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.tokens.list",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "schema-less",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.tokens.migrate",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.tokens.rename",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "pairing.tokens.revokeShared",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "schema-less",
       "outputSchemaCoverage": "typed"
     },
     {

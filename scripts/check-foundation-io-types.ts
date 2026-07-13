@@ -45,6 +45,7 @@ import { fileURLToPath } from 'node:url';
 
 import { builtinGatewayControlCompanionMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-companion.ts';
 import { builtinGatewayPushMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-push.ts';
+import { builtinGatewayPairingMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-pairing.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
@@ -206,14 +207,17 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
   ...builtinGatewayPushMethodDescriptors,
+  ...builtinGatewayPairingMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
   const descriptor = CATALOG_DESCRIPTORS.find((d) => d.id === methodId);
-  if (!descriptor?.inputSchema || !descriptor.outputSchema) {
-    throw new Error(`method-catalog descriptor for "${methodId}" is missing or lacks input/output schemas`);
+  if (!descriptor?.outputSchema) {
+    throw new Error(`method-catalog descriptor for "${methodId}" is missing or lacks an output schema`);
   }
-  return { input: descriptor.inputSchema, output: descriptor.outputSchema };
+  // A verb with no declared input has empty-object input (the contract's own
+  // treatment), so it renders the same `{  }` shape a no-arg method would.
+  return { input: descriptor.inputSchema ?? EMPTY_OBJECT_SCHEMA, output: descriptor.outputSchema };
 }
 
 /** Renders a single schema node to the TS type-string convention used in foundation-client-types.ts. */
@@ -381,6 +385,16 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'workspaces.resolve', input: WORKSPACES_RESOLVE_INPUT_SCHEMA, output: WORKSPACES_RESOLVE_OUTPUT_SCHEMA },
   // Browser-push reconcile-on-open (device-identity self-heal, drift-reported):
   { methodId: 'push.subscriptions.reconcile', ...descriptorSchemas('push.subscriptions.reconcile') },
+  // Per-pairing named revocable operator tokens:
+  { methodId: 'pairing.tokens.list', ...descriptorSchemas('pairing.tokens.list') },
+  { methodId: 'pairing.tokens.create', ...descriptorSchemas('pairing.tokens.create') },
+  { methodId: 'pairing.tokens.migrate', ...descriptorSchemas('pairing.tokens.migrate') },
+  { methodId: 'pairing.tokens.rename', ...descriptorSchemas('pairing.tokens.rename') },
+  { methodId: 'pairing.tokens.delete', ...descriptorSchemas('pairing.tokens.delete') },
+  { methodId: 'pairing.tokens.revokeShared', ...descriptorSchemas('pairing.tokens.revokeShared') },
+  // Pairing hand-off bundle (offer set completed in one pass):
+  { methodId: 'pairing.handoff.create', ...descriptorSchemas('pairing.handoff.create') },
+  { methodId: 'pairing.handoff.complete', ...descriptorSchemas('pairing.handoff.complete') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

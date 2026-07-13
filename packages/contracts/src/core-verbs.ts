@@ -196,6 +196,23 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // uses the core `create` verb.
     'reconcile',
   ],
+  'pairing-tokens': [
+    // Per-pairing operator token lifecycle. list/create/delete are core verbs;
+    // these are not generic CRUD words: `rename` sets ONLY the user-visible
+    // device label (a single-field relabel, not a general resource update),
+    // `migrate` moves a client off the legacy single shared token onto its own
+    // per-device token (an honest one-time hand-off), and `revokeShared` turns
+    // the legacy shared token off entirely (a one-way switch, distinct from
+    // deleting a per-device token).
+    'rename', 'migrate', 'revokeShared',
+  ],
+  'pairing-handoff': [
+    // The pairing hand-off bundle (pairing.handoff.create / .complete): one
+    // exchange carries the notifications/relay/passkey offer set. `create` is a
+    // core verb; `complete` applies the surface's per-offer decisions in a
+    // single pass — a multi-offer apply action, not a generic CRUD word.
+    'complete',
+  ],
   'rewind-safety': [
     // The unified message-anchored rewind (rewind.plan / rewind.apply): a
     // terraform-style dry-run/apply pair over the platform's existing history
