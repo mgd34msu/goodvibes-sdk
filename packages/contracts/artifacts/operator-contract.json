@@ -946,6 +946,9 @@
                 "fixSessionId": {
                   "type": "string"
                 },
+                "fixSessionError": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1450,6 +1453,9 @@
                 "fixSessionId": {
                   "type": "string"
                 },
+                "fixSessionError": {
+                  "type": "string"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1946,6 +1952,9 @@
                   "additionalProperties": false
                 },
                 "fixSessionId": {
+                  "type": "string"
+                },
+                "fixSessionError": {
                   "type": "string"
                 },
                 "metadata": {
@@ -2463,6 +2472,9 @@
                   "additionalProperties": false
                 },
                 "fixSessionId": {
+                  "type": "string"
+                },
+                "fixSessionError": {
                   "type": "string"
                 },
                 "metadata": {
@@ -3086,6 +3098,9 @@
                     "additionalProperties": false
                   },
                   "fixSessionId": {
+                    "type": "string"
+                  },
+                  "fixSessionError": {
                     "type": "string"
                   },
                   "metadata": {
@@ -24202,6 +24217,15 @@
             },
             "fixSessionId": {
               "type": "string"
+            },
+            "fixSessionError": {
+              "type": "string"
+            },
+            "fixSessionOffered": {
+              "type": "boolean"
+            },
+            "retired": {
+              "type": "boolean"
             }
           },
           "required": [

@@ -50,11 +50,14 @@ export const SHARED_APPROVAL_RECORD_SCHEMA = objectSchema({
   resolvedAt: NUMBER_SCHEMA,
   resolvedBy: STRING_SCHEMA,
   decision: PERMISSION_PROMPT_DECISION_SCHEMA,
-  // The session an ACCEPTED ask spawned, when acceptance starts one (e.g.
-  // the CI fix-session a "fix this?" offer starts) — stamped after the spawn
-  // and published as a record update so an attached surface can open the
-  // session live. Never present on denied records.
+  // The REAL session an ACCEPTED ask spawned (attach/resume-resolvable —
+  // never a scheduling handle), stamped at the moment the session exists and
+  // published as a record update so an attached surface can open it live.
+  // Never present on denied records; mutually exclusive with fixSessionError.
   fixSessionId: STRING_SCHEMA,
+  // The honest failure when an accepted ask's spawn produced no attachable
+  // session — recorded instead of a dead id.
+  fixSessionError: STRING_SCHEMA,
   metadata: METADATA_SCHEMA,
   audit: arraySchema(SHARED_APPROVAL_AUDIT_SCHEMA),
 }, ['id', 'callId', 'status', 'request', 'createdAt', 'updatedAt', 'metadata', 'audit']);

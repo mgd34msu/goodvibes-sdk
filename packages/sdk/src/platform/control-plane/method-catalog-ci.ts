@@ -84,7 +84,14 @@ export const CI_WATCHES_RUN_OUTPUT_SCHEMA = objectSchema({
   notified: BOOLEAN_SCHEMA,
   notificationId: STRING_SCHEMA,
   fixSessionTriggered: BOOLEAN_SCHEMA,
+  // The REAL spawned session's id (attach/resume-resolvable) — never a
+  // scheduling handle like an automation job id.
   fixSessionId: STRING_SCHEMA,
+  // The honest failure when the auto-start fix-session produced no
+  // attachable session; mutually exclusive with fixSessionId.
+  fixSessionError: STRING_SCHEMA,
+  fixSessionOffered: BOOLEAN_SCHEMA,
+  retired: BOOLEAN_SCHEMA,
 }, ['report', 'notified', 'fixSessionTriggered']);
 
 export const builtinGatewayCiMethodDescriptors: readonly GatewayMethodDescriptor[] = [

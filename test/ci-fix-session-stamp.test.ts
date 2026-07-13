@@ -22,7 +22,7 @@ function failingSource(): CiStatusSource {
 }
 
 /** Production-shaped wiring: the offer rides a REAL broker; `decide` resolves the ask. */
-function wireService(broker: ApprovalBroker, opts: { approve: boolean; starterId?: string | undefined }) {
+function wireService(broker: ApprovalBroker, opts: { approve: boolean; starterId?: string | undefined; starterError?: string | undefined }) {
   const offer = async (brief: FixSessionBrief) => {
     const offerCallId = `ci-fix-${brief.repo.replace('/', '-')}`;
     const decisionPromise = broker.requestApproval({
@@ -47,8 +47,8 @@ function wireService(broker: ApprovalBroker, opts: { approve: boolean; starterId
     store: new CiWatchStore(':memory:'),
     notifier: async () => 'note-1',
     fixSessionOffer: offer,
-    fixSessionStarter: async () => opts.starterId ?? 'fix-sess-1',
-    stampFixSession: (offerCallId, fixSessionId) => broker.stampFixSession(offerCallId, fixSessionId),
+    fixSessionStarter: async () => (opts.starterError ? { error: opts.starterError } : { sessionId: opts.starterId ?? 'fix-sess-1' }),
+    stampFixSession: (offerCallId, outcome) => broker.stampFixSession(offerCallId, outcome),
   });
 }
 
@@ -106,7 +106,7 @@ describe('accepted fix-this offers stamp the spawned session onto the approval r
         return { accepted: (await decisionPromise).approved, offerCallId };
       },
       fixSessionStarter: async () => { started += 1; return 'never-used'; },
-      stampFixSession: (offerCallId, fixSessionId) => broker.stampFixSession(offerCallId, fixSessionId),
+      stampFixSession: (offerCallId, outcome) => broker.stampFixSession(offerCallId, outcome),
     });
     const watch = await service.createWatch({ repo: 'o/r', ref: 'main', deliveryChannel: 'slack:C1' });
     await service.checkWatch(watch.id);
@@ -117,7 +117,7 @@ describe('accepted fix-this offers stamp the spawned session onto the approval r
     expect(record.status).toBe('denied');
     expect(record.fixSessionId).toBeUndefined();
     // The broker refuses to stamp a non-approved record even if asked.
-    expect(await broker.stampFixSession(record.request.callId, 'sneaky')).toBeNull();
+    expect(await broker.stampFixSession(record.request.callId, { sessionId: 'sneaky' })).toBeNull();
     expect(broker.listApprovals(10).find((r) => r.request.tool === 'ci:fix-session')!.fixSessionId).toBeUndefined();
   });
 
@@ -129,7 +129,7 @@ describe('accepted fix-this offers stamp the spawned session onto the approval r
       store: new CiWatchStore(':memory:'),
       notifier: async () => 'note-1',
       fixSessionStarter: async () => 'auto-sess-7',
-      stampFixSession: async (offerCallId, fixSessionId) => { stamps += 1; return broker.stampFixSession(offerCallId, fixSessionId); },
+      stampFixSession: async (offerCallId, outcome) => { stamps += 1; return broker.stampFixSession(offerCallId, outcome); },
     });
     const watch = await service.createWatch({ repo: 'o/r', ref: 'main', deliveryChannel: 'slack:C1', triggerFixSession: true });
     const result = await service.checkWatch(watch.id);
@@ -137,6 +137,22 @@ describe('accepted fix-this offers stamp the spawned session onto the approval r
     expect(result.fixSessionId).toBe('auto-sess-7');
     expect(stamps).toBe(0);
     expect(broker.listApprovals(10)).toHaveLength(0);
+  });
+
+  test('a failed spawn stamps the honest error onto the accepted record — never a dead id', async () => {
+    const broker = new ApprovalBroker({ storePath: ':memory:' });
+    const liveUpdates: SharedApprovalRecord[] = [];
+    broker.subscribe((record) => liveUpdates.push(record));
+    const service = wireService(broker, { approve: true, starterError: 'automation concurrency limit reached' });
+    const watch = await service.createWatch({ repo: 'o/r', ref: 'main', deliveryChannel: 'slack:C1' });
+
+    await service.checkWatch(watch.id);
+    await waitFor(() => liveUpdates.some((record) => record.fixSessionError !== undefined));
+
+    const record = broker.listApprovals(10).find((r) => r.request.tool === 'ci:fix-session')!;
+    expect(record.status).toBe('approved');
+    expect(record.fixSessionId).toBeUndefined();
+    expect(record.fixSessionError).toBe('automation concurrency limit reached');
   });
 
   test('a bare boolean offer outcome (no approval record) still starts the session without stamping', async () => {

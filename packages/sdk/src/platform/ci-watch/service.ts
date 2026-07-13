@@ -21,6 +21,7 @@ import {
   type CiWatchSubscription,
   type FixSessionBrief,
   type FixSessionOffer,
+  type FixSessionStartOutcome,
   type FixSessionStarter,
 } from './types.js';
 import { logger } from '../utils/logger.js';
@@ -45,7 +46,7 @@ export interface CiWatchServiceDeps {
    * that accepted gets a live in-process handle. Absent → the id is still
    * delivered via the channel notification only.
    */
-  readonly stampFixSession?: ((offerCallId: string, fixSessionId: string) => Promise<unknown>) | undefined;
+  readonly stampFixSession?: ((offerCallId: string, outcome: FixSessionStartOutcome) => Promise<unknown>) | undefined;
   readonly now?: (() => number) | undefined;
 }
 
@@ -62,11 +63,20 @@ export interface CiWatchCheckResult {
   readonly notified: boolean;
   readonly notificationId?: string | undefined;
   readonly fixSessionTriggered: boolean;
+  /** The REAL spawned session's id (attach/resume-resolvable) — never a scheduling handle. */
   readonly fixSessionId?: string | undefined;
+  /** The honest failure when the auto-start fix-session did not produce an attachable session. */
+  readonly fixSessionError?: string | undefined;
   /** A "fix this?" offer was raised through the approval machinery (its acceptance runs async). */
   readonly fixSessionOffered?: boolean | undefined;
   /** The watch was retired: its terminal verdict was delivered, so its job is done. */
   readonly retired?: boolean | undefined;
+}
+
+/** Normalize the starter's legacy string/undefined forms into the honest outcome shape. */
+function normalizeStartOutcome(result: FixSessionStartOutcome | string | undefined): FixSessionStartOutcome {
+  if (result === undefined) return { error: 'the fix session failed to start' };
+  return typeof result === 'string' ? { sessionId: result } : result;
 }
 
 export class CiWatchService {
@@ -148,6 +158,7 @@ export class CiWatchService {
     let notificationId: string | undefined;
     let fixSessionTriggered = false;
     let fixSessionId: string | undefined;
+    let fixSessionError: string | undefined;
     let fixSessionOffered = false;
 
     if (terminal && changed) {
@@ -166,8 +177,15 @@ export class CiWatchService {
           // notification so a surface can open/attach it.
           fixSessionTriggered = true;
           if (this.deps.fixSessionStarter) {
-            fixSessionId = await this.deps.fixSessionStarter(await this.composeFixBrief(subscription, report));
-            if (fixSessionId) await this.notifyFixSessionStarted(subscription, report, fixSessionId);
+            const started = normalizeStartOutcome(await this.deps.fixSessionStarter(await this.composeFixBrief(subscription, report)));
+            if ('sessionId' in started) {
+              fixSessionId = started.sessionId;
+              await this.notifyFixSessionStarted(subscription, report, started.sessionId);
+            } else {
+              // The honest failure rides the verb result — never a dead id.
+              fixSessionError = started.error;
+              logger.warn('[ci-watch] auto-start fix-session failed', { repo: subscription.repo, error: started.error });
+            }
           }
         } else if (this.deps.fixSessionOffer && this.deps.fixSessionStarter) {
           // "Fix this?" — an actionable offer through the approval/attention
@@ -185,16 +203,20 @@ export class CiWatchService {
               const accepted = typeof outcome === 'boolean' ? outcome : outcome.accepted;
               const offerCallId = typeof outcome === 'boolean' ? undefined : outcome.offerCallId;
               if (!accepted) return;
-              const startedId = await starter(brief);
-              if (!startedId) return;
-              // The accepting surface is attached NOW: stamp the started id
-              // onto the resolved approval record (published live through the
+              const started = normalizeStartOutcome(await starter(brief));
+              // The accepting surface is attached NOW: stamp the outcome onto
+              // the resolved approval record (published live through the
               // broker) so it has an in-process handle to open the session —
-              // the channel notification below stays for paired channels.
+              // or the honest failure, never a dead id. The channel
+              // notification below stays for paired channels.
               if (offerCallId && this.deps.stampFixSession) {
-                await this.deps.stampFixSession(offerCallId, startedId);
+                await this.deps.stampFixSession(offerCallId, started);
               }
-              await this.notifyFixSessionStarted(subscription, report, startedId);
+              if ('sessionId' in started) {
+                await this.notifyFixSessionStarted(subscription, report, started.sessionId);
+              } else {
+                logger.warn('[ci-watch] accepted fix-session failed to start', { repo: subscription.repo, error: started.error });
+              }
             } catch (error) {
               logger.warn('[ci-watch] fix-session offer did not complete', {
                 repo: subscription.repo, error: summarizeError(error),
@@ -223,6 +245,7 @@ export class CiWatchService {
       ...(notificationId ? { notificationId } : {}),
       fixSessionTriggered,
       ...(fixSessionId ? { fixSessionId } : {}),
+      ...(fixSessionError ? { fixSessionError } : {}),
       ...(fixSessionOffered ? { fixSessionOffered } : {}),
       ...(retired ? { retired } : {}),
     };

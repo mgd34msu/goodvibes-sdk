@@ -4926,6 +4926,7 @@ export interface OperatorMethodOutputMap {
                 modifiedArgs?: {};
             };
             fixSessionId?: string;
+            fixSessionError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -5005,6 +5006,7 @@ export interface OperatorMethodOutputMap {
                 modifiedArgs?: {};
             };
             fixSessionId?: string;
+            fixSessionError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -5084,6 +5086,7 @@ export interface OperatorMethodOutputMap {
                 modifiedArgs?: {};
             };
             fixSessionId?: string;
+            fixSessionError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -5163,6 +5166,7 @@ export interface OperatorMethodOutputMap {
                 modifiedArgs?: {};
             };
             fixSessionId?: string;
+            fixSessionError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -8425,6 +8429,9 @@ export interface OperatorMethodOutputMap {
         notificationId?: string;
         fixSessionTriggered: boolean;
         fixSessionId?: string;
+        fixSessionError?: string;
+        fixSessionOffered?: boolean;
+        retired?: boolean;
     };
     // (undocumented)
     "companion.chat.events.stream": {};

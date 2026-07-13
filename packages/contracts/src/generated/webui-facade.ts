@@ -2018,6 +2018,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2100,6 +2101,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2180,6 +2182,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2264,6 +2267,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "modifiedArgs": {}
         },
         "fixSessionId": "sample",
+        "fixSessionError": "sample",
         "metadata": {},
         "audit": [
           {
@@ -2363,6 +2367,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "modifiedArgs": {}
           },
           "fixSessionId": "sample",
+          "fixSessionError": "sample",
           "metadata": {},
           "audit": [
             {
@@ -6227,7 +6232,10 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "notified": false,
       "notificationId": "sample",
       "fixSessionTriggered": false,
-      "fixSessionId": "sample"
+      "fixSessionId": "sample",
+      "fixSessionError": "sample",
+      "fixSessionOffered": false,
+      "retired": false
     }
   },
   "companion.chat.events.stream": {
