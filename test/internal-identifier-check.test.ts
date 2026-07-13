@@ -32,6 +32,8 @@ describe('internal-identifier rule', () => {
       'fixed (' + 'B7' + ') last week', // lettered finding id alone in parentheses
       "test('" + 'C3' + ": commits atomically', () => {})", // test title starting with a lettered id + colon
       'covers ' + 'A1' + '/' + 'A2' + ' together', // slash-chained lettered ids
+      'see ' + 'WO-' + '0B for details', // digit-then-letter work-order id
+      'see ' + 'WO-' + '207b for details', // digits-then-lowercase-letter work-order id
     ];
     for (const text of banned) {
       const violations = violationsFor(text);
@@ -104,6 +106,83 @@ describe('check-internal-identifiers.ts (subprocess)', () => {
       const stderr = result.stderr.toString();
       expect(stderr).toContain('src/planted.ts:1');
       expect(stderr).toContain('internal-identifier-check FAILED');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('red test: a violation in a .json file fails (json joined the scanned set)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'internal-id-json-'));
+    try {
+      writeFileSync(
+        join(root, 'budgets.json'),
+        JSON.stringify({ entry: { rationale: 'grew during ' + 'Wave-' + '6 work' } }, null, 2),
+      );
+      const result = Bun.spawnSync({
+        cmd: ['bun', join(REPO_ROOT, 'scripts', 'check-internal-identifiers.ts')],
+        env: { ...process.env, INTERNAL_ID_ROOT: root, INTERNAL_ID_DIRS_JSON: JSON.stringify(['budgets.json']) },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('budgets.json');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('red test: a violation in an extensionless hook script fails (.githooks joined the scanned set)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'internal-id-hooks-'));
+    try {
+      mkdirSync(join(root, '.githooks'), { recursive: true });
+      writeFileSync(
+        join(root, '.githooks', 'pre-commit'),
+        '#!/usr/bin/env bash\n# enforces the cap (' + 'WO-' + 'C)\n',
+      );
+      const result = Bun.spawnSync({
+        cmd: ['bun', join(REPO_ROOT, 'scripts', 'check-internal-identifiers.ts')],
+        env: { ...process.env, INTERNAL_ID_ROOT: root, INTERNAL_ID_DIRS_JSON: JSON.stringify(['.githooks']) },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('.githooks/pre-commit:2');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('red test: a violation in the root changelog fails under the DEFAULT scan set', () => {
+    const root = mkdtempSync(join(tmpdir(), 'internal-id-changelog-'));
+    try {
+      writeFileSync(join(root, 'CHANGELOG.md'), '## Unreleased\n\n- landed in ' + 'Wave ' + '9\n');
+      const result = Bun.spawnSync({
+        cmd: ['bun', join(REPO_ROOT, 'scripts', 'check-internal-identifiers.ts')],
+        // No INTERNAL_ID_DIRS_JSON: the DEFAULT target set must include root markdown.
+        env: { ...process.env, INTERNAL_ID_ROOT: root },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('CHANGELOG.md:3');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('red test: the digit-then-letter work-order shape fails end-to-end', () => {
+    const root = mkdtempSync(join(tmpdir(), 'internal-id-digitletter-'));
+    try {
+      mkdirSync(join(root, 'src'), { recursive: true });
+      writeFileSync(join(root, 'src', 'planted.ts'), '// tracked as ' + 'WO-' + '0B\n');
+      const result = Bun.spawnSync({
+        cmd: ['bun', join(REPO_ROOT, 'scripts', 'check-internal-identifiers.ts')],
+        env: { ...process.env, INTERNAL_ID_ROOT: root, INTERNAL_ID_DIRS_JSON: JSON.stringify(['src']) },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('src/planted.ts:1');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

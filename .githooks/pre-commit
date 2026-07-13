@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-commit hook: enforces api-extractor snapshot is in sync with source,
-# and the 800-line source-file cap (WO-0C).
+# and the 800-line source-file cap.
 #
 # When a commit touches any TypeScript source under packages/*/src/, this hook
 # (1) runs line:check — cheap, no build required — to catch line-cap ratchet

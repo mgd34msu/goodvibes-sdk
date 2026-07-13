@@ -170,7 +170,7 @@ describe('restoreVersionIssue', () => {
 });
 
 describe('overlayPackage', () => {
-  test('replaces dist and package.json in the installed package (unlink-before-copy, WO-0B)', () => {
+  test('replaces dist and package.json in the installed package (unlink-before-copy)', () => {
     const consumerRoot = mkTemp('gv-sdk-overlay-consumer-');
     const sdkRoot = mkTemp('gv-sdk-overlay-sdk-');
     const installed = join(consumerRoot, 'node_modules/@pellux/goodvibes-sdk');
