@@ -141,15 +141,29 @@ describe('durable approval rules', () => {
         const directMatch = matchDurableRules(rulesNow, 'edit', bArgs, { projectRoot: WORKSPACE });
         const pathScopeResults = rulesNow.map((r) =>
           r.type === 'path-scope' ? evaluatePathScopeRule(r, 'edit', bArgs, WORKSPACE) : { skipped: r.type });
+        // Inline copy of the platform globToRegex to capture the exact regex.
+        const glob = (pattern: string): RegExp => new RegExp('^' + pattern
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*\*/g, ' DOUBLESTAR ')
+          .replace(/\*/g, '[^/]*')
+          .replace(/\?/g, '[^/]')
+          .replace(/ DOUBLESTAR /g, '.*') + '$');
+        const bPath = `${WORKSPACE}/src/b.ts`;
+        const pat = (rulesNow[0]?.type === 'path-scope' ? rulesNow[0].pathPatterns[0] : '') ?? '';
+        const rx = glob(pat);
         console.error('[DIAG] same-dir re-ask', JSON.stringify({
           prompts,
-          workspace: WORKSPACE,
           firstReason: first.reasonCode,
           sameDirReason: sameDir.reasonCode,
           rulesNowCount: rulesNow.length,
           directMatch,
-          pathScopeResults,
-          firstRulePattern: rulesNow[0]?.type === 'path-scope' ? rulesNow[0].pathPatterns : null,
+          pathScopeMatched: pathScopeResults.map((r) => (r as { matched?: boolean }).matched),
+          regexSource: rx.source,
+          regexTestB: rx.test(bPath),
+          patLen: pat.length,
+          patCodes: [...pat].map((c) => c.charCodeAt(0)),
+          bPathLen: bPath.length,
+          bPathCodes: [...bPath].map((c) => c.charCodeAt(0)),
           tmpdir: tmpdir(),
         }, null, 2));
       }
