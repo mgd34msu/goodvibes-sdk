@@ -15,7 +15,8 @@ export type PermissionAttribution =
   | BackgroundAgentAttribution
   | McpServerAttribution
   | SandboxEscalationAttribution
-  | FetchLocalhostAttribution;
+  | FetchLocalhostAttribution
+  | ExecPromptAttribution;
 
 /** A background/subagent tool call brokered an ask on behalf of a spawned agent. */
 export interface BackgroundAgentAttribution {
@@ -58,6 +59,21 @@ export interface FetchLocalhostAttribution {
   readonly host: string;
   /** The full URL of the first fetch that raised the ask. */
   readonly url: string;
+}
+
+/**
+ * A running exec command stopped on a terminal prompt (host-key confirmation,
+ * credential ask) under the PTY prompt-answer path, and the pending prompt is
+ * brokered through the SAME approval broker as a permission ask so every
+ * surface's existing approval/attention machinery renders it. The decision's
+ * `modifiedArgs.answer` carries the typed reply back to the waiting child.
+ */
+export interface ExecPromptAttribution {
+  readonly kind: 'exec-prompt';
+  /** The command that is waiting on its terminal. */
+  readonly command: string;
+  /** The detected prompt line the child is blocked on. */
+  readonly prompt: string;
 }
 
 export interface SandboxEscalationAttribution {

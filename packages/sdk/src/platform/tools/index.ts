@@ -23,6 +23,13 @@ import {
   probeSandboxHost,
   type ExecSandboxRuntime,
 } from './exec/sandbox.js';
+import {
+  detectPtyAvailability,
+  probePtyHost,
+  type ExecInteractionRuntime,
+  type ExecPromptAsk,
+  type ExecPromptAnswer,
+} from './exec/interactive.js';
 import { createAnalyzeTool } from './analyze/index.js';
 import { InspectTool } from './inspect/index.js';
 import { createAgentTool } from './agent/index.js';
@@ -137,6 +144,17 @@ export type {
   BwrapArgvInput,
   ResolveSandboxPlanInput,
 } from './exec/sandbox.js';
+// The PTY prompt-answer path is likewise wired internally by registerAllTools
+// (probed only when the composition root supplies a prompt-answer handler);
+// its types are re-exported for direct createExecTool callers, and the pure
+// detection/argv helpers stay importable from the exec/interactive module.
+export type {
+  ExecInteractionRuntime,
+  ExecPromptAsk,
+  ExecPromptAnswer,
+  PtyAvailability,
+  PtyHostProbe,
+} from './exec/interactive.js';
 export { formatDenialResponse, guardExecCommand } from './exec/ast-guard.js';
 export { createAnalyzeTool } from './analyze/index.js';
 export { InspectTool } from './inspect/index.js';
@@ -291,6 +309,13 @@ export function registerAllTools(
      * wires it to the announce-once containment receipt.
      */
     onSandboxedRun?: (() => void) | undefined;
+    /**
+     * Broker an exec PTY terminal-prompt answer through the approval broker
+     * while the command keeps running. Wired at the composition root (see
+     * runtime/permissions/exec-prompt-wiring.ts). Omitted → the PTY path is
+     * not engaged and every command runs the unchanged pipe-based path.
+     */
+    execPromptAnswerHandler?: ((ask: ExecPromptAsk) => Promise<ExecPromptAnswer>) | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -396,12 +421,22 @@ export function registerAllTools(
           ...(deps.onSandboxedRun ? { onSandboxedRun: deps.onSandboxedRun } : {}),
         }
       : null;
+  // PTY prompt-answer path: only probe the host (a `command -v script` spawn)
+  // when the composition root wired a prompt-answer handler, so the default
+  // path stays zero-cost and byte-for-byte unchanged.
+  const execInteraction: ExecInteractionRuntime | null = deps.execPromptAnswerHandler
+    ? {
+        availability: detectPtyAvailability(probePtyHost()),
+        requestPromptAnswer: deps.execPromptAnswerHandler,
+      }
+    : null;
   registerTool(createExecTool(processManager, {
     featureFlags: deps.featureFlags,
     overflowHandler: deps.overflowHandler,
     defaultWorkingDirectory: workingDirectory,
     ...(deps.credentialEnvScrub ? { credentialEnvScrub: deps.credentialEnvScrub } : {}),
     ...(execSandbox ? { sandbox: execSandbox } : {}),
+    ...(execInteraction ? { interaction: execInteraction } : {}),
   }));
   registerTool(createAnalyzeTool(deps.toolLLM, deps.featureFlags, workingDirectory));
   registerTool(new InspectTool(deps.featureFlags, workingDirectory));
