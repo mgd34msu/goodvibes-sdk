@@ -29,8 +29,20 @@ import {
 
 const REPO_ROOT = process.env.INTERNAL_ID_ROOT ?? resolve(import.meta.dir, '..');
 
-const TEXT_EXTENSIONS = new Set(['.ts', '.tsx', '.md']);
+const TEXT_EXTENSIONS = new Set(['.ts', '.tsx', '.md', '.json']);
 const SKIP_DIR_NAMES = new Set(['node_modules', 'dist', '.git', 'generated', 'vendor']);
+
+/**
+ * Extensionless files (shell scripts like the tracked git hooks) are
+ * hand-authored text too: a dot-less basename is scanned rather than skipped,
+ * so a hook script cannot hide an identifier behind a missing extension.
+ */
+function isScannableFile(target: string): boolean {
+  const base = target.split('/').pop()!.split('\\').pop()!;
+  const dot = base.lastIndexOf('.');
+  if (dot <= 0) return true; // no extension (or a leading-dot name): treat as text
+  return TEXT_EXTENSIONS.has(base.slice(dot));
+}
 
 function walkTextFiles(target: string, root: string): InternalIdentifierCandidate[] {
   let stat: ReturnType<typeof statSync>;
@@ -42,8 +54,7 @@ function walkTextFiles(target: string, root: string): InternalIdentifierCandidat
 
   if (stat.isFile()) {
     const relPath = relative(root, target).split('\\').join('/');
-    const dot = target.lastIndexOf('.');
-    if (dot === -1 || !TEXT_EXTENSIONS.has(target.slice(dot))) return [];
+    if (!isScannableFile(target)) return [];
     return [{ relPath, text: readFileSync(target, 'utf8') }];
   }
 
@@ -78,11 +89,13 @@ function defaultScanTargets(root: string): string[] {
       if (existsSync(join(root, srcDir))) targets.push(srcDir);
     }
   }
-  for (const dir of ['scripts', 'docs', 'test', 'eval', 'examples']) {
+  for (const dir of ['scripts', 'docs', 'test', 'eval', 'examples', '.githooks']) {
     if (existsSync(join(root, dir))) targets.push(dir);
   }
+  // Root-level hand-authored text: markdown (CHANGELOG.md included) and JSON
+  // (bundle budgets, configs) — both carried identifiers the old set missed.
   for (const entry of readdirSync(root, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.endsWith('.md')) targets.push(entry.name);
+    if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.json'))) targets.push(entry.name);
   }
   return targets.sort();
 }

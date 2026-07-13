@@ -155,7 +155,7 @@
   },
   "./events/surfaces": {
     "gzip_bytes": 778,
-    "rationale": "measured 648 B gzip @ v1.0.0 release verification (Wave-6 session-lifecycle SSE events + spine surface events grew the events/surfaces export); headroom max(ceil(648*1.2)=778, 648+50=698) -> 778 (1.2x dominates)"
+    "rationale": "measured 648 B gzip @ v1.0.0 release verification (session-lifecycle SSE events + spine surface events grew the events/surfaces export); headroom max(ceil(648*1.2)=778, 648+50=698) -> 778 (1.2x dominates)"
   },
   "./events/tasks": {
     "gzip_bytes": 161,
@@ -247,7 +247,7 @@
   },
   "./platform/calendar": {
     "gzip_bytes": 2060,
-    "rationale": "W4-A9/A10 external-calendar export (ICS parser + RRULE subset + feed store + OAuth 2.0 Google/Microsoft connectivity); measured 1716 B gzip @ v1.0.0 release verification; headroom max(ceil(1716*1.2)=2060, 1716+50=1766) -> 2060 (1.2x dominates)"
+    "rationale": "external-calendar export (ICS parser + RRULE subset + feed store + OAuth 2.0 Google/Microsoft connectivity); measured 1716 B gzip @ v1.0.0 release verification; headroom max(ceil(1716*1.2)=2060, 1716+50=1766) -> 2060 (1.2x dominates)"
   },
   "./platform/presentation": {
     "gzip_bytes": 956,
