@@ -62,6 +62,15 @@ export interface DaemonConfig {
    * omitted in embedded/test contexts where workspace swaps are not supported.
    */
   swapManager?: import('./http/system-route-types.js').WorkspaceSwapManagerLike | null | undefined;
+  /**
+   * Identity of the RUNNING artifact for the auto-update loop: its version
+   * (compared against release tags) and optionally the executable the swap
+   * replaces. The SDK's own daemon CLI passes its release version; an
+   * embedding host passes ITS artifact identity. Absent — the embedded
+   * default — means the host manages updates and the loop stays off (the
+   * SDK package version is never assumed to be the shipped artifact).
+   */
+  updateArtifact?: import('./facade-lifecycle.js').DaemonUpdateArtifact | undefined;
 }
 
 export interface DaemonDangerConfig {

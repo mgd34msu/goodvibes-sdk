@@ -41,6 +41,12 @@ export interface BootDaemonOptions {
   readonly configManager?: import('../config/manager.js').ConfigManager | undefined;
   /** Optional custom serve factory (tests inject Bun.serve stand-ins). */
   readonly serveFactory?: typeof Bun.serve | undefined;
+  /**
+   * Identity of the RUNNING artifact for the auto-update loop. Absent — the
+   * default for embedded/test boots — means the host manages updates and no
+   * loop starts; the SDK package version is never assumed to be the artifact.
+   */
+  readonly updateArtifact?: import('./facade-lifecycle.js').DaemonUpdateArtifact | undefined;
 }
 
 export interface BootedDaemon {
@@ -93,6 +99,7 @@ export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaem
     ...(options.daemonHomeDir !== undefined ? { daemonHomeDir: options.daemonHomeDir } : {}),
     configManager,
     ...(options.serveFactory !== undefined ? { serveFactory: options.serveFactory } : {}),
+    ...(options.updateArtifact !== undefined ? { updateArtifact: options.updateArtifact } : {}),
   });
 
   server.enable({ daemon: true }, options.token);
