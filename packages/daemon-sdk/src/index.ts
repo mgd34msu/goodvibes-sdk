@@ -89,8 +89,10 @@ export type {
   RuntimeEventDomain as DaemonRuntimeEventDomain,
   UserAuthManagerLike,
 } from './integration-route-types.js';
+export { APPROVAL_REMEMBER_TIERS } from './system-route-types.js';
 export type {
   ApprovalBrokerLike,
+  ApprovalRememberTier,
   AutomationDeliveryGuarantee,
   AutomationRouteBindingKind,
   AutomationSessionPolicy,

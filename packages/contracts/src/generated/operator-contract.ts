@@ -529,7 +529,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "approvals.approve",
         "title": "Approve Approval",
-        "description": "Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400.",
+        "description": "Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval — e.g. the typed answer to a command's terminal prompt — to the waiting call (selectedHunks supersedes it when both are present). The response's recorded block reports what the broker actually recorded.",
         "category": "approvals",
         "source": "builtin",
         "access": "authenticated",
@@ -560,6 +560,46 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "array",
               "items": {
                 "type": "number"
+              }
+            },
+            "rememberTier": {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "modifiedArgs": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
               }
             }
           },
@@ -984,6 +1024,44 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "updatedAt",
                 "metadata",
                 "audit"
+              ],
+              "additionalProperties": false
+            },
+            "recorded": {
+              "type": "object",
+              "properties": {
+                "approved": {
+                  "type": "boolean"
+                },
+                "rememberTier": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reasonStored": {
+                  "type": "boolean"
+                },
+                "modifiedArgsDelivered": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "approved",
+                "rememberTier",
+                "reasonStored",
+                "modifiedArgsDelivered"
               ],
               "additionalProperties": false
             }
@@ -1449,6 +1527,44 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "audit"
               ],
               "additionalProperties": false
+            },
+            "recorded": {
+              "type": "object",
+              "properties": {
+                "approved": {
+                  "type": "boolean"
+                },
+                "rememberTier": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reasonStored": {
+                  "type": "boolean"
+                },
+                "modifiedArgsDelivered": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "approved",
+                "rememberTier",
+                "reasonStored",
+                "modifiedArgsDelivered"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -1906,6 +2022,44 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "audit"
               ],
               "additionalProperties": false
+            },
+            "recorded": {
+              "type": "object",
+              "properties": {
+                "approved": {
+                  "type": "boolean"
+                },
+                "rememberTier": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reasonStored": {
+                  "type": "boolean"
+                },
+                "modifiedArgsDelivered": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "approved",
+                "rememberTier",
+                "reasonStored",
+                "modifiedArgsDelivered"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -1918,7 +2072,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "approvals.deny",
         "title": "Deny Approval",
-        "description": "Deny a pending approval.",
+        "description": "Deny a pending approval. rememberTier generalizes the denial (a generalizing tier persists a durable deny rule and sweeps queued asks it covers); reason is the user's free-text feedback, which rides the structured declined result so the model adapts instead of guessing. The response's recorded block reports what the broker actually recorded.",
         "category": "approvals",
         "source": "builtin",
         "access": "authenticated",
@@ -1944,6 +2098,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "remember": {
               "type": "boolean"
+            },
+            "rememberTier": {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            "reason": {
+              "type": "string"
             }
           },
           "required": [
@@ -2367,6 +2534,44 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "updatedAt",
                 "metadata",
                 "audit"
+              ],
+              "additionalProperties": false
+            },
+            "recorded": {
+              "type": "object",
+              "properties": {
+                "approved": {
+                  "type": "boolean"
+                },
+                "rememberTier": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reasonStored": {
+                  "type": "boolean"
+                },
+                "modifiedArgsDelivered": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "approved",
+                "rememberTier",
+                "reasonStored",
+                "modifiedArgsDelivered"
               ],
               "additionalProperties": false
             }

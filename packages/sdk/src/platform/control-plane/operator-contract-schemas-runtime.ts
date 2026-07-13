@@ -13,16 +13,9 @@ import {
   nullableSchema,
   recordSchema,
 } from './operator-contract-schemas-shared.js';
-import {
-  PERMISSION_MODE_SCHEMA,
-  PERMISSION_PROMPT_DECISION_SCHEMA,
-  PERMISSION_PROMPT_REQUEST_SCHEMA,
-  PERMISSION_RUNTIME_DECISION_SCHEMA,
-} from './operator-contract-schemas-permissions.js';
 
 const TASK_KIND_SCHEMA = enumSchema(['exec', 'agent', 'acp', 'scheduler', 'daemon', 'mcp', 'plugin', 'integration']);
 const TASK_STATUS_SCHEMA = enumSchema(['queued', 'running', 'blocked', 'completed', 'failed', 'cancelled']);
-const APPROVAL_STATUS_SCHEMA = enumSchema(['pending', 'claimed', 'approved', 'denied', 'cancelled', 'expired']);
 const PROVIDER_AUTH_MODE_SCHEMA = enumSchema(['api-key', 'oauth', 'anonymous', 'none']);
 const PROVIDER_AUTH_ROUTE_SCHEMA = enumSchema(['api-key', 'subscription', 'service-oauth', 'unconfigured']);
 const PROVIDER_AUTH_FRESHNESS_SCHEMA = enumSchema(['healthy', 'expiring', 'expired', 'pending', 'unconfigured']);
@@ -407,65 +400,6 @@ export const TASK_STATUS_OUTPUT_SCHEMA = objectSchema({
   error: nullableSchema(STRING_SCHEMA),
 }, ['agentId', 'task', 'status', 'model', 'tools', 'durationMs', 'toolCallCount', 'progress', 'error']);
 
-const SHARED_APPROVAL_AUDIT_SCHEMA = objectSchema({
-  id: STRING_SCHEMA,
-  action: enumSchema(['created', 'claimed', 'approved', 'denied', 'cancelled', 'expired', 'updated']),
-  actor: STRING_SCHEMA,
-  actorSurface: STRING_SCHEMA,
-  createdAt: NUMBER_SCHEMA,
-  note: STRING_SCHEMA,
-}, ['id', 'action', 'actor', 'createdAt']);
-
-export const SHARED_APPROVAL_RECORD_SCHEMA = objectSchema({
-  id: STRING_SCHEMA,
-  callId: STRING_SCHEMA,
-  sessionId: STRING_SCHEMA,
-  routeId: STRING_SCHEMA,
-  status: APPROVAL_STATUS_SCHEMA,
-  request: PERMISSION_PROMPT_REQUEST_SCHEMA,
-  createdAt: NUMBER_SCHEMA,
-  updatedAt: NUMBER_SCHEMA,
-  claimedBy: STRING_SCHEMA,
-  claimedAt: NUMBER_SCHEMA,
-  resolvedAt: NUMBER_SCHEMA,
-  resolvedBy: STRING_SCHEMA,
-  decision: PERMISSION_PROMPT_DECISION_SCHEMA,
-  metadata: METADATA_SCHEMA,
-  audit: arraySchema(SHARED_APPROVAL_AUDIT_SCHEMA),
-}, ['id', 'callId', 'status', 'request', 'createdAt', 'updatedAt', 'metadata', 'audit']);
-
-export const APPROVAL_SNAPSHOT_SCHEMA = objectSchema({
-  awaitingDecision: BOOLEAN_SCHEMA,
-  mode: PERMISSION_MODE_SCHEMA,
-  lastDecision: PERMISSION_RUNTIME_DECISION_SCHEMA,
-  approvalCount: NUMBER_SCHEMA,
-  denialCount: NUMBER_SCHEMA,
-  cachedChecks: NUMBER_SCHEMA,
-  totalChecks: NUMBER_SCHEMA,
-  approvals: arraySchema(SHARED_APPROVAL_RECORD_SCHEMA),
-}, ['awaitingDecision', 'mode', 'approvalCount', 'denialCount', 'cachedChecks', 'totalChecks', 'approvals'], { additionalProperties: true });
-
-export const APPROVAL_ACTION_INPUT_SCHEMA = objectSchema({
-  approvalId: STRING_SCHEMA,
-  note: STRING_SCHEMA,
-  remember: BOOLEAN_SCHEMA,
-}, ['approvalId'], { additionalProperties: false });
-
-// approvals.approve additionally accepts an optional per-hunk selection. Absent
-// selectedHunks = approve the whole request (exact back-compat). When present,
-// the broker filters the edit-tool `edits` array to those indices server-side
-// so TUI and webui produce identical modified-edit args; an out-of-range index
-// or a non-edit approval is a 400.
-export const APPROVAL_APPROVE_INPUT_SCHEMA = objectSchema({
-  approvalId: STRING_SCHEMA,
-  note: STRING_SCHEMA,
-  remember: BOOLEAN_SCHEMA,
-  selectedHunks: arraySchema(NUMBER_SCHEMA),
-}, ['approvalId'], { additionalProperties: false });
-
-export const APPROVAL_ACTION_OUTPUT_SCHEMA = objectSchema({
-  approval: SHARED_APPROVAL_RECORD_SCHEMA,
-}, ['approval']);
 
 const PROVIDER_USAGE_COST_SCHEMA = objectSchema({
   source: enumSchema(['catalog', 'provider', 'none']),

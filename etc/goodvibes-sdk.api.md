@@ -2509,6 +2509,10 @@ export interface OperatorMethodInputMap {
         approvalId: string;
         note?: string;
         remember?: boolean;
+        selectedHunks?: readonly number[];
+        rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
+        reason?: string;
+        modifiedArgs?: {};
     };
     // (undocumented)
     "approvals.cancel": {
@@ -2525,6 +2529,8 @@ export interface OperatorMethodInputMap {
         approvalId: string;
         note?: string;
         remember?: boolean;
+        rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
+        reason?: string;
     };
     // (undocumented)
     "approvals.list": {};
@@ -4871,11 +4877,7 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
+                args: {};
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -4890,6 +4892,23 @@ export interface OperatorMethodOutputMap {
                     host?: string;
                 };
                 workingDirectory?: string;
+                attribution?: {
+                    kind: "background-agent";
+                    agentId: string;
+                    template?: string;
+                } | {
+                    kind: "mcp-server";
+                    serverName: string;
+                } | {
+                    kind: "sandbox-escalation";
+                    sandbox: string;
+                    escalations: readonly string[];
+                };
+                rememberOptions?: readonly ({
+                    tier: "command-class" | "exact" | "path" | "session" | "tool";
+                    label: string;
+                    detail: string;
+                })[];
             };
             createdAt: number;
             updatedAt: number;
@@ -4900,6 +4919,9 @@ export interface OperatorMethodOutputMap {
             decision?: {
                 approved: boolean;
                 remember?: boolean;
+                rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
+                reason?: string;
+                modifiedArgs?: {};
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
@@ -4914,6 +4936,12 @@ export interface OperatorMethodOutputMap {
                 createdAt: number;
                 note?: string;
             })[];
+        };
+        recorded?: {
+            approved: boolean;
+            rememberTier: null | "command-class" | "exact" | "path" | "session" | "tool";
+            reasonStored: boolean;
+            modifiedArgsDelivered: boolean;
         };
     };
     // (undocumented)
@@ -4927,11 +4955,7 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
+                args: {};
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -4946,6 +4970,23 @@ export interface OperatorMethodOutputMap {
                     host?: string;
                 };
                 workingDirectory?: string;
+                attribution?: {
+                    kind: "background-agent";
+                    agentId: string;
+                    template?: string;
+                } | {
+                    kind: "mcp-server";
+                    serverName: string;
+                } | {
+                    kind: "sandbox-escalation";
+                    sandbox: string;
+                    escalations: readonly string[];
+                };
+                rememberOptions?: readonly ({
+                    tier: "command-class" | "exact" | "path" | "session" | "tool";
+                    label: string;
+                    detail: string;
+                })[];
             };
             createdAt: number;
             updatedAt: number;
@@ -4956,6 +4997,9 @@ export interface OperatorMethodOutputMap {
             decision?: {
                 approved: boolean;
                 remember?: boolean;
+                rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
+                reason?: string;
+                modifiedArgs?: {};
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
@@ -4970,6 +5014,12 @@ export interface OperatorMethodOutputMap {
                 createdAt: number;
                 note?: string;
             })[];
+        };
+        recorded?: {
+            approved: boolean;
+            rememberTier: null | "command-class" | "exact" | "path" | "session" | "tool";
+            reasonStored: boolean;
+            modifiedArgsDelivered: boolean;
         };
     };
     // (undocumented)
@@ -4983,11 +5033,7 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
+                args: {};
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -5002,6 +5048,23 @@ export interface OperatorMethodOutputMap {
                     host?: string;
                 };
                 workingDirectory?: string;
+                attribution?: {
+                    kind: "background-agent";
+                    agentId: string;
+                    template?: string;
+                } | {
+                    kind: "mcp-server";
+                    serverName: string;
+                } | {
+                    kind: "sandbox-escalation";
+                    sandbox: string;
+                    escalations: readonly string[];
+                };
+                rememberOptions?: readonly ({
+                    tier: "command-class" | "exact" | "path" | "session" | "tool";
+                    label: string;
+                    detail: string;
+                })[];
             };
             createdAt: number;
             updatedAt: number;
@@ -5012,6 +5075,9 @@ export interface OperatorMethodOutputMap {
             decision?: {
                 approved: boolean;
                 remember?: boolean;
+                rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
+                reason?: string;
+                modifiedArgs?: {};
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
@@ -5027,6 +5093,12 @@ export interface OperatorMethodOutputMap {
                 note?: string;
             })[];
         };
+        recorded?: {
+            approved: boolean;
+            rememberTier: null | "command-class" | "exact" | "path" | "session" | "tool";
+            reasonStored: boolean;
+            modifiedArgsDelivered: boolean;
+        };
     };
     // (undocumented)
     "approvals.deny": {
@@ -5039,11 +5111,7 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: ({} & {
-                    readonly [key: string]: ({} & {
-                        readonly [key: string]: JsonValue;
-                    }) | boolean | null | number | readonly JsonValue[] | string;
-                });
+                args: {};
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -5058,6 +5126,23 @@ export interface OperatorMethodOutputMap {
                     host?: string;
                 };
                 workingDirectory?: string;
+                attribution?: {
+                    kind: "background-agent";
+                    agentId: string;
+                    template?: string;
+                } | {
+                    kind: "mcp-server";
+                    serverName: string;
+                } | {
+                    kind: "sandbox-escalation";
+                    sandbox: string;
+                    escalations: readonly string[];
+                };
+                rememberOptions?: readonly ({
+                    tier: "command-class" | "exact" | "path" | "session" | "tool";
+                    label: string;
+                    detail: string;
+                })[];
             };
             createdAt: number;
             updatedAt: number;
@@ -5068,6 +5153,9 @@ export interface OperatorMethodOutputMap {
             decision?: {
                 approved: boolean;
                 remember?: boolean;
+                rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
+                reason?: string;
+                modifiedArgs?: {};
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
@@ -5082,6 +5170,12 @@ export interface OperatorMethodOutputMap {
                 createdAt: number;
                 note?: string;
             })[];
+        };
+        recorded?: {
+            approved: boolean;
+            rememberTier: null | "command-class" | "exact" | "path" | "session" | "tool";
+            reasonStored: boolean;
+            modifiedArgsDelivered: boolean;
         };
     };
     // (undocumented)

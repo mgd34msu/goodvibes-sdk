@@ -1957,7 +1957,10 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "remember": false,
       "selectedHunks": [
         0
-      ]
+      ],
+      "rememberTier": "session",
+      "reason": "sample",
+      "modifiedArgs": {}
     },
     "output": {
       "approval": {
@@ -2025,6 +2028,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },
@@ -2100,6 +2109,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },
@@ -2173,6 +2188,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },
@@ -2180,7 +2201,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {
       "approvalId": "sample",
       "note": "sample",
-      "remember": false
+      "remember": false,
+      "rememberTier": "session",
+      "reason": "sample"
     },
     "output": {
       "approval": {
@@ -2248,6 +2271,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "note": "sample"
           }
         ]
+      },
+      "recorded": {
+        "approved": false,
+        "rememberTier": "session",
+        "reasonStored": false,
+        "modifiedArgsDelivered": false
       }
     }
   },

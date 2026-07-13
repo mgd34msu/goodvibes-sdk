@@ -1,3 +1,4 @@
+export * from './operator-contract-schemas-approvals.js';
 export * from './operator-contract-schemas-control.js';
 export * from './operator-contract-schemas-domains.js';
 export * from './operator-contract-schemas-fleet.js';

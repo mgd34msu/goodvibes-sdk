@@ -318,7 +318,7 @@ Return provider account posture.
 
 #### `approvals.approve`
 
-Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400.
+Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval — e.g. the typed answer to a command's terminal prompt — to the waiting call (selectedHunks supersedes it when both are present). The response's recorded block reports what the broker actually recorded.
 
 - Title: `Approve Approval`
 - Source: `builtin`
@@ -349,6 +349,46 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
       "type": "array",
       "items": {
         "type": "number"
+      }
+    },
+    "rememberTier": {
+      "type": "string",
+      "enum": [
+        "session",
+        "exact",
+        "command-class",
+        "path",
+        "tool"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "modifiedArgs": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
       }
     }
   },
@@ -778,6 +818,44 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
         "updatedAt",
         "metadata",
         "audit"
+      ],
+      "additionalProperties": false
+    },
+    "recorded": {
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "rememberTier": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasonStored": {
+          "type": "boolean"
+        },
+        "modifiedArgsDelivered": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "approved",
+        "rememberTier",
+        "reasonStored",
+        "modifiedArgsDelivered"
       ],
       "additionalProperties": false
     }
@@ -1247,6 +1325,44 @@ Cancel a pending approval.
         "audit"
       ],
       "additionalProperties": false
+    },
+    "recorded": {
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "rememberTier": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasonStored": {
+          "type": "boolean"
+        },
+        "modifiedArgsDelivered": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "approved",
+        "rememberTier",
+        "reasonStored",
+        "modifiedArgsDelivered"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -1708,6 +1824,44 @@ Claim a pending approval for operator handling.
         "audit"
       ],
       "additionalProperties": false
+    },
+    "recorded": {
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "rememberTier": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasonStored": {
+          "type": "boolean"
+        },
+        "modifiedArgsDelivered": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "approved",
+        "rememberTier",
+        "reasonStored",
+        "modifiedArgsDelivered"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -1719,7 +1873,7 @@ Claim a pending approval for operator handling.
 
 #### `approvals.deny`
 
-Deny a pending approval.
+Deny a pending approval. rememberTier generalizes the denial (a generalizing tier persists a durable deny rule and sweeps queued asks it covers); reason is the user's free-text feedback, which rides the structured declined result so the model adapts instead of guessing. The response's recorded block reports what the broker actually recorded.
 
 - Title: `Deny Approval`
 - Source: `builtin`
@@ -1745,6 +1899,19 @@ Deny a pending approval.
     },
     "remember": {
       "type": "boolean"
+    },
+    "rememberTier": {
+      "type": "string",
+      "enum": [
+        "session",
+        "exact",
+        "command-class",
+        "path",
+        "tool"
+      ]
+    },
+    "reason": {
+      "type": "string"
     }
   },
   "required": [
@@ -2173,6 +2340,44 @@ Deny a pending approval.
         "updatedAt",
         "metadata",
         "audit"
+      ],
+      "additionalProperties": false
+    },
+    "recorded": {
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "rememberTier": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasonStored": {
+          "type": "boolean"
+        },
+        "modifiedArgsDelivered": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "approved",
+        "rememberTier",
+        "reasonStored",
+        "modifiedArgsDelivered"
       ],
       "additionalProperties": false
     }

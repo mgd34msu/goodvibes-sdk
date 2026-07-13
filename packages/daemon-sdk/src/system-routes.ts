@@ -9,6 +9,7 @@ import {
 import { jsonErrorResponse } from './error-response.js';
 import { withAdmin } from './auth-helpers.js';
 import type {
+  ApprovalRememberTier,
   AutomationDeliveryGuarantee,
   AutomationRouteBindingKind,
   AutomationSessionPolicy,
@@ -17,6 +18,7 @@ import type {
   DaemonSystemRouteContext,
   WatcherKind,
 } from './system-route-types.js';
+import { APPROVAL_REMEMBER_TIERS } from './system-route-types.js';
 
 const WATCHER_KIND_VALUES: readonly WatcherKind[] = ['filesystem', 'webhook', 'socket', 'integration', 'polling'];
 const WATCHER_SOURCE_KIND_MAP: Readonly<Record<string, WatcherKind>> = {
@@ -424,6 +426,27 @@ async function handleApprovalAction(
   if (selectedHunks instanceof Response) {
     return context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, selectedHunks);
   }
+  // The full decision reach travels over HTTP, not just note/remember: a tier
+  // grant, a deny reason, and an argument-modifying approval (e.g. the typed
+  // answer to a command's terminal prompt) must all reach the same broker
+  // resolution the in-process path uses. Malformed values are honest 400s —
+  // silently dropping them is exactly the defect this closes.
+  const rememberTier = readRememberTier(payload.rememberTier);
+  if (rememberTier instanceof Response) {
+    return context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, rememberTier);
+  }
+  if (payload.reason !== undefined && typeof payload.reason !== 'string') {
+    return context.recordApiResponse(
+      req,
+      `/api/approvals/${approvalId}/${action}`,
+      jsonErrorResponse({ error: 'reason must be a string.' }, { status: 400 }),
+    );
+  }
+  const reason = typeof payload.reason === 'string' ? payload.reason : undefined;
+  const modifiedArgs = action === 'approve' ? readModifiedArgs(payload.modifiedArgs) : undefined;
+  if (modifiedArgs instanceof Response) {
+    return context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, modifiedArgs);
+  }
   let approval: unknown | null;
   try {
     approval = await context.approvalBroker.resolveApproval(approvalId, {
@@ -433,6 +456,9 @@ async function handleApprovalAction(
       actorSurface: 'web',
       note,
       ...(selectedHunks !== undefined ? { selectedHunks } : {}),
+      ...(rememberTier !== undefined ? { rememberTier } : {}),
+      ...(reason !== undefined ? { reason } : {}),
+      ...(modifiedArgs !== undefined ? { modifiedArgs } : {}),
     });
   } catch (error) {
     // The broker throws a 400-tagged error for an out-of-range or non-edit
@@ -446,8 +472,62 @@ async function handleApprovalAction(
     );
   }
   return approval
-    ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval }))
+    ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval, recorded: recordedDecision(approval) }))
     : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, jsonErrorResponse({ error: 'Unknown approval' }, { status: 404 }));
+}
+
+/**
+ * Read an optional rememberTier off the request payload. Undefined when
+ * absent; a 400 Response when present but not one of the broker's tiers.
+ */
+function readRememberTier(value: unknown): ApprovalRememberTier | undefined | Response {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || !(APPROVAL_REMEMBER_TIERS as readonly string[]).includes(value)) {
+    return jsonErrorResponse(
+      { error: `rememberTier must be one of: ${APPROVAL_REMEMBER_TIERS.join(', ')}.` },
+      { status: 400 },
+    );
+  }
+  return value as ApprovalRememberTier;
+}
+
+/**
+ * Read an optional modifiedArgs record off the request payload. Undefined
+ * when absent; a 400 Response when present but not a plain object.
+ */
+function readModifiedArgs(value: unknown): Record<string, unknown> | undefined | Response {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return jsonErrorResponse({ error: 'modifiedArgs must be an object of tool arguments.' }, { status: 400 });
+  }
+  return value as Record<string, unknown>;
+}
+
+/**
+ * What the broker actually recorded, derived from the RETURNED record —
+ * never echoed from the request. An already-resolved approval keeps its
+ * original decision, so this stays honest when a late approve/deny no-ops.
+ */
+function recordedDecision(approval: unknown): {
+  approved: boolean;
+  rememberTier: ApprovalRememberTier | null;
+  reasonStored: boolean;
+  modifiedArgsDelivered: boolean;
+} {
+  const decision = (approval as { decision?: {
+    approved?: unknown;
+    rememberTier?: unknown;
+    reason?: unknown;
+    modifiedArgs?: unknown;
+  } | undefined }).decision;
+  return {
+    approved: decision?.approved === true,
+    rememberTier: typeof decision?.rememberTier === 'string' && (APPROVAL_REMEMBER_TIERS as readonly string[]).includes(decision.rememberTier)
+      ? decision.rememberTier as ApprovalRememberTier
+      : null,
+    reasonStored: typeof decision?.reason === 'string',
+    modifiedArgsDelivered: decision?.modifiedArgs !== undefined,
+  };
 }
 
 /**
