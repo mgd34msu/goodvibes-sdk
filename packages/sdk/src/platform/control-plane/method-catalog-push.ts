@@ -44,11 +44,13 @@ const PUSH_SUBSCRIPTION_KEYS_SCHEMA = objectSchema({
 const PUBLIC_PUSH_SUBSCRIPTION_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   principalId: STRING_SCHEMA,
+  deviceId: STRING_SCHEMA,
   endpointOrigin: STRING_SCHEMA,
   endpointHash: STRING_SCHEMA,
   createdAt: NUMBER_SCHEMA,
   lastDeliveryAt: NUMBER_SCHEMA,
   lastOutcome: STRING_SCHEMA,
+  consecutiveFailures: NUMBER_SCHEMA,
 }, ['id', 'principalId', 'endpointOrigin', 'endpointHash', 'createdAt']);
 
 const PUSH_DELIVERY_RECEIPT_SCHEMA = objectSchema({
@@ -72,15 +74,33 @@ export const builtinGatewayPushMethodDescriptors: readonly GatewayMethodDescript
   methodDescriptor({
     id: 'push.subscriptions.create',
     title: 'Register Web Push Subscription',
-    description: 'Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. Re-registering the same endpoint updates its keys in place rather than duplicating it. The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.',
+    description: 'Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. When a stable deviceId is supplied the record reconciles on that device identity — a browser whose push endpoint rotated re-registers the same deviceId with a new endpoint and heals the one record in place rather than piling up a stale duplicate; without a deviceId it reconciles on the raw endpoint (legacy). The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.',
     category: 'push',
     scopes: ['write:push'],
     transport: ['ws'],
     inputSchema: objectSchema({
       endpoint: STRING_SCHEMA,
       keys: PUSH_SUBSCRIPTION_KEYS_SCHEMA,
+      deviceId: STRING_SCHEMA,
     }, ['endpoint', 'keys']),
     outputSchema: objectSchema({ subscription: PUBLIC_PUSH_SUBSCRIPTION_SCHEMA }, ['subscription']),
+  }),
+  methodDescriptor({
+    id: 'push.subscriptions.reconcile',
+    title: 'Reconcile Web Push Subscription',
+    description: 'Reconcile-on-open: the client presents its device identity (deviceId) and its CURRENT endpoint + p256dh/auth keys, and the daemon heals the record for that device in place — updating a stale endpoint the daemon had been holding — then reports what drifted (created / endpoint-updated / keys-updated / unchanged) so the client learns whether the daemon was out of date. A live reconcile also clears the bounded-retry failure counter. The stored endpoint and keys are never returned; the response is the redacted subscription view plus the drift discriminant.',
+    category: 'push',
+    scopes: ['write:push'],
+    transport: ['ws'],
+    inputSchema: objectSchema({
+      deviceId: STRING_SCHEMA,
+      endpoint: STRING_SCHEMA,
+      keys: PUSH_SUBSCRIPTION_KEYS_SCHEMA,
+    }, ['deviceId', 'endpoint', 'keys']),
+    outputSchema: objectSchema({
+      subscription: PUBLIC_PUSH_SUBSCRIPTION_SCHEMA,
+      drift: STRING_SCHEMA,
+    }, ['subscription', 'drift']),
   }),
   methodDescriptor({
     id: 'push.subscriptions.list',

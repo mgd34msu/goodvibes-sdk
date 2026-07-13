@@ -20,6 +20,15 @@ export interface StoredPushSubscription {
   readonly id: string;
   /** The principal (operator identity) that registered this device. */
   readonly principalId: string;
+  /**
+   * Stable device identity supplied by the client (e.g. a per-install id), the
+   * key the record is reconciled on. A browser whose push endpoint rotates
+   * presents the SAME deviceId with a NEW endpoint, so the daemon heals the one
+   * record in place instead of accumulating a stale duplicate. Absent on legacy
+   * records registered before device identity existed — those still reconcile
+   * on the raw endpoint.
+   */
+  readonly deviceId?: string | undefined;
   /** The browser Push endpoint — a capability URL, kept off the wire. */
   readonly endpoint: string;
   readonly keys: SubscriptionKeyMaterial;
@@ -28,6 +37,13 @@ export interface StoredPushSubscription {
   readonly lastDeliveryAt?: number | undefined;
   /** Outcome of the last delivery attempt, if any. */
   readonly lastOutcome?: PushDeliveryOutcome | undefined;
+  /**
+   * Consecutive non-gone delivery failures since the last success. The delivery
+   * path prunes a record whose failures cross the bounded-retry threshold (a
+   * dead endpoint that never answers 404/410), reported as an honest `pruned`
+   * receipt. Reset to 0 on any delivered outcome or a re-register.
+   */
+  readonly consecutiveFailures?: number | undefined;
 }
 
 /**
@@ -38,14 +54,32 @@ export interface StoredPushSubscription {
 export interface PublicPushSubscription {
   readonly id: string;
   readonly principalId: string;
+  /** The device identity this record is reconciled on, when known. */
+  readonly deviceId?: string | undefined;
   /** The endpoint's origin only (e.g. `https://push.example`), never the full path. */
   readonly endpointOrigin: string;
-  /** A short, stable hash of the full endpoint, for de-duplication in a UI. */
+  /**
+   * A short, stable hash of the full endpoint. A client compares this against
+   * the hash of its OWN current endpoint to detect that the daemon holds a
+   * stale one (drift) and reconcile — the hash reveals drift without ever
+   * handing the capability URL back out.
+   */
   readonly endpointHash: string;
   readonly createdAt: number;
   readonly lastDeliveryAt?: number | undefined;
   readonly lastOutcome?: PushDeliveryOutcome | undefined;
+  /** Consecutive non-gone delivery failures since the last success (0 when healthy). */
+  readonly consecutiveFailures?: number | undefined;
 }
+
+/**
+ * Whether a reconcile-on-open changed the daemon's record for a device.
+ * - 'created'          — no record existed for this device identity; a new one was stored.
+ * - 'endpoint-updated' — a record existed with a DIFFERENT endpoint (drift); it was healed in place.
+ * - 'keys-updated'     — same endpoint, rotated key material refreshed in place.
+ * - 'unchanged'        — the stored endpoint and keys already matched.
+ */
+export type PushReconcileDrift = 'created' | 'endpoint-updated' | 'keys-updated' | 'unchanged';
 
 export type PushDeliveryOutcome = 'delivered' | 'pruned' | 'failed' | 'skipped';
 

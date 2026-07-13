@@ -189,6 +189,12 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // not a generic read/lifecycle word — the subscription lifecycle itself uses
     // core verbs (push.subscriptions.create/list/delete, push.vapid.get).
     'verify',
+    // `reconcile` is the self-heal-on-open action: the client presents its
+    // device identity + current endpoint and the daemon heals a stale record in
+    // place, reporting what drifted. It is a state-reconciliation verb (like a
+    // terraform apply), not a plain create/update — a new subscription still
+    // uses the core `create` verb.
+    'reconcile',
   ],
   'rewind-safety': [
     // The unified message-anchored rewind (rewind.plan / rewind.apply): a

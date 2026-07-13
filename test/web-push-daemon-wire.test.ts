@@ -127,7 +127,11 @@ beforeAll(async () => {
       const headers: Record<string, string> = {};
       req.headers.forEach((value, key) => { headers[key] = value; });
       captured.push({ path: url.pathname, headers, body });
-      const status = url.pathname.startsWith('/gone') ? 410 : 201;
+      const status = url.pathname.startsWith('/gone')
+        ? 410
+        : url.pathname.startsWith('/fail')
+          ? 500
+          : 201;
       return new Response(null, { status });
     },
   });
@@ -266,6 +270,94 @@ describe('web push — honest degrade (410 gone pruned with receipt)', () => {
     const list = await invokeVerb('push.subscriptions.list');
     const subs = list.json.subscriptions as Array<{ id: string }>;
     expect(subs.some((s) => s.id === goneId)).toBe(false);
+  });
+});
+
+describe('web push — self-heal on open (device-identity reconcile)', () => {
+  test('a rotated endpoint heals the one record in place and reports the drift', async () => {
+    const deviceId = 'device-phone-1';
+    const first = `${sinkOrigin}/push/heal-old`;
+    const created = await invokeVerb('push.subscriptions.reconcile', { deviceId, endpoint: first, keys: { p256dh, auth } });
+    expect(created.status).toBe(200);
+    expect(created.json.drift).toBe('created');
+    const createdId = (created.json.subscription as { id: string; deviceId: string }).id;
+    expect((created.json.subscription as { deviceId: string }).deviceId).toBe(deviceId);
+
+    // The browser's push endpoint rotates; it re-presents the SAME deviceId.
+    const rotated = `${sinkOrigin}/push/heal-new`;
+    const healed = await invokeVerb('push.subscriptions.reconcile', { deviceId, endpoint: rotated, keys: { p256dh, auth } });
+    expect(healed.status).toBe(200);
+    expect(healed.json.drift).toBe('endpoint-updated');
+    // Same record id — healed in place, not a duplicate.
+    expect((healed.json.subscription as { id: string }).id).toBe(createdId);
+
+    // Exactly one record for this device (no stale duplicate left behind).
+    const list = await invokeVerb('push.subscriptions.list');
+    const mine = (list.json.subscriptions as Array<{ id: string; deviceId?: string }>).filter((s) => s.deviceId === deviceId);
+    expect(mine).toHaveLength(1);
+
+    // A no-op reconcile with the same endpoint reports 'unchanged'.
+    const same = await invokeVerb('push.subscriptions.reconcile', { deviceId, endpoint: rotated, keys: { p256dh, auth } });
+    expect(same.json.drift).toBe('unchanged');
+
+    // A delivery now targets the NEW endpoint, proving the heal took effect.
+    const before = captured.length;
+    await invokeVerb('push.subscriptions.verify', { subscriptionId: createdId });
+    const push = captured[before];
+    expect(push?.path).toBe('/push/heal-new');
+
+    await invokeVerb('push.subscriptions.delete', { subscriptionId: createdId });
+  });
+});
+
+describe('web push — bounded retries then prune on a dead (non-gone) endpoint', () => {
+  test('repeated 500s prune the record after the bounded retries, with an honest receipt', async () => {
+    const endpoint = `${sinkOrigin}/fail/device-flaky`;
+    const created = await invokeVerb('push.subscriptions.create', { endpoint, keys: { p256dh, auth } });
+    const failId = (created.json.subscription as { id: string }).id;
+
+    let lastReceipt: Record<string, unknown> = {};
+    // The endpoint never answers 404/410 — it just keeps 500ing. Each verify is a
+    // failed delivery until the bounded-retry counter is crossed, then a prune.
+    for (let i = 0; i < 10; i++) {
+      const verify = await invokeVerb('push.subscriptions.verify', { subscriptionId: failId });
+      lastReceipt = verify.json.receipt as Record<string, unknown>;
+      if (lastReceipt.outcome === 'pruned') break;
+      expect(lastReceipt.outcome).toBe('failed');
+    }
+    expect(lastReceipt.outcome).toBe('pruned');
+    expect(String(lastReceipt.detail)).toContain('consecutive delivery failures');
+
+    // Pruned means gone from the list.
+    const list = await invokeVerb('push.subscriptions.list');
+    const subs = list.json.subscriptions as Array<{ id: string }>;
+    expect(subs.some((s) => s.id === failId)).toBe(false);
+  });
+
+  test('a successful delivery resets the failure counter so a flaky endpoint is not pruned', async () => {
+    const deviceId = 'device-recovers';
+    const failEndpoint = `${sinkOrigin}/fail/recover`;
+    const created = await invokeVerb('push.subscriptions.create', { endpoint: failEndpoint, keys: { p256dh, auth }, deviceId });
+    const id = (created.json.subscription as { id: string }).id;
+
+    // A couple of failures, but below the prune threshold.
+    await invokeVerb('push.subscriptions.verify', { subscriptionId: id });
+    await invokeVerb('push.subscriptions.verify', { subscriptionId: id });
+
+    // The endpoint recovers: reconcile to a healthy path — this both heals the
+    // endpoint and resets the counter; a delivery then succeeds.
+    const healthy = `${sinkOrigin}/push/recovered`;
+    await invokeVerb('push.subscriptions.reconcile', { deviceId, endpoint: healthy, keys: { p256dh, auth } });
+    const verify = await invokeVerb('push.subscriptions.verify', { subscriptionId: id });
+    expect((verify.json.receipt as { outcome: string }).outcome).toBe('delivered');
+
+    // Still present (never pruned), and its failure counter reads 0.
+    const list = await invokeVerb('push.subscriptions.list');
+    const mine = (list.json.subscriptions as Array<{ id: string; consecutiveFailures?: number }>).find((s) => s.id === id);
+    expect(mine).toBeDefined();
+    expect(mine?.consecutiveFailures ?? 0).toBe(0);
+
+    await invokeVerb('push.subscriptions.delete', { subscriptionId: id });
   });
 });
 

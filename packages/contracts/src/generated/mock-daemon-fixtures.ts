@@ -12392,11 +12392,13 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "subscription": {
         "id": "sample",
         "principalId": "sample",
+        "deviceId": "sample",
         "endpointOrigin": "sample",
         "endpointHash": "sample",
         "createdAt": 0,
         "lastDeliveryAt": 0,
-        "lastOutcome": "sample"
+        "lastOutcome": "sample",
+        "consecutiveFailures": 0
       }
     }
   },
@@ -12418,13 +12420,34 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         {
           "id": "sample",
           "principalId": "sample",
+          "deviceId": "sample",
           "endpointOrigin": "sample",
           "endpointHash": "sample",
           "createdAt": 0,
           "lastDeliveryAt": 0,
-          "lastOutcome": "sample"
+          "lastOutcome": "sample",
+          "consecutiveFailures": 0
         }
       ]
+    }
+  },
+  "push.subscriptions.reconcile": {
+    "methodId": "push.subscriptions.reconcile",
+    "http": null,
+    "status": 200,
+    "body": {
+      "subscription": {
+        "id": "sample",
+        "principalId": "sample",
+        "deviceId": "sample",
+        "endpointOrigin": "sample",
+        "endpointHash": "sample",
+        "createdAt": 0,
+        "lastDeliveryAt": 0,
+        "lastOutcome": "sample",
+        "consecutiveFailures": 0
+      },
+      "drift": "sample"
     }
   },
   "push.subscriptions.verify": {
