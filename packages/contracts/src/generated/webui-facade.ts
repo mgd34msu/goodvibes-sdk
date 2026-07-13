@@ -3139,7 +3139,11 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "archivedAt": 0,
           "metadata": {}
         }
-      ]
+      ],
+      "emptyState": {
+        "title": "sample",
+        "body": "sample"
+      }
     }
   },
   "automation.jobs.run": {

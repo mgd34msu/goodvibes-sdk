@@ -24,50 +24,106 @@ export interface FeatureAnnouncement {
   readonly text: string;
 }
 
+/** A fired announcement awaiting delivery to a rendering surface. */
+export interface PendingFeatureAnnouncement {
+  readonly id: string;
+  readonly text: string;
+  readonly at: number;
+}
+
+interface AnnouncementFileState {
+  announced: Record<string, number>;
+  pending: PendingFeatureAnnouncement[];
+}
+
 /**
- * Persisted announce-once bookkeeping (JSON map of announcement id ->
- * timestamp) under the control-plane config directory, so an announcement
- * made by any process of this install is made exactly once.
+ * Persisted announce-once bookkeeping under the control-plane config
+ * directory, so an announcement made by any process of this install is made
+ * exactly once — PLUS a pending-delivery queue: an announcement recorded with
+ * text waits here until a rendering surface drains it (the daemon folds the
+ * queue into the explicitly-consuming /status receipts read), so
+ * announce-once lines reach surfaces instead of dead-ending in the log.
+ *
+ * File format: `{ announced: { id -> timestamp }, pending: [{id,text,at}] }`.
+ * The legacy format (a plain id->timestamp map) reads as announced-with-
+ * nothing-pending — old installs never re-announce.
  */
 export class FeatureAnnouncementStore {
   constructor(private readonly path: string) {}
 
-  private read(): Record<string, number> {
+  private read(): AnnouncementFileState {
     try {
-      if (!existsSync(this.path)) return {};
+      if (!existsSync(this.path)) return { announced: {}, pending: [] };
       const parsed = JSON.parse(readFileSync(this.path, 'utf-8')) as unknown;
-      return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
-        ? (parsed as Record<string, number>)
-        : {};
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return { announced: {}, pending: [] };
+      }
+      const record = parsed as Record<string, unknown>;
+      if (record.announced !== null && typeof record.announced === 'object' && !Array.isArray(record.announced)) {
+        return {
+          announced: record.announced as Record<string, number>,
+          pending: Array.isArray(record.pending)
+            ? (record.pending as PendingFeatureAnnouncement[]).filter(
+                (entry) => entry !== null && typeof entry === 'object' && typeof entry.id === 'string' && typeof entry.text === 'string' && typeof entry.at === 'number',
+              )
+            : [],
+        };
+      }
+      // Legacy format: a plain id -> timestamp map. Announced, nothing pending.
+      return { announced: record as Record<string, number>, pending: [] };
     } catch {
-      return {};
+      return { announced: {}, pending: [] };
+    }
+  }
+
+  private persist(state: AnnouncementFileState, context: string): void {
+    try {
+      mkdirSync(dirname(this.path), { recursive: true });
+      writeFileSync(this.path, JSON.stringify(state, null, 2) + '\n', 'utf-8');
+    } catch (err) {
+      // An unwritable store must never block the feature; the announcement
+      // may repeat on the next start, which is noisy but honest.
+      logger.warn('[announcements] could not persist announce-once state', {
+        context,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
   has(id: string): boolean {
-    return id in this.read();
+    return id in this.read().announced;
   }
 
   /**
    * Record an announcement; returns true only on the FIRST record (the caller
    * announces), false when it was already made (the caller stays silent).
+   * With `text`, the first record also enqueues the line for surface delivery
+   * (see drainPending) — so the announcement reaches a rendering surface, not
+   * only the log.
    */
-  record(id: string): boolean {
-    const entries = this.read();
-    if (id in entries) return false;
-    entries[id] = Date.now();
-    try {
-      mkdirSync(dirname(this.path), { recursive: true });
-      writeFileSync(this.path, JSON.stringify(entries, null, 2) + '\n', 'utf-8');
-    } catch (err) {
-      // An unwritable store must never block the feature; the announcement
-      // may repeat on the next start, which is noisy but honest.
-      logger.warn('[announcements] could not persist announce-once record', {
-        id,
-        error: err instanceof Error ? err.message : String(err),
-      });
+  record(id: string, text?: string): boolean {
+    const state = this.read();
+    if (id in state.announced) return false;
+    const at = Date.now();
+    state.announced[id] = at;
+    if (typeof text === 'string' && text.length > 0) {
+      state.pending.push({ id, text, at });
     }
+    this.persist(state, id);
     return true;
+  }
+
+  /**
+   * The fired-but-undelivered announcements, cleared on read: exactly-once
+   * delivery to the first draining reader (the daemon's explicitly-consuming
+   * /status receipts read), mirroring the daemon receipt contract.
+   */
+  drainPending(): PendingFeatureAnnouncement[] {
+    const state = this.read();
+    if (state.pending.length === 0) return [];
+    const pending = state.pending;
+    this.persist({ announced: state.announced, pending: [] }, 'drain');
+    return pending;
   }
 }
 
@@ -105,11 +161,10 @@ export function collectStartupAnnouncements(deps: {
   if (deps.configManager.get('web.enabled')) {
     const hostMode = deps.configManager.get('web.hostMode');
     const scope = hostMode === 'local' ? ' — serving this machine only until web.hostMode is widened' : '';
-    if (deps.store.record(WEB_SURFACE_ANNOUNCEMENT_ID)) {
-      lines.push({
-        id: WEB_SURFACE_ANNOUNCEMENT_ID,
-        text: `Web surface ready: ${resolveWebSurfaceUrl(deps.configManager)}${scope}`,
-      });
+    const text = `Web surface ready: ${resolveWebSurfaceUrl(deps.configManager)}${scope}`;
+    // Recording WITH text also enqueues the line for surface delivery.
+    if (deps.store.record(WEB_SURFACE_ANNOUNCEMENT_ID, text)) {
+      lines.push({ id: WEB_SURFACE_ANNOUNCEMENT_ID, text });
     }
   }
   return lines;
@@ -151,7 +206,8 @@ export function createSandboxContainmentAnnouncer(
   onAnnounce: (announcement: FeatureAnnouncement) => void,
 ): () => void {
   return () => {
-    if (store.record(SANDBOX_CONTAINED_ANNOUNCEMENT_ID)) {
+    // Recording WITH text also enqueues the line for surface delivery.
+    if (store.record(SANDBOX_CONTAINED_ANNOUNCEMENT_ID, SANDBOX_CONTAINED_ANNOUNCEMENT_TEXT)) {
       onAnnounce({
         id: SANDBOX_CONTAINED_ANNOUNCEMENT_ID,
         text: SANDBOX_CONTAINED_ANNOUNCEMENT_TEXT,

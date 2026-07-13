@@ -1235,7 +1235,11 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "archivedAt": 0,
           "metadata": {}
         }
-      ]
+      ],
+      "emptyState": {
+        "title": "sample",
+        "body": "sample"
+      }
     }
   },
   "automation.jobs.run": {

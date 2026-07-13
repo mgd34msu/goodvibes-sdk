@@ -7392,6 +7392,22 @@ Return automation jobs and recent runs. Without ?limit/?cursor returns { jobs: [
         ],
         "additionalProperties": true
       }
+    },
+    "emptyState": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

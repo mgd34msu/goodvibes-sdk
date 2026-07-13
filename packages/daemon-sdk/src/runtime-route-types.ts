@@ -212,6 +212,13 @@ export interface DaemonRuntimeRouteContext {
     getStatus(agentId: string): AgentRecordLike | null;
     cancel(agentId: string): void;
   };
+  /**
+   * The automation empty state a surface renders while automation is enabled
+   * with zero routines (how-to-create-your-first-routine); null once any
+   * routine exists or when automation is off. Supplied by the composition
+   * root (the SDK owns the copy); absent = the jobs list omits emptyState.
+   */
+  readonly automationEmptyState?: (() => { readonly title: string; readonly body: string } | null) | undefined;
   readonly automationManager: {
     listJobs(): AutomationJobLike[];
     listRuns(): AutomationRunLike[];

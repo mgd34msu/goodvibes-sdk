@@ -499,6 +499,13 @@ export const AUTOMATION_INTEGRATION_SNAPSHOT_SCHEMA = objectSchema({
 
 export const AUTOMATION_JOBS_OUTPUT_SCHEMA = objectSchema({
   jobs: arraySchema(AUTOMATION_JOB_SCHEMA),
+  // Present only while automation is enabled with zero routines: the
+  // how-to-create-your-first-routine copy a surface renders instead of a
+  // bare empty list. Disappears by itself once the first routine exists.
+  emptyState: objectSchema({
+    title: STRING_SCHEMA,
+    body: STRING_SCHEMA,
+  }, ['title', 'body']),
 }, ['jobs']);
 
 export const AUTOMATION_RUNS_OUTPUT_SCHEMA = objectSchema({
