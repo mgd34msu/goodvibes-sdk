@@ -88,6 +88,12 @@ export interface PushNotificationData {
   readonly sessionId?: string | undefined;
   /** Fleet-node deep link (categories 'needs-input' and 'completion'). */
   readonly nodeId?: string | undefined;
+  /**
+   * True on a 'needs-input' push that fired as an escalation — a block that
+   * waited past its grace with no human response, delivered regardless of an
+   * attached surface. Lets the service worker render it as a stronger reminder.
+   */
+  readonly escalated?: boolean | undefined;
 }
 
 /** The notification a caller wants delivered to the operator's devices. */

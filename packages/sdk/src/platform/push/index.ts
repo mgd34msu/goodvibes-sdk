@@ -11,7 +11,7 @@ export { PushSubscriptionStore, toPublicSubscription } from './subscription-stor
 export type { RegisterSubscriptionInput } from './subscription-store.js';
 export { deliverToSubscription, deliverToAll } from './delivery.js';
 export type { PushTransport, DeliveryDeps } from './delivery.js';
-export { PushService } from './service.js';
+export { PushService, DEFAULT_PUSH_ESCALATION } from './service.js';
 export type {
   PushServiceDeps,
   SubscribeInput,
@@ -20,6 +20,8 @@ export type {
   FleetNotice,
   FleetNoticeSource,
   NeedsInputPresence,
+  PushEscalationConfig,
+  EscalationScheduler,
 } from './service.js';
 export type {
   StoredPushSubscription,
