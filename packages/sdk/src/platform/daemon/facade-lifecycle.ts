@@ -19,6 +19,7 @@ import { DaemonAutoUpdater, type AutoUpdateServiceActions } from './auto-updater
 import { DaemonReceiptStore, formatReceiptTime } from './receipts.js';
 import { FeatureAnnouncementStore, collectStartupAnnouncements, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
 import { recordDaemonCleanShutdown, recordDaemonStart } from './lifecycle-marker.js';
+import { currentProcessSignals, isCompiledBinaryInvocation } from './daemon-exec-invocation.js';
 import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
 
 /**
@@ -114,6 +115,13 @@ export interface DaemonLifecycleRuntimeOptions {
   readonly exitProcess?: ((code: number) => void) | undefined;
   /** Boot-promotion idle recheck cadence. Default 60s; floored at 1s. */
   readonly promotionRetryMs?: number | undefined;
+  /**
+   * Whether this process is a compiled single-file binary. Only a compiled
+   * binary self-promotes to a supervised service — a source/dev run would write
+   * a unit whose ExecStart is a dev command line that fails on the next boot.
+   * Injectable for tests; defaults to the real process-signal check.
+   */
+  readonly isCompiledBinary?: (() => boolean) | undefined;
 }
 
 export class DaemonLifecycleRuntime {
@@ -313,6 +321,14 @@ export class DaemonLifecycleRuntime {
   private promoteToServiceAtBoot(): void {
     if (!this.options.updateArtifact) return;
     if (this.options.configManager.get('service.enabled') === false) return;
+    // Only a compiled binary may self-promote: a source/dev run would install a
+    // unit whose ExecStart reconstructs a dev command line for a binary and fail
+    // on the next boot. A dev checkout stays session-only.
+    const isCompiled = this.options.isCompiledBinary ?? (() => isCompiledBinaryInvocation(currentProcessSignals()));
+    if (!isCompiled()) {
+      logger.info('DaemonServer: source/dev run — skipping boot promotion (only a compiled binary self-promotes)');
+      return;
+    }
     let status: { installed: boolean; running: boolean };
     try {
       status = this.options.platformServiceManager.status();

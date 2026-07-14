@@ -5,6 +5,7 @@ import { ConfigManager } from '../config/manager.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
 import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
 import { isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
+import { currentProcessSignals, resolveDaemonExecInvocation } from './daemon-exec-invocation.js';
 
 export type ManagedServicePlatform = 'systemd' | 'launchd' | 'windows' | 'manual';
 
@@ -83,20 +84,20 @@ function buildDefaultDefinition(
   workingDirectory: string,
   options: Pick<ManagedServiceManagerOptions, 'binaryBaseName' | 'defaultServiceName' | 'defaultServiceDescription'>,
 ): ManagedServiceDefinition {
-  const binaryBaseName = options.binaryBaseName?.trim() || 'daemon';
-  const compiledBinary = resolve(
-    workingDirectory,
-    'dist',
-    process.platform === 'win32' ? `${binaryBaseName}-windows.exe` : binaryBaseName,
-  );
-  const useCompiledBinary = existsSync(compiledBinary);
   const serviceName = resolveServiceName(configManager, options.defaultServiceName);
+  // ExecStart is derived from how THIS process was actually started — a compiled
+  // binary launches itself with its real argv; only a source/dev run yields the
+  // `run <cli.ts>` shape (and that path is never self-promoted, see
+  // facade-lifecycle.promoteToServiceAtBoot). This replaces a dist/-existence
+  // heuristic that wrote a dev command line for a compiled binary running
+  // elsewhere.
+  const invocation = resolveDaemonExecInvocation(currentProcessSignals(), workingDirectory);
   return {
     name: serviceName,
     description: options.defaultServiceDescription?.trim() || `${serviceName} daemon host`,
     workingDirectory,
-    command: useCompiledBinary ? compiledBinary : process.execPath,
-    args: useCompiledBinary ? [] : ['run', resolve(workingDirectory, 'src', 'daemon', 'cli.ts')],
+    command: invocation.command,
+    args: invocation.args,
     env: {
       GOODVIBES_DAEMON_TOKEN: process.env.GOODVIBES_DAEMON_TOKEN ?? '',
       GOODVIBES_HTTP_TOKEN: process.env.GOODVIBES_HTTP_TOKEN ?? '',

@@ -36,6 +36,7 @@ function lifecycleWith(
     readonly status?: (() => { installed: boolean; running: boolean }) | undefined;
     readonly isIdle?: (() => boolean) | undefined;
     readonly promotionRetryMs?: number | undefined;
+    readonly isCompiledBinary?: (() => boolean) | undefined;
   } = {},
 ): LifecycleHarness {
   const scratch = mkdtempSync(join(tmpdir(), 'update-artifact-'));
@@ -63,6 +64,10 @@ function lifecycleWith(
     isIdle: overrides.isIdle ?? (() => true),
     // Boot promotion hands over by exiting — tests OBSERVE the exit.
     exitProcess: (code: number) => { exits.push(code); },
+    // These tests simulate a COMPILED daemon promoting; the bun-test process is
+    // itself a source run, so default the seam to compiled and let a dev-gate
+    // test flip it to false.
+    isCompiledBinary: overrides.isCompiledBinary ?? (() => true),
     ...(overrides.promotionRetryMs !== undefined ? { promotionRetryMs: overrides.promotionRetryMs } : {}),
     ...(updateArtifact !== undefined ? { updateArtifact } : {}),
   });
@@ -160,6 +165,20 @@ describe('boot-edge service promotion (independent of updates)', () => {
 
   test('a platform without a service manager is left alone', () => {
     const { runtime, installs, exits } = lifecycleWith(artifact, { status: () => { throw new Error('unsupported'); } });
+    runtime.onStarted();
+    try {
+      expect(installs).toHaveLength(0);
+      expect(exits).toHaveLength(0);
+    } finally {
+      runtime.onStopping(false);
+    }
+  });
+
+  test('a source/dev run never self-promotes (no unit written, no handover)', () => {
+    // Everything else says "promote" (artifact identity, idle, not installed) —
+    // only the compiled-binary gate stops it, because a dev unit would fail on
+    // the next boot.
+    const { runtime, installs, exits } = lifecycleWith(artifact, { isCompiledBinary: () => false });
     runtime.onStarted();
     try {
       expect(installs).toHaveLength(0);
