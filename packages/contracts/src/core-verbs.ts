@@ -166,6 +166,9 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // shape (per-flag state + evidence + release-blocker list) is a named
     // report, not a generic get of one record.
     'doctor', 'stats', 'capacity', 'settings', 'catalog', 'reject', 'review-queue', 'report',
+    // memory.consolidation.receipts — the retained consolidation run receipts +
+    // pending proposals: a whole-report read named for what it serves.
+    'receipts',
   ],
   'memory-record-store': [
     // The daemon-owned canonical memory store mirrors the MemoryStore engine's
