@@ -26,6 +26,7 @@ import { parseReviewIntoTasks, planTaskGraph, planFixWorkstream } from '../packa
 import { dependencySatisfied } from '../packages/sdk/src/platform/orchestration/scheduler.js';
 import { countOwnedActiveAgents, fleetCapacityProbeFrom } from '../packages/sdk/src/platform/runtime/orchestration/fleet-count.js';
 import { migrateFleetMaxSizeRename } from '../packages/sdk/src/platform/config/migrations.js';
+import { applyFleetMaxSizeMigrationPass } from '../packages/sdk/src/platform/config/manager-migration-passes.js';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import type { OrchestrationEvent, WorkItem, Workstream } from '../packages/sdk/src/platform/orchestration/types.js';
 import type { ReviewerReport } from '../packages/sdk/src/platform/agents/completion-report.js';
@@ -367,6 +368,39 @@ describe('fleet.maxSize — one ceiling, responsibility-counted, invisible migra
       // Pure-function contract too (idempotent, no-op without the legacy key).
       expect(migrateFleetMaxSizeRename({}).migrated).toBe(false);
       expect(migrateFleetMaxSizeRename({ orchestration: { maxActiveAgents: 4 } })).toMatchObject({ migrated: true, movedValue: 4 });
+      // The rename RECEIPT reached the announce-once queue: the pending entry
+      // carries the migration id and the human-readable rename text, so a
+      // surface renders it exactly once (not just a disk rewrite).
+      const announcements = JSON.parse(
+        readFileSync(join(dir, 'control-plane', 'feature-announcements.json'), 'utf-8'),
+      ) as { announced: Record<string, number>; pending: Array<{ id: string; text: string }> };
+      const receiptId = Object.keys(announcements.announced).find((id) => id.startsWith('settings-migration-fleet-max-size:'));
+      expect(receiptId).toBeDefined();
+      const pendingReceipt = announcements.pending.find((entry) => entry.id === receiptId);
+      expect(pendingReceipt).toBeDefined();
+      expect(pendingReceipt!.text).toContain('orchestration.maxActiveAgents is now fleet.maxSize');
+      expect(pendingReceipt!.text).toContain('(12)');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('a failing receipt sink is caught and warned — the migration itself still lands', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fleet-migrate-sink-'));
+    try {
+      const sourcePath = join(dir, 'settings.json');
+      writeFileSync(sourcePath, JSON.stringify({ orchestration: { maxActiveAgents: 7 } }, null, 2), 'utf-8');
+      const parsed = JSON.parse(readFileSync(sourcePath, 'utf-8')) as Record<string, unknown>;
+      const throwingSink = (): void => { throw new Error('announce store unavailable'); };
+      // The silent catch-and-warn fallback: the pass must not throw, and the
+      // migrated config (value moved, legacy key gone) is still returned and
+      // persisted even though the receipt could not be queued.
+      const migrated = applyFleetMaxSizeMigrationPass(parsed, sourcePath, throwingSink);
+      expect(migrated.fleet).toEqual({ maxSize: 7 });
+      expect(migrated.orchestration).toBeUndefined();
+      const onDisk = JSON.parse(readFileSync(sourcePath, 'utf-8')) as Record<string, unknown>;
+      expect(onDisk.fleet).toEqual({ maxSize: 7 });
+      expect(onDisk.orchestration).toBeUndefined();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
