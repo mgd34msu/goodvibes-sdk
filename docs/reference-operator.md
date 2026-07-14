@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `409`
+- Methods: `410`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -31334,6 +31334,172 @@ The conflict row's one action: spawn a resolution session INSIDE the kept worktr
     "sessionId",
     "worktreePath",
     "files"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.graph.get`
+
+The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this — the fleet/observability idiom. 404 when the workstream is unknown to this daemon.
+
+- Title: `Get Workstream Task Graph`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/fleet/workstreams/{workstreamId}/graph`
+- Scopes: `read:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "workstreamId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "workstreamId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "workstreamId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "cluster": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mergeState": {
+            "type": "string"
+          },
+          "blockedReason": {
+            "type": "string"
+          },
+          "orphaned": {
+            "type": "boolean"
+          },
+          "remainingDepth": {
+            "type": "number"
+          },
+          "stalled": {
+            "type": "boolean"
+          },
+          "agentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "state",
+          "files",
+          "orphaned",
+          "remainingDepth",
+          "stalled"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "pool": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "ready": {
+              "type": "number"
+            },
+            "running": {
+              "type": "number"
+            },
+            "atCap": {
+              "type": "boolean"
+            },
+            "capKey": {
+              "type": "string"
+            },
+            "maxSize": {
+              "type": "number"
+            },
+            "refusal": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ready",
+            "running",
+            "atCap",
+            "capKey",
+            "maxSize"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "workstreamId",
+    "title",
+    "nodes",
+    "edges",
+    "pool"
   ],
   "additionalProperties": false
 }

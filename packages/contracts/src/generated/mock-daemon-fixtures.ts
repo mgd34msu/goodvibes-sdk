@@ -5615,6 +5615,49 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       ]
     }
   },
+  "fleet.graph.get": {
+    "methodId": "fleet.graph.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/fleet/workstreams/{workstreamId}/graph"
+    },
+    "status": 200,
+    "body": {
+      "workstreamId": "sample",
+      "title": "sample",
+      "nodes": [
+        {
+          "id": "sample",
+          "title": "sample",
+          "state": "sample",
+          "cluster": "sample",
+          "files": [
+            "sample"
+          ],
+          "mergeState": "sample",
+          "blockedReason": "sample",
+          "orphaned": false,
+          "remainingDepth": 0,
+          "stalled": false,
+          "agentId": "sample"
+        }
+      ],
+      "edges": [
+        {
+          "from": "sample",
+          "to": "sample"
+        }
+      ],
+      "pool": {
+        "ready": 0,
+        "running": 0,
+        "atCap": false,
+        "capKey": "sample",
+        "maxSize": 0,
+        "refusal": "sample"
+      }
+    }
+  },
   "fleet.list": {
     "methodId": "fleet.list",
     "http": null,

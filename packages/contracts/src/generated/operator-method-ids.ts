@@ -138,6 +138,7 @@ export const OPERATOR_METHOD_IDS = [
   "fleet.attempts.pick",
   "fleet.conflicts.list",
   "fleet.conflicts.resolve",
+  "fleet.graph.get",
   "fleet.list",
   "fleet.snapshot",
   "fleet.unarchive",

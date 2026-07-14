@@ -53,6 +53,7 @@ import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/s
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
 import { builtinGatewayPowerMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-power.ts';
+import { builtinGatewayFleetMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-fleet.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
 import {
   EMPTY_OBJECT_SCHEMA,
@@ -219,6 +220,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCoreMethodDescriptors,
   ...builtinGatewayControlLiveTurnMethodDescriptors,
   ...builtinGatewayPowerMethodDescriptors,
+  ...builtinGatewayFleetMethodDescriptors,
   ...builtinGatewayControlCompanionMethodDescriptors,
   ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
@@ -360,6 +362,8 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Sleep-ownership verbs (power.*):
   { methodId: 'power.status.get', ...descriptorSchemas('power.status.get') },
   { methodId: 'power.keepAwake.set', ...descriptorSchemas('power.keepAwake.set') },
+  // The task-graph view (1.4.3):
+  { methodId: 'fleet.graph.get', ...descriptorSchemas('fleet.graph.get') },
   // Delete-honesty verbs (landed after this check's first cut; covered
   // per the follow-up noted in docs/decisions/2026-07-06-foundation-io-types-hand-authored.md):
   { methodId: 'sessions.delete', ...descriptorSchemas('sessions.delete') },

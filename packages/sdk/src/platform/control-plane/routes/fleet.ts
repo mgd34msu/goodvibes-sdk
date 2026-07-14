@@ -234,6 +234,8 @@ export function createFleetArchivedListHandler(registry: FleetArchiveCapableRegi
  */
 export interface FleetAttemptsController {
   listHeldMergeGroups(workstreamId?: string): Promise<HeldMergeGroup[]>;
+  /** The task-graph snapshot (fleet.graph.get) — nodes/edges/pool/stalled tells. Optional for narrower embeds. */
+  getGraphSnapshot?(workstreamId: string): import('../../orchestration/graph-dynamics.js').WorkstreamGraphSnapshot | null;
   pickAttemptWinner(groupId: string, winnerItemId: string): Promise<AttemptPickResult>;
   proposeAttemptWinner(groupId: string): Promise<AttemptJudgment>;
   /** Conflict surface (optional — narrower embeds may wire attempts without conflicts). */
@@ -402,6 +404,22 @@ export function createFleetAttemptsJudgeHandler(controller: FleetAttemptsControl
  * rather than a throw — construction must never fail because a wire verb
  * failed to register; the operator-contract gates catch a real drift.
  */
+/** fleet.graph.get — the surface-facing task graph of one workstream. */
+export function createFleetGraphGetHandler(controller: FleetAttemptsController): GatewayMethodHandler {
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const workstreamId = typeof params.workstreamId === 'string' ? params.workstreamId.trim() : '';
+    if (!workstreamId) {
+      throw new GatewayVerbError('workstreamId is required', 'INVALID_ARGUMENT', 400);
+    }
+    const snapshot = controller.getGraphSnapshot?.(workstreamId) ?? null;
+    if (!snapshot) {
+      throw new GatewayVerbError(`No workstream ${workstreamId} on this daemon.`, 'WORKSTREAM_NOT_FOUND', 404);
+    }
+    return snapshot;
+  };
+}
+
 export function registerFleetGatewayMethods(
   catalog: GatewayMethodCatalog,
   registry: FleetArchiveCapableRegistry,
@@ -424,5 +442,7 @@ export function registerFleetGatewayMethods(
     attach('fleet.attempts.list', createFleetAttemptsListHandler(attempts));
     attach('fleet.attempts.pick', createFleetAttemptsPickHandler(attempts));
     attach('fleet.attempts.judge', createFleetAttemptsJudgeHandler(attempts));
+    // The task-graph view (1.4.3): surfaces render the graph under the chain.
+    attach('fleet.graph.get', createFleetGraphGetHandler(attempts));
   }
 }
