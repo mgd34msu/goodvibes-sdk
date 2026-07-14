@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 407 cataloged methods: 357 with dedicated REST bindings, 50 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 409 cataloged methods: 359 with dedicated REST bindings, 50 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -30243,6 +30243,363 @@
                     "integrationProblems"
                   ],
                   "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:health"
+        ]
+      }
+    },
+    "/api/power/keep-awake": {
+      "post": {
+        "operationId": "power.keepAwake.set",
+        "summary": "Set the Owner Keep-Awake Toggle",
+        "description": "Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPENDENT of work state, surviving surface closes, persisted as power.keepAwake. Covers idle + sleep + lid-switch classes where grantable; the returned state names any refused class honestly. No timers, no AC-only sub-options — the always-visible chip is the safety mechanism. Emits runtime.ops OPS_POWER_STATE_CHANGED so every attached surface updates its chip.",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "platform": {
+                      "type": "string"
+                    },
+                    "work": {
+                      "type": "object",
+                      "properties": {
+                        "held": {
+                          "type": "boolean"
+                        },
+                        "grantedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "deniedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "heldSince": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "capMinutes": {
+                          "type": "number"
+                        },
+                        "capExpiresAt": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "capExpired": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "held",
+                        "grantedClasses",
+                        "deniedClasses",
+                        "reasons",
+                        "heldSince",
+                        "capMinutes",
+                        "capExpiresAt",
+                        "capExpired"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "keepAwake": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "held": {
+                          "type": "boolean"
+                        },
+                        "grantedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "deniedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "note": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "held",
+                        "grantedClasses",
+                        "deniedClasses",
+                        "note"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "platform",
+                    "work",
+                    "keepAwake"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:config"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/power/status": {
+      "get": {
+        "operationId": "power.status.get",
+        "summary": "Get Sleep-Ownership State",
+        "description": "The host sleep-ownership state: whether the automatic work inhibitor is held (and the live \"held because X\" reasons, cap, and expiry), and the owner keep-awake toggle with the classes the OS actually granted vs refused — a refused lid-switch block is stated honestly (\"idle sleep blocked; lid-close suspend is controlled by your OS here\"), never papered over. Surfaces render the always-visible \"sleep disabled\" chip from this state and the runtime.ops OPS_POWER_STATE_CHANGED event.",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "platform": {
+                      "type": "string"
+                    },
+                    "work": {
+                      "type": "object",
+                      "properties": {
+                        "held": {
+                          "type": "boolean"
+                        },
+                        "grantedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "deniedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "heldSince": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "capMinutes": {
+                          "type": "number"
+                        },
+                        "capExpiresAt": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "capExpired": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "held",
+                        "grantedClasses",
+                        "deniedClasses",
+                        "reasons",
+                        "heldSince",
+                        "capMinutes",
+                        "capExpiresAt",
+                        "capExpired"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "keepAwake": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "held": {
+                          "type": "boolean"
+                        },
+                        "grantedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "deniedClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "handle-lid-switch",
+                              "idle",
+                              "sleep"
+                            ]
+                          }
+                        },
+                        "note": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "held",
+                        "grantedClasses",
+                        "deniedClasses",
+                        "note"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "platform",
+                    "work",
+                    "keepAwake"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -91018,6 +91375,24 @@
       "category": "health",
       "access": "authenticated",
       "rest": "GET /api/health",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "power.keepAwake.set",
+      "category": "health",
+      "access": "authenticated",
+      "rest": "POST /api/power/keep-awake",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "power.status.get",
+      "category": "health",
+      "access": "authenticated",
+      "rest": "GET /api/power/status",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

@@ -269,6 +269,8 @@ export const OPERATOR_METHOD_IDS = [
   "panels.open",
   "permissions.rules.delete",
   "permissions.rules.list",
+  "power.keepAwake.set",
+  "power.status.get",
   "principals.create",
   "principals.delete",
   "principals.get",

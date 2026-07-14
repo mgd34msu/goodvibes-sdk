@@ -52,6 +52,7 @@ import { builtinGatewayAcpMethodDescriptors } from '../packages/sdk/src/platform
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
+import { builtinGatewayPowerMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-power.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
 import {
   EMPTY_OBJECT_SCHEMA,
@@ -217,6 +218,7 @@ const FOUNDATION_TYPES_PATH = resolve(
 const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCoreMethodDescriptors,
   ...builtinGatewayControlLiveTurnMethodDescriptors,
+  ...builtinGatewayPowerMethodDescriptors,
   ...builtinGatewayControlCompanionMethodDescriptors,
   ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
@@ -355,6 +357,9 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'sessions.queuedMessages.list', ...descriptorSchemas('sessions.queuedMessages.list') },
   { methodId: 'sessions.queuedMessages.edit', ...descriptorSchemas('sessions.queuedMessages.edit') },
   { methodId: 'sessions.queuedMessages.delete', ...descriptorSchemas('sessions.queuedMessages.delete') },
+  // Sleep-ownership verbs (power.*):
+  { methodId: 'power.status.get', ...descriptorSchemas('power.status.get') },
+  { methodId: 'power.keepAwake.set', ...descriptorSchemas('power.keepAwake.set') },
   // Delete-honesty verbs (landed after this check's first cut; covered
   // per the follow-up noted in docs/decisions/2026-07-06-foundation-io-types-hand-authored.md):
   { methodId: 'sessions.delete', ...descriptorSchemas('sessions.delete') },

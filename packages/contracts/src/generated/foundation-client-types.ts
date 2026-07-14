@@ -194,6 +194,8 @@ export interface OperatorMethodInputMap {
   "panels.open": ({ id: string; pane?: string; } & { readonly [key: string]: unknown });
   "permissions.rules.list": {  };
   "permissions.rules.delete": { ruleId: string; };
+  "power.keepAwake.set": { enabled: boolean; };
+  "power.status.get": {  };
   "principals.create": { name: string; kind: "bot" | "service" | "token" | "user"; identities?: readonly ({ channel: string; value: string; })[]; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); };
   "principals.delete": { principalId: string; };
   "principals.get": { principalId: string; };
@@ -507,6 +509,8 @@ export interface OperatorMethodOutputMap {
   "panels.open": { opened: boolean; id: string; pane: "bottom" | "top"; };
   "permissions.rules.list": { rules: readonly ({ id: string; effect: "allow" | "deny"; tier: "command-class" | "exact" | "path" | "tool"; tool: string; description?: string; createdAt: number; })[]; };
   "permissions.rules.delete": { deleted: boolean; };
+  "power.keepAwake.set": { platform: string; work: { held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; reasons: readonly string[]; heldSince: null | number; capMinutes: number; capExpiresAt: null | number; capExpired: boolean; }; keepAwake: { enabled: boolean; held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; note: null | string; }; };
+  "power.status.get": { platform: string; work: { held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; reasons: readonly string[]; heldSince: null | number; capMinutes: number; capExpiresAt: null | number; capExpired: boolean; }; keepAwake: { enabled: boolean; held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; note: null | string; }; };
   "principals.create": { principal: { id: string; name: string; kind: "bot" | "service" | "token" | "user"; identities: readonly ({ channel: string; value: string; })[]; createdAt: number; updatedAt: number; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); }; };
   "principals.delete": { principalId: string; deleted: boolean; };
   "principals.get": { principal: { id: string; name: string; kind: "bot" | "service" | "token" | "user"; identities: readonly ({ channel: string; value: string; })[]; createdAt: number; updatedAt: number; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); }; };

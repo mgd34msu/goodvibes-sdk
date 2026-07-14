@@ -88,6 +88,7 @@ function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
 }
 
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods, type SessionLiveTurnControlsHolder } from './session-runtime.js';
+import { registerPowerGatewayMethods, type PowerGatewayService } from './power.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
 import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
@@ -196,6 +197,8 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * nothing bound) those verbs refuse honestly (LIVE_TURN_CONTROLS_UNAVAILABLE).
    */
   readonly sessionLiveTurnControls?: SessionLiveTurnControlsHolder | undefined;
+  /** Optional: the live PowerManager. When present, power.status.get / power.keepAwake.set serve real state; absent they stay cataloged-but-unhandled. */
+  readonly powerManager?: PowerGatewayService | undefined;
   /**
    * The following three are wired only by the full runtime-services composition
    * root; when any is absent (e.g. the terminal-shell embed) the proactive
@@ -558,6 +561,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // wire, over the daemon's own config + runtime store (its live local
   // runtime). Constructed here rather than threaded through the runtime-
   // services composition root, exactly like the skill/push groups above.
+  if (deps.powerManager) registerPowerGatewayMethods(catalog, deps.powerManager);
   registerSessionRuntimeGatewayMethods(
     catalog,
     createSessionRuntimeControls({

@@ -30,6 +30,23 @@ export function emitOpsContextWarning(
   }, ctx));
 }
 
+/** Emit OPS_POWER_STATE_CHANGED when sleep ownership changes (inhibitors, keep-awake, sleep edge). */
+export function emitOpsPowerStateChanged(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: {
+    inhibited: boolean;
+    keepAwake: boolean;
+    workReasons: readonly string[];
+    note?: string | undefined;
+  }
+): void {
+  bus.emit('ops', createEventEnvelope('OPS_POWER_STATE_CHANGED', {
+    type: 'OPS_POWER_STATE_CHANGED',
+    ...data,
+  }, ctx));
+}
+
 /** Emit OPS_CACHE_METRICS for cache hit-rate and token accounting snapshots. */
 export function emitOpsCacheMetrics(
   bus: RuntimeEventBus,

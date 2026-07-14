@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 407 total, 357 REST-routed, 50 ws-only invoke.
+ * Methods: 409 total, 359 REST-routed, 50 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -539,6 +539,14 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
   "health.snapshot": {
     "method": "GET",
     "path": "/api/health"
+  },
+  "power.keepAwake.set": {
+    "method": "POST",
+    "path": "/api/power/keep-awake"
+  },
+  "power.status.get": {
+    "method": "GET",
+    "path": "/api/power/status"
   },
   "intelligence.snapshot": {
     "method": "GET",
@@ -1675,6 +1683,8 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "fleet.snapshot": "ws-invoke",
   "fleet.unarchive": "ws-invoke",
   "health.snapshot": "rest",
+  "power.keepAwake.set": "rest",
+  "power.status.get": "rest",
   "intelligence.snapshot": "rest",
   "homeassistant.homeGraph.askHomeGraph": "rest",
   "homeassistant.homeGraph.browse": "rest",
@@ -7820,6 +7830,74 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "sample"
           ]
         }
+      }
+    }
+  },
+  "power.keepAwake.set": {
+    "input": {
+      "enabled": false
+    },
+    "output": {
+      "platform": "sample",
+      "work": {
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "reasons": [
+          "sample"
+        ],
+        "heldSince": 0,
+        "capMinutes": 0,
+        "capExpiresAt": 0,
+        "capExpired": false
+      },
+      "keepAwake": {
+        "enabled": false,
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "note": "sample"
+      }
+    }
+  },
+  "power.status.get": {
+    "input": {},
+    "output": {
+      "platform": "sample",
+      "work": {
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "reasons": [
+          "sample"
+        ],
+        "heldSince": 0,
+        "capMinutes": 0,
+        "capExpiresAt": 0,
+        "capExpired": false
+      },
+      "keepAwake": {
+        "enabled": false,
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "note": "sample"
       }
     }
   },

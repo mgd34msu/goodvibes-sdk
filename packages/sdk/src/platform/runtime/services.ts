@@ -47,6 +47,7 @@ import { CodeIndexStore } from '../state/code-index-store.js';
 import { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
 import { StoreSnapshotScheduler } from '../state/store-snapshots.js';
 import { MemoryConsolidationScheduler } from '../state/memory-consolidation-scheduler.js';
+import { PowerManager, wireRuntimePower } from '../power/index.js';
 import { runStartupAppendOnlySweep } from './retention/append-only-registry.js';
 import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
 import type { RuntimeEventBus } from './events/index.js';
@@ -139,10 +140,9 @@ export interface RuntimeServicesOptions {
   readonly panelManager?: PanelManagerLike | undefined;
   readonly keybindingsManager?: KeybindingsManagerLike | undefined;
   /**
-   * Opt-in: kick off the repo source-tree code index's initial build
-   * (Stage A) right after construction. Fire-and-forget — never
-   * awaited, never blocks. Defaults off so building RuntimeServices never runs
-   * an unrequested source-tree walk. Real interactive entry points pass `true`.
+   * Opt-in: kick off the code index's initial build (Stage A) after
+   * construction; fire-and-forget. Off by default so constructing
+   * RuntimeServices never runs an unrequested source-tree walk.
    */
   readonly autoStartCodeIndex?: boolean | undefined;
   /** Override the broker store path (default: home-scoped durable store). */
@@ -192,6 +192,8 @@ export interface RuntimeServices {
   readonly storeSnapshotScheduler: StoreSnapshotScheduler;
   /** Idle+schedule memory consolidation driver (this runtime is the store's single writer); unref'd timers, stop() on teardown. */
   readonly memoryConsolidationScheduler: MemoryConsolidationScheduler;
+  /** Sleep ownership: work inhibition, keep-awake toggle, sleep-edge hooks (platform/power). */
+  readonly powerManager: PowerManager;
   readonly serviceRegistry: ServiceRegistry;
   readonly secretsManager: SecretsManager;
   /** Relay WebAuthn step-up ceremony service (shared by the stepup.* verbs and the relay gate's verifier). */
@@ -253,25 +255,19 @@ export interface RuntimeServices {
   readonly sessionLiveTurnControls: SessionLiveTurnControlsHolder;
   readonly wrfcController: WrfcController;
   /**
-   * Orchestration engine — ships ALONGSIDE wrfcController,
-   * stage 1 of the 3-stage migration (see platform/orchestration/
-   * controller-compat.ts). WrfcController is unchanged; this is a new,
-   * opt-in surface for callers that want the pipeline/capacity-matching
-   * scheduler instead of WrfcController's pairwise engineer<->reviewer
-   * chain. Not auto-started — callers call orchestrationEngine.start(id)
-   * (or resumeAllFromDisk()) once they have a workstream to run.
+   * Orchestration engine — ships ALONGSIDE wrfcController (stage 1 of the
+   * 3-stage migration, see platform/orchestration/controller-compat.ts): an
+   * opt-in pipeline/capacity-matching scheduler. Not auto-started — callers
+   * call orchestrationEngine.start(id) or resumeAllFromDisk().
    */
   readonly orchestrationEngine: OrchestrationEngine;
   readonly processManager: ProcessManager;
   /**
-   * Live process registry: queryable + subscribable fleet aggregation
-   * over agentManager/wrfcController/processManager/watcherRegistry/workflow.
-   * LIFECYCLE NOTE: RuntimeServices has no shutdown/dispose seam today, so
-   * nothing calls processRegistry.dispose() here — the registry's coalesced
-   * tick is timer.unref()'d and only runs while subscribers exist, so an
-   * undisposed registry cannot pin the event loop. Hosts that tear down a
-   * runtime (tests, embedders) should call processRegistry.dispose()
-   * themselves; when a RuntimeServices-wide dispose seam lands, wire this in.
+   * Live process registry: queryable + subscribable fleet aggregation over
+   * agentManager/wrfcController/processManager/watcherRegistry/workflow.
+   * LIFECYCLE: no RuntimeServices dispose seam exists, so nothing calls
+   * dispose() here — the coalesced tick is unref'd and runs only while
+   * subscribers exist; hosts that tear down a runtime dispose() themselves.
    */
   readonly processRegistry: ArchivableProcessRegistry;
   readonly modeManager: ModeManager;
@@ -781,8 +777,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workflowServices: workflow,
   });
 
-  // Honest-unpriced dollars + their provenance, both over the ONE model
-  // pricing resolver, SHARED by fleet + orchestration (see pricing-seams.ts).
+  // Honest-unpriced dollars + provenance over the ONE pricing resolver (pricing-seams.ts).
   const { priceUsage, priceProvenance } = buildPricingSeams(providerRegistry);
 
   // Orchestration engine — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
@@ -834,7 +829,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   };
   const stepUpService = new StepUpService({ secrets: secretsManager });
   const sessionLiveTurnControls = new SessionLiveTurnControlsHolder();
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
+  // Sleep ownership: work-signal inhibition, keep-awake toggle, sleep-edge checkpoint + wake catch-up.
+  const powerManager = wireRuntimePower({
+    readConfig: (key) => configManager.get(key as never),
+    writeConfig: (key, value) => configManager.setDynamic(key as never, value),
+    runtimeBus: options.runtimeBus,
+    sleepCheckpoint: () => storeSnapshotScheduler.tick(),
+    wakeCatchUp: [() => memoryConsolidationScheduler.tick(), () => storeSnapshotScheduler.tick(), async () => { await automationManager.triggerHeartbeat({ source: 'wake-catchup' }); }] });
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,
@@ -868,6 +870,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexReindexScheduler,
     storeSnapshotScheduler,
     memoryConsolidationScheduler,
+    powerManager,
     serviceRegistry,
     secretsManager,
     stepUpService,
