@@ -239,11 +239,50 @@ The QR code encodes the token in plaintext. Treat the QR code display like a pas
 - The QR is displayed on-demand; dismiss it promptly after pairing.
 - Regenerate the token if you believe the QR was observed by an unintended party.
 
-### HTTPS in production
+### TLS posture: http on your LAN, tailscale for the full PWA
 
-When the daemon is exposed beyond loopback (e.g. across a LAN or through a tunnel), use HTTPS. Without TLS, the bearer token is transmitted in plaintext over the network. The daemon HTTP policy supports TLS configuration — consult your deployment guide.
+This is the honest picture, stated once (surfaces render the same line from the
+pairing contract, never as a recurring nag):
 
-For local-only pairing (`127.0.0.1`), HTTP is acceptable since traffic does not leave the machine.
+**Plain http on your LAN works, and is a supported posture.** A phone on the
+same private network (a `10.x`/`172.16-31.x`/`192.168.x` address, a `.local`
+mDNS name, or localhost) uses the full cockpit over http — the transport does
+not refuse private-network origins. Two things are true about it:
+
+1. The connection is unencrypted on your local network. Anyone who can already
+   capture traffic on your LAN can read it, including the bearer token.
+2. Browsers gate a few capabilities on a *secure context* (https, or the
+   localhost loopback): **service worker / PWA install, push notifications,
+   and the microphone**. On plain http over the LAN these are unavailable —
+   the daemon reports each one in the pairing/posture contract
+   (`pairing.posture.get`, and the `posture` field of `pairing.handoff.create`)
+   so surfaces show a "needs https — available via tailscale" label instead of
+   a dead button. Localhost keeps all three.
+
+**Full PWA needs TLS, and TLS on a home network is your responsibility.** The
+daemon never mints certificates and never provisions its own CA. If you
+already run real TLS (a reverse proxy with a real certificate), that works
+as-is via the daemon HTTP policy's TLS configuration.
+
+**Tailscale is the recommended path** — encrypted access and a real https URL
+with zero certificate handling on your side. Worked example:
+
+```bash
+# One-time: install tailscale on the daemon host and the phone, log both in.
+tailscale up
+
+# Front the daemon's web surface (default port 3423) at your MagicDNS name.
+# TLS is terminated by tailscale — the daemon never touches a certificate.
+tailscale serve --bg 3423
+
+# The daemon is now at e.g. https://yourhost.your-tailnet.ts.net —
+# open that on the phone: secure context, full PWA, push, microphone.
+```
+
+The daemon offers this as a one-action affordance: `tailscale.get` (read-only
+detection — binary, logged-in state, MagicDNS name; where tailscale is absent,
+nothing nags) and `tailscale.serve.run` (runs the serve command above for you,
+records an honest receipt, and updates `web.publicBaseUrl` to the https URL).
 
 ### Token rotation schedule
 
