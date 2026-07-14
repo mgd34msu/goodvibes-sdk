@@ -2,7 +2,7 @@
 
 /**
  * graph-dynamics.ts — the runtime-dynamic dependency-graph muscles added to
- * the ONE workstream engine (the 1.4.3 fix-phase rework; never a sibling
+ * the ONE workstream engine (the fix-phase rework; never a sibling
  * scheduler):
  *
  * - live edge addition with cycle refusal (a discovered missed dependency adds

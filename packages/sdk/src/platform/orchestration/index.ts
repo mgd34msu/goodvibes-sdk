@@ -47,7 +47,7 @@ export { createProviderBackedAttemptJudge, parseAttemptVerdict } from './judge.j
 export type { CreateWorkstreamInput, OrchestrationEngine, OrchestrationEngineDeps } from './engine.js';
 export { createOrchestrationEngine } from './engine.js';
 
-// The 1.4.3 fix-phase rework: review findings as a second task source, the
+// The fix-phase rework: review findings as a second task source, the
 // dynamic-graph muscles, the elastic pool, and the planned-fix runner.
 export { parseReviewIntoTasks, planTaskGraph, planFixWorkstream, clusterOf, ELASTIC_PHASE_CAPACITY } from './review-task-source.js';
 export type { ReviewTask, ReviewTaskSource, SemanticEdgePlanner } from './review-task-source.js';

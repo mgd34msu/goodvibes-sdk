@@ -2,7 +2,7 @@
 
 /**
  * review-task-source.ts — review findings as a SECOND task source feeding the
- * ONE workstream engine (the 1.4.3 fix-phase rework; never a sibling
+ * ONE workstream engine (the fix-phase rework; never a sibling
  * scheduler).
  *
  * The reviewer's typed record — findings with file citations, the acceptance

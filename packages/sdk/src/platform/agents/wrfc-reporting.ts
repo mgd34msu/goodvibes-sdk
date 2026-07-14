@@ -451,7 +451,7 @@ function buildReviewBrief(report: CompletionReport): string[] {
 
   return lines;
 }
-// buildFixTask is GONE (1.4.3): the single-fixer prompt path was replaced by
+// buildFixTask is GONE: the single-fixer prompt path was replaced by
 // planned task execution — review findings parse into a dependency-graph
 // workstream (orchestration/review-task-source.ts + fix-workstream-runner.ts).
 

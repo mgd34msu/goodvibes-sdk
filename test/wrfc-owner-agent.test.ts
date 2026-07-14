@@ -457,7 +457,7 @@ describe('WRFC owner agent orchestration', () => {
     expect(reviewTask).toContain('Do not fail only because no files exist');
     expect(reviewTask).toContain('constraintFindings: array of exactly');
 
-    // The single-fixer prompt path is GONE (1.4.3): a failing review parses
+    // The single-fixer prompt path is GONE: a failing review parses
     // into typed tasks that each carry the ORIGINAL ask as the contract.
     const tasks = parseReviewIntoTasks({
       review: {

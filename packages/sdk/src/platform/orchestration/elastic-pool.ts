@@ -2,7 +2,7 @@
 
 /**
  * elastic-pool.ts — the elastic-fleet muscles of the ONE workstream engine
- * (1.4.3): a ready task with no available agent SPAWNS one (the phase-runner's
+ * : a ready task with no available agent SPAWNS one (the phase-runner's
  * fresh per-task agent), up to `fleet.maxSize`; at-cap is a VISIBLE state
  * ("N ready, M running, at cap"), never a silent stall; a spawn refusal
  * leaves the task visibly ready with its reason; and when the ready set is

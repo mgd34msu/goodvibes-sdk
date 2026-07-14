@@ -473,7 +473,7 @@ export function registerFleetGatewayMethods(
     attach('fleet.attempts.list', createFleetAttemptsListHandler(attempts));
     attach('fleet.attempts.pick', createFleetAttemptsPickHandler(attempts));
     attach('fleet.attempts.judge', createFleetAttemptsJudgeHandler(attempts));
-    // The task-graph view (1.4.3): surfaces render the graph under the chain.
+    // The task-graph view: surfaces render the graph under the chain.
     attach('fleet.graph.get', createFleetGraphGetHandler(attempts));
   }
 }

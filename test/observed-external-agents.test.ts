@@ -1,5 +1,5 @@
 /**
- * Observed external coding-agent sessions (1.4.3 rider): read-only detection of
+ * Observed external coding-agent sessions: read-only detection of
  * Claude Code / Codex processes goodvibes did NOT spawn, folded into the fleet
  * as 'observed-external' rows that
  *   - carry an honest external kind + pid + cwd + start time + CPU liveness,

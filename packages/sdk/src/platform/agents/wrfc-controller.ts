@@ -144,7 +144,7 @@ export class WrfcController {
   private readonly createWorktree: () => WrfcWorktreeOps;
   private readonly selectChildRoute: WrfcChildRouteSelector | null;
   private workPlanService: WrfcWorkPlanService | null = null;
-  /** The planned-fix executor over the ONE workstream engine (1.4.3). Wired by the composition root; the single-fixer prompt path no longer exists. */
+  /** The planned-fix executor over the ONE workstream engine. Wired by the composition root; the single-fixer prompt path no longer exists. */
   private fixWorkstreamRunner: FixWorkstreamRunner | null = null;
   private readonly workPlanTaskQueues = new Map<string, Promise<void>>();
   /** Tracks last-seen timestamp per agent for watchdog timeout. */
@@ -1097,7 +1097,7 @@ export class WrfcController {
   }
 
   /**
-   * The planned-fix path (1.4.3): review findings parse into a dependency
+   * The planned-fix path: review findings parse into a dependency
    * graph run by the ONE engine (elastic pool, isolated worktrees,
    * reviewed-and-merged release). Merged => the terminal contract gate
    * re-reviews against the ORIGINAL request; task-level green is telemetry.
